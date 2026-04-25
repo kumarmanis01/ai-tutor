@@ -11,26 +11,24 @@
  */
 import { prisma } from '../lib/prisma';
 
-
-
 /** Core subjects per board+grade (mandatory for exam). Others are optional. */
 const CORE_SUBJECT_SLUGS = new Set([
-  "english",
-  "mathematics",
-  "science",
-  "physics",
-  "chemistry",
-  "biology",
-  "social-science",
-  "history",
-  "geography",
-  "economics",
-  "history-civics-geography",
+  'english',
+  'mathematics',
+  'science',
+  'physics',
+  'chemistry',
+  'biology',
+  'social-science',
+  'history',
+  'geography',
+  'economics',
+  'history-civics-geography',
 ]);
 
 async function seedBoardSubjectConfig() {
   const boards = await prisma.board.findMany({
-    where: { slug: { in: ["cbse", "icse"] }, lifecycle: "active" },
+    where: { slug: { in: ['cbse', 'icse'] }, lifecycle: 'active' },
     include: { classes: { include: { subjects: true } } },
   });
 
@@ -50,16 +48,16 @@ async function seedBoardSubjectConfig() {
       }
     }
   }
-  console.log("✅ BoardSubjectConfig seeded for CBSE + ICSE Grade 6-12");
+  console.log('✅ BoardSubjectConfig seeded for CBSE + ICSE Grade 6-12');
 }
 
 /** Placeholder marks per chapter (CBSE Grade 10 style). Replace with official marking scheme. */
 const DEFAULT_CHAPTER_WEIGHT = 8;
 
 async function seedBoardChapterWeights() {
-  const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
+  const cbse = await prisma.board.findFirst({ where: { slug: 'cbse' } });
   if (!cbse) {
-    console.log("⚠️ Board CBSE not found; run seed-taxonomy.cjs first.");
+    console.log('⚠️ Board CBSE not found; run seed-taxonomy.cjs first.');
     return;
   }
   const class10 = await prisma.classLevel.findFirst({
@@ -67,14 +65,14 @@ async function seedBoardChapterWeights() {
     include: {
       subjects: {
         where: {
-          slug: { in: ["mathematics", "physics", "chemistry", "biology", "science"] },
+          slug: { in: ['mathematics', 'physics', 'chemistry', 'biology', 'science'] },
         },
         include: { chapters: true },
       },
     },
   });
   if (!class10) {
-    console.log("⚠️ CBSE Grade 10 class not found.");
+    console.log('⚠️ CBSE Grade 10 class not found.');
     return;
   }
   for (const subj of class10.subjects) {
@@ -89,19 +87,19 @@ async function seedBoardChapterWeights() {
       });
     }
   }
-  console.log("✅ BoardChapterWeight seeded for CBSE Grade 10 Maths + Science chapters");
+  console.log('✅ BoardChapterWeight seeded for CBSE Grade 10 Maths + Science chapters');
 }
 
 /** One Concept per Topic for launch slice; backfill description, irt_b, bloomLevel, etc. */
 async function seedConceptsFromTopics() {
-  const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
+  const cbse = await prisma.board.findFirst({ where: { slug: 'cbse' } });
   if (!cbse) return;
   const class10 = await prisma.classLevel.findFirst({
     where: { boardId: cbse.id, grade: 10 },
     include: {
       subjects: {
         where: {
-          slug: { in: ["mathematics", "physics", "chemistry", "biology", "science"] },
+          slug: { in: ['mathematics', 'physics', 'chemistry', 'biology', 'science'] },
         },
         include: {
           chapters: {
@@ -127,7 +125,7 @@ async function seedConceptsFromTopics() {
           name: topic.name,
           description: topic.name, // Minimal; replace with real descriptions for production
           irt_b: 0,
-          bloomLevel: "understand",
+          bloomLevel: 'understand',
           prerequisiteConceptIds: [],
           commonlyConfusedWithIds: [],
         };
@@ -150,19 +148,21 @@ async function seedConceptsFromTopics() {
       }
     }
   }
-  console.log(`✅ Concepts: ${created} created, ${updated} updated for CBSE Grade 10 Maths + Science`);
+  console.log(
+    `✅ Concepts: ${created} created, ${updated} updated for CBSE Grade 10 Maths + Science`
+  );
 }
 
 /** Set irt_b on questions in launch slice (topic in CBSE 10 Maths/Science) where null. Default 0; replace with real values per question. */
 async function backfillQuestionIrtB() {
-  const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
+  const cbse = await prisma.board.findFirst({ where: { slug: 'cbse' } });
   if (!cbse) return;
   const class10 = await prisma.classLevel.findFirst({
     where: { boardId: cbse.id, grade: 10 },
     include: {
       subjects: {
         where: {
-          slug: { in: ["mathematics", "physics", "chemistry", "biology", "science"] },
+          slug: { in: ['mathematics', 'physics', 'chemistry', 'biology', 'science'] },
         },
         include: { chapters: { include: { topics: { select: { id: true } } } } },
       },
@@ -177,22 +177,24 @@ async function backfillQuestionIrtB() {
     data: { irt_b: 0 },
   });
   if (result.count > 0) {
-    console.log(`✅ Question.irt_b backfilled for ${result.count} questions (default 0; set per-question manually if needed).`);
+    console.log(
+      `✅ Question.irt_b backfilled for ${result.count} questions (default 0; set per-question manually if needed).`
+    );
   }
 }
 
 async function main() {
-  console.log("🌱 [START] Taxonomy & content readiness (launch slice)...\n");
+  console.log('🌱 [START] Taxonomy & content readiness (launch slice)...\n');
   await seedBoardSubjectConfig();
   await seedBoardChapterWeights();
   await seedConceptsFromTopics();
   await backfillQuestionIrtB();
-  console.log("\n🎉 [DONE] Taxonomy launch slice seed complete.");
+  console.log('\n🎉 [DONE] Taxonomy launch slice seed complete.');
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seed failed:", e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());

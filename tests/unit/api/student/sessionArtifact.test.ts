@@ -24,47 +24,47 @@ describe('SessionArtifact API -- validation logic', () => {
   describe('isAllowedType', () => {
     it('should accept whiteboard type', () => {
       expect(isAllowedType('whiteboard')).toBe(true);
-    })
+    });
 
     it('should reject unknown type', () => {
       expect(isAllowedType('video')).toBe(false);
-    })
+    });
 
     it('should reject empty string', () => {
       expect(isAllowedType('')).toBe(false);
-    })
-  })
+    });
+  });
 
   describe('isValidDataUrl', () => {
     it('should accept valid data URL', () => {
       expect(isValidDataUrl('data:image/png;base64,abc123')).toBe(true);
-    })
+    });
 
     it('should reject non-data-URL string', () => {
       expect(isValidDataUrl('https://example.com/image.png')).toBe(false);
-    })
+    });
 
     it('should reject empty string', () => {
       expect(isValidDataUrl('')).toBe(false);
-    })
-  })
+    });
+  });
 
   describe('isWithinSizeLimit', () => {
     it('should accept a small data URL', () => {
       const small = 'data:image/png;base64,' + 'A'.repeat(1000);
       expect(isWithinSizeLimit(small)).toBe(true);
-    })
+    });
 
     it('should reject a data URL exceeding 5MB', () => {
       const huge = 'data:image/png;base64,' + 'A'.repeat(MAX_DATA_URL_LENGTH + 1);
       expect(isWithinSizeLimit(huge)).toBe(false);
-    })
+    });
 
     it('should accept exactly at the limit', () => {
       const exactly = 'A'.repeat(MAX_DATA_URL_LENGTH);
       expect(isWithinSizeLimit(exactly)).toBe(true);
-    })
-  })
+    });
+  });
 
   describe('artifact creation payload', () => {
     it('should build correct artifact data shape', () => {
@@ -84,6 +84,6 @@ describe('SessionArtifact API -- validation logic', () => {
       expect(payload.type).toBe('whiteboard');
       expect(payload.url).toBe(dataUrl);
       expect(payload.studentId).toBe(payload.uploadedBy);
-    })
-  })
-})
+    });
+  });
+});

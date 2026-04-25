@@ -3,7 +3,6 @@ import { createChatCompletion } from '@/lib/callLLM';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { getServerSessionForHandlers } from '@/lib/session';
 
-
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id) {
@@ -17,6 +16,6 @@ export async function POST(req: Request) {
       { role: 'system', content: `Translate to ${targetLang}.` },
       { role: 'user', content: text },
     ],
-  })
-  return NextResponse.json({ translated: completion.choices[0].message?.content })
+  });
+  return NextResponse.json({ translated: completion.choices[0].message?.content });
 }

@@ -49,27 +49,21 @@ export function calculateRetentionStatus(
   const windowDays = getWindowDays(window);
   const windowEnd = new Date(cohortDate);
   windowEnd.setDate(windowEnd.getDate() + windowDays);
-  
+
   // Filter engagement data within window
-  const windowEngagement = engagementData.filter(e => {
+  const windowEngagement = engagementData.filter((e) => {
     const date = new Date(e.date);
     return date > cohortDate && date <= windowEnd;
   });
-  
+
   // Calculate metrics
-  const sessionsInWindow = windowEngagement.reduce(
-    (sum, e) => sum + e.sessionsStarted, 0
-  );
-  const minutesInWindow = windowEngagement.reduce(
-    (sum, e) => sum + e.totalTimeMinutes, 0
-  );
-  
+  const sessionsInWindow = windowEngagement.reduce((sum, e) => sum + e.sessionsStarted, 0);
+  const minutesInWindow = windowEngagement.reduce((sum, e) => sum + e.totalTimeMinutes, 0);
+
   // Determine if retained (at least 1 session)
   const isRetained = sessionsInWindow > 0;
-  const returnedAt = isRetained 
-    ? windowEngagement[0]?.date 
-    : undefined;
-  
+  const returnedAt = isRetained ? windowEngagement[0]?.date : undefined;
+
   return {
     studentId,
     cohortDate: cohortDate.toISOString(),
@@ -90,19 +84,17 @@ export function calculateCohortRetention(
   grade?: number
 ): CohortRetention {
   const cohortSize = studentRetentions.length;
-  
+
   if (cohortSize === 0) {
     throw new Error('Cannot calculate retention for empty cohort');
   }
-  
+
   // Calculate retention rate for each window
   const calculateRate = (window: RetentionWindow): number => {
-    const retained = studentRetentions.filter(
-      r => r.window === window && r.isRetained
-    ).length;
+    const retained = studentRetentions.filter((r) => r.window === window && r.isRetained).length;
     return retained / cohortSize;
   };
-  
+
   const retentionRates = {
     day_1: calculateRate(RetentionWindow.DAY_1),
     day_3: calculateRate(RetentionWindow.DAY_3),
@@ -110,12 +102,10 @@ export function calculateCohortRetention(
     day_14: calculateRate(RetentionWindow.DAY_14),
     day_30: calculateRate(RetentionWindow.DAY_30),
   };
-  
+
   // Get targets for this grade
-  const targetRates = grade 
-    ? getRetentionTargets(grade)
-    : getRetentionTargets(6); // Default to middle school
-  
+  const targetRates = grade ? getRetentionTargets(grade) : getRetentionTargets(6); // Default to middle school
+
   // Check if meeting targets
   const meetsTargets = {
     day_1: retentionRates.day_1 >= targetRates.day_1,
@@ -124,7 +114,7 @@ export function calculateCohortRetention(
     day_14: retentionRates.day_14 >= targetRates.day_14,
     day_30: retentionRates.day_30 >= targetRates.day_30,
   };
-  
+
   return {
     cohortDate: cohortDate.toISOString(),
     cohortSize,
@@ -166,17 +156,19 @@ export function detectRedFlags(
 ): RedFlagDetection[] {
   const flags: RedFlagDetection[] = [];
   const now = new Date().toISOString();
-  
+
   // Check each red flag condition
-  
+
   // 1. High doubts + low confidence
   if (engagement.length > 0 && confidence) {
     const recentEngagement = engagement.slice(-7);
     const totalDoubts = recentEngagement.reduce((sum, e) => sum + e.doubtsAsked, 0);
     const avgDoubts = totalDoubts / Math.max(recentEngagement.length, 1);
-    
-    if (avgDoubts >= thresholds.highDoubtsMinimum && 
-        confidence.averageConfidence < thresholds.lowConfidenceThreshold) {
+
+    if (
+      avgDoubts >= thresholds.highDoubtsMinimum &&
+      confidence.averageConfidence < thresholds.lowConfidenceThreshold
+    ) {
       flags.push({
         studentId,
         flag: RedFlag.HIGH_DOUBTS_LOW_CONFIDENCE,
@@ -192,10 +184,9 @@ export function detectRedFlags(
       });
     }
   }
-  
+
   // 2. Flat difficulty for 3+ weeks
-  if (difficulty && difficulty.isFlat && 
-      difficulty.weeksFlat >= thresholds.flatDifficultyWeeks) {
+  if (difficulty && difficulty.isFlat && difficulty.weeksFlat >= thresholds.flatDifficultyWeeks) {
     flags.push({
       studentId,
       flag: RedFlag.FLAT_DIFFICULTY_3_WEEKS,
@@ -210,10 +201,13 @@ export function detectRedFlags(
       suggestedIntervention: RED_FLAG_INTERVENTIONS[RedFlag.FLAT_DIFFICULTY_3_WEEKS],
     });
   }
-  
+
   // 3. No parent views
-  if (parentInvolvement && !parentInvolvement.isActive &&
-      parentInvolvement.daysSinceActive >= thresholds.parentInactiveDays) {
+  if (
+    parentInvolvement &&
+    !parentInvolvement.isActive &&
+    parentInvolvement.daysSinceActive >= thresholds.parentInactiveDays
+  ) {
     flags.push({
       studentId,
       flag: RedFlag.NO_PARENT_VIEWS,
@@ -228,17 +222,17 @@ export function detectRedFlags(
       suggestedIntervention: RED_FLAG_INTERVENTIONS[RedFlag.NO_PARENT_VIEWS],
     });
   }
-  
+
   // 4. Declining session length
   if (engagement.length >= 7) {
     const firstWeek = engagement.slice(0, 7);
     const lastWeek = engagement.slice(-7);
-    
-    const firstAvg = average(firstWeek.map(e => e.avgSessionLengthMinutes));
-    const lastAvg = average(lastWeek.map(e => e.avgSessionLengthMinutes));
-    
+
+    const firstAvg = average(firstWeek.map((e) => e.avgSessionLengthMinutes));
+    const lastAvg = average(lastWeek.map((e) => e.avgSessionLengthMinutes));
+
     const declinePercent = firstAvg > 0 ? (firstAvg - lastAvg) / firstAvg : 0;
-    
+
     if (declinePercent >= thresholds.sessionLengthDeclinePercent / 100) {
       flags.push({
         studentId,
@@ -255,21 +249,15 @@ export function detectRedFlags(
       });
     }
   }
-  
+
   // 5. Increasing skip rate
   if (engagement.length >= 7) {
     const recentEngagement = engagement.slice(-7);
-    const totalAttempted = recentEngagement.reduce(
-      (sum, e) => sum + e.questionsAttempted, 0
-    );
-    const totalSkipped = recentEngagement.reduce(
-      (sum, e) => sum + e.questionsSkipped, 0
-    );
-    
-    const skipRate = totalAttempted > 0 
-      ? totalSkipped / (totalAttempted + totalSkipped) 
-      : 0;
-    
+    const totalAttempted = recentEngagement.reduce((sum, e) => sum + e.questionsAttempted, 0);
+    const totalSkipped = recentEngagement.reduce((sum, e) => sum + e.questionsSkipped, 0);
+
+    const skipRate = totalAttempted > 0 ? totalSkipped / (totalAttempted + totalSkipped) : 0;
+
     if (skipRate >= thresholds.skipRateThreshold) {
       flags.push({
         studentId,
@@ -286,19 +274,15 @@ export function detectRedFlags(
       });
     }
   }
-  
+
   // 6. Low completion rate
   if (engagement.length > 0) {
     const recentEngagement = engagement.slice(-14);
-    const totalStarted = recentEngagement.reduce(
-      (sum, e) => sum + e.sessionsStarted, 0
-    );
-    const totalCompleted = recentEngagement.reduce(
-      (sum, e) => sum + e.sessionsCompleted, 0
-    );
-    
+    const totalStarted = recentEngagement.reduce((sum, e) => sum + e.sessionsStarted, 0);
+    const totalCompleted = recentEngagement.reduce((sum, e) => sum + e.sessionsCompleted, 0);
+
     const completionRate = totalStarted > 0 ? totalCompleted / totalStarted : 1;
-    
+
     if (completionRate < thresholds.completionRateThreshold) {
       flags.push({
         studentId,
@@ -315,15 +299,13 @@ export function detectRedFlags(
       });
     }
   }
-  
+
   // 7. Negative confidence trend
   if (confidence && confidence.trend === 'declining') {
-    const decline = Math.max(
-      ...confidence.confidenceScores.map(c => c.score)
-    ) - Math.min(
-      ...confidence.confidenceScores.map(c => c.score)
-    );
-    
+    const decline =
+      Math.max(...confidence.confidenceScores.map((c) => c.score)) -
+      Math.min(...confidence.confidenceScores.map((c) => c.score));
+
     if (decline >= thresholds.confidenceDeclineThreshold) {
       flags.push({
         studentId,
@@ -340,7 +322,7 @@ export function detectRedFlags(
       });
     }
   }
-  
+
   return flags;
 }
 
@@ -366,10 +348,10 @@ export function assessChurnRisk(
   confidence: ConfidenceTrend | null
 ): ChurnRiskAssessment {
   const now = new Date().toISOString();
-  
+
   // Calculate risk score (0-100)
   let riskScore = 0;
-  
+
   // Base risk from red flags
   for (const flag of redFlags) {
     switch (flag.severity) {
@@ -387,14 +369,14 @@ export function assessChurnRisk(
         break;
     }
   }
-  
+
   // Engagement recency factor
   if (engagement.length > 0) {
     const lastEngagement = new Date(engagement[engagement.length - 1].date);
     const daysSinceActive = Math.floor(
       (Date.now() - lastEngagement.getTime()) / (1000 * 60 * 60 * 24)
     );
-    
+
     if (daysSinceActive > 7) {
       riskScore += 15;
     } else if (daysSinceActive > 3) {
@@ -403,7 +385,7 @@ export function assessChurnRisk(
   } else {
     riskScore += 20; // No engagement data is high risk
   }
-  
+
   // Confidence factor
   if (confidence) {
     if (confidence.trend === 'declining') {
@@ -413,10 +395,10 @@ export function assessChurnRisk(
       riskScore += 10;
     }
   }
-  
+
   // Cap at 100
   riskScore = Math.min(riskScore, 100);
-  
+
   // Determine overall risk level
   let overallRisk: ChurnRisk;
   if (riskScore >= 70) {
@@ -428,20 +410,20 @@ export function assessChurnRisk(
   } else {
     overallRisk = ChurnRisk.LOW;
   }
-  
+
   // Calculate churn probability
   const churnProbability30Day = riskScore / 100;
   const confidenceInterval = {
     lower: Math.max(0, churnProbability30Day - 0.15),
     upper: Math.min(1, churnProbability30Day + 0.15),
   };
-  
+
   // Identify top factors
   const topChurnFactors = identifyTopFactors(redFlags, engagement, confidence);
-  
+
   // Generate interventions
   const interventions = generateInterventions(redFlags, overallRisk);
-  
+
   return {
     studentId,
     assessedAt: now,
@@ -465,23 +447,26 @@ function identifyTopFactors(
   confidence: ConfidenceTrend | null
 ): ChurnRiskAssessment['topChurnFactors'] {
   const factors: ChurnRiskAssessment['topChurnFactors'] = [];
-  
+
   // Red flags as factors
   for (const flag of redFlags.slice(0, 3)) {
     factors.push({
       factor: flag.flag,
-      impact: flag.severity === ChurnRisk.CRITICAL ? -0.8 
-            : flag.severity === ChurnRisk.HIGH ? -0.6 
+      impact:
+        flag.severity === ChurnRisk.CRITICAL
+          ? -0.8
+          : flag.severity === ChurnRisk.HIGH
+            ? -0.6
             : -0.4,
       description: flag.suggestedIntervention,
     });
   }
-  
+
   // Positive factors (if any)
   if (engagement.length > 0) {
     const recentEngagement = engagement.slice(-7);
-    const avgSessions = average(recentEngagement.map(e => e.sessionsCompleted));
-    
+    const avgSessions = average(recentEngagement.map((e) => e.sessionsCompleted));
+
     if (avgSessions >= 1) {
       factors.push({
         factor: 'consistent_engagement',
@@ -490,7 +475,7 @@ function identifyTopFactors(
       });
     }
   }
-  
+
   if (confidence && confidence.trend === 'improving') {
     factors.push({
       factor: 'improving_confidence',
@@ -498,7 +483,7 @@ function identifyTopFactors(
       description: 'Student confidence is trending upward',
     });
   }
-  
+
   return factors.sort((a, b) => a.impact - b.impact);
 }
 
@@ -510,7 +495,7 @@ function generateInterventions(
   overallRisk: ChurnRisk
 ): ChurnRiskAssessment['interventions'] {
   const interventions: ChurnRiskAssessment['interventions'] = [];
-  
+
   // Add interventions for each red flag
   for (let i = 0; i < Math.min(redFlags.length, 3); i++) {
     const flag = redFlags[i];
@@ -521,10 +506,10 @@ function generateInterventions(
       owner: determineInterventionOwner(flag.flag),
     });
   }
-  
+
   // Add general interventions for high risk
   if (overallRisk === ChurnRisk.CRITICAL || overallRisk === ChurnRisk.HIGH) {
-    if (!interventions.some(i => i.owner === 'parent')) {
+    if (!interventions.some((i) => i.owner === 'parent')) {
       interventions.push({
         priority: interventions.length + 1,
         action: 'Send progress report to parent with actionable insights',
@@ -532,7 +517,7 @@ function generateInterventions(
         owner: 'system',
       });
     }
-    
+
     if (overallRisk === ChurnRisk.CRITICAL) {
       interventions.push({
         priority: interventions.length + 1,
@@ -542,16 +527,14 @@ function generateInterventions(
       });
     }
   }
-  
+
   return interventions;
 }
 
 /**
  * Determine who should handle an intervention.
  */
-function determineInterventionOwner(
-  flag: RedFlag
-): 'system' | 'parent' | 'teacher' | 'admin' {
+function determineInterventionOwner(flag: RedFlag): 'system' | 'parent' | 'teacher' | 'admin' {
   const ownerMap: Record<RedFlag, 'system' | 'parent' | 'teacher' | 'admin'> = {
     [RedFlag.HIGH_DOUBTS_LOW_CONFIDENCE]: 'system',
     [RedFlag.FLAT_DIFFICULTY_3_WEEKS]: 'teacher',
@@ -564,6 +547,6 @@ function determineInterventionOwner(
     [RedFlag.ABANDONED_DIAGNOSTIC]: 'system',
     [RedFlag.STUCK_WITHOUT_RECOVERY]: 'system',
   };
-  
+
   return ownerMap[flag] || 'system';
 }

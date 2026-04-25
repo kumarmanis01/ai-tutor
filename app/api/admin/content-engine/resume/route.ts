@@ -5,8 +5,10 @@ import { logger } from '@/lib/logger';
 
 export async function POST() {
   const session = await getServerSessionForHandlers();
-  if (!session) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'admin') return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
+  if (!session)
+    return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'admin')
+    return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
 
   try {
     await prisma.systemSetting.upsert({
@@ -36,6 +38,9 @@ export async function POST() {
       event: 'engine_resume_error',
       context: { error: String(err) },
     });
-    return NextResponse.json({ code: 'INTERNAL_ERROR', message: 'Failed to resume engine' }, { status: 500 });
+    return NextResponse.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to resume engine' },
+      { status: 500 }
+    );
   }
 }

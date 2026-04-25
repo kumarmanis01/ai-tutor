@@ -7,6 +7,7 @@ Subject: {{subject}}
 Language: {{language}}
 
 Rules:
+
 - Output JSON ONLY
 - No explanations
 - Chapters must be ordered
@@ -18,15 +19,15 @@ Rules:
 
 JSON Schema:
 {
-  "chapters": [
-    {
-      "title": "string",
-      "order": number,
-      "topics": [
-        { "title": "string", "order": number }
-      ]
-    }
-  ]
+"chapters": [
+{
+"title": "string",
+"order": number,
+"topics": [
+{ "title": "string", "order": number }
+]
+}
+]
 }
 
 Version: 1.0

@@ -26,21 +26,45 @@ export interface TopicStatusRowProps {
 }
 
 const STATUS_ICON: Record<TopicStatus, React.ReactNode> = {
-  mastered:       <span className="text-green-600 font-bold text-base" aria-label="Mastered">✓</span>,
-  understood:     <span className="text-green-500 font-bold text-base" aria-label="Understood">✓</span>,
-  in_progress:    <span className="text-indigo-500 font-bold text-base" aria-label="In progress">●</span>,
-  needs_practice: <span className="text-amber-500 font-bold text-base" aria-label="Needs practice">↺</span>,
-  getting_there:  <span className="text-blue-500 font-bold text-base" aria-label="Getting there">◐</span>,
-  upcoming:       <span className="text-gray-300 font-bold text-base" aria-label="Upcoming">○</span>,
+  mastered: (
+    <span className="text-green-600 font-bold text-base" aria-label="Mastered">
+      ✓
+    </span>
+  ),
+  understood: (
+    <span className="text-green-500 font-bold text-base" aria-label="Understood">
+      ✓
+    </span>
+  ),
+  in_progress: (
+    <span className="text-indigo-500 font-bold text-base" aria-label="In progress">
+      ●
+    </span>
+  ),
+  needs_practice: (
+    <span className="text-amber-500 font-bold text-base" aria-label="Needs practice">
+      ↺
+    </span>
+  ),
+  getting_there: (
+    <span className="text-blue-500 font-bold text-base" aria-label="Getting there">
+      ◐
+    </span>
+  ),
+  upcoming: (
+    <span className="text-gray-300 font-bold text-base" aria-label="Upcoming">
+      ○
+    </span>
+  ),
 };
 
 const STATUS_LABEL_COLOR: Record<TopicStatus, string> = {
-  mastered:       'text-green-600',
-  understood:     'text-green-500',
-  in_progress:    'text-[#534AB7]',
+  mastered: 'text-green-600',
+  understood: 'text-green-500',
+  in_progress: 'text-[#534AB7]',
   needs_practice: 'text-amber-600',
-  getting_there:  'text-blue-500',
-  upcoming:       'text-gray-400',
+  getting_there: 'text-blue-500',
+  upcoming: 'text-gray-400',
 };
 
 export default function TopicStatusRow({
@@ -50,7 +74,8 @@ export default function TopicStatusRow({
   masteryLabel,
   sessionId: _sessionId,
 }: TopicStatusRowProps) {
-  const isActionable = status === 'in_progress' || status === 'needs_practice' || status === 'upcoming';
+  const isActionable =
+    status === 'in_progress' || status === 'needs_practice' || status === 'upcoming';
   const href = `/session/${topicId}`;
 
   return (
@@ -72,7 +97,11 @@ export default function TopicStatusRow({
           href={href}
           className="shrink-0 text-xs font-medium text-[#534AB7] hover:text-indigo-800 hover:underline ml-1"
         >
-          {status === 'in_progress' ? 'Continue →' : status === 'needs_practice' ? 'Revise →' : 'Start →'}
+          {status === 'in_progress'
+            ? 'Continue →'
+            : status === 'needs_practice'
+              ? 'Revise →'
+              : 'Start →'}
         </Link>
       )}
     </li>

@@ -29,4 +29,4 @@ module.exports = {
     // Import-time Redis/Queue prevention
     'no-import-time-redis': require('./no-import-time-redis.cjs'),
   },
-}
+};

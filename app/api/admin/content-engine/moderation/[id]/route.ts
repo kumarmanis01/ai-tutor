@@ -55,16 +55,16 @@ export async function GET(req: Request, { params }: RouteParams) {
                       classDef: {
                         select: {
                           grade: true,
-                          board: { select: { name: true } }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                          board: { select: { name: true } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!note) {
@@ -87,7 +87,7 @@ export async function GET(req: Request, { params }: RouteParams) {
           subjectName: note.topic?.chapter?.subject?.name,
           grade: note.topic?.chapter?.subject?.classDef?.grade,
           board: note.topic?.chapter?.subject?.classDef?.board?.name,
-        }
+        },
       });
     }
 
@@ -107,16 +107,16 @@ export async function GET(req: Request, { params }: RouteParams) {
                       classDef: {
                         select: {
                           grade: true,
-                          board: { select: { name: true } }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                          board: { select: { name: true } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!test) {
@@ -151,7 +151,7 @@ export async function GET(req: Request, { params }: RouteParams) {
           subjectName: test.topic?.chapter?.subject?.name,
           grade: test.topic?.chapter?.subject?.classDef?.grade,
           board: test.topic?.chapter?.subject?.classDef?.board?.name,
-        }
+        },
       });
     }
 
@@ -167,7 +167,7 @@ export async function GET(req: Request, { params }: RouteParams) {
           contentJson: note.contentJson,
           status: note.status,
           language: note.language,
-        }
+        },
       });
     }
 
@@ -189,7 +189,7 @@ export async function GET(req: Request, { params }: RouteParams) {
           questions: Array.isArray(questions) ? questions : [],
           status: test.status,
           language: test.language,
-        }
+        },
       });
     }
 

@@ -135,9 +135,9 @@ export async function GET(req: NextRequest) {
         },
       },
       select: {
-        startedAt:   true,
+        startedAt: true,
         completedAt: true,
-        topicId:     true,
+        topicId: true,
       },
     });
 
@@ -194,9 +194,6 @@ export async function GET(req: NextRequest) {
       methodName: METHOD_NAME,
       error,
     });
-    return NextResponse.json(
-      { error: formatErrorForResponse(error) },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

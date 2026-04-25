@@ -183,7 +183,7 @@ describe('ConfidenceFloor', () => {
 
     it('should reset consecutive wrong on correct answer', () => {
       const state = createInitialState();
-      
+
       // First wrong answer (doesn't trigger intervention yet)
       const wrongAttempt: AttemptResult = {
         correct: false,
@@ -232,7 +232,7 @@ describe('ConfidenceFloor', () => {
       };
 
       const result = processAttempt(state, attempt, 10, 'en');
-      
+
       // Effective difficulty should be limited by confidence floor
       expect(result.effectiveDifficulty).toBeLessThanOrEqual(result.newState.score - 1);
     });

@@ -32,24 +32,23 @@ Phase 9 ONLY READS from Phase 8.
 
 🧩 Phase 9 High-Level Architecture
 CoursePackage (immutable)
-        ↓
+↓
 Read-only Delivery APIs
-        ↓
+↓
 Learner Player UI
-        ↓
+↓
 Progress + Entitlements (new models)
-        ↓
+↓
 Exporters (PDF / LMS)
 
 📦 Phase 9 Sub-Phases
-Sub-Phase	Purpose
-9.1	Learner content delivery APIs
-9.2	Course Player UI
-9.3	Progress tracking
-9.4	PDF / LMS Exporters
-9.5	Multi-tenant monetization
-9.6	Access control & safety
-
+Sub-Phase Purpose
+9.1 Learner content delivery APIs
+9.2 Course Player UI
+9.3 Progress tracking
+9.4 PDF / LMS Exporters
+9.5 Multi-tenant monetization
+9.6 Access control & safety
 ```
 
 🔹 PHASE 9.1 — Learner Read APIs (FOUNDATION)
@@ -69,6 +68,7 @@ Fetch lesson by index
 Create Phase 9.1 learner delivery APIs.
 
 Requirements:
+
 - Read-only APIs only
 - Source: CoursePackage (published only)
 - No admin logic
@@ -85,13 +85,13 @@ GET /api/learn/courses/[courseId]/lessons/[index]
 → single lesson object
 
 Rules:
+
 - Reject non-PUBLISHED packages
 - No mutations
 - Use Prisma client
 - Add basic Jest tests
 
 Do not add auth yet.
-
 
 ✅ Stop when APIs + tests pass.
 
@@ -126,39 +126,42 @@ Track learner progress without touching content.
 
 Prisma Models (NEW — SAFE)
 model Enrollment {
-  id        String   @id @default(cuid())
-  userId    String
-  courseId  String
-  createdAt DateTime @default(now())
+id String @id @default(cuid())
+userId String
+courseId String
+createdAt DateTime @default(now())
 }
 
 model LessonProgress {
-  id         String   @id @default(cuid())
-  userId     String
-  courseId   String
-  lessonIdx  Int
-  completed  Boolean
-  updatedAt  DateTime @updatedAt
+id String @id @default(cuid())
+userId String
+courseId String
+lessonIdx Int
+completed Boolean
+updatedAt DateTime @updatedAt
 
-  @@unique([userId, courseId, lessonIdx])
+@@unique([userId, courseId, lessonIdx])
 }
 
 🧠 Prompt - Phase 9.3
 Implement learner progress tracking.
 
 Tasks:
+
 - Add Enrollment and LessonProgress Prisma models
 - Create APIs:
   POST /api/learn/enroll
   POST /api/learn/progress
-  GET  /api/learn/progress/[courseId]
+  GET /api/learn/progress/[courseId]
 
 Rules:
+
 - Progress writes only
 - CoursePackage remains immutable
 - Require enrollment before progress writes
 
 Add unit tests for:
+
 - enrollment
 - marking lesson complete
 - reading progress
@@ -169,20 +172,22 @@ Add unit tests for:
 Allow offline / institutional usage.
 
 Export Targets
-Export	Format
-PDF	Printable course
-LMS	SCORM-like ZIP (JSON + HTML)
+Export Format
+PDF Printable course
+LMS SCORM-like ZIP (JSON + HTML)
 
 🧠 Prompt - Phase 9.4 (PDF)
 Create a PDF exporter for CoursePackage.
 
 Requirements:
+
 - Input: published CoursePackage JSON
 - Output: PDF
 - One lesson per section
 - Include title, objectives, content
 
 Tech:
+
 - Node PDF library (pdfkit or equivalent)
 - No DB writes
 
@@ -195,13 +200,15 @@ Add basic test (snapshot size > 0).
 Create an LMS exporter.
 
 Requirements:
+
 - Input: CoursePackage JSON
 - Output: ZIP
   - index.html
-  - lessons/*.html
+  - lessons/\*.html
   - manifest.json
 
 Rules:
+
 - No mutations
 - Deterministic output
 - No LMS auth logic
@@ -216,30 +223,31 @@ Sell courses without forking content.
 
 Prisma Models (NEW)
 model Tenant {
-  id   String @id @default(cuid())
-  name String
+id String @id @default(cuid())
+name String
 }
 
 model Product {
-  id        String @id @default(cuid())
-  tenantId  String
-  courseId  String
-  priceCents Int
-  currency  String
-  active    Boolean
+id String @id @default(cuid())
+tenantId String
+courseId String
+priceCents Int
+currency String
+active Boolean
 }
 
 model Purchase {
-  id        String @id @default(cuid())
-  userId    String
-  productId String
-  createdAt DateTime @default(now())
+id String @id @default(cuid())
+userId String
+productId String
+createdAt DateTime @default(now())
 }
 
 🧠 Copilot Prompt — Phase 9.5
 Implement multi-tenant monetization.
 
 Tasks:
+
 - Add Tenant, Product, Purchase models
 - APIs:
   GET /api/store/products
@@ -249,11 +257,13 @@ Tasks:
   - tenant isolation
 
 Rules:
+
 - No content duplication
 - Product references courseId only
 - Purchases grant access, not content ownership
 
 Add tests for:
+
 - access gating
 - tenant isolation
 
@@ -262,15 +272,17 @@ Add tests for:
 
 Prevent leaks and misuse.
 
-🧠  Prompt — Phase 9.6
+🧠 Prompt — Phase 9.6
 Add access guards.
 
 Rules:
+
 - Learner APIs require purchase OR enrollment
 - Admin APIs unchanged
 - CoursePackage JSON never modified
 
 Add middleware:
+
 - requireEnrollment
 - requirePurchase (if monetized)
 
@@ -286,11 +298,11 @@ Add tests for unauthorized access.
 ✅ Enterprise-safe architecture
 
 🚦 What Comes After Phase 9 (Preview Only)
-Phase	Focus
-10	Analytics & insights
-11	Personalization
-12	Marketplace
-13	AI tutoring layer
+Phase Focus
+10 Analytics & insights
+11 Personalization
+12 Marketplace
+13 AI tutoring layer
 
 What Was Intended
 
@@ -316,7 +328,7 @@ Prisma models added: Tenant, Product, Purchase (migration applied).
 Store APIs implemented: GET /api/store/products, POST /api/store/purchase.
 Enrollment guarded to require purchase if a Product exists for a course.
 Auth & Guards:
-Central session helper getServerSessionForHandlers() in session.ts (tests can inject global.__TEST_SESSION__).
+Central session helper getServerSessionForHandlers() in session.ts (tests can inject global.**TEST_SESSION**).
 Access guard hasLearnerAccess(db, userId, courseId) implemented in access.ts.
 Updated many routes/tests to use session-derived user id and test session injection.
 Quality:
@@ -359,12 +371,10 @@ If you want, I can:
 
 Scaffold tenant-admin APIs and a minimal admin UI for managing Product/Tenant.
 Add audit-log calls into POST /api/store/purchase and enrollment routes.
-Implement the small test helper to centralize global.__TEST_SESSION__ setup/teardown and refactor tests to use it.
+Implement the small test helper to centralize global.**TEST_SESSION** setup/teardown and refactor tests to use it.
 Which of those should I do next?
 
-
 # Phase 9 Hardening
-
 
 This is the right moment to harden Phase 9 before analytics amplifies anything.
 
@@ -380,27 +390,28 @@ Make Phase 9 production-safe by adding auditability, tenant isolation, and abuse
 ❌ No breaking API changes
 
 HARDENING SCOPE (What & Why)
-Area	Why it matters
-Audit Logs	Regulatory, debugging, abuse detection
-Tenant Scoping	Prevent cross-tenant data leaks
-Export Rate Limits	Prevent DoS & cost abuse
-Payload Size Guards	Prevent memory / ZIP bomb attacks
+Area Why it matters
+Audit Logs Regulatory, debugging, abuse detection
+Tenant Scoping Prevent cross-tenant data leaks
+Export Rate Limits Prevent DoS & cost abuse
+Payload Size Guards Prevent memory / ZIP bomb attacks
 ✅ STEP 1 — Add Audit Logging (Highest Priority)
 Objective
 
 Ensure every sensitive write or export is auditable.
 
 Events to log
-Action	Entity	Actor
-Product create/update	Product	admin
-Purchase creation	Purchase	learner
-Enrollment creation	Enrollment	learner
-PDF export	CoursePackage	learner
-LMS ZIP export	CoursePackage	learner
+Action Entity Actor
+Product create/update Product admin
+Purchase creation Purchase learner
+Enrollment creation Enrollment learner
+PDF export CoursePackage learner
+LMS ZIP export CoursePackage learner
 📌 Copilot Prompt — Step 1
 Add audit logging to Phase 9.
 
 Requirements:
+
 1. Use existing AuditLog Prisma model.
 2. Create helper function:
    lib/audit/log.ts → logAuditEvent(db, { actorId, action, entityType, entityId, metadata })
@@ -425,10 +436,10 @@ Requirements:
    - AuditLog row is created for export
 
 Rules:
+
 - No schema changes
 - No API response changes
 - Type-check and lint must pass
-
 
 ✅ Stop after completing audit logging and tests.
 
@@ -451,6 +462,7 @@ Learner cannot purchase cross-tenant products
 Harden tenant isolation in Phase 9 monetization.
 
 Tasks:
+
 1. Enforce tenantId checks in:
    - GET /api/store/products
    - POST /api/store/purchase
@@ -467,6 +479,7 @@ Tasks:
    - Cannot access course from another tenant
 
 Constraints:
+
 - No new tables
 - No UI changes
 - Use existing session helper
@@ -491,6 +504,7 @@ Applies to both PDF and LMS
 Add rate-limiting to course export endpoints.
 
 Requirements:
+
 1. Create utility:
    lib/rateLimit/exportLimiter.ts
 
@@ -512,6 +526,7 @@ Requirements:
    - 4th export fails with 429
 
 Notes:
+
 - Do not introduce Redis yet
 - Limiter resets on process restart (acceptable)
 
@@ -532,6 +547,7 @@ Validate before export generation
 Add CoursePackage size safety guard.
 
 Tasks:
+
 1. Add helper:
    lib/safety/validatePackageSize.ts
 
@@ -551,6 +567,7 @@ Tasks:
    - Oversized package is rejected
 
 Constraints:
+
 - No schema changes
 - No UI changes
 
@@ -559,11 +576,13 @@ Constraints:
 Run full verification after Phase 9 hardening.
 
 Checklist:
+
 - npm run lint
 - npm run type-check
 - npm test
 
 Then:
+
 - Summarize changes
 - List all new guards added
 - Confirm no breaking API changes

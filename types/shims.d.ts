@@ -22,21 +22,21 @@ declare module '@prisma/client' {
   // real generated client; this shim prevents `tsc` from failing when the
   // package is not present during image build on VPS.
   export class PrismaClient {
-    constructor(arg?: any)
-    $disconnect(): Promise<void>
+    constructor(arg?: any);
+    $disconnect(): Promise<void>;
   }
-  export const Prisma: any
-  export default PrismaClient
+  export const Prisma: any;
+  export default PrismaClient;
 }
 
 declare module 'express' {
   // Allow importing `express` in files that are not built in production
   // (metrics server). Provide loose types for build-time.
-  const express: any
-  export default express
+  const express: any;
+  export default express;
 }
 
 declare module '@kubernetes/client-node' {
-  const k8s: any
-  export = k8s
+  const k8s: any;
+  export = k8s;
 }

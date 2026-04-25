@@ -113,7 +113,11 @@ export async function GET(req: NextRequest) {
     });
 
     if (subjectRows.length === 0) {
-      logger.info('Parent subject mastery: no data yet', { className: CLASS_NAME, parentId, studentId });
+      logger.info('Parent subject mastery: no data yet', {
+        className: CLASS_NAME,
+        parentId,
+        studentId,
+      });
       return NextResponse.json([]);
     }
 
@@ -232,7 +236,7 @@ export async function GET(req: NextRequest) {
         currentReadiness,
         80,
         avgWeeklySessions,
-        PLATFORM_DEFAULT_GAIN_PER_SESSION,
+        PLATFORM_DEFAULT_GAIN_PER_SESSION
       );
 
       let predictedDaysTo80: number | null = null;

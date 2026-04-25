@@ -176,8 +176,8 @@ export class HydrationReconciler {
     // Level 2 (Notes): Once all topic notes are done (or subject has 0 topics),
     // create Level 3 (questions).
     // allowEmpty=rootJob.contentReady ensures 0-topic subjects cascade correctly.
-    const level2Complete = rootJob.contentReady
-      && await this.isLevelComplete(rootJob.id, 2, true);
+    const level2Complete =
+      rootJob.contentReady && (await this.isLevelComplete(rootJob.id, 2, true));
     if (level2Complete) {
       await this.createLevel3Jobs(rootJob); // One questions job per topic (worker handles all difficulties)
     }
@@ -185,8 +185,7 @@ export class HydrationReconciler {
     // Level 3 (Questions): Once all question jobs are done (or level 2 produced
     // no topics), finalize the root job.
     // allowEmpty=level2Complete propagates the "empty is complete" rule.
-    const level3Complete = level2Complete
-      && await this.isLevelComplete(rootJob.id, 3, true);
+    const level3Complete = level2Complete && (await this.isLevelComplete(rootJob.id, 3, true));
     if (level3Complete) {
       await this.finalizeRootJob(rootJob);
     }
@@ -204,7 +203,11 @@ export class HydrationReconciler {
    * When `allowEmpty` is true and no jobs exist at this level, returns true
    * (empty level is trivially complete -- handles subjects with 0 topics).
    */
-  private async isLevelComplete(rootJobId: string, level: number, allowEmpty = false): Promise<boolean> {
+  private async isLevelComplete(
+    rootJobId: string,
+    level: number,
+    allowEmpty = false
+  ): Promise<boolean> {
     // Check if all jobs at this level are in terminal state
     const counts = await prisma.hydrationJob.groupBy({
       by: ['status'],
@@ -276,8 +279,9 @@ export class HydrationReconciler {
 
     // ── Validation cap: limit topics per chapter ──
     const genLimits = (rootJob.inputParams as any)?.generationLimits;
-    const topicsPerChapterCap: number = genLimits?.topicsPerChapterLimit
-      ?? Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
+    const topicsPerChapterCap: number =
+      genLimits?.topicsPerChapterLimit ??
+      Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
 
     let cappedTopics = topics;
     if (topicsPerChapterCap > 0) {
@@ -301,11 +305,14 @@ export class HydrationReconciler {
       }
     }
 
-    logger.info(`[VALIDATION] Creating ${cappedTopics.length} Level 2 jobs (notes) for root job ${rootJob.id}`, {
-      rootJobId: rootJob.id,
-      topicCountGenerated: cappedTopics.length,
-      topicsPerChapterCap,
-    });
+    logger.info(
+      `[VALIDATION] Creating ${cappedTopics.length} Level 2 jobs (notes) for root job ${rootJob.id}`,
+      {
+        rootJobId: rootJob.id,
+        topicCountGenerated: cappedTopics.length,
+        topicsPerChapterCap,
+      }
+    );
 
     for (const topic of cappedTopics) {
       await this.createChildJob({
@@ -351,8 +358,9 @@ export class HydrationReconciler {
 
     // ── Validation cap: limit topics per chapter (same cap as Level 2) ──
     const genLimits = inputParams.generationLimits;
-    const topicsPerChapterCap: number = genLimits?.topicsPerChapterLimit
-      ?? Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
+    const topicsPerChapterCap: number =
+      genLimits?.topicsPerChapterLimit ??
+      Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
 
     let cappedTopics = topics;
     if (topicsPerChapterCap > 0) {
@@ -380,12 +388,15 @@ export class HydrationReconciler {
     // Do NOT create one job per difficulty: that causes 3 concurrent workers to upsert
     // the same GeneratedTest rows, producing Neon transaction conflicts and persistence_failed errors.
     const totalJobs = cappedTopics.length;
-    logger.info(`[VALIDATION] Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`, {
-      rootJobId: rootJob.id,
-      topicCount: cappedTopics.length,
-      topicsPerChapterCap,
-      questionsPerDifficulty: genLimits?.questionsPerDifficulty ?? 'uncapped',
-    });
+    logger.info(
+      `[VALIDATION] Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`,
+      {
+        rootJobId: rootJob.id,
+        topicCount: cappedTopics.length,
+        topicsPerChapterCap,
+        questionsPerDifficulty: genLimits?.questionsPerDifficulty ?? 'uncapped',
+      }
+    );
 
     for (const topic of cappedTopics) {
       await this.createChildJob({
@@ -414,7 +425,16 @@ export class HydrationReconciler {
     difficulty: DifficultyLevel;
     questionsPerDifficulty?: number;
   }): Promise<void> {
-    const { rootJobId, level, jobType, topicId, chapterId, language, difficulty, questionsPerDifficulty } = params;
+    const {
+      rootJobId,
+      level,
+      jobType,
+      topicId,
+      chapterId,
+      language,
+      difficulty,
+      questionsPerDifficulty,
+    } = params;
 
     await prisma.$transaction(async (tx) => {
       // Create HydrationJob with topicId/chapterId columns populated
@@ -520,7 +540,7 @@ export class HydrationReconciler {
       where: { id: rootJobId },
       data: {
         chaptersExpected: chaptersCompleted, // chapters are created atomically by syllabus
-        topicsExpected: topicsCompleted,     // topics are created atomically by syllabus
+        topicsExpected: topicsCompleted, // topics are created atomically by syllabus
         notesExpected,
         questionsExpected,
         chaptersCompleted,
@@ -601,7 +621,10 @@ export class HydrationReconciler {
         },
       });
     } catch (summaryErr: any) {
-      logger.warn('Failed to compute validation summary', { rootJobId: rootJob.id, error: summaryErr?.message });
+      logger.warn('Failed to compute validation summary', {
+        rootJobId: rootJob.id,
+        error: summaryErr?.message,
+      });
     }
   }
 }

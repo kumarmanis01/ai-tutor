@@ -28,27 +28,27 @@ export type {
   ContentLength,
   StudentIntent,
   ConfidenceLevel,
-  
+
   // Base contexts
   StudentContext,
   TopicContext,
-  
+
   // Notes
   NotesInputContract,
   NotesOutputSchema,
   ExplanationSection,
   WorkedExample,
-  
+
   // Practice
   PracticeInputContract,
   PracticeOutputSchema,
   GeneratedQuestion,
-  
+
   // Doubts
   DoubtsInputContract,
   DoubtsOutputSchema,
   ConversationMessage,
-  
+
   // Metadata
   PromptMetadata,
   ValidationResult,
@@ -74,11 +74,7 @@ export {
 // ============================================================================
 // PROMPT BUILDERS
 // ============================================================================
-export {
-  NOTES_OUTPUT_SCHEMA,
-  buildNotesPrompt,
-  isValidNotesResponse,
-} from './notes';
+export { NOTES_OUTPUT_SCHEMA, buildNotesPrompt, isValidNotesResponse } from './notes';
 
 export {
   PRACTICE_OUTPUT_SCHEMA,

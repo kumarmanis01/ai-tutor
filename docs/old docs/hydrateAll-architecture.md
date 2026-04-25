@@ -7,6 +7,7 @@ OBJECTIVE:
 # hydrateAll — Architecture One-Pager
 
 ## Executive Summary
+
 - Purpose: Controlled, auditable pipeline to (re)generate derived AI content across many entities (subjects, courses).
 - Goals: Idempotent execution, short DB transactions, outbox-backed queueing, clear parent/child invariants, strong observability.
 
@@ -152,6 +153,7 @@ sequenceDiagram
   - `id`, `jobId`, `contentRef`, `status`, `size`, `createdAt`
 
 Design notes:
+
 - Keep `resultMetadata` small and denormalized for fast reads; store full content in dedicated content tables referenced by ids.
 - Use JSONB indexes for common queries (e.g., meta->>'language').
 
@@ -178,6 +180,7 @@ COMMIT;
 ```
 
 Notes:
+
 - Prefer `FOR UPDATE SKIP LOCKED` when scanning for work to avoid contention.
 - Avoid long-lived transactions around AI calls; perform those calls off-tx.
 
@@ -209,25 +212,26 @@ for rootJob in selectRootJobsForReconciliation() {
 
 ## Enterprise-runbook (expanded)
 
-1) Quick triage — stuck or slow job:
+1. Quick triage — stuck or slow job:
 
 ```ps
 psql $DATABASE_URL -c "SELECT id, status, attempts, lockedAt, updated_at FROM hydration_jobs WHERE status IN ('Pending','Claimed','Running') ORDER BY updated_at DESC LIMIT 50;"
 ```
 
-2) Requeue or re-run reconciler (dry-run first):
+2. Requeue or re-run reconciler (dry-run first):
 
 ```bash
 npx tsx scripts/hydration-reconciler.ts --rootJobId=<id> --dryRun=false
 ```
 
-3) Cancel a runaway root job:
+3. Cancel a runaway root job:
 
 ```sql
 UPDATE hydration_jobs SET status='Cancelled' WHERE id = '<rootJobId>' AND status NOT IN ('Completed','Failed');
 ```
 
-4) Postmortem collection:
+4. Postmortem collection:
+
 - `jobExecutionLog` for the job
 - `aIContentLog` content refs
 - Worker logs correlated by `traceId`
@@ -275,6 +279,7 @@ stateDiagram-v2
 ```
 
 Key invariants:
+
 - Only one worker may claim a job (atomic UPDATE where status=Pending).
 - Workers do not create child HydrationJobs; orchestrator/reconciler manages children.
 - All DB state transitions occur in short transactions; long-running AI calls happen outside tx.
@@ -282,6 +287,7 @@ Key invariants:
 ---
 
 ## Worker Execution Pattern (recommended)
+
 1. Short tx: claim job (status -> Claimed) and create `jobExecutionLog` start row.
 2. Short tx: mark status -> Running.
 3. Off-tx: perform AI calls / content generation.
@@ -291,6 +297,7 @@ Key invariants:
 ---
 
 ## Error Handling & Retries
+
 - Retry transient errors with exponential backoff; use `attempts` and queue-delayed retries.
 - On permanent validation errors, mark job Failed with structured reason in `jobExecutionLog`.
 - Use `lockedAt` TTL and reconciler to detect and recover stuck/claimed jobs.
@@ -298,6 +305,7 @@ Key invariants:
 ---
 
 ## Observability & Runbook
+
 - Emit metrics: jobs created/claimed/completed/failed, avg durations, outbox latency.
 - Structured logs linking `rootJobId` and `traceId` across components.
 - Runbook highlights: query stuck jobs, requeue via debug scripts, cancel root jobs, run `hydration-reconciler` manually.
@@ -305,6 +313,7 @@ Key invariants:
 ---
 
 ## Key Files (reference)
+
 - `lib/execution-pipeline/submitJob.ts` — job submission & outbox creation
 - `scripts/hydration-reconciler.ts` — reconciler/orchestrator
 - `scripts/hydrateAll.ts` — admin trigger helper

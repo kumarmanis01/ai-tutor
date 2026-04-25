@@ -16,11 +16,7 @@
  * - 2026-02-04 | claude | created OpenAI payload builder for education use cases
  */
 
-import type {
-  EducationContext,
-  OpenAIToolDefinition,
-  ToolSchemaType,
-} from './schemas';
+import type { EducationContext, OpenAIToolDefinition, ToolSchemaType } from './schemas';
 import {
   NOTES_OUTPUT_SCHEMA,
   PRACTICE_QUESTION_SCHEMA,
@@ -111,7 +107,7 @@ export interface QuizRequest {
 
 /**
  * Base system prompt with safety rules.
- * 
+ *
  * EDUCATION REASONING:
  * - Establishes AI as a teaching assistant, not answer machine
  * - Prevents hallucinations with explicit constraints
@@ -119,7 +115,7 @@ export interface QuizRequest {
  */
 function buildBaseSystemPrompt(context: EducationContext): string {
   const gradeDescriptor = getGradeDescriptor(context.grade);
-  
+
   return `You are an expert educational content creator for ${gradeDescriptor} students in India.
 
 CRITICAL RULES (NEVER VIOLATE):
@@ -242,10 +238,10 @@ FAIRNESS:
 
 /**
  * Build payload for generating educational notes.
- * 
+ *
  * @param request - Notes generation request
  * @returns Complete OpenAI API payload
- * 
+ *
  * @example
  * ```ts
  * const payload = buildNotesPayload({
@@ -257,24 +253,24 @@ FAIRNESS:
  */
 export function buildNotesPayload(request: NotesRequest): OpenAIPayload {
   const { context, topic, subtopics, focusAreas, maxReadTimeMinutes } = request;
-  
+
   // Build user message with specific requirements
   let userMessage = `Generate comprehensive notes on "${topic}" for the chapter "${context.chapter}".`;
-  
+
   if (subtopics && subtopics.length > 0) {
     userMessage += `\n\nCover these subtopics: ${subtopics.join(', ')}`;
   }
-  
+
   if (focusAreas && focusAreas.length > 0) {
     userMessage += `\n\nPay special attention to: ${focusAreas.join(', ')}`;
   }
-  
+
   if (maxReadTimeMinutes) {
     userMessage += `\n\nTarget reading time: ${maxReadTimeMinutes} minutes maximum.`;
   }
-  
+
   userMessage += `\n\nRemember: Content must be appropriate for Grade ${context.grade} ${context.board} curriculum.`;
-  
+
   return {
     model: selectModel(context),
     messages: [
@@ -293,27 +289,27 @@ export function buildNotesPayload(request: NotesRequest): OpenAIPayload {
 
 /**
  * Build payload for generating practice questions.
- * 
+ *
  * @param request - Practice question request
  * @returns Complete OpenAI API payload
  */
 export function buildPracticePayload(request: PracticeRequest): OpenAIPayload {
   const { context, topic, questionType, count = 1, bloomLevel, previousMistakes } = request;
-  
+
   let userMessage = `Generate ${count} ${questionType} question(s) on "${topic}".`;
   userMessage += `\n\nDifficulty Level: ${context.difficulty}`;
-  
+
   if (bloomLevel) {
     userMessage += `\nBloom's Level: ${bloomLevel}`;
   }
-  
+
   if (previousMistakes && previousMistakes.length > 0) {
     userMessage += `\n\nThe student has previously struggled with:\n- ${previousMistakes.join('\n- ')}`;
     userMessage += `\n\nInclude questions that address these gaps.`;
   }
-  
+
   userMessage += `\n\nEnsure the question tests understanding, not just memorization.`;
-  
+
   return {
     model: selectModel(context),
     messages: [
@@ -332,28 +328,26 @@ export function buildPracticePayload(request: PracticeRequest): OpenAIPayload {
 
 /**
  * Build payload for resolving student doubts.
- * 
+ *
  * @param request - Doubt resolution request
  * @returns Complete OpenAI API payload
  */
 export function buildDoubtPayload(request: DoubtRequest): OpenAIPayload {
   const { context, studentQuestion, conversationHistory, relatedNotes } = request;
-  
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: buildDoubtSystemPrompt(context) },
-  ];
-  
+
+  const messages: OpenAIMessage[] = [{ role: 'system', content: buildDoubtSystemPrompt(context) }];
+
   // Add conversation history if available
   if (conversationHistory && conversationHistory.length > 0) {
     // Developer message provides context about conversation
     messages.push({
       role: 'developer',
-      content: `Previous conversation context (for reference, not included in response):\n${
-        conversationHistory.map(h => `${h.role}: ${h.message}`).join('\n')
-      }`,
+      content: `Previous conversation context (for reference, not included in response):\n${conversationHistory
+        .map((h) => `${h.role}: ${h.message}`)
+        .join('\n')}`,
     });
   }
-  
+
   // Add related notes as context
   if (relatedNotes) {
     messages.push({
@@ -361,13 +355,13 @@ export function buildDoubtPayload(request: DoubtRequest): OpenAIPayload {
       content: `Related notes the student has access to:\n${relatedNotes}\n\nUse this context to make your explanation consistent.`,
     });
   }
-  
+
   // Add the student's question
   messages.push({
     role: 'user',
     content: studentQuestion,
   });
-  
+
   return {
     model: selectModel(context),
     messages,
@@ -383,26 +377,26 @@ export function buildDoubtPayload(request: DoubtRequest): OpenAIPayload {
 
 /**
  * Build payload for generating a complete quiz.
- * 
+ *
  * @param request - Quiz generation request
  * @returns Complete OpenAI API payload
  */
 export function buildQuizPayload(request: QuizRequest): OpenAIPayload {
   const { context, topics, questionCount, timeMinutes, difficultyMix } = request;
-  
+
   let userMessage = `Generate a quiz with ${questionCount} questions.`;
   userMessage += `\n\nTopics to cover: ${topics.join(', ')}`;
   userMessage += `\nTime limit: ${timeMinutes} minutes`;
-  
+
   if (difficultyMix) {
     userMessage += `\n\nDifficulty distribution:`;
     userMessage += `\n- Easy: ${difficultyMix.easy}%`;
     userMessage += `\n- Medium: ${difficultyMix.medium}%`;
     userMessage += `\n- Hard: ${difficultyMix.hard}%`;
   }
-  
+
   userMessage += `\n\nCreate a balanced assessment that tests both recall and application.`;
-  
+
   return {
     model: selectModel(context),
     messages: [
@@ -434,7 +428,7 @@ function getGradeDescriptor(grade: number): string {
 
 /**
  * Select appropriate model based on context.
- * 
+ *
  * COST REASONING:
  * - Junior grades use smaller models (simpler content)
  * - Senior grades may need larger models for complex topics
@@ -444,7 +438,7 @@ function selectModel(context: EducationContext): string {
   // Default model for most use cases
   const defaultModel = 'gpt-4o-mini';
   const advancedModel = 'gpt-4o';
-  
+
   // Use advanced model for:
   // - Exam-level difficulty
   // - Senior grades with complex subjects
@@ -452,17 +446,20 @@ function selectModel(context: EducationContext): string {
   if (context.difficulty === 'EXAM') {
     return advancedModel;
   }
-  
-  if (context.grade >= 9 && ['Physics', 'Chemistry', 'Mathematics', 'Biology'].includes(context.subject)) {
+
+  if (
+    context.grade >= 9 &&
+    ['Physics', 'Chemistry', 'Mathematics', 'Biology'].includes(context.subject)
+  ) {
     return advancedModel;
   }
-  
+
   return defaultModel;
 }
 
 /**
  * Get temperature setting based on content type and difficulty.
- * 
+ *
  * REASONING:
  * - Lower temperature = more deterministic, factual responses
  * - Higher temperature = more creative but risky
@@ -470,25 +467,25 @@ function selectModel(context: EducationContext): string {
  */
 function getTemperature(type: ToolSchemaType | 'QUIZ', difficulty: string): number {
   const baseTemperatures: Record<string, number> = {
-    NOTES: 0.3,      // Factual, consistent
-    PRACTICE: 0.4,   // Some variety in questions
-    DOUBT: 0.5,      // Slightly more adaptive
-    QUIZ: 0.3,       // Consistent difficulty
+    NOTES: 0.3, // Factual, consistent
+    PRACTICE: 0.4, // Some variety in questions
+    DOUBT: 0.5, // Slightly more adaptive
+    QUIZ: 0.3, // Consistent difficulty
   };
-  
+
   let temp = baseTemperatures[type] ?? 0.4;
-  
+
   // Reduce temperature for exam-level content (maximum precision)
   if (difficulty === 'EXAM') {
     temp = Math.max(0.1, temp - 0.2);
   }
-  
+
   return temp;
 }
 
 /**
  * Get max tokens based on content type and grade.
- * 
+ *
  * REASONING:
  * - Junior grades need shorter content
  * - Notes need more tokens than single questions
@@ -496,14 +493,14 @@ function getTemperature(type: ToolSchemaType | 'QUIZ', difficulty: string): numb
  */
 function getMaxTokens(type: ToolSchemaType | 'QUIZ', context: EducationContext): number {
   const gradeMultiplier = context.grade <= 3 ? 0.7 : context.grade <= 7 ? 0.85 : 1.0;
-  
+
   const baseTokens: Record<string, number> = {
     NOTES: 2000,
     PRACTICE: 800,
     DOUBT: 1200,
     QUIZ: 4000,
   };
-  
+
   return Math.round((baseTokens[type] ?? 1000) * gradeMultiplier);
 }
 
@@ -514,7 +511,7 @@ function getMaxTokens(type: ToolSchemaType | 'QUIZ', context: EducationContext):
 /**
  * Validate that a response matches the expected schema.
  * Throws if schema is violated.
- * 
+ *
  * @param response - The parsed response from OpenAI
  * @param schemaType - The expected schema type
  * @throws Error if validation fails
@@ -523,7 +520,7 @@ export function validateResponse(response: unknown, schemaType: ToolSchemaType):
   if (!response || typeof response !== 'object') {
     throw new Error(`Invalid response: expected object, got ${typeof response}`);
   }
-  
+
   // Schema-specific validation
   switch (schemaType) {
     case 'NOTES':
@@ -538,15 +535,21 @@ export function validateResponse(response: unknown, schemaType: ToolSchemaType):
 }
 
 function validateNotesResponse(response: unknown): boolean {
-  const required = ['topic_title', 'learning_objectives', 'key_concepts', 'explanation', 'remember_points'];
+  const required = [
+    'topic_title',
+    'learning_objectives',
+    'key_concepts',
+    'explanation',
+    'remember_points',
+  ];
   const obj = response as Record<string, unknown>;
-  
+
   for (const field of required) {
     if (!(field in obj)) {
       throw new Error(`Missing required field in notes response: ${field}`);
     }
   }
-  
+
   // Ensure learning_objectives has at least 2 items
   if (!Array.isArray(obj.learning_objectives) || (obj.learning_objectives as any[]).length < 2) {
     throw new Error('Missing required field in notes response: learning_objectives');
@@ -556,38 +559,49 @@ function validateNotesResponse(response: unknown): boolean {
   if (!Array.isArray(obj.key_concepts) || (obj.key_concepts as any[]).length === 0) {
     throw new Error('Missing required field in notes response: key_concepts');
   }
-  
+
   return true;
 }
 
 function validatePracticeResponse(response: unknown): boolean {
-  const required = ['question_type', 'question_text', 'correct_answer', 'explanation', 'difficulty'];
+  const required = [
+    'question_type',
+    'question_text',
+    'correct_answer',
+    'explanation',
+    'difficulty',
+  ];
   const obj = response as Record<string, unknown>;
-  
+
   for (const field of required) {
     if (!(field in obj)) {
       throw new Error(`Missing required field in practice response: ${field}`);
     }
   }
-  
+
   return true;
 }
 
 function validateDoubtResponse(response: unknown): boolean {
-  const required = ['understood_question', 'doubt_category', 'is_valid_academic_doubt', 'confidence_score'];
+  const required = [
+    'understood_question',
+    'doubt_category',
+    'is_valid_academic_doubt',
+    'confidence_score',
+  ];
   const obj = response as Record<string, unknown>;
-  
+
   for (const field of required) {
     if (!(field in obj)) {
       throw new Error(`Missing required field in doubt response: ${field}`);
     }
   }
-  
+
   // Check confidence threshold
   const confidence = obj['confidence_score'] as number;
   if (typeof confidence === 'number' && confidence < 0.5) {
     throw new Error(`Low confidence response (${confidence}). Fallback required.`);
   }
-  
+
   return true;
 }

@@ -24,16 +24,19 @@ The AI Tutor platform has a **well-architected recommendation engine** with mult
 **File:** [app/dashboard/components/Notes/sections/NotesBookmarked.tsx:21](app/dashboard/components/Notes/sections/NotesBookmarked.tsx#L21)
 
 **Problem:**
+
 ```typescript
-window.location.assign(`/learn`);  // ❌ Hardcoded, loses note context
+window.location.assign(`/learn`); // ❌ Hardcoded, loses note context
 ```
 
 **Impact:**
+
 - Users click a bookmarked note → redirected to generic `/learn` page
 - No note ID passed → cannot load specific note content
 - Inconsistent UX compared to Tests tab
 
 **Fix:**
+
 ```typescript
 window.location.assign(`/learn?noteId=${note.id}&type=note`);
 ```
@@ -43,10 +46,12 @@ window.location.assign(`/learn?noteId=${note.id}&type=note`);
 ### 1.2 Development Stubs Still in Production Code ⚠️
 
 **Files:**
+
 - [app/dashboard/components/Notes/context/NotesProvider.tsx:18-45](app/dashboard/components/Notes/context/NotesProvider.tsx#L18-L45)
 - [app/dashboard/components/Tests/context/TestsProvider.tsx:15-35](app/dashboard/components/Tests/context/TestsProvider.tsx#L15-L35)
 
 **Problem:**
+
 - `StubNotesService` and `StubTestsService` classes present but unused
 - Risk of accidental activation during development
 - Code bloat
@@ -60,22 +65,26 @@ window.location.assign(`/learn?noteId=${note.id}&type=note`);
 **File:** [lib/recommendations/engine.ts](lib/recommendations/engine.ts)
 
 **Problem:**
+
 - Engine tracks engagement via `ContentRecommendation` table (shown/clicked/completed)
 - **BUT** these signals are NOT used for future recommendations
 - No way to learn which recommendations work vs. fail
 - Static score weights never adapt
 
 **Current Flow:**
+
 ```
 Recommendation Shown → Tracked → ❌ NO FEEDBACK to engine
 ```
 
 **Desired Flow:**
+
 ```
 Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 ```
 
 **Impact:**
+
 - Engine cannot improve over time
 - Keeps suggesting content users ignore
 - Wastes student time with irrelevant recommendations
@@ -85,6 +94,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 ### 1.4 Limited Learning Trajectory Tracking 📊
 
 **Current State:**
+
 - `StudentLearningProfile` tracks weak subjects (< 60% accuracy)
 - `StudentStreak` tracks simple counters (current/best)
 - **Missing:**
@@ -94,6 +104,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
   - Topic-level granularity
 
 **Impact:**
+
 - Cannot detect if student is improving in weak areas
 - No early warning for students falling behind
 - Recommendations lack temporal context
@@ -120,6 +131,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 | PEER_POPULARITY | 5 | Popular among similar users (not implemented) |
 
 **Content Sources:**
+
 1. `ContentCatalog` - Manual content library
 2. `ChapterDef` - Curriculum hierarchy
 3. `Question` - Practice question banks
@@ -128,6 +140,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 6. `GeneratedTest` - AI-generated practice tests
 
 **Strengths:**
+
 - ✅ Multi-source content pooling
 - ✅ Deep test performance analysis
 - ✅ Filters out completed content
@@ -135,6 +148,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 - ✅ Fallback chain for robustness
 
 **Weaknesses:**
+
 - ❌ No feedback loop from engagement
 - ❌ Static score weights (never adapt)
 - ❌ PEER_POPULARITY signal not implemented
@@ -146,6 +160,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 ## 3. OPTIMIZATION ROADMAP
 
 ### Phase 1: Critical Fixes (Week 1)
+
 **Priority: P0 - Must have**
 
 1. **Fix Notes Tab Navigation**
@@ -166,6 +181,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 ---
 
 ### Phase 2: Feedback Loop (Week 2)
+
 **Priority: P0 - Must have**
 
 4. **Implement Engagement-Based Scoring**
@@ -183,6 +199,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 ---
 
 ### Phase 3: Learning Trajectory (Week 3)
+
 **Priority: P1 - Should have**
 
 6. **Enhanced Learning Profile**
@@ -205,6 +222,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 ---
 
 ### Phase 4: Advanced Features (Week 4)
+
 **Priority: P2 - Nice to have**
 
 9. **Peer Popularity Implementation**
@@ -228,6 +246,7 @@ Recommendation Shown → Tracked → ✅ Used in next scoring cycle
 ### 4.1 Database Schema Changes
 
 **Migration 1: Add Ignored Tracking**
+
 ```prisma
 model ContentRecommendation {
   id           String    @id @default(cuid())
@@ -252,6 +271,7 @@ model ContentRecommendation {
 ```
 
 **Migration 2: Create Topic Mastery Table**
+
 ```prisma
 model StudentTopicMastery {
   id                  String         @id @default(cuid())
@@ -306,26 +326,32 @@ enum MasteryLevel {
 ## 6. RISKS & MITIGATION
 
 ### Risk 1: Engagement Data Too Sparse (New Students)
+
 **Impact:** New students have no engagement history → feedback loop ineffective
 
 **Mitigation:**
+
 - Fallback to profile-based scoring (existing logic)
 - Require minimum 10 recommendations shown before using engagement signals
 - Pre-seed recommendations with cohort averages
 
 ### Risk 2: Migration Downtime
+
 **Impact:** Backfilling topic mastery may take hours for large databases
 
 **Mitigation:**
+
 - Run backfill during low traffic window (2-4 AM)
 - Process in batches of 1000 records
 - Add progress logging
 - Make backfill resumable
 
 ### Risk 3: Overfitting to Recent Behavior
+
 **Impact:** User ignores tests for 2 weeks → never sees tests again
 
 **Mitigation:**
+
 - Add decay to engagement signals (exponential decay over 30 days)
 - Always include 1-2 diverse recommendations
 - Refresh engagement weights weekly
@@ -335,12 +361,14 @@ enum MasteryLevel {
 ## 7. NEXT STEPS
 
 ### Immediate Actions (This Week):
+
 1. ✅ Review this document with product team
 2. ✅ Prioritize Phase 1 critical fixes
 3. ✅ Assign implementation to engineering team
 4. ✅ Schedule deployment windows
 
 ### Week 1 Deliverables:
+
 - [ ] Fix Notes tab navigation
 - [ ] Remove stub services
 - [ ] Add `isIgnored` migration
@@ -348,17 +376,20 @@ enum MasteryLevel {
 - [ ] Write unit tests
 
 ### Week 2 Deliverables:
+
 - [ ] Create `StudentTopicMastery` table
 - [ ] Implement mastery update logic
 - [ ] Run backfill script
 - [ ] Integration tests
 
 ### Week 3 Deliverables:
+
 - [ ] Implement engagement feedback loop
 - [ ] Deploy A/B test
 - [ ] Monitor metrics
 
 ### Week 4 Deliverables:
+
 - [ ] Analyze A/B test results
 - [ ] Full rollout
 - [ ] Documentation update

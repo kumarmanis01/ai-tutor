@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import React, { useState, useTransition } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { timeSince } from '@/lib/admin/formatters'
+import React, { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { timeSince } from '@/lib/admin/formatters';
 
 // ---------------------------------------------------------------------------
 // Shared types (also imported by page.tsx)
@@ -15,63 +15,63 @@ export type ContentStatus =
   | 'syllabus_only'
   | 'generating'
   | 'ready'
-  | 'failed'
+  | 'failed';
 
 export interface CoverageRowData {
-  subjectId: string
-  subjectName: string
-  subjectSlug: string
-  grade: number
-  boardName: string
-  boardSlug: string
-  language: string
-  chapterCount: number
-  topicCount: number
-  questionCount: number
-  noteCount: number
-  ragChunks: number
-  status: ContentStatus
-  jobId: string | null
-  jobStatus: string | null
-  jobError: string | null
-  chaptersExpected: number
-  chaptersCompleted: number
-  topicsExpected: number
-  topicsCompleted: number
-  notesExpected: number
-  notesCompleted: number
-  questionsExpected: number
-  questionsCompleted: number
+  subjectId: string;
+  subjectName: string;
+  subjectSlug: string;
+  grade: number;
+  boardName: string;
+  boardSlug: string;
+  language: string;
+  chapterCount: number;
+  topicCount: number;
+  questionCount: number;
+  noteCount: number;
+  ragChunks: number;
+  status: ContentStatus;
+  jobId: string | null;
+  jobStatus: string | null;
+  jobError: string | null;
+  chaptersExpected: number;
+  chaptersCompleted: number;
+  topicsExpected: number;
+  topicsCompleted: number;
+  notesExpected: number;
+  notesCompleted: number;
+  questionsExpected: number;
+  questionsCompleted: number;
 }
 
 export interface PipelineJobData {
-  id: string
-  subjectName: string
-  boardSlug: string
-  grade: number
-  status: string
-  chaptersExpected: number
-  chaptersCompleted: number
-  topicsExpected: number
-  topicsCompleted: number
-  notesExpected: number
-  notesCompleted: number
-  questionsExpected: number
-  questionsCompleted: number
-  createdAt: string
+  id: string;
+  subjectName: string;
+  boardSlug: string;
+  grade: number;
+  status: string;
+  chaptersExpected: number;
+  chaptersCompleted: number;
+  topicsExpected: number;
+  topicsCompleted: number;
+  notesExpected: number;
+  notesCompleted: number;
+  questionsExpected: number;
+  questionsCompleted: number;
+  createdAt: string;
 }
 
 export interface IngestRunData {
-  id: string
-  runAt: string
-  subjectName: string
-  grade: number | null
-  fileSource: string | null
-  chunksCreated: number
-  chunksUpdated: number
-  embeddingsGenerated: number
-  errors: number
-  durationMs: number | null
+  id: string;
+  runAt: string;
+  subjectName: string;
+  grade: number | null;
+  fileSource: string | null;
+  chunksCreated: number;
+  chunksUpdated: number;
+  embeddingsGenerated: number;
+  errors: number;
+  durationMs: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,61 +79,56 @@ export interface IngestRunData {
 // ---------------------------------------------------------------------------
 
 const STATUS_CFG: Record<ContentStatus, { bg: string; text: string; label: string }> = {
-  not_started:   { bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', label: 'Not started' },
-  ncert_only:    { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', label: 'NCERT only' },
+  not_started: { bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', label: 'Not started' },
+  ncert_only: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', label: 'NCERT only' },
   syllabus_only: { bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', label: 'Syllabus only' },
-  generating:    { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', label: 'Generating...' },
-  ready:         { bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', label: 'Ready' },
-  failed:        { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', label: 'Failed' },
-}
+  generating: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', label: 'Generating...' },
+  ready: { bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', label: 'Ready' },
+  failed: { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', label: 'Failed' },
+};
 
 function ContentStatusBadge({ status }: { status: ContentStatus }) {
-  const { bg, text, label } = STATUS_CFG[status]
+  const { bg, text, label } = STATUS_CFG[status];
   return (
-    <span className={`inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${bg} ${text}`}>
+    <span
+      className={`inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${bg} ${text}`}
+    >
       {label}
     </span>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Progress bar
 // ---------------------------------------------------------------------------
 
-
 // ---------------------------------------------------------------------------
 // Action buttons row per coverage row
 // ---------------------------------------------------------------------------
 
-function RowActions({
-  row,
-  onRefresh,
-}: {
-  row: CoverageRowData
-  onRefresh: () => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [msg, setMsg] = useState<string | null>(null)
-  const [stuckJobs, setStuckJobs] = useState(0)
+function RowActions({ row, onRefresh }: { row: CoverageRowData; onRefresh: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [stuckJobs, setStuckJobs] = useState(0);
 
   async function call(url: string, body: Record<string, unknown>) {
-    setBusy(true)
-    setError(null)
-    setMsg(null)
+    setBusy(true);
+    setError(null);
+    setMsg(null);
     try {
       const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      })
-      const data = await r.json()
-      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
-      onRefresh()
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+      onRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error')
+      setError(err instanceof Error ? err.message : 'Error');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
@@ -143,7 +138,7 @@ function RowActions({
       board: row.boardSlug,
       grade: row.grade,
       language: row.language,
-    })
+    });
   }
 
   async function handleIngest() {
@@ -152,54 +147,59 @@ function RowActions({
       board: row.boardSlug,
       grade: row.grade,
       language: row.language,
-    })
+    });
   }
 
   async function handleRetry() {
-    if (!row.jobId) return
-    await call('/api/admin/content/retry', { jobId: row.jobId })
+    if (!row.jobId) return;
+    await call('/api/admin/content/retry', { jobId: row.jobId });
   }
 
   async function handleRegenNotes() {
-    setBusy(true)
-    setError(null)
-    setMsg(null)
+    setBusy(true);
+    setError(null);
+    setMsg(null);
     try {
       const r = await fetch('/api/admin/content-engine/notes-rehyd', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjectId: row.subjectId, language: row.language }),
-      })
-      const data = await r.json()
-      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
-      setMsg(data.message ?? `Queued ${data.enqueued} notes jobs.`)
-      onRefresh()
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+      setMsg(data.message ?? `Queued ${data.enqueued} notes jobs.`);
+      onRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error')
+      setError(err instanceof Error ? err.message : 'Error');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   async function handleCompletePipeline() {
-    setBusy(true)
-    setError(null)
-    setMsg(null)
+    setBusy(true);
+    setError(null);
+    setMsg(null);
     try {
       const r = await fetch('/api/admin/content/complete-pipeline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectId: row.subjectId, board: row.boardSlug, grade: row.grade, language: row.language }),
-      })
-      const data = await r.json()
-      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
-      if (data.message) setMsg(data.message)
-      setStuckJobs((data.notesAlreadyQueued ?? 0) + (data.questionsAlreadyQueued ?? 0))
-      onRefresh()
+        body: JSON.stringify({
+          subjectId: row.subjectId,
+          board: row.boardSlug,
+          grade: row.grade,
+          language: row.language,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+      if (data.message) setMsg(data.message);
+      setStuckJobs((data.notesAlreadyQueued ?? 0) + (data.questionsAlreadyQueued ?? 0));
+      onRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error')
+      setError(err instanceof Error ? err.message : 'Error');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
@@ -209,36 +209,31 @@ function RowActions({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subjectId: row.subjectId, confirmed: false }),
-    })
-    const data = await r.json()
-    if (!data.requiresConfirmation) return
+    });
+    const data = await r.json();
+    if (!data.requiresConfirmation) return;
 
-    const { chapters, topics } = data.counts
+    const { chapters, topics } = data.counts;
     const ok = window.confirm(
       `Reset ${row.subjectName} Grade ${row.grade}?\n\n` +
-      `This will delete:\n- ${chapters} chapters\n- ${topics} topics\n\nThis cannot be undone.`,
-    )
-    if (!ok) return
-    await call('/api/admin/content/reset', { subjectId: row.subjectId, confirmed: true })
+        `This will delete:\n- ${chapters} chapters\n- ${topics} topics\n\nThis cannot be undone.`
+    );
+    if (!ok) return;
+    await call('/api/admin/content/reset', { subjectId: row.subjectId, confirmed: true });
   }
 
-  const s = row.status
+  const s = row.status;
 
   return (
     <div className="flex items-center flex-wrap gap-1.5">
-      {error && (
-        <span className="text-[9px] text-[#E24B4A] w-full">{error}</span>
-      )}
+      {error && <span className="text-[9px] text-[#E24B4A] w-full">{error}</span>}
       {msg && !error && (
         <span className="text-[9px] text-[#1D9E75] w-full">
           {msg}
           {stuckJobs > 0 && (
             <>
               {' '}
-              <Link
-                href="/admin/content-engine/jobs"
-                className="underline text-[#534AB7]"
-              >
+              <Link href="/admin/content-engine/jobs" className="underline text-[#534AB7]">
                 View stuck jobs
               </Link>
             </>
@@ -248,19 +243,31 @@ function RowActions({
 
       {(s === 'not_started' || s === 'ncert_only') && (
         <>
-          <Btn onClick={handleIngest} disabled={busy} variant="default">Ingest NCERT</Btn>
-          <Btn onClick={handleGenerate} disabled={busy} variant="primary">Generate all</Btn>
+          <Btn onClick={handleIngest} disabled={busy} variant="default">
+            Ingest NCERT
+          </Btn>
+          <Btn onClick={handleGenerate} disabled={busy} variant="primary">
+            Generate all
+          </Btn>
         </>
       )}
 
       {s === 'syllabus_only' && (
         <>
-          <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">Complete pipeline</Btn>
-          <Btn onClick={handleGenerate} disabled={busy} variant="default">Generate all</Btn>
+          <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">
+            Complete pipeline
+          </Btn>
+          <Btn onClick={handleGenerate} disabled={busy} variant="default">
+            Generate all
+          </Btn>
           {row.topicCount > 0 && (
-            <Btn onClick={handleRegenNotes} disabled={busy} variant="warn">Regen notes</Btn>
+            <Btn onClick={handleRegenNotes} disabled={busy} variant="warn">
+              Regen notes
+            </Btn>
           )}
-          <Btn onClick={handleReset} disabled={busy} variant="danger">Reset</Btn>
+          <Btn onClick={handleReset} disabled={busy} variant="danger">
+            Reset
+          </Btn>
         </>
       )}
 
@@ -288,32 +295,46 @@ function RowActions({
           >
             View error
           </Link>
-          <Btn onClick={handleRetry} disabled={busy} variant="success">Retry</Btn>
+          <Btn onClick={handleRetry} disabled={busy} variant="success">
+            Retry
+          </Btn>
           {row.chapterCount > 0 && (
-            <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">Complete pipeline</Btn>
+            <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">
+              Complete pipeline
+            </Btn>
           )}
           {row.topicCount > 0 && (
-            <Btn onClick={handleRegenNotes} disabled={busy} variant="warn">Regen notes</Btn>
+            <Btn onClick={handleRegenNotes} disabled={busy} variant="warn">
+              Regen notes
+            </Btn>
           )}
-          <Btn onClick={handleReset} disabled={busy} variant="danger">Reset</Btn>
+          <Btn onClick={handleReset} disabled={busy} variant="danger">
+            Reset
+          </Btn>
         </>
       )}
 
       {s === 'ready' && (
         <>
-          <Btn onClick={handleRegenNotes} disabled={busy} variant="primary">Regen notes</Btn>
-          <Btn onClick={handleCompletePipeline} disabled={busy} variant="warn">Fill gaps</Btn>
+          <Btn onClick={handleRegenNotes} disabled={busy} variant="primary">
+            Regen notes
+          </Btn>
+          <Btn onClick={handleCompletePipeline} disabled={busy} variant="warn">
+            Fill gaps
+          </Btn>
           <Link
             href={`/admin/content-engine/jobs?subjectId=${row.subjectId}`}
             className="inline-flex items-center text-[10px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 min-h-[28px]"
           >
             Details
           </Link>
-          <Btn onClick={handleReset} disabled={busy} variant="danger">Reset</Btn>
+          <Btn onClick={handleReset} disabled={busy} variant="danger">
+            Reset
+          </Btn>
         </>
       )}
     </div>
-  )
+  );
 }
 
 function Btn({
@@ -322,18 +343,18 @@ function Btn({
   disabled,
   variant,
 }: {
-  children: React.ReactNode
-  onClick: () => void
-  disabled: boolean
-  variant: 'default' | 'primary' | 'danger' | 'success' | 'warn'
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled: boolean;
+  variant: 'default' | 'primary' | 'danger' | 'success' | 'warn';
 }) {
   const cls: Record<string, string> = {
     default: 'border-gray-300 text-gray-600 hover:bg-gray-50',
     primary: 'border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] hover:bg-[#e0defe]',
-    danger:  'border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] hover:bg-[#f9d7d7]',
+    danger: 'border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] hover:bg-[#f9d7d7]',
     success: 'border-[#c8e6c9] bg-[#EAF3DE] text-[#27500A] hover:bg-[#d9edd9]',
-    warn:    'border-[#f5d193] bg-[#FAEEDA] text-[#633806] hover:bg-[#f5d193]',
-  }
+    warn: 'border-[#f5d193] bg-[#FAEEDA] text-[#633806] hover:bg-[#f5d193]',
+  };
   return (
     <button
       onClick={onClick}
@@ -342,7 +363,7 @@ function Btn({
     >
       {children}
     </button>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -350,19 +371,21 @@ function Btn({
 // ---------------------------------------------------------------------------
 
 export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
-  const router = useRouter()
-  const [, startTransition] = useTransition()
+  const router = useRouter();
+  const [, startTransition] = useTransition();
 
   function refresh() {
-    startTransition(() => router.refresh())
+    startTransition(() => router.refresh());
   }
 
   if (rows.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 text-center">
-        <p className="text-[12px] text-gray-500">No active subjects found. Add subjects via the curriculum setup.</p>
+        <p className="text-[12px] text-gray-500">
+          No active subjects found. Add subjects via the curriculum setup.
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -372,15 +395,29 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
           <table className="w-full text-[11px]">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                {['Subject', 'Grade', 'Board', 'Chapters', 'Topics', 'Notes', 'Gen. Tests', 'RAG chunks', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                {[
+                  'Subject',
+                  'Grade',
+                  'Board',
+                  'Chapters',
+                  'Topics',
+                  'Notes',
+                  'Gen. Tests',
+                  'RAG chunks',
+                  'Status',
+                  'Actions',
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                  >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {rows.map(row => (
+              {rows.map((row) => (
                 <tr key={row.subjectId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                   <td className="px-3 py-2.5 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
                     {row.subjectName}
@@ -389,10 +426,14 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
                   <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400 uppercase text-[10px]">
                     {row.boardSlug}
                   </td>
-                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.chapterCount}</td>
+                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">
+                    {row.chapterCount}
+                  </td>
                   <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.topicCount}</td>
                   <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.noteCount}</td>
-                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.questionCount}</td>
+                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">
+                    {row.questionCount}
+                  </td>
                   <td className="px-3 py-2.5 text-gray-500">{row.ragChunks}</td>
                   <td className="px-3 py-2.5">
                     <ContentStatusBadge status={row.status} />
@@ -410,24 +451,42 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
       {/* Action button legend */}
       <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-1 pt-0.5">
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] font-medium">Complete pipeline</span>
-          <span className="text-[10px] text-gray-500">-- Gap-fill: queue notes + questions for topics that are missing them (safe to re-run)</span>
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] font-medium">
+            Complete pipeline
+          </span>
+          <span className="text-[10px] text-gray-500">
+            -- Gap-fill: queue notes + questions for topics that are missing them (safe to re-run)
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] font-medium">Regen notes</span>
-          <span className="text-[10px] text-gray-500">-- Queue new notes for every topic (uses latest prompt; creates new draft versions, does not delete approved notes)</span>
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] font-medium">
+            Regen notes
+          </span>
+          <span className="text-[10px] text-gray-500">
+            -- Queue new notes for every topic (uses latest prompt; creates new draft versions, does
+            not delete approved notes)
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-600 font-medium">Generate all</span>
-          <span className="text-[10px] text-gray-500">-- Run the full syllabus pipeline from scratch (chapters + topics + notes + questions)</span>
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-600 font-medium">
+            Generate all
+          </span>
+          <span className="text-[10px] text-gray-500">
+            -- Run the full syllabus pipeline from scratch (chapters + topics + notes + questions)
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] font-medium">Reset</span>
-          <span className="text-[10px] text-gray-500">-- Delete all AI-generated content for this subject (requires confirmation, irreversible)</span>
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] font-medium">
+            Reset
+          </span>
+          <span className="text-[10px] text-gray-500">
+            -- Delete all AI-generated content for this subject (requires confirmation,
+            irreversible)
+          </span>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -435,13 +494,13 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
 // ---------------------------------------------------------------------------
 
 export function PipelineSection({ jobs }: { jobs: PipelineJobData[] }) {
-  const router = useRouter()
-  const [, startTransition] = useTransition()
+  const router = useRouter();
+  const [, startTransition] = useTransition();
 
-  if (jobs.length === 0) return null
+  if (jobs.length === 0) return null;
 
   function pct(completed: number, expected: number) {
-    return expected > 0 ? Math.min(100, Math.round((completed / expected) * 100)) : 0
+    return expected > 0 ? Math.min(100, Math.round((completed / expected) * 100)) : 0;
   }
 
   return (
@@ -449,7 +508,7 @@ export function PipelineSection({ jobs }: { jobs: PipelineJobData[] }) {
       <p className="text-[12px] font-medium text-gray-700 dark:text-gray-300">
         Active pipeline ({jobs.length} running)
       </p>
-      {jobs.map(job => (
+      {jobs.map((job) => (
         <div
           key={job.id}
           className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4"
@@ -459,7 +518,9 @@ export function PipelineSection({ jobs }: { jobs: PipelineJobData[] }) {
               {job.subjectName} &mdash; Grade {job.grade} ({job.boardSlug.toUpperCase()})
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-400">{timeSince(new Date(job.createdAt))}</span>
+              <span className="text-[10px] text-gray-400">
+                {timeSince(new Date(job.createdAt))}
+              </span>
               <Link
                 href={`/admin/jobs/${job.id}`}
                 className="text-[10px] text-[#534AB7] hover:underline"
@@ -470,11 +531,19 @@ export function PipelineSection({ jobs }: { jobs: PipelineJobData[] }) {
           </div>
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: 'Syllabus', completed: job.chaptersCompleted, expected: job.chaptersExpected },
+              {
+                label: 'Syllabus',
+                completed: job.chaptersCompleted,
+                expected: job.chaptersExpected,
+              },
               { label: 'Topics', completed: job.topicsCompleted, expected: job.topicsExpected },
               { label: 'Notes', completed: job.notesCompleted, expected: job.notesExpected },
-              { label: 'Questions', completed: job.questionsCompleted, expected: job.questionsExpected },
-            ].map(step => (
+              {
+                label: 'Questions',
+                completed: job.questionsCompleted,
+                expected: job.questionsExpected,
+              },
+            ].map((step) => (
               <div key={step.label} className="space-y-1">
                 <p className="text-[10px] text-gray-500">{step.label}</p>
                 <div className="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
@@ -498,7 +567,7 @@ export function PipelineSection({ jobs }: { jobs: PipelineJobData[] }) {
         Refresh status
       </button>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -511,7 +580,7 @@ export function IngestRunsTable({ runs }: { runs: IngestRunData[] }) {
       <p className="text-[12px] text-gray-400 dark:text-gray-500 py-4 text-center">
         No ingest runs recorded yet.
       </p>
-    )
+    );
   }
 
   return (
@@ -519,17 +588,31 @@ export function IngestRunsTable({ runs }: { runs: IngestRunData[] }) {
       <table className="w-full text-[11px]">
         <thead>
           <tr className="border-b border-gray-200 dark:border-gray-800">
-            {['Subject', 'Grade', 'Chunks', 'Updated', 'Embeddings', 'Errors', 'Duration', 'When'].map(h => (
-              <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            {[
+              'Subject',
+              'Grade',
+              'Chunks',
+              'Updated',
+              'Embeddings',
+              'Errors',
+              'Duration',
+              'When',
+            ].map((h) => (
+              <th
+                key={h}
+                className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+              >
                 {h}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-          {runs.map(r => (
+          {runs.map((r) => (
             <tr key={r.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-              <td className="px-3 py-2.5 font-medium text-gray-800 dark:text-gray-200">{r.subjectName}</td>
+              <td className="px-3 py-2.5 font-medium text-gray-800 dark:text-gray-200">
+                {r.subjectName}
+              </td>
               <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{r.grade ?? '--'}</td>
               <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{r.chunksCreated}</td>
               <td className="px-3 py-2.5 text-gray-500">{r.chunksUpdated}</td>
@@ -552,5 +635,5 @@ export function IngestRunsTable({ runs }: { runs: IngestRunData[] }) {
         </tbody>
       </table>
     </div>
-  )
+  );
 }

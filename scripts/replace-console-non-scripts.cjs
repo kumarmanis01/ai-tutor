@@ -12,7 +12,8 @@ const exts = ['.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx'];
 function walk(dir) {
   const res = [];
   for (const f of fs.readdirSync(dir)) {
-    if (f === 'node_modules' || f === 'scripts' || f === '.next' || f === 'dist' || f === '.git') continue; // skip scripts, build dirs and node_modules
+    if (f === 'node_modules' || f === 'scripts' || f === '.next' || f === 'dist' || f === '.git')
+      continue; // skip scripts, build dirs and node_modules
     const p = path.join(dir, f);
     const st = fs.statSync(p);
     if (st.isDirectory()) res.push(...walk(p));
@@ -44,7 +45,12 @@ for (const file of files) {
   out = out.replace(/console\.error\s*\(/g, 'logger.error(');
 
   // insert import/require if not present
-  const alreadyHasLogger = out.includes(`require('${relPath}')`) || out.includes(`require("${relPath}")`) || out.includes(`from '${relPath}'`) || out.includes(`from "${relPath}"`) || /\blogger\b/.test(content);
+  const alreadyHasLogger =
+    out.includes(`require('${relPath}')`) ||
+    out.includes(`require("${relPath}")`) ||
+    out.includes(`from '${relPath}'`) ||
+    out.includes(`from "${relPath}"`) ||
+    /\blogger\b/.test(content);
   if (!alreadyHasLogger) {
     if (usesImportExport) {
       out = loggerImportESM + '\n' + out;

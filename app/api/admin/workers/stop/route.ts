@@ -14,9 +14,14 @@ export async function POST(req: Request) {
 
     // Only allow stopping workers that report local host or empty host
     const host = (worker.host || '').toLowerCase();
-    const isLocal = !host || host.includes('localhost') || host.includes('127.0.0.1') || host === hostname().toLowerCase();
+    const isLocal =
+      !host ||
+      host.includes('localhost') ||
+      host.includes('127.0.0.1') ||
+      host === hostname().toLowerCase();
 
-    if (!isLocal) return NextResponse.json({ error: 'refusing to stop remote host worker' }, { status: 403 });
+    if (!isLocal)
+      return NextResponse.json({ error: 'refusing to stop remote host worker' }, { status: 403 });
 
     const pid = worker.pid;
     if (!pid) return NextResponse.json({ error: 'no pid for worker' }, { status: 400 });
@@ -32,7 +37,10 @@ export async function POST(req: Request) {
       });
     });
 
-    await prisma.workerLifecycle.update({ where: { id }, data: { status: 'stopped', stoppedAt: new Date() } });
+    await prisma.workerLifecycle.update({
+      where: { id },
+      data: { status: 'stopped', stoppedAt: new Date() },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (e) {

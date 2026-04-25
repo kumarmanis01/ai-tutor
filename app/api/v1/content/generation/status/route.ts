@@ -15,28 +15,28 @@
  * - 2025-01-15T00:00:00Z | copilot | created -- B4.1 content generation status route
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { logger } from '@/lib/logger'
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   // Auth guard
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json(
       { code: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 },
-    )
+      { status: 401 }
+    );
   }
 
-  const jobId = req.nextUrl.searchParams.get('jobId')
+  const jobId = req.nextUrl.searchParams.get('jobId');
   if (!jobId) {
     return NextResponse.json(
       { code: 'INVALID_REQUEST', message: 'jobId is required' },
-      { status: 400 },
-    )
+      { status: 400 }
+    );
   }
 
   try {
@@ -56,23 +56,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         createdAt: true,
         updatedAt: true,
       },
-    })
+    });
 
     if (!job) {
       return NextResponse.json(
         { code: 'NOT_FOUND', message: 'Generation job not found' },
-        { status: 404 },
-      )
+        { status: 404 }
+      );
     }
 
     // Authorization: only creator or subscriber can see the job
-    const userId = session.user.id
-    const isAuthorized = job.createdById === userId || job.subscriberIds.includes(userId)
+    const userId = session.user.id;
+    const isAuthorized = job.createdById === userId || job.subscriberIds.includes(userId);
     if (!isAuthorized) {
-      return NextResponse.json(
-        { code: 'FORBIDDEN', message: 'Access denied' },
-        { status: 403 },
-      )
+      return NextResponse.json({ code: 'FORBIDDEN', message: 'Access denied' }, { status: 403 });
     }
 
     return NextResponse.json({
@@ -87,12 +84,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       subscriberCount: job.subscriberIds.length,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
-    })
+    });
   } catch (err: unknown) {
-    logger.error('Failed to fetch generation job status', { jobId, error: err })
+    logger.error('Failed to fetch generation job status', { jobId, error: err });
     return NextResponse.json(
       { code: 'SERVER_ERROR', message: 'Failed to fetch job status' },
-      { status: 500 },
-    )
+      { status: 500 }
+    );
   }
 }

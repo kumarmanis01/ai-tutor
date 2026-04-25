@@ -73,7 +73,7 @@ export async function buildPriorityPlan(params: {
     const result = await callTutorLLM(
       prompt,
       { callType: 'tutor:eval', studentId, sessionId: attemptId },
-      PLAN_TIMEOUT_MS,
+      PLAN_TIMEOUT_MS
     );
     const text = (result?.content ?? '').trim();
     return text || FALLBACK_PLAN;

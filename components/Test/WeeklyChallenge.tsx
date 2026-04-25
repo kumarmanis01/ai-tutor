@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { showAlert } from '@/lib/alerts';
@@ -41,7 +41,10 @@ export default function WeeklyChallenge() {
     <div className="rounded-lg border p-4 bg-white shadow-sm">
       <h3 className="text-lg font-semibold">{meta?.title ?? 'Weekly Challenge'}</h3>
       <p className="text-sm text-gray-600">{meta?.description ?? ''}</p>
-      <button className="mt-3 px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700" onClick={start}>
+      <button
+        className="mt-3 px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700"
+        onClick={start}
+      >
         Start Now
       </button>
     </div>

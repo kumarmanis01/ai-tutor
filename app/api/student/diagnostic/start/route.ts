@@ -21,7 +21,10 @@ import { logger } from '@/lib/logger';
 import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
 import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/diagnostics/sessionStore';
-import { upsertSubjectDiagnosticStatus, getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
+import {
+  upsertSubjectDiagnosticStatus,
+  getSubjectDiagnosticStatus,
+} from '@/lib/diagnostics/stateStore';
 import { enqueueDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
 
@@ -40,7 +43,10 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const { boardSlug, grade, subjectSlug, languageCode } = body ?? {};
   if (!boardSlug || !grade || !subjectSlug) {
-    const res = NextResponse.json({ error: 'boardSlug, grade and subjectSlug are required' }, { status: 400 });
+    const res = NextResponse.json(
+      { error: 'boardSlug, grade and subjectSlug are required' },
+      { status: 400 }
+    );
     logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
     return res;
   }
@@ -62,7 +68,7 @@ export async function POST(req: Request) {
             message: 'Diagnostic retake is available 30 days after completion.',
             eligibleAt: eligibleAt.toISOString(),
           },
-          { status: 429 },
+          { status: 429 }
         );
         logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
         return res;
@@ -71,11 +77,17 @@ export async function POST(req: Request) {
       try {
         const prevRunId = existingStatus.runId;
         if (prevRunId) {
-          const prev = await prisma.answerEvent.findMany({ where: { studentId: user.id, sessionId: prevRunId }, select: { questionId: true } });
+          const prev = await prisma.answerEvent.findMany({
+            where: { studentId: user.id, sessionId: prevRunId },
+            select: { questionId: true },
+          });
           const prevIds = new Set(prev.map((p) => p.questionId).filter(Boolean));
           if (prevIds.size > 0) {
             // Regenerate test excluding previously-seen question IDs to ensure a different set.
-            test = await generateSubjectDiagnosticTest({ boardSlug, grade, subjectSlug, languageCode }, prevIds);
+            test = await generateSubjectDiagnosticTest(
+              { boardSlug, grade, subjectSlug, languageCode },
+              prevIds
+            );
           }
         }
       } catch (e) {
@@ -134,11 +146,14 @@ export async function POST(req: Request) {
           // Job name follows analytics ingestion convention used elsewhere
           await analyticsQueue.add('analytics.ingest', analyticsEventData);
         } catch (enqueueErr) {
-          logger.warn('diagnostic.start: analytics enqueue failed; falling back to direct DB write', {
-            className: 'DiagnosticStartAPI',
-            methodName: 'POST',
-            error: String(enqueueErr),
-          });
+          logger.warn(
+            'diagnostic.start: analytics enqueue failed; falling back to direct DB write',
+            {
+              className: 'DiagnosticStartAPI',
+              methodName: 'POST',
+              error: String(enqueueErr),
+            }
+          );
           try {
             await prisma.analyticsEvent.create({ data: analyticsEventData });
           } catch (dbErr) {
@@ -189,7 +204,7 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.warn('diagnostic.start failed', { error: String(err) })
+    logger.warn('diagnostic.start failed', { error: String(err) });
     const res = NextResponse.json({ error: 'Failed to start diagnostic' }, { status: 500 });
     logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
     return res;

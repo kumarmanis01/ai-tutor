@@ -14,16 +14,16 @@
  * - 2025-01-15T00:00:00Z | copilot | created -- B4.1 content generation queue
  */
 
-import { Queue } from 'bullmq'
-import { getSharedConnection } from '@/lib/redis'
+import { Queue } from 'bullmq';
+import { getSharedConnection } from '@/lib/redis';
 import {
   type ContentGenerationJobData,
   CONTENT_GENERATION_QUEUE,
-} from '@/worker/processors/contentGenerationWorker'
+} from '@/worker/processors/contentGenerationWorker';
 
-export { CONTENT_GENERATION_QUEUE } from '@/worker/processors/contentGenerationWorker'
+export { CONTENT_GENERATION_QUEUE } from '@/worker/processors/contentGenerationWorker';
 
-let _queue: Queue<ContentGenerationJobData> | null = null
+let _queue: Queue<ContentGenerationJobData> | null = null;
 
 export function getContentGenerationQueue(): Queue<ContentGenerationJobData> {
   if (!_queue) {
@@ -35,7 +35,7 @@ export function getContentGenerationQueue(): Queue<ContentGenerationJobData> {
         removeOnComplete: { count: 100 },
         removeOnFail: { count: 50 },
       },
-    })
+    });
   }
-  return _queue
+  return _queue;
 }

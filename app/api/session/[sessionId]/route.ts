@@ -19,10 +19,7 @@ export const dynamic = 'force-dynamic';
  * COUPLING-03: Uses SessionEngine.getSessionView() so response matches
  * startSession and advanceSession. Adds phase, content, homework for detail view.
  */
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ sessionId: string }> },
-) {
+export async function GET(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const start = Date.now();
   let res: Response;
   const { sessionId } = await params;
@@ -50,7 +47,7 @@ export async function GET(
       view.currentPhase,
       view.topicId,
       view.sessionId,
-      user.id,
+      user.id
     );
 
     // ABSTRACTION-02: Mark explanation viewed when student fetches session in EXPLANATION phase.
@@ -93,7 +90,7 @@ export async function GET(
             code: 'SESSION_EXPIRED',
             topicId: details?.topicId ?? null,
           },
-          { status: 410 },
+          { status: 410 }
         );
       } else {
         res = NextResponse.json({ error: err.message }, { status: err.status });

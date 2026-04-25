@@ -239,7 +239,16 @@ describe('Step 3 — Rule order and latency', () => {
     const result = await getNextAction(user.id, { returnTrace: true });
     expect(result).not.toBeNull();
     expect(typeof result).toBe('object');
-    const withTrace = result as { action: NextAction; traceId: string; trace: { rulesEvaluated: string[]; matchedRule: string; finalDecision: string; latencyMs?: number } };
+    const withTrace = result as {
+      action: NextAction;
+      traceId: string;
+      trace: {
+        rulesEvaluated: string[];
+        matchedRule: string;
+        finalDecision: string;
+        latencyMs?: number;
+      };
+    };
     expect(withTrace.trace).toBeDefined();
     expect(Array.isArray(withTrace.trace.rulesEvaluated)).toBe(true);
     expect(withTrace.trace.rulesEvaluated).toContain('LOCK');

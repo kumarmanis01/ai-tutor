@@ -96,7 +96,7 @@ function checkCorrect(question: DiagnosticQuestion, selectedOption: string): boo
  */
 function computeChapterResults(
   questions: DiagnosticQuestion[],
-  answers: PartialAnswer[],
+  answers: PartialAnswer[]
 ): ChapterResult[] {
   const answerMap = new Map(answers.map((a) => [a.questionId, a]));
   const chapterMap = new Map<
@@ -128,8 +128,7 @@ function computeChapterResults(
   for (const [chapterId, stat] of chapterMap) {
     const total = stat.correct + stat.wrong + stat.unanswered;
     if (total === 0) continue;
-    const avgMastery =
-      (stat.correct * 1.0 + stat.wrong * 0.0 + stat.unanswered * 0.4) / total;
+    const avgMastery = (stat.correct * 1.0 + stat.wrong * 0.0 + stat.unanswered * 0.4) / total;
     results.push({ chapterId, chapterName: stat.chapterName, avgMastery, questionCount: total });
   }
 
@@ -139,10 +138,8 @@ function computeChapterResults(
 }
 
 function masteryBadge(avgMastery: number): { label: string; colorClass: string } {
-  if (avgMastery > 0.7)
-    return { label: 'Strong', colorClass: 'bg-[#EAF3DE] text-[#1D9E75]' };
-  if (avgMastery >= 0.4)
-    return { label: 'Partial', colorClass: 'bg-[#FAEEDA] text-[#BA7517]' };
+  if (avgMastery > 0.7) return { label: 'Strong', colorClass: 'bg-[#EAF3DE] text-[#1D9E75]' };
+  if (avgMastery >= 0.4) return { label: 'Partial', colorClass: 'bg-[#FAEEDA] text-[#BA7517]' };
   return { label: 'Needs work', colorClass: 'bg-[#FCEBEB] text-[#E24B4A]' };
 }
 
@@ -254,24 +251,23 @@ function KnowledgeMapResults({
           <div className="w-12 h-12 rounded-xl bg-[#534AB7] flex items-center justify-center mx-auto mb-4 shadow-md shadow-[#534AB7]/30">
             <span className="text-white font-bold text-lg leading-none">S</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            Your knowledge map
-          </h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Your knowledge map</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Here&apos;s where you stand in {subjectName} -- no score, just your starting point.
           </p>
         </div>
 
         {/* Grade-level placement banner (AC-05) */}
-        {placement && (() => {
-          const banner = placementBanner(placement);
-          return (
-            <div className={`rounded-2xl px-4 py-3 ${banner.bg}`}>
-              <p className={`text-sm font-bold ${banner.text}`}>{banner.label}</p>
-              <p className={`text-xs mt-0.5 ${banner.subText}`}>{banner.sub}</p>
-            </div>
-          );
-        })()}
+        {placement &&
+          (() => {
+            const banner = placementBanner(placement);
+            return (
+              <div className={`rounded-2xl px-4 py-3 ${banner.bg}`}>
+                <p className={`text-sm font-bold ${banner.text}`}>{banner.label}</p>
+                <p className={`text-xs mt-0.5 ${banner.subText}`}>{banner.sub}</p>
+              </div>
+            );
+          })()}
 
         {/* Start here card */}
         {startHere && (
@@ -353,7 +349,7 @@ export default function DiagnosticFlow({
 
   // Convert initialAnswers (no timeSpentMs) to PartialAnswer
   const [answers, setAnswers] = useState<PartialAnswer[]>(() =>
-    initialAnswers.map((a) => ({ ...a, timeSpentMs: 0 })),
+    initialAnswers.map((a) => ({ ...a, timeSpentMs: 0 }))
   );
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -477,7 +473,7 @@ export default function DiagnosticFlow({
       updated.push({ questionId, selectedOption: option, timeSpentMs });
       return updated;
     },
-    [answers, currentIndex, questionList],
+    [answers, currentIndex, questionList]
   );
 
   async function savePartial(currentAnswers: PartialAnswer[]): Promise<void> {
@@ -628,7 +624,14 @@ export default function DiagnosticFlow({
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-slate-950 px-4">
         <div className="max-w-sm w-full text-center">
           <div className="w-16 h-16 rounded-2xl bg-[#FAEEDA] dark:bg-[#BA7517]/20 flex items-center justify-center mx-auto mb-5">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="2" className="w-8 h-8" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#BA7517"
+              strokeWidth="2"
+              className="w-8 h-8"
+              aria-hidden
+            >
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
@@ -657,7 +660,12 @@ export default function DiagnosticFlow({
   if (phase === 'results') {
     return (
       <div className="fixed inset-0 z-[100] overflow-y-auto bg-gray-50 dark:bg-slate-950">
-        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} placement={placement} pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames} />
+        <KnowledgeMapResults
+          subjectName={subjectName}
+          results={chapterResults}
+          placement={placement}
+          pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames}
+        />
       </div>
     );
   }
@@ -689,10 +697,8 @@ export default function DiagnosticFlow({
 
       {/* Full-screen overlay -- covers StudentNav */}
       <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-slate-950 overflow-y-auto">
-
         {/* ── Top bar ──────────────────────────────────────────────────────── */}
         <div className="sticky top-0 z-10 bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-slate-800 px-4 pt-safe-top">
-
           {/* Progress bar */}
           <div className="h-1 w-full bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mt-3">
             <div
@@ -705,18 +711,14 @@ export default function DiagnosticFlow({
             {/* Question counter */}
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400 shrink-0">
               Question{' '}
-              <span className="text-gray-900 dark:text-gray-100 font-bold">
-                {currentIndex + 1}
-              </span>{' '}
+              <span className="text-gray-900 dark:text-gray-100 font-bold">{currentIndex + 1}</span>{' '}
               of ~{isAdaptiveMode ? totalExpected : questionList.length}
             </p>
 
             {/* Timer */}
             <div
               className={`flex items-center gap-1.5 text-sm font-mono font-semibold shrink-0 transition-colors ${
-                isAmber
-                  ? 'text-[#BA7517]'
-                  : 'text-gray-700 dark:text-gray-300'
+                isAmber ? 'text-[#BA7517]' : 'text-gray-700 dark:text-gray-300'
               }`}
               aria-live="polite"
               aria-label={`Time remaining: ${formatTime(secondsLeft)}`}
@@ -742,7 +744,6 @@ export default function DiagnosticFlow({
 
         {/* ── Question card ─────────────────────────────────────────────────── */}
         <div className="flex-1 px-4 py-6 max-w-lg mx-auto w-full flex flex-col gap-5">
-
           {/* Subject + chapter badge */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/15 px-2.5 py-1 rounded-full">

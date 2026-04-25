@@ -9,10 +9,10 @@
  * - 2026-04-13T05:10:00Z | copilot | add sanity import test for parent change route
  */
 
-import * as route from '@/app/api/parent/subscription/change/route'
+import * as route from '@/app/api/parent/subscription/change/route';
 
 describe('parent subscription change route', () => {
   it('exports a POST handler', () => {
-    expect(typeof route.POST).toBe('function')
-  })
-})
+    expect(typeof route.POST).toBe('function');
+  });
+});

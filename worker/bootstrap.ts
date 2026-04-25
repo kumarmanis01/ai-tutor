@@ -23,41 +23,47 @@
  * - PM2 manages restarts
  */
 
-import { Worker, Job } from "bullmq";
-import minimist from "minimist";
-import os from "os";
+import { Worker, Job } from 'bullmq';
+import minimist from 'minimist';
+import os from 'os';
 
-import { redisConnection } from "../lib/redis.js";
-import { prisma } from "../lib/prisma.js";
-import { logger } from "../lib/logger.js";
-import { CONTENT_HYDRATION_QUEUE } from "../lib/queues/constants.js";
+import { redisConnection } from '../lib/redis.js';
+import { prisma } from '../lib/prisma.js';
+import { logger } from '../lib/logger.js';
+import { CONTENT_HYDRATION_QUEUE } from '../lib/queues/constants.js';
 
 // Phase 4: Use new worker service handlers (not deprecated hydrators)
-import { handleSyllabusJob } from "./index.js";
-import { handleNotesJob } from "./services/notesWorker.js";
-import { handleQuestionsJob } from "./services/questionsWorker.js";
-import { handleAssembleJob } from "./services/assembleWorker.js";
-import { processIRTUpdate } from "./services/irtWorker.js";
-import { processNightlySM18 } from "./services/sm18Worker.js";
-import { startOutboxDispatcher, stopOutboxDispatcher } from "./outboxDispatcher.js";
-import { IRT_UPDATE_QUEUE_NAME } from "../jobs/irtUpdate.js";
-import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.js";
-import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js";
-import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
-import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
-import { processWeeklyDigest, processParentDigest } from "./services/weeklyDigestWorker.js";
-import { SUBSCRIPTION_RENEWAL_QUEUE_NAME, registerSubscriptionRenewalJob } from "../jobs/subscriptionRenewal.js";
-import { processRenewals } from "./services/subscriptionRenewalWorker.js";
-import { PAYMENT_DUNNING_QUEUE_NAME, registerDailyDunningJob } from "../jobs/paymentDunning.js";
-import { INSTALLMENT_DUNNING_QUEUE_NAME, registerDailyInstallmentDunningJob } from "../jobs/installmentDunning.js";
-import { processPaymentDunning } from "./services/paymentDunningWorker.js";
-import { processInstallmentDunning } from "./services/installmentDunningWorker.js";
-import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
-import { processDistressNotification } from "./services/distressNotificationWorker.js";
-import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
-import { processReteachPlan } from "./services/reteachPlanWorker.js";
-import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from "../jobs/diagnosticAutoSubmit.js";
-import { processDiagnosticAutoSubmit } from "./services/diagnosticAutoSubmitWorker.js";
+import { handleSyllabusJob } from './index.js';
+import { handleNotesJob } from './services/notesWorker.js';
+import { handleQuestionsJob } from './services/questionsWorker.js';
+import { handleAssembleJob } from './services/assembleWorker.js';
+import { processIRTUpdate } from './services/irtWorker.js';
+import { processNightlySM18 } from './services/sm18Worker.js';
+import { startOutboxDispatcher, stopOutboxDispatcher } from './outboxDispatcher.js';
+import { IRT_UPDATE_QUEUE_NAME } from '../jobs/irtUpdate.js';
+import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from '../jobs/sm18.js';
+import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from '../jobs/diagnosticBootstrap.js';
+import { processDiagnosticBootstrap } from './services/diagnosticBootstrapWorker.js';
+import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from '../jobs/weeklyDigest.js';
+import { processWeeklyDigest, processParentDigest } from './services/weeklyDigestWorker.js';
+import {
+  SUBSCRIPTION_RENEWAL_QUEUE_NAME,
+  registerSubscriptionRenewalJob,
+} from '../jobs/subscriptionRenewal.js';
+import { processRenewals } from './services/subscriptionRenewalWorker.js';
+import { PAYMENT_DUNNING_QUEUE_NAME, registerDailyDunningJob } from '../jobs/paymentDunning.js';
+import {
+  INSTALLMENT_DUNNING_QUEUE_NAME,
+  registerDailyInstallmentDunningJob,
+} from '../jobs/installmentDunning.js';
+import { processPaymentDunning } from './services/paymentDunningWorker.js';
+import { processInstallmentDunning } from './services/installmentDunningWorker.js';
+import { DISTRESS_NOTIFICATION_QUEUE_NAME } from '../jobs/distressNotification.js';
+import { processDistressNotification } from './services/distressNotificationWorker.js';
+import { RETEACH_PLAN_QUEUE_NAME } from '../jobs/reteachPlan.js';
+import { processReteachPlan } from './services/reteachPlanWorker.js';
+import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from '../jobs/diagnosticAutoSubmit.js';
+import { processDiagnosticAutoSubmit } from './services/diagnosticAutoSubmitWorker.js';
 import { processAIRequest } from './services/aiRequestWorker.js';
 import { AI_REQUEST_QUEUE, ANALYTICS_INGEST_QUEUE } from '../lib/queues/constants.js';
 import { processAnalyticsIngest } from './services/analyticsIngestWorker.js';
@@ -65,23 +71,17 @@ import type { AnalyticsIngestPayload } from './services/analyticsIngestWorker.js
 
 const argv = minimist(process.argv.slice(2));
 
-const workerType: string =
-  argv.type || process.env.WORKER_TYPE || CONTENT_HYDRATION_QUEUE;
+const workerType: string = argv.type || process.env.WORKER_TYPE || CONTENT_HYDRATION_QUEUE;
 
-const lifecycleIdArg: string | undefined =
-  argv.lifecycleId || argv.lifecycleid || argv.lid;
+const lifecycleIdArg: string | undefined = argv.lifecycleId || argv.lifecycleid || argv.lid;
 
-const concurrency = Number(
-  argv.concurrency || process.env.WORKER_CONCURRENCY || 2
-);
+const concurrency = Number(argv.concurrency || process.env.WORKER_CONCURRENCY || 2);
 
 // If running in LLM safe mode, force a single concurrency to avoid parallel LLM calls
-const isSafeMode = String(process.env.LLM_SAFE_MODE || "").toLowerCase() === "true";
+const isSafeMode = String(process.env.LLM_SAFE_MODE || '').toLowerCase() === 'true';
 const effectiveConcurrency = isSafeMode ? 1 : concurrency;
 
-const heartbeatIntervalMs = Number(
-  process.env.WORKER_HEARTBEAT_MS || 10_000
-);
+const heartbeatIntervalMs = Number(process.env.WORKER_HEARTBEAT_MS || 10_000);
 
 /* ------------------------------------------------------------------ */
 
@@ -95,7 +95,7 @@ async function ensureLifecycleRow(providedId?: string) {
       data: {
         pid,
         host,
-        status: "STARTING",
+        status: 'STARTING',
         startedAt: new Date(),
         lastHeartbeatAt: new Date(),
       },
@@ -103,9 +103,7 @@ async function ensureLifecycleRow(providedId?: string) {
     return providedId;
   }
 
-  const id = `wk-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
+  const id = `wk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   await prisma.workerLifecycle.create({
     data: {
@@ -113,7 +111,7 @@ async function ensureLifecycleRow(providedId?: string) {
       type: workerType,
       host,
       pid,
-      status: "STARTING",
+      status: 'STARTING',
       startedAt: new Date(),
       lastHeartbeatAt: new Date(),
     },
@@ -130,33 +128,33 @@ async function processor(job: Job) {
   // Phase 4: All job types now use worker service handlers that expect jobId
   // This ensures LLM calls only happen in worker context, not hydrators
   switch (type) {
-    case "NOTES":
+    case 'NOTES':
       if (!payload?.jobId) {
-        throw new Error("NOTES job missing jobId");
+        throw new Error('NOTES job missing jobId');
       }
       return handleNotesJob(payload.jobId);
 
-    case "QUESTIONS":
+    case 'QUESTIONS':
       if (!payload?.jobId) {
-        throw new Error("QUESTIONS job missing jobId");
+        throw new Error('QUESTIONS job missing jobId');
       }
       return handleQuestionsJob(payload.jobId);
 
-    case "SYLLABUS":
+    case 'SYLLABUS':
       if (!payload?.jobId) {
-        throw new Error("SYLLABUS job missing jobId");
+        throw new Error('SYLLABUS job missing jobId');
       }
       return handleSyllabusJob(payload.jobId);
 
-    case "ASSEMBLE_TEST":
+    case 'ASSEMBLE_TEST':
       if (!payload?.jobId) {
-        throw new Error("ASSEMBLE_TEST job missing jobId");
+        throw new Error('ASSEMBLE_TEST job missing jobId');
       }
       return handleAssembleJob(payload.jobId);
 
-    case "PARENT_DIGEST":
+    case 'PARENT_DIGEST':
       if (!payload?.parentId) {
-        throw new Error("PARENT_DIGEST job missing parentId");
+        throw new Error('PARENT_DIGEST job missing parentId');
       }
       return processParentDigest(payload.parentId, payload.weekStart);
 
@@ -169,14 +167,14 @@ async function processor(job: Job) {
 
 export async function bootstrapWorker() {
   if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is required");
+    throw new Error('DATABASE_URL is required');
   }
   if (!process.env.REDIS_URL) {
-    throw new Error("REDIS_URL is required");
+    throw new Error('REDIS_URL is required');
   }
 
   // Explicitly allow LLM calls in worker runtime only
-  process.env.ALLOW_LLM_CALLS = "1";
+  process.env.ALLOW_LLM_CALLS = '1';
 
   const lifecycleId = await ensureLifecycleRow(lifecycleIdArg);
   if (process.env.WORKER_DEBUG === '1') {
@@ -192,23 +190,24 @@ export async function bootstrapWorker() {
     } catch (err) {
       logger.error('[worker][DEBUG] Redis ping failed', { error: String(err) });
     }
-    logger.debug(`[worker][DEBUG] starting worker: type=${workerType} concurrency=${effectiveConcurrency} lifecycleId=${lifecycleId} safeMode=${String(isSafeMode)}`);
+    logger.debug(
+      `[worker][DEBUG] starting worker: type=${workerType} concurrency=${effectiveConcurrency} lifecycleId=${lifecycleId} safeMode=${String(isSafeMode)}`
+    );
   } else {
-    logger.info(`[worker] starting worker: type=${workerType} concurrency=${effectiveConcurrency}${isSafeMode? ' (LLM_SAFE_MODE)' : ''}`);
+    logger.info(
+      `[worker] starting worker: type=${workerType} concurrency=${effectiveConcurrency}${isSafeMode ? ' (LLM_SAFE_MODE)' : ''}`
+    );
   }
 
-  const worker = new Worker(
-    workerType,
-    async (job: Job) => processor(job),
-    {
-      connection: redisConnection,
-      concurrency: effectiveConcurrency,
-    }
-  );
+  const worker = new Worker(workerType, async (job: Job) => processor(job), {
+    connection: redisConnection,
+    concurrency: effectiveConcurrency,
+  });
 
   const irtWorker = new Worker(
     IRT_UPDATE_QUEUE_NAME,
-    async (job: Job) => processIRTUpdate(job as Job<import("../jobs/irtUpdate.js").IRTUpdateJobData>),
+    async (job: Job) =>
+      processIRTUpdate(job as Job<import('../jobs/irtUpdate.js').IRTUpdateJobData>),
     {
       connection: redisConnection,
       concurrency: 2,
@@ -228,7 +227,7 @@ export async function bootstrapWorker() {
   const weeklyDigestWorker = new Worker(
     WEEKLY_DIGEST_QUEUE_NAME,
     async (_job: Job) => processWeeklyDigest(),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1 }
   );
   await registerWeeklyDigestJob();
   // Register daily payment dunning job
@@ -247,20 +246,19 @@ export async function bootstrapWorker() {
   const paymentDunningWorker = new Worker(
     PAYMENT_DUNNING_QUEUE_NAME,
     async (_job: Job) => processPaymentDunning(),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1 }
   );
 
   const installmentDunningWorker = new Worker(
     INSTALLMENT_DUNNING_QUEUE_NAME,
     async (job: Job) => processInstallmentDunning(job.data),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1 }
   );
-
 
   const subscriptionRenewalWorker = new Worker(
     SUBSCRIPTION_RENEWAL_QUEUE_NAME,
     async (_job: Job) => processRenewals(),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1 }
   );
   await registerSubscriptionRenewalJob();
 
@@ -275,27 +273,33 @@ export async function bootstrapWorker() {
 
   const distressNotificationWorker = new Worker(
     DISTRESS_NOTIFICATION_QUEUE_NAME,
-    async (job: Job) => processDistressNotification(job as Job<import("../jobs/distressNotification.js").DistressNotificationJobData>),
-    { connection: redisConnection, concurrency: 2 },
+    async (job: Job) =>
+      processDistressNotification(
+        job as Job<import('../jobs/distressNotification.js').DistressNotificationJobData>
+      ),
+    { connection: redisConnection, concurrency: 2 }
   );
 
   const reteachPlanWorker = new Worker(
     RETEACH_PLAN_QUEUE_NAME,
-    async (job: Job) => processReteachPlan(job as Job<import("../jobs/reteachPlan.js").ReteachPlanJobData>),
-    { connection: redisConnection, concurrency: 2 },
+    async (job: Job) =>
+      processReteachPlan(job as Job<import('../jobs/reteachPlan.js').ReteachPlanJobData>),
+    { connection: redisConnection, concurrency: 2 }
   );
 
   const diagnosticAutoSubmitWorker = new Worker(
     DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME,
-    async (job: Job) => processDiagnosticAutoSubmit(job as Job<import("../jobs/diagnosticAutoSubmit.js").DiagnosticAutoSubmitJobData>),
-    { connection: redisConnection, concurrency: 2 },
+    async (job: Job) =>
+      processDiagnosticAutoSubmit(
+        job as Job<import('../jobs/diagnosticAutoSubmit.js').DiagnosticAutoSubmitJobData>
+      ),
+    { connection: redisConnection, concurrency: 2 }
   );
 
-  const aiWorker = new Worker(
-    AI_REQUEST_QUEUE,
-    async (job: Job) => processAIRequest(job),
-    { connection: redisConnection, concurrency: Number(process.env.AI_WORKER_CONCURRENCY || 2) },
-  );
+  const aiWorker = new Worker(AI_REQUEST_QUEUE, async (job: Job) => processAIRequest(job), {
+    connection: redisConnection,
+    concurrency: Number(process.env.AI_WORKER_CONCURRENCY || 2),
+  });
 
   const analyticsIngestWorker = new Worker<AnalyticsIngestPayload>(
     ANALYTICS_INGEST_QUEUE,
@@ -305,7 +309,7 @@ export async function bootstrapWorker() {
       concurrency: Number(process.env.ANALYTICS_INGEST_BATCH_SIZE || 500),
       removeOnComplete: { count: 200 },
       removeOnFail: { count: 50 },
-    },
+    }
   );
 
   aiWorker.on('failed', (job, err) => {
@@ -317,10 +321,12 @@ export async function bootstrapWorker() {
   });
 
   // Debug events: active, stalled
-    if (process.env.WORKER_DEBUG === '1') {
+  if (process.env.WORKER_DEBUG === '1') {
     worker.on('active', (job) => {
       try {
-        logger.debug(`[worker][DEBUG] active job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
+        logger.debug(
+          `[worker][DEBUG] active job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`
+        );
       } catch (e) {
         logger.debug('[worker][DEBUG] active job (failed to stringify)', { error: String(e) });
       }
@@ -333,7 +339,7 @@ export async function bootstrapWorker() {
   await prisma.workerLifecycle.update({
     where: { id: lifecycleId },
     data: {
-      status: "RUNNING",
+      status: 'RUNNING',
       lastHeartbeatAt: new Date(),
     },
   });
@@ -344,32 +350,28 @@ export async function bootstrapWorker() {
 
   const heartbeat = setInterval(async () => {
     try {
-        await prisma.workerLifecycle.update({
-          where: { id: lifecycleId },
-          data: { lastHeartbeatAt: new Date() },
-        });
-      } catch (err) {
-        logger.error("[worker] heartbeat failed", { error: String(err) });
-      }
+      await prisma.workerLifecycle.update({
+        where: { id: lifecycleId },
+        data: { lastHeartbeatAt: new Date() },
+      });
+    } catch (err) {
+      logger.error('[worker] heartbeat failed', { error: String(err) });
+    }
   }, heartbeatIntervalMs);
 
   async function shutdown(drain = true) {
-    logger.info("[worker] shutdown requested; drain =", { drain })
+    logger.info('[worker] shutdown requested; drain =', { drain });
 
     try {
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },
-        data: { status: "DRAINING" },
+        data: { status: 'DRAINING' },
       });
 
       if (drain) {
         await worker.pause();
-        const timeout = Number(
-          process.env.WORKER_DRAIN_TIMEOUT_MS || 30_000
-        );
-        await new Promise((r) =>
-          setTimeout(r, Math.min(timeout, 5_000))
-        );
+        const timeout = Number(process.env.WORKER_DRAIN_TIMEOUT_MS || 30_000);
+        await new Promise((r) => setTimeout(r, Math.min(timeout, 5_000)));
       }
 
       clearInterval(heartbeat);
@@ -384,17 +386,17 @@ export async function bootstrapWorker() {
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },
-        data: { status: "STOPPED", stoppedAt: new Date() },
+        data: { status: 'STOPPED', stoppedAt: new Date() },
       });
 
       process.exit(0);
     } catch (err: any) {
-      logger.error("[worker] shutdown error", { error: String(err) });
+      logger.error('[worker] shutdown error', { error: String(err) });
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },
         data: {
-          status: "FAILED",
+          status: 'FAILED',
           stoppedAt: new Date(),
           meta: { error: String(err?.message || err) },
         },
@@ -404,15 +406,15 @@ export async function bootstrapWorker() {
     }
   }
 
-  process.on("SIGINT", () => shutdown(true));
-  process.on("SIGTERM", () => shutdown(true));
+  process.on('SIGINT', () => shutdown(true));
+  process.on('SIGTERM', () => shutdown(true));
 
-  worker.on("failed", (job, err) => {
-    logger.error("[WORKER FAILED]", { jobId: job?.id, message: err?.message })
+  worker.on('failed', (job, err) => {
+    logger.error('[WORKER FAILED]', { jobId: job?.id, message: err?.message });
   });
 
-  worker.on("completed", (job) => {
-    logger.info("[WORKER COMPLETED]", { jobId: job.id })
+  worker.on('completed', (job) => {
+    logger.info('[WORKER COMPLETED]', { jobId: job.id });
   });
 }
 

@@ -39,7 +39,7 @@ const FeatureGrid: React.FC = () => {
 
   const navigateToFeature = useCallback((key: string) => {
     let route = '/dashboard';
-    
+
     // Check for matching route
     for (const [routeKey, path] of Object.entries(featureRoutes)) {
       if (key.toLowerCase().includes(routeKey)) {
@@ -47,7 +47,7 @@ const FeatureGrid: React.FC = () => {
         break;
       }
     }
-    
+
     window.location.assign(route);
   }, []);
 
@@ -91,7 +91,9 @@ const FeatureGrid: React.FC = () => {
         >
           <div className="text-2xl lg:text-3xl mb-1 lg:mb-2">{getEmoji(t.key)}</div>
           <p className="text-xs lg:text-sm font-medium text-foreground truncate">{t.title}</p>
-          {t.count ? <p className="text-[10px] lg:text-xs text-muted-foreground">{t.count}</p> : null}
+          {t.count ? (
+            <p className="text-[10px] lg:text-xs text-muted-foreground">{t.count}</p>
+          ) : null}
         </button>
       ))}
     </div>

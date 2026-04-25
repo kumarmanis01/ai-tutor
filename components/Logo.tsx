@@ -11,7 +11,14 @@ export default function Logo({ variant, className }: LogoProps) {
   if (variant === 'navbar') {
     return (
       <div className={`flex items-center gap-2 ${className ?? ''}`}>
-        <Image src="/logos/icon-192.png" alt="" width={28} height={28} priority className="rounded-md" />
+        <Image
+          src="/logos/icon-192.png"
+          alt=""
+          width={28}
+          height={28}
+          priority
+          className="rounded-md"
+        />
         <span className="text-xl font-brand font-bold text-brand-orange leading-none">Spinzy</span>
       </div>
     );
@@ -20,8 +27,17 @@ export default function Logo({ variant, className }: LogoProps) {
   if (variant === 'navbar-mobile') {
     return (
       <div className={`flex items-center gap-1.5 ${className ?? ''}`}>
-        <Image src="/logos/icon-192.png" alt="" width={22} height={22} priority className="rounded-md" />
-        <span className="text-base font-brand font-bold text-brand-orange leading-none">Spinzy</span>
+        <Image
+          src="/logos/icon-192.png"
+          alt=""
+          width={22}
+          height={22}
+          priority
+          className="rounded-md"
+        />
+        <span className="text-base font-brand font-bold text-brand-orange leading-none">
+          Spinzy
+        </span>
       </div>
     );
   }
@@ -29,8 +45,17 @@ export default function Logo({ variant, className }: LogoProps) {
   if (variant === 'auth') {
     return (
       <div className={`flex flex-col items-center gap-2 ${className ?? ''}`}>
-        <Image src="/logos/icon-192.png" alt="" width={52} height={52} priority className="rounded-xl" />
-        <span className="text-2xl font-brand font-bold text-brand-orange" aria-label="Spinzy">Spinzy</span>
+        <Image
+          src="/logos/icon-192.png"
+          alt=""
+          width={52}
+          height={52}
+          priority
+          className="rounded-xl"
+        />
+        <span className="text-2xl font-brand font-bold text-brand-orange" aria-label="Spinzy">
+          Spinzy
+        </span>
       </div>
     );
   }

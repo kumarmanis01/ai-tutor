@@ -16,9 +16,9 @@
 
 // TODO (next phase): real behavioural tests - grade range validation, board case-insensitive, topic preview mapping.
 describe.skip('GET /api/v1/students/explore-content', () => {
-  it.todo('missing grade returns 400')
-  it.todo('non-numeric grade returns 400')
-  it.todo('grade out of range returns 400')
-  it.todo('happy path returns 3 topics')
-  it.todo('no matching topics returns empty array')
-})
+  it.todo('missing grade returns 400');
+  it.todo('non-numeric grade returns 400');
+  it.todo('grade out of range returns 400');
+  it.todo('happy path returns 3 topics');
+  it.todo('no matching topics returns empty array');
+});

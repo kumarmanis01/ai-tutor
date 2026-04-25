@@ -19,7 +19,7 @@
 
 image:
   repository: ghcr.io/kumarmanis01/ai-tutor-evaluator
-  tag: "ci-${{ GITHUB_SHA }}" # replace with a concrete tag or image digest
+  tag: 'ci-${{ GITHUB_SHA }}' # replace with a concrete tag or image digest
   pullPolicy: IfNotPresent
 
 secrets:
@@ -45,18 +45,18 @@ resources:
 env:
   # Placeholders populated from process env via `envsubst` or by exporting `.env`/`.env.local`.
   # Example: export $(cat .env .env.local 2>/dev/null | sed 's/#.*//g' | xargs)
-  DATABASE_URL: "${DATABASE_URL}"
+  DATABASE_URL: '${DATABASE_URL}'
   # REDIS: supports either `REDIS_URL` or Upstash's `UPSTASH_REDIS_REST_URL`.
-  REDIS_URL: "${REDIS_URL}"
-  UPSTASH_REDIS_REST_URL: "${UPSTASH_REDIS_REST_URL}"
-  OPS_EMAIL: "${OPS_EMAIL}"
-  SMTP_HOST: "${SMTP_HOST}"
-  SMTP_PORT: "${SMTP_PORT}"
-  SMTP_USER: "${SMTP_USER}"
-  SMTP_PASS: "${SMTP_PASS}"
-  EVALUATOR_DRY_RUN: "${EVALUATOR_DRY_RUN:-0}"
-  RUN_ONCE: "${RUN_ONCE:-0}"
-  PUSHGATEWAY_URL: "${PUSHGATEWAY_URL}"
+  REDIS_URL: '${REDIS_URL}'
+  UPSTASH_REDIS_REST_URL: '${UPSTASH_REDIS_REST_URL}'
+  OPS_EMAIL: '${OPS_EMAIL}'
+  SMTP_HOST: '${SMTP_HOST}'
+  SMTP_PORT: '${SMTP_PORT}'
+  SMTP_USER: '${SMTP_USER}'
+  SMTP_PASS: '${SMTP_PASS}'
+  EVALUATOR_DRY_RUN: '${EVALUATOR_DRY_RUN:-0}'
+  RUN_ONCE: '${RUN_ONCE:-0}'
+  PUSHGATEWAY_URL: '${PUSHGATEWAY_URL}'
 
 livenessProbe:
   httpGet:

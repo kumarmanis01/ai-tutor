@@ -17,4 +17,3 @@ export async function GET(req: NextRequest) {
   const summary = await getStudentRiskSummary({ board, grade });
   return NextResponse.json(summary);
 }
-

@@ -95,10 +95,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (action === 'reorder') {
       const targetItemId = typeof body.targetItemId === 'string' ? body.targetItemId.trim() : '';
       if (!targetItemId) {
-        return NextResponse.json({ error: 'targetItemId is required for reorder' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'targetItemId is required for reorder' },
+          { status: 400 }
+        );
       }
       if (targetItemId === itemId) {
-        return NextResponse.json({ error: 'targetItemId must differ from itemId' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'targetItemId must differ from itemId' },
+          { status: 400 }
+        );
       }
 
       const [srcItem, tgtItem] = await Promise.all([
@@ -115,7 +121,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: 'One or both items not found' }, { status: 404 });
       }
       if (srcItem.planId !== tgtItem.planId || srcItem.weekNumber !== tgtItem.weekNumber) {
-        return NextResponse.json({ error: 'Items must be in the same plan week to reorder' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Items must be in the same plan week to reorder' },
+          { status: 400 }
+        );
       }
 
       // Swap orderInWeek safely inside a transaction using a single-statement helper.
@@ -139,8 +148,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     // ── Status update (DEFERRED etc.) ─────────────────────────────────────────
     if (!status || !ALLOWED_STATUSES.includes(status as AllowedStatus)) {
       return NextResponse.json(
-        { error: `Provide action (${ALLOWED_ACTIONS.join(', ')}) or status (${ALLOWED_STATUSES.join(', ')})` },
-        { status: 400 },
+        {
+          error: `Provide action (${ALLOWED_ACTIONS.join(', ')}) or status (${ALLOWED_STATUSES.join(', ')})`,
+        },
+        { status: 400 }
       );
     }
 

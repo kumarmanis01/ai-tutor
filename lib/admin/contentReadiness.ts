@@ -1,4 +1,3 @@
-
 /**
  * FILE OBJECTIVE:
  * - Admin Content Readiness: HydrationJob status summary and list for admin dashboard.
@@ -72,7 +71,6 @@ export async function getReadinessList(opts: {
     where: where as object,
   });
 
-
   // Local row type for hydrationJob
   type HydrationJobRow = {
     id: string;
@@ -85,7 +83,7 @@ export async function getReadinessList(opts: {
     grade?: number;
     subjectId?: string;
   };
-  const jobs = await prisma.hydrationJob.findMany({
+  const jobs = (await prisma.hydrationJob.findMany({
     where: where as object,
     orderBy: { updatedAt: 'desc' },
     skip: offset,
@@ -101,10 +99,11 @@ export async function getReadinessList(opts: {
       grade: true,
       subjectId: true,
     },
-  }) as HydrationJobRow[];
+  })) as HydrationJobRow[];
 
-
-  const topicIds = [...new Set((jobs.map((j: HydrationJobRow) => j.topicId).filter(Boolean) as string[]))];
+  const topicIds = [
+    ...new Set(jobs.map((j: HydrationJobRow) => j.topicId).filter(Boolean) as string[]),
+  ];
   // Local row type for topicDef
   type TopicDefRow = {
     id: string;
@@ -118,7 +117,7 @@ export async function getReadinessList(opts: {
   };
   const topics =
     topicIds.length > 0
-      ? await prisma.topicDef.findMany({
+      ? ((await prisma.topicDef.findMany({
           where: { id: { in: topicIds } },
           select: {
             id: true,
@@ -132,7 +131,7 @@ export async function getReadinessList(opts: {
               },
             },
           },
-        }) as TopicDefRow[]
+        })) as TopicDefRow[])
       : [];
 
   interface TopicInfo {
@@ -170,13 +169,12 @@ export async function getReadinessList(opts: {
   return { items, total };
 }
 
-
 export async function getGenerationPaused(): Promise<boolean> {
   // Local row type for adminConfig
   type AdminConfigRow = { value?: string | null };
-  const row = await prisma.adminConfig.findUnique({
+  const row = (await prisma.adminConfig.findUnique({
     where: { key: 'content_generation_paused' },
-  }) as AdminConfigRow | null;
+  })) as AdminConfigRow | null;
   return row?.value === '1' || row?.value === 'true';
 }
 

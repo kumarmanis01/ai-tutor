@@ -98,7 +98,7 @@ export interface HomeworkResult {
 export async function generateHomework(
   studentId: string,
   topicId: string,
-  sessionId?: string,
+  sessionId?: string
 ): Promise<HomeworkResult> {
   // First attempt at gathering questions.
   let questions = await gatherQuestions(topicId);
@@ -191,28 +191,30 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   if (bankQuestions.length >= MIN_QUESTIONS) {
     return shuffle(bankQuestions)
       .slice(0, MAX_QUESTIONS)
-      .map((q): HomeworkQuestion => ({
-        id: q.id,
-        type: q.type,
-        prompt: q.prompt,
-        choices: q.choices,
-        correctAnswer: q.correctAnswer,
-        explanation: null,
-        difficulty: q.difficulty,
-      }));
+      .map(
+        (q): HomeworkQuestion => ({
+          id: q.id,
+          type: q.type,
+          prompt: q.prompt,
+          choices: q.choices,
+          correctAnswer: q.correctAnswer,
+          explanation: null,
+          difficulty: q.difficulty,
+        })
+      );
   }
 
   // ── Strategy 2: GeneratedQuestion via GeneratedTest (same topic) ─────────
   // Define local shapes for the generated test rows so callbacks are typed.
   type GenQuestionRow = {
-    id: string
-    type?: string | null
-    question: string
-    options?: unknown
-    answer?: unknown
-    explanation?: string | null
-  }
-  type GenTestRow = { questions: GenQuestionRow[] }
+    id: string;
+    type?: string | null;
+    question: string;
+    options?: unknown;
+    answer?: unknown;
+    explanation?: string | null;
+  };
+  type GenTestRow = { questions: GenQuestionRow[] };
 
   const genTests = (await prisma.generatedTest.findMany({
     where: { topicId, lifecycle: 'active' },
@@ -248,8 +250,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
       type: gq.type || 'mcq',
       prompt: gq.question,
       choices: gq.options,
-      correctAnswer:
-        typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer),
+      correctAnswer: typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer),
       explanation: gq.explanation ?? null,
       difficulty: null as string | null,
     })),
@@ -316,10 +317,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
           type: gq.type || 'mcq',
           prompt: gq.question,
           choices: gq.options,
-          correctAnswer:
-            typeof gq.answer === 'string'
-              ? gq.answer
-              : JSON.stringify(gq.answer),
+          correctAnswer: typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer),
           explanation: gq.explanation ?? null,
           difficulty: null as string | null,
         }));

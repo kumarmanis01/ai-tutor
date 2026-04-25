@@ -75,9 +75,9 @@ export async function GET() {
     });
 
     // Type definitions for Prisma results
-    type AuditLogItem = typeof rollbackLogs[number];
-    type ApprovalAuditItem = typeof approvalAudits[number];
-    
+    type AuditLogItem = (typeof rollbackLogs)[number];
+    type ApprovalAuditItem = (typeof approvalAudits)[number];
+
     // Combine and format
     const rollbacks = [
       ...rollbackLogs.map((log: AuditLogItem) => ({
@@ -86,12 +86,14 @@ export async function GET() {
         adminId: log.userId,
         adminEmail: log.user?.email,
         adminName: log.user?.name,
-        entityType: (log.details as Record<string, unknown>)?.entityType as string || 'content',
-        entityId: (log.details as Record<string, unknown>)?.noteId as string || 
-                  (log.details as Record<string, unknown>)?.testId as string || 
-                  (log.details as Record<string, unknown>)?.entityId as string,
-        comment: (log.details as Record<string, unknown>)?.reason as string || 
-                 (log.details as Record<string, unknown>)?.comment as string,
+        entityType: ((log.details as Record<string, unknown>)?.entityType as string) || 'content',
+        entityId:
+          ((log.details as Record<string, unknown>)?.noteId as string) ||
+          ((log.details as Record<string, unknown>)?.testId as string) ||
+          ((log.details as Record<string, unknown>)?.entityId as string),
+        comment:
+          ((log.details as Record<string, unknown>)?.reason as string) ||
+          ((log.details as Record<string, unknown>)?.comment as string),
         createdAt: log.createdAt,
         source: 'audit_log',
       })),

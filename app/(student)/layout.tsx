@@ -27,7 +27,11 @@ import BottomNav from '@/components/student/layout/BottomNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA } from '@/lib/student/profileGuard';
+import {
+  checkProfileCompleteness,
+  isProfileComplete,
+  EMPTY_PROFILE_DATA,
+} from '@/lib/student/profileGuard';
 import { checkParentGate } from '@/lib/student/parentGate';
 import { requiresParentOTPGate } from '@/lib/student/accountStatus';
 import StudentLayoutShell from '@/components/student/StudentLayoutShell';
@@ -38,8 +42,16 @@ import '@/styles/index.css';
 import type { Metadata, Viewport } from 'next';
 
 // Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
-const inter = localFont({ src: '../../public/fonts/inter-latin-variable.woff2', variable: '--font-inter', display: 'swap' });
-const nunito = localFont({ src: '../../public/fonts/nunito-variable-latin.woff2', variable: '--font-nunito', display: 'swap' });
+const inter = localFont({
+  src: '../../public/fonts/inter-latin-variable.woff2',
+  variable: '--font-inter',
+  display: 'swap',
+});
+const nunito = localFont({
+  src: '../../public/fonts/nunito-variable-latin.woff2',
+  variable: '--font-nunito',
+  display: 'swap',
+});
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -103,7 +115,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const skipOnboarding = pathname.startsWith('/student/onboarding');
 
   // Onboarding first, then parent verification: only run parent gate after profile is complete.
-  const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const, data: EMPTY_PROFILE_DATA };
+  const profile = userId
+    ? await checkProfileCompleteness(userId)
+    : { complete: false, missingFields: [] as const, data: EMPTY_PROFILE_DATA };
   const onboardingComplete = profile.complete;
 
   // Always read fresh from DB for the profile gate check.
@@ -151,11 +165,16 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   // Parse subjects from any Prisma return shape into string[] for the gate's initialValues.
   function parseSubjectsForGate(raw: unknown): string[] {
-    if (Array.isArray(raw)) return (raw as string[]).filter(Boolean)
+    if (Array.isArray(raw)) return (raw as string[]).filter(Boolean);
     if (typeof raw === 'string' && raw.length > 0) {
-      return raw.replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean)
+      return raw
+        .replace(/^\{/, '')
+        .replace(/\}$/, '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
-    return []
+    return [];
   }
 
   // Profile completion gate: shown as overlay when board/grade/language/subjects are missing.

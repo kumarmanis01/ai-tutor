@@ -17,15 +17,19 @@
  * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named const
  */
 
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 
-export async function sendTemplate(to: string, templateKey: string, params: Record<string, string | number | null>) {
+export async function sendTemplate(
+  to: string,
+  templateKey: string,
+  params: Record<string, string | number | null>
+) {
   // Mock implementation: log and resolve. Production implementation should
   // call provider API and handle rate-limiting, retries, templates, and errors.
-  logger.info('[whatsapp:provider] sendTemplate', { to, templateKey, params })
-  return { ok: true }
+  logger.info('[whatsapp:provider] sendTemplate', { to, templateKey, params });
+  return { ok: true };
 }
 
-const WhatsappProvider = { sendTemplate }
+const WhatsappProvider = { sendTemplate };
 
-export default WhatsappProvider
+export default WhatsappProvider;

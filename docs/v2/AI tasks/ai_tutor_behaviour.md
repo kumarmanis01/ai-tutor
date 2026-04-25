@@ -1,6 +1,9 @@
 # Spinzy — AI Tutor Behaviour & Pipeline Reference
+
 # Vidya: the AI tutor persona
+
 # Complete technical + behavioural specification for engineers, QA, and content team
+
 # Last updated: 2026-03-16
 
 ---
@@ -10,6 +13,7 @@
 **Name:** Vidya
 **Role:** AI home tutor for Indian students, Grades 6–12
 **Personality:** Warm, encouraging, never condescending. Tone calibrated by grade:
+
 - Grades 6–8: warm, encouraging elder sibling
 - Grades 9–10: peer collaborator, intellectually curious
 - Grades 11–12: focused mentor, respects student's intelligence
@@ -17,11 +21,13 @@
 **Language:** Accepts English, Hindi, and code-switched (Hinglish/Tanglish). Never penalises mixed-language input.
 
 **What Vidya is NOT:**
+
 - Not a search engine — does not answer direct questions with direct answers
 - Not a homework solver — never completes practice problems for students
 - Not a chatbot — every response serves a pedagogical purpose
 
 **Non-negotiable rule (enforced in every turn):**
+
 > Vidya never gives a direct answer to a practice problem. Ever.
 > If a student asks "What is the answer?", Vidya asks a guiding question back.
 > This is the core product differentiator. Violating it once destroys student trust.
@@ -83,6 +89,7 @@ Stage 7: CONSOLIDATION
 ```
 
 ### Stage transition rules
+
 - AI uses `[VALIDATE]` machine-readable tag to trigger exit criterion check
 - State machine only advances on exit criterion PASS
 - First fail: AI tries different approach within same stage
@@ -119,6 +126,7 @@ After all 3 hints exhausted + answer still wrong:
 ```
 
 **After 90 seconds of inactivity:**
+
 - AI shows pulsing prompt: "Still working on it? Want a hint?" with Yes/No
 - Yes → delivers Tier 1 hint (or next tier if some already used)
 - No → reschedules prompt, resets 90s timer
@@ -153,6 +161,7 @@ Step 3: Generic correction (when no library match)
 ```
 
 **Misconception persistence:**
+
 - Detected misconceptions written to student profile: concept_id, misconception_id, detected_at, resolved
 - Injected into all future session prompts for this concept cluster
 - If student demonstrates correction: misconception marked resolved
@@ -163,17 +172,17 @@ Step 3: Generic correction (when no library match)
 
 Vidya's LLM outputs include machine-readable tags. These are NEVER shown to students — stripped before display.
 
-| Tag | Meaning | State machine action |
-|-----|---------|---------------------|
-| `[QUESTION]` | AI is asking the student a question | Stay in current stage |
-| `[HINT_OFFER]` | AI is offering a hint | Stay in current stage |
-| `[VALIDATE]` | AI wants to check exit criterion | Trigger exit criterion evaluation |
-| `[STAGE_ADVANCE]` | Move to next stage | Transition to next stage |
-| `[PREREQ_FAIL]` | Exit criterion failed twice | Insert remediation sub-flow |
-| `[MASTERY_CONFIRMED]` | Stage can be compressed | Skip to next stage |
-| `[DOUBT_RESOLUTION]` | AI is resolving a doubt | Stay in current stage, resume after |
-| `[STRUGGLE_DETECTED]` | AI detects frustration | Reduce difficulty, offer options |
-| `[SESSION_COMPLETE]` | Consolidation finished | Trigger SessionCompletionScreen |
+| Tag                   | Meaning                             | State machine action                |
+| --------------------- | ----------------------------------- | ----------------------------------- |
+| `[QUESTION]`          | AI is asking the student a question | Stay in current stage               |
+| `[HINT_OFFER]`        | AI is offering a hint               | Stay in current stage               |
+| `[VALIDATE]`          | AI wants to check exit criterion    | Trigger exit criterion evaluation   |
+| `[STAGE_ADVANCE]`     | Move to next stage                  | Transition to next stage            |
+| `[PREREQ_FAIL]`       | Exit criterion failed twice         | Insert remediation sub-flow         |
+| `[MASTERY_CONFIRMED]` | Stage can be compressed             | Skip to next stage                  |
+| `[DOUBT_RESOLUTION]`  | AI is resolving a doubt             | Stay in current stage, resume after |
+| `[STRUGGLE_DETECTED]` | AI detects frustration              | Reduce difficulty, offer options    |
+| `[SESSION_COMPLETE]`  | Consolidation finished              | Trigger SessionCompletionScreen     |
 
 If no valid tag found: default to `[QUESTION]` (stay in current state).
 
@@ -274,6 +283,7 @@ Step 16: Stream response to client via SSE
 Per-student, per-concept mastery model using Bayesian probability — not binary pass/fail.
 
 **StudentConceptState fields:**
+
 ```
 masteryScore:   0.0–1.0 (Bayesian posterior mean)
 masteryVariance: uncertainty — narrows as more data is collected
@@ -286,6 +296,7 @@ lastInteraction: timestamp
 ```
 
 **Update pipeline (per answer event):**
+
 ```
 Student answer → IRT theta update (MAP estimation)
              → Mastery score recalculation (Bayesian update)
@@ -296,8 +307,9 @@ Student answer → IRT theta update (MAP estimation)
 ```
 
 **IRT question selection:**
-- Target difficulty: b* = student theta (creates ~50% success probability = zone of proximal development)
-- Questions selected from bank where |irt_b - b*| < 0.3
+
+- Target difficulty: b\* = student theta (creates ~50% success probability = zone of proximal development)
+- Questions selected from bank where |irt_b - b\*| < 0.3
 - Within band: select by maximum Fisher Information I(θ) = a² × P × (1-P) / (1-c×P)²
 
 ---
@@ -309,17 +321,20 @@ Student answer → IRT theta update (MAP estimation)
 **Revision triggers:** When R drops below 0.85 threshold → concept added to revision queue
 
 **On successful revision (score > 80%):**
+
 - S increases: S_new = S × retrievability_factor (SM-18 formula)
 - Next review scheduled based on new S
 - Stability improves = longer interval until next review
 
 **On failed revision (score ≤ 80%):**
+
 - S resets to initial value
 - Re-teach session inserted into LearningPlan within 24–48h (via BullMQ reteach-plan queue)
 
 **Daily cap:** Maximum 20 minutes of revision per day. Overflow rescheduled to next day. Prioritised by lowest retention R first.
 
 **Pre-exam mode (14 days before exam):**
+
 - Retention threshold raised to 0.92 (more aggressive scheduling)
 - Student notified of mode change
 
@@ -330,18 +345,21 @@ Student answer → IRT theta update (MAP estimation)
 **Curriculum chunks:** PDF → 500-token chunks with 50-token overlap → SHA-256 hash → pgvector storage
 
 **Per-turn retrieval:**
+
 - Input: conceptId + current session context
 - Query: pgvector cosine similarity search on CurriculumChunk table
 - Threshold: top 3–5 most relevant chunks
 - Chunks injected into RAG_CONTEXT prompt layer
 
 **Explanation cache:**
+
 - Key: `cache:exp:{conceptId}:{lang}:{modality}`
 - TTL: 7 days
 - Serves all students asking about the same concept/language/modality
 - Invalidated when: curriculum chunk updated, admin marks as incorrect, TTL expires
 
 **Doubt KB:**
+
 - On doubt intake: cosine similarity search at 0.92 threshold
 - Hit (0.92+): serve cached resolution
 - Near-duplicate (0.88–0.92): update timesServed, append to alternatePhrasings
@@ -352,6 +370,7 @@ Student answer → IRT theta update (MAP estimation)
 ## 10. SAFETY LAYER
 
 ### Input safety (runs BEFORE LLM call)
+
 ```
 PII redaction:
   Patterns: Indian mobile (10 digits starting 6–9), email (@), Aadhaar (12 digits)
@@ -374,6 +393,7 @@ Distress detection (ENABLE_DISTRESS_DETECTION=true only):
 ```
 
 ### Output safety (runs AFTER LLM response)
+
 ```
 NSFW/violent/adult content classifier
   Action: Reject response, generate safe replacement, log SafetyEvent
@@ -443,18 +463,19 @@ Layer 7 — QUESTION_CONTEXT (medium priority)
 
 ## 12. COST MODEL
 
-| Tier | Model | Use case | Approx cost/session |
-|------|-------|----------|-------------------|
-| Tier 1 | GPT-4o | Hook, explanation, worked example, complex doubts | ~60% of LLM spend |
-| Tier 2 | GPT-4o-mini | Practice feedback, hint delivery, simple Q&A | ~10% |
-| Tier 3 | GPT-4o-mini | Classification, analytics enrichment | ~30% |
-| Failover | claude-haiku-4-5 | Circuit breaker triggered | Only on outage |
+| Tier     | Model            | Use case                                          | Approx cost/session |
+| -------- | ---------------- | ------------------------------------------------- | ------------------- |
+| Tier 1   | GPT-4o           | Hook, explanation, worked example, complex doubts | ~60% of LLM spend   |
+| Tier 2   | GPT-4o-mini      | Practice feedback, hint delivery, simple Q&A      | ~10%                |
+| Tier 3   | GPT-4o-mini      | Classification, analytics enrichment              | ~30%                |
+| Failover | claude-haiku-4-5 | Circuit breaker triggered                         | Only on outage      |
 
 **Target:** $0.003 (USD) per session = ~₹0.25
 **Alert threshold:** > $0.003/session → cost report email
 **Anomaly threshold:** > 1.5× rolling 7-day average → anomaly alert
 
 **Cost reduction mechanisms:**
+
 - Explanation cache (TTL 7 days) — target >55% hit rate
 - Doubt KB (pgvector dedup) — prevents repeat LLM calls for same doubts
 - OpenAI prefix caching — fixed prompt layers cached automatically, ~40% input token reduction

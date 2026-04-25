@@ -48,8 +48,8 @@ spec:
           labels:
             severity: page
           annotations:
-            summary: "Spike in parent notification failures"
-            description: "{{ $value }} failures in the last 5m across types. Check mailer / SMS provider and app logs."
+            summary: 'Spike in parent notification failures'
+            description: '{{ $value }} failures in the last 5m across types. Check mailer / SMS provider and app logs.'
 
         - alert: NotificationSuppressionSetFailures
           expr: increase(notification_suppression_set_failures_total[5m]) > 0
@@ -57,8 +57,8 @@ spec:
           labels:
             severity: warning
           annotations:
-            summary: "Suppression key set failures"
-            description: "Failure(s) setting notification suppression keys observed in the last 5m. This can cause duplicate sends or missed suppression windows."
+            summary: 'Suppression key set failures'
+            description: 'Failure(s) setting notification suppression keys observed in the last 5m. This can cause duplicate sends or missed suppression windows.'
 
         - alert: NotificationSuppressionDeleteFailures
           expr: increase(notification_suppression_delete_failures_total[5m]) > 0
@@ -66,8 +66,8 @@ spec:
           labels:
             severity: warning
           annotations:
-            summary: "Suppression key delete failures"
-            description: "Failures deleting suppression keys when students became active. Investigate Redis errors and app logs."
+            summary: 'Suppression key delete failures'
+            description: 'Failures deleting suppression keys when students became active. Investigate Redis errors and app logs.'
 
         - alert: RedisClientErrors
           expr: increase(redis_client_errors_total[5m]) > 3
@@ -75,8 +75,8 @@ spec:
           labels:
             severity: page
           annotations:
-            summary: "Redis client error spike"
-            description: "Multiple Redis client errors observed in the last 5m. Check Redis connectivity, auth, and provider status."
+            summary: 'Redis client error spike'
+            description: 'Multiple Redis client errors observed in the last 5m. Check Redis connectivity, auth, and provider status.'
 
         - alert: NotificationsFailedHighRatePerMinute
           expr: increase(notifications_failed_total[1m]) > 3
@@ -84,8 +84,8 @@ spec:
           labels:
             severity: page
           annotations:
-            summary: "High rate of notification failures (1m)"
-            description: "Rapid notification failure rate—investigate mailer/SMS provider, network, or outgoing queue."
+            summary: 'High rate of notification failures (1m)'
+            description: 'Rapid notification failure rate—investigate mailer/SMS provider, network, or outgoing queue.'
 ```
 
 Suggested runbook steps (brief)

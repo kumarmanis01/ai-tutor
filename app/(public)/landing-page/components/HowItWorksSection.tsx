@@ -138,7 +138,7 @@ const HowItWorksSection = () => {
           observer.disconnect();
         }
       },
-      { threshold: 0.15 },
+      { threshold: 0.15 }
     );
 
     const el = sectionRef.current;
@@ -267,4 +267,3 @@ const HowItWorksSection = () => {
 };
 
 export default HowItWorksSection;
-

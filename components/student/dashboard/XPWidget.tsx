@@ -1,6 +1,11 @@
-'use client'
+'use client';
 
-import { getProgressPercent, getXPToNextLevel, LEVEL_THRESHOLDS, getLevelTierName } from '@/lib/student/xpLevels'
+import {
+  getProgressPercent,
+  getXPToNextLevel,
+  LEVEL_THRESHOLDS,
+  getLevelTierName,
+} from '@/lib/student/xpLevels';
 
 /** Human-readable labels for XP source keys stored in StudentXP.source. */
 const XP_SOURCE_LABELS: Record<string, string> = {
@@ -10,16 +15,16 @@ const XP_SOURCE_LABELS: Record<string, string> = {
   badge: 'Badge earned',
   session_complete: 'Session completion',
   first_attempt: 'First-attempt bonus',
-}
+};
 
 export interface XPWidgetProps {
-  totalXp?: number
-  level?: number
-  xpThisWeek?: number
+  totalXp?: number;
+  level?: number;
+  xpThisWeek?: number;
   /** F-STU-031 AC-01: XP earned this week broken down by source. */
-  xpBySource?: Record<string, number>
-  loading?: boolean
-  error?: boolean
+  xpBySource?: Record<string, number>;
+  loading?: boolean;
+  error?: boolean;
 }
 
 function XPWidgetSkeleton() {
@@ -32,7 +37,7 @@ function XPWidgetSkeleton() {
       <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full mb-2 animate-pulse" />
       <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
     </div>
-  )
+  );
 }
 
 export function XPWidget({
@@ -43,7 +48,7 @@ export function XPWidget({
   loading = false,
   error = false,
 }: XPWidgetProps) {
-  if (loading) return <XPWidgetSkeleton />
+  if (loading) return <XPWidgetSkeleton />;
 
   if (error) {
     return (
@@ -52,16 +57,17 @@ export function XPWidget({
           <p className="text-sm text-gray-500 dark:text-gray-400">Couldn&apos;t load XP</p>
         </div>
       </section>
-    )
+    );
   }
 
-  const currentThreshold = (LEVEL_THRESHOLDS[level - 1] ?? 0) as number
-  const nextThreshold = (LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1]) as number
-  const xpInBand = totalXp - currentThreshold
-  const bandSize = Math.max(1, nextThreshold - currentThreshold)
-  const remaining = getXPToNextLevel(totalXp) ?? 0
-  const progressPct = getProgressPercent(totalXp)
-  const tierName = getLevelTierName(level)
+  const currentThreshold = (LEVEL_THRESHOLDS[level - 1] ?? 0) as number;
+  const nextThreshold = (LEVEL_THRESHOLDS[level] ??
+    LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1]) as number;
+  const xpInBand = totalXp - currentThreshold;
+  const bandSize = Math.max(1, nextThreshold - currentThreshold);
+  const remaining = getXPToNextLevel(totalXp) ?? 0;
+  const progressPct = getProgressPercent(totalXp);
+  const tierName = getLevelTierName(level);
 
   return (
     <section aria-label="XP progress" className="w-full max-w-full">
@@ -72,14 +78,17 @@ export function XPWidget({
             Level {level} · {tierName}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            XP this week: <span className="font-semibold text-gray-700 dark:text-gray-200">{xpThisWeek}</span>
+            XP this week:{' '}
+            <span className="font-semibold text-gray-700 dark:text-gray-200">{xpThisWeek}</span>
           </span>
         </div>
 
         {/* Progress bar */}
         <div className="mb-2">
           <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-            <span>{xpInBand} / {bandSize} XP</span>
+            <span>
+              {xpInBand} / {bandSize} XP
+            </span>
             <span>{progressPct}%</span>
           </div>
           <div
@@ -128,7 +137,7 @@ export function XPWidget({
         )}
       </div>
     </section>
-  )
+  );
 }
 
-export default XPWidget
+export default XPWidget;

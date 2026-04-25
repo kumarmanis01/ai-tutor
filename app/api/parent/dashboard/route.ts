@@ -101,7 +101,9 @@ const CACHE_TTL_SECONDS = 60;
 
 function mondayUtcWeeksAgo(weeks: number): Date {
   const now = new Date();
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  const d = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)
+  );
   const day = d.getUTCDay(); // 0..6 (Sun..Sat)
   const diffToMonday = day === 0 ? 6 : day - 1;
   d.setUTCDate(d.getUTCDate() - diffToMonday);
@@ -133,7 +135,12 @@ export async function GET(req: NextRequest) {
       if (cached) {
         const parsed = JSON.parse(cached) as ParentDashboardResponse;
         const response = NextResponse.json(parsed);
-        logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME, cache: 'hit' }, start);
+        logger.logAPI(
+          req,
+          response,
+          { className: CLASS_NAME, methodName: METHOD_NAME, cache: 'hit' },
+          start
+        );
         return response;
       }
     } catch {
@@ -235,7 +242,8 @@ export async function GET(req: NextRequest) {
     const subjectByStudent = new Map<string, SubjectSummary[]>();
     for (const row of subjectRows) {
       const arr = subjectByStudent.get(row.studentId) ?? [];
-      const coveragePercent = row.totalTopics > 0 ? Math.round((row.topicsCovered / row.totalTopics) * 100) : 0;
+      const coveragePercent =
+        row.totalTopics > 0 ? Math.round((row.topicsCovered / row.totalTopics) * 100) : 0;
       arr.push({
         subject: row.subject,
         totalTopics: row.totalTopics,
@@ -270,7 +278,10 @@ export async function GET(req: NextRequest) {
       const count = (row as any)?._count?.id ?? 0;
       arr.push({ subject: row.subject, count });
       attentionByStudent.set(row.studentId, arr);
-      attentionTotalByStudent.set(row.studentId, (attentionTotalByStudent.get(row.studentId) ?? 0) + count);
+      attentionTotalByStudent.set(
+        row.studentId,
+        (attentionTotalByStudent.get(row.studentId) ?? 0) + count
+      );
     }
 
     const masteryByStudent = new Map<string, MasteryDistribution[]>();
@@ -283,7 +294,10 @@ export async function GET(req: NextRequest) {
 
     const lastActiveByStudent = new Map<string, string | null>();
     for (const row of lastActiveRows) {
-      lastActiveByStudent.set(row.studentId, row._max.startedAt ? row._max.startedAt.toISOString() : null);
+      lastActiveByStudent.set(
+        row.studentId,
+        row._max.startedAt ? row._max.startedAt.toISOString() : null
+      );
     }
 
     const students: StudentDashboard[] = parentRelations.map((rel) => {
@@ -291,7 +305,9 @@ export async function GET(req: NextRequest) {
       const weekly = weeklyByStudent.get(s.id) ?? [];
       const subjectProgress = subjectByStudent.get(s.id) ?? [];
       const readiness = readinessByStudent.get(s.id) ?? [];
-      const attentionBySubject = (attentionByStudent.get(s.id) ?? []).sort((a, b) => b.count - a.count);
+      const attentionBySubject = (attentionByStudent.get(s.id) ?? []).sort(
+        (a, b) => b.count - a.count
+      );
       const masteryDistribution = masteryByStudent.get(s.id) ?? [];
 
       // F-PAR-010 AC-05: include both timezone strings when parent and student are in different zones
@@ -341,7 +357,12 @@ export async function GET(req: NextRequest) {
     }
 
     const jsonResponse = NextResponse.json(payload);
-    logger.logAPI(req, jsonResponse, { className: CLASS_NAME, methodName: METHOD_NAME, cache: 'miss' }, start);
+    logger.logAPI(
+      req,
+      jsonResponse,
+      { className: CLASS_NAME, methodName: METHOD_NAME, cache: 'miss' },
+      start
+    );
     return jsonResponse;
   } catch (error) {
     logger.error('Failed to fetch parent dashboard', {

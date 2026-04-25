@@ -1,7 +1,7 @@
-import { Queue } from "bullmq";
-import { getSharedConnection } from "../lib/redis.js";
+import { Queue } from 'bullmq';
+import { getSharedConnection } from '../lib/redis.js';
 
-export const CONTENT_QUEUE = "content-engine";
+export const CONTENT_QUEUE = 'content-engine';
 
 /**
  * Create and return a Queue configured for content processing.
@@ -13,7 +13,7 @@ export const CONTENT_QUEUE = "content-engine";
  */
 export function createContentQueue() {
   if (!process.env.REDIS_URL) {
-    throw new Error("REDIS_URL is not set");
+    throw new Error('REDIS_URL is not set');
   }
 
   return new Queue(CONTENT_QUEUE, {
@@ -21,7 +21,7 @@ export function createContentQueue() {
     defaultJobOptions: {
       attempts: 3,
       backoff: {
-        type: "exponential",
+        type: 'exponential',
         delay: 5000,
       },
       removeOnComplete: 100,

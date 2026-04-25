@@ -46,9 +46,17 @@ export interface UseTopicProgressResult {
   /** Refetch progress data */
   refetch: () => Promise<void>;
   /** Record a topic view */
-  recordView: (topicId: string, subject?: string, chapter?: string) => Promise<TopicProgress | null>;
+  recordView: (
+    topicId: string,
+    subject?: string,
+    chapter?: string
+  ) => Promise<TopicProgress | null>;
   /** Mark a topic as completed */
-  markComplete: (topicId: string, subject?: string, chapter?: string) => Promise<TopicProgress | null>;
+  markComplete: (
+    topicId: string,
+    subject?: string,
+    chapter?: string
+  ) => Promise<TopicProgress | null>;
   /** Check if a specific topic is completed */
   isTopicCompleted: (topicId: string) => boolean;
   /** Check if a specific topic has been started */
@@ -63,7 +71,7 @@ export interface UseTopicProgressResult {
  */
 export function useTopicProgress(options: UseTopicProgressOptions = {}): UseTopicProgressResult {
   const { subject, chapter, topicId, autoFetch = true } = options;
-  
+
   const [progress, setProgress] = useState<TopicProgress[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,16 +79,16 @@ export function useTopicProgress(options: UseTopicProgressOptions = {}): UseTopi
   const fetchProgress = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const params = new URLSearchParams();
       if (subject) params.set('subject', subject);
       if (chapter) params.set('chapter', chapter);
       if (topicId) params.set('topicId', topicId);
-      
+
       const url = `/api/progress${params.toString() ? `?${params.toString()}` : ''}`;
       const res = await fetch(url);
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           // User not authenticated, return empty progress
@@ -89,7 +97,7 @@ export function useTopicProgress(options: UseTopicProgressOptions = {}): UseTopi
         }
         throw new Error('Failed to fetch progress');
       }
-      
+
       const data = await res.json();
       setProgress(data.progress ?? []);
     } catch (err) {
@@ -106,101 +114,116 @@ export function useTopicProgress(options: UseTopicProgressOptions = {}): UseTopi
     }
   }, [autoFetch, fetchProgress]);
 
-  const recordView = useCallback(async (
-    viewTopicId: string,
-    viewSubject?: string,
-    viewChapter?: string
-  ): Promise<TopicProgress | null> => {
-    try {
-      const res = await fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicId: viewTopicId,
-          subject: viewSubject,
-          chapter: viewChapter,
-          action: 'view',
-        }),
-      });
-      
-      if (!res.ok) return null;
-      
-      const data = await res.json();
-      const mastery = data.mastery as TopicProgress | undefined;
-      
-      if (mastery) {
-        // Update local state
-        setProgress((prev) => {
-          const existing = prev.findIndex((p) => p.topicId === viewTopicId);
-          if (existing >= 0) {
-            const updated = [...prev];
-            updated[existing] = mastery;
-            return updated;
-          }
-          return [...prev, mastery];
+  const recordView = useCallback(
+    async (
+      viewTopicId: string,
+      viewSubject?: string,
+      viewChapter?: string
+    ): Promise<TopicProgress | null> => {
+      try {
+        const res = await fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: viewTopicId,
+            subject: viewSubject,
+            chapter: viewChapter,
+            action: 'view',
+          }),
         });
-      }
-      
-      return mastery ?? null;
-    } catch {
-      return null;
-    }
-  }, []);
 
-  const markComplete = useCallback(async (
-    completeTopicId: string,
-    completeSubject?: string,
-    completeChapter?: string
-  ): Promise<TopicProgress | null> => {
-    try {
-      const res = await fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicId: completeTopicId,
-          subject: completeSubject,
-          chapter: completeChapter,
-          action: 'complete',
-        }),
-      });
-      
-      if (!res.ok) return null;
-      
-      const data = await res.json();
-      const mastery = data.mastery as TopicProgress | undefined;
-      
-      if (mastery) {
-        // Update local state
-        setProgress((prev) => {
-          const existing = prev.findIndex((p) => p.topicId === completeTopicId);
-          if (existing >= 0) {
-            const updated = [...prev];
-            updated[existing] = mastery;
-            return updated;
-          }
-          return [...prev, mastery];
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        const mastery = data.mastery as TopicProgress | undefined;
+
+        if (mastery) {
+          // Update local state
+          setProgress((prev) => {
+            const existing = prev.findIndex((p) => p.topicId === viewTopicId);
+            if (existing >= 0) {
+              const updated = [...prev];
+              updated[existing] = mastery;
+              return updated;
+            }
+            return [...prev, mastery];
+          });
+        }
+
+        return mastery ?? null;
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
+
+  const markComplete = useCallback(
+    async (
+      completeTopicId: string,
+      completeSubject?: string,
+      completeChapter?: string
+    ): Promise<TopicProgress | null> => {
+      try {
+        const res = await fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: completeTopicId,
+            subject: completeSubject,
+            chapter: completeChapter,
+            action: 'complete',
+          }),
         });
+
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        const mastery = data.mastery as TopicProgress | undefined;
+
+        if (mastery) {
+          // Update local state
+          setProgress((prev) => {
+            const existing = prev.findIndex((p) => p.topicId === completeTopicId);
+            if (existing >= 0) {
+              const updated = [...prev];
+              updated[existing] = mastery;
+              return updated;
+            }
+            return [...prev, mastery];
+          });
+        }
+
+        return mastery ?? null;
+      } catch {
+        return null;
       }
-      
-      return mastery ?? null;
-    } catch {
-      return null;
-    }
-  }, []);
+    },
+    []
+  );
 
-  const isTopicCompleted = useCallback((checkTopicId: string): boolean => {
-    const p = progress.find((item) => item.topicId === checkTopicId);
-    return p?.isCompleted ?? false;
-  }, [progress]);
+  const isTopicCompleted = useCallback(
+    (checkTopicId: string): boolean => {
+      const p = progress.find((item) => item.topicId === checkTopicId);
+      return p?.isCompleted ?? false;
+    },
+    [progress]
+  );
 
-  const isTopicStarted = useCallback((checkTopicId: string): boolean => {
-    const p = progress.find((item) => item.topicId === checkTopicId);
-    return p?.isStarted ?? false;
-  }, [progress]);
+  const isTopicStarted = useCallback(
+    (checkTopicId: string): boolean => {
+      const p = progress.find((item) => item.topicId === checkTopicId);
+      return p?.isStarted ?? false;
+    },
+    [progress]
+  );
 
-  const getTopicProgress = useCallback((checkTopicId: string): TopicProgress | undefined => {
-    return progress.find((item) => item.topicId === checkTopicId);
-  }, [progress]);
+  const getTopicProgress = useCallback(
+    (checkTopicId: string): TopicProgress | undefined => {
+      return progress.find((item) => item.topicId === checkTopicId);
+    },
+    [progress]
+  );
 
   return {
     progress,

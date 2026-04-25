@@ -18,7 +18,8 @@ import ParentDashboardClient from './ParentDashboardClient';
 
 export const metadata: Metadata = {
   title: 'Parent Dashboard | Spinzy Academy',
-  description: 'Monitor your child\'s learning progress, test scores, and activity on Spinzy Academy.',
+  description:
+    "Monitor your child's learning progress, test scores, and activity on Spinzy Academy.",
 };
 
 export default function ParentDashboardPage() {

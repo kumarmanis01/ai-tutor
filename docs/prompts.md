@@ -1,6 +1,7 @@
 # Spinzy Academy — Reusable Prompt Templates
 
 ## HOW TO USE
+
 Copy the template, fill [PLACEHOLDERS], paste into Claude Code or Chat.
 Always include the CONTEXT BLOCK at the top of new chats.
 

@@ -24,7 +24,6 @@ import Logo from '@/components/Logo';
 import { normalizeToCode } from '@/components/LanguageSelector';
 import { logger } from '@/lib/logger';
 
-
 interface NavigationItem {
   id: string;
   labelEn: string;
@@ -83,7 +82,10 @@ const CODE_TO_PLAIN: Record<string, string> = {
   es: 'Spanish',
 };
 
-const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }: StickyHeaderProps) => {
+const StickyHeader = ({
+  activeSection = '',
+  onSectionChange: _onSectionChange,
+}: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -101,14 +103,15 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
 
   // Initialize language state from canonical code stored in localStorage.
   useEffect(() => {
-        try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('ai-tutor:preferredLang') : null;
+    try {
+      const stored =
+        typeof window !== 'undefined' ? localStorage.getItem('ai-tutor:preferredLang') : null;
       if (stored) {
         const s = String(stored).trim();
         const low = s.toLowerCase();
         // handle direct codes and 'auto'
         if (low === 'auto') {
-          const browser = typeof navigator !== 'undefined' ? (navigator.language || 'en') : 'en';
+          const browser = typeof navigator !== 'undefined' ? navigator.language || 'en' : 'en';
           const base = String(browser).split('-')[0].toLowerCase();
           setLang(CODE_TO_PLAIN[base] ?? 'English');
           return;
@@ -137,7 +140,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
         const t = (navigator.language || '').toLowerCase();
         if (t.startsWith('hi')) setLang('Hindi');
       }
-        } catch (err) {
+    } catch (err) {
       logger?.warn?.('StickyHeader: failed to read preferred language', { error: err });
     }
   }, []);
@@ -159,8 +162,12 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             >
-              <span className="hidden sm:flex"><Logo variant="navbar" /></span>
-              <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
+              <span className="hidden sm:flex">
+                <Logo variant="navbar" />
+              </span>
+              <span className="flex sm:hidden">
+                <Logo variant="navbar-mobile" />
+              </span>
             </Link>
 
             {/* Desktop navigation */}
@@ -222,13 +229,31 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
               >
                 {mobileMenuOpen ? (
                   /* X icon */
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 ) : (
                   /* Hamburger icon */
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
                   </svg>
                 )}
               </button>
@@ -255,7 +280,6 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
           </div>
         )}
       </header>
-
     </>
   );
 };

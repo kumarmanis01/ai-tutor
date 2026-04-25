@@ -16,15 +16,15 @@
 
 // TODO (next phase): real behavioural tests - stable token, terminal status guard, cooldown, contact validation.
 describe.skip('POST /api/v1/consent/resend', () => {
-  it.todo('invalid JSON returns 400')
-  it.todo('missing token returns 400')
-  it.todo('unknown token returns 404')
-  it.todo('APPROVED status returns 409 terminal_status')
-  it.todo('DENIED status returns 409')
-  it.todo('within cooldown returns 429')
-  it.todo('returns same token (stable token design)')
-  it.todo('no new ConsentRequest created on resend')
-  it.todo('passes student details to sendConsentRequest')
-  it.todo('best-effort: WA failure still returns 200')
-  it.todo('invalid new_contact phone returns 400')
-})
+  it.todo('invalid JSON returns 400');
+  it.todo('missing token returns 400');
+  it.todo('unknown token returns 404');
+  it.todo('APPROVED status returns 409 terminal_status');
+  it.todo('DENIED status returns 409');
+  it.todo('within cooldown returns 429');
+  it.todo('returns same token (stable token design)');
+  it.todo('no new ConsentRequest created on resend');
+  it.todo('passes student details to sendConsentRequest');
+  it.todo('best-effort: WA failure still returns 200');
+  it.todo('invalid new_contact phone returns 400');
+});

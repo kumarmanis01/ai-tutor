@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
 
 export type FeatureTile = { key: string; title: string; enabled: boolean; count?: number };
@@ -18,7 +18,9 @@ export function useFeatureGrid() {
     }
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
 
   return { tiles, loading, refresh };
 }

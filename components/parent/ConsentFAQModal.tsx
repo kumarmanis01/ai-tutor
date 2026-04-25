@@ -15,12 +15,12 @@
  * - 2026-04-24T00:00:00Z | staff-engineer | created per P1.2-P AC
  */
 
-'use client'
+'use client';
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react';
 
 interface ConsentFAQModalProps {
-  onClose: () => void
+  onClose: () => void;
 }
 
 const FAQS = [
@@ -30,35 +30,61 @@ const FAQS = [
   },
   {
     q: 'Can I withdraw my consent later?',
-    a: "Yes. Go to Parent Settings at any time and click \"Revoke Consent\". Your child's account will be paused and we will stop processing their data within 24 hours.",
+    a: 'Yes. Go to Parent Settings at any time and click "Revoke Consent". Your child\'s account will be paused and we will stop processing their data within 24 hours.',
   },
   {
-    q: 'Is my child\'s data shared with schools or advertisers?',
-    a: 'No. We do not share data with schools, advertisers, or any third party for commercial purposes. Data is processed only to personalise your child\'s learning.',
+    q: "Is my child's data shared with schools or advertisers?",
+    a: "No. We do not share data with schools, advertisers, or any third party for commercial purposes. Data is processed only to personalise your child's learning.",
   },
   {
-    q: 'Who can see my child\'s progress?',
+    q: "Who can see my child's progress?",
     a: "Only you (as the linked parent) and Spinzy's internal support team (when resolving issues) can view your child's progress. Your child cannot see their own raw scores.",
   },
   {
     q: 'What if I have more questions?',
     a: 'Email us at hello@spinzyacademy.com. We typically respond within one business day.',
   },
-]
+];
 
 export default function ConsentFAQModal({ onClose }: ConsentFAQModalProps) {
-  const firstButtonRef = useRef<HTMLButtonElement>(null)
+  const firstButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Trap focus and close on Escape
+  // Trap focus within the modal and close on Escape
   useEffect(() => {
-    firstButtonRef.current?.focus()
+    const panel = document.getElementById('consent-faq-panel');
+    const focusableSelector =
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const first = firstButtonRef.current;
+    first?.focus();
 
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !panel) return;
+      const nodes = Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (n) => !n.hasAttribute('disabled')
+      );
+      if (nodes.length === 0) return;
+      const idx = nodes.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey) {
+        // Shift+Tab
+        if (idx === 0) {
+          e.preventDefault();
+          nodes[nodes.length - 1].focus();
+        }
+      } else {
+        // Tab
+        if (idx === nodes.length - 1) {
+          e.preventDefault();
+          nodes[0].focus();
+        }
+      }
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   return (
     <div
@@ -68,14 +94,13 @@ export default function ConsentFAQModal({ onClose }: ConsentFAQModalProps) {
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
     >
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        aria-hidden="true"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50" aria-hidden="true" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl">
+      <div
+        id="consent-faq-panel"
+        className="relative bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl"
+      >
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Privacy FAQ</h2>
           <button
@@ -119,5 +144,5 @@ export default function ConsentFAQModal({ onClose }: ConsentFAQModalProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

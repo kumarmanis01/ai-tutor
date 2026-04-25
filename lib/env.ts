@@ -7,7 +7,7 @@
  */
 export function loadEnv() {
   // Do not load .env in production - rely on process.env injected by PM2/Docker.
-  if (process.env.NODE_ENV === 'production') return
+  if (process.env.NODE_ENV === 'production') return;
   // Dynamically require dotenv in non-production environments without
   // emitting the literal "dotenv" token into compiled artifacts. Using
   // `eval('require')` prevents TypeScript or bundlers from statically
@@ -19,12 +19,12 @@ export function loadEnv() {
     if (pkg && typeof (pkg as any).config === 'function') {
       try {
         // Prefer .env when present for local development
-        const p = req('path')
-        const localPath = p.resolve(process.cwd(), '.env')
-        ;(pkg as any).config({ path: localPath })
+        const p = req('path');
+        const localPath = p.resolve(process.cwd(), '.env');
+        (pkg as any).config({ path: localPath });
       } catch {
         // Fallback to default behavior
-        ;(pkg as any).config()
+        (pkg as any).config();
       }
     }
   } catch {

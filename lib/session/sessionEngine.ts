@@ -36,7 +36,10 @@ import { logger } from '@/lib/logger';
 import { contentReadinessService } from '@/lib/session/contentReadinessService';
 import { contentHydrationTrigger } from '@/lib/session/contentHydrationTrigger';
 import { generateHomework, type HomeworkResult } from '@/lib/session/homework';
-import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/transitionSessionPhase';
+import {
+  transitionSessionPhase,
+  InvalidTransitionError,
+} from '@/lib/session/transitionSessionPhase';
 import { validatePhaseCompletion } from '@/lib/session/phaseCompletionValidator';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { emitSessionCompleted } from '@/lib/events/domainEvents';
@@ -140,7 +143,12 @@ export interface PhaseContent {
 }
 
 /** Phases shown in the Overview "upcoming" list (after Overview, before Complete). */
-export const UPCOMING_PHASES_ORDER: readonly SessionPhase[] = ['EXPLANATION', 'PRACTICE', 'TEST', 'HOMEWORK'];
+export const UPCOMING_PHASES_ORDER: readonly SessionPhase[] = [
+  'EXPLANATION',
+  'PRACTICE',
+  'TEST',
+  'HOMEWORK',
+];
 
 /** ABSTRACTION-04: Canonical phase metadata. Single source of truth for labels and instructions. */
 export const PHASE_METADATA: Record<
@@ -195,10 +203,7 @@ export const PHASE_METADATA: Record<
  * - A bridged LearningSession is created so the recommendation engine receives
  *   recency and engagement signals.
  */
-export async function startSession(
-  studentId: string,
-  topicId: string,
-): Promise<SessionView> {
+export async function startSession(studentId: string, topicId: string): Promise<SessionView> {
   // ── Resume existing session if one is in progress (GAP-05: exclude EXPIRED) ──
   const existing = await prisma.structuredSession.findFirst({
     where: { studentId, topicId, state: { notIn: ['COMPLETE', 'EXPIRED'] } },
@@ -231,7 +236,7 @@ export async function startSession(
     } else {
       // Fresh session -- resume
       touchBridgedLearningSession(existing.id).catch((err) =>
-        logger.warn('[SESSION_BRIDGE_TOUCH_FAILED]', { sessionId: existing.id, error: err }),
+        logger.warn('[SESSION_BRIDGE_TOUCH_FAILED]', { sessionId: existing.id, error: err })
       );
       logger.info('[SESSION_RESUMED]', {
         studentId,
@@ -248,7 +253,10 @@ export async function startSession(
 
   // ── GAP-03: When MISSING, trigger hydration fire-and-forget; do not block session start ──
   if (readiness.status === 'MISSING') {
-    logger.info('[HYDRATION_TRIGGER] content MISSING, triggering HydrationJobs', { topicId, studentId });
+    logger.info('[HYDRATION_TRIGGER] content MISSING, triggering HydrationJobs', {
+      topicId,
+      studentId,
+    });
     contentHydrationTrigger.triggerForTopic(topicId);
   }
 
@@ -265,7 +273,7 @@ export async function startSession(
 
   // Bridge to LearningSession -- fire-and-forget.
   createBridgedLearningSession(studentId, topicId, session.id).catch((err) =>
-    logger.error('[SESSION_BRIDGE_CREATE_FAILED]', { sessionId: session.id, error: err }),
+    logger.error('[SESSION_BRIDGE_CREATE_FAILED]', { sessionId: session.id, error: err })
   );
 
   logger.info('[SESSION_STARTED]', { studentId, sessionId: session.id, topicId });
@@ -286,10 +294,7 @@ export async function startSession(
  *               TopicRanker cache so the next dashboard load reflects the
  *               updated recency signal.
  */
-export async function advanceSession(
-  studentId: string,
-  sessionId: string,
-): Promise<SessionView> {
+export async function advanceSession(studentId: string, sessionId: string): Promise<SessionView> {
   const session = await prisma.structuredSession.findFirst({
     where: { id: sessionId, studentId },
     include: topicInclude,
@@ -316,7 +321,7 @@ export async function advanceSession(
     session.state as SessionPhase,
     session,
     sessionId,
-    studentId,
+    studentId
   );
   if (!completion.valid) {
     throw new SessionError(completion.message ?? 'Phase completion requirements not met', 400);
@@ -426,10 +431,7 @@ export async function advanceSession(
  * Returns the same SessionView format as startSession and advanceSession.
  * Throws SessionError 404 when not found, 410 when expired (details.topicId for client redirect).
  */
-export async function getSessionView(
-  studentId: string,
-  sessionId: string,
-): Promise<SessionView> {
+export async function getSessionView(studentId: string, sessionId: string): Promise<SessionView> {
   const session = await prisma.structuredSession.findFirst({
     where: { id: sessionId, studentId },
     include: {
@@ -469,7 +471,7 @@ export async function getSessionView(
 export async function navigateSessionBack(
   studentId: string,
   sessionId: string,
-  targetPhase: SessionPhase,
+  targetPhase: SessionPhase
 ): Promise<SessionView> {
   const session = await prisma.structuredSession.findFirst({
     where: { id: sessionId, studentId },
@@ -507,10 +509,7 @@ export async function navigateSessionBack(
  * Jumps directly to COMPLETE regardless of current phase.
  * Persists a STUDY progress touch and invalidates the TopicRanker cache.
  */
-export async function completeSession(
-  studentId: string,
-  sessionId: string,
-): Promise<SessionView> {
+export async function completeSession(studentId: string, sessionId: string): Promise<SessionView> {
   const session = await prisma.structuredSession.findFirst({
     where: { id: sessionId, studentId },
   });
@@ -534,7 +533,7 @@ export async function completeSession(
       state: 'COMPLETE',
       completedAt: new Date(),
       meta: {
-        ...(((session.meta as Record<string, unknown>) ?? {})),
+        ...((session.meta as Record<string, unknown>) ?? {}),
         forceCompleted: true,
         forceCompletedAt: new Date().toISOString(),
         previousPhase: session.state,
@@ -632,7 +631,7 @@ const HOMEWORK_RETRY_DELAY_MS = 1_000;
 async function generateHomeworkWithRetry(
   studentId: string,
   topicId: string,
-  sessionId: string,
+  sessionId: string
 ): Promise<HomeworkResult | null> {
   try {
     return await generateHomework(studentId, topicId, sessionId);
@@ -701,11 +700,7 @@ async function generateHomeworkWithRetry(
  * session completes. Both operations are fire-and-forget: failures are logged
  * but must not surface to the student.
  */
-function persistCompletionProgress(
-  studentId: string,
-  topicId: string,
-  sessionId: string,
-): void {
+function persistCompletionProgress(studentId: string, topicId: string, sessionId: string): void {
   // STUDY touch: updates lastStudiedAt so the recency signal in TopicRanker is
   // accurate. Actual mastery deltas come from practice/test answer submissions.
   updateStudentTopicProgress({
@@ -715,14 +710,14 @@ function persistCompletionProgress(
     totalAnswers: 0,
     activityType: 'STUDY',
   }).catch((err) =>
-    logger.error('[SESSION_PROGRESS_UPDATE_FAILED]', { studentId, topicId, sessionId, error: err }),
+    logger.error('[SESSION_PROGRESS_UPDATE_FAILED]', { studentId, topicId, sessionId, error: err })
   );
 
   // COUPLING-01: Emit domain event; TopicRanker and engagement listen.
   emitSessionCompleted({ studentId, sessionId });
 
   completeBridgedLearningSession(sessionId).catch((err) =>
-    logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
+    logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err })
   );
 }
 
@@ -735,7 +730,7 @@ const BRIDGE_ACTIVITY_TYPE = 'structured_session';
 async function createBridgedLearningSession(
   studentId: string,
   topicId: string,
-  structuredSessionId: string,
+  structuredSessionId: string
 ): Promise<void> {
   await prisma.learningSession.create({
     data: {
@@ -763,10 +758,7 @@ async function completeBridgedLearningSession(structuredSessionId: string): Prom
   if (!ls) return;
 
   const now = new Date();
-  const elapsedMinutes = Math.max(
-    1,
-    Math.floor((now.getTime() - ls.startedAt.getTime()) / 60_000),
-  );
+  const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - ls.startedAt.getTime()) / 60_000));
 
   await prisma.learningSession.update({
     where: { id: ls.id },

@@ -1,14 +1,17 @@
 ## LP-1.1 | P0 | Landing Page Shell with Consistent Layout
+
 **ID:** LP-1.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a prospective parent landing on spinzyacademy.com,
 I want the page to load instantly, render correctly on my ₹8,000 Android phone, and have a consistent navigation bar,
 So that I can browse the entire page without frustration or layout breaks.
 
 ### Acceptance Criteria
+
 - [ ] Page uses Next.js App Router with Server-Side Rendering (SSR) for above-the-fold content.
 - [ ] Lighthouse mobile score ≥ 90 (Performance), ≥ 95 (Accessibility).
 - [ ] Navigation bar is sticky on scroll with:
@@ -20,6 +23,7 @@ So that I can browse the entire page without frustration or layout breaks.
 - [ ] Page is bilingual-aware: Hindi text blocks render correctly with Google Fonts (Noto Sans Devanagari for Hindi, Roboto for English).
 
 ### Dev Tasks
+
 - [ ] Set up apps/web Next.js project with @spinzy/shared package dependency.
 - [ ] Implement Navbar component with mobile hamburger menu (use headlessui or Radix UI).
 - [ ] Implement Footer component.
@@ -27,22 +31,26 @@ So that I can browse the entire page without frustration or layout breaks.
 - [ ] Add Google Fonts (Roboto + Noto Sans Devanagari) via next/font.
 
 ### QA
+
 - [ ] Test on real device: ₹8,000 Android phone (e.g., Redmi 9) on Chrome + 4G throttling.
 - [ ] Test on iPhone SE (smallest screen).
 - [ ] Test on iPad and Desktop (1920px).
 - [ ] Hindi text renders without tofu (square boxes).
 
 ## LP-1.2 | P1 | Google Sign-In Integration on Landing Page
+
 **ID:** LP-1.2
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a prospective parent ready to try Spinzy,
 I want to click "Start Free" anywhere on the page and sign in with my Google account in one tap,
 So that I can start the setup flow without creating a new password or filling long forms.
 
 ### Acceptance Criteria
+
 - [ ] "Start Free" CTA in Navbar, Hero, Pricing, and Footer all trigger the same flow.
 - [ ] Clicking CTA opens Google OAuth popup (or redirects on mobile) using @react-oauth/google library.
 - [ ] On successful Google sign-in:
@@ -55,27 +63,32 @@ So that I can start the setup flow without creating a new password or filling lo
 - [ ] Uses existing auth service from our architecture.
 
 ### Dev Tasks
+
 - [ ] Implement Google OAuth integration on frontend
 - [ ] Create POST /api/v1/auth/google endpoint
 - [ ] Add loading and error states to all CTA buttons
 - [ ] Implement redirect logic based on user status
 
 ### QA
+
 - [ ] Test with Gmail account, Google Workspace account, and a Google account with 2FA enabled.
 - [ ] Test on mobile Chrome (Google account already signed in on device → one tap should work).
 - [ ] Test on incognito (fresh sign-in flow).
 
 ## LP-2.1 | P0 | Hero Section — Parent-Trust Headline & Visual
+
 **ID:** LP-2.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a prospective parent visiting spinzyacademy.com for the first time,
 I want to immediately understand that Spinzy is an AI tutor that I control, not an unmonitored chatbot,
 So that my #1 fear (child safety) is addressed within 5 seconds, and I scroll further.
 
 ### Acceptance Criteria
+
 - [ ] Trust badge bar (top of hero): 🛡️ DPDP Compliant · 👁️ No Tracking · 📵 No Social Features · 🇮🇳 Servers in India
 - [ ] Headline: "The AI Tutor That Asks YOUR Permission First"
 - [ ] Subheadline: "Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared."
@@ -88,12 +101,14 @@ So that my #1 fear (child safety) is addressed within 5 seconds, and I scroll fu
 - [ ] Social proof micro-element: "Trusted by 1 Lakh+ Indian families" with small avatar mosaic (abstract circles, no real faces).
 
 ### Dev Tasks
+
 - [ ] Create Hero component with responsive Tailwind classes.
 - [ ] Add illustration (SVG or Lottie) optimized for mobile (max 50KB).
 - [ ] Wire up Google Sign-In CTA (from LP-1.2).
 - [ ] Add subtle entrance animation (fade-in-up on headline, no jank).
 
 ### QA
+
 - [ ] Headline is fully visible without scroll on iPhone SE.
 - [ ] Trust badges are fully visible on 360px width screen.
 - [ ] Illustration does not push CTA below fold.
@@ -101,16 +116,19 @@ So that my #1 fear (child safety) is addressed within 5 seconds, and I scroll fu
 - [ ] CTA button is tap-friendly (48px+ on mobile).
 
 ## LP-3.1 | P0 | Trust Moat — DPDP & Safety Icons Grid
+
 **ID:** LP-3.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a parent concerned about AI safety and data privacy,
 I want to see a clear, visually distinct section that explains exactly how Spinzy protects my child,
 So that my anxiety is reduced and I'm willing to try the product.
 
 ### Acceptance Criteria
+
 - [ ] Section headline: "Built for Indian Parents. Designed for Indian Law." / "माता-पिता के लिए बनाया गया। भारतीय कानून के अनुसार।"
 - [ ] Four icon cards in a 2×2 grid (2×4 on mobile):
 - [ ] Card 1: 🛡️ Shield - DPDP Compliant - We follow India's Digital Personal Data Protection Act. Your child's data is processed lawfully, with your consent.
@@ -127,28 +145,33 @@ So that my anxiety is reduced and I'm willing to try the product.
 - [ ] Section has a distinct background color (slight grey-blue #F4F7FC) to separate it from Hero and How It Works.
 
 ### Dev Tasks
+
 - [ ] Create TrustMoat component.
 - [ ] Create TrustCard sub-component (reusable).
 - [ ] Create DashboardPreview sub-component with phone mockup image.
 - [ ] Ensure phone mockup image is lazy-loaded (below fold).
 
 ### QA
+
 - [ ] Cards wrap correctly on 360px screen (single column if needed).
 - [ ] Dashboard preview image is crisp on 2x retina displays.
 - [ ] Hindi text in cards renders correctly.
 - [ ] Section is visually distinct from adjacent sections.
 
 ## LP-4.1 | P0 | How It Works — Student + Parent Parallel Journey
+
 **ID:** LP-4.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a prospective parent,
 I want to understand exactly how Spinzy works for BOTH my child and myself,
 So that I see value for me (control, insights) not just for my child (learning).
 
 ### Acceptance Criteria
+
 - [ ] Section headline: "How Spinzy Works — For Students & Parents" / "Spinzy कैसे काम करता है — छात्रों और माता-पिता के लिए"
 - [ ] Two-column layout on desktop (side-by-side), stacked on mobile (Student on top, Parent below with tab toggle).
 - [ ] Student Journey (Left/Top):
@@ -166,28 +189,33 @@ So that I see value for me (control, insights) not just for my child (learning).
 - [ ] Scroll-triggered animation: Cards fade in as user scrolls (use framer-motion or Intersection Observer).
 
 ### Dev Tasks
+
 - [ ] Create HowItWorks component.
 - [ ] Create JourneyStep sub-component.
 - [ ] Implement mobile tab toggle with useState.
 - [ ] Add Intersection Observer for scroll animation.
 
 ### QA
+
 - [ ] Tab toggle works on mobile (only one journey visible at a time).
 - [ ] Both columns visible and aligned on desktop.
 - [ ] Hindi descriptors render correctly.
 - [ ] Animation does not cause layout shift (CLS = 0).
 
 ## LP-5.1 | P1 | Parent-Targeted Testimonial (Trust Focus)
+
 **ID:** LP-5.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a parent on the fence about trusting an AI tool,
 I want to read a testimonial from another parent who had the same fear,
 So that I feel social proof that Spinzy is safe and parent-approved.
 
 ### Acceptance Criteria
+
 - [ ] Add one NEW testimonial (keep existing Sunita Sharma testimonial — it's strong on academic results).
 - [ ] New testimonial focuses on TRUST and CONTROL:
 - [ ] "I was scared of AI apps. But Spinzy asked MY permission before my son could use it. I set a 1-hour daily limit. Now I get a report every Sunday. Finally, an app I trust, not one I monitor nervously." — Priya Menon, Mumbai. Mother of Class 6 student.
@@ -199,27 +227,32 @@ So that I feel social proof that Spinzy is safe and parent-approved.
 - [ ] Priya's card has a "Safety Badge" visual (shield icon + "DPDP Compliant" text).
 
 ### Dev Tasks
+
 - [ ] Create Testimonials section component
 - [ ] Create TestimonialCard sub-component
 - [ ] Add progress bar component for Sunita's metric
 - [ ] Add safety badge for Priya's card
 
 ### QA
+
 - [ ] Both testimonials authenticate (real names encouraged, but anonymized if parent prefers).
 - [ ] Hindi text in Priya's testimonial renders correctly.
 - [ ] Cards are visually balanced on all screen sizes.
 
 ## LP-5.2 | P2 | Social Proof Metrics Bar (Animated Counters)
+
 **ID:** LP-5.2
 **Labels:** P2, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a prospective parent scrolling through social proof,
 I want to see animated statistics (students helped, questions solved, towns covered),
 So that I feel the scale and momentum of the platform.
 
 ### Acceptance Criteria
+
 - [ ] Keep existing metrics but animate them on scroll:
 - [ ] 5L+ Questions Solved → Counter animates from 0 to 5,00,000.
 - [ ] 88K+ Happy Students → Counter animates from 0 to 88,000.
@@ -231,27 +264,32 @@ So that I feel the scale and momentum of the platform.
 - [ ] 4-column grid on desktop, 2×2 on mobile.
 
 ### Dev Tasks
+
 - [ ] Create MetricsBar component
 - [ ] Implement animated counters with framer-motion
 - [ ] Add Indian comma notation formatting
 - [ ] Set up Intersection Observer trigger
 
 ### QA
+
 - [ ] Counters start at 0 and animate to target values when scrolled into view
 - [ ] Numbers display with correct Indian comma format
 - [ ] Grid layout responsive on all screen sizes
 
 ## LP-6.1 | P0 | Pricing Section — Feature Comparison Table
+
 **ID:** LP-6.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a price-conscious Indian parent,
 I want to see exactly what's free and what's premium in a clear comparison,
 So that I understand the value and can make an informed decision.
 
 ### Acceptance Criteria
+
 - [ ] Keep existing three-tier structure: Free / Individual (₹399) / Family (₹599)
 - [ ] Feature comparison table with updated features:
 - [ ] NCERT Notes Access: ✅ / ✅ / ✅
@@ -276,6 +314,7 @@ So that I understand the value and can make an informed decision.
 - [ ] Each plan card has "Start Free" or "Get Started" CTA that triggers Google Sign-In.
 
 ### Dev Tasks
+
 - [ ] Create Pricing component.
 - [ ] Create PricingCard sub-component.
 - [ ] Implement monthly/yearly toggle with useState.
@@ -283,22 +322,26 @@ So that I understand the value and can make an informed decision.
 - [ ] Add trust signals row below pricing cards.
 
 ### QA
+
 - [ ] Toggle switches prices correctly for all plans.
 - [ ] Feature comparison is accurate against our actual product (sync with Product team).
 - [ ] Cards are visually balanced on mobile.
 - [ ] Hindi text in plan names/descriptions renders correctly.
 
 ## LP-6.2 | P1 | Pricing — Traditional Tuition Comparison
+
 **ID:** LP-6.2
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a parent spending ₹3,000-5,000/month on tuition,
 I want to see a direct cost comparison that quantifies my savings,
 So that I'm motivated to switch to Spinzy.
 
 ### Acceptance Criteria
+
 - [ ] Keep existing comparison table with updates:
 - [ ] Traditional Tuition: ₹3,000-5,000/month (with line items: Tuition fee, Travel cost, Time lost).
 - [ ] Spinzy Individual: ₹399/month (with line items: Unlimited access, No travel, 24×7 available).
@@ -309,26 +352,31 @@ So that I'm motivated to switch to Spinzy.
 - [ ] Responsive: Side-by-side on desktop, stacked on mobile.
 
 ### Dev Tasks
+
 - [ ] Create TuitionComparison component
 - [ ] Add bar chart or comparison graphic
 - [ ] Implement responsive layout
 
 ### QA
+
 - [ ] Savings calculations are accurate
 - [ ] Visual comparison is clear on all devices
 - [ ] Annual savings figure displays correctly
 
 ## LP-7.1 | P1 | FAQ — Parent-Focused Questions
+
 **ID:** LP-7.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a parent with specific concerns about AI safety, data privacy, and screen time,
 I want to find answers quickly in an FAQ section,
 So that my remaining doubts are resolved before I commit.
 
 ### Acceptance Criteria
+
 - [ ] Question 1: Is my child's data safe? - DPDP compliant. No tracking for ads. No data sold. Servers in India. Encrypted.
 - [ ] Question 2: Can my child chat with strangers? - No. No social features. No chat rooms. No friend requests. Only student ↔ AI tutor interaction.
 - [ ] Question 3: How do I control what my child accesses? - Parent Dashboard: Approve subjects, set screen time limits (30/60/90/120 min), block topics, view weekly reports.
@@ -344,27 +392,32 @@ So that my remaining doubts are resolved before I commit.
 - [ ] Hindi translations alongside English for key questions (use our bilingual format from current page).
 
 ### Dev Tasks
+
 - [ ] Create FAQ component with Accordion sub-component (use @headlessui/react Disclosure or custom).
 - [ ] Ensure smooth open/close animation (height transition).
 - [ ] Add schema markup (FAQPage structured data) for SEO.
 
 ### QA
+
 - [ ] All 8 questions present and expandable.
 - [ ] Hindi text renders correctly.
 - [ ] Links within answers are clickable.
 - [ ] SEO structured data validates in Google Rich Results Test.
 
 ## LP-8.1 | P1 | Schools Partnership Banner
+
 **ID:** LP-8.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a school principal or administrator visiting the website,
 I want to see a dedicated section explaining how Spinzy partners with schools,
 So that I can explore a B2B relationship for my institution.
 
 ### Acceptance Criteria
+
 - [ ] Section headline: "Spinzy for Schools" / "स्कूलों के लिए Spinzy"
 - [ ] Subheadline: "Give your students AI-powered supplementary learning — with teacher dashboards and DPDP-compliant parent consent management."
 - [ ] Benefit cards:
@@ -378,24 +431,29 @@ So that I can explore a B2B relationship for my institution.
 - [ ] CTA opens mailto:schools@spinzyacademy.com with pre-filled subject line.
 
 ### Dev Tasks
+
 - [ ] Create SchoolsBanner component.
 - [ ] Set up schools@spinzyacademy.com email forwarding (ops task).
 
 ### QA
+
 - [ ] CTA opens email client with correct address and subject.
 - [ ] Section is visually distinct.
 
 ## LP-8.2 | P2 | School Partnership Inquiry Form
+
 **ID:** LP-8.2
 **Labels:** P2, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a school administrator interested in partnership,
 I want to fill out a short inquiry form directly on the website,
 So that I don't have to switch to email and can submit my details quickly.
 
 ### Acceptance Criteria
+
 - [ ] Lightweight form (name, school name, email, phone, message) inside a modal triggered by the "Partner With Us" CTA.
 - [ ] Form validates: Email format, Phone (10 digits).
 - [ ] Success state: "Thank you! Our partnerships team will contact you within 48 hours."
@@ -404,6 +462,7 @@ So that I don't have to switch to email and can submit my details quickly.
 - [ ] Sends email notification to schools@spinzyacademy.com.
 
 ### Dev Tasks
+
 - [ ] Create inquiry form modal component
 - [ ] Implement form validation
 - [ ] Create POST /api/v1/leads/school-partnership endpoint
@@ -412,21 +471,25 @@ So that I don't have to switch to email and can submit my details quickly.
 - [ ] Set up email notification service
 
 ### QA
+
 - [ ] Form submits successfully.
 - [ ] Rate limiting works.
 - [ ] Email is delivered.
 
 ## LP-9.1 | P1 | Final CTA Section & Footer
+
 **ID:** LP-9.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
 ### User Story
+
 As a parent who has scrolled through the entire page,
 I want a final, compelling call-to-action and access to legal links,
 So that I either sign up immediately or find privacy/terms information.
 
 ### Acceptance Criteria
+
 - [ ] Final CTA Section:
 - [ ] Headline: "Ready to try it yourself? आज ही शुरू करें — बिल्कुल मुफ्त"
 - [ ] Subheadline: "3 free sessions every month. No credit card required."
@@ -445,12 +508,14 @@ So that I either sign up immediately or find privacy/terms information.
 - [ ] Footer is consistent across all pages (landing, blog, onboarding).
 
 ### Dev Tasks
+
 - [ ] Create FinalCTA component
 - [ ] Create Footer component (if not already from LP-1.1)
 - [ ] Ensure consistent footer across all pages
 - [ ] Add Play Store badge conditional rendering
 
 ### QA
+
 - [ ] Final CTA displays correctly on all devices
 - [ ] Footer columns stack properly on mobile
 - [ ] All links work and open in same tab

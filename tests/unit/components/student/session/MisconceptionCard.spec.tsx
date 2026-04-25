@@ -1,6 +1,6 @@
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import MisconceptionCard from '@/components/student/session/MisconceptionCard'
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import MisconceptionCard from '@/components/student/session/MisconceptionCard';
 
 describe('MisconceptionCard', () => {
   it('renders artifact fields', () => {
@@ -12,11 +12,11 @@ describe('MisconceptionCard', () => {
       whyWrong: 'Because of X',
       applyTip: 'Do Y',
       suggestedPractice: 'Try Z',
-    }
-    render(<MisconceptionCard artifact={art as any} />)
-    expect(screen.getByText(/Common misconception/)).toBeInTheDocument()
-    expect(screen.getByText(/Sample conf/)).toBeInTheDocument()
-    expect(screen.getByText(/Correct principle/)).toBeInTheDocument()
-    expect(screen.getByText(/Try Z/)).toBeInTheDocument()
-  })
-})
+    };
+    render(<MisconceptionCard artifact={art as any} />);
+    expect(screen.getByText(/Common misconception/)).toBeInTheDocument();
+    expect(screen.getByText(/Sample conf/)).toBeInTheDocument();
+    expect(screen.getByText(/Correct principle/)).toBeInTheDocument();
+    expect(screen.getByText(/Try Z/)).toBeInTheDocument();
+  });
+});

@@ -35,7 +35,9 @@ function nowTs() {
 function debugLog(...args: unknown[]) {
   if (process.env.NODE_ENV !== 'production') {
     try {
-      logger.debug(`[analyticsClient] ${args.map((a) => String(a)).join(' ')}`, { className: 'analyticsClient' });
+      logger.debug(`[analyticsClient] ${args.map((a) => String(a)).join(' ')}`, {
+        className: 'analyticsClient',
+      });
     } catch {
       // silent fallback when logger fails
     }
@@ -113,7 +115,7 @@ function scheduleFlush() {
  */
 export async function trackEvent(
   event: string,
-  data?: Record<string, unknown> | null,
+  data?: Record<string, unknown> | null
 ): Promise<void> {
   if (typeof window === 'undefined') return;
 

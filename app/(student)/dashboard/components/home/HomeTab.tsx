@@ -97,9 +97,7 @@ export function HomeTab({ onStartLearning }: HomeTabProps) {
 
       {/* Encouraging footer */}
       <div className="text-center py-4">
-        <p className="text-sm text-muted-foreground">
-          🌟 Every step you take makes you smarter!
-        </p>
+        <p className="text-sm text-muted-foreground">🌟 Every step you take makes you smarter!</p>
       </div>
     </div>
   );

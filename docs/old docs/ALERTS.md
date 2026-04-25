@@ -1,11 +1,13 @@
 **Alerting — Phase 5(D)**
 
 Overview
+
 - Provides pluggable sinks: Slack, Email, Webhook.
 - Severity-aware routing and default configuration.
 - In-memory rate-limiter and deduper with Redis hooks recommended for production.
 
 Files
+
 - `lib/alerts/types.ts` — shared types and interfaces.
 - `lib/alerts/sinks/slack.ts` — Slack webhook sink.
 - `lib/alerts/sinks/webhook.ts` — generic webhook sink.
@@ -13,11 +15,11 @@ Files
 - `lib/alerts/rateLimiter.ts` — in-memory rate limiter (replace with Redis in prod).
 - `lib/alerts/dedupe.ts` — in-memory deduper (replace with Redis SET + EXPIRE in prod).
 - `lib/alerts/router.ts` — router that applies routing, rate-limiting, dedupe, and dispatch.
- - `lib/alerts/rateLimiter.ts` — in-memory rate limiter (replace with Redis in prod).
- - `lib/alerts/dedupe.ts` — in-memory deduper (replace with Redis SET + EXPIRE in prod).
- - `lib/alerts/redisRateLimiter.ts` — Redis-backed rate limiter implementation (recommended for prod).
- - `lib/alerts/redisDeduper.ts` — Redis-backed deduper implementation (recommended for prod).
- - `lib/alerts/router.ts` — router that applies routing, rate-limiting, dedupe, and dispatch.
+- `lib/alerts/rateLimiter.ts` — in-memory rate limiter (replace with Redis in prod).
+- `lib/alerts/dedupe.ts` — in-memory deduper (replace with Redis SET + EXPIRE in prod).
+- `lib/alerts/redisRateLimiter.ts` — Redis-backed rate limiter implementation (recommended for prod).
+- `lib/alerts/redisDeduper.ts` — Redis-backed deduper implementation (recommended for prod).
+- `lib/alerts/router.ts` — router that applies routing, rate-limiting, dedupe, and dispatch.
 
 Usage example
 
@@ -33,7 +35,12 @@ const router = new AlertRouter({
   sinks: [
     new SlackSink({ webhookUrl: process.env.SLACK_WEBHOOK! }),
     new WebhookSink({ url: process.env.PAGER_WEBHOOK! }),
-    new EmailSink({ to: 'ops@example.com', sendMail: async (opts) => { /* call nodemailer */ } }),
+    new EmailSink({
+      to: 'ops@example.com',
+      sendMail: async (opts) => {
+        /* call nodemailer */
+      },
+    }),
   ],
   routing: {
     info: ['slack'],
@@ -42,13 +49,14 @@ const router = new AlertRouter({
     critical: ['slack', 'email', 'webhook'],
   },
   rateLimiter: new InMemoryRateLimiter(5, 0.2),
-  deduper: new InMemoryDeduper(60*10),
+  deduper: new InMemoryDeduper(60 * 10),
 });
 
 await router.route({ title: 'Test', message: 'Something happened', severity: 'error' });
 ```
 
 Production notes
+
 - Replace `InMemoryRateLimiter` and `InMemoryDeduper` with Redis-backed implementations for horizontal safety.
   You can use the provided classes:
 
@@ -66,6 +74,7 @@ Production notes
 - Important: lazy-initialize Redis clients (the implementations do this by default when `REDIS_URL` is set), and provide a shared `ioredis` instance when possible to avoid connection explosion.
 
 Running the evaluator in dry-run mode
+
 - Local (requires `DATABASE_URL`):
 
 ```powershell

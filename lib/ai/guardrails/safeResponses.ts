@@ -65,19 +65,22 @@ export enum SafeResponseCategory {
  * Off-topic redirect templates by grade band
  */
 const OFF_TOPIC_REDIRECTS: Record<string, string[]> = {
-  junior: [ // Grades 1-3
+  junior: [
+    // Grades 1-3
     "That's an interesting thought! But let's focus on our learning. What would you like to learn about today?",
     "I love your curiosity! I'm best at helping with school subjects. What are you studying?",
     "Great question! I'm your study buddy, so let's talk about something from your lessons. What topic can I help with?",
   ],
-  middle: [ // Grades 4-7
+  middle: [
+    // Grades 4-7
     "That's outside what I can help with, but I'd love to help you with your studies! What subject are you working on?",
     "I'm designed to help with academics. Let's channel that curiosity into learning something new! What topic interests you?",
     "I'm your AI tutor, so I stick to educational topics. What subject can I help you understand better?",
   ],
-  senior: [ // Grades 8-12
+  senior: [
+    // Grades 8-12
     "That topic is outside my scope as an educational assistant. I'm here to help with academic subjects. What can I assist you with?",
-    "I focus on educational content aligned with your curriculum. What subject would you like to explore?",
+    'I focus on educational content aligned with your curriculum. What subject would you like to explore?',
     "As your AI tutor, I'm specialized in academic support. What topic from your studies can I help clarify?",
   ],
 };
@@ -123,16 +126,16 @@ const HOMEWORK_REDIRECTS: Record<string, string[]> = {
  */
 const TECHNICAL_ERRORS: Record<string, string[]> = {
   junior: [
-    "Oops! Something went wrong on my end. Could you try asking that again?",
-    "My thinking cap got a bit tangled! Can you ask me again?",
+    'Oops! Something went wrong on my end. Could you try asking that again?',
+    'My thinking cap got a bit tangled! Can you ask me again?',
   ],
   middle: [
-    "I ran into a technical hiccup. Could you please try your question again?",
+    'I ran into a technical hiccup. Could you please try your question again?',
     "Something unexpected happened. Please try asking again, and I'll do my best to help!",
   ],
   senior: [
-    "I encountered a technical issue processing your request. Please try again.",
-    "There was an unexpected error. Could you rephrase or try your question again?",
+    'I encountered a technical issue processing your request. Please try again.',
+    'There was an unexpected error. Could you rephrase or try your question again?',
   ],
 };
 
@@ -146,7 +149,7 @@ const UNCERTAINTY_FALLBACKS: Record<string, string[]> = {
   ],
   middle: [
     "I'm not confident enough to give you a good answer on that specific point. Can you try rephrasing, or ask about a related concept I might help with better?",
-    "I want to make sure I give you accurate information. That particular question is outside my certainty. What related topic can I help clarify?",
+    'I want to make sure I give you accurate information. That particular question is outside my certainty. What related topic can I help clarify?',
   ],
   senior: [
     "I don't have enough confidence to provide an accurate response to that specific question. I'd recommend consulting your textbook or teacher for this one. Is there a related concept I can help explain?",
@@ -160,7 +163,7 @@ const UNCERTAINTY_FALLBACKS: Record<string, string[]> = {
 const ENCOURAGEMENT_RESPONSES: Record<string, string[]> = {
   junior: [
     "You're doing great! Learning new things takes time, and asking questions is super smart!",
-    "Keep going! Every question you ask helps you learn more!",
+    'Keep going! Every question you ask helps you learn more!',
     "I love that you're trying! Let's work through this together!",
   ],
   middle: [
@@ -224,14 +227,14 @@ function _getTopicSuggestions(subject: string, grade: Grade): string[] {
       senior: ['literature analysis', 'essay writing', 'critical thinking'],
     },
   };
-  
+
   const gradeBand = getGradeBand(grade);
   const subjectSuggestions = suggestions[subject];
-  
+
   if (subjectSuggestions && subjectSuggestions[gradeBand]) {
     return subjectSuggestions[gradeBand];
   }
-  
+
   // Default suggestions
   return ['your current topic', 'recent lessons', 'practice questions'];
 }
@@ -317,7 +320,10 @@ export function getSafeResponseForIntent(
       return wrap(getUnsafeContentResponse(grade), SafeResponseCategory.UNSAFE_BLOCK);
 
     case StudentIntentCategory.HOMEWORK_DUMP:
-      return wrap(getHomeworkRedirectResponse(grade, subject), SafeResponseCategory.HOMEWORK_REDIRECT);
+      return wrap(
+        getHomeworkRedirectResponse(grade, subject),
+        SafeResponseCategory.HOMEWORK_REDIRECT
+      );
 
     default:
       return wrap(getEncouragementResponse(grade), SafeResponseCategory.UNCERTAINTY);

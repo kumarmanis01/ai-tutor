@@ -16,7 +16,7 @@
 
 import type { Deduper } from './types';
 import Redis from 'ioredis';
-import { getRedis } from '@/lib/redis'
+import { getRedis } from '@/lib/redis';
 
 /**
  * Redis-backed deduper using SET NX + EX semantics.
@@ -43,7 +43,7 @@ export class RedisDeduper implements Deduper {
 
     if (this.client && typeof this.client.on === 'function') {
       // swallow network errors when Redis is not available in dev/dry-run
-      this.client.on('error', () => { });
+      this.client.on('error', () => {});
     }
     this.ttlSeconds = opts?.ttlSeconds ?? 60 * 10;
   }

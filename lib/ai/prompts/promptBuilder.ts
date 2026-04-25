@@ -43,9 +43,9 @@ import { logger } from '@/lib/logger';
  * Matches the existing callLLM timeout patterns
  */
 export const TIMEOUT_CONFIG = {
-  notes: 30000,    // Notes generation can take longer
+  notes: 30000, // Notes generation can take longer
   practice: 35000, // Practice questions with multiple items
-  doubts: 20000,   // Quick response for chat
+  doubts: 20000, // Quick response for chat
 } as const;
 
 /**
@@ -152,12 +152,12 @@ export async function generateNotes(
   sessionId: string
 ): Promise<PromptResult<NotesOutputSchema>> {
   const metadata = generateMetadata('notes', userIdHash, sessionId);
-  
+
   // Build prompts
   const systemPrompt = buildSystemPrompt(input.grade, input.language);
   const userPrompt = buildNotesPrompt(input);
   const fullPrompt = buildFullPrompt(systemPrompt, userPrompt);
-  
+
   // Build meta for callLLM logging and model selection
   const llmMeta: LLMCallMeta = {
     promptType: 'notes',
@@ -172,7 +172,7 @@ export async function generateNotes(
     sessionId,
     requestId: metadata.requestId,
   };
-  
+
   // Execute with retries
   let lastError: string | null = null;
   let lastValidationErrors: string[] = [];
@@ -181,7 +181,7 @@ export async function generateNotes(
   let latencyMs: number | undefined;
   let model: string | undefined;
   let currentPrompt = fullPrompt;
-  
+
   for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
     try {
       const result = await callLLM({
@@ -189,15 +189,15 @@ export async function generateNotes(
         meta: llmMeta,
         timeoutMs: TIMEOUT_CONFIG.notes,
       });
-      
+
       rawResponse = result.content;
       costUsd = result.costUsd;
       latencyMs = result.latencyMs;
       model = result.model;
-      
+
       // Validate response
       const validation = validateLLMResponse<NotesOutputSchema>(rawResponse, 'notes');
-      
+
       if (validation.valid && validation.data) {
         return {
           success: true,
@@ -210,13 +210,13 @@ export async function generateNotes(
           model,
         };
       }
-      
+
       lastValidationErrors = validation.errors;
-      
+
       if (!RETRY_CONFIG.retryOnValidationFailure) {
         break;
       }
-      
+
       // Add validation errors to next attempt context
       if (attempt < RETRY_CONFIG.maxRetries) {
         currentPrompt = `${fullPrompt}\n\n---\n\nPrevious response had errors: ${validation.errors.join(', ')}\nPrevious response:\n${rawResponse}\n\nPlease fix and return valid JSON.`;
@@ -230,7 +230,7 @@ export async function generateNotes(
       }
     }
   }
-  
+
   return {
     success: false,
     data: null,
@@ -258,12 +258,12 @@ export async function generatePractice(
   sessionId: string
 ): Promise<PromptResult<PracticeOutputSchema>> {
   const metadata = generateMetadata('practice', userIdHash, sessionId);
-  
+
   // Build prompts
   const systemPrompt = buildSystemPrompt(input.grade, input.language);
   const userPrompt = buildPracticePrompt(input);
   const fullPrompt = buildFullPrompt(systemPrompt, userPrompt);
-  
+
   // Build meta for callLLM logging and model selection
   const llmMeta: LLMCallMeta = {
     promptType: 'practice',
@@ -278,7 +278,7 @@ export async function generatePractice(
     sessionId,
     requestId: metadata.requestId,
   };
-  
+
   // Execute with retries
   let lastError: string | null = null;
   let lastValidationErrors: string[] = [];
@@ -287,7 +287,7 @@ export async function generatePractice(
   let latencyMs: number | undefined;
   let model: string | undefined;
   let currentPrompt = fullPrompt;
-  
+
   for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
     try {
       const result = await callLLM({
@@ -295,27 +295,29 @@ export async function generatePractice(
         meta: llmMeta,
         timeoutMs: TIMEOUT_CONFIG.practice,
       });
-      
+
       rawResponse = result.content;
       costUsd = result.costUsd;
       latencyMs = result.latencyMs;
       model = result.model;
-      
+
       // Validate response
       const validation = validateLLMResponse<PracticeOutputSchema>(rawResponse, 'practice');
-      
+
       if (validation.valid && validation.data) {
         // Additional check: verify question count
         if (validation.data.questions.length < input.questionCount) {
-          lastValidationErrors = [`Expected ${input.questionCount} questions, got ${validation.data.questions.length}`];
-          
+          lastValidationErrors = [
+            `Expected ${input.questionCount} questions, got ${validation.data.questions.length}`,
+          ];
+
           if (attempt < RETRY_CONFIG.maxRetries) {
             currentPrompt = `${fullPrompt}\n\n---\n\nYou provided ${validation.data.questions.length} questions but I need exactly ${input.questionCount}. Please provide the complete set.\nPrevious response:\n${rawResponse}`;
             await sleep(RETRY_CONFIG.retryDelayMs);
             continue;
           }
         }
-        
+
         return {
           success: true,
           data: validation.data,
@@ -327,13 +329,13 @@ export async function generatePractice(
           model,
         };
       }
-      
+
       lastValidationErrors = validation.errors;
-      
+
       if (!RETRY_CONFIG.retryOnValidationFailure) {
         break;
       }
-      
+
       if (attempt < RETRY_CONFIG.maxRetries) {
         currentPrompt = `${fullPrompt}\n\n---\n\nPrevious response had errors: ${validation.errors.join(', ')}\nPrevious response:\n${rawResponse}\n\nPlease fix and return valid JSON.`;
         await sleep(RETRY_CONFIG.retryDelayMs);
@@ -346,7 +348,7 @@ export async function generatePractice(
       }
     }
   }
-  
+
   return {
     success: false,
     data: null,
@@ -375,7 +377,7 @@ export async function generateDoubtResponse(
   sessionId: string
 ): Promise<PromptResult<DoubtsOutputSchema>> {
   const metadata = generateMetadata('doubts', userIdHash, sessionId);
-  
+
   // Pre-check: Is this an off-topic/inappropriate question?
   if (isOffTopicQuestion(input.studentQuestion, input.subject)) {
     const redirect = getOffTopicRedirect(input.subject);
@@ -387,12 +389,12 @@ export async function generateDoubtResponse(
       metadata,
     };
   }
-  
+
   // Build prompts
   const systemPrompt = buildSystemPrompt(input.grade, input.language);
   const userPrompt = buildDoubtsPrompt(input);
   const fullPrompt = buildFullPrompt(systemPrompt, userPrompt);
-  
+
   // Build meta for callLLM logging and model selection
   const llmMeta: LLMCallMeta = {
     promptType: 'doubts',
@@ -407,7 +409,7 @@ export async function generateDoubtResponse(
     sessionId,
     requestId: metadata.requestId,
   };
-  
+
   // Execute with retries
   let lastError: string | null = null;
   let lastValidationErrors: string[] = [];
@@ -416,7 +418,7 @@ export async function generateDoubtResponse(
   let latencyMs: number | undefined;
   let model: string | undefined;
   let currentPrompt = fullPrompt;
-  
+
   for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
     try {
       const result = await callLLM({
@@ -424,15 +426,15 @@ export async function generateDoubtResponse(
         meta: llmMeta,
         timeoutMs: TIMEOUT_CONFIG.doubts,
       });
-      
+
       rawResponse = result.content;
       costUsd = result.costUsd;
       latencyMs = result.latencyMs;
       model = result.model;
-      
+
       // Validate response
       const validation = validateLLMResponse<DoubtsOutputSchema>(rawResponse, 'doubts');
-      
+
       if (validation.valid && validation.data) {
         return {
           success: true,
@@ -445,26 +447,30 @@ export async function generateDoubtResponse(
           model,
         };
       }
-      
+
       lastValidationErrors = validation.errors;
-      
+
       if (!RETRY_CONFIG.retryOnValidationFailure) {
         break;
       }
-      
+
       if (attempt < RETRY_CONFIG.maxRetries) {
         currentPrompt = `${fullPrompt}\n\n---\n\nPrevious response had errors: ${validation.errors.join(', ')}\nPrevious response:\n${rawResponse}\n\nPlease fix and return valid JSON.`;
         await sleep(RETRY_CONFIG.retryDelayMs);
       }
     } catch (err) {
       lastError = err instanceof Error ? err.message : 'Unknown error';
-      logger.error('generateDoubtResponse LLM call failed', { error: lastError, attempt, metadata });
+      logger.error('generateDoubtResponse LLM call failed', {
+        error: lastError,
+        attempt,
+        metadata,
+      });
       if (attempt < RETRY_CONFIG.maxRetries) {
         await sleep(RETRY_CONFIG.retryDelayMs);
       }
     }
   }
-  
+
   return {
     success: false,
     data: null,

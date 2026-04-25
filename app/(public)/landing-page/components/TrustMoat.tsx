@@ -43,15 +43,13 @@ const TRUST_CARDS: TrustCardData[] = [
     emoji: '📵',
     emojiLabel: 'Phone with lock',
     titleEn: 'No Social Features',
-    descEn:
-      'No chat rooms. No friend requests. No reels. Just focused learning with an AI tutor.',
+    descEn: 'No chat rooms. No friend requests. No reels. Just focused learning with an AI tutor.',
   },
   {
     emoji: '🇮🇳',
     emojiLabel: 'Indian flag',
     titleEn: 'Data Stays in India',
-    descEn:
-      'All data is stored on servers in Mumbai. Encrypted at rest and in transit.',
+    descEn: 'All data is stored on servers in Mumbai. Encrypted at rest and in transit.',
   },
 ];
 
@@ -59,11 +57,7 @@ const TRUST_CARDS: TrustCardData[] = [
 function TrustCard({ card }: { card: TrustCardData }) {
   return (
     <div className="flex flex-col items-center text-center md:items-start md:text-left p-5 bg-white rounded-2xl border border-[#534AB7]/10 hover:shadow-md transition-shadow duration-250">
-      <span
-        role="img"
-        aria-label={card.emojiLabel}
-        className="text-3xl mb-3 leading-none"
-      >
+      <span role="img" aria-label={card.emojiLabel} className="text-3xl mb-3 leading-none">
         {card.emoji}
       </span>
       <h3 className="font-headline font-bold text-base text-secondary mb-1">{card.titleEn}</h3>
@@ -125,7 +119,9 @@ function DashboardPreview() {
         className="mt-2 text-sm font-semibold text-[#534AB7] hover:underline transition-colors"
         onClick={(e) => {
           e.preventDefault();
-          document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          document
+            .querySelector('#how-it-works')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }}
       >
         Learn more about Parent Controls &rarr;

@@ -12,8 +12,6 @@
 import { prisma } from '../lib/prisma';
 import { logger } from '@/lib/logger';
 
-
-
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
 
@@ -30,7 +28,9 @@ async function main() {
 
   if (dryRun) {
     for (const t of toDelete) {
-      logger.info(`DRY-RUN: would soft-delete TopicDef id=${t.id} name="${t.name}" chapterId=${t.chapterId}`);
+      logger.info(
+        `DRY-RUN: would soft-delete TopicDef id=${t.id} name="${t.name}" chapterId=${t.chapterId}`
+      );
     }
     return;
   }

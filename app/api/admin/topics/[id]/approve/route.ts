@@ -1,11 +1,8 @@
-import { prisma } from "@/lib/prisma"
-import { getServerSessionForHandlers } from '@/lib/session'
-import { ApprovalStatus } from '@/lib/ai-engine/types'
+import { prisma } from '@/lib/prisma';
+import { getServerSessionForHandlers } from '@/lib/session';
+import { ApprovalStatus } from '@/lib/ai-engine/types';
 
-export async function POST(
-  _: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSessionForHandlers();
   // Resolve DB user id for audit; fall back to null when not resolvable.
@@ -23,13 +20,22 @@ export async function POST(
     adminId = null;
   }
 
-  const topic = await prisma.topicDef.findUnique({ where: { id } })
-  if (!topic) return Response.json({ error: 'Not found' }, { status: 404 })
+  const topic = await prisma.topicDef.findUnique({ where: { id } });
+  if (!topic) return Response.json({ error: 'Not found' }, { status: 404 });
 
   await prisma.$transaction([
     prisma.topicDef.update({ where: { id }, data: { status: ApprovalStatus.Approved } }),
-    prisma.auditLog.create({ data: { adminId, targetEntity: 'TopicDef', targetId: id, action: 'CONTENT_APPROVE', previousValue: { status: topic.status }, newValue: { status: 'approved' } } })
-  ])
+    prisma.auditLog.create({
+      data: {
+        adminId,
+        targetEntity: 'TopicDef',
+        targetId: id,
+        action: 'CONTENT_APPROVE',
+        previousValue: { status: topic.status },
+        newValue: { status: 'approved' },
+      },
+    }),
+  ]);
 
-  return Response.json({ approved: true })
+  return Response.json({ approved: true });
 }

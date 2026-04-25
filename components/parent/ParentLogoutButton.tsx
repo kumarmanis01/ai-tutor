@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { signOut } from 'next-auth/react'
+import { signOut } from 'next-auth/react';
 
 export default function ParentLogoutButton() {
   return (
@@ -10,5 +10,5 @@ export default function ParentLogoutButton() {
     >
       Sign out
     </button>
-  )
+  );
 }

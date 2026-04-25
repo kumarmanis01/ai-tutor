@@ -1,4 +1,3 @@
-
 /**
  * FILE OBJECTIVE:
  * - Adjusts student difficulty preference after test using deterministic tuning engine.
@@ -67,14 +66,14 @@ export interface DifficultyFeedback {
 export async function adjustDifficultyAfterTest(
   userId: string,
   attempt: TestAttempt,
-  result: GradingResult,
+  result: GradingResult
 ): Promise<DifficultyFeedback | null> {
   // Local row type for strict mode
   type UserRow = { grade: string | number | null; subjects?: unknown };
-  const user = await prisma.user.findUnique({
+  const user = (await prisma.user.findUnique({
     where: { id: userId },
     select: { grade: true, subjects: true },
-  }) as UserRow | null;
+  })) as UserRow | null;
   if (!user?.grade) return null;
 
   const gradeNum = parseInt(String(user.grade), 10);
@@ -83,11 +82,13 @@ export async function adjustDifficultyAfterTest(
   // Get the subject from the test questions
 
   // Local row type for attemptQuestion
-  type AttemptQuestionRow = { question?: { subject?: string | null; difficulty?: string | null } | null };
-  const aq = await prisma.attemptQuestion.findFirst({
+  type AttemptQuestionRow = {
+    question?: { subject?: string | null; difficulty?: string | null } | null;
+  };
+  const aq = (await prisma.attemptQuestion.findFirst({
     where: { testResultId: attempt.id },
     include: { question: { select: { subject: true, difficulty: true } } },
-  }) as AttemptQuestionRow | null;
+  })) as AttemptQuestionRow | null;
   const subject = aq?.question?.subject ?? 'general';
   const currentPrismaDifficulty = aq?.question?.difficulty ?? 'medium';
 
@@ -95,9 +96,9 @@ export async function adjustDifficultyAfterTest(
 
   // Local row type for studentContentPreference
   type PreferenceRow = { id: string; difficulty: string };
-  const pref = await prisma.studentContentPreference.findFirst({
+  const pref = (await prisma.studentContentPreference.findFirst({
     where: { studentId: userId, subject },
-  }) as PreferenceRow | null;
+  })) as PreferenceRow | null;
 
   const currentDifficulty =
     PRISMA_TO_ENGINE[pref?.difficulty ?? currentPrismaDifficulty] ?? DifficultyLevel.MEDIUM;
@@ -106,14 +107,17 @@ export async function adjustDifficultyAfterTest(
 
   // Local row type for attemptQuestion timeSpent
   type AttemptQuestionTimeRow = { timeSpent: number | null };
-  const allAqs = await prisma.attemptQuestion.findMany({
+  const allAqs = (await prisma.attemptQuestion.findMany({
     where: { testResultId: attempt.id },
     select: { timeSpent: true },
-  }) as AttemptQuestionTimeRow[];
+  })) as AttemptQuestionTimeRow[];
   const timesWithValues = allAqs.filter((a: AttemptQuestionTimeRow) => a.timeSpent != null);
   const avgTime =
     timesWithValues.length > 0
-      ? timesWithValues.reduce((sum: number, a: AttemptQuestionTimeRow) => sum + (a.timeSpent ?? 0), 0) / timesWithValues.length
+      ? timesWithValues.reduce(
+          (sum: number, a: AttemptQuestionTimeRow) => sum + (a.timeSpent ?? 0),
+          0
+        ) / timesWithValues.length
       : 30; // default 30s if no time data
 
   const context: StudentDifficultyContext = {
@@ -143,7 +147,8 @@ export async function adjustDifficultyAfterTest(
     humanReason: adjustment.humanReason,
   });
 
-  const directionLabel = adjustment.direction > 0 ? 'up' : adjustment.direction < 0 ? 'down' : 'same';
+  const directionLabel =
+    adjustment.direction > 0 ? 'up' : adjustment.direction < 0 ? 'down' : 'same';
   const newPrismaDifficulty = ENGINE_TO_PRISMA[adjustment.newDifficulty] ?? 'medium';
 
   if (!adjustment.changed) {

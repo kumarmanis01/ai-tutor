@@ -24,7 +24,7 @@ export type {
   CacheHints,
   PaginationParams,
   PaginationInfo,
-  
+
   // Dashboard
   DashboardHomeRequest,
   DashboardHomeData,
@@ -35,7 +35,7 @@ export type {
   PendingItems,
   RecommendationSummary,
   ActivityItem,
-  
+
   // Notes
   ListNotesRequest,
   ListNotesData,
@@ -48,7 +48,7 @@ export type {
   RelatedNote,
   UpdateNoteProgressRequest,
   UpdateNoteProgressData,
-  
+
   // Practice
   StartPracticeRequest,
   StartPracticeData,
@@ -66,7 +66,7 @@ export type {
   QuestionResult,
   PerformanceByType,
   DifficultyAdjustmentInfo,
-  
+
   // Doubts
   CreateDoubtRequest,
   CreateDoubtData,
@@ -79,7 +79,7 @@ export type {
   RelatedResource,
   AddFollowUpRequest,
   AddFollowUpData,
-  
+
   // Profile
   GetProfileRequest,
   GetProfileData,
@@ -89,7 +89,7 @@ export type {
   UpdateProfileData,
   UpdatePreferencesRequest,
   UpdatePreferencesData,
-  
+
   // Errors
   ErrorCode,
 } from './schemas';
@@ -99,10 +99,7 @@ export { ERROR_CODES } from './schemas';
 // ============================================================================
 // ENDPOINTS
 // ============================================================================
-export type {
-  HttpMethod,
-  EndpointDefinition,
-} from './endpoints';
+export type { HttpMethod, EndpointDefinition } from './endpoints';
 
 export {
   API_VERSION,

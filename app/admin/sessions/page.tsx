@@ -1,62 +1,66 @@
-'use client'
-import { useState, useEffect } from 'react'
+'use client';
+import { useState, useEffect } from 'react';
 
 type Turn = {
-  id: string
-  callType: string
-  tag: string | null
-  stage: string | null
-  qualityFlag: string | null
-  createdAt: string
-}
+  id: string;
+  callType: string;
+  tag: string | null;
+  stage: string | null;
+  qualityFlag: string | null;
+  createdAt: string;
+};
 
 type SessionRow = {
-  id: string
-  studentId: string
-  startedAt: string
-  completedAt: string | null
-  turnCount: number
-  turns: Turn[]
-}
+  id: string;
+  studentId: string;
+  startedAt: string;
+  completedAt: string | null;
+  turnCount: number;
+  turns: Turn[];
+};
 
 export default function SessionsPage() {
-  const [data, setData] = useState<{ sessions: SessionRow[]; date: string; totalYesterday: number } | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [flagState, setFlagState] = useState<Record<string, { flag: string; note: string }>>({})
-  const [submitting, setSubmitting] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<{
+    sessions: SessionRow[];
+    date: string;
+    totalYesterday: number;
+  } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [flagState, setFlagState] = useState<Record<string, { flag: string; note: string }>>({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/sessions/sample')
       .then((r) => r.json())
       .then(setData)
       .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLoading(false));
+  }, []);
 
   async function submitFlag(sessionId: string, turnId: string) {
-    const state = flagState[turnId]
-    if (!state?.flag) return
-    setSubmitting(turnId)
+    const state = flagState[turnId];
+    if (!state?.flag) return;
+    setSubmitting(turnId);
     try {
       const res = await fetch(`/api/admin/sessions/${sessionId}/flag`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ turnId, flag: state.flag, note: state.note }),
-      })
+      });
       if (res.ok) {
-        setToast(`Flagged turn ${turnId.slice(0, 8)} as ${state.flag}`)
-        setTimeout(() => setToast(null), 3000)
+        setToast(`Flagged turn ${turnId.slice(0, 8)} as ${state.flag}`);
+        setTimeout(() => setToast(null), 3000);
       }
     } finally {
-      setSubmitting(null)
+      setSubmitting(null);
     }
   }
 
-  if (loading) return <p className="p-6 text-gray-500">Loading sessions...</p>
-  if (error) return <p className="p-6 text-red-600">Error: {error}</p>
+  if (loading) return <p className="p-6 text-gray-500">Loading sessions...</p>;
+  if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
 
   return (
     <div>
@@ -73,8 +77,10 @@ export default function SessionsPage() {
       <div className="space-y-4">
         {data?.sessions.map((s) => {
           const durationMin = s.completedAt
-            ? Math.round((new Date(s.completedAt).getTime() - new Date(s.startedAt).getTime()) / 60000)
-            : null
+            ? Math.round(
+                (new Date(s.completedAt).getTime() - new Date(s.startedAt).getTime()) / 60000
+              )
+            : null;
           return (
             <div key={s.id} className="border border-gray-200 rounded-lg bg-white">
               <div
@@ -84,7 +90,9 @@ export default function SessionsPage() {
                 <div className="text-sm">
                   <span className="font-mono text-xs text-gray-400">{s.id.slice(0, 12)}...</span>
                   <span className="ml-3 text-gray-600">Student: {s.studentId.slice(0, 8)}...</span>
-                  {durationMin !== null && <span className="ml-3 text-gray-500">{durationMin}min</span>}
+                  {durationMin !== null && (
+                    <span className="ml-3 text-gray-500">{durationMin}min</span>
+                  )}
                   <span className="ml-3 text-gray-500">{s.turnCount} turns</span>
                 </div>
                 <span className="text-gray-400 text-xs">{expandedId === s.id ? '▲' : '▼'}</span>
@@ -159,9 +167,9 @@ export default function SessionsPage() {
                 </div>
               )}
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

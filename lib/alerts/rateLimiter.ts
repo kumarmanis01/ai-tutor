@@ -10,7 +10,10 @@ import { RateLimiter } from './types';
 export class InMemoryRateLimiter implements RateLimiter {
   private buckets = new Map<string, { tokens: number; last: number }>();
 
-  constructor(private capacity = 5, private refillRate = 0.1) {}
+  constructor(
+    private capacity = 5,
+    private refillRate = 0.1
+  ) {}
 
   async allow(key: string, points = 1): Promise<boolean> {
     const now = Date.now() / 1000;

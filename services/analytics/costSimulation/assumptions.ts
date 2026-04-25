@@ -25,23 +25,23 @@
  */
 export const MODEL_PRICING = {
   'gpt-4o': {
-    input: 2.50,
-    output: 10.00,
+    input: 2.5,
+    output: 10.0,
     cachedInput: 1.25,
   },
   'gpt-4o-mini': {
     input: 0.15,
-    output: 0.60,
+    output: 0.6,
     cachedInput: 0.075,
   },
   'gpt-4-turbo': {
-    input: 10.00,
-    output: 30.00,
-    cachedInput: 5.00,
+    input: 10.0,
+    output: 30.0,
+    cachedInput: 5.0,
   },
   'gpt-3.5-turbo': {
-    input: 0.50,
-    output: 1.50,
+    input: 0.5,
+    output: 1.5,
     cachedInput: 0.25,
   },
 } as const;
@@ -144,7 +144,7 @@ export const USAGE_PATTERNS = {
     monthlyQuizRequests: 20,
     averageSessionMinutes: 50,
     sessionsPerWeek: 6,
-    retryRate: 0.10,
+    retryRate: 0.1,
     fallbackRate: 0.02,
   },
 } as const;
@@ -161,20 +161,20 @@ export type GradeBand = keyof typeof USAGE_PATTERNS;
 export const COST_MULTIPLIERS = {
   // Retry overhead
   retryMultiplier: 1.5, // Average retry adds 50% token cost
-  
+
   // Infrastructure overhead (logging, monitoring, etc.)
-  infrastructureOverhead: 1.10, // 10% overhead
-  
+  infrastructureOverhead: 1.1, // 10% overhead
+
   // Safety margin for price fluctuations
   safetyMargin: 1.15, // 15% buffer
-  
+
   // Caching discount (for repeated content)
   cachingDiscount: 0.85, // 15% savings from caching
-  
+
   // Volume discount tiers (monthly requests)
   volumeDiscounts: {
     tier1: { threshold: 100000, discount: 0.95 }, // 5% off
-    tier2: { threshold: 500000, discount: 0.90 }, // 10% off
+    tier2: { threshold: 500000, discount: 0.9 }, // 10% off
     tier3: { threshold: 1000000, discount: 0.85 }, // 15% off
   },
 } as const;
@@ -253,7 +253,7 @@ export function getUsagePattern(gradeBand: GradeBand) {
  */
 export function calculateVolumeDiscount(monthlyRequests: number): number {
   const { volumeDiscounts } = COST_MULTIPLIERS;
-  
+
   if (monthlyRequests >= volumeDiscounts.tier3.threshold) {
     return volumeDiscounts.tier3.discount;
   }
@@ -263,6 +263,6 @@ export function calculateVolumeDiscount(monthlyRequests: number): number {
   if (monthlyRequests >= volumeDiscounts.tier1.threshold) {
     return volumeDiscounts.tier1.discount;
   }
-  
+
   return 1.0; // No discount
 }

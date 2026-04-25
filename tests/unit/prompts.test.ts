@@ -1,5 +1,5 @@
-import fs from 'fs'
-import path from 'path'
+import fs from 'fs';
+import path from 'path';
 
 describe('prompts folder', () => {
   it('has md files for entries in prompts/prompt_config.json', () => {
@@ -9,11 +9,7 @@ describe('prompts folder', () => {
     const keys = Object.keys(cfg);
     const files = fs.readdirSync(path.join(process.cwd(), 'prompts'));
     for (const k of keys) {
-      const candidates = [
-        `${k}.md`,
-        `${k.replace(/_/g, '.')}.md`,
-        `${k.replace(/_/g, '-')}.md`,
-      ];
+      const candidates = [`${k}.md`, `${k.replace(/_/g, '.')}.md`, `${k.replace(/_/g, '-')}.md`];
       // also try splitting parts (e.g. questions_easy -> questions.easy.md)
       if (k.includes('_')) {
         const parts = k.split('_');

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { showAlert } from '../../lib/alerts';
@@ -26,7 +26,9 @@ export default function ChapterTests(props: {
   const [modalChapter, setModalChapter] = useState<{ id: string; name: string } | null>(null);
 
   const chapters = useMemo(() => props.chapters ?? [], [props.chapters]);
-  const [sparklineMap, setSparklineMap] = useState<Record<string, Array<{ date: string; score: number }>>>({});
+  const [sparklineMap, setSparklineMap] = useState<
+    Record<string, Array<{ date: string; score: number }>>
+  >({});
 
   useEffect(() => {
     let mounted = true;
@@ -56,7 +58,13 @@ export default function ChapterTests(props: {
     const res = await fetch('/api/tests/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject: props.subject, grade: props.grade, board: props.board, chapter, count: 10 }),
+      body: JSON.stringify({
+        subject: props.subject,
+        grade: props.grade,
+        board: props.board,
+        chapter,
+        count: 10,
+      }),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -68,7 +76,14 @@ export default function ChapterTests(props: {
     setTimeLimitSeconds(json.timeLimitSeconds ?? undefined);
   }
 
-  if (attemptId) return <AttemptRunner attemptId={attemptId} initialQuestions={questions} timeLimitSeconds={timeLimitSeconds} />;
+  if (attemptId)
+    return (
+      <AttemptRunner
+        attemptId={attemptId}
+        initialQuestions={questions}
+        timeLimitSeconds={timeLimitSeconds}
+      />
+    );
 
   if (chapters.length === 0) return null;
 
@@ -84,7 +99,11 @@ export default function ChapterTests(props: {
                 <div className="mt-2 flex items-center gap-3">
                   <p className="text-xs text-gray-600">10 Questions</p>
                   <div>
-                    <MiniSparkline chapter={c.name} subject={props.subject} trendData={sparklineMap[c.name]} />
+                    <MiniSparkline
+                      chapter={c.name}
+                      subject={props.subject}
+                      trendData={sparklineMap[c.name]}
+                    />
                   </div>
                 </div>
               </div>
@@ -103,7 +122,6 @@ export default function ChapterTests(props: {
                 </button>
               </div>
             </div>
-
           </div>
         ))}
       </div>

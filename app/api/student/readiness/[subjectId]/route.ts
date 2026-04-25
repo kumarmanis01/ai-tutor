@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server'
-import { getServerSessionForHandlers } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
-import { computeReadinessScore, computePredictedScoreRange } from '@/lib/student/examReadiness'
-import { logger } from '@/lib/logger'
+import { NextResponse } from 'next/server';
+import { getServerSessionForHandlers } from '@/lib/session';
+import { prisma } from '@/lib/prisma';
+import { computeReadinessScore, computePredictedScoreRange } from '@/lib/student/examReadiness';
+import { logger } from '@/lib/logger';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/student/readiness/[subjectId]
@@ -18,24 +18,21 @@ export const dynamic = 'force-dynamic'
  *
  * isCrunchMode = daysToExam <= 14 (examDate from LearningPlan or null)
  */
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ subjectId: string }> },
-) {
-  const start = Date.now()
-  const session = await getServerSessionForHandlers()
-  const userId = (session?.user as { id?: string })?.id
+export async function GET(req: Request, { params }: { params: Promise<{ subjectId: string }> }) {
+  const start = Date.now();
+  const session = await getServerSessionForHandlers();
+  const userId = (session?.user as { id?: string })?.id;
   if (!userId) {
-    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    logger.logAPI(req, res, { className: 'ReadinessAPI', methodName: 'GET' }, start)
-    return res
+    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logger.logAPI(req, res, { className: 'ReadinessAPI', methodName: 'GET' }, start);
+    return res;
   }
 
-  const { subjectId } = await params
+  const { subjectId } = await params;
   if (!subjectId?.trim()) {
-    const res = NextResponse.json({ error: 'subjectId required' }, { status: 400 })
-    logger.logAPI(req, res, { className: 'ReadinessAPI', methodName: 'GET' }, start)
-    return res
+    const res = NextResponse.json({ error: 'subjectId required' }, { status: 400 });
+    logger.logAPI(req, res, { className: 'ReadinessAPI', methodName: 'GET' }, start);
+    return res;
   }
 
   // Fetch subject name + exam date in parallel with readiness computation
@@ -50,14 +47,12 @@ export async function GET(
       orderBy: { generatedAt: 'desc' },
       select: { examDate: true },
     }),
-  ])
+  ]);
 
   // isCrunchMode: exam within the next 14 days
-  const examDate = plan?.examDate ?? null
-  const daysToExam = examDate
-    ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
-    : null
-  const isCrunchMode = daysToExam !== null && daysToExam <= 14 && daysToExam >= 0
+  const examDate = plan?.examDate ?? null;
+  const daysToExam = examDate ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000) : null;
+  const isCrunchMode = daysToExam !== null && daysToExam <= 14 && daysToExam >= 0;
 
   const res = NextResponse.json(
     {
@@ -71,8 +66,8 @@ export async function GET(
       chapters: readiness.chapters,
       lastUpdatedAt: new Date().toISOString(),
     },
-    { status: 200 },
-  )
-  logger.logAPI(req, res, { className: 'ReadinessAPI', methodName: 'GET' }, start)
-  return res
+    { status: 200 }
+  );
+  logger.logAPI(req, res, { className: 'ReadinessAPI', methodName: 'GET' }, start);
+  return res;
 }

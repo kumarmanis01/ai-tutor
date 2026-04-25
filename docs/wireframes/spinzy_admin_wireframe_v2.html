@@ -1,480 +1,1976 @@
-
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--p:#534AB7;--pl:#EEEDFE;--pd:#3C3489;--ok:#1D9E75;--warn:#BA7517;--err:#E24B4A;--r:8px;--rl:12px}
-.wrap{display:flex;height:580px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-tertiary)}
-.sb{width:196px;background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
-.logo{padding:12px;display:flex;align-items:center;gap:8px;border-bottom:0.5px solid var(--color-border-tertiary)}
-.li{width:28px;height:28px;background:#FF7A00;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.lt{font-size:13px;font-weight:500;color:var(--color-text-primary)}
-.lb{font-size:9px;background:var(--pl);color:#3C3489;padding:2px 5px;border-radius:4px;margin-left:auto}
-.ns{padding:10px 10px 3px;font-size:9px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:.07em;text-transform:uppercase}
-.ni{display:flex;align-items:center;gap:7px;padding:6px 8px;margin:1px 4px;border-radius:var(--r);cursor:pointer;color:var(--color-text-secondary);font-size:11px;transition:background .1s}
-.ni:hover{background:var(--color-background-secondary)}
-.ni.on{background:var(--pl);color:#3C3489;font-weight:500}
-.bx{font-size:9px;padding:1px 5px;border-radius:10px;margin-left:auto;background:var(--err);color:#fff;font-weight:500}
-.bx.w{background:var(--warn)}
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-.tb{height:40px;background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;padding:0 16px;gap:8px;flex-shrink:0}
-.tt{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-right:auto}
-.ch{font-size:10px;padding:3px 8px;border-radius:20px;border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);display:flex;align-items:center;gap:4px;white-space:nowrap}
-.dt{width:6px;height:6px;border-radius:50%;background:var(--ok);flex-shrink:0}
-.dt.w{background:var(--warn)}
-.ct{flex:1;overflow-y:auto;padding:14px}
-.pg{display:none}
-.pg.on{display:block}
-.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
-.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
-.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
-.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--rl);padding:12px}
-.ctit{font-size:9px;color:var(--color-text-tertiary);margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.06em}
-.met{font-size:22px;font-weight:500;color:var(--color-text-primary);line-height:1}
-.msub{font-size:10px;color:var(--color-text-tertiary);margin-top:3px}
-.up{color:var(--ok)}.dn{color:var(--err)}
-.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.st{font-size:12px;font-weight:500;color:var(--color-text-primary)}
-.btn{font-size:10px;padding:4px 9px;border-radius:var(--r);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-secondary);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:background .1s;white-space:nowrap}
-.btn:hover{background:var(--color-background-secondary)}
-.btn.p{background:var(--p);border-color:var(--p);color:#fff}
-.btn.p:hover{background:var(--pd)}
-.btn.d{border-color:var(--err);color:#A32D2D}
-.btn.s{background:var(--ok);border-color:var(--ok);color:#fff}
-.tbl{width:100%;border-collapse:collapse;font-size:11px}
-.tbl th{font-size:9px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--color-border-tertiary)}
-.tbl td{padding:7px 8px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);vertical-align:middle}
-.tbl tr:last-child td{border-bottom:none}
-.tbl tr:hover td{background:var(--color-background-secondary)}
-.tbl td b{color:var(--color-text-primary);font-weight:500}
-.sp{display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 6px;border-radius:20px;font-weight:500;white-space:nowrap}
-.sp.run{background:#E6F1FB;color:#0C447C}
-.sp.ok{background:#EAF3DE;color:#27500A}
-.sp.err{background:#FCEBEB;color:#791F1F}
-.sp.pnd{background:#FAEEDA;color:#633806}
-.sp.act{background:#EAF3DE;color:#27500A}
-.sp.ina{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
-.pb{height:3px;background:var(--color-background-secondary);border-radius:2px;overflow:hidden;margin-top:5px}
-.pf{height:100%;border-radius:2px;background:var(--p)}
-.av{width:22px;height:22px;border-radius:50%;background:var(--pl);color:#3C3489;font-size:9px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.mb{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-.mbl{width:80px;font-size:10px;color:var(--color-text-secondary);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mbb{flex:1;height:4px;background:var(--color-background-secondary);border-radius:2px;overflow:hidden}
-.mbf{height:100%;border-radius:2px}
-.mbv{width:30px;text-align:right;font-size:10px;color:var(--color-text-tertiary)}
-.sp2{height:36px;display:flex;align-items:flex-end;gap:2px}
-.sb2{flex:1;border-radius:2px 2px 0 0;min-height:2px}
-.sbl{display:flex;justify-content:space-between;font-size:9px;color:var(--color-text-tertiary);margin-top:3px}
-.ps{display:flex;align-items:center;gap:10px;padding:8px 10px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--r);margin-bottom:5px;background:var(--color-background-primary)}
-.sn{width:18px;height:18px;border-radius:50%;background:var(--pl);color:#3C3489;font-size:9px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sn.a{background:var(--p);color:#fff}
-.sn.d{background:var(--ok);color:#fff}
-.ar{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
-.ar:last-child{border-bottom:none}
-.ad{width:6px;height:6px;border-radius:50%;margin-top:3px;flex-shrink:0}
-.hr{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px}
-.hr:last-child{border-bottom:none}
-.ur{display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:0.5px solid var(--color-border-tertiary)}
-.ur:last-child{border-bottom:none}
-.ur:hover{background:var(--color-background-secondary)}
-.tag{font-size:9px;padding:2px 6px;border-radius:4px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-tertiary)}
-.ban{background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:var(--r);padding:8px 10px;margin-bottom:10px;font-size:10px;color:#633806;display:flex;align-items:flex-start;gap:6px}
-.dv{height:0.5px;background:var(--color-border-tertiary);margin:10px 0}
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  :root {
+    --p: #534ab7;
+    --pl: #eeedfe;
+    --pd: #3c3489;
+    --ok: #1d9e75;
+    --warn: #ba7517;
+    --err: #e24b4a;
+    --r: 8px;
+    --rl: 12px;
+  }
+  .wrap {
+    display: flex;
+    height: 580px;
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    background: var(--color-background-tertiary);
+  }
+  .sb {
+    width: 196px;
+    background: var(--color-background-primary);
+    border-right: 0.5px solid var(--color-border-tertiary);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .logo {
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .li {
+    width: 28px;
+    height: 28px;
+    background: #ff7a00;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .lt {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  .lb {
+    font-size: 9px;
+    background: var(--pl);
+    color: #3c3489;
+    padding: 2px 5px;
+    border-radius: 4px;
+    margin-left: auto;
+  }
+  .ns {
+    padding: 10px 10px 3px;
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .ni {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    margin: 1px 4px;
+    border-radius: var(--r);
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    transition: background 0.1s;
+  }
+  .ni:hover {
+    background: var(--color-background-secondary);
+  }
+  .ni.on {
+    background: var(--pl);
+    color: #3c3489;
+    font-weight: 500;
+  }
+  .bx {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 10px;
+    margin-left: auto;
+    background: var(--err);
+    color: #fff;
+    font-weight: 500;
+  }
+  .bx.w {
+    background: var(--warn);
+  }
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .tb {
+    height: 40px;
+    background: var(--color-background-primary);
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .tt {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-right: auto;
+  }
+  .ch {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 0.5px solid var(--color-border-secondary);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .dt {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    flex-shrink: 0;
+  }
+  .dt.w {
+    background: var(--warn);
+  }
+  .ct {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+  }
+  .pg {
+    display: none;
+  }
+  .pg.on {
+    display: block;
+  }
+  .g4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .g3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .g2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .card {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--rl);
+    padding: 12px;
+  }
+  .ctit {
+    font-size: 9px;
+    color: var(--color-text-tertiary);
+    margin-bottom: 5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .met {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    line-height: 1;
+  }
+  .msub {
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+    margin-top: 3px;
+  }
+  .up {
+    color: var(--ok);
+  }
+  .dn {
+    color: var(--err);
+  }
+  .sh {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .st {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  .btn {
+    font-size: 10px;
+    padding: 4px 9px;
+    border-radius: var(--r);
+    border: 0.5px solid var(--color-border-secondary);
+    background: var(--color-background-primary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.1s;
+    white-space: nowrap;
+  }
+  .btn:hover {
+    background: var(--color-background-secondary);
+  }
+  .btn.p {
+    background: var(--p);
+    border-color: var(--p);
+    color: #fff;
+  }
+  .btn.p:hover {
+    background: var(--pd);
+  }
+  .btn.d {
+    border-color: var(--err);
+    color: #a32d2d;
+  }
+  .btn.s {
+    background: var(--ok);
+    border-color: var(--ok);
+    color: #fff;
+  }
+  .tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .tbl th {
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 5px 8px;
+    text-align: left;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .tbl td {
+    padding: 7px 8px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-secondary);
+    vertical-align: middle;
+  }
+  .tbl tr:last-child td {
+    border-bottom: none;
+  }
+  .tbl tr:hover td {
+    background: var(--color-background-secondary);
+  }
+  .tbl td b {
+    color: var(--color-text-primary);
+    font-weight: 500;
+  }
+  .sp {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 20px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .sp.run {
+    background: #e6f1fb;
+    color: #0c447c;
+  }
+  .sp.ok {
+    background: #eaf3de;
+    color: #27500a;
+  }
+  .sp.err {
+    background: #fcebeb;
+    color: #791f1f;
+  }
+  .sp.pnd {
+    background: #faeeda;
+    color: #633806;
+  }
+  .sp.act {
+    background: #eaf3de;
+    color: #27500a;
+  }
+  .sp.ina {
+    background: var(--color-background-secondary);
+    color: var(--color-text-tertiary);
+  }
+  .pb {
+    height: 3px;
+    background: var(--color-background-secondary);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 5px;
+  }
+  .pf {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--p);
+  }
+  .av {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--pl);
+    color: #3c3489;
+    font-size: 9px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .mb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+  }
+  .mbl {
+    width: 80px;
+    font-size: 10px;
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mbb {
+    flex: 1;
+    height: 4px;
+    background: var(--color-background-secondary);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .mbf {
+    height: 100%;
+    border-radius: 2px;
+  }
+  .mbv {
+    width: 30px;
+    text-align: right;
+    font-size: 10px;
+    color: var(--color-text-tertiary);
+  }
+  .sp2 {
+    height: 36px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .sb2 {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+  }
+  .sbl {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--color-text-tertiary);
+    margin-top: 3px;
+  }
+  .ps {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--r);
+    margin-bottom: 5px;
+    background: var(--color-background-primary);
+  }
+  .sn {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--pl);
+    color: #3c3489;
+    font-size: 9px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sn.a {
+    background: var(--p);
+    color: #fff;
+  }
+  .sn.d {
+    background: var(--ok);
+    color: #fff;
+  }
+  .ar {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ar:last-child {
+    border-bottom: none;
+  }
+  .ad {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  .hr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    font-size: 11px;
+  }
+  .hr:last-child {
+    border-bottom: none;
+  }
+  .ur {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ur:last-child {
+    border-bottom: none;
+  }
+  .ur:hover {
+    background: var(--color-background-secondary);
+  }
+  .tag {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-tertiary);
+  }
+  .ban {
+    background: #faeeda;
+    border: 0.5px solid #ef9f27;
+    border-radius: var(--r);
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    font-size: 10px;
+    color: #633806;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .dv {
+    height: 0.5px;
+    background: var(--color-border-tertiary);
+    margin: 10px 0;
+  }
 </style>
 
 <div class="wrap">
-<div class="sb">
-  <div class="logo">
-    <div class="li" style="font-size:14px">&#129417;</div>
-    <span class="lt">Spinzy</span>
-    <span class="lb">Admin</span>
-  </div>
-  <div style="padding:6px 3px 12px">
-    <div class="ns">Overview</div>
-    <div class="ni on" onclick="go('dashboard',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
-      Dashboard
+  <div class="sb">
+    <div class="logo">
+      <div class="li" style="font-size: 14px">&#129417;</div>
+      <span class="lt">Spinzy</span>
+      <span class="lb">Admin</span>
     </div>
-    <div class="ns">Content</div>
-    <div class="ni" onclick="go('content',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><path d="M2 3h10M2 7h10M2 11h6"/></svg>
-      Coverage &amp; Hydrate
-    </div>
-    <div class="ni" onclick="go('review',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><path d="M2 2h10v10H2z"/><path d="M4 5h6M4 7h4"/></svg>
-      Content Review
-      <span class="bx w">12</span>
-    </div>
-    <div class="ni" onclick="go('jobs',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/><path d="M7 4v3l2 2"/></svg>
-      Jobs
-      <span class="bx">2</span>
-    </div>
-    <div class="ns">Users</div>
-    <div class="ni" onclick="go('students',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><circle cx="7" cy="4" r="2.5"/><path d="M1 13c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
-      Students
-    </div>
-    <div class="ni" onclick="go('parents',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><circle cx="4" cy="4" r="2"/><circle cx="10" cy="4" r="2"/><path d="M1 13c0-2.5 1.3-4.5 3-4.5m6 0c1.7 0 3 2 3 4.5"/></svg>
-      Parents
-    </div>
-    <div class="ns">Analytics</div>
-    <div class="ni" onclick="go('analytics',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><path d="M2 12l3-4 3 2 4-6"/></svg>
-      Learning Analytics
-    </div>
-    <div class="ni" onclick="go('costs',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/><path d="M7 4v6M5 5.5h3a1 1 0 010 2H5"/></svg>
-      Costs &amp; Usage
-    </div>
-    <div class="ns">System</div>
-    <div class="ni" onclick="go('health',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><path d="M1 7h3l2-4 2 8 2-4h3"/></svg>
-      System Health
-    </div>
-    <div class="ni" onclick="go('safety',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><path d="M7 1l5 2v5c0 2.8-2.2 4.5-5 5C4.2 12.5 2 10.8 2 8V3z"/></svg>
-      Safety &amp; Alerts
-      <span class="bx">3</span>
-    </div>
-    <div class="ni" onclick="go('notifications',this)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14"><path d="M7 1v1M7 12v1M3 7a4 4 0 018 0v2H3V7zM5.5 12h3"/></svg>
-      Notifications
-    </div>
-  </div>
-</div>
-
-<div class="main">
-  <div class="tb">
-    <span class="tt" id="ptit">Dashboard</span>
-    <div class="ch"><div class="dt"></div>Production live</div>
-    <div class="ch"><div class="dt"></div>Redis OK</div>
-    <div class="ch" style="border-color:#EF9F27;color:#633806"><div class="dt w"></div>2 jobs running</div>
-    <div class="av" style="width:26px;height:26px;font-size:10px;margin-left:4px">M</div>
-  </div>
-
-  <div class="ct">
-
-    <!-- DASHBOARD -->
-    <div id="p-dashboard" class="pg on">
-      <div class="g4">
-        <div class="card"><div class="ctit">Active students today</div><div class="met">47</div><div class="msub"><span class="up">+12%</span> vs yesterday</div></div>
-        <div class="card"><div class="ctit">Sessions today</div><div class="met">183</div><div class="msub"><span class="up">+8%</span> vs yesterday</div></div>
-        <div class="card"><div class="ctit">AI cost today</div><div class="met">$1.24</div><div class="msub">$0.007 / session</div></div>
-        <div class="card"><div class="ctit">Content ready</div><div class="met">34<span style="font-size:13px;color:var(--color-text-tertiary)">/120</span></div><div class="pb"><div class="pf" style="width:28%"></div></div></div>
+    <div style="padding: 6px 3px 12px">
+      <div class="ns">Overview</div>
+      <div class="ni on" onclick="go('dashboard', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <rect x="1" y="1" width="5" height="5" rx="1" />
+          <rect x="8" y="1" width="5" height="5" rx="1" />
+          <rect x="1" y="8" width="5" height="5" rx="1" />
+          <rect x="8" y="8" width="5" height="5" rx="1" />
+        </svg>
+        Dashboard
       </div>
-      <div class="g2">
-        <div class="card">
-          <div class="sh"><span class="st">Sessions this week</span></div>
-          <div class="sp2">
-            <div class="sb2" style="height:40%;background:var(--p);opacity:.35"></div>
-            <div class="sb2" style="height:55%;background:var(--p);opacity:.45"></div>
-            <div class="sb2" style="height:70%;background:var(--p);opacity:.55"></div>
-            <div class="sb2" style="height:62%;background:var(--p);opacity:.5"></div>
-            <div class="sb2" style="height:85%;background:var(--p);opacity:.7"></div>
-            <div class="sb2" style="height:78%;background:var(--p);opacity:.65"></div>
-            <div class="sb2" style="height:100%;background:var(--p)"></div>
+      <div class="ns">Content</div>
+      <div class="ni" onclick="go('content', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <path d="M2 3h10M2 7h10M2 11h6" />
+        </svg>
+        Coverage &amp; Hydrate
+      </div>
+      <div class="ni" onclick="go('review', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <path d="M2 2h10v10H2z" />
+          <path d="M4 5h6M4 7h4" />
+        </svg>
+        Content Review
+        <span class="bx w">12</span>
+      </div>
+      <div class="ni" onclick="go('jobs', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <circle cx="7" cy="7" r="5" />
+          <path d="M7 4v3l2 2" />
+        </svg>
+        Jobs
+        <span class="bx">2</span>
+      </div>
+      <div class="ns">Users</div>
+      <div class="ni" onclick="go('students', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <circle cx="7" cy="4" r="2.5" />
+          <path d="M1 13c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+        </svg>
+        Students
+      </div>
+      <div class="ni" onclick="go('parents', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <circle cx="4" cy="4" r="2" />
+          <circle cx="10" cy="4" r="2" />
+          <path d="M1 13c0-2.5 1.3-4.5 3-4.5m6 0c1.7 0 3 2 3 4.5" />
+        </svg>
+        Parents
+      </div>
+      <div class="ns">Analytics</div>
+      <div class="ni" onclick="go('analytics', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <path d="M2 12l3-4 3 2 4-6" />
+        </svg>
+        Learning Analytics
+      </div>
+      <div class="ni" onclick="go('costs', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <circle cx="7" cy="7" r="5" />
+          <path d="M7 4v6M5 5.5h3a1 1 0 010 2H5" />
+        </svg>
+        Costs &amp; Usage
+      </div>
+      <div class="ns">System</div>
+      <div class="ni" onclick="go('health', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <path d="M1 7h3l2-4 2 8 2-4h3" />
+        </svg>
+        System Health
+      </div>
+      <div class="ni" onclick="go('safety', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <path d="M7 1l5 2v5c0 2.8-2.2 4.5-5 5C4.2 12.5 2 10.8 2 8V3z" />
+        </svg>
+        Safety &amp; Alerts
+        <span class="bx">3</span>
+      </div>
+      <div class="ni" onclick="go('notifications', this)">
+        <svg
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 14 14"
+        >
+          <path d="M7 1v1M7 12v1M3 7a4 4 0 018 0v2H3V7zM5.5 12h3" />
+        </svg>
+        Notifications
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="tb">
+      <span class="tt" id="ptit">Dashboard</span>
+      <div class="ch">
+        <div class="dt"></div>
+        Production live
+      </div>
+      <div class="ch">
+        <div class="dt"></div>
+        Redis OK
+      </div>
+      <div class="ch" style="border-color: #ef9f27; color: #633806">
+        <div class="dt w"></div>
+        2 jobs running
+      </div>
+      <div class="av" style="width: 26px; height: 26px; font-size: 10px; margin-left: 4px">M</div>
+    </div>
+
+    <div class="ct">
+      <!-- DASHBOARD -->
+      <div id="p-dashboard" class="pg on">
+        <div class="g4">
+          <div class="card">
+            <div class="ctit">Active students today</div>
+            <div class="met">47</div>
+            <div class="msub"><span class="up">+12%</span> vs yesterday</div>
           </div>
-          <div class="sbl"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+          <div class="card">
+            <div class="ctit">Sessions today</div>
+            <div class="met">183</div>
+            <div class="msub"><span class="up">+8%</span> vs yesterday</div>
+          </div>
+          <div class="card">
+            <div class="ctit">AI cost today</div>
+            <div class="met">$1.24</div>
+            <div class="msub">$0.007 / session</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Content ready</div>
+            <div class="met">
+              34<span style="font-size: 13px; color: var(--color-text-tertiary)">/120</span>
+            </div>
+            <div class="pb"><div class="pf" style="width: 28%"></div></div>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="sh"><span class="st">Sessions this week</span></div>
+            <div class="sp2">
+              <div class="sb2" style="height: 40%; background: var(--p); opacity: 0.35"></div>
+              <div class="sb2" style="height: 55%; background: var(--p); opacity: 0.45"></div>
+              <div class="sb2" style="height: 70%; background: var(--p); opacity: 0.55"></div>
+              <div class="sb2" style="height: 62%; background: var(--p); opacity: 0.5"></div>
+              <div class="sb2" style="height: 85%; background: var(--p); opacity: 0.7"></div>
+              <div class="sb2" style="height: 78%; background: var(--p); opacity: 0.65"></div>
+              <div class="sb2" style="height: 100%; background: var(--p)"></div>
+            </div>
+            <div class="sbl">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span
+              ><span>Sat</span><span>Sun</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="sh"><span class="st">Quick actions</span></div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <button class="btn p" onclick="go('content', null)">
+                + Trigger content hydration
+              </button>
+              <button class="btn" onclick="go('review', null)">Review 12 pending items</button>
+              <button class="btn d" onclick="go('safety', null)">
+                3 safety alerts need review
+              </button>
+              <button class="btn" onclick="go('notifications', null)">
+                Send broadcast notification
+              </button>
+            </div>
+          </div>
         </div>
         <div class="card">
-          <div class="sh"><span class="st">Quick actions</span></div>
-          <div style="display:flex;flex-direction:column;gap:5px">
-            <button class="btn p" onclick="go('content',null)">+ Trigger content hydration</button>
-            <button class="btn" onclick="go('review',null)">Review 12 pending items</button>
-            <button class="btn d" onclick="go('safety',null)">3 safety alerts need review</button>
-            <button class="btn" onclick="go('notifications',null)">Send broadcast notification</button>
+          <div class="sh">
+            <span class="st">Recent activity</span><button class="btn">View all</button>
           </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="sh"><span class="st">Recent activity</span><button class="btn">View all</button></div>
-        <table class="tbl">
-          <thead><tr><th>Event</th><th>Detail</th><th>When</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td><b>HydrateAll completed</b></td><td>CBSE Gr10 Mathematics</td><td style="color:var(--color-text-tertiary)">2 min ago</td><td><span class="sp ok">done</span></td></tr>
-            <tr><td><b>New student signup</b></td><td>Priya S. — Grade 8 CBSE</td><td style="color:var(--color-text-tertiary)">14 min ago</td><td><span class="sp act">active</span></td></tr>
-            <tr><td><b>Distress signal detected</b></td><td>Student #cm9x...</td><td style="color:var(--color-text-tertiary)">1 hr ago</td><td><span class="sp err">review</span></td></tr>
-            <tr><td><b>NCERT ingest failed</b></td><td>Grade 6 Science</td><td style="color:var(--color-text-tertiary)">3 hr ago</td><td><span class="sp err">failed</span></td></tr>
-            <tr><td><b>Weekly digest sent</b></td><td>48 parents notified</td><td style="color:var(--color-text-tertiary)">Yesterday</td><td><span class="sp ok">done</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- COVERAGE & HYDRATE -->
-    <div id="p-content" class="pg">
-      <div class="ban">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 14 14" style="flex-shrink:0;margin-top:1px"><path d="M7 1l6 11H1z"/><path d="M7 5v3M7 10h.01"/></svg>
-        <span><b>Workflow:</b> Step 1 — Ingest NCERT &rarr; Step 2 — Generate All &rarr; Step 3 — Review &rarr; Step 4 — Diagnostic unlocked</span>
-      </div>
-      <div class="card" style="margin-bottom:10px">
-        <div class="sh"><span class="st">Content coverage matrix</span><button class="btn p">+ New generation job</button></div>
-        <table class="tbl">
-          <thead><tr><th>Subject</th><th>Grade</th><th>Chapters</th><th>Questions</th><th>RAG</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>
-            <tr><td><b>Mathematics</b></td><td>Gr10</td><td>14</td><td>420</td><td>187</td><td><span class="sp ok">Ready</span></td><td><button class="btn" style="font-size:9px">Details</button></td></tr>
-            <tr><td><b>Science</b></td><td>Gr10</td><td>0</td><td>0</td><td>0</td><td><span class="sp pnd">Not started</span></td><td><div style="display:flex;gap:3px"><button class="btn" style="font-size:9px">Ingest NCERT</button><button class="btn p" style="font-size:9px">Generate all</button></div></td></tr>
-            <tr style="background:#FCEBEB18"><td><b>Science</b></td><td>Gr6</td><td>8</td><td>0</td><td>0</td><td><span class="sp err">Wrong chapters</span></td><td><div style="display:flex;gap:3px"><button class="btn d" style="font-size:9px">Reset</button><button class="btn p" style="font-size:9px">Regenerate</button></div></td></tr>
-            <tr><td><b>Mathematics</b></td><td>Gr6</td><td>10</td><td>0</td><td>0</td><td><span class="sp run">Generating...</span></td><td><div style="display:flex;gap:3px"><button class="btn" style="font-size:9px;border-color:#BA7517;color:#633806">Pause</button><button class="btn d" style="font-size:9px">Cancel</button></div></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="g2">
-        <div class="card">
-          <div class="sh"><span class="st">Recent NCERT ingest runs</span></div>
           <table class="tbl">
-            <thead><tr><th>Subject</th><th>Chunks</th><th>Errors</th><th>Status</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Detail</th>
+                <th>When</th>
+                <th>Status</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr><td><b>Gr10 Maths</b></td><td>187</td><td>0</td><td><span class="sp ok">done</span></td></tr>
-              <tr><td><b>Gr6 Science</b></td><td>0</td><td>1</td><td><span class="sp err">failed</span></td></tr>
-              <tr><td><b>Gr10 Science</b></td><td>—</td><td>—</td><td><span class="sp pnd">queued</span></td></tr>
+              <tr>
+                <td><b>HydrateAll completed</b></td>
+                <td>CBSE Gr10 Mathematics</td>
+                <td style="color: var(--color-text-tertiary)">2 min ago</td>
+                <td><span class="sp ok">done</span></td>
+              </tr>
+              <tr>
+                <td><b>New student signup</b></td>
+                <td>Priya S. — Grade 8 CBSE</td>
+                <td style="color: var(--color-text-tertiary)">14 min ago</td>
+                <td><span class="sp act">active</span></td>
+              </tr>
+              <tr>
+                <td><b>Distress signal detected</b></td>
+                <td>Student #cm9x...</td>
+                <td style="color: var(--color-text-tertiary)">1 hr ago</td>
+                <td><span class="sp err">review</span></td>
+              </tr>
+              <tr>
+                <td><b>NCERT ingest failed</b></td>
+                <td>Grade 6 Science</td>
+                <td style="color: var(--color-text-tertiary)">3 hr ago</td>
+                <td><span class="sp err">failed</span></td>
+              </tr>
+              <tr>
+                <td><b>Weekly digest sent</b></td>
+                <td>48 parents notified</td>
+                <td style="color: var(--color-text-tertiary)">Yesterday</td>
+                <td><span class="sp ok">done</span></td>
+              </tr>
             </tbody>
           </table>
-          <div style="margin-top:8px;padding:6px 8px;background:#FCEBEB;border-radius:var(--r);font-size:10px;color:#791F1F">
-            Gr6 Science: tsx not found. Run <code>npm install -g tsx</code> on VPS.
-            <button class="btn s" style="font-size:9px;margin-top:5px;width:100%">Retry ingestion</button>
+        </div>
+      </div>
+
+      <!-- COVERAGE & HYDRATE -->
+      <div id="p-content" class="pg">
+        <div class="ban">
+          <svg
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            viewBox="0 0 14 14"
+            style="flex-shrink: 0; margin-top: 1px"
+          >
+            <path d="M7 1l6 11H1z" />
+            <path d="M7 5v3M7 10h.01" />
+          </svg>
+          <span
+            ><b>Workflow:</b> Step 1 — Ingest NCERT &rarr; Step 2 — Generate All &rarr; Step 3 —
+            Review &rarr; Step 4 — Diagnostic unlocked</span
+          >
+        </div>
+        <div class="card" style="margin-bottom: 10px">
+          <div class="sh">
+            <span class="st">Content coverage matrix</span
+            ><button class="btn p">+ New generation job</button>
           </div>
-        </div>
-        <div class="card">
-          <div class="sh"><span class="st">Active pipeline</span></div>
-          <div class="ps"><div class="sn a">1</div><div style="flex:1"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Syllabus — Gr6 Maths</div><div style="font-size:9px;color:var(--color-text-tertiary)">Topics: 8/40</div><div class="pb"><div class="pf" style="width:20%"></div></div></div><span class="sp run">running</span></div>
-          <div class="ps" style="opacity:.45"><div class="sn">2</div><div style="flex:1"><div style="font-size:11px;color:var(--color-text-secondary)">Notes — waiting</div></div></div>
-          <div class="ps" style="opacity:.45"><div class="sn">3</div><div style="flex:1"><div style="font-size:11px;color:var(--color-text-secondary)">Questions — waiting</div></div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CONTENT REVIEW -->
-    <div id="p-review" class="pg">
-      <div class="g3" style="margin-bottom:10px">
-        <div class="card"><div class="ctit">Pending review</div><div class="met" style="color:#633806">12</div></div>
-        <div class="card"><div class="ctit">Approved today</div><div class="met">47</div></div>
-        <div class="card"><div class="ctit">Avg AI score</div><div class="met">0.87</div></div>
-      </div>
-      <div class="card">
-        <div class="sh"><span class="st">Pending content</span><button class="btn s">Approve all visible</button></div>
-        <table class="tbl">
-          <thead><tr><th>Type</th><th>Subject</th><th>Preview</th><th>Score</th><th>Actions</th></tr></thead>
-          <tbody>
-            <tr><td><span class="tag">Question</span></td><td>Gr10 Maths</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">If 3x − 2 = 7, find x.</td><td style="color:var(--ok);font-weight:500">0.94</td><td><div style="display:flex;gap:3px"><button class="btn s" style="font-size:9px">Approve</button><button class="btn d" style="font-size:9px">Reject</button></div></td></tr>
-            <tr><td><span class="tag">Note</span></td><td>Gr10 Science</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Newton's first law states...</td><td style="color:var(--warn);font-weight:500">0.71</td><td><div style="display:flex;gap:3px"><button class="btn s" style="font-size:9px">Approve</button><button class="btn d" style="font-size:9px">Reject</button></div></td></tr>
-            <tr><td><span class="tag">Question</span></td><td>Gr6 Maths</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">What is 3/4 + 1/2?</td><td style="color:var(--ok);font-weight:500">0.98</td><td><div style="display:flex;gap:3px"><button class="btn s" style="font-size:9px">Approve</button><button class="btn d" style="font-size:9px">Reject</button></div></td></tr>
-            <tr><td><span class="tag">Question</span></td><td>Gr10 Geometry</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Circle radius 7cm, find circumference</td><td style="color:var(--err);font-weight:500">0.52</td><td><div style="display:flex;gap:3px"><button class="btn s" style="font-size:9px">Approve</button><button class="btn d" style="font-size:9px">Reject</button></div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- JOBS -->
-    <div id="p-jobs" class="pg">
-      <div class="g4" style="margin-bottom:10px">
-        <div class="card"><div class="ctit">Running</div><div class="met" style="color:#0C447C">2</div></div>
-        <div class="card"><div class="ctit">Pending</div><div class="met" style="color:#633806">5</div></div>
-        <div class="card"><div class="ctit">Completed today</div><div class="met" style="color:var(--ok)">18</div></div>
-        <div class="card"><div class="ctit">Failed today</div><div class="met" style="color:var(--err)">1</div></div>
-      </div>
-      <div class="card">
-        <div class="sh"><span class="st">All jobs</span></div>
-        <table class="tbl">
-          <thead><tr><th>Job ID</th><th>Type</th><th>Subject</th><th>Progress</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>
-            <tr><td style="font-family:monospace;font-size:9px;color:var(--color-text-tertiary)">15ff9a0c</td><td>HydrateAll</td><td>Gr6 Maths</td><td><div style="display:flex;align-items:center;gap:6px"><div class="pb" style="width:70px;margin:0"><div class="pf" style="width:20%"></div></div><span style="font-size:9px;color:var(--color-text-tertiary)">20%</span></div></td><td><span class="sp run">running</span></td><td><div style="display:flex;gap:3px"><button class="btn" style="font-size:9px">Pause</button><button class="btn d" style="font-size:9px">Cancel</button></div></td></tr>
-            <tr><td style="font-family:monospace;font-size:9px;color:var(--color-text-tertiary)">6c298e87</td><td>HydrateAll</td><td>Gr10 Maths</td><td><div style="display:flex;align-items:center;gap:6px"><div class="pb" style="width:70px;margin:0"><div class="pf" style="width:100%"></div></div><span style="font-size:9px;color:var(--color-text-tertiary)">100%</span></div></td><td><span class="sp ok">done</span></td><td><button class="btn" style="font-size:9px">Details</button></td></tr>
-            <tr><td style="font-family:monospace;font-size:9px;color:var(--color-text-tertiary)">a1b2c3d4</td><td>NCERT ingest</td><td>Gr6 Science</td><td><div style="display:flex;align-items:center;gap:6px"><div class="pb" style="width:70px;margin:0"><div class="pf" style="width:0%;background:var(--err)"></div></div><span style="font-size:9px;color:var(--err)">0%</span></div></td><td><span class="sp err">failed</span></td><td><div style="display:flex;gap:3px"><button class="btn" style="font-size:9px">Error log</button><button class="btn s" style="font-size:9px">Retry</button></div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- STUDENTS -->
-    <div id="p-students" class="pg">
-      <div class="g4" style="margin-bottom:10px">
-        <div class="card"><div class="ctit">Total students</div><div class="met">284</div></div>
-        <div class="card"><div class="ctit">Active this week</div><div class="met">47</div><div class="msub"><span class="up">16.5%</span> WAU</div></div>
-        <div class="card"><div class="ctit">Paid subscribers</div><div class="met">12</div></div>
-        <div class="card"><div class="ctit">Diagnostic done</div><div class="met">38</div><div class="msub">13% of total</div></div>
-      </div>
-      <div class="card">
-        <div class="sh"><span class="st">Students</span><div style="display:flex;gap:5px"><input style="font-size:10px;padding:4px 7px;border:0.5px solid var(--color-border-secondary);border-radius:var(--r);background:var(--color-background-primary);color:var(--color-text-primary);width:150px" placeholder="Search name or email..."><button class="btn">Filter</button></div></div>
-        <div>
-          <div class="ur"><div class="av">P</div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Priya Sharma</div><div style="font-size:9px;color:var(--color-text-tertiary)">Grade 8 · CBSE · Age 13</div></div><span class="sp act">active</span><span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">3/wk</span><div style="display:flex;gap:3px;margin-left:8px"><button class="btn" style="font-size:9px">View</button><button class="btn" style="font-size:9px">Notify</button></div></div>
-          <div class="ur"><div class="av" style="background:#E6F1FB;color:#0C447C">M</div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Manish Kumar</div><div style="font-size:9px;color:var(--color-text-tertiary)">Admin · Age 14</div></div><span class="sp run">admin</span><span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">—</span><div style="display:flex;gap:3px;margin-left:8px"><button class="btn" style="font-size:9px">Manage</button></div></div>
-          <div class="ur"><div class="av" style="background:#EAF3DE;color:#27500A">R</div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Rahul Verma</div><div style="font-size:9px;color:var(--color-text-tertiary)">Grade 6 · CBSE · Age 11</div></div><span class="sp ina">inactive 8d</span><span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">0/wk</span><div style="display:flex;gap:3px;margin-left:8px"><button class="btn" style="font-size:9px">View</button><button class="btn p" style="font-size:9px">Notify</button></div></div>
-          <div class="ur"><div class="av" style="background:#FAEEDA;color:#633806">A</div><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Anjali Singh</div><div style="font-size:9px;color:var(--color-text-tertiary)">Grade 10 · CBSE · Age 15</div></div><span class="sp act">active</span><span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">5/wk</span><div style="display:flex;gap:3px;margin-left:8px"><button class="btn" style="font-size:9px">View</button><button class="btn" style="font-size:9px">Notify</button></div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PARENTS -->
-    <div id="p-parents" class="pg">
-      <div class="g3" style="margin-bottom:10px">
-        <div class="card"><div class="ctit">Linked parents</div><div class="met">31</div></div>
-        <div class="card"><div class="ctit">Last digest</div><div class="met" style="font-size:16px">Sun 18:00</div><div class="msub">48 emails delivered</div></div>
-        <div class="card"><div class="ctit">Avg child readiness</div><div class="met">61<span style="font-size:14px;color:var(--color-text-tertiary)">%</span></div></div>
-      </div>
-      <div class="card">
-        <div class="sh"><span class="st">Parent accounts</span><button class="btn p">Send digest now</button></div>
-        <table class="tbl">
-          <thead><tr><th>Parent</th><th>Child</th><th>Verified</th><th>Readiness</th><th>Actions</th></tr></thead>
-          <tbody>
-            <tr><td><div style="display:flex;align-items:center;gap:5px"><div class="av" style="width:18px;height:18px;font-size:8px">S</div><b>Sunita Sharma</b></div></td><td>Priya · Gr8</td><td><span class="sp ok">verified</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="mbb" style="width:50px"><div class="mbf" style="width:72%;background:var(--ok);height:4px;border-radius:2px"></div></div><span style="font-size:10px;color:var(--ok)">72%</span></div></td><td><button class="btn" style="font-size:9px">Send report</button></td></tr>
-            <tr><td><div style="display:flex;align-items:center;gap:5px"><div class="av" style="width:18px;height:18px;font-size:8px;background:#FAEEDA;color:#633806">V</div><b>Vikram Verma</b></div></td><td>Rahul · Gr6</td><td><span class="sp pnd">pending OTP</span></td><td><div style="display:flex;align-items:center;gap:6px"><div class="mbb" style="width:50px"><div class="mbf" style="width:28%;background:var(--err);height:4px;border-radius:2px"></div></div><span style="font-size:10px;color:var(--err)">28%</span></div></td><td><button class="btn" style="font-size:9px">Resend OTP</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ANALYTICS -->
-    <div id="p-analytics" class="pg">
-      <div class="g4" style="margin-bottom:10px">
-        <div class="card"><div class="ctit">Avg session length</div><div class="met">18<span style="font-size:12px;color:var(--color-text-tertiary)">m</span></div><div class="msub"><span class="up">+2m</span> vs last week</div></div>
-        <div class="card"><div class="ctit">Avg readiness</div><div class="met">61<span style="font-size:12px;color:var(--color-text-tertiary)">%</span></div><div class="msub"><span class="up">+4%</span> vs last week</div></div>
-        <div class="card"><div class="ctit">Diagnostic rate</div><div class="met">13<span style="font-size:12px;color:var(--color-text-tertiary)">%</span></div><div class="msub">38 of 284</div></div>
-        <div class="card"><div class="ctit">Avg streak</div><div class="met">4.2<span style="font-size:12px;color:var(--color-text-tertiary)">d</span></div></div>
-      </div>
-      <div class="g2">
-        <div class="card">
-          <div class="sh"><span class="st">Subject readiness by grade</span></div>
-          <div class="mb"><span class="mbl">Gr10 Maths</span><div class="mbb"><div class="mbf" style="width:68%;background:var(--warn);height:4px;border-radius:2px"></div></div><span class="mbv">68%</span></div>
-          <div class="mb"><span class="mbl">Gr10 Science</span><div class="mbb"><div class="mbf" style="width:55%;background:var(--warn);height:4px;border-radius:2px"></div></div><span class="mbv">55%</span></div>
-          <div class="mb"><span class="mbl">Gr8 Maths</span><div class="mbb"><div class="mbf" style="width:82%;background:var(--ok);height:4px;border-radius:2px"></div></div><span class="mbv">82%</span></div>
-          <div class="mb"><span class="mbl">Gr6 Science</span><div class="mbb"><div class="mbf" style="width:31%;background:var(--err);height:4px;border-radius:2px"></div></div><span class="mbv">31%</span></div>
-          <div class="mb"><span class="mbl">Gr10 Social Sc.</span><div class="mbb"><div class="mbf" style="width:74%;background:var(--ok);height:4px;border-radius:2px"></div></div><span class="mbv">74%</span></div>
-        </div>
-        <div class="card">
-          <div class="sh"><span class="st">Weak topics (high error rate)</span></div>
           <table class="tbl">
-            <thead><tr><th>Topic</th><th>Subject</th><th>Error rate</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Grade</th>
+                <th>Chapters</th>
+                <th>Questions</th>
+                <th>RAG</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr><td><b>Quadratic equations</b></td><td>Gr10 Maths</td><td style="color:var(--err);font-weight:500">68%</td></tr>
-              <tr><td><b>Balancing equations</b></td><td>Gr10 Science</td><td style="color:var(--err);font-weight:500">61%</td></tr>
-              <tr><td><b>Fractions</b></td><td>Gr6 Maths</td><td style="color:var(--warn);font-weight:500">44%</td></tr>
-              <tr><td><b>Photosynthesis</b></td><td>Gr8 Science</td><td style="color:var(--warn);font-weight:500">38%</td></tr>
+              <tr>
+                <td><b>Mathematics</b></td>
+                <td>Gr10</td>
+                <td>14</td>
+                <td>420</td>
+                <td>187</td>
+                <td><span class="sp ok">Ready</span></td>
+                <td><button class="btn" style="font-size: 9px">Details</button></td>
+              </tr>
+              <tr>
+                <td><b>Science</b></td>
+                <td>Gr10</td>
+                <td>0</td>
+                <td>0</td>
+                <td>0</td>
+                <td><span class="sp pnd">Not started</span></td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn" style="font-size: 9px">Ingest NCERT</button
+                    ><button class="btn p" style="font-size: 9px">Generate all</button>
+                  </div>
+                </td>
+              </tr>
+              <tr style="background: #fcebeb18">
+                <td><b>Science</b></td>
+                <td>Gr6</td>
+                <td>8</td>
+                <td>0</td>
+                <td>0</td>
+                <td><span class="sp err">Wrong chapters</span></td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn d" style="font-size: 9px">Reset</button
+                    ><button class="btn p" style="font-size: 9px">Regenerate</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><b>Mathematics</b></td>
+                <td>Gr6</td>
+                <td>10</td>
+                <td>0</td>
+                <td>0</td>
+                <td><span class="sp run">Generating...</span></td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button
+                      class="btn"
+                      style="font-size: 9px; border-color: #ba7517; color: #633806"
+                    >
+                      Pause</button
+                    ><button class="btn d" style="font-size: 9px">Cancel</button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
-
-    <!-- COSTS -->
-    <div id="p-costs" class="pg">
-      <div class="g4" style="margin-bottom:10px">
-        <div class="card"><div class="ctit">Today</div><div class="met">$1.24</div></div>
-        <div class="card"><div class="ctit">This month</div><div class="met">$18.40</div><div class="msub">Budget: $50.00</div></div>
-        <div class="card"><div class="ctit">Cost / session</div><div class="met">$0.007</div><div class="msub"><span class="up">-12%</span> with cache</div></div>
-        <div class="card"><div class="ctit">Cache hit rate</div><div class="met">34<span style="font-size:12px;color:var(--color-text-tertiary)">%</span></div><div class="msub">target: 60%</div></div>
-      </div>
-      <div class="g2">
-        <div class="card">
-          <div class="sh"><span class="st">Daily cost — 7 days</span></div>
-          <div class="sp2">
-            <div class="sb2" style="height:55%;background:#AFA9EC"></div>
-            <div class="sb2" style="height:45%;background:#AFA9EC"></div>
-            <div class="sb2" style="height:75%;background:#AFA9EC"></div>
-            <div class="sb2" style="height:50%;background:#AFA9EC"></div>
-            <div class="sb2" style="height:65%;background:#AFA9EC"></div>
-            <div class="sb2" style="height:90%;background:#BA7517"></div>
-            <div class="sb2" style="height:100%;background:var(--p)"></div>
-          </div>
-          <div class="sbl"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span style="color:var(--warn)">Sat!</span><span>Sun</span></div>
-          <div style="margin-top:7px;font-size:10px;color:#633806;background:#FAEEDA;padding:5px 7px;border-radius:var(--r)">Saturday was 2.1x above average. Alert sent to oncall@spinzy.com.</div>
-        </div>
-        <div class="card">
-          <div class="sh"><span class="st">Cost by component</span></div>
-          <div class="mb"><span class="mbl">AI tutor turns</span><div class="mbb"><div class="mbf" style="width:62%;background:var(--p);height:4px;border-radius:2px"></div></div><span class="mbv">$11.30</span></div>
-          <div class="mb"><span class="mbl">Content gen</span><div class="mbb"><div class="mbf" style="width:28%;background:var(--p);height:4px;border-radius:2px"></div></div><span class="mbv">$5.10</span></div>
-          <div class="mb"><span class="mbl">Embeddings</span><div class="mbb"><div class="mbf" style="width:8%;background:var(--p);height:4px;border-radius:2px"></div></div><span class="mbv">$1.50</span></div>
-          <div class="mb"><span class="mbl">Diagnostics</span><div class="mbb"><div class="mbf" style="width:3%;background:var(--p);height:4px;border-radius:2px"></div></div><span class="mbv">$0.50</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- HEALTH -->
-    <div id="p-health" class="pg">
-      <div class="g2">
-        <div class="card">
-          <div class="sh"><span class="st">Service status</span></div>
-          <div class="hr"><span style="color:var(--color-text-secondary)">Next.js web · port 3000</span><div style="display:flex;align-items:center;gap:5px"><div class="dt"></div><span style="font-size:11px;font-weight:500;color:var(--ok)">Online</span></div></div>
-          <div class="hr"><span style="color:var(--color-text-secondary)">BullMQ worker</span><div style="display:flex;align-items:center;gap:5px"><div class="dt"></div><span style="font-size:11px;font-weight:500;color:var(--ok)">Online</span></div></div>
-          <div class="hr"><span style="color:var(--color-text-secondary)">Scheduler</span><div style="display:flex;align-items:center;gap:5px"><div class="dt"></div><span style="font-size:11px;font-weight:500;color:var(--ok)">Online</span></div></div>
-          <div class="hr"><span style="color:var(--color-text-secondary)">Redis</span><div style="display:flex;align-items:center;gap:5px"><div class="dt"></div><span style="font-size:11px;font-weight:500;color:var(--ok)">Connected · 12ms</span></div></div>
-          <div class="hr"><span style="color:var(--color-text-secondary)">Neon PostgreSQL</span><div style="display:flex;align-items:center;gap:5px"><div class="dt"></div><span style="font-size:11px;font-weight:500;color:var(--ok)">Connected</span></div></div>
-          <div class="hr"><span style="color:var(--color-text-secondary)">Resend email</span><div style="display:flex;align-items:center;gap:5px"><div class="dt"></div><span style="font-size:11px;font-weight:500;color:var(--ok)">send.spinzyacademy.com</span></div></div>
-        </div>
-        <div class="card">
-          <div class="sh"><span class="st">Resource usage</span></div>
-          <div class="mb"><span class="mbl">Web memory</span><div class="mbb"><div class="mbf" style="width:45%;background:var(--p);height:4px;border-radius:2px"></div></div><span class="mbv">384MB</span></div>
-          <div class="mb"><span class="mbl">Worker memory</span><div class="mbb"><div class="mbf" style="width:62%;background:var(--warn);height:4px;border-radius:2px"></div></div><span class="mbv">113MB</span></div>
-          <div class="mb"><span class="mbl">Redis memory</span><div class="mbb"><div class="mbf" style="width:28%;background:var(--p);height:4px;border-radius:2px"></div></div><span class="mbv">28%</span></div>
-          <div class="mb"><span class="mbl">DB connections</span><div class="mbb"><div class="mbf" style="width:20%;background:var(--ok);height:4px;border-radius:2px"></div></div><span class="mbv">4/20</span></div>
-          <div class="dv"></div>
-          <div style="font-size:11px;color:var(--ok);display:flex;align-items:center;gap:5px"><div class="dt"></div>All 20 migrations applied</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SAFETY -->
-    <div id="p-safety" class="pg">
-      <div class="g3" style="margin-bottom:10px">
-        <div class="card"><div class="ctit">Unresolved alerts</div><div class="met" style="color:var(--err)">3</div></div>
-        <div class="card"><div class="ctit">Resolved this week</div><div class="met">12</div></div>
-        <div class="card"><div class="ctit">Questions flagged</div><div class="met" style="color:var(--warn)">2</div></div>
-      </div>
-      <div class="card">
-        <div class="sh"><span class="st">Safety events</span><button class="btn">Unresolved only</button></div>
-        <div>
-          <div class="ar"><div class="ad" style="background:var(--err)"></div><div style="flex:1"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Distress signal — HIGH severity</div><div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">Student cm9x... · 1 hour ago</div><div style="font-size:10px;color:var(--color-text-secondary);margin-top:4px;background:var(--color-background-secondary);padding:4px 7px;border-radius:var(--r);font-style:italic">"I can't do anything right, I'm so stupid..."</div></div><div style="display:flex;flex-direction:column;gap:3px;margin-left:10px"><button class="btn d" style="font-size:9px">Review</button><button class="btn" style="font-size:9px">Contact parent</button></div></div>
-          <div class="ar"><div class="ad" style="background:var(--warn)"></div><div style="flex:1"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Off-topic request blocked</div><div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">Student cm7y... · 3 hr ago</div></div><button class="btn" style="font-size:9px;margin-left:10px">Dismiss</button></div>
-          <div class="ar"><div class="ad" style="background:var(--warn)"></div><div style="flex:1"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Question flagged — wrong answer key</div><div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">Gr10 Maths · Quadratics Q#42 · 5 hr ago</div></div><div style="display:flex;gap:3px;margin-left:10px"><button class="btn d" style="font-size:9px">Quarantine</button><button class="btn" style="font-size:9px">Review</button></div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- NOTIFICATIONS -->
-    <div id="p-notifications" class="pg">
-      <div class="g2">
-        <div class="card">
-          <div class="sh"><span class="st">Send broadcast</span></div>
-          <div style="display:flex;flex-direction:column;gap:9px">
-            <div><label style="font-size:10px;color:var(--color-text-secondary);display:block;margin-bottom:3px">Audience</label><select style="width:100%;font-size:11px;padding:5px 7px;border:0.5px solid var(--color-border-secondary);border-radius:var(--r);background:var(--color-background-primary);color:var(--color-text-primary)"><option>All students (284)</option><option>Inactive 7+ days (47)</option><option>Grade 10 only (68)</option><option>No diagnostic taken (246)</option></select></div>
-            <div><label style="font-size:10px;color:var(--color-text-secondary);display:block;margin-bottom:3px">Title</label><input type="text" placeholder="Notification title" style="width:100%;font-size:11px;padding:5px 7px;border:0.5px solid var(--color-border-secondary);border-radius:var(--r);background:var(--color-background-primary);color:var(--color-text-primary)"></div>
-            <div><label style="font-size:10px;color:var(--color-text-secondary);display:block;margin-bottom:3px">Message</label><textarea rows="2" placeholder="Message body..." style="width:100%;font-size:11px;padding:5px 7px;border:0.5px solid var(--color-border-secondary);border-radius:var(--r);background:var(--color-background-primary);color:var(--color-text-primary);resize:none"></textarea></div>
-            <div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn">Preview</button><button class="btn p">Send to 284 students</button></div>
-          </div>
-        </div>
-        <div>
-          <div class="card" style="margin-bottom:8px">
-            <div class="sh"><span class="st">Recent sends</span></div>
+        <div class="g2">
+          <div class="card">
+            <div class="sh"><span class="st">Recent NCERT ingest runs</span></div>
             <table class="tbl">
-              <thead><tr><th>Message</th><th>Audience</th><th>Sent</th><th>Opens</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>Chunks</th>
+                  <th>Errors</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td><b>Weekly digest</b></td><td>48 parents</td><td style="color:var(--color-text-tertiary)">Sun 18:00</td><td style="color:var(--ok)">62%</td></tr>
-                <tr><td><b>New content ready</b></td><td>Gr10 students</td><td style="color:var(--color-text-tertiary)">2 days ago</td><td style="color:var(--ok)">44%</td></tr>
+                <tr>
+                  <td><b>Gr10 Maths</b></td>
+                  <td>187</td>
+                  <td>0</td>
+                  <td><span class="sp ok">done</span></td>
+                </tr>
+                <tr>
+                  <td><b>Gr6 Science</b></td>
+                  <td>0</td>
+                  <td>1</td>
+                  <td><span class="sp err">failed</span></td>
+                </tr>
+                <tr>
+                  <td><b>Gr10 Science</b></td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td><span class="sp pnd">queued</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div
+              style="
+                margin-top: 8px;
+                padding: 6px 8px;
+                background: #fcebeb;
+                border-radius: var(--r);
+                font-size: 10px;
+                color: #791f1f;
+              "
+            >
+              Gr6 Science: tsx not found. Run <code>npm install -g tsx</code> on VPS.
+              <button class="btn s" style="font-size: 9px; margin-top: 5px; width: 100%">
+                Retry ingestion
+              </button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="sh"><span class="st">Active pipeline</span></div>
+            <div class="ps">
+              <div class="sn a">1</div>
+              <div style="flex: 1">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Syllabus — Gr6 Maths
+                </div>
+                <div style="font-size: 9px; color: var(--color-text-tertiary)">Topics: 8/40</div>
+                <div class="pb"><div class="pf" style="width: 20%"></div></div>
+              </div>
+              <span class="sp run">running</span>
+            </div>
+            <div class="ps" style="opacity: 0.45">
+              <div class="sn">2</div>
+              <div style="flex: 1">
+                <div style="font-size: 11px; color: var(--color-text-secondary)">
+                  Notes — waiting
+                </div>
+              </div>
+            </div>
+            <div class="ps" style="opacity: 0.45">
+              <div class="sn">3</div>
+              <div style="flex: 1">
+                <div style="font-size: 11px; color: var(--color-text-secondary)">
+                  Questions — waiting
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTENT REVIEW -->
+      <div id="p-review" class="pg">
+        <div class="g3" style="margin-bottom: 10px">
+          <div class="card">
+            <div class="ctit">Pending review</div>
+            <div class="met" style="color: #633806">12</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Approved today</div>
+            <div class="met">47</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Avg AI score</div>
+            <div class="met">0.87</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sh">
+            <span class="st">Pending content</span
+            ><button class="btn s">Approve all visible</button>
+          </div>
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Subject</th>
+                <th>Preview</th>
+                <th>Score</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="tag">Question</span></td>
+                <td>Gr10 Maths</td>
+                <td
+                  style="
+                    max-width: 160px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                  "
+                >
+                  If 3x − 2 = 7, find x.
+                </td>
+                <td style="color: var(--ok); font-weight: 500">0.94</td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn s" style="font-size: 9px">Approve</button
+                    ><button class="btn d" style="font-size: 9px">Reject</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="tag">Note</span></td>
+                <td>Gr10 Science</td>
+                <td
+                  style="
+                    max-width: 160px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                  "
+                >
+                  Newton's first law states...
+                </td>
+                <td style="color: var(--warn); font-weight: 500">0.71</td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn s" style="font-size: 9px">Approve</button
+                    ><button class="btn d" style="font-size: 9px">Reject</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="tag">Question</span></td>
+                <td>Gr6 Maths</td>
+                <td
+                  style="
+                    max-width: 160px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                  "
+                >
+                  What is 3/4 + 1/2?
+                </td>
+                <td style="color: var(--ok); font-weight: 500">0.98</td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn s" style="font-size: 9px">Approve</button
+                    ><button class="btn d" style="font-size: 9px">Reject</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="tag">Question</span></td>
+                <td>Gr10 Geometry</td>
+                <td
+                  style="
+                    max-width: 160px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                  "
+                >
+                  Circle radius 7cm, find circumference
+                </td>
+                <td style="color: var(--err); font-weight: 500">0.52</td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn s" style="font-size: 9px">Approve</button
+                    ><button class="btn d" style="font-size: 9px">Reject</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- JOBS -->
+      <div id="p-jobs" class="pg">
+        <div class="g4" style="margin-bottom: 10px">
+          <div class="card">
+            <div class="ctit">Running</div>
+            <div class="met" style="color: #0c447c">2</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Pending</div>
+            <div class="met" style="color: #633806">5</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Completed today</div>
+            <div class="met" style="color: var(--ok)">18</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Failed today</div>
+            <div class="met" style="color: var(--err)">1</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sh"><span class="st">All jobs</span></div>
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Job ID</th>
+                <th>Type</th>
+                <th>Subject</th>
+                <th>Progress</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td
+                  style="font-family: monospace; font-size: 9px; color: var(--color-text-tertiary)"
+                >
+                  15ff9a0c
+                </td>
+                <td>HydrateAll</td>
+                <td>Gr6 Maths</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <div class="pb" style="width: 70px; margin: 0">
+                      <div class="pf" style="width: 20%"></div>
+                    </div>
+                    <span style="font-size: 9px; color: var(--color-text-tertiary)">20%</span>
+                  </div>
+                </td>
+                <td><span class="sp run">running</span></td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn" style="font-size: 9px">Pause</button
+                    ><button class="btn d" style="font-size: 9px">Cancel</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td
+                  style="font-family: monospace; font-size: 9px; color: var(--color-text-tertiary)"
+                >
+                  6c298e87
+                </td>
+                <td>HydrateAll</td>
+                <td>Gr10 Maths</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <div class="pb" style="width: 70px; margin: 0">
+                      <div class="pf" style="width: 100%"></div>
+                    </div>
+                    <span style="font-size: 9px; color: var(--color-text-tertiary)">100%</span>
+                  </div>
+                </td>
+                <td><span class="sp ok">done</span></td>
+                <td><button class="btn" style="font-size: 9px">Details</button></td>
+              </tr>
+              <tr>
+                <td
+                  style="font-family: monospace; font-size: 9px; color: var(--color-text-tertiary)"
+                >
+                  a1b2c3d4
+                </td>
+                <td>NCERT ingest</td>
+                <td>Gr6 Science</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <div class="pb" style="width: 70px; margin: 0">
+                      <div class="pf" style="width: 0%; background: var(--err)"></div>
+                    </div>
+                    <span style="font-size: 9px; color: var(--err)">0%</span>
+                  </div>
+                </td>
+                <td><span class="sp err">failed</span></td>
+                <td>
+                  <div style="display: flex; gap: 3px">
+                    <button class="btn" style="font-size: 9px">Error log</button
+                    ><button class="btn s" style="font-size: 9px">Retry</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- STUDENTS -->
+      <div id="p-students" class="pg">
+        <div class="g4" style="margin-bottom: 10px">
+          <div class="card">
+            <div class="ctit">Total students</div>
+            <div class="met">284</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Active this week</div>
+            <div class="met">47</div>
+            <div class="msub"><span class="up">16.5%</span> WAU</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Paid subscribers</div>
+            <div class="met">12</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Diagnostic done</div>
+            <div class="met">38</div>
+            <div class="msub">13% of total</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sh">
+            <span class="st">Students</span>
+            <div style="display: flex; gap: 5px">
+              <input
+                style="
+                  font-size: 10px;
+                  padding: 4px 7px;
+                  border: 0.5px solid var(--color-border-secondary);
+                  border-radius: var(--r);
+                  background: var(--color-background-primary);
+                  color: var(--color-text-primary);
+                  width: 150px;
+                "
+                placeholder="Search name or email..."
+              /><button class="btn">Filter</button>
+            </div>
+          </div>
+          <div>
+            <div class="ur">
+              <div class="av">P</div>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Priya Sharma
+                </div>
+                <div style="font-size: 9px; color: var(--color-text-tertiary)">
+                  Grade 8 · CBSE · Age 13
+                </div>
+              </div>
+              <span class="sp act">active</span
+              ><span style="font-size: 10px; color: var(--color-text-tertiary); margin-left: 8px"
+                >3/wk</span
+              >
+              <div style="display: flex; gap: 3px; margin-left: 8px">
+                <button class="btn" style="font-size: 9px">View</button
+                ><button class="btn" style="font-size: 9px">Notify</button>
+              </div>
+            </div>
+            <div class="ur">
+              <div class="av" style="background: #e6f1fb; color: #0c447c">M</div>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Manish Kumar
+                </div>
+                <div style="font-size: 9px; color: var(--color-text-tertiary)">Admin · Age 14</div>
+              </div>
+              <span class="sp run">admin</span
+              ><span style="font-size: 10px; color: var(--color-text-tertiary); margin-left: 8px"
+                >—</span
+              >
+              <div style="display: flex; gap: 3px; margin-left: 8px">
+                <button class="btn" style="font-size: 9px">Manage</button>
+              </div>
+            </div>
+            <div class="ur">
+              <div class="av" style="background: #eaf3de; color: #27500a">R</div>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Rahul Verma
+                </div>
+                <div style="font-size: 9px; color: var(--color-text-tertiary)">
+                  Grade 6 · CBSE · Age 11
+                </div>
+              </div>
+              <span class="sp ina">inactive 8d</span
+              ><span style="font-size: 10px; color: var(--color-text-tertiary); margin-left: 8px"
+                >0/wk</span
+              >
+              <div style="display: flex; gap: 3px; margin-left: 8px">
+                <button class="btn" style="font-size: 9px">View</button
+                ><button class="btn p" style="font-size: 9px">Notify</button>
+              </div>
+            </div>
+            <div class="ur">
+              <div class="av" style="background: #faeeda; color: #633806">A</div>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Anjali Singh
+                </div>
+                <div style="font-size: 9px; color: var(--color-text-tertiary)">
+                  Grade 10 · CBSE · Age 15
+                </div>
+              </div>
+              <span class="sp act">active</span
+              ><span style="font-size: 10px; color: var(--color-text-tertiary); margin-left: 8px"
+                >5/wk</span
+              >
+              <div style="display: flex; gap: 3px; margin-left: 8px">
+                <button class="btn" style="font-size: 9px">View</button
+                ><button class="btn" style="font-size: 9px">Notify</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PARENTS -->
+      <div id="p-parents" class="pg">
+        <div class="g3" style="margin-bottom: 10px">
+          <div class="card">
+            <div class="ctit">Linked parents</div>
+            <div class="met">31</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Last digest</div>
+            <div class="met" style="font-size: 16px">Sun 18:00</div>
+            <div class="msub">48 emails delivered</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Avg child readiness</div>
+            <div class="met">
+              61<span style="font-size: 14px; color: var(--color-text-tertiary)">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sh">
+            <span class="st">Parent accounts</span><button class="btn p">Send digest now</button>
+          </div>
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Parent</th>
+                <th>Child</th>
+                <th>Verified</th>
+                <th>Readiness</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 5px">
+                    <div class="av" style="width: 18px; height: 18px; font-size: 8px">S</div>
+                    <b>Sunita Sharma</b>
+                  </div>
+                </td>
+                <td>Priya · Gr8</td>
+                <td><span class="sp ok">verified</span></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <div class="mbb" style="width: 50px">
+                      <div
+                        class="mbf"
+                        style="width: 72%; background: var(--ok); height: 4px; border-radius: 2px"
+                      ></div>
+                    </div>
+                    <span style="font-size: 10px; color: var(--ok)">72%</span>
+                  </div>
+                </td>
+                <td><button class="btn" style="font-size: 9px">Send report</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 5px">
+                    <div
+                      class="av"
+                      style="
+                        width: 18px;
+                        height: 18px;
+                        font-size: 8px;
+                        background: #faeeda;
+                        color: #633806;
+                      "
+                    >
+                      V
+                    </div>
+                    <b>Vikram Verma</b>
+                  </div>
+                </td>
+                <td>Rahul · Gr6</td>
+                <td><span class="sp pnd">pending OTP</span></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <div class="mbb" style="width: 50px">
+                      <div
+                        class="mbf"
+                        style="width: 28%; background: var(--err); height: 4px; border-radius: 2px"
+                      ></div>
+                    </div>
+                    <span style="font-size: 10px; color: var(--err)">28%</span>
+                  </div>
+                </td>
+                <td><button class="btn" style="font-size: 9px">Resend OTP</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div id="p-analytics" class="pg">
+        <div class="g4" style="margin-bottom: 10px">
+          <div class="card">
+            <div class="ctit">Avg session length</div>
+            <div class="met">
+              18<span style="font-size: 12px; color: var(--color-text-tertiary)">m</span>
+            </div>
+            <div class="msub"><span class="up">+2m</span> vs last week</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Avg readiness</div>
+            <div class="met">
+              61<span style="font-size: 12px; color: var(--color-text-tertiary)">%</span>
+            </div>
+            <div class="msub"><span class="up">+4%</span> vs last week</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Diagnostic rate</div>
+            <div class="met">
+              13<span style="font-size: 12px; color: var(--color-text-tertiary)">%</span>
+            </div>
+            <div class="msub">38 of 284</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Avg streak</div>
+            <div class="met">
+              4.2<span style="font-size: 12px; color: var(--color-text-tertiary)">d</span>
+            </div>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="sh"><span class="st">Subject readiness by grade</span></div>
+            <div class="mb">
+              <span class="mbl">Gr10 Maths</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 68%; background: var(--warn); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">68%</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Gr10 Science</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 55%; background: var(--warn); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">55%</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Gr8 Maths</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 82%; background: var(--ok); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">82%</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Gr6 Science</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 31%; background: var(--err); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">31%</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Gr10 Social Sc.</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 74%; background: var(--ok); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">74%</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="sh"><span class="st">Weak topics (high error rate)</span></div>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Topic</th>
+                  <th>Subject</th>
+                  <th>Error rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>Quadratic equations</b></td>
+                  <td>Gr10 Maths</td>
+                  <td style="color: var(--err); font-weight: 500">68%</td>
+                </tr>
+                <tr>
+                  <td><b>Balancing equations</b></td>
+                  <td>Gr10 Science</td>
+                  <td style="color: var(--err); font-weight: 500">61%</td>
+                </tr>
+                <tr>
+                  <td><b>Fractions</b></td>
+                  <td>Gr6 Maths</td>
+                  <td style="color: var(--warn); font-weight: 500">44%</td>
+                </tr>
+                <tr>
+                  <td><b>Photosynthesis</b></td>
+                  <td>Gr8 Science</td>
+                  <td style="color: var(--warn); font-weight: 500">38%</td>
+                </tr>
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- COSTS -->
+      <div id="p-costs" class="pg">
+        <div class="g4" style="margin-bottom: 10px">
           <div class="card">
-            <div class="sh"><span class="st">Scheduled</span></div>
-            <div style="font-size:11px;color:var(--color-text-secondary);padding:3px 0">Weekly digest — Every Sunday 18:00 IST</div>
-            <div style="font-size:11px;color:var(--color-text-secondary);padding:3px 0">Inactive nudge — Every Monday 09:00 IST</div>
+            <div class="ctit">Today</div>
+            <div class="met">$1.24</div>
+          </div>
+          <div class="card">
+            <div class="ctit">This month</div>
+            <div class="met">$18.40</div>
+            <div class="msub">Budget: $50.00</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Cost / session</div>
+            <div class="met">$0.007</div>
+            <div class="msub"><span class="up">-12%</span> with cache</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Cache hit rate</div>
+            <div class="met">
+              34<span style="font-size: 12px; color: var(--color-text-tertiary)">%</span>
+            </div>
+            <div class="msub">target: 60%</div>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="sh"><span class="st">Daily cost — 7 days</span></div>
+            <div class="sp2">
+              <div class="sb2" style="height: 55%; background: #afa9ec"></div>
+              <div class="sb2" style="height: 45%; background: #afa9ec"></div>
+              <div class="sb2" style="height: 75%; background: #afa9ec"></div>
+              <div class="sb2" style="height: 50%; background: #afa9ec"></div>
+              <div class="sb2" style="height: 65%; background: #afa9ec"></div>
+              <div class="sb2" style="height: 90%; background: #ba7517"></div>
+              <div class="sb2" style="height: 100%; background: var(--p)"></div>
+            </div>
+            <div class="sbl">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span
+              ><span style="color: var(--warn)">Sat!</span><span>Sun</span>
+            </div>
+            <div
+              style="
+                margin-top: 7px;
+                font-size: 10px;
+                color: #633806;
+                background: #faeeda;
+                padding: 5px 7px;
+                border-radius: var(--r);
+              "
+            >
+              Saturday was 2.1x above average. Alert sent to oncall@spinzy.com.
+            </div>
+          </div>
+          <div class="card">
+            <div class="sh"><span class="st">Cost by component</span></div>
+            <div class="mb">
+              <span class="mbl">AI tutor turns</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 62%; background: var(--p); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">$11.30</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Content gen</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 28%; background: var(--p); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">$5.10</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Embeddings</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 8%; background: var(--p); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">$1.50</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Diagnostics</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 3%; background: var(--p); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">$0.50</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HEALTH -->
+      <div id="p-health" class="pg">
+        <div class="g2">
+          <div class="card">
+            <div class="sh"><span class="st">Service status</span></div>
+            <div class="hr">
+              <span style="color: var(--color-text-secondary)">Next.js web · port 3000</span>
+              <div style="display: flex; align-items: center; gap: 5px">
+                <div class="dt"></div>
+                <span style="font-size: 11px; font-weight: 500; color: var(--ok)">Online</span>
+              </div>
+            </div>
+            <div class="hr">
+              <span style="color: var(--color-text-secondary)">BullMQ worker</span>
+              <div style="display: flex; align-items: center; gap: 5px">
+                <div class="dt"></div>
+                <span style="font-size: 11px; font-weight: 500; color: var(--ok)">Online</span>
+              </div>
+            </div>
+            <div class="hr">
+              <span style="color: var(--color-text-secondary)">Scheduler</span>
+              <div style="display: flex; align-items: center; gap: 5px">
+                <div class="dt"></div>
+                <span style="font-size: 11px; font-weight: 500; color: var(--ok)">Online</span>
+              </div>
+            </div>
+            <div class="hr">
+              <span style="color: var(--color-text-secondary)">Redis</span>
+              <div style="display: flex; align-items: center; gap: 5px">
+                <div class="dt"></div>
+                <span style="font-size: 11px; font-weight: 500; color: var(--ok)"
+                  >Connected · 12ms</span
+                >
+              </div>
+            </div>
+            <div class="hr">
+              <span style="color: var(--color-text-secondary)">Neon PostgreSQL</span>
+              <div style="display: flex; align-items: center; gap: 5px">
+                <div class="dt"></div>
+                <span style="font-size: 11px; font-weight: 500; color: var(--ok)">Connected</span>
+              </div>
+            </div>
+            <div class="hr">
+              <span style="color: var(--color-text-secondary)">Resend email</span>
+              <div style="display: flex; align-items: center; gap: 5px">
+                <div class="dt"></div>
+                <span style="font-size: 11px; font-weight: 500; color: var(--ok)"
+                  >send.spinzyacademy.com</span
+                >
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="sh"><span class="st">Resource usage</span></div>
+            <div class="mb">
+              <span class="mbl">Web memory</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 45%; background: var(--p); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">384MB</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Worker memory</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 62%; background: var(--warn); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">113MB</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">Redis memory</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 28%; background: var(--p); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">28%</span>
+            </div>
+            <div class="mb">
+              <span class="mbl">DB connections</span>
+              <div class="mbb">
+                <div
+                  class="mbf"
+                  style="width: 20%; background: var(--ok); height: 4px; border-radius: 2px"
+                ></div>
+              </div>
+              <span class="mbv">4/20</span>
+            </div>
+            <div class="dv"></div>
+            <div
+              style="
+                font-size: 11px;
+                color: var(--ok);
+                display: flex;
+                align-items: center;
+                gap: 5px;
+              "
+            >
+              <div class="dt"></div>
+              All 20 migrations applied
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAFETY -->
+      <div id="p-safety" class="pg">
+        <div class="g3" style="margin-bottom: 10px">
+          <div class="card">
+            <div class="ctit">Unresolved alerts</div>
+            <div class="met" style="color: var(--err)">3</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Resolved this week</div>
+            <div class="met">12</div>
+          </div>
+          <div class="card">
+            <div class="ctit">Questions flagged</div>
+            <div class="met" style="color: var(--warn)">2</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sh">
+            <span class="st">Safety events</span><button class="btn">Unresolved only</button>
+          </div>
+          <div>
+            <div class="ar">
+              <div class="ad" style="background: var(--err)"></div>
+              <div style="flex: 1">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Distress signal — HIGH severity
+                </div>
+                <div style="font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px">
+                  Student cm9x... · 1 hour ago
+                </div>
+                <div
+                  style="
+                    font-size: 10px;
+                    color: var(--color-text-secondary);
+                    margin-top: 4px;
+                    background: var(--color-background-secondary);
+                    padding: 4px 7px;
+                    border-radius: var(--r);
+                    font-style: italic;
+                  "
+                >
+                  "I can't do anything right, I'm so stupid..."
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px; margin-left: 10px">
+                <button class="btn d" style="font-size: 9px">Review</button
+                ><button class="btn" style="font-size: 9px">Contact parent</button>
+              </div>
+            </div>
+            <div class="ar">
+              <div class="ad" style="background: var(--warn)"></div>
+              <div style="flex: 1">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Off-topic request blocked
+                </div>
+                <div style="font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px">
+                  Student cm7y... · 3 hr ago
+                </div>
+              </div>
+              <button class="btn" style="font-size: 9px; margin-left: 10px">Dismiss</button>
+            </div>
+            <div class="ar">
+              <div class="ad" style="background: var(--warn)"></div>
+              <div style="flex: 1">
+                <div style="font-size: 11px; font-weight: 500; color: var(--color-text-primary)">
+                  Question flagged — wrong answer key
+                </div>
+                <div style="font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px">
+                  Gr10 Maths · Quadratics Q#42 · 5 hr ago
+                </div>
+              </div>
+              <div style="display: flex; gap: 3px; margin-left: 10px">
+                <button class="btn d" style="font-size: 9px">Quarantine</button
+                ><button class="btn" style="font-size: 9px">Review</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div id="p-notifications" class="pg">
+        <div class="g2">
+          <div class="card">
+            <div class="sh"><span class="st">Send broadcast</span></div>
+            <div style="display: flex; flex-direction: column; gap: 9px">
+              <div>
+                <label
+                  style="
+                    font-size: 10px;
+                    color: var(--color-text-secondary);
+                    display: block;
+                    margin-bottom: 3px;
+                  "
+                  >Audience</label
+                ><select
+                  style="
+                    width: 100%;
+                    font-size: 11px;
+                    padding: 5px 7px;
+                    border: 0.5px solid var(--color-border-secondary);
+                    border-radius: var(--r);
+                    background: var(--color-background-primary);
+                    color: var(--color-text-primary);
+                  "
+                >
+                  <option>All students (284)</option>
+                  <option>Inactive 7+ days (47)</option>
+                  <option>Grade 10 only (68)</option>
+                  <option>No diagnostic taken (246)</option>
+                </select>
+              </div>
+              <div>
+                <label
+                  style="
+                    font-size: 10px;
+                    color: var(--color-text-secondary);
+                    display: block;
+                    margin-bottom: 3px;
+                  "
+                  >Title</label
+                ><input
+                  type="text"
+                  placeholder="Notification title"
+                  style="
+                    width: 100%;
+                    font-size: 11px;
+                    padding: 5px 7px;
+                    border: 0.5px solid var(--color-border-secondary);
+                    border-radius: var(--r);
+                    background: var(--color-background-primary);
+                    color: var(--color-text-primary);
+                  "
+                />
+              </div>
+              <div>
+                <label
+                  style="
+                    font-size: 10px;
+                    color: var(--color-text-secondary);
+                    display: block;
+                    margin-bottom: 3px;
+                  "
+                  >Message</label
+                ><textarea
+                  rows="2"
+                  placeholder="Message body..."
+                  style="
+                    width: 100%;
+                    font-size: 11px;
+                    padding: 5px 7px;
+                    border: 0.5px solid var(--color-border-secondary);
+                    border-radius: var(--r);
+                    background: var(--color-background-primary);
+                    color: var(--color-text-primary);
+                    resize: none;
+                  "
+                ></textarea>
+              </div>
+              <div style="display: flex; gap: 5px; justify-content: flex-end">
+                <button class="btn">Preview</button
+                ><button class="btn p">Send to 284 students</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom: 8px">
+              <div class="sh"><span class="st">Recent sends</span></div>
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>Message</th>
+                    <th>Audience</th>
+                    <th>Sent</th>
+                    <th>Opens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><b>Weekly digest</b></td>
+                    <td>48 parents</td>
+                    <td style="color: var(--color-text-tertiary)">Sun 18:00</td>
+                    <td style="color: var(--ok)">62%</td>
+                  </tr>
+                  <tr>
+                    <td><b>New content ready</b></td>
+                    <td>Gr10 students</td>
+                    <td style="color: var(--color-text-tertiary)">2 days ago</td>
+                    <td style="color: var(--ok)">44%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card">
+              <div class="sh"><span class="st">Scheduled</span></div>
+              <div style="font-size: 11px; color: var(--color-text-secondary); padding: 3px 0">
+                Weekly digest — Every Sunday 18:00 IST
+              </div>
+              <div style="font-size: 11px; color: var(--color-text-secondary); padding: 3px 0">
+                Inactive nudge — Every Monday 09:00 IST
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-
   </div>
-</div>
 </div>
 
 <script>
-const titles={dashboard:'Dashboard',content:'Coverage & Hydrate',review:'Content Review',jobs:'Jobs',students:'Students',parents:'Parents',analytics:'Learning Analytics',costs:'Costs & Usage',health:'System Health',safety:'Safety & Alerts',notifications:'Notifications'}
-function go(id,el){
-  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'))
-  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'))
-  const p=document.getElementById('p-'+id)
-  if(p)p.classList.add('on')
-  if(el)el.classList.add('on')
-  else document.querySelectorAll('.ni').forEach(n=>{if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+id+"'"))n.classList.add('on')})
-  document.getElementById('ptit').textContent=titles[id]||id
-}
+  const titles = {
+    dashboard: 'Dashboard',
+    content: 'Coverage & Hydrate',
+    review: 'Content Review',
+    jobs: 'Jobs',
+    students: 'Students',
+    parents: 'Parents',
+    analytics: 'Learning Analytics',
+    costs: 'Costs & Usage',
+    health: 'System Health',
+    safety: 'Safety & Alerts',
+    notifications: 'Notifications',
+  };
+  function go(id, el) {
+    document.querySelectorAll('.pg').forEach((p) => p.classList.remove('on'));
+    document.querySelectorAll('.ni').forEach((n) => n.classList.remove('on'));
+    const p = document.getElementById('p-' + id);
+    if (p) p.classList.add('on');
+    if (el) el.classList.add('on');
+    else
+      document.querySelectorAll('.ni').forEach((n) => {
+        if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + id + "'"))
+          n.classList.add('on');
+      });
+    document.getElementById('ptit').textContent = titles[id] || id;
+  }
 </script>

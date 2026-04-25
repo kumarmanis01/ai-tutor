@@ -14,12 +14,12 @@
  * - 2026-04-09T00:00:00Z | copilot | align age gate threshold from <18 to <13 per spec
  */
 
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma';
 
 export interface ParentGateResult {
-  required: boolean
-  verified: boolean
-  parentEmail: string | null
+  required: boolean;
+  verified: boolean;
+  parentEmail: string | null;
 }
 
 /**
@@ -27,9 +27,9 @@ export interface ParentGateResult {
  * Null/unknown age = no gate.
  */
 function requiresGateByAge(age: number | null | undefined): boolean {
-  if (age == null || !Number.isFinite(age)) return false
+  if (age == null || !Number.isFinite(age)) return false;
   // Product decision: parents required for children under 13.
-  return age < 13
+  return age < 13;
 }
 
 /**
@@ -40,7 +40,7 @@ function requiresGateByAge(age: number | null | undefined): boolean {
  * Never throws -- returns { required: true, verified: false } on DB error.
  */
 export async function checkParentGate(studentId: string): Promise<ParentGateResult> {
-  const fallback: ParentGateResult = { required: true, verified: false, parentEmail: null }
+  const fallback: ParentGateResult = { required: true, verified: false, parentEmail: null };
   try {
     const user = await prisma.user.findUnique({
       where: { id: studentId },
@@ -50,21 +50,21 @@ export async function checkParentGate(studentId: string): Promise<ParentGateResu
         parentVerifiedAt: true,
         requiresParentVerification: true,
       },
-    })
+    });
 
-    if (!user) return fallback
+    if (!user) return fallback;
 
-    const verified = user.parentVerifiedAt != null
-    const requiredByAge = requiresGateByAge(user.age)
-    const requiredByFlag = Boolean(user.requiresParentVerification)
-    const required = requiredByAge || requiredByFlag
+    const verified = user.parentVerifiedAt != null;
+    const requiredByAge = requiresGateByAge(user.age);
+    const requiredByFlag = Boolean(user.requiresParentVerification);
+    const required = requiredByAge || requiredByFlag;
 
     return {
       required,
       verified,
       parentEmail: user.parentEmail ?? null,
-    }
+    };
   } catch {
-    return fallback
+    return fallback;
   }
 }

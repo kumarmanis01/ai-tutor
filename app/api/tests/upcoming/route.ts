@@ -52,7 +52,11 @@ export async function GET(req: Request) {
     take: 10,
     orderBy: { createdAt: 'desc' },
   });
-  const items = upcoming.map((t) => ({ id: t.id, title: t.title, subject: t.subject || 'General' }));
+  const items = upcoming.map((t) => ({
+    id: t.id,
+    title: t.title,
+    subject: t.subject || 'General',
+  }));
   res = NextResponse.json({ items });
   logger.logAPI(req, res, { className: 'TestsUpcomingAPI', methodName: 'GET' }, start);
   return res;

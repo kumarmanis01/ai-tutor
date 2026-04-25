@@ -55,31 +55,31 @@ export interface MonthlyStudentCost {
   isPremium: boolean;
   language: LanguageCode;
   model: ModelName;
-  
+
   // Request counts
   notesRequests: number;
   practiceRequests: number;
   doubtRequests: number;
   quizRequests: number;
   totalRequests: number;
-  
+
   // Retry/fallback overhead
   retryRequests: number;
   fallbackRequests: number;
-  
+
   // Costs
   notesCostUSD: number;
   practiceCostUSD: number;
   doubtCostUSD: number;
   quizCostUSD: number;
   retryCostUSD: number;
-  
+
   subtotalUSD: number;
   infrastructureOverheadUSD: number;
   volumeDiscountUSD: number;
   totalCostUSD: number;
   totalCostINR: number;
-  
+
   // Per-unit metrics
   costPerRequestUSD: number;
   costPerSessionUSD: number;
@@ -99,7 +99,7 @@ export interface CostSimulationConfig {
 // CONSTANTS
 // ============================================================================
 
-const DEFAULT_USD_TO_INR = 83.50;
+const DEFAULT_USD_TO_INR = 83.5;
 const TOKENS_PER_MILLION = 1_000_000;
 
 // ============================================================================
@@ -119,26 +119,29 @@ export function calculateRequestCost(
   const pricing = MODEL_PRICING[model];
   const tokenBudget = FEATURE_TOKEN_BUDGETS[feature];
   const languageMultiplier = getLanguageMultiplier(language);
-  
+
   // Calculate token counts
   const inputTokens = Math.ceil(
-    (tokenBudget.systemPrompt + tokenBudget.userPrompt + tokenBudget.contextInjection + tokenBudget.schemaOverhead) *
-    languageMultiplier
+    (tokenBudget.systemPrompt +
+      tokenBudget.userPrompt +
+      tokenBudget.contextInjection +
+      tokenBudget.schemaOverhead) *
+      languageMultiplier
   );
-  
+
   const outputTokens = Math.ceil(tokenBudget.expectedOutput * languageMultiplier);
-  
+
   // Estimate cached tokens (system prompt is often cached)
   const cachedInputTokens = cachingEnabled ? Math.ceil(tokenBudget.systemPrompt * 0.8) : 0;
   const nonCachedInputTokens = inputTokens - cachedInputTokens;
-  
+
   // Calculate costs (per million tokens)
   const inputCostUSD = (nonCachedInputTokens / TOKENS_PER_MILLION) * pricing.input;
   const cachedInputCostUSD = (cachedInputTokens / TOKENS_PER_MILLION) * pricing.cachedInput;
   const outputCostUSD = (outputTokens / TOKENS_PER_MILLION) * pricing.output;
-  
+
   const totalCostUSD = inputCostUSD + cachedInputCostUSD + outputCostUSD;
-  
+
   return {
     feature,
     model,
@@ -169,87 +172,100 @@ export function calculateMonthlyStudentCost(config: CostSimulationConfig): Month
     usageMultiplier = 1.0,
     usdToInrRate = DEFAULT_USD_TO_INR,
   } = config;
-  
+
   const gradeBand = getGradeBand(grade);
   const usagePattern = USAGE_PATTERNS[gradeBand];
   const model = config.model ?? (isPremium ? PREMIUM_TIER_CONFIG.preferredModel : 'gpt-4o-mini');
-  
+
   // Calculate request counts
   const notesRequests = Math.ceil(usagePattern.monthlyNotesRequests * usageMultiplier);
   const practiceRequests = Math.ceil(usagePattern.monthlyPracticeRequests * usageMultiplier);
   const doubtRequests = Math.ceil(usagePattern.monthlyDoubtRequests * usageMultiplier);
   const quizRequests = Math.ceil(usagePattern.monthlyQuizRequests * usageMultiplier);
-  
+
   // Apply free tier limits if not premium
-  const cappedNotes = isPremium ? notesRequests : Math.min(notesRequests, FREE_TIER_LIMITS.dailyNotesRequests * 30);
-  const cappedPractice = isPremium ? practiceRequests : Math.min(practiceRequests, FREE_TIER_LIMITS.dailyPracticeRequests * 30);
-  const cappedDoubts = isPremium ? doubtRequests : Math.min(doubtRequests, FREE_TIER_LIMITS.dailyDoubtRequests * 30);
-  const cappedQuiz = isPremium ? quizRequests : Math.min(quizRequests, FREE_TIER_LIMITS.dailyQuizRequests * 30);
-  
+  const cappedNotes = isPremium
+    ? notesRequests
+    : Math.min(notesRequests, FREE_TIER_LIMITS.dailyNotesRequests * 30);
+  const cappedPractice = isPremium
+    ? practiceRequests
+    : Math.min(practiceRequests, FREE_TIER_LIMITS.dailyPracticeRequests * 30);
+  const cappedDoubts = isPremium
+    ? doubtRequests
+    : Math.min(doubtRequests, FREE_TIER_LIMITS.dailyDoubtRequests * 30);
+  const cappedQuiz = isPremium
+    ? quizRequests
+    : Math.min(quizRequests, FREE_TIER_LIMITS.dailyQuizRequests * 30);
+
   const totalRequests = cappedNotes + cappedPractice + cappedDoubts + cappedQuiz;
-  
+
   // Calculate retry/fallback overhead
   const retryRequests = Math.ceil(totalRequests * usagePattern.retryRate);
   const fallbackRequests = Math.ceil(totalRequests * usagePattern.fallbackRate);
-  
+
   // Calculate per-feature costs
   const notesCost = calculateRequestCost('notes', model, language);
   const practiceCost = calculateRequestCost('practice', model, language);
   const doubtCost = calculateRequestCost('doubt', model, language);
   const quizCost = calculateRequestCost('quiz', model, language);
-  
+
   const notesCostUSD = notesCost.totalCostUSD * cappedNotes;
   const practiceCostUSD = practiceCost.totalCostUSD * cappedPractice;
   const doubtCostUSD = doubtCost.totalCostUSD * cappedDoubts;
   const quizCostUSD = quizCost.totalCostUSD * cappedQuiz;
-  
+
   // Average cost for retry calculation
-  const avgRequestCost = (notesCost.totalCostUSD + practiceCost.totalCostUSD + doubtCost.totalCostUSD + quizCost.totalCostUSD) / 4;
+  const avgRequestCost =
+    (notesCost.totalCostUSD +
+      practiceCost.totalCostUSD +
+      doubtCost.totalCostUSD +
+      quizCost.totalCostUSD) /
+    4;
   const retryCostUSD = retryRequests * avgRequestCost * COST_MULTIPLIERS.retryMultiplier;
-  
+
   const subtotalUSD = notesCostUSD + practiceCostUSD + doubtCostUSD + quizCostUSD + retryCostUSD;
-  
+
   // Apply overhead
   const infrastructureOverheadUSD = subtotalUSD * (COST_MULTIPLIERS.infrastructureOverhead - 1);
-  
+
   // Apply volume discount
   const volumeDiscount = calculateVolumeDiscount(totalRequests);
   const volumeDiscountUSD = subtotalUSD * (1 - volumeDiscount);
-  
+
   const totalCostUSD = subtotalUSD + infrastructureOverheadUSD - volumeDiscountUSD;
-  
+
   // Calculate per-unit metrics
   const totalMinutes = usagePattern.averageSessionMinutes * usagePattern.sessionsPerWeek * 4;
   const totalSessions = usagePattern.sessionsPerWeek * 4;
-  
+
   return {
     grade,
     gradeBand,
     isPremium,
     language,
     model,
-    
+
     notesRequests: cappedNotes,
     practiceRequests: cappedPractice,
     doubtRequests: cappedDoubts,
     quizRequests: cappedQuiz,
     totalRequests,
-    
+
     retryRequests,
     fallbackRequests,
-    
+
     notesCostUSD: roundToSixDecimals(notesCostUSD),
     practiceCostUSD: roundToSixDecimals(practiceCostUSD),
     doubtCostUSD: roundToSixDecimals(doubtCostUSD),
     quizCostUSD: roundToSixDecimals(quizCostUSD),
     retryCostUSD: roundToSixDecimals(retryCostUSD),
-    
+
     subtotalUSD: roundToSixDecimals(subtotalUSD),
     infrastructureOverheadUSD: roundToSixDecimals(infrastructureOverheadUSD),
     volumeDiscountUSD: roundToSixDecimals(volumeDiscountUSD),
     totalCostUSD: roundToSixDecimals(totalCostUSD),
     totalCostINR: roundToTwoDecimals(totalCostUSD * usdToInrRate),
-    
+
     costPerRequestUSD: roundToSixDecimals(totalCostUSD / totalRequests),
     costPerSessionUSD: roundToSixDecimals(totalCostUSD / totalSessions),
     costPerMinuteUSD: roundToSixDecimals(totalCostUSD / totalMinutes),
@@ -274,27 +290,27 @@ export function calculateCohortCost(
   costByGradeBand: Record<GradeBand, number>;
   costByLanguage: Record<LanguageCode, number>;
 } {
-  const studentCosts = students.map(s => calculateMonthlyStudentCost({ ...s, usdToInrRate }));
-  
+  const studentCosts = students.map((s) => calculateMonthlyStudentCost({ ...s, usdToInrRate }));
+
   const totalCostUSD = studentCosts.reduce((sum, s) => sum + s.totalCostUSD, 0);
-  
+
   const costByGradeBand: Record<GradeBand, number> = {
     junior: 0,
     middle: 0,
     senior: 0,
   };
-  
+
   const costByLanguage: Record<LanguageCode, number> = {
     en: 0,
     hi: 0,
     hinglish: 0,
   };
-  
-  studentCosts.forEach(s => {
+
+  studentCosts.forEach((s) => {
     costByGradeBand[s.gradeBand] += s.totalCostUSD;
     costByLanguage[s.language] += s.totalCostUSD;
   });
-  
+
   return {
     students: studentCosts,
     totalCostUSD: roundToTwoDecimals(totalCostUSD),
@@ -334,11 +350,11 @@ export function compareModelCosts(
 } {
   const cost1 = calculateRequestCost(feature, model1, language);
   const cost2 = calculateRequestCost(feature, model2, language);
-  
+
   const savingsUSD = Math.abs(cost1.totalCostUSD - cost2.totalCostUSD);
   const maxCost = Math.max(cost1.totalCostUSD, cost2.totalCostUSD);
   const savingsPercent = (savingsUSD / maxCost) * 100;
-  
+
   return {
     model1: cost1,
     model2: cost2,
@@ -365,11 +381,11 @@ export function compareLanguageCosts(
 } {
   const cost1 = calculateRequestCost(feature, model, language1);
   const cost2 = calculateRequestCost(feature, model, language2);
-  
+
   const additionalCostUSD = Math.abs(cost1.totalCostUSD - cost2.totalCostUSD);
   const minCost = Math.min(cost1.totalCostUSD, cost2.totalCostUSD);
   const additionalCostPercent = (additionalCostUSD / minCost) * 100;
-  
+
   return {
     language1: cost1,
     language2: cost2,

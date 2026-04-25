@@ -19,7 +19,9 @@ import { TutorTipPanel } from '@/components/session/TutorTipPanel';
 interface TestPhaseProps {
   content: TestContent;
   topicName?: string;
-  onSubmit: (answers: { questionId: string; answer: string }[]) => Promise<SubmitActionResult | null>;
+  onSubmit: (
+    answers: { questionId: string; answer: string }[]
+  ) => Promise<SubmitActionResult | null>;
   onReadyToProceed: (ready: boolean) => void;
   onTestStateChange: (allAnswered: boolean, resultSet: boolean) => void;
   onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void;
@@ -70,10 +72,14 @@ function TestResults({ result }: { result: SubmitActionResult }) {
           <div
             key={r.questionId}
             className={`flex items-start gap-3 p-3 rounded-lg text-sm ${
-              r.isCorrect ? 'bg-green-500/5 border border-green-500/15' : 'bg-orange-500/5 border border-orange-500/15'
+              r.isCorrect
+                ? 'bg-green-500/5 border border-green-500/15'
+                : 'bg-orange-500/5 border border-orange-500/15'
             }`}
           >
-            <span className={`font-bold flex-shrink-0 ${r.isCorrect ? 'text-green-600' : 'text-orange-600'}`}>
+            <span
+              className={`font-bold flex-shrink-0 ${r.isCorrect ? 'text-green-600' : 'text-orange-600'}`}
+            >
               {r.isCorrect ? '✓' : '✗'}
             </span>
             <div>
@@ -81,7 +87,12 @@ function TestResults({ result }: { result: SubmitActionResult }) {
               {r.isCorrect ? (
                 <span className="text-green-700 dark:text-green-400">Correct</span>
               ) : (
-                <span>Correct: <span className="font-medium text-foreground">{r.correctAnswer ?? 'See notes'}</span></span>
+                <span>
+                  Correct:{' '}
+                  <span className="font-medium text-foreground">
+                    {r.correctAnswer ?? 'See notes'}
+                  </span>
+                </span>
               )}
             </div>
           </div>
@@ -108,7 +119,10 @@ export function TestPhase({
 
   const handleSubmit = React.useCallback(async () => {
     setSubmittingLocal(true);
-    const payload = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer: answer as string }));
+    const payload = Object.entries(answers).map(([questionId, answer]) => ({
+      questionId,
+      answer: answer as string,
+    }));
     const res = await onSubmit(payload);
     if (res) setResult(res);
     setSubmittingLocal(false);
@@ -144,10 +158,15 @@ export function TestPhase({
         </p>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{answeredCount} of {questions.length} answered</span>
+          <span className="text-muted-foreground">
+            {answeredCount} of {questions.length} answered
+          </span>
           <div className="flex gap-1">
             {questions.map((q) => (
-              <div key={q.id} className={`w-2 h-2 rounded-full ${answers[q.id] ? 'bg-primary' : 'bg-muted'}`} />
+              <div
+                key={q.id}
+                className={`w-2 h-2 rounded-full ${answers[q.id] ? 'bg-primary' : 'bg-muted'}`}
+              />
             ))}
           </div>
         </div>

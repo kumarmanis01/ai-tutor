@@ -6,15 +6,15 @@ import type { SizedLoaderProps, BaseLoaderProps, ProgressLoaderProps } from './t
 const DEFAULT_COLOR = '#534AB7';
 
 const DOT_SIZES = {
-  small:  { dot: 6,  gap: 5 },
+  small: { dot: 6, gap: 5 },
   medium: { dot: 10, gap: 7 },
-  large:  { dot: 14, gap: 9 },
+  large: { dot: 14, gap: 9 },
 } as const;
 
 const SPINNER_SIZES = {
-  small:  { outer: 20, border: 2 },
+  small: { outer: 20, border: 2 },
   medium: { outer: 32, border: 3 },
-  large:  { outer: 48, border: 4 },
+  large: { outer: 48, border: 4 },
 } as const;
 
 const VIDYA_TIPS = [
@@ -26,7 +26,11 @@ const VIDYA_TIPS = [
   'Getting your study materials ready...',
 ];
 
-export function DotPulseLoader({ size = 'medium', color = DEFAULT_COLOR, className }: SizedLoaderProps) {
+export function DotPulseLoader({
+  size = 'medium',
+  color = DEFAULT_COLOR,
+  className,
+}: SizedLoaderProps) {
   const { dot, gap } = DOT_SIZES[size];
   const delays = ['0s', '0.16s', '0.32s'];
 
@@ -53,7 +57,11 @@ export function DotPulseLoader({ size = 'medium', color = DEFAULT_COLOR, classNa
   );
 }
 
-export function SpinnerLoader({ size = 'medium', color = DEFAULT_COLOR, className }: SizedLoaderProps) {
+export function SpinnerLoader({
+  size = 'medium',
+  color = DEFAULT_COLOR,
+  className,
+}: SizedLoaderProps) {
   const { outer, border } = SPINNER_SIZES[size];
 
   return (
@@ -83,15 +91,35 @@ export function BookLoader({ color = DEFAULT_COLOR, className }: BaseLoaderProps
     >
       <svg width="64" height="56" viewBox="0 0 64 56" fill="none" aria-hidden="true">
         {/* Left cover */}
-        <rect x="2" y="8" width="28" height="40" rx="3" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="1.5" />
+        <rect
+          x="2"
+          y="8"
+          width="28"
+          height="40"
+          rx="3"
+          fill={color}
+          fillOpacity="0.15"
+          stroke={color}
+          strokeWidth="1.5"
+        />
         {/* Right cover */}
-        <rect x="34" y="8" width="28" height="40" rx="3" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="1.5" />
+        <rect
+          x="34"
+          y="8"
+          width="28"
+          height="40"
+          rx="3"
+          fill={color}
+          fillOpacity="0.15"
+          stroke={color}
+          strokeWidth="1.5"
+        />
         {/* Spine */}
         <rect x="29" y="8" width="6" height="40" rx="2" fill={color} />
         {/* Left page lines */}
-        <rect x="7"  y="16" width="18" height="2" rx="1" fill={color} fillOpacity="0.5" />
-        <rect x="7"  y="21" width="18" height="2" rx="1" fill={color} fillOpacity="0.5" />
-        <rect x="7"  y="26" width="14" height="2" rx="1" fill={color} fillOpacity="0.5" />
+        <rect x="7" y="16" width="18" height="2" rx="1" fill={color} fillOpacity="0.5" />
+        <rect x="7" y="21" width="18" height="2" rx="1" fill={color} fillOpacity="0.5" />
+        <rect x="7" y="26" width="14" height="2" rx="1" fill={color} fillOpacity="0.5" />
         {/* Right page lines -- animated flip around spine edge */}
         <g className="loader-book-page-anim" style={{ transformOrigin: '48px 28px' }}>
           <rect x="38" y="16" width="18" height="2" rx="1" fill={color} fillOpacity="0.5" />
@@ -127,9 +155,7 @@ export function ProgressLoader({
         />
       </div>
       {showProgress && (
-        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 text-right">
-          {clamped}%
-        </p>
+        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 text-right">{clamped}%</p>
       )}
     </div>
   );
@@ -140,7 +166,7 @@ export function MascotLoader({ color = DEFAULT_COLOR, className }: BaseLoaderPro
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTipIndex(prev => (prev + 1) % VIDYA_TIPS.length);
+      setTipIndex((prev) => (prev + 1) % VIDYA_TIPS.length);
     }, 2500);
     return () => clearInterval(interval);
   }, []);

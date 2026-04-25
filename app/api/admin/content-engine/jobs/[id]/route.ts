@@ -22,7 +22,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!job) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
     // Build an enriched job view for the admin UI
-    const payloadObj = typeof job.payload === 'object' && job.payload !== null ? (job.payload as any) : {};
+    const payloadObj =
+      typeof job.payload === 'object' && job.payload !== null ? (job.payload as any) : {};
     const enriched: any = {
       id: job.id,
       jobType: job.jobType,
@@ -43,7 +44,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     try {
       switch (job.entityType) {
         case 'SUBJECT': {
-          const subject = await prisma.subjectDef.findUnique({ where: { id: job.entityId }, include: { class: { include: { board: true } } } });
+          const subject = await prisma.subjectDef.findUnique({
+            where: { id: job.entityId },
+            include: { class: { include: { board: true } } },
+          });
           if (subject) {
             enriched.entityName = subject.name;
             enriched.classLevel = subject.class?.grade ?? null;
@@ -52,7 +56,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           break;
         }
         case 'CLASS': {
-          const cls = await prisma.classLevel.findUnique({ where: { id: job.entityId }, include: { board: true } });
+          const cls = await prisma.classLevel.findUnique({
+            where: { id: job.entityId },
+            include: { board: true },
+          });
           if (cls) {
             enriched.entityName = `Class ${cls.grade}`;
             enriched.classLevel = cls.grade;
@@ -66,7 +73,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           break;
         }
         case 'CHAPTER': {
-          const chapter = await prisma.chapterDef.findUnique({ where: { id: job.entityId }, include: { subject: { include: { class: { include: { board: true } } } } } });
+          const chapter = await prisma.chapterDef.findUnique({
+            where: { id: job.entityId },
+            include: { subject: { include: { class: { include: { board: true } } } } },
+          });
           if (chapter) {
             enriched.entityName = chapter.name;
             enriched.classLevel = chapter.subject?.class?.grade ?? null;
@@ -75,7 +85,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           break;
         }
         case 'TOPIC': {
-          const topic = await prisma.topicDef.findUnique({ where: { id: job.entityId }, include: { chapter: { include: { subject: { include: { class: { include: { board: true } } } } } } } });
+          const topic = await prisma.topicDef.findUnique({
+            where: { id: job.entityId },
+            include: {
+              chapter: {
+                include: { subject: { include: { class: { include: { board: true } } } } },
+              },
+            },
+          });
           if (topic) {
             enriched.entityName = topic.name;
             enriched.classLevel = topic.chapter?.subject?.class?.grade ?? null;
@@ -102,7 +119,10 @@ export async function timeline(req: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
-    const logs = await prisma.jobExecutionLog.findMany({ where: { jobId: id }, orderBy: { createdAt: 'asc' } });
+    const logs = await prisma.jobExecutionLog.findMany({
+      where: { jobId: id },
+      orderBy: { createdAt: 'asc' },
+    });
     return NextResponse.json({ logs });
   } catch (err) {
     logger?.error?.('GET /api/admin/content-engine/jobs/[id]/timeline error', { err });

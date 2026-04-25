@@ -1,20 +1,20 @@
-import Razorpay from 'razorpay'
-import crypto from 'crypto'
-import { prisma } from '@/lib/prisma'
-import { PLANS, rupeesToPaise } from '@/lib/billing/plans'
-import type { PlanId } from '@/lib/billing/plans'
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import { prisma } from '@/lib/prisma';
+import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
+import type { PlanId } from '@/lib/billing/plans';
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 function getClient() {
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-    return null
+    return null;
   }
   return new Razorpay({
     key_id: RAZORPAY_KEY_ID,
     key_secret: RAZORPAY_KEY_SECRET,
-  })
+  });
 }
 
 /**
@@ -25,15 +25,15 @@ function getClient() {
  */
 export async function createRazorpayOrder(
   studentId: string,
-  planId: PlanId = 'standard_monthly',
+  planId: PlanId = 'standard_monthly'
 ): Promise<{ orderId: string; amount: number; currency: string; planId: PlanId } | null> {
   try {
-    const client = getClient()
-    if (!client) return null
+    const client = getClient();
+    if (!client) return null;
 
-    const plan = PLANS[planId]
-    const amount = rupeesToPaise(plan.billedRupees) // paise
-    const currency = 'INR'
+    const plan = PLANS[planId];
+    const amount = rupeesToPaise(plan.billedRupees); // paise
+    const currency = 'INR';
 
     const order = await client.orders.create({
       amount,
@@ -43,13 +43,13 @@ export async function createRazorpayOrder(
         planId,
         durationMonths: String(plan.durationMonths),
       },
-    })
+    });
 
-    if (!order?.id) return null
+    if (!order?.id) return null;
 
-    return { orderId: order.id, amount, currency, planId }
+    return { orderId: order.id, amount, currency, planId };
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -60,21 +60,21 @@ export async function createRazorpayOrder(
  * This is the security gate -- never skip.
  */
 export async function verifyPaymentSignature(params: {
-  orderId: string
-  paymentId: string
-  signature: string
+  orderId: string;
+  paymentId: string;
+  signature: string;
 }): Promise<boolean> {
   try {
-    if (!RAZORPAY_KEY_SECRET) return false
-    const payload = `${params.orderId}|${params.paymentId}`
-    const expected = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET).update(payload).digest('hex')
+    if (!RAZORPAY_KEY_SECRET) return false;
+    const payload = `${params.orderId}|${params.paymentId}`;
+    const expected = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET).update(payload).digest('hex');
 
-    const sigBuf = Buffer.from(params.signature || '', 'hex')
-    const expBuf = Buffer.from(expected, 'hex')
-    if (sigBuf.length !== expBuf.length) return false
-    return crypto.timingSafeEqual(sigBuf, expBuf)
+    const sigBuf = Buffer.from(params.signature || '', 'hex');
+    const expBuf = Buffer.from(expected, 'hex');
+    if (sigBuf.length !== expBuf.length) return false;
+    return crypto.timingSafeEqual(sigBuf, expBuf);
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -90,20 +90,20 @@ export async function verifyPaymentSignature(params: {
 export async function activateSubscription(
   studentId: string,
   razorpayOrderId: string,
-  planId: PlanId = 'standard_monthly',
+  planId: PlanId = 'standard_monthly'
 ): Promise<boolean> {
   try {
-    const plan = PLANS[planId]
-    const durationMonths = plan.durationMonths
-    const now = new Date()
-    const expiry = new Date(now.getTime() + durationMonths * 30 * 24 * 60 * 60 * 1000)
+    const plan = PLANS[planId];
+    const durationMonths = plan.durationMonths;
+    const now = new Date();
+    const expiry = new Date(now.getTime() + durationMonths * 30 * 24 * 60 * 60 * 1000);
 
     await prisma.$transaction(async (tx) => {
       const order = await tx.paymentOrder.findUnique({
         where: { razorpayOrderId },
-      })
+      });
       if (!order || order.studentId !== studentId) {
-        throw new Error('ORDER_STUDENT_MISMATCH')
+        throw new Error('ORDER_STUDENT_MISMATCH');
       }
 
       if (order.status === 'paid') {
@@ -114,7 +114,7 @@ export async function activateSubscription(
             subscriptionStatus: 'active',
             subscriptionExpiry: expiry,
           },
-        })
+        });
       } else {
         await tx.paymentOrder.update({
           where: { razorpayOrderId },
@@ -122,14 +122,14 @@ export async function activateSubscription(
             status: 'paid',
             paidAt: now,
           },
-        })
+        });
         await tx.user.update({
           where: { id: studentId },
           data: {
             subscriptionStatus: 'active',
             subscriptionExpiry: expiry,
           },
-        })
+        });
       }
 
       // Reset FreeTierUsage for the student
@@ -146,12 +146,11 @@ export async function activateSubscription(
             sessionsUsed: 0,
           },
         })
-        .catch(() => {})
-    })
+        .catch(() => {});
+    });
 
-    return true
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
-

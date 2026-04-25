@@ -1,27 +1,27 @@
 export interface ProjectAssignment {
-  id: string
-  syllabusId: string
-  moduleId: string
+  id: string;
+  syllabusId: string;
+  moduleId: string;
 
-  title: string
-  description: string
+  title: string;
+  description: string;
 
-  problemStatement: string
+  problemStatement: string;
 
-  constraints: string[]
+  constraints: string[];
 
   deliverables: {
-    name: string
-    description: string
-  }[]
+    name: string;
+    description: string;
+  }[];
 
   evaluationRubric: {
-    criteria: string
-    weight: number
-    expectations: string
-  }[]
+    criteria: string;
+    weight: number;
+    expectations: string;
+  }[];
 
-  difficulty: "beginner" | "intermediate" | "advanced"
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
 }
 
-export default ProjectAssignment
+export default ProjectAssignment;

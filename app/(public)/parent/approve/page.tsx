@@ -17,13 +17,13 @@
  * - 2026-04-24T00:00:00Z | copilot | wrap ParentApproveInner in Suspense boundary to satisfy Next.js useSearchParams requirement
  */
 
-'use client'
+'use client';
 
-import { Suspense, useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { signIn, useSession } from 'next-auth/react'
-import OTPInput from '@/components/parent/OTPInput'
-import Link from 'next/link'
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
+import OTPInput from '@/components/parent/OTPInput';
+import Link from 'next/link';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -34,12 +34,12 @@ type PageStatus =
   | 'consent_form'
   | 'otp_input'
   | 'success'
-  | 'denied'
+  | 'denied';
 
 interface ConsentData {
-  child: { name: string; grade: string | null; board: string | null } | null
-  channel: string
-  expiresAt: string
+  child: { name: string; grade: string | null; board: string | null } | null;
+  channel: string;
+  expiresAt: string;
 }
 
 const CONTROLS_ALLOWED = [
@@ -47,162 +47,168 @@ const CONTROLS_ALLOWED = [
   'Set weekly session limits from your dashboard',
   'Receive weekly email summaries',
   'Withdraw consent at any time',
-]
+];
 
 const CONTROLS_NOT = [
   'No social features -- no chat, no friend requests',
   'Data is never sold to advertisers',
-]
+];
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
 function ParentApproveInner() {
-  const params = useSearchParams()
-  const token = params.get('token')
-  const actionParam = params.get('action')
-  const approvedParam = params.get('approved')
-  const { data: session, status: sessionStatus } = useSession()
+  const params = useSearchParams();
+  const token = params.get('token');
+  const actionParam = params.get('action');
+  const approvedParam = params.get('approved');
+  const { data: session, status: sessionStatus } = useSession();
 
-  const [pageStatus, setPageStatus] = useState<PageStatus>('loading')
-  const [consentData, setConsentData] = useState<ConsentData | null>(null)
-  const [otpSending, setOtpSending] = useState(false)
-  const [otpError, setOtpError] = useState<string | null>(null)
-  const [approveError, setApproveError] = useState<string | null>(null)
-  const [denyConfirm, setDenyConfirm] = useState(false)
-  const [denying, setDenying] = useState(false)
+  const [pageStatus, setPageStatus] = useState<PageStatus>('loading');
+  const [consentData, setConsentData] = useState<ConsentData | null>(null);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const [denyConfirm, setDenyConfirm] = useState(false);
+  const [denying, setDenying] = useState(false);
 
   // Validate the token on mount
   useEffect(() => {
     if (!token) {
-      setPageStatus('invalid')
-      return
+      setPageStatus('invalid');
+      return;
     }
 
     async function validate() {
-      const res = await fetch(`/api/v1/consent/status?consent_token=${encodeURIComponent(token!)}`)
+      const res = await fetch(`/api/v1/consent/status?consent_token=${encodeURIComponent(token!)}`);
       if (!res.ok) {
-        setPageStatus('invalid')
-        return
+        setPageStatus('invalid');
+        return;
       }
       const data = (await res.json()) as {
-        status?: string
-        child?: { name: string; grade: string | null; board: string | null } | null
-        channel?: string
-        expiresAt?: string
-      }
-      if (data.status === 'expired') {
-        setPageStatus('expired')
-        return
-      }
-      if (data.status === 'approved') {
-        setPageStatus('success')
-        return
-      }
-      if (data.status === 'denied') {
-        setPageStatus('denied')
-        return
-      }
-      if (data.status === 'pending') {
+        status?: string;
+        child?: { name: string; grade: string | null; board: string | null } | null;
+        channel?: string;
+        expiresAt?: string;
+      };
+      // If the API returned child details, store them so terminal states can still render the child info
+      if (data.child) {
         setConsentData({
-          child: data.child ?? null,
+          child: data.child,
           channel: data.channel ?? 'EMAIL',
           expiresAt: data.expiresAt ?? '',
-        })
+        });
+      }
+
+      if (data.status === 'expired') {
+        setPageStatus('expired');
+        return;
+      }
+      if (data.status === 'approved') {
+        setPageStatus('success');
+        return;
+      }
+      if (data.status === 'denied') {
+        setPageStatus('denied');
+        return;
+      }
+      if (data.status === 'pending') {
         // If deny action came from the direct deny link in email
         if (actionParam === 'deny') {
-          setDenyConfirm(true)
+          setDenyConfirm(true);
         }
-        setPageStatus('consent_form')
-        return
+        setPageStatus('consent_form');
+        return;
       }
-      setPageStatus('invalid')
+      setPageStatus('invalid');
     }
 
-    validate().catch(() => setPageStatus('invalid'))
-  }, [token, actionParam])
+    validate().catch(() => setPageStatus('invalid'));
+  }, [token, actionParam]);
 
   // Auto-approve when Google OAuth redirects back with ?approved=1
   useEffect(() => {
-    if (approvedParam !== '1' || sessionStatus !== 'authenticated' || !session || !token) return
-    if (pageStatus === 'success') return
+    if (approvedParam !== '1' || sessionStatus !== 'authenticated' || !session || !token) return;
+    if (pageStatus === 'success') return;
 
     async function autoApprove() {
       const res = await fetch('/api/v1/consent/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, method: 'google' }),
-      })
+      });
       if (res.ok) {
-        setPageStatus('success')
+        setPageStatus('success');
       } else {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null
-        setApproveError(data?.error ?? 'Could not approve. Please try again.')
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setApproveError(data?.error ?? 'Could not approve. Please try again.');
       }
     }
 
-    autoApprove().catch(() => setApproveError('Could not approve. Please try again.'))
-  }, [approvedParam, sessionStatus, session, token, pageStatus])
+    autoApprove().catch(() => setApproveError('Could not approve. Please try again.'));
+  }, [approvedParam, sessionStatus, session, token, pageStatus]);
 
   async function handleGoogleApprove() {
-    if (!token) return
-    const callbackUrl = `${window.location.origin}/parent/approve?token=${encodeURIComponent(token)}&approved=1`
-    await signIn('google', { callbackUrl })
+    if (!token) return;
+    const callbackUrl = `${window.location.origin}/parent/approve?token=${encodeURIComponent(token)}&approved=1`;
+    await signIn('google', { callbackUrl });
   }
 
   async function handleSendOTP() {
-    setOtpError(null)
-    setOtpSending(true)
+    setOtpError(null);
+    setOtpSending(true);
     const res = await fetch('/api/v1/consent/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
-    })
-    setOtpSending(false)
+    });
+    setOtpSending(false);
     if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
       const msg =
         data?.error === 'cooldown'
           ? 'Please wait a few minutes before requesting another code.'
-          : 'Could not send code. Please try again.'
-      setOtpError(msg)
-      return
+          : 'Could not send code. Please try again.';
+      setOtpError(msg);
+      return;
     }
-    setPageStatus('otp_input')
+    setPageStatus('otp_input');
   }
 
   async function handleOTPComplete(code: string) {
-    setApproveError(null)
+    setApproveError(null);
     const res = await fetch('/api/v1/consent/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, method: 'otp', otp_code: code }),
-    })
+    });
     if (res.ok) {
-      setPageStatus('success')
+      setPageStatus('success');
     } else {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null
-      setApproveError(data?.error === 'max_attempts_exceeded'
-        ? 'Too many incorrect attempts. Please request a new code.'
-        : 'Incorrect code. Please try again.')
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setApproveError(
+        data?.error === 'max_attempts_exceeded'
+          ? 'Too many incorrect attempts. Please request a new code.'
+          : 'Incorrect code. Please try again.'
+      );
     }
   }
 
   async function handleDeny() {
-    setDenying(true)
+    setDenying(true);
     const res = await fetch('/api/v1/consent/deny', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
-    })
-    setDenying(false)
+    });
+    setDenying(false);
     if (res.ok) {
-      setPageStatus('denied')
+      setPageStatus('denied');
     }
   }
 
-  const childName = consentData?.child?.name ?? 'your child'
-  const childGrade = consentData?.child?.grade ? `Grade ${consentData.child.grade}` : ''
-  const childBoard = consentData?.child?.board ?? ''
+  const childName = consentData?.child?.name ?? 'your child';
+  const childGrade = consentData?.child?.grade ? `Grade ${consentData.child.grade}` : '';
+  const childBoard = consentData?.child?.board ?? '';
 
   // ── Render states ──────────────────────────────────────────────────────────
 
@@ -213,7 +219,7 @@ function ParentApproveInner() {
           <div className="w-8 h-8 border-4 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
         </div>
       </PageWrapper>
-    )
+    );
   }
 
   if (pageStatus === 'invalid') {
@@ -223,11 +229,14 @@ function ParentApproveInner() {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
           This approval link is invalid or has already been used. Contact us if you need help.
         </p>
-        <a href="mailto:hello@spinzyacademy.com" className="mt-4 block text-[#534AB7] text-sm underline">
+        <a
+          href="mailto:hello@spinzyacademy.com"
+          className="mt-4 block text-[#534AB7] text-sm underline"
+        >
           hello@spinzyacademy.com
         </a>
       </PageWrapper>
-    )
+    );
   }
 
   if (pageStatus === 'expired') {
@@ -239,13 +248,15 @@ function ParentApproveInner() {
           new one from the Spinzy sign-up page.
         </p>
       </PageWrapper>
-    )
+    );
   }
 
   if (pageStatus === 'success') {
     return (
       <PageWrapper>
-        <div className="text-5xl text-center mb-4" aria-hidden="true">&#x2705;</div>
+        <div className="text-5xl text-center mb-4" aria-hidden="true">
+          &#x2705;
+        </div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center">
           {childName}&apos;s account is now active!
         </h1>
@@ -261,7 +272,7 @@ function ParentApproveInner() {
           Go to Parent Dashboard
         </Link>
       </PageWrapper>
-    )
+    );
   }
 
   if (pageStatus === 'denied') {
@@ -269,14 +280,17 @@ function ParentApproveInner() {
       <PageWrapper>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Access denied</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          You have denied access for {childName}. If this was a mistake, contact us and we will
-          send a new approval link.
+          You have denied access for {childName}. If this was a mistake, contact us and we will send
+          a new approval link.
         </p>
-        <a href="mailto:hello@spinzyacademy.com" className="mt-4 block text-[#534AB7] text-sm underline">
+        <a
+          href="mailto:hello@spinzyacademy.com"
+          className="mt-4 block text-[#534AB7] text-sm underline"
+        >
           hello@spinzyacademy.com
         </a>
       </PageWrapper>
-    )
+    );
   }
 
   if (pageStatus === 'otp_input') {
@@ -286,14 +300,18 @@ function ParentApproveInner() {
           Enter verification code
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          We sent a 6-digit code to {consentData?.channel === 'WHATSAPP' ? 'WhatsApp' : 'your email'}.
-          Enter it below to approve {childName}&apos;s account.
+          We sent a 6-digit code to{' '}
+          {consentData?.channel === 'WHATSAPP' ? 'WhatsApp' : 'your email'}. Enter it below to
+          approve {childName}&apos;s account.
         </p>
 
         <OTPInput onComplete={handleOTPComplete} disabled={false} />
 
         {approveError && (
-          <p role="alert" className="mt-4 text-sm text-[#E24B4A] bg-[#FCEBEB] rounded-lg px-4 py-3 text-center">
+          <p
+            role="alert"
+            className="mt-4 text-sm text-[#E24B4A] bg-[#FCEBEB] rounded-lg px-4 py-3 text-center"
+          >
             {approveError}
           </p>
         )}
@@ -306,7 +324,7 @@ function ParentApproveInner() {
           &larr; Go back
         </button>
       </PageWrapper>
-    )
+    );
   }
 
   // consent_form (default)
@@ -326,14 +344,24 @@ function ParentApproveInner() {
         </p>
         <ul className="space-y-2">
           {CONTROLS_ALLOWED.map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <span aria-hidden="true" className="text-[#1D9E75]">&#x2705;</span>
+            <li
+              key={item}
+              className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+            >
+              <span aria-hidden="true" className="text-[#1D9E75]">
+                &#x2705;
+              </span>
               {item}
             </li>
           ))}
           {CONTROLS_NOT.map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <span aria-hidden="true" className="text-[#E24B4A]">&#x274C;</span>
+            <li
+              key={item}
+              className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+            >
+              <span aria-hidden="true" className="text-[#E24B4A]">
+                &#x274C;
+              </span>
               {item}
             </li>
           ))}
@@ -412,11 +440,15 @@ function ParentApproveInner() {
             className="w-full border-2 border-[#534AB7] text-[#534AB7] font-bold rounded-2xl
               py-4 min-h-[52px] hover:bg-[#EEEDFE] transition-colors disabled:opacity-60"
           >
-            {otpSending ? 'Sending code...' : `Approve with ${consentData?.channel === 'WHATSAPP' ? 'WhatsApp' : 'Email'} Code`}
+            {otpSending
+              ? 'Sending code...'
+              : `Approve with ${consentData?.channel === 'WHATSAPP' ? 'WhatsApp' : 'Email'} Code`}
           </button>
 
           {otpError && (
-            <p role="alert" className="text-sm text-[#E24B4A] text-center">{otpError}</p>
+            <p role="alert" className="text-sm text-[#E24B4A] text-center">
+              {otpError}
+            </p>
           )}
 
           {/* Deny link */}
@@ -433,12 +465,12 @@ function ParentApproveInner() {
 
       <p className="mt-6 text-xs text-gray-400 text-center">
         Spinzy Academy complies with India&apos;s DPDP Act 2023.{' '}
-        <a href="/privacy" className="underline hover:text-[#534AB7]">
+        <Link href="/privacy" className="underline hover:text-[#534AB7]">
           Privacy Policy
-        </a>
+        </Link>
       </p>
     </PageWrapper>
-  )
+  );
 }
 
 // ── Page export (Suspense boundary required for useSearchParams) ───────────────
@@ -454,7 +486,7 @@ export default function ParentApprovePage() {
     >
       <ParentApproveInner />
     </Suspense>
-  )
+  );
 }
 
 // ── Layout wrapper ─────────────────────────────────────────────────────────────
@@ -471,5 +503,5 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
         {children}
       </div>
     </div>
-  )
+  );
 }

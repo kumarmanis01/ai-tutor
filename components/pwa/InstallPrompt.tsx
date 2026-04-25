@@ -133,7 +133,10 @@ export default function InstallPrompt() {
         style={{ backgroundColor: '#534AB7', color: '#ffffff' }}
       >
         {/* Icon */}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-xl font-bold" style={{ color: '#534AB7' }}>
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-xl font-bold"
+          style={{ color: '#534AB7' }}
+        >
           S
         </div>
 
@@ -143,9 +146,8 @@ export default function InstallPrompt() {
             <>
               <p className="text-sm font-semibold leading-tight">Install Spinzy</p>
               <p className="mt-0.5 text-xs opacity-90 leading-snug">
-                Tap the Share button{' '}
-                <span aria-label="share icon">&#xFFFD;&#x2191;</span>{' '}
-                then &ldquo;Add to Home Screen&rdquo;
+                Tap the Share button <span aria-label="share icon">&#xFFFD;&#x2191;</span> then
+                &ldquo;Add to Home Screen&rdquo;
               </p>
             </>
           ) : (

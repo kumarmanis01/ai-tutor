@@ -196,11 +196,7 @@ export function weeklyDigestHtml(data: {
   dashboardUrl?: string;
 }): string {
   const readinessColour =
-    data.readinessScore >= 70
-      ? '#1D9E75'
-      : data.readinessScore >= 40
-      ? '#BA7517'
-      : '#E24B4A';
+    data.readinessScore >= 70 ? '#1D9E75' : data.readinessScore >= 40 ? '#BA7517' : '#E24B4A';
   const url = data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard';
   const heading = data.parentName
     ? `${data.studentName}'s weekly learning report`
@@ -344,15 +340,19 @@ export function contentJobFailureAlertHtml(data: {
           <td style="color:#666;">Error</td>
           <td style="font-family:monospace;font-size:12px;color:#DC2626;">${data.lastError}</td>
         </tr>
-        ${isRetrying ? `
+        ${
+          isRetrying
+            ? `
         <tr>
           <td style="color:#666;">Auto-retry at</td>
           <td style="font-weight:600;color:#B45309;">${retryLabel}</td>
-        </tr>` : `
+        </tr>`
+            : `
         <tr>
           <td style="color:#666;">Status</td>
           <td style="font-weight:600;color:#DC2626;">Auto-retries exhausted -- manual review needed</td>
-        </tr>`}
+        </tr>`
+        }
       </table>
       <div style="margin-top:24px;">
         <a href="${data.adminUrl}" style="${BTN}">
@@ -472,9 +472,13 @@ export function milestoneEmailHtml(data: {
         <p style="margin:0;color:#166534;font-weight:700;font-size:17px;">
           ${data.milestoneLabel}
         </p>
-        ${data.milestoneDetail ? `
+        ${
+          data.milestoneDetail
+            ? `
         <p style="margin:8px 0 0;color:#4B7A45;font-size:13px;">${data.milestoneDetail}</p>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
 
       <p>Every milestone is a step closer to exam confidence. Keep encouraging
@@ -497,11 +501,13 @@ export function adminBroadcastEmailHtml(data: {
   ctaLabel?: string;
   ctaUrl?: string;
 }): string {
-  const cta = data.ctaUrl ? `
+  const cta = data.ctaUrl
+    ? `
     <div style="margin:24px 0;">
       <a href="${data.ctaUrl}" style="${BTN}">${data.ctaLabel ?? 'Open Spinzy'}</a>
     </div>
-  ` : '';
+  `
+    : '';
   return `
     <div style="${BASE}">
       ${LOGO}
@@ -594,14 +600,14 @@ export function consentRequestEmailHtml(
   childName: string,
   grade: string,
   consentLink: string,
-  opts?: { board?: string; denyLink?: string },
+  opts?: { board?: string; denyLink?: string }
 ): string {
-  const boardLabel = opts?.board ? ` (${opts.board})` : ''
+  const boardLabel = opts?.board ? ` (${opts.board})` : '';
   const denySection = opts?.denyLink
     ? `<p style="text-align:center;margin-top:12px;">
          <a href="${opts.denyLink}" style="color:#888;font-size:13px;">Deny Access</a>
        </p>`
-    : ''
+    : '';
   return `
     <div style="${BASE}">
       ${LOGO}
@@ -638,22 +644,22 @@ export function consentRequestEmailHtml(
       </div>
       ${FOOTER}
     </div>
-  `
+  `;
 }
 
 /**
  * Weekly report email -- sent to parent summarising the student's week.
  */
 export function weeklyReportEmailHtml(data: {
-  parentName: string
-  studentName: string
-  sessionsThisWeek: number
-  weeklyGoal: number
-  streakDays: number
-  topSubject: string
-  dashboardUrl?: string
+  parentName: string;
+  studentName: string;
+  sessionsThisWeek: number;
+  weeklyGoal: number;
+  streakDays: number;
+  topSubject: string;
+  dashboardUrl?: string;
 }): string {
-  const url = data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard'
+  const url = data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard';
   return `
     <div style="${BASE}">
       ${LOGO}
@@ -690,7 +696,10 @@ export function weeklyReportEmailHtml(data: {
  * Admin invite email -- sent when a new admin is invited to the platform.
  */
 export function adminInviteEmailHtml(setupLink: string, role: string): string {
-  const roleLabel = role.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+  const roleLabel = role
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
   return `
     <div style="${BASE}">
       ${LOGO}
@@ -711,12 +720,12 @@ export function adminInviteEmailHtml(setupLink: string, role: string): string {
  * Payment invoice email -- sent after a successful payment.
  */
 export function paymentInvoiceEmailHtml(data: {
-  studentName: string
-  invoiceNumber: string
-  plan: string
-  amountRupees: number
-  billingCycle: string
-  invoiceUrl: string
+  studentName: string;
+  invoiceNumber: string;
+  plan: string;
+  amountRupees: number;
+  billingCycle: string;
+  invoiceUrl: string;
 }): string {
   return `
     <div style="${BASE}">

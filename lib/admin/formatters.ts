@@ -23,9 +23,7 @@ export function formatGrade(grade: number): string {
 
 /** Capitalise a hyphen-separated slug: "science-physics" -> "Science Physics". */
 export function formatSubjectName(slug: string): string {
-  return slug
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**

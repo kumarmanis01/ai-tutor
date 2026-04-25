@@ -15,23 +15,23 @@
  * - 2026-04-24T00:00:00Z | copilot | created
  */
 
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react';
 
-export type ConsentStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED'
+export type ConsentStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED';
 
 export interface ConsentStatusResult {
-  status: ConsentStatus | null
-  expiresAt: string | null
-  sentTo: string | null
-  channel: string | null
-  reminderCount: number
-  error: string | null
-  loading: boolean
+  status: ConsentStatus | null;
+  expiresAt: string | null;
+  sentTo: string | null;
+  channel: string | null;
+  reminderCount: number;
+  error: string | null;
+  loading: boolean;
 }
 
-const POLL_INTERVAL_MS = 15_000
+const POLL_INTERVAL_MS = 15_000;
 
 export function useConsentStatus(consentToken: string | null): ConsentStatusResult {
   const [result, setResult] = useState<ConsentStatusResult>({
@@ -42,30 +42,48 @@ export function useConsentStatus(consentToken: string | null): ConsentStatusResu
     reminderCount: 0,
     error: null,
     loading: false,
-  })
+  });
 
   const poll = useCallback(async () => {
-    if (!consentToken) return
-    setResult((prev) => ({ ...prev, loading: true }))
+    if (!consentToken) return;
+    setResult((prev) => ({ ...prev, loading: true }));
     try {
-      const res = await fetch(`/api/v1/consent/status?consent_token=${encodeURIComponent(consentToken)}`)
+      const res = await fetch(
+        `/api/v1/consent/status?consent_token=${encodeURIComponent(consentToken)}`
+      );
       if (!res.ok) {
-        setResult((prev) => ({ ...prev, loading: false, error: `Request failed: ${res.status}` }))
-        return
+        setResult((prev) => ({ ...prev, loading: false, error: `Request failed: ${res.status}` }));
+        return;
       }
-      const data: { status: ConsentStatus; expiresAt: string; sentTo: string; channel: string; reminderCount: number } = await res.json()
-      setResult({ status: data.status, expiresAt: data.expiresAt, sentTo: data.sentTo, channel: data.channel, reminderCount: data.reminderCount, error: null, loading: false })
+      const data: {
+        status: ConsentStatus;
+        expiresAt: string;
+        sentTo: string;
+        channel: string;
+        reminderCount: number;
+      } = await res.json();
+      setResult({
+        status: data.status,
+        expiresAt: data.expiresAt,
+        sentTo: data.sentTo,
+        channel: data.channel,
+        reminderCount: data.reminderCount,
+        error: null,
+        loading: false,
+      });
     } catch {
-      setResult((prev) => ({ ...prev, loading: false, error: 'Network error' }))
+      setResult((prev) => ({ ...prev, loading: false, error: 'Network error' }));
     }
-  }, [consentToken])
+  }, [consentToken]);
 
   useEffect(() => {
-    if (!consentToken) return
-    void poll()
-    const interval = setInterval(() => { void poll() }, POLL_INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [consentToken, poll])
+    if (!consentToken) return;
+    void poll();
+    const interval = setInterval(() => {
+      void poll();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [consentToken, poll]);
 
-  return result
+  return result;
 }

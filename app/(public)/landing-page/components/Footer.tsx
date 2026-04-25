@@ -28,9 +28,7 @@ const Footer = () => {
       { label: 'Success Stories', href: '#testimonials' },
       { label: 'FAQ', href: '#faq' },
     ],
-    support: [
-      { label: 'Help Center', href: '/contact-us' },
-    ],
+    support: [{ label: 'Help Center', href: '/contact-us' }],
     legal: [
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
@@ -48,7 +46,12 @@ const Footer = () => {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8">
+                <svg
+                  viewBox="0 0 40 40"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-8 h-8"
+                >
                   <path d="M20 8L12 14V26L20 32L28 26V14L20 8Z" fill="white" fillOpacity="0.9" />
                   <path d="M20 14L16 17V23L20 26L24 23V17L20 14Z" fill="#000080" />
                   <circle cx="20" cy="20" r="3" fill="white" />
@@ -61,13 +64,11 @@ const Footer = () => {
             </div>
 
             <p className="text-sm leading-relaxed opacity-80 mb-4">
-              <strong>Spinzy AI Tutor</strong> (Teacher Vidya) -- adaptive practice and guided hints for
-              Class 1-12 students. Fast, curriculum-aligned help in Hindi &amp; English.
+              <strong>Spinzy AI Tutor</strong> (Teacher Vidya) -- adaptive practice and guided hints
+              for Class 1-12 students. Fast, curriculum-aligned help in Hindi &amp; English.
             </p>
 
-            <p className="text-sm opacity-70 mb-5">
-              Spinzy Academy &copy; 2026. Made in India 🇮🇳
-            </p>
+            <p className="text-sm opacity-70 mb-5">Spinzy Academy &copy; 2026. Made in India 🇮🇳</p>
 
             {/* Social links -- Twitter/LinkedIn only, no Facebook */}
             <div className="flex items-center gap-3">

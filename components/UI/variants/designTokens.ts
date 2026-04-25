@@ -101,7 +101,8 @@ const COLOR_PALETTES = {
  */
 const BACKGROUND_STYLES = {
   playful: {
-    pattern: 'radial-gradient(circle at 20% 80%, rgba(255, 107, 107, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(78, 205, 196, 0.1) 0%, transparent 50%)',
+    pattern:
+      'radial-gradient(circle at 20% 80%, rgba(255, 107, 107, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(78, 205, 196, 0.1) 0%, transparent 50%)',
     hasBubbles: true,
   },
   clean: {
@@ -123,7 +124,7 @@ const BACKGROUND_STYLES = {
  */
 export function generateTypographyVariables(config: UIVariantConfig): CSSVariables {
   const { typography } = config;
-  
+
   return {
     '--font-size-base': `${typography.baseFontSize}px`,
     '--font-size-h1': `${typography.baseFontSize * typography.headingScale.h1}px`,
@@ -145,7 +146,7 @@ export function generateTypographyVariables(config: UIVariantConfig): CSSVariabl
 export function generateSpacingVariables(config: UIVariantConfig): CSSVariables {
   const { spacing } = config;
   const base = spacing.baseUnit;
-  
+
   return {
     '--spacing-unit': `${base}px`,
     '--spacing-xs': `${base * 0.5}px`,
@@ -168,7 +169,7 @@ export function generateColorVariables(config: UIVariantConfig): CSSVariables {
   const { colors } = config;
   const palette = COLOR_PALETTES[colors.primaryPalette];
   const background = BACKGROUND_STYLES[colors.backgroundStyle];
-  
+
   return {
     '--color-primary': palette.primary,
     '--color-primary-hover': palette.primaryHover,
@@ -193,14 +194,14 @@ export function generateColorVariables(config: UIVariantConfig): CSSVariables {
 export function generateAnimationVariables(config: UIVariantConfig): CSSVariables {
   const { animations } = config;
   const baseDuration = 200; // ms
-  
+
   // Transition timing functions by style
   const timingFunctions = {
     bouncy: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
     smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
     quick: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
   };
-  
+
   return {
     '--animation-enabled': animations.enabled ? '1' : '0',
     '--animation-duration-fast': `${Math.round(baseDuration * 0.5 * animations.durationMultiplier)}ms`,
@@ -217,40 +218,45 @@ export function generateAnimationVariables(config: UIVariantConfig): CSSVariable
  */
 export function generateComponentVariables(config: UIVariantConfig): CSSVariables {
   const { components, accessibility } = config;
-  
+
   // Button sizes
   const buttonSizes = {
     large: { height: 56, fontSize: 18, iconSize: 24 },
     medium: { height: 44, fontSize: 16, iconSize: 20 },
     small: { height: 36, fontSize: 14, iconSize: 16 },
   };
-  
+
   // Border radius by shape
   const buttonRadius = {
     pill: 9999,
     rounded: 8,
     square: 4,
   };
-  
+
   const btn = buttonSizes[components.button.size];
-  
+
   return {
     // Button
     '--button-height': `${btn.height}px`,
     '--button-font-size': `${btn.fontSize}px`,
     '--button-icon-size': `${btn.iconSize}px`,
     '--button-radius': `${buttonRadius[components.button.shape]}px`,
-    
+
     // Card
     '--card-radius': `${components.card.borderRadius}px`,
     '--card-elevation': components.card.elevation,
-    '--card-image-size': components.card.imageSize === 'large' ? '200px' : 
-                         components.card.imageSize === 'medium' ? '150px' :
-                         components.card.imageSize === 'small' ? '100px' : '0px',
-    
+    '--card-image-size':
+      components.card.imageSize === 'large'
+        ? '200px'
+        : components.card.imageSize === 'medium'
+          ? '150px'
+          : components.card.imageSize === 'small'
+            ? '100px'
+            : '0px',
+
     // Navigation
     '--nav-icon-size': `${components.navigation.iconSize}px`,
-    
+
     // Accessibility
     '--min-touch-target': `${accessibility.minTouchTarget}px`,
   };
@@ -318,9 +324,7 @@ export function getThemeClassName(grade: Grade): string {
  * Generate CSS string from variables
  */
 export function variablesToCSS(variables: CSSVariables, selector: string = ':root'): string {
-  const lines = Object.entries(variables).map(
-    ([key, value]) => `  ${key}: ${value};`
-  );
+  const lines = Object.entries(variables).map(([key, value]) => `  ${key}: ${value};`);
   return `${selector} {\n${lines.join('\n')}\n}`;
 }
 
@@ -329,18 +333,19 @@ export function variablesToCSS(variables: CSSVariables, selector: string = ':roo
  */
 export function generateThemeCSS(): string {
   const css: string[] = [];
-  
+
   // Junior theme
   css.push(variablesToCSS(generateAllVariables(JUNIOR_VARIANT), '.theme-junior'));
-  
+
   // Middle theme
   css.push(variablesToCSS(generateAllVariables(MIDDLE_VARIANT), '.theme-middle'));
-  
+
   // Senior theme
   css.push(variablesToCSS(generateAllVariables(SENIOR_VARIANT), '.theme-senior'));
-  
+
   // Utility classes for density
-  css.push(`
+  css.push(
+    `
 .density-spacious {
   --content-max-width: 800px;
   --grid-gap: var(--spacing-xl);
@@ -355,8 +360,9 @@ export function generateThemeCSS(): string {
   --content-max-width: 1280px;
   --grid-gap: var(--spacing-md);
 }
-  `.trim());
-  
+  `.trim()
+  );
+
   return css.join('\n\n');
 }
 
@@ -367,17 +373,15 @@ export function generateThemeCSS(): string {
 /**
  * Convert CSS variables to inline style object for React
  */
-export function variablesToStyleObject(
-  variables: CSSVariables
-): React.CSSProperties {
+export function variablesToStyleObject(variables: CSSVariables): React.CSSProperties {
   const style: Record<string, string | number> = {};
-  
+
   for (const [key, value] of Object.entries(variables)) {
     // Convert CSS variable format to camelCase
     const _camelKey = key.replace(/^--/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
     style[key] = value; // Keep original CSS variable format for style prop
   }
-  
+
   return style as React.CSSProperties;
 }
 

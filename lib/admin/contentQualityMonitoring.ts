@@ -97,14 +97,31 @@ export async function getPendingSummary(): Promise<ContentQualityPendingSummary>
   const totalPending = syllabusDraft + chaptersDraft + topicsDraft + notesDraft;
 
   const oldest = await Promise.all([
-    prisma.syllabus.findFirst({ where: { status: 'DRAFT' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
-    prisma.chapterDef.findFirst({ where: { status: 'draft', lifecycle: 'active' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
-    prisma.topicDef.findFirst({ where: { status: 'draft', lifecycle: 'active' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
-    prisma.topicNote.findFirst({ where: { status: 'draft', lifecycle: 'active' }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+    prisma.syllabus.findFirst({
+      where: { status: 'DRAFT' },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
+    prisma.chapterDef.findFirst({
+      where: { status: 'draft', lifecycle: 'active' },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
+    prisma.topicDef.findFirst({
+      where: { status: 'draft', lifecycle: 'active' },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
+    prisma.topicNote.findFirst({
+      where: { status: 'draft', lifecycle: 'active' },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
   ]);
 
   const dates = oldest.map((r) => r?.createdAt).filter(Boolean) as Date[];
-  const oldestPendingAt = dates.length > 0 ? new Date(Math.min(...dates.map((d) => d.getTime()))) : null;
+  const oldestPendingAt =
+    dates.length > 0 ? new Date(Math.min(...dates.map((d) => d.getTime()))) : null;
 
   return { totalPending, byType, oldestPendingAt };
 }
@@ -129,14 +146,25 @@ export async function getHistoryForEntity(
     },
   });
 
-  return rows.map((r: { id: string; entityType: string; entityId: string; fromStatus: string; toStatus: string; reason: string | null; actorId: string | null; createdAt: Date }) => ({
-    id: r.id,
-    entityType: r.entityType,
-    entityId: r.entityId,
-    fromStatus: r.fromStatus,
-    toStatus: r.toStatus,
-    reason: r.reason,
-    actorId: r.actorId,
-    createdAt: r.createdAt,
-  }));
+  return rows.map(
+    (r: {
+      id: string;
+      entityType: string;
+      entityId: string;
+      fromStatus: string;
+      toStatus: string;
+      reason: string | null;
+      actorId: string | null;
+      createdAt: Date;
+    }) => ({
+      id: r.id,
+      entityType: r.entityType,
+      entityId: r.entityId,
+      fromStatus: r.fromStatus,
+      toStatus: r.toStatus,
+      reason: r.reason,
+      actorId: r.actorId,
+      createdAt: r.createdAt,
+    })
+  );
 }

@@ -242,6 +242,9 @@ model DailyCostMetric {
 model PhoneOtp {
   id        String   @id @default(cuid())
   phone     String
+  /// Optional: associate OTP with a specific ConsentRequest to prevent cross-request replay
+  consentRequestId String?
+  consentRequest   ConsentRequest? @relation(fields: [consentRequestId], references: [id])
   codeHash  String
   createdAt DateTime @default(now())
   expiresAt DateTime
@@ -252,6 +255,7 @@ model PhoneOtp {
   user      User?    @relation(fields: [userId], references: [id])
 
   @@index([phone])
+  @@index([consentRequestId])
 }
 
 /// Trial records for short 14-day evaluation periods for prospective users.

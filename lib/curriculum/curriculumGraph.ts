@@ -68,7 +68,10 @@ export interface CurriculumGraphSnapshot {
  */
 async function buildGraph(): Promise<CurriculumGraphSnapshot> {
   const rawTopics = await prisma.topicDef.findMany({
-    where: { lifecycle: 'active', chapter: { lifecycle: 'active', subject: { lifecycle: 'active' } } },
+    where: {
+      lifecycle: 'active',
+      chapter: { lifecycle: 'active', subject: { lifecycle: 'active' } },
+    },
     include: {
       chapter: {
         select: {
@@ -79,7 +82,11 @@ async function buildGraph(): Promise<CurriculumGraphSnapshot> {
         },
       },
     },
-    orderBy: [{ chapter: { subject: { name: 'asc' } } }, { chapter: { order: 'asc' } }, { order: 'asc' }],
+    orderBy: [
+      { chapter: { subject: { name: 'asc' } } },
+      { chapter: { order: 'asc' } },
+      { order: 'asc' },
+    ],
   });
 
   // Narrow Prisma result for strict typing
@@ -134,7 +141,7 @@ async function buildGraph(): Promise<CurriculumGraphSnapshot> {
 
     // Sort chapters by order
     const sortedChapters = [...byChapter.entries()].sort(
-      ([, a], [, b]) => a[0].chapterOrder - b[0].chapterOrder,
+      ([, a], [, b]) => a[0].chapterOrder - b[0].chapterOrder
     );
 
     let prevChapterLastTopic: CurriculumTopic | null = null;
@@ -266,10 +273,7 @@ export async function getDependents(topicId: string): Promise<string[]> {
  * Returns the set of topic IDs that must be mastered before this topic
  * (direct prerequisites plus their prerequisites, recursively).
  */
-function getTransitivePrerequisites(
-  topicId: string,
-  graph: CurriculumGraphSnapshot,
-): Set<string> {
+function getTransitivePrerequisites(topicId: string, graph: CurriculumGraphSnapshot): Set<string> {
   const result = new Set<string>();
   const queue: string[] = [...(graph.prerequisites[topicId] ?? [])];
   const visited = new Set<string>();
@@ -297,7 +301,7 @@ function getTransitivePrerequisites(
 export function arePrerequisitesMet(
   topicId: string,
   graph: CurriculumGraphSnapshot,
-  masteredTopicIds: Set<string>,
+  masteredTopicIds: Set<string>
 ): boolean {
   const transitivePrereqs = getTransitivePrerequisites(topicId, graph);
   return [...transitivePrereqs].every((prereqId) => masteredTopicIds.has(prereqId));
@@ -309,14 +313,12 @@ export function arePrerequisitesMet(
  */
 export function getUnlockedTopics(
   graph: CurriculumGraphSnapshot,
-  completedTopicIds: Set<string>,
+  completedTopicIds: Set<string>
 ): string[] {
   return graph.topics
     .map((t) => t.topicId)
     .filter(
-      (id) =>
-        !completedTopicIds.has(id) &&
-        arePrerequisitesMet(id, graph, completedTopicIds),
+      (id) => !completedTopicIds.has(id) && arePrerequisitesMet(id, graph, completedTopicIds)
     );
 }
 
@@ -326,7 +328,7 @@ export function getUnlockedTopics(
  */
 export function getCurriculumPath(
   graph: CurriculumGraphSnapshot,
-  subjectIds?: string[],
+  subjectIds?: string[]
 ): CurriculumTopic[] {
   if (!subjectIds || subjectIds.length === 0) return graph.topics;
   const idSet = new Set(subjectIds);

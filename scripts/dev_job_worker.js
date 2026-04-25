@@ -9,12 +9,14 @@
  */
 const { prisma } = require('../lib/prisma');
 
-
 const WORKER_ID = `dev-worker-${Date.now()}`;
 
 async function pickAndLockJob() {
   // Find a pending job
-  const job = await prisma.executionJob.findFirst({ where: { status: 'pending' }, orderBy: { createdAt: 'asc' } });
+  const job = await prisma.executionJob.findFirst({
+    where: { status: 'pending' },
+    orderBy: { createdAt: 'asc' },
+  });
   if (!job) return null;
 
   // Try to claim the job by updating status -> running and setting lockedAt/lockedBy
@@ -28,49 +30,78 @@ async function pickAndLockJob() {
 }
 
 async function processJob(job) {
-  console.log(`[worker] Processing job ${job.id} type=${job.jobType} entity=${job.entityType}:${job.entityId}`);
+  console.log(
+    `[worker] Processing job ${job.id} type=${job.jobType} entity=${job.entityType}:${job.entityId}`
+  );
   try {
     if (job.jobType === 'syllabus') {
       // If subject-level syllabus, create a sample chapter and topics
       if (job.entityType === 'SUBJECT') {
         const subjectId = job.entityId;
         // create a chapter
-        const chapter = await prisma.chapterDef.create({ data: { name: `Auto Chapter (${new Date().toISOString()})`, slug: `auto-ch-${Date.now()}`, order: 1, subjectId, createdAt: new Date() } });
+        const chapter = await prisma.chapterDef.create({
+          data: {
+            name: `Auto Chapter (${new Date().toISOString()})`,
+            slug: `auto-ch-${Date.now()}`,
+            order: 1,
+            subjectId,
+            createdAt: new Date(),
+          },
+        });
         console.log(`[worker] Created Chapter ${chapter.id} for Subject ${subjectId}`);
 
         // create a few topics
         const topics = [];
         for (let i = 1; i <= 3; i++) {
-          const t = await prisma.topicDef.create({ data: { name: `Auto Topic ${i}`, slug: `auto-topic-${Date.now()}-${i}`, order: i, chapterId: chapter.id, createdAt: new Date() } });
+          const t = await prisma.topicDef.create({
+            data: {
+              name: `Auto Topic ${i}`,
+              slug: `auto-topic-${Date.now()}-${i}`,
+              order: i,
+              chapterId: chapter.id,
+              createdAt: new Date(),
+            },
+          });
           topics.push(t);
           console.log(`[worker] Created Topic ${t.id}`);
         }
 
         // Log AIContentLog entry
-        await prisma.aIContentLog.create({ data: {
-          model: 'dev-synth',
-          promptType: 'syllabus-synthesis',
-          board: null,
-          grade: null,
-          subject: null,
-          chapter: chapter.name,
-          topic: topics.map((x) => x.name).join(','),
-          language: 'en',
-          success: true,
-          requestBody: job.payload ?? {},
-          responseBody: { chapterId: chapter.id, topics: topics.map((t) => ({ id: t.id, name: t.name })) },
-          createdAt: new Date(),
-        } });
+        await prisma.aIContentLog.create({
+          data: {
+            model: 'dev-synth',
+            promptType: 'syllabus-synthesis',
+            board: null,
+            grade: null,
+            subject: null,
+            chapter: chapter.name,
+            topic: topics.map((x) => x.name).join(','),
+            language: 'en',
+            success: true,
+            requestBody: job.payload ?? {},
+            responseBody: {
+              chapterId: chapter.id,
+              topics: topics.map((t) => ({ id: t.id, name: t.name })),
+            },
+            createdAt: new Date(),
+          },
+        });
         console.log(`[worker] Created AIContentLog for job ${job.id}`);
       }
     }
 
     // mark job completed
-    await prisma.executionJob.update({ where: { id: job.id }, data: { status: 'completed', updatedAt: new Date() } });
+    await prisma.executionJob.update({
+      where: { id: job.id },
+      data: { status: 'completed', updatedAt: new Date() },
+    });
     console.log(`[worker] Job ${job.id} completed`);
   } catch (err) {
     console.error(`[worker] Job ${job.id} failed:`, err);
-    await prisma.executionJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: String(err), updatedAt: new Date() } });
+    await prisma.executionJob.update({
+      where: { id: job.id },
+      data: { status: 'failed', lastError: String(err), updatedAt: new Date() },
+    });
   }
 }
 

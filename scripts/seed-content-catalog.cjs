@@ -1,7 +1,5 @@
 const { prisma } = require('../lib/prisma');
 
-
-
 async function main() {
   console.log('🌱 [START] Seeding ContentCatalog from ChapterDef...');
 
@@ -41,7 +39,7 @@ async function main() {
         grade: '',
         language: 'en',
         active: true,
-      }
+      },
     });
 
     created++;
@@ -51,5 +49,10 @@ async function main() {
 }
 
 main()
-  .catch((e) => { console.error('❌ [ERROR]', e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error('❌ [ERROR]', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -9,7 +9,7 @@ async function main() {
     console.error('Usage: node scripts/query-job.js <hydrationId> [executionId]');
     process.exit(2);
   }
-  
+
   try {
     if (hydrationId) {
       const h = await prisma.hydrationJob.findUnique({ where: { id: hydrationId } });
@@ -22,21 +22,28 @@ async function main() {
     if (executionId) {
       const e = await prisma.executionJob.findUnique({ where: { id: executionId } });
       console.log('ExecutionJob:', JSON.stringify(e, null, 2));
-      const logs = await prisma.jobExecutionLog.findMany({ where: { jobId: executionId }, orderBy: { createdAt: 'asc' } });
+      const logs = await prisma.jobExecutionLog.findMany({
+        where: { jobId: executionId },
+        orderBy: { createdAt: 'asc' },
+      });
       console.log('JobExecutionLog entries:', JSON.stringify(logs, null, 2));
     }
     // Also fetch recent AI content logs (most recent 10) to inspect LLM responses
     const aiLogs = await prisma.aIContentLog.findMany({ orderBy: { createdAt: 'desc' }, take: 10 });
     console.log('Recent AIContentLog entries (summary):');
     for (const a of aiLogs) {
-      console.log({ id: a.id, model: a.model, promptType: a.promptType ?? a.prompttype ?? null, topicId: a.topicId ?? a.topic_id ?? null, createdAt: a.createdAt });
+      console.log({
+        id: a.id,
+        model: a.model,
+        promptType: a.promptType ?? a.prompttype ?? null,
+        topicId: a.topicId ?? a.topic_id ?? null,
+        createdAt: a.createdAt,
+      });
     }
-  }
-  catch (err) {
+  } catch (err) {
     console.error('Query error', err);
     process.exitCode = 1;
-  }
-  finally {
+  } finally {
     await prisma.$disconnect();
   }
 }

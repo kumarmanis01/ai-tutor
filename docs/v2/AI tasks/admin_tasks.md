@@ -1,35 +1,42 @@
 # Spinzy — Admin & Content Pipeline Tasks
+
 # Based on Task A1 audit findings — 2026-03-15
-# 
-# HOW TO USE:
-# Paste each task into Claude Code in order.
-# Gate between every task: npm run build:workers && npm run build && npm test
+
 #
+
+# HOW TO USE:
+
+# Paste each task into Claude Code in order.
+
+# Gate between every task: npm run build:workers && npm run build && npm test
+
+#
+
 # ROLE FOR ALL TASKS IN THIS FILE:
+
 # Principal Software Architect — apply all rules from CLAUDE.md
 
 ---
 
 ## ADMIN TASK COMPLETION STATUS
 
-| Task | Status | Notes |
-|------|--------|-------|
-| A1 — Audit | ✅ Complete | Findings documented above |
-| A2 — Grade backdoor + AuditLog schema | ✅ Complete | 46 files, 1204/1204 tests |
-| A3 — Question flagging + quarantine | ✅ Complete | 10 call sites filtered, flag UI in chat panel |
-| A4 — Admin CLI scripts | ✅ Complete | 8 commands, AccountStatus enum extended |
-| A5 — Doubt escalation queue | ✅ Complete | 7 files, ran before A3 |
-| A6 — Session quality sampling | ✅ Complete | QualityFlag schema, sample API, quality-review.cjs |
-| A7 — Cost anomaly detection | ✅ Complete | 4 anomaly conditions, rolling average, cache hit rate |
-| A8 — DPDP right-to-erasure | ✅ Complete | 2-phase worker, deletion request API, profile UI |
-| A9 — Minimal admin web UI | ✅ Complete | 5 pages: dashboard, costs, sessions, questions, escalations |
-| A10 — Content ingestion v2 | ✅ Complete | SHA-256 versioning, IngestRunLog, real PDF endpoint |
+| Task                                  | Status      | Notes                                                       |
+| ------------------------------------- | ----------- | ----------------------------------------------------------- |
+| A1 — Audit                            | ✅ Complete | Findings documented above                                   |
+| A2 — Grade backdoor + AuditLog schema | ✅ Complete | 46 files, 1204/1204 tests                                   |
+| A3 — Question flagging + quarantine   | ✅ Complete | 10 call sites filtered, flag UI in chat panel               |
+| A4 — Admin CLI scripts                | ✅ Complete | 8 commands, AccountStatus enum extended                     |
+| A5 — Doubt escalation queue           | ✅ Complete | 7 files, ran before A3                                      |
+| A6 — Session quality sampling         | ✅ Complete | QualityFlag schema, sample API, quality-review.cjs          |
+| A7 — Cost anomaly detection           | ✅ Complete | 4 anomaly conditions, rolling average, cache hit rate       |
+| A8 — DPDP right-to-erasure            | ✅ Complete | 2-phase worker, deletion request API, profile UI            |
+| A9 — Minimal admin web UI             | ✅ Complete | 5 pages: dashboard, costs, sessions, questions, escalations |
+| A10 — Content ingestion v2            | ✅ Complete | SHA-256 versioning, IngestRunLog, real PDF endpoint         |
 
 ---
 
-
-
 ### What exists and works:
+
 - Single BullMQ queue `content-hydration` — syllabus/notes/questions/assemble workers ✅
 - HydrationJob full lifecycle with JobLock, reconciler, outbox ✅
 - GeneratedQuestion → Question lazy promotion via lib/tests.ts ✅
@@ -39,6 +46,7 @@
 - QuestionFlag model — exists but wired to wrong model
 
 ### Critical gaps found:
+
 - PDF ingestion endpoint is a non-persisting stub (logs to console only)
 - QuestionFlag wired to StudentQuestion (doubts), NOT to Question (sessions)
 - PATCH /api/admin/users/[id] passes full body to prisma.update() — grade can be
@@ -457,7 +465,7 @@ PART 4 — Daily quality review script:
 
 Create scripts/quality-review.cjs:
   node scripts/quality-review.cjs [--date YYYY-MM-DD]
-  
+
   1. Calls GET /api/admin/sessions/sample (or direct DB query)
   2. For each session prints:
      Session: <id> | Student: <first 8 chars of id> | Duration: Nmin | Turns: N
@@ -580,7 +588,7 @@ PART 2 — Nightly deletion worker:
 
 Create worker/services/dataDeletionWorker.ts:
   BullMQ repeatable job, cron '30 20 * * *' (02:00 AM IST), timezone 'Asia/Kolkata'
-  
+
   Phase 1 — Pseudonymise (requestedAt > 7 days ago AND pseudonymisedAt IS NULL):
     For each qualifying DeletionRequest:
     - Update User: name='Deleted User', email=`deleted_${id}@deleted.spinzy.com`,
@@ -791,6 +799,7 @@ A10 — Content ingestion v2  ← can run parallel to A2-A8
 ```
 
 ## GATE BETWEEN EVERY TASK
+
 ```bash
 npm run build:workers && npm run build && npm test
 All green → commit → next task
@@ -799,24 +808,24 @@ All green → commit → next task
 ## WHAT IS COMPLETE AFTER ALL 9 TASKS
 
 Operations:
-  ✅ Grade backdoor fixed — all grade changes audited
-  ✅ AuditLog hardened — entityType, entityId, before/after, all admin actions
-  ✅ Question flagging + auto-quarantine (3 flags → QUARANTINED)
-  ✅ Doubt escalation queue + trending alerts
-  ✅ Admin CLI: suspend, reactivate, grade change, diagnostic reset, subscription extend
-  ✅ DPDP right-to-erasure (7-day pseudonymise, 30-day PII purge)
-  ✅ Session quality sampling tool
-  ✅ Cost anomaly detection — rolling average + cache hit rate
-  ✅ Minimal admin web UI
-  ✅ Content ingestion hardened — hash versioning, IngestRunLog, real PDF endpoint
+✅ Grade backdoor fixed — all grade changes audited
+✅ AuditLog hardened — entityType, entityId, before/after, all admin actions
+✅ Question flagging + auto-quarantine (3 flags → QUARANTINED)
+✅ Doubt escalation queue + trending alerts
+✅ Admin CLI: suspend, reactivate, grade change, diagnostic reset, subscription extend
+✅ DPDP right-to-erasure (7-day pseudonymise, 30-day PII purge)
+✅ Session quality sampling tool
+✅ Cost anomaly detection — rolling average + cache hit rate
+✅ Minimal admin web UI
+✅ Content ingestion hardened — hash versioning, IngestRunLog, real PDF endpoint
 
 Still deferred (Phase 2 admin — after 10K students):
-  - Full admin dashboard UI (F-ADM-P2-001)
-  - Content management UI (F-ADM-P2-002)
-  - A/B test framework
-  - Cohort retention analysis
-  - Bulk institutional onboarding
 
+- Full admin dashboard UI (F-ADM-P2-001)
+- Content management UI (F-ADM-P2-002)
+- A/B test framework
+- Cohort retention analysis
+- Bulk institutional onboarding
 
 ---
 
@@ -825,6 +834,7 @@ Still deferred (Phase 2 admin — after 10K students):
 Before tasks begin, here is what exists vs what v2 requires:
 
 ### What v1 has (working):
+
 - HydrationJob + ExecutionJob BullMQ pipeline for content generation
 - AIContentLog for every LLM call (model, tokens, costUsd, promptType)
 - GeneratedTest + GeneratedQuestion tables
@@ -833,6 +843,7 @@ Before tasks begin, here is what exists vs what v2 requires:
 - Basic profanity guard on student input
 
 ### What v1 is missing vs v2 spec:
+
 - No unified session_turns schema for daily quality sampling
 - No SafetyEvent pipeline for tutoring (only content generation)
 - No automated quarantine trigger (3 flags → QUARANTINED not wired end-to-end)
@@ -1161,7 +1172,7 @@ Run: /run npx prisma migrate dev --name add_deletion_request
 
 2. Create worker/services/dataDeletionWorker.ts:
    BullMQ job, runs nightly at 02:00 IST (cron '30 20 * * *')
-   
+
    Phase 1 — Pseudonymise (runs if requestedAt > 7 days ago, pseudonymisedAt IS NULL):
      - Replace User.name with 'Deleted User'
      - Replace User.email with deleted_{id}@deleted.spinzy.com
@@ -1406,15 +1417,15 @@ Read all files found. This task verifies and hardens the content ingestion pipel
 4. VERIFY concept taxonomy seeding is documented:
    There should be a script or migration that seeds:
    BoardDef → SubjectDef → ChapterDef → TopicDef → Concept hierarchy
-   
+
    Run: /run find scripts -name "*taxonomy*" -o -name "*seed*concept*" 2>/dev/null | grep -v node_modules
-   
+
    If no taxonomy seeding script exists: create scripts/seed-taxonomy.cjs with
    instructions at the top explaining the manual steps needed before ingestion.
 
 5. ADD ingestion run log:
    After each ingest run, write a row to a simple IngestRunLog table:
-   
+
 model IngestRunLog {
   id                  String   @id @default(cuid())
   runAt               DateTime @default(now())
@@ -1451,6 +1462,7 @@ A9 — Content ingestion v2 hardening (can run parallel to A2-A7)
 ```
 
 ## GATE BETWEEN EVERY TASK
+
 ```bash
 npm run build:workers && npm run build && npm test
 All green → commit → next task
@@ -1459,18 +1471,19 @@ All green → commit → next task
 ## WHAT THIS COVERS AFTER ALL 9 TASKS
 
 Operations:
-  ✅ Question flagging + auto-quarantine (3 flags)
-  ✅ Doubt escalation queue + trending alerts
-  ✅ Admin CLI for user ops (suspend, grade change, diagnostic reset)
-  ✅ DPDP right-to-erasure (7-day pseudonymise, 30-day PII purge)
-  ✅ Session quality sampling tool (daily manual review)
-  ✅ Cost anomaly detection (1.5x rolling average + cache hit rate)
-  ✅ Minimal admin web UI (sessions, escalations, quarantined questions)
-  ✅ Content ingestion pipeline hardened + idempotent
+✅ Question flagging + auto-quarantine (3 flags)
+✅ Doubt escalation queue + trending alerts
+✅ Admin CLI for user ops (suspend, grade change, diagnostic reset)
+✅ DPDP right-to-erasure (7-day pseudonymise, 30-day PII purge)
+✅ Session quality sampling tool (daily manual review)
+✅ Cost anomaly detection (1.5x rolling average + cache hit rate)
+✅ Minimal admin web UI (sessions, escalations, quarantined questions)
+✅ Content ingestion pipeline hardened + idempotent
 
 Still deferred (Phase 2 admin — after 10K students):
-  - Full admin dashboard UI (F-ADM-P2-001)
-  - Content management UI (F-ADM-P2-002)
-  - A/B test framework (F-ADM-P2-003)
-  - Cohort retention analysis (F-ADM-P2-004)
-  - Bulk institutional onboarding (F-ADM-P2-005)
+
+- Full admin dashboard UI (F-ADM-P2-001)
+- Content management UI (F-ADM-P2-002)
+- A/B test framework (F-ADM-P2-003)
+- Cohort retention analysis (F-ADM-P2-004)
+- Bulk institutional onboarding (F-ADM-P2-005)

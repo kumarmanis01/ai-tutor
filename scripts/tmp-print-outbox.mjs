@@ -12,6 +12,8 @@ import { prisma } from '../dist/lib/prisma.js';
     console.error('ERROR querying outbox:', err);
     process.exitCode = 1;
   } finally {
-    try { await prisma.$disconnect(); } catch {}
+    try {
+      await prisma.$disconnect();
+    } catch {}
   }
 })();

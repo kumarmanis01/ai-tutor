@@ -20,5 +20,6 @@ This document lists all required environment variables and integration points fo
 - Razorpay: Payments
 
 ## 3. Reference
+
 - See `.env.example` for sample values
 - See `ARCHITECTURE.md` for integration context

@@ -10,7 +10,7 @@ describe('VisualHintRenderer', () => {
   });
 
   it('renders textual fallback for plain text hints', () => {
-    render(<VisualHintRenderer hint={"draw a triangle with labels A B C"} />);
+    render(<VisualHintRenderer hint={'draw a triangle with labels A B C'} />);
     expect(screen.getByText(/Visual hint/)).toBeInTheDocument();
     expect(screen.getByText(/draw a triangle with labels A B C/)).toBeInTheDocument();
   });

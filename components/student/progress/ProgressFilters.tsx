@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * ProgressFilters -- subject + time-range filter bar for the progress report page.
@@ -50,7 +50,7 @@ export default function ProgressFilters({
       params.set('days', String(days));
       router.push(`?${params.toString()}`, { scroll: false });
     },
-    [router, searchParams],
+    [router, searchParams]
   );
 
   return (

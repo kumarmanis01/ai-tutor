@@ -14,15 +14,18 @@ export async function GET(req: Request) {
   try {
     assertNoStringFilters(req);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 400 }
+    );
   }
   const by = searchParams.get('by');
 
   if (by === 'tests') {
-  const classId = searchParams.get('classId');
-  const boardId = searchParams.get('boardId');
-  const subjectId = searchParams.get('subjectId');
-  const period = searchParams.get('period') ?? 'weekly';
+    const classId = searchParams.get('classId');
+    const boardId = searchParams.get('boardId');
+    const subjectId = searchParams.get('subjectId');
+    const period = searchParams.get('period') ?? 'weekly';
 
     const now = new Date();
     const start = new Date(now);

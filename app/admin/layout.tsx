@@ -51,22 +51,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       prisma.topicDef.count({ where: { status: 'draft', lifecycle: 'active' } }),
       prisma.topicNote.count({ where: { status: 'draft', lifecycle: 'active' } }),
       prisma.generatedTest.count({ where: { status: 'draft', lifecycle: 'active' } }),
-    ]).then(([c, t, n, gt]) => c + t + n + gt).catch(() => 0),
+    ])
+      .then(([c, t, n, gt]) => c + t + n + gt)
+      .catch(() => 0),
 
     // Root hydration jobs currently running (hierarchyLevel 0 = pipeline root)
-    prisma.hydrationJob
-      .count({ where: { hierarchyLevel: 0, status: 'running' } })
-      .catch(() => 0),
+    prisma.hydrationJob.count({ where: { hierarchyLevel: 0, status: 'running' } }).catch(() => 0),
 
     // Failed root jobs (separate for badge colour differentiation in sidebar)
-    prisma.hydrationJob
-      .count({ where: { hierarchyLevel: 0, status: 'failed' } })
-      .catch(() => 0),
+    prisma.hydrationJob.count({ where: { hierarchyLevel: 0, status: 'failed' } }).catch(() => 0),
 
     // Unresolved safety events
-    prisma.safetyEvent
-      .count({ where: { resolvedAt: null } })
-      .catch(() => 0),
+    prisma.safetyEvent.count({ where: { resolvedAt: null } }).catch(() => 0),
   ]);
 
   return (

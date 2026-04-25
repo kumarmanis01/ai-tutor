@@ -13,21 +13,29 @@
  *   2026-03-15 | claude | T38 -- add auth gate + top nav
  */
 
-import type { Metadata, Viewport } from 'next'
-import localFont from 'next/font/local'
-import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import type { AppSession } from '@/lib/types/auth'
-import '@/styles/index.css'
-import Link from 'next/link'
-import ParentLogoutButton from '@/components/parent/ParentLogoutButton'
-import Logo from '@/components/Logo'
-import { NavigationProgress } from '@/components/NavigationProgress'
+import type { Metadata, Viewport } from 'next';
+import localFont from 'next/font/local';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import type { AppSession } from '@/lib/types/auth';
+import '@/styles/index.css';
+import Link from 'next/link';
+import ParentLogoutButton from '@/components/parent/ParentLogoutButton';
+import Logo from '@/components/Logo';
+import { NavigationProgress } from '@/components/NavigationProgress';
 
 // Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
-const inter = localFont({ src: '../../public/fonts/inter-latin-variable.woff2', variable: '--font-inter', display: 'swap' })
-const nunito = localFont({ src: '../../public/fonts/nunito-variable-latin.woff2', variable: '--font-nunito', display: 'swap' })
+const inter = localFont({
+  src: '../../public/fonts/inter-latin-variable.woff2',
+  variable: '--font-inter',
+  display: 'swap',
+});
+const nunito = localFont({
+  src: '../../public/fonts/nunito-variable-latin.woff2',
+  variable: '--font-nunito',
+  display: 'swap',
+});
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -35,7 +43,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-}
+};
 
 export const metadata: Metadata = {
   title: 'Parent Dashboard | Spinzy',
@@ -49,17 +57,17 @@ export const metadata: Metadata = {
     apple: { url: '/apple-touch-icon.png', sizes: '180x180' },
     shortcut: '/favicon.ico',
   },
-}
+};
 
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
-  const session = (await getServerSession(authOptions)) as AppSession | null
+  const session = (await getServerSession(authOptions)) as AppSession | null;
 
   if (!session?.user?.id) {
-    redirect('/login')
+    redirect('/login');
   }
 
   if (session.user.role !== 'parent') {
-    redirect('/dashboard')
+    redirect('/dashboard');
   }
 
   return (
@@ -70,11 +78,18 @@ export default async function ParentLayout({ children }: { children: React.React
         {/* ── Top nav ────────────────────────────────────────────────────── */}
         <nav className="sticky top-0 z-30 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-
             {/* Logo */}
-            <Link href="/parent/dashboard" className="flex items-center gap-2" aria-label="Parent dashboard">
-              <span className="hidden sm:flex"><Logo variant="navbar" /></span>
-              <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
+            <Link
+              href="/parent/dashboard"
+              className="flex items-center gap-2"
+              aria-label="Parent dashboard"
+            >
+              <span className="hidden sm:flex">
+                <Logo variant="navbar" />
+              </span>
+              <span className="flex sm:hidden">
+                <Logo variant="navbar-mobile" />
+              </span>
               <span className="hidden text-xs font-medium text-gray-500 sm:inline dark:text-gray-400">
                 | Parent View
               </span>
@@ -90,12 +105,11 @@ export default async function ParentLayout({ children }: { children: React.React
               </Link>
               <ParentLogoutButton />
             </div>
-
           </div>
         </nav>
 
         {children}
       </body>
     </html>
-  )
+  );
 }

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 
 export type DiagnosticStatus =
   | 'pending'
@@ -79,17 +79,21 @@ function toDiagnosticMap(value: unknown): DiagnosticMap {
  */
 export async function getSubjectDiagnosticStatus(
   studentId: string,
-  subjectKey: string,
+  subjectKey: string
 ): Promise<SubjectDiagnosticStatus> {
-  let profile: any = null
+  let profile: any = null;
   try {
     profile = await prisma.studentLearningProfile.findUnique({
       where: { studentId },
       select: { id: true, recommendations: true },
-    })
+    });
   } catch (err: any) {
-    try { logger.warn('getSubjectDiagnosticStatus: studentLearningProfile.findUnique failed', { error: String(err) }) } catch {}
-    profile = null
+    try {
+      logger.warn('getSubjectDiagnosticStatus: studentLearningProfile.findUnique failed', {
+        error: String(err),
+      });
+    } catch {}
+    profile = null;
   }
 
   const recommendations = toRecommendationsShape(profile?.recommendations ?? null);
@@ -114,22 +118,24 @@ export async function getSubjectDiagnosticStatus(
 
   // Derive a sensible default from existing mastery data when no explicit
   // diagnostic metadata has been stored.
-  let masteryCount = 0
+  let masteryCount = 0;
   try {
     masteryCount = await prisma.studentTopicMastery.count({
       where: {
         studentId,
         subject: subjectKey,
       },
-    })
+    });
   } catch (err: any) {
     try {
-      logger.warn('getSubjectDiagnosticStatus: studentTopicMastery.count failed, defaulting to 0', { error: String(err) })
+      logger.warn('getSubjectDiagnosticStatus: studentTopicMastery.count failed, defaulting to 0', {
+        error: String(err),
+      });
     } catch {}
-    masteryCount = 0
+    masteryCount = 0;
   }
 
-  const derivedStatus: DiagnosticStatus = masteryCount > 0 ? 'not_applicable' : 'pending'
+  const derivedStatus: DiagnosticStatus = masteryCount > 0 ? 'not_applicable' : 'pending';
 
   return {
     subjectKey,
@@ -151,7 +157,7 @@ export async function getSubjectDiagnosticStatus(
 export async function upsertSubjectDiagnosticStatus(
   studentId: string,
   subjectKey: string,
-  meta: Partial<SubjectDiagnosticMeta>,
+  meta: Partial<SubjectDiagnosticMeta>
 ): Promise<SubjectDiagnosticStatus> {
   const profile = await prisma.studentLearningProfile.findUnique({
     where: { studentId },
@@ -169,13 +175,13 @@ export async function upsertSubjectDiagnosticStatus(
       meta.runId !== undefined
         ? meta.runId
         : Object.prototype.hasOwnProperty.call(previous, 'runId')
-          ? previous.runId ?? null
+          ? (previous.runId ?? null)
           : null,
     completedAt:
       meta.completedAt !== undefined
         ? meta.completedAt
         : Object.prototype.hasOwnProperty.call(previous, 'completedAt')
-          ? previous.completedAt ?? null
+          ? (previous.completedAt ?? null)
           : null,
     version:
       typeof meta.version === 'number'
@@ -184,7 +190,8 @@ export async function upsertSubjectDiagnosticStatus(
           ? previous.version
           : undefined,
     // Once flagged, always flagged -- never clear the gaming flag once set.
-    gamingFlagged: meta.gamingFlagged === true ? true : previous.gamingFlagged === true ? true : undefined,
+    gamingFlagged:
+      meta.gamingFlagged === true ? true : previous.gamingFlagged === true ? true : undefined,
   };
 
   const nextDiagnostics: DiagnosticMap = {
@@ -226,4 +233,3 @@ export async function upsertSubjectDiagnosticStatus(
     retakeEligibleAt,
   };
 }
-

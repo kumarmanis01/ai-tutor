@@ -43,7 +43,7 @@ describe('AlertRouter', () => {
     });
 
     const res = await router.route({ title: 'T', message: 'M', severity: 'error' });
-    const sinks = res.map(r => r.sink).sort();
+    const sinks = res.map((r) => r.sink).sort();
     expect(sinks).toEqual(['email', 'slack'].sort());
     expect((slack as any).send).toHaveBeenCalled();
     expect((email as any).send).toHaveBeenCalled();
@@ -59,7 +59,7 @@ describe('AlertRouter', () => {
 
     const alert = { title: 'T', message: 'M', severity: 'info' } as any;
     const first = await router.route(alert);
-    expect(first.find(f => f.sink === 'slack')?.result.success).toBe(true);
+    expect(first.find((f) => f.sink === 'slack')?.result.success).toBe(true);
 
     const second = await router.route(alert);
     expect(second).toHaveLength(1);
@@ -114,7 +114,7 @@ describe('AlertRouter', () => {
 
     const router = new AlertRouter({ sinks: [slack, webhook] });
     const res = await router.route({ title: 'T', message: 'M', severity: 'error' } as any);
-    const bySink = Object.fromEntries(res.map(r => [r.sink, r.result]));
+    const bySink = Object.fromEntries(res.map((r) => [r.sink, r.result]));
     expect(bySink.slack.success).toBe(false);
     expect(bySink.webhook.success).toBe(false);
     expect((slack as any).send).toHaveBeenCalled();

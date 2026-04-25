@@ -16,91 +16,98 @@
  * - 2026-04-24T00:00:00Z | staff-engineer | created per P1.1-P AC
  */
 
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useState } from 'react';
 
 export interface ChildInput {
-  firstName: string
-  grade: string
-  board: string
+  id?: string;
+  firstName: string;
+  grade: string;
+  board: string;
 }
 
 export interface CreatedChild {
-  id: string
-  name: string
-  grade: string
-  board: string
+  id: string;
+  name: string;
+  grade: string;
+  board: string;
 }
 
 interface AddChildFormProps {
-  onSuccess: (children: CreatedChild[]) => void
+  onSuccess: (children: CreatedChild[]) => void;
 }
 
-const BOARDS = ['CBSE', 'ICSE', 'State Board']
-const GRADES = Array.from({ length: 12 }, (_, i) => String(i + 1))
+const BOARDS = ['CBSE', 'ICSE', 'State Board'];
+const GRADES = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
-const EMPTY_CHILD: ChildInput = { firstName: '', grade: '', board: '' }
+const EMPTY_CHILD: ChildInput = { firstName: '', grade: '', board: '' };
 
 export default function AddChildForm({ onSuccess }: AddChildFormProps) {
-  const [children, setChildren] = useState<ChildInput[]>([{ ...EMPTY_CHILD }])
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [children, setChildren] = useState<ChildInput[]>([
+    { ...EMPTY_CHILD, id: String(Date.now()) },
+  ]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function updateChild(index: number, field: keyof ChildInput, value: string) {
     setChildren((prev) => {
-      const next = [...prev]
-      next[index] = { ...next[index], [field]: value }
-      return next
-    })
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
   }
 
   function addChild() {
-    setChildren((prev) => [...prev, { ...EMPTY_CHILD }])
+    setChildren((prev) => [...prev, { ...EMPTY_CHILD, id: String(Date.now() + Math.random()) }]);
   }
 
   function removeChild(index: number) {
-    if (children.length === 1) return
-    setChildren((prev) => prev.filter((_, i) => i !== index))
+    if (children.length === 1) return;
+    setChildren((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
-    const invalid = children.find((c) => !c.firstName.trim() || !c.grade || !c.board)
+    const invalid = children.find((c) => !c.firstName.trim() || !c.grade || !c.board);
     if (invalid) {
-      setError('Please fill in all fields for each child.')
-      return
+      setError('Please fill in all fields for each child.');
+      return;
     }
 
-    setSubmitting(true)
-    const created: CreatedChild[] = []
+    setSubmitting(true);
+    const created: CreatedChild[] = [];
 
-    for (const child of children) {
-      const res = await fetch('/api/parent/create-child', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: child.firstName.trim(),
-          grade: child.grade,
-          board: child.board,
-        }),
-      })
+    try {
+      for (const child of children) {
+        const res = await fetch('/api/parent/create-child', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: child.firstName.trim(),
+            grade: child.grade,
+            board: child.board,
+          }),
+        });
 
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null
-        setError(data?.error ?? 'Could not create child profile. Please try again.')
-        setSubmitting(false)
-        return
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(data?.error ?? 'Could not create child profile. Please try again.');
+        }
+
+        const data = (await res.json()) as { child?: CreatedChild };
+        if (data.child) created.push(data.child);
       }
-
-      const data = (await res.json()) as { child?: CreatedChild }
-      if (data.child) created.push(data.child)
+      onSuccess(created);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : 'Could not create child profile. Please try again.'
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false)
-    onSuccess(created)
   }
 
   return (
@@ -114,7 +121,7 @@ export default function AddChildForm({ onSuccess }: AddChildFormProps) {
       <div className="space-y-6">
         {children.map((child, idx) => (
           <div
-            key={idx}
+            key={child.id ?? idx}
             className="bg-[#EEEDFE] rounded-2xl p-5 relative"
             aria-label={`Child ${idx + 1}`}
           >
@@ -231,5 +238,5 @@ export default function AddChildForm({ onSuccess }: AddChildFormProps) {
         {submitting ? 'Creating profiles...' : 'Continue'}
       </button>
     </form>
-  )
+  );
 }

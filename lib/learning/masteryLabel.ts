@@ -17,7 +17,13 @@
 
 export type MasteryLabel = 'Needs practice' | 'Getting there' | 'Understood' | 'Mastered';
 
-export type TopicStatus = 'needs_practice' | 'getting_there' | 'understood' | 'mastered' | 'in_progress' | 'upcoming';
+export type TopicStatus =
+  | 'needs_practice'
+  | 'getting_there'
+  | 'understood'
+  | 'mastered'
+  | 'in_progress'
+  | 'upcoming';
 
 /**
  * Returns a qualitative mastery label for display to students.
@@ -36,7 +42,7 @@ export function getMasteryLabel(mastery: number | null | undefined): MasteryLabe
  */
 export function getTopicStatus(
   mastery: number | null | undefined,
-  isInProgress = false,
+  isInProgress = false
 ): TopicStatus {
   if (isInProgress) return 'in_progress';
   if (mastery == null || mastery === 0) return 'upcoming';

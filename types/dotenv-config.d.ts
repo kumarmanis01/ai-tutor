@@ -1,1 +1,1 @@
-declare module 'dotenv/config'
+declare module 'dotenv/config';

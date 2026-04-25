@@ -27,9 +27,7 @@ export interface SessionEventPayload {
  * Record a single session analytics event.
  * Runs fire-and-forget -- the returned promise resolves even on failure.
  */
-export async function recordSessionEvent(
-  payload: SessionEventPayload,
-): Promise<void> {
+export async function recordSessionEvent(payload: SessionEventPayload): Promise<void> {
   try {
     await prisma.sessionEvent.create({
       data: {
@@ -55,9 +53,7 @@ export async function recordSessionEvent(
 /**
  * Convenience: record multiple events in a single transaction.
  */
-export async function recordSessionEvents(
-  events: SessionEventPayload[],
-): Promise<void> {
+export async function recordSessionEvents(events: SessionEventPayload[]): Promise<void> {
   try {
     await prisma.$transaction(
       events.map((e) =>
@@ -67,8 +63,8 @@ export async function recordSessionEvents(
             eventType: e.eventType,
             metadata: (e.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
           },
-        }),
-      ),
+        })
+      )
     );
   } catch (err) {
     logger.warn('[SESSION_EVENTS_BATCH_FAILED]', {

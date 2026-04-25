@@ -22,7 +22,7 @@ function key(studentId: string, subjectId: string): string {
 
 export async function getPartialDiagnostic(
   studentId: string,
-  subjectId: string,
+  subjectId: string
 ): Promise<DiagnosticPartialState | null> {
   try {
     const redis = getRedis();
@@ -47,7 +47,7 @@ export async function getPartialDiagnostic(
 export async function savePartialDiagnostic(
   studentId: string,
   subjectId: string,
-  state: DiagnosticPartialState,
+  state: DiagnosticPartialState
 ): Promise<void> {
   try {
     const redis = getRedis();
@@ -58,10 +58,7 @@ export async function savePartialDiagnostic(
   }
 }
 
-export async function clearPartialDiagnostic(
-  studentId: string,
-  subjectId: string,
-): Promise<void> {
+export async function clearPartialDiagnostic(studentId: string, subjectId: string): Promise<void> {
   try {
     const redis = getRedis();
     if (!redis) return;

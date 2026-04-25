@@ -15,8 +15,8 @@
  */
 
 export interface TrendPoint {
-  date: string;   // ISO 8601
-  score: number;  // 0-100
+  date: string; // ISO 8601
+  score: number; // 0-100
 }
 
 interface Props {
@@ -66,9 +66,7 @@ export default function ScoreTrendGraph({ data, className = '' }: Props) {
 
   // X-axis labels: first, middle, last -- avoids overlap on small screens.
   const xLabelIndices =
-    n <= 2
-      ? Array.from({ length: n }, (_, i) => i)
-      : [0, Math.floor((n - 1) / 2), n - 1];
+    n <= 2 ? Array.from({ length: n }, (_, i) => i) : [0, Math.floor((n - 1) / 2), n - 1];
 
   // Score labels: only first and last dots to keep the chart uncluttered.
   const scoreLabelIndices = Array.from(new Set([0, n - 1]));
@@ -86,21 +84,8 @@ export default function ScoreTrendGraph({ data, className = '' }: Props) {
         const y = toY(s);
         return (
           <g key={s}>
-            <line
-              x1={PAD.left}
-              y1={y}
-              x2={W - PAD.right}
-              y2={y}
-              stroke={GRID}
-              strokeWidth={1}
-            />
-            <text
-              x={PAD.left - 4}
-              y={y + 3.5}
-              textAnchor="end"
-              fontSize={8}
-              fill={LABEL}
-            >
+            <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y} stroke={GRID} strokeWidth={1} />
+            <text x={PAD.left - 4} y={y + 3.5} textAnchor="end" fontSize={8} fill={LABEL}>
               {s}
             </text>
           </g>
@@ -154,14 +139,7 @@ export default function ScoreTrendGraph({ data, className = '' }: Props) {
 
       {/* X-axis date labels */}
       {xLabelIndices.map((i) => (
-        <text
-          key={`xl-${i}`}
-          x={toX(i)}
-          y={H - 7}
-          textAnchor="middle"
-          fontSize={8}
-          fill={LABEL}
-        >
+        <text key={`xl-${i}`} x={toX(i)} y={H - 7} textAnchor="middle" fontSize={8} fill={LABEL}>
           {shortDate(data[i].date)}
         </text>
       ))}

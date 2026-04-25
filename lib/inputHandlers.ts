@@ -1,4 +1,6 @@
-export type UploadResult = { ok: true; url: string } | { ok: false; error?: string; details?: string };
+export type UploadResult =
+  | { ok: true; url: string }
+  | { ok: false; error?: string; details?: string };
 
 /**
  * Upload an image file to the server.
@@ -12,9 +14,18 @@ export async function uploadImage(file: File): Promise<UploadResult> {
     // Primary: produce a compressed WebP (best size) when possible
     let primaryFile: File = file;
     try {
-      primaryFile = await resizeImageFile(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.80, mimeType: 'image/webp' });
+      primaryFile = await resizeImageFile(file, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.8,
+        mimeType: 'image/webp',
+      });
     } catch (err) {
-      logger.warn('Primary (webp) resize failed, falling back to original', { className: 'inputHandlers', methodName: 'uploadImage', details: String(err) });
+      logger.warn('Primary (webp) resize failed, falling back to original', {
+        className: 'inputHandlers',
+        methodName: 'uploadImage',
+        details: String(err),
+      });
       primaryFile = file;
     }
 
@@ -22,17 +33,28 @@ export async function uploadImage(file: File): Promise<UploadResult> {
     const primaryRes = await fetch('/api/s3-presign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: primaryFile.name || file.name, contentType: primaryFile.type || file.type }),
+      body: JSON.stringify({
+        filename: primaryFile.name || file.name,
+        contentType: primaryFile.type || file.type,
+      }),
     });
     if (!primaryRes.ok) {
       const payload = await primaryRes.json().catch(() => ({}));
-      return { ok: false, error: payload?.error || `presign-failed:${primaryRes.status}`, details: payload?.message };
+      return {
+        ok: false,
+        error: payload?.error || `presign-failed:${primaryRes.status}`,
+        details: payload?.message,
+      };
     }
     const primaryMeta = await primaryRes.json().catch(() => null);
     if (!primaryMeta || !primaryMeta.url) return { ok: false, error: 'no-presigned-url' };
 
     // Upload primary (WebP or original)
-    const putPrimary = await fetch(primaryMeta.url, { method: 'PUT', headers: { 'Content-Type': primaryFile.type }, body: primaryFile });
+    const putPrimary = await fetch(primaryMeta.url, {
+      method: 'PUT',
+      headers: { 'Content-Type': primaryFile.type },
+      body: primaryFile,
+    });
     if (!putPrimary.ok) {
       return { ok: false, error: `s3-put-failed:${putPrimary.status}` };
     }
@@ -43,20 +65,35 @@ export async function uploadImage(file: File): Promise<UploadResult> {
     // Background: upload a small JPEG fallback for compatibility (do not block)
     (async () => {
       try {
-        const jpegFallback = await resizeImageFile(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78, mimeType: 'image/jpeg' });
+        const jpegFallback = await resizeImageFile(file, {
+          maxWidth: 1600,
+          maxHeight: 1600,
+          quality: 0.78,
+          mimeType: 'image/jpeg',
+        });
         // Request presign for fallback
         const fallbackRes = await fetch('/api/s3-presign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: jpegFallback.name || `${file.name.replace(/\.[^.]+$/, '')}.jpg`, contentType: jpegFallback.type }),
+          body: JSON.stringify({
+            filename: jpegFallback.name || `${file.name.replace(/\.[^.]+$/, '')}.jpg`,
+            contentType: jpegFallback.type,
+          }),
         });
         if (!fallbackRes.ok) return;
         const fallbackMeta = await fallbackRes.json().catch(() => null);
         if (!fallbackMeta || !fallbackMeta.url) return;
-        await fetch(fallbackMeta.url, { method: 'PUT', headers: { 'Content-Type': jpegFallback.type }, body: jpegFallback });
+        await fetch(fallbackMeta.url, {
+          method: 'PUT',
+          headers: { 'Content-Type': jpegFallback.type },
+          body: jpegFallback,
+        });
       } catch (e) {
         // ignore background failures but log for debugging
-        logger.warn(`JPEG fallback upload failed: ${String(e)}`, { className: 'inputHandlers', methodName: 'uploadImage' });
+        logger.warn(`JPEG fallback upload failed: ${String(e)}`, {
+          className: 'inputHandlers',
+          methodName: 'uploadImage',
+        });
       }
     })();
 
@@ -70,7 +107,9 @@ export async function uploadImage(file: File): Promise<UploadResult> {
  * Send a text question to the server for processing (stub).
  * Replace the fetch URL and payload with the real backend route.
  */
-export async function sendTextQuestion(text: string): Promise<{ ok: boolean; reply?: string; error?: string }> {
+export async function sendTextQuestion(
+  text: string
+): Promise<{ ok: boolean; reply?: string; error?: string }> {
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -102,7 +141,7 @@ export function startVoiceInput(
   onInterim: (text: string) => void,
   onFinal: (text: string, lang?: string) => void,
   onError?: (msg: string) => void,
-  lang?: string,
+  lang?: string
 ) {
   const controller = createSpeechController({
     lang,

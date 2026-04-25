@@ -4,7 +4,12 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { getLocalDateString, getTodayLocalDateString, startOfLocalDayUtc, endOfLocalDayUtc } from './timezone';
+import {
+  getLocalDateString,
+  getTodayLocalDateString,
+  startOfLocalDayUtc,
+  endOfLocalDayUtc,
+} from './timezone';
 import {
   getUniqueStudyDays,
   getWeeklyActivity as queryWeeklyActivity,
@@ -65,7 +70,9 @@ export async function getTodayCompletion(studentId: string): Promise<TodayComple
 /**
  * Current streak (consecutive days with ≥1 completion). Uses cache if present and fresh; else computes from sessions.
  */
-export async function getCurrentStreak(studentId: string): Promise<{ current: number; longest: number }> {
+export async function getCurrentStreak(
+  studentId: string
+): Promise<{ current: number; longest: number }> {
   const user = await prisma.user.findUnique({
     where: { id: studentId },
     select: { timezone: true },

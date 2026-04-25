@@ -15,19 +15,19 @@
  * - 2025-01-15T00:00:00Z | copilot | created -- B4.2 content generation deduplication
  */
 
-import { getRedis } from '@/lib/redis'
-import { prisma } from '@/lib/db'
-import { logger } from '@/lib/logger'
+import { getRedis } from '@/lib/redis';
+import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** 15-minute dedup window in seconds */
-const DEDUP_TTL_SECONDS = 900
+const DEDUP_TTL_SECONDS = 900;
 
 // ── Key helpers ────────────────────────────────────────────────────────────────
 
 function dedupKey(normalizedTopic: string): string {
-  return `content_gen:dedup:${normalizedTopic}`
+  return `content_gen:dedup:${normalizedTopic}`;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export function normalizeTopic(topic: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
-    .replace(/\s+/g, '-')
+    .replace(/\s+/g, '-');
 }
 
 /**
@@ -49,14 +49,14 @@ export function normalizeTopic(topic: string): string {
  * Returns the existing jobId if found in Redis cache, otherwise null.
  */
 export async function checkDedup(normalizedTopic: string): Promise<string | null> {
-  const redis = getRedis()
-  if (!redis) return null
+  const redis = getRedis();
+  if (!redis) return null;
   try {
-    const existingJobId = await redis.get(dedupKey(normalizedTopic))
-    return existingJobId
+    const existingJobId = await redis.get(dedupKey(normalizedTopic));
+    return existingJobId;
   } catch (err: unknown) {
-    logger.error('Dedup check failed', { normalizedTopic, error: err })
-    return null
+    logger.error('Dedup check failed', { normalizedTopic, error: err });
+    return null;
   }
 }
 
@@ -65,24 +65,24 @@ export async function checkDedup(normalizedTopic: string): Promise<string | null
  * Called immediately after creating a new GenerationJob.
  */
 export async function setDedup(normalizedTopic: string, jobId: string): Promise<void> {
-  const redis = getRedis()
-  if (!redis) return
+  const redis = getRedis();
+  if (!redis) return;
   try {
-    await redis.set(dedupKey(normalizedTopic), jobId, 'EX', DEDUP_TTL_SECONDS)
+    await redis.set(dedupKey(normalizedTopic), jobId, 'EX', DEDUP_TTL_SECONDS);
   } catch (err: unknown) {
-    logger.error('Dedup set failed', { normalizedTopic, jobId, error: err })
+    logger.error('Dedup set failed', { normalizedTopic, jobId, error: err });
     // Non-fatal: generation continues even if dedup cache write fails
   }
 }
 
 /** Remove dedup key (best-effort). */
 export async function clearDedup(normalizedTopic: string): Promise<void> {
-  const redis = getRedis()
-  if (!redis) return
+  const redis = getRedis();
+  if (!redis) return;
   try {
-    await redis.del(dedupKey(normalizedTopic))
+    await redis.del(dedupKey(normalizedTopic));
   } catch (err: unknown) {
-    logger.error('Dedup clear failed', { normalizedTopic, error: err })
+    logger.error('Dedup clear failed', { normalizedTopic, error: err });
   }
 }
 
@@ -101,23 +101,26 @@ export async function addSubscriber(jobId: string, studentId: string): Promise<v
       UPDATE "GenerationJob"
       SET "subscriberIds" = array_append("subscriberIds", ${studentId})
       WHERE id = ${jobId} AND NOT ("subscriberIds" @> ARRAY[${studentId}]::text[])
-    `
+    `;
 
     if (typeof updated === 'number' && updated > 0) {
-      logger.info('Subscriber atomically added to generation job', { jobId, studentId })
-      return
+      logger.info('Subscriber atomically added to generation job', { jobId, studentId });
+      return;
     }
 
     // If no rows were updated, either the job is missing or the student is already subscribed.
-    const existing = await prisma.generationJob.findUnique({ where: { id: jobId }, select: { subscriberIds: true } })
+    const existing = await prisma.generationJob.findUnique({
+      where: { id: jobId },
+      select: { subscriberIds: true },
+    });
     if (!existing) {
-      logger.warn('addSubscriber: job not found', { jobId, studentId })
-      return
+      logger.warn('addSubscriber: job not found', { jobId, studentId });
+      return;
     }
 
     // Already subscribed -- idempotent
-    if (existing.subscriberIds.includes(studentId)) return
+    if (existing.subscriberIds.includes(studentId)) return;
   } catch (err: unknown) {
-    logger.error('addSubscriber failed', { jobId, studentId, error: err })
+    logger.error('addSubscriber failed', { jobId, studentId, error: err });
   }
 }

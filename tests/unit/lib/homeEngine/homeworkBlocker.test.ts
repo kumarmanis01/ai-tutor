@@ -84,7 +84,7 @@ function makeStructuredSession() {
     topicId: 'topic-001',
     state: 'PRACTICE',
     topic: {
-      name: 'Newton\'s Laws',
+      name: "Newton's Laws",
       chapter: {
         name: 'Forces and Motion',
         subject: { name: 'Physics' },
@@ -111,11 +111,10 @@ beforeEach(() => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('getNextAction — P0 homework_pending blocker', () => {
-
   it('fires homework_pending when assignment is PENDING and dueDate is within 48h', async () => {
     const twentyFourHours = 24 * 60 * 60 * 1000;
     (prisma.homeworkAssignment.findFirst as jest.Mock).mockResolvedValue(
-      makeHomeworkAssignment('PENDING', twentyFourHours),
+      makeHomeworkAssignment('PENDING', twentyFourHours)
     );
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -144,7 +143,7 @@ describe('getNextAction — P0 homework_pending blocker', () => {
         where: expect.objectContaining({
           status: { in: ['PENDING', 'OVERDUE'] },
         }),
-      }),
+      })
     );
   });
 
@@ -163,7 +162,7 @@ describe('getNextAction — P0 homework_pending blocker', () => {
         where: expect.objectContaining({
           dueDate: expect.objectContaining({ lte: expect.any(Date) }),
         }),
-      }),
+      })
     );
     // Verify the cutoff date is approximately 48h from now (within 5s tolerance)
     const callArgs = (prisma.homeworkAssignment.findFirst as jest.Mock).mock.calls[0][0];
@@ -180,11 +179,9 @@ describe('getNextAction — P0 homework_pending blocker', () => {
     // Both homework (P0) and an active session (P1) exist — P0 must win
     const oneHour = 60 * 60 * 1000;
     (prisma.homeworkAssignment.findFirst as jest.Mock).mockResolvedValue(
-      makeHomeworkAssignment('PENDING', oneHour),
+      makeHomeworkAssignment('PENDING', oneHour)
     );
-    (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession(),
-    );
+    (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(makeStructuredSession());
 
     const result = unwrap(await getNextAction(STUDENT_ID));
 
@@ -198,7 +195,7 @@ describe('getNextAction — P0 homework_pending blocker', () => {
     // OVERDUE assignment — dueDate in the past but within 48h window
     const oneHourAgo = -1 * 60 * 60 * 1000;
     (prisma.homeworkAssignment.findFirst as jest.Mock).mockResolvedValue(
-      makeHomeworkAssignment('OVERDUE', oneHourAgo),
+      makeHomeworkAssignment('OVERDUE', oneHourAgo)
     );
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -209,5 +206,4 @@ describe('getNextAction — P0 homework_pending blocker', () => {
       assignmentId: 'hw-001',
     });
   });
-
 });

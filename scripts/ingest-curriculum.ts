@@ -14,51 +14,51 @@
  * - 2026-04-14T00:00:00Z | copilot | write contentHash even when embedding fails for idempotency correctness
  */
 
-import { createHash } from 'crypto'
-import { prisma } from '@/lib/prisma.js'
-import { getEmbeddingsBatch } from '../lib/ai/embeddings'
-const BATCH_SIZE = 20
+import { createHash } from 'crypto';
+import { prisma } from '@/lib/prisma.js';
+import { getEmbeddingsBatch } from '../lib/ai/embeddings';
+const BATCH_SIZE = 20;
 
 function sha256(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex')
+  return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
 export async function main(prismaClient = prisma) {
-  const args = process.argv.slice(2)
-  const retryFailed = args.includes('--retry-failed')
-  const runIdIdx = args.indexOf('--run-id')
-  const _runId = runIdIdx !== -1 ? args[runIdIdx + 1] : null
+  const args = process.argv.slice(2);
+  const retryFailed = args.includes('--retry-failed');
+  const runIdIdx = args.indexOf('--run-id');
+  const _runId = runIdIdx !== -1 ? args[runIdIdx + 1] : null;
 
-  console.log('[ingest] Starting curriculum chunk ingestion v2...')
-  const startMs = Date.now()
+  console.log('[ingest] Starting curriculum chunk ingestion v2...');
+  const startMs = Date.now();
 
   // If retrying failed chunks from a previous run, restrict the initial fetch
   // to only the chunk IDs referenced in that run's errorDetails. Otherwise
   // fetch the full table to compute diffs.
-  let _chunks: any[]
+  let _chunks: any[];
   if (retryFailed && _runId) {
     try {
-      const run = await prismaClient.ingestRunLog.findUnique({ where: { id: _runId } })
+      const run = await prismaClient.ingestRunLog.findUnique({ where: { id: _runId } });
       const failedIds: string[] = Array.isArray((run as any)?.errorDetails)
         ? (run as any).errorDetails.map((d: any) => d && d.id).filter(Boolean)
-        : []
+        : [];
 
       if (failedIds.length > 0) {
         // Fetch only the referenced chunk rows
-        const idsList = failedIds.map((id) => `'${String(id).replace("'", "''")}'`).join(',')
+        const idsList = failedIds.map((id) => `'${String(id).replace("'", "''")}'`).join(',');
         _chunks = await prismaClient.$queryRawUnsafe(
-          `SELECT id, content, "contentHash", version FROM "CurriculumChunk" WHERE id IN (${idsList}) ORDER BY "createdAt" ASC`,
-        )
+          `SELECT id, content, "contentHash", version FROM "CurriculumChunk" WHERE id IN (${idsList}) ORDER BY "createdAt" ASC`
+        );
       } else {
         // Nothing to retry
-        console.log('[ingest] No failed chunk IDs found in specified run. Nothing to do.')
-        await prismaClient.$disconnect()
-        return
+        console.log('[ingest] No failed chunk IDs found in specified run. Nothing to do.');
+        await prismaClient.$disconnect();
+        return;
       }
     } catch (e) {
-      console.error('[ingest] Could not load IngestRunLog for retry:', e)
-      await prismaClient.$disconnect()
-      return
+      console.error('[ingest] Could not load IngestRunLog for retry:', e);
+      await prismaClient.$disconnect();
+      return;
     }
   } else {
     _chunks = await prismaClient.$queryRawUnsafe(
@@ -66,15 +66,20 @@ export async function main(prismaClient = prisma) {
         SELECT id, content, "contentHash", version
         FROM "CurriculumChunk"
         ORDER BY "createdAt" ASC
-      `,
-    )
+      `
+    );
   }
-  const chunks = (_chunks ?? []) as { id: string; content: string | null; contentHash: string | null; version: number }[]
+  const chunks = (_chunks ?? []) as {
+    id: string;
+    content: string | null;
+    contentHash: string | null;
+    version: number;
+  }[];
 
   if (chunks.length === 0) {
-    console.log('[ingest] No chunks found. Nothing to do.')
-    await prismaClient.$disconnect()
-    return
+    console.log('[ingest] No chunks found. Nothing to do.');
+    await prismaClient.$disconnect();
+    return;
   }
 
   // Determine which chunks need embedding (embedding IS NULL)
@@ -84,63 +89,93 @@ export async function main(prismaClient = prisma) {
       FROM "CurriculumChunk"
       WHERE embedding IS NULL
       ORDER BY "createdAt" ASC
-    `,
-  )
-  const chunksNeedingEmbed = (_chunksNeedingEmbed ?? []) as { id: string; content: string | null; contentHash: string | null; version: number }[]
+    `
+  );
+  const chunksNeedingEmbed = (_chunksNeedingEmbed ?? []) as {
+    id: string;
+    content: string | null;
+    contentHash: string | null;
+    version: number;
+  }[];
 
   // Compute hashes and check which need updating
-  const toProcess: { id: string; content: string; newHash: string; needsVersionBump: boolean }[] = []
-  const isRetryMode = retryFailed && _runId
+  const toProcess: { id: string; content: string; newHash: string; needsVersionBump: boolean }[] =
+    [];
+  const isRetryMode = retryFailed && _runId;
 
   for (const chunk of chunks) {
-    const text = chunk.content ?? ''
-    const newHash = sha256(text)
+    const text = chunk.content ?? '';
+    const newHash = sha256(text);
 
     if (isRetryMode) {
       // When retrying, attempt to re-embed all fetched (failed) chunks regardless
       // of contentHash equality -- they previously failed to embed.
-      toProcess.push({ id: chunk.id, content: text, newHash, needsVersionBump: chunk.contentHash !== null })
-      continue
+      toProcess.push({
+        id: chunk.id,
+        content: text,
+        newHash,
+        needsVersionBump: chunk.contentHash !== null,
+      });
+      continue;
     }
 
     if (chunk.contentHash !== newHash) {
       // Content changed -- needs re-embed and version bump
-      toProcess.push({ id: chunk.id, content: text, newHash, needsVersionBump: chunk.contentHash !== null })
+      toProcess.push({
+        id: chunk.id,
+        content: text,
+        newHash,
+        needsVersionBump: chunk.contentHash !== null,
+      });
     }
   }
 
   // Also include any chunks with NULL embedding that aren't already in toProcess
-  const toProcessIds = new Set(toProcess.map((c) => c.id))
+  const toProcessIds = new Set(toProcess.map((c) => c.id));
   for (const chunk of chunksNeedingEmbed) {
     if (!toProcessIds.has(chunk.id)) {
-      const text = chunk.content ?? ''
-      toProcess.push({ id: chunk.id, content: text, newHash: sha256(text), needsVersionBump: false })
+      const text = chunk.content ?? '';
+      toProcess.push({
+        id: chunk.id,
+        content: text,
+        newHash: sha256(text),
+        needsVersionBump: false,
+      });
     }
   }
 
   if (toProcess.length === 0) {
-    console.log('[ingest] All chunks already embedded with current content. Nothing to do.')
-    await writeRunLog({ chunksCreated: 0, chunksUpdated: 0, embeddingsGenerated: 0, errors: 0, startMs, _prismaClient: prismaClient })
-    await prismaClient.$disconnect()
-    return
+    console.log('[ingest] All chunks already embedded with current content. Nothing to do.');
+    await writeRunLog({
+      chunksCreated: 0,
+      chunksUpdated: 0,
+      embeddingsGenerated: 0,
+      errors: 0,
+      startMs,
+      _prismaClient: prismaClient,
+    });
+    await prismaClient.$disconnect();
+    return;
   }
 
-  console.log(`[ingest] Found ${toProcess.length} chunks to embed (${toProcess.filter((c) => c.needsVersionBump).length} with content changes).`)
+  console.log(
+    `[ingest] Found ${toProcess.length} chunks to embed (${toProcess.filter((c) => c.needsVersionBump).length} with content changes).`
+  );
   // production log only
 
-  let embeddingsGenerated = 0
-  let chunksUpdated = 0
-  let errors = 0
-  const errorDetails: { id: string; error: string }[] = []
+  let embeddingsGenerated = 0;
+  let chunksUpdated = 0;
+  let errors = 0;
+  const errorDetails: { id: string; error: string }[] = [];
 
   for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
-    const batch = toProcess.slice(i, i + BATCH_SIZE)
-    const texts = batch.map((c) => c.content)
-    const embeddings = await getEmbeddingsBatch(texts, BATCH_SIZE)
+    const batch = toProcess.slice(i, i + BATCH_SIZE);
+    const texts = batch.map((c) => c.content);
+    const embeddings = await getEmbeddingsBatch(texts, BATCH_SIZE);
 
     for (let j = 0; j < batch.length; j++) {
-      const chunk = batch[j]
-      const embedding = embeddings[j]
+      const chunk = batch[j];
+      const embedding = embeddings[j];
 
       if (!embedding) {
         // Persist the content hash even when embedding fails so idempotency
@@ -151,26 +186,26 @@ export async function main(prismaClient = prisma) {
             await prismaClient.$executeRawUnsafe(
               `UPDATE "CurriculumChunk" SET "contentHash" = $1, version = version + 1, "updatedAt" = NOW() WHERE id = $2`,
               chunk.newHash,
-              chunk.id,
-            )
-            chunksUpdated++
+              chunk.id
+            );
+            chunksUpdated++;
           } else {
             await prismaClient.$executeRawUnsafe(
               `UPDATE "CurriculumChunk" SET "contentHash" = $1, "updatedAt" = NOW() WHERE id = $2`,
               chunk.newHash,
-              chunk.id,
-            )
+              chunk.id
+            );
           }
         } catch (hashErr) {
           // Non-fatal: hash write failed on top of embedding failure
         }
-        console.error(`[ingest] ✗ Failed to embed chunk ${chunk.id}`)
-        errors++
-        errorDetails.push({ id: chunk.id, error: 'embedding_failed' })
-        continue
+        console.error(`[ingest] ✗ Failed to embed chunk ${chunk.id}`);
+        errors++;
+        errorDetails.push({ id: chunk.id, error: 'embedding_failed' });
+        continue;
       }
 
-      const vectorLiteral = `[${embedding.join(',')}]`
+      const vectorLiteral = `[${embedding.join(',')}]`;
       try {
         if (chunk.needsVersionBump) {
           // Bump version + update hash + embedding
@@ -180,8 +215,8 @@ export async function main(prismaClient = prisma) {
              WHERE id = $3`,
             vectorLiteral,
             chunk.newHash,
-            chunk.id,
-          )
+            chunk.id
+          );
         } else {
           // First-time embed -- set hash + embedding
           await prismaClient.$executeRawUnsafe(
@@ -190,22 +225,26 @@ export async function main(prismaClient = prisma) {
              WHERE id = $3`,
             vectorLiteral,
             chunk.newHash,
-            chunk.id,
-          )
+            chunk.id
+          );
         }
-        embeddingsGenerated++
-        if (chunk.needsVersionBump) chunksUpdated++
+        embeddingsGenerated++;
+        if (chunk.needsVersionBump) chunksUpdated++;
       } catch (err) {
-        console.error(`[ingest] ✗ DB error for chunk ${chunk.id}:`, err)
-        errors++
-        errorDetails.push({ id: chunk.id, error: String(err) })
+        console.error(`[ingest] ✗ DB error for chunk ${chunk.id}:`, err);
+        errors++;
+        errorDetails.push({ id: chunk.id, error: String(err) });
       }
     }
 
-    console.log(`[ingest] Progress: ${Math.min(i + BATCH_SIZE, toProcess.length)}/${toProcess.length}`)
+    console.log(
+      `[ingest] Progress: ${Math.min(i + BATCH_SIZE, toProcess.length)}/${toProcess.length}`
+    );
   }
 
-  console.log(`\n[ingest] Done. Embedded: ${embeddingsGenerated}, Updated: ${chunksUpdated}, Failed: ${errors}`)
+  console.log(
+    `\n[ingest] Done. Embedded: ${embeddingsGenerated}, Updated: ${chunksUpdated}, Failed: ${errors}`
+  );
 
   await writeRunLog({
     chunksCreated: embeddingsGenerated - chunksUpdated,
@@ -215,25 +254,26 @@ export async function main(prismaClient = prisma) {
     startMs,
     errorDetails: errorDetails.length > 0 ? errorDetails : undefined,
     _prismaClient: prismaClient,
-  })
-  await prismaClient.$disconnect()
+  });
+  await prismaClient.$disconnect();
 
-  if (errors > 0 && typeof process !== 'undefined' && process.env.JEST_WORKER_ID === undefined) process.exit(1)
+  if (errors > 0 && typeof process !== 'undefined' && process.env.JEST_WORKER_ID === undefined)
+    process.exit(1);
 }
 
 export async function writeRunLog(opts: {
-  chunksCreated: number
-  chunksUpdated: number
-  embeddingsGenerated: number
-  errors: number
-  startMs: number
-  fileSource?: string
-  errorDetails?: unknown
-  _prismaClient?: any
+  chunksCreated: number;
+  chunksUpdated: number;
+  embeddingsGenerated: number;
+  errors: number;
+  startMs: number;
+  fileSource?: string;
+  errorDetails?: unknown;
+  _prismaClient?: any;
 }) {
   try {
-    const client = (opts as any)._prismaClient ?? prisma
-    const duration = Date.now() - opts.startMs
+    const client = (opts as any)._prismaClient ?? prisma;
+    const duration = Date.now() - opts.startMs;
     const created = await client.ingestRunLog.create({
       data: {
         chunksCreated: opts.chunksCreated,
@@ -244,7 +284,7 @@ export async function writeRunLog(opts: {
         fileSource: opts.fileSource ?? 'cli',
         errorDetails: opts.errorDetails ? (opts.errorDetails as object) : undefined,
       },
-    })
+    });
 
     // Emit a lightweight analytics event so ingestion runs appear in analytics.events
     try {
@@ -265,20 +305,22 @@ export async function writeRunLog(opts: {
             errorDetails: opts.errorDetails ? opts.errorDetails : undefined,
           },
         },
-      })
+      });
     } catch (e) {
-      console.warn('[ingest] Could not write analyticsEvent for ingest_run:', e)
+      console.warn('[ingest] Could not write analyticsEvent for ingest_run:', e);
     }
   } catch (err) {
-    console.warn('[ingest] Could not write IngestRunLog:', err)
+    console.warn('[ingest] Could not write IngestRunLog:', err);
   }
 }
 
 // Only execute when not running under Jest (tests import this module)
 if (typeof process !== 'undefined' && process.env.JEST_WORKER_ID === undefined) {
   main().catch((err) => {
-    console.error('[ingest] Fatal error:', err)
-    try { void prisma.$disconnect() } catch {}
-    process.exit(1)
-  })
+    console.error('[ingest] Fatal error:', err);
+    try {
+      void prisma.$disconnect();
+    } catch {}
+    process.exit(1);
+  });
 }

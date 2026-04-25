@@ -26,7 +26,10 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
 
   // Production: validate required env vars before attempting the API call
   if (!process.env.MSG91_AUTH_KEY || !process.env.MSG91_TEMPLATE_ID) {
-    logger.add('[sendSms] MSG91_AUTH_KEY or MSG91_TEMPLATE_ID not configured', { className: 'sms', methodName: 'sendSms' });
+    logger.add('[sendSms] MSG91_AUTH_KEY or MSG91_TEMPLATE_ID not configured', {
+      className: 'sms',
+      methodName: 'sendSms',
+    });
     return { ok: false, error: 'MSG91 not configured' };
   }
 
@@ -39,7 +42,7 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
     const url = 'https://control.msg91.com/api/v5/otp';
     const payload: Record<string, string> = {
       template_id: process.env.MSG91_TEMPLATE_ID,
-      mobile: `91${to}`,   // always prefix with country code
+      mobile: `91${to}`, // always prefix with country code
       authkey: process.env.MSG91_AUTH_KEY,
     };
     if (otp) {
@@ -55,16 +58,22 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
       body: JSON.stringify(payload),
     });
 
-    const json = await resp.json().catch(() => ({})) as Record<string, unknown>;
+    const json = (await resp.json().catch(() => ({}))) as Record<string, unknown>;
 
     if (!resp.ok) {
-      logger.add(`[sendSms] MSG91 v5 failed status=${resp.status} body=${JSON.stringify(json)}`, { className: 'sms', methodName: 'sendSms' });
+      logger.add(`[sendSms] MSG91 v5 failed status=${resp.status} body=${JSON.stringify(json)}`, {
+        className: 'sms',
+        methodName: 'sendSms',
+      });
       return { ok: false, error: `msg91-error: ${resp.status}` };
     }
 
     // MSG91 v5 returns { type: 'success', message: '...' }
     if (json['type'] === 'error') {
-      logger.add(`[sendSms] MSG91 v5 returned error: ${JSON.stringify(json)}`, { className: 'sms', methodName: 'sendSms' });
+      logger.add(`[sendSms] MSG91 v5 returned error: ${JSON.stringify(json)}`, {
+        className: 'sms',
+        methodName: 'sendSms',
+      });
       return { ok: false, error: `msg91-error: ${String(json['message'] ?? 'unknown')}` };
     }
 

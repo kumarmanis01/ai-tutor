@@ -19,17 +19,17 @@
  */
 
 // Compiled once at module load -- mirrors patterns in inputSafety.ts.
-const MOBILE_RE = /\b[6-9]\d{9}\b/g
+const MOBILE_RE = /\b[6-9]\d{9}\b/g;
 // NOTE: dots are intentionally excluded from the local-part character class.
 // This prevents the regex consuming a preceding "word." segment when the email
 // appears after a word boundary (e.g. "my.email+tag@..." -- only
 // "email+tag@..." is matched; post-processing then trims the dangling dot).
-const EMAIL_RE = /[a-zA-Z0-9_%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g
-const AADHAAR_RE = /\b\d{4}\s?\d{4}\s?\d{4}\b/g
+const EMAIL_RE = /[a-zA-Z0-9_%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+const AADHAAR_RE = /\b\d{4}\s?\d{4}\s?\d{4}\b/g;
 
 function resetLastIndex(re: RegExp): void {
   try {
-    re.lastIndex = 0
+    re.lastIndex = 0;
   } catch {
     // ignore
   }
@@ -40,19 +40,19 @@ function resetLastIndex(re: RegExp): void {
  * Safe to call with any string, including assembled system prompts.
  */
 export function redactPIIFromText(text: string): string {
-  if (!text || typeof text !== 'string') return text
+  if (!text || typeof text !== 'string') return text;
 
-  let result = text
-  resetLastIndex(MOBILE_RE)
-  result = result.replace(MOBILE_RE, '[MOBILE]')
-  resetLastIndex(EMAIL_RE)
-  result = result.replace(EMAIL_RE, '[EMAIL]')
+  let result = text;
+  resetLastIndex(MOBILE_RE);
+  result = result.replace(MOBILE_RE, '[MOBILE]');
+  resetLastIndex(EMAIL_RE);
+  result = result.replace(EMAIL_RE, '[EMAIL]');
   // Preserve a preceding word when an email follows a word+dot (e.g. "my.email+tag@...")
   // Convert "word.[EMAIL]" -> "word [EMAIL]" so surrounding text remains readable.
-  result = result.replace(/([A-Za-z0-9])\.?\[EMAIL\]/g, '$1 [EMAIL]')
-  resetLastIndex(AADHAAR_RE)
-  result = result.replace(AADHAAR_RE, '[AADHAAR]')
-  return result
+  result = result.replace(/([A-Za-z0-9])\.?\[EMAIL\]/g, '$1 [EMAIL]');
+  resetLastIndex(AADHAAR_RE);
+  result = result.replace(AADHAAR_RE, '[AADHAAR]');
+  return result;
 }
 
 /**
@@ -60,11 +60,11 @@ export function redactPIIFromText(text: string): string {
  * Used in createChatCompletion to scrub all message content before sending.
  */
 export function redactPIIFromMessages(
-  messages: Array<{ role: string; content: string }>,
+  messages: Array<{ role: string; content: string }>
 ): Array<{ role: string; content: string }> {
-  if (!Array.isArray(messages)) return messages
+  if (!Array.isArray(messages)) return messages;
   return messages.map((m) => ({
     ...m,
     content: typeof m.content === 'string' ? redactPIIFromText(m.content) : m.content,
-  }))
+  }));
 }

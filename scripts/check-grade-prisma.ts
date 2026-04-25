@@ -4,8 +4,6 @@
  */
 import { prisma } from '../lib/prisma';
 
-
-
 async function main() {
   console.log('=== Prisma grade check ===');
   try {

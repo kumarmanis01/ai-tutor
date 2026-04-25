@@ -1,19 +1,19 @@
-import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export interface DetectedMisconception {
-  misconceptionId: string
-  name: string
-  correction: string
-  confidence: 'HIGH' | 'LOW'
+  misconceptionId: string;
+  name: string;
+  correction: string;
+  confidence: 'HIGH' | 'LOW';
 }
 
 type MisconceptionInput = {
-  id: string
-  name: string
-  triggerPatterns: string[]
-  correction: string
-}
+  id: string;
+  name: string;
+  triggerPatterns: string[];
+  correction: string;
+};
 
 /**
  * Match student input against loaded misconception trigger patterns.
@@ -26,32 +26,37 @@ type MisconceptionInput = {
  */
 export function detectMisconceptions(
   studentInput: string,
-  misconceptions: MisconceptionInput[],
+  misconceptions: MisconceptionInput[]
 ): DetectedMisconception[] {
-  if (!studentInput || !studentInput.trim() || !Array.isArray(misconceptions) || misconceptions.length === 0) {
-    return []
+  if (
+    !studentInput ||
+    !studentInput.trim() ||
+    !Array.isArray(misconceptions) ||
+    misconceptions.length === 0
+  ) {
+    return [];
   }
 
-  const text = studentInput.toLowerCase()
+  const text = studentInput.toLowerCase();
 
-  const results: { detected: DetectedMisconception; matchCount: number }[] = []
+  const results: { detected: DetectedMisconception; matchCount: number }[] = [];
 
   for (const m of misconceptions) {
-    if (!m || !Array.isArray(m.triggerPatterns) || m.triggerPatterns.length === 0) continue
+    if (!m || !Array.isArray(m.triggerPatterns) || m.triggerPatterns.length === 0) continue;
 
-    let matchCount = 0
+    let matchCount = 0;
     for (const rawPattern of m.triggerPatterns) {
-      if (!rawPattern) continue
-      const pattern = rawPattern.toLowerCase().trim()
-      if (!pattern) continue
+      if (!rawPattern) continue;
+      const pattern = rawPattern.toLowerCase().trim();
+      if (!pattern) continue;
       if (text.includes(pattern)) {
-        matchCount += 1
+        matchCount += 1;
       }
     }
 
-    if (matchCount === 0) continue
+    if (matchCount === 0) continue;
 
-    const confidence: 'HIGH' | 'LOW' = matchCount >= 2 ? 'HIGH' : 'LOW'
+    const confidence: 'HIGH' | 'LOW' = matchCount >= 2 ? 'HIGH' : 'LOW';
 
     results.push({
       detected: {
@@ -61,30 +66,30 @@ export function detectMisconceptions(
         confidence,
       },
       matchCount,
-    })
+    });
   }
 
   // Order by confidence (HIGH first), then by match count desc, then name for stability.
   results.sort((a, b) => {
     if (a.detected.confidence !== b.detected.confidence) {
-      return a.detected.confidence === 'HIGH' ? -1 : 1
+      return a.detected.confidence === 'HIGH' ? -1 : 1;
     }
     if (b.matchCount !== a.matchCount) {
-      return b.matchCount - a.matchCount
+      return b.matchCount - a.matchCount;
     }
-    return a.detected.name.localeCompare(b.detected.name)
-  })
+    return a.detected.name.localeCompare(b.detected.name);
+  });
 
-  return results.map((r) => r.detected)
+  return results.map((r) => r.detected);
 }
 
 type LoadedMisconception = {
-  id: string
-  name: string
-  triggerPatterns: string[]
-  correction: string
-  description?: string
-}
+  id: string;
+  name: string;
+  triggerPatterns: string[];
+  correction: string;
+  description?: string;
+};
 
 /**
  * AC-05 (F-STU-013): Log a novel misconception signal for content team review.
@@ -101,7 +106,7 @@ export function logNovelMisconception(
   studentId: string,
   subjectId: string,
   conceptId: string,
-  studentInput: string,
+  studentInput: string
 ): void {
   try {
     logger.info('misconception.novel_detected', {
@@ -109,13 +114,13 @@ export function logNovelMisconception(
       context: { studentId, subjectId, conceptId },
       // Trim to 200 chars -- enough for content review, avoids log bloat.
       inputSnippet: studentInput.slice(0, 200),
-    })
+    });
   } catch {
     // never throw from analytics path
   }
 }
 
-const misconceptionCache = new Map<string, LoadedMisconception[]>()
+const misconceptionCache = new Map<string, LoadedMisconception[]>();
 
 /**
  * Load misconceptions for a subject+concept from DB.
@@ -128,13 +133,13 @@ const misconceptionCache = new Map<string, LoadedMisconception[]>()
  */
 export async function loadMisconceptions(
   subjectId: string,
-  conceptId: string,
+  conceptId: string
 ): Promise<LoadedMisconception[]> {
-  if (!subjectId || !conceptId) return []
+  if (!subjectId || !conceptId) return [];
 
-  const key = `${subjectId}:${conceptId}`
+  const key = `${subjectId}:${conceptId}`;
   if (misconceptionCache.has(key)) {
-    return misconceptionCache.get(key) ?? []
+    return misconceptionCache.get(key) ?? [];
   }
 
   try {
@@ -147,18 +152,17 @@ export async function loadMisconceptions(
         correction: true,
         description: true,
       },
-    })
+    });
 
-    misconceptionCache.set(key, rows)
-    return rows
+    misconceptionCache.set(key, rows);
+    return rows;
   } catch (err) {
     logger.warn('misconception.load.failed', {
       subjectId,
       conceptId,
       error: String((err as any)?.message ?? err),
-    })
-    misconceptionCache.set(key, [])
-    return []
+    });
+    misconceptionCache.set(key, []);
+    return [];
   }
 }
-

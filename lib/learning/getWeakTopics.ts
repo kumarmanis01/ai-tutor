@@ -78,11 +78,19 @@ export async function getWeakTopicsWithNames(studentId: string): Promise<WeakTop
     take: 5,
   });
 
-  return rows.map((r: { topicId: string; mastery: number; practiceCount: number; lastStudiedAt: Date; topic: { name: string } }) => ({
-    topicId: r.topicId,
-    mastery: r.mastery,
-    practiceCount: r.practiceCount,
-    lastStudiedAt: r.lastStudiedAt,
-    topicName: r.topic.name,
-  }));
+  return rows.map(
+    (r: {
+      topicId: string;
+      mastery: number;
+      practiceCount: number;
+      lastStudiedAt: Date;
+      topic: { name: string };
+    }) => ({
+      topicId: r.topicId,
+      mastery: r.mastery,
+      practiceCount: r.practiceCount,
+      lastStudiedAt: r.lastStudiedAt,
+      topicName: r.topic.name,
+    })
+  );
 }

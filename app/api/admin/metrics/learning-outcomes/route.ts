@@ -8,30 +8,30 @@
  *
  * Query param: days (default 30, max 90) -- lookback window for exam attempts.
  */
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSessionForHandlers } from '@/lib/session'
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerSessionForHandlers } from '@/lib/session';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
-const MASTERY_COMPLETION_THRESHOLD = 0.75
-const DEFAULT_DAYS = 30
-const MAX_DAYS = 90
+const MASTERY_COMPLETION_THRESHOLD = 0.75;
+const DEFAULT_DAYS = 30;
+const MAX_DAYS = 90;
 
 export async function GET(req: Request) {
-  const session = await getServerSessionForHandlers()
+  const session = await getServerSessionForHandlers();
   if (!session?.user?.id || (session.user as any).role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const url = new URL(req.url)
-  const rawDays = parseInt(url.searchParams.get('days') ?? String(DEFAULT_DAYS), 10)
-  const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, MAX_DAYS) : DEFAULT_DAYS
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  const url = new URL(req.url);
+  const rawDays = parseInt(url.searchParams.get('days') ?? String(DEFAULT_DAYS), 10);
+  const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, MAX_DAYS) : DEFAULT_DAYS;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  type MasteryRow = { avgMasteryScore: number | null; avgAttemptCount: number | null }
-  type CompletionRow = { total: bigint; completed: bigint }
-  type ExamImprovementRow = { avgImprovement: number | null; studentCount: bigint }
+  type MasteryRow = { avgMasteryScore: number | null; avgAttemptCount: number | null };
+  type CompletionRow = { total: bigint; completed: bigint };
+  type ExamImprovementRow = { avgImprovement: number | null; studentCount: bigint };
 
   const [masteryRow, completionRow, examRow] = await Promise.all([
     // AC-01: mastery gain proxy -- avg mastery per attempt across all concept states
@@ -79,21 +79,21 @@ export async function GET(req: Request) {
         COUNT(*)::bigint                     AS "studentCount"
       FROM first_last
     `,
-  ])
+  ]);
 
-  const avgMasteryScore = masteryRow[0]?.avgMasteryScore ?? null
-  const avgAttemptCount = masteryRow[0]?.avgAttemptCount ?? null
+  const avgMasteryScore = masteryRow[0]?.avgMasteryScore ?? null;
+  const avgAttemptCount = masteryRow[0]?.avgAttemptCount ?? null;
   const masteryGainPerSession =
     avgMasteryScore !== null && avgAttemptCount !== null && avgAttemptCount > 0
       ? avgMasteryScore / avgAttemptCount
-      : null
+      : null;
 
-  const total = Number(completionRow[0]?.total ?? 0)
-  const completed = Number(completionRow[0]?.completed ?? 0)
-  const chapterCompletionRate = total > 0 ? completed / total : null
+  const total = Number(completionRow[0]?.total ?? 0);
+  const completed = Number(completionRow[0]?.completed ?? 0);
+  const chapterCompletionRate = total > 0 ? completed / total : null;
 
-  const avgExamImprovement = examRow[0]?.avgImprovement ?? null
-  const studentsWithImprovementData = Number(examRow[0]?.studentCount ?? 0)
+  const avgExamImprovement = examRow[0]?.avgImprovement ?? null;
+  const studentsWithImprovementData = Number(examRow[0]?.studentCount ?? 0);
 
   return NextResponse.json({
     period: { days, since: since.toISOString() },
@@ -107,5 +107,5 @@ export async function GET(req: Request) {
     avgExamScoreImprovement:
       avgExamImprovement !== null ? Math.round(avgExamImprovement * 100) / 100 : null,
     studentsWithExamImprovementData: studentsWithImprovementData,
-  })
+  });
 }

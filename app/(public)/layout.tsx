@@ -11,8 +11,16 @@ import StickyHeader from '@/components/StickyHeader';
 import '@/styles/index.css';
 
 // Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
-const inter = localFont({ src: '../../public/fonts/inter-latin-variable.woff2', variable: '--font-inter', display: 'swap' });
-const nunito = localFont({ src: '../../public/fonts/nunito-variable-latin.woff2', variable: '--font-nunito', display: 'swap' });
+const inter = localFont({
+  src: '../../public/fonts/inter-latin-variable.woff2',
+  variable: '--font-inter',
+  display: 'swap',
+});
+const nunito = localFont({
+  src: '../../public/fonts/nunito-variable-latin.woff2',
+  variable: '--font-nunito',
+  display: 'swap',
+});
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -24,7 +32,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com'),
-  title: 'Spinzy AI Tutor -- Teacher Vidya, Your Child\'s AI Home Tutor',
+  title: "Spinzy AI Tutor -- Teacher Vidya, Your Child's AI Home Tutor",
   description:
     'Turn doubts into confidence with Spinzy AI Tutor. Adaptive practice, mastery checks, and guided hints for Class 1-12 students. CBSE, ICSE & State Boards.',
   manifest: '/manifest.json',
@@ -73,9 +81,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <AppModalClient />
             {/* Single public navbar -- StickyHeader is h-16 mobile / h-[72px] desktop */}
             <StickyHeader />
-            <div className="pt-16 md:pt-[72px]">
-              {children}
-            </div>
+            <div className="pt-16 md:pt-[72px]">{children}</div>
             <ToastHost />
           </GlobalLoaderProvider>
         </Providers>
