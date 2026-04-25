@@ -19,10 +19,9 @@
 
 import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getServerSessionForHandlers } from '@/lib/session'
 import { AccountStatus } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
