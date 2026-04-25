@@ -14,7 +14,7 @@ import { useTests, TestItem } from '../context/TestsProvider';
 
 export function TestsRecommended() {
   const { items, loading } = useTests();
-  
+
   const startTest = useCallback((test: TestItem) => {
     // Navigate to tests page with test filter
     const params = new URLSearchParams();
@@ -34,8 +34,8 @@ export function TestsRecommended() {
       ) : (
         <div className="space-y-2">
           {items.map((t) => (
-            <button 
-              key={t.id} 
+            <button
+              key={t.id}
               onClick={() => startTest(t)}
               className="w-full px-3 py-2 border rounded text-left hover:bg-muted/50 active:scale-[0.98] transition-transform flex items-center justify-between"
             >

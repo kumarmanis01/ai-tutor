@@ -1,4 +1,4 @@
-"use client";
+'use client';
 /**
  * MiniSparkline
  *
@@ -43,7 +43,10 @@ export default function MiniSparkline({
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed');
         const rows = Array.isArray(json?.data) ? json.data : [];
-        const points: TrendPoint[] = rows.map((r: any) => ({ date: r.date, score: Math.round(r.score) }));
+        const points: TrendPoint[] = rows.map((r: any) => ({
+          date: r.date,
+          score: Math.round(r.score),
+        }));
         if (mounted) setData(points);
       } catch {
         if (!mounted) return;
@@ -69,21 +72,49 @@ export default function MiniSparkline({
   const toX = (i: number) => PAD_LEFT + (n > 1 ? (i / (n - 1)) * INNER_W : INNER_W / 2);
   const toY = (score: number) => H - 6 - (Math.max(0, Math.min(100, score)) / 100) * (H - 12);
 
-  const points = effective.map((d, i) => `${toX(i).toFixed(1)},${toY(d.score).toFixed(1)}`).join(' ');
+  const points = effective
+    .map((d, i) => `${toX(i).toFixed(1)},${toY(d.score).toFixed(1)}`)
+    .join(' ');
   const lastScore = n ? effective[n - 1].score : null;
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="w-[120px] h-[28px]" aria-hidden="false">
         {n === 0 ? (
-          <svg viewBox={`0 0 ${W} ${H}`} width="120" height="28" role="img" aria-label="No recent scores">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            width="120"
+            height="28"
+            role="img"
+            aria-label="No recent scores"
+          >
             <rect x={0} y={0} width={W} height={H} fill="#F8FAFC" />
           </svg>
         ) : (
-          <svg viewBox={`0 0 ${W} ${H}`} width="120" height="28" role="img" aria-label={`Score trend, last ${n} attempts`}>
-            <line x1={PAD_LEFT} y1={H - 6} x2={W - PAD_RIGHT} y2={H - 6} stroke={GRID} strokeWidth={1} />
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            width="120"
+            height="28"
+            role="img"
+            aria-label={`Score trend, last ${n} attempts`}
+          >
+            <line
+              x1={PAD_LEFT}
+              y1={H - 6}
+              x2={W - PAD_RIGHT}
+              y2={H - 6}
+              stroke={GRID}
+              strokeWidth={1}
+            />
             {n > 1 && (
-              <polyline points={points} fill="none" stroke={PRIMARY} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+              <polyline
+                points={points}
+                fill="none"
+                stroke={PRIMARY}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
             )}
             {effective.map((d, i) => (
               <circle key={`s-${i}`} cx={toX(i)} cy={toY(d.score)} r={2.2} fill={PRIMARY} />

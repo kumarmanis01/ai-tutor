@@ -60,7 +60,7 @@ type TxOutcome =
 export async function enqueueSubjectHydration(
   subjectId: string,
   language: LanguageCode,
-  triggeredBy = 'system',
+  triggeredBy = 'system'
 ): Promise<HydrationEnqueueResult> {
   // Rule 1: fast path -- skip when topics already exist (no transaction needed).
   const topicCount = await prisma.topicDef.count({

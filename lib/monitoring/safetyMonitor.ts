@@ -183,7 +183,7 @@ export const FALLBACK_BEHAVIORS: FallbackBehavior[] = [
   {
     trigger: KillSwitchType.DISABLE_AI_GENERATION,
     behavior: 'Use pre-generated content only',
-    fallbackContent: 'We\'re preparing something special for you! 🌟',
+    fallbackContent: "We're preparing something special for you! 🌟",
   },
   {
     trigger: KillSwitchType.TEXT_ONLY_MODE,
@@ -285,13 +285,13 @@ export function isKillSwitchEnabled(type: KillSwitchType, scopeId: string | null
   // Check global first
   const globalState = killSwitchStates.get(type);
   if (globalState?.enabled) return true;
-  
+
   // Check scoped
   if (scopeId) {
     const scopedState = killSwitchStates.get(`${type}:${scopeId}`);
     return scopedState?.enabled || false;
   }
-  
+
   return false;
 }
 
@@ -299,20 +299,16 @@ export function isKillSwitchEnabled(type: KillSwitchType, scopeId: string | null
  * Get all active kill switches
  */
 export function getActiveKillSwitches(): KillSwitchState[] {
-  return Array.from(killSwitchStates.values()).filter(s => s.enabled);
+  return Array.from(killSwitchStates.values()).filter((s) => s.enabled);
 }
 
 /**
  * Check metric against thresholds and trigger alerts
  */
-export function checkMetric(
-  metric: MetricType,
-  value: number,
-  questionId?: string
-): Alert | null {
-  const config = DEFAULT_THRESHOLDS.find(t => t.metric === metric);
+export function checkMetric(metric: MetricType, value: number, questionId?: string): Alert | null {
+  const config = DEFAULT_THRESHOLDS.find((t) => t.metric === metric);
   if (!config) return null;
-  
+
   // For completion rate, lower is worse
   const isRateMetric = metric === MetricType.TASK_COMPLETION_RATE;
   const isAboveThreshold = isRateMetric
@@ -321,11 +317,11 @@ export function checkMetric(
   const isWarning = isRateMetric
     ? value <= config.warningThreshold && value > config.criticalThreshold
     : value >= config.warningThreshold && value < config.criticalThreshold;
-  
+
   if (!isAboveThreshold && !isWarning) return null;
-  
+
   const severity = isAboveThreshold ? AlertSeverity.CRITICAL : AlertSeverity.WARNING;
-  
+
   const alert: Alert = {
     id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     timestamp: new Date().toISOString(),
@@ -337,15 +333,15 @@ export function checkMetric(
     actionTaken: isAboveThreshold ? config.action : null,
     resolved: false,
   };
-  
+
   activeAlerts.push(alert);
-  
+
   // Auto-trigger kill switch for critical alerts
   if (isAboveThreshold) {
     const scope = questionId ? 'question' : 'global';
     enableKillSwitch(config.action, alert.message, 'system', scope, questionId || null);
   }
-  
+
   return alert;
 }
 
@@ -361,9 +357,9 @@ export function checkQuestionHealth(
     // Not enough data
     return { healthy: true, action: null };
   }
-  
+
   const failureRate = (failureCount / attemptCount) * 100;
-  
+
   if (failureRate >= 40) {
     disabledQuestions.add(questionId);
     enableKillSwitch(
@@ -375,7 +371,7 @@ export function checkQuestionHealth(
     );
     return { healthy: false, action: 'disabled' };
   }
-  
+
   return { healthy: true, action: null };
 }
 
@@ -390,7 +386,7 @@ export function isQuestionDisabled(questionId: string): boolean {
  * Get fallback behavior for a kill switch
  */
 export function getFallbackBehavior(type: KillSwitchType): FallbackBehavior | null {
-  return FALLBACK_BEHAVIORS.find(f => f.trigger === type) || null;
+  return FALLBACK_BEHAVIORS.find((f) => f.trigger === type) || null;
 }
 
 /**
@@ -409,10 +405,10 @@ export function logAIResponse(metadata: {
   // In production, send to monitoring service
   // For now, just validate and store
   const { tokenCount, responseLength } = metadata;
-  
+
   // Check for token spike
   checkMetric(MetricType.TOKEN_USAGE, tokenCount);
-  
+
   // Check for response length spike
   checkMetric(MetricType.AI_RESPONSE_LENGTH, responseLength);
 }
@@ -421,14 +417,14 @@ export function logAIResponse(metadata: {
  * Get active alerts
  */
 export function getActiveAlerts(): Alert[] {
-  return activeAlerts.filter(a => !a.resolved);
+  return activeAlerts.filter((a) => !a.resolved);
 }
 
 /**
  * Resolve an alert
  */
 export function resolveAlert(alertId: string): void {
-  const alert = activeAlerts.find(a => a.id === alertId);
+  const alert = activeAlerts.find((a) => a.id === alertId);
   if (alert) {
     (alert as any).resolved = true;
   }
@@ -444,7 +440,7 @@ export function calculateHealthScore(metrics: DailyMetrics): {
 } {
   const issues: string[] = [];
   let deductions = 0;
-  
+
   // Completion rate (most important)
   if (metrics.taskCompletionRate < 70) {
     deductions += 30;
@@ -453,28 +449,28 @@ export function calculateHealthScore(metrics: DailyMetrics): {
     deductions += 10;
     issues.push(`Completion rate below target: ${metrics.taskCompletionRate}%`);
   }
-  
+
   // Dropoff rate
   if (metrics.dropoffRate > 20) {
     deductions += 20;
     issues.push(`High dropoff rate: ${metrics.dropoffRate}%`);
   }
-  
+
   // Parent complaints
   if (metrics.parentComplaints > 0) {
     deductions += metrics.parentComplaints * 5;
     issues.push(`Parent complaints: ${metrics.parentComplaints}`);
   }
-  
+
   // Active students ratio
   const activeRatio = metrics.activeStudents / metrics.totalStudents;
   if (activeRatio < 0.5) {
     deductions += 15;
     issues.push(`Low active student ratio: ${(activeRatio * 100).toFixed(1)}%`);
   }
-  
+
   const score = Math.max(0, 100 - deductions);
-  
+
   let status: 'healthy' | 'degraded' | 'critical';
   if (score >= 80) {
     status = 'healthy';
@@ -483,7 +479,7 @@ export function calculateHealthScore(metrics: DailyMetrics): {
   } else {
     status = 'critical';
   }
-  
+
   return { score, status, issues };
 }
 

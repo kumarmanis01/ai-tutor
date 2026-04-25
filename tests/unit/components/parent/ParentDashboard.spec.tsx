@@ -12,11 +12,11 @@
  * - 2026-04-17T00:00:00Z | assistant | add timezone display unit tests
  */
 
-import React from 'react'
-import '@testing-library/jest-dom'
-import { render, screen } from '@testing-library/react'
+import React from 'react';
+import '@testing-library/jest-dom';
+import { render, screen } from '@testing-library/react';
 
-import ParentDashboard from '@/components/parent/ParentDashboard'
+import ParentDashboard from '@/components/parent/ParentDashboard';
 
 describe('ParentDashboard timezone display', () => {
   const baseChild = {
@@ -28,34 +28,38 @@ describe('ParentDashboard timezone display', () => {
     sessionsThisWeek: 2,
     readiness: [],
     timezone: null,
-  }
+  };
 
   it('shows single timezone when parent and student timezone are the same', () => {
-    const child = { ...baseChild, timezone: 'Asia/Kolkata' }
-    render(<ParentDashboard parentTimezone="Asia/Kolkata" childrenData={[child]} />)
+    const child = { ...baseChild, timezone: 'Asia/Kolkata' };
+    render(<ParentDashboard parentTimezone="Asia/Kolkata" childrenData={[child]} />);
 
-    expect(screen.getByText(/Times shown:/)).toHaveTextContent('Times shown: Asia/Kolkata')
-    expect(screen.queryByText(/Student:/)).toBeNull()
-  })
+    expect(screen.getByText(/Times shown:/)).toHaveTextContent('Times shown: Asia/Kolkata');
+    expect(screen.queryByText(/Student:/)).toBeNull();
+  });
 
   it('shows both timezones when parent and student timezone differ', () => {
-    const child = { ...baseChild, timezone: 'Asia/Kolkata' }
-    render(<ParentDashboard parentTimezone="America\/New_York" childrenData={[child]} />)
+    const child = { ...baseChild, timezone: 'Asia/Kolkata' };
+    render(<ParentDashboard parentTimezone="America\/New_York" childrenData={[child]} />);
 
-    expect(screen.getByText(/Times shown:/)).toHaveTextContent('Times shown: America/New_York • Student: Asia/Kolkata')
-  })
+    expect(screen.getByText(/Times shown:/)).toHaveTextContent(
+      'Times shown: America/New_York • Student: Asia/Kolkata'
+    );
+  });
 
   it('falls back to student timezone when parent timezone is missing', () => {
-    const child = { ...baseChild, timezone: 'Asia/Kolkata' }
-    render(<ParentDashboard parentTimezone={null} childrenData={[child]} />)
+    const child = { ...baseChild, timezone: 'Asia/Kolkata' };
+    render(<ParentDashboard parentTimezone={null} childrenData={[child]} />);
 
-    expect(screen.getByText(/Times shown:/)).toHaveTextContent('Times shown: Student: Asia/Kolkata')
-  })
+    expect(screen.getByText(/Times shown:/)).toHaveTextContent(
+      'Times shown: Student: Asia/Kolkata'
+    );
+  });
 
   it('falls back to your timezone when no timezone info present', () => {
-    const child = { ...baseChild, timezone: null }
-    render(<ParentDashboard parentTimezone={null} childrenData={[child]} />)
+    const child = { ...baseChild, timezone: null };
+    render(<ParentDashboard parentTimezone={null} childrenData={[child]} />);
 
-    expect(screen.getByText(/Times shown:/)).toHaveTextContent('Times shown: your timezone')
-  })
-})
+    expect(screen.getByText(/Times shown:/)).toHaveTextContent('Times shown: your timezone');
+  });
+});

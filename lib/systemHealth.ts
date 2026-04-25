@@ -83,7 +83,9 @@ export async function systemHealth(): Promise<SystemHealth> {
     failed = 0;
   let lastHeartbeatAgeSec: number | undefined = undefined;
   for (const w of workersRaw) {
-    const hb = w.lastHeartbeatAt ? Math.floor((now - new Date(w.lastHeartbeatAt).getTime()) / 1000) : Infinity;
+    const hb = w.lastHeartbeatAt
+      ? Math.floor((now - new Date(w.lastHeartbeatAt).getTime()) / 1000)
+      : Infinity;
     if (hb !== Infinity) lastHeartbeatAgeSec = Math.max(lastHeartbeatAgeSec ?? 0, hb);
     if (String(w.status).toLowerCase() === 'failed') failed++;
     else if (hb <= 30) running++;
@@ -97,7 +99,9 @@ export async function systemHealth(): Promise<SystemHealth> {
     prisma.executionJob.count({ where: { status: 'pending' } }),
     prisma.executionJob.count({ where: { status: 'running' } }),
     prisma.executionJob.count({ where: { status: 'failed', updatedAt: { gte: fiveMinAgo } } }),
-    prisma.executionJob.count({ where: { status: 'running', lockedAt: { lt: new Date(Date.now() - MAX_JOB_RUNTIME_MS) } } }),
+    prisma.executionJob.count({
+      where: { status: 'running', lockedAt: { lt: new Date(Date.now() - MAX_JOB_RUNTIME_MS) } },
+    }),
   ]);
 
   // Queue (BullMQ)
@@ -125,8 +129,8 @@ export async function systemHealth(): Promise<SystemHealth> {
     dbStatus === 'unhealthy' || redisStatus === 'unhealthy'
       ? 'unhealthy'
       : stale > 0 || stuckRunning > 0 || (oldestJobAgeSec ?? 0) > 300
-      ? 'degraded'
-      : 'healthy';
+        ? 'degraded'
+        : 'healthy';
 
   const health: SystemHealth = {
     overall: overall as HealthStatus,

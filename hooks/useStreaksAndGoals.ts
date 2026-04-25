@@ -1,4 +1,4 @@
-"use client";
+'use client';
 /**
  * FILE OBJECTIVE:
  * - Hook for fetching user streaks, goals, and learning progress metrics.
@@ -11,7 +11,13 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 
-export type Streak = { id: string; kind: string; current: number; best: number; updatedAt?: string };
+export type Streak = {
+  id: string;
+  kind: string;
+  current: number;
+  best: number;
+  updatedAt?: string;
+};
 export type Goals = { weeklyMinutes?: number; testsCompleted?: number };
 export type Progress = {
   testsCompleted: number;
@@ -41,17 +47,19 @@ export function useStreaksAndGoals() {
         fetch('/api/dashboard/streaks'),
         fetch('/api/dashboard/progress'),
       ]);
-      
+
       const streaksData = await streaksRes.json().catch(() => ({}));
       const items = Array.isArray(streaksData?.streaks) ? streaksData.streaks : [];
-      setStreaks(items.map((s: any) => ({ 
-        id: s.id, 
-        kind: s.kind, 
-        current: s.current ?? 0, 
-        best: s.best ?? 0, 
-        updatedAt: s.updatedAt 
-      })));
-      
+      setStreaks(
+        items.map((s: any) => ({
+          id: s.id,
+          kind: s.kind,
+          current: s.current ?? 0,
+          best: s.best ?? 0,
+          updatedAt: s.updatedAt,
+        }))
+      );
+
       const progressData = await progressRes.json().catch(() => ({}));
       setProgress({
         testsCompleted: progressData.testsCompleted ?? 0,
@@ -60,7 +68,7 @@ export function useStreaksAndGoals() {
         subjectsStudied: progressData.subjectsStudied ?? 0,
         weeklyProgress: progressData.weeklyProgress ?? 0,
       });
-      
+
       setGoals({
         weeklyMinutes: progressData.weeklyGoalMinutes ?? 120,
         testsCompleted: progressData.weeklyTestsGoal ?? 5,
@@ -70,7 +78,9 @@ export function useStreaksAndGoals() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return { streaks, goals, progress, loading, refresh };
 }

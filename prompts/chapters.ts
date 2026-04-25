@@ -10,11 +10,11 @@
  */
 
 export type ChaptersParams = {
-  subject: string
-  grade: number
-  chapterCount: number
-  language?: 'en' | 'hi'
-}
+  subject: string;
+  grade: number;
+  chapterCount: number;
+  language?: 'en' | 'hi';
+};
 
 export function chaptersPrompt(params: ChaptersParams): string {
   return `Role: chapter planner for subject "${params.subject}" grade ${params.grade}.
@@ -43,5 +43,5 @@ Validation Constraints:
 - Orders must be sequential and start at 1.
 - If unable to produce, return an empty array '[]'.
 
-Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above.`
+Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above.`;
 }

@@ -8,6 +8,16 @@
  * - 2026-02-04 | claude | integrated WhatsApp delivery alongside email
  * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
  * - 2026-04-23T00:00:00Z | copilot | fix(strict): cast Prisma results to local row types to avoid implicit-any in callbacks
+ * - 2026-04-24T00:00:00Z | staff-engineer | P2.2: add free-tier upgrade teaser + zero-activity email variant
+ *
+ * NOTE:
+ * - The upgrade teaser is intentionally shown only for free-tier parents
+ *   (i.e., when `subscriptionStatus === 'free'`). The previous PR text
+ *   incorrectly described the teaser as shown for `subscriptionStatus !== 'free'`.
+ *   The code and unit tests reflect the correct behaviour (teaser for free users).
+ * - After deploying the DB migration that adds `PhoneOtp.consentRequestId`, run
+ *   `npx prisma migrate deploy` on the VPS to apply SQL migrations before
+ *   restarting PM2. Ensure `OTP_SECRET` is set in production env.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -25,26 +35,48 @@ export async function sendParentDigests(): Promise<number> {
   const parentLinks = await prisma.parentStudent.findMany({
     where: { status: 'active', excludeFromParentReport: false },
     include: {
-      parent: { select: { id: true, email: true, name: true, phone: true, whatsappPhone: true, language: true } },
+      parent: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          whatsappPhone: true,
+          language: true,
+          subscriptionStatus: true,
+        },
+      },
       student: { select: { id: true, name: true, grade: true, board: true } },
     },
   });
 
   // Group by parent
-  const parentMap: Record<string, {
-    email: string;
-    name: string;
-    phone: string | null;
-    whatsappPhone: string | null;
-    language: string;
-    children: { id: string; name: string; grade: string | null; board: string | null }[];
-  }> = {};
+  const parentMap: Record<
+    string,
+    {
+      email: string;
+      name: string;
+      phone: string | null;
+      whatsappPhone: string | null;
+      language: string;
+      subscriptionStatus: string;
+      children: { id: string; name: string; grade: string | null; board: string | null }[];
+    }
+  > = {};
 
   for (const link of parentLinks) {
     // Skip if child is currently paused by parent
-    if ((link as any).isPaused && (link as any).pausedUntil && new Date((link as any).pausedUntil) > new Date()) {
-      logger.info('parentEmailDigest: skipping paused child', { parentId: link.parent.id, studentId: link.student.id, pausedUntil: (link as any).pausedUntil })
-      continue
+    if (
+      (link as any).isPaused &&
+      (link as any).pausedUntil &&
+      new Date((link as any).pausedUntil) > new Date()
+    ) {
+      logger.info('parentEmailDigest: skipping paused child', {
+        parentId: link.parent.id,
+        studentId: link.student.id,
+        pausedUntil: (link as any).pausedUntil,
+      });
+      continue;
     }
     if (!link.parent.email) continue;
     if (!parentMap[link.parent.id]) {
@@ -54,6 +86,7 @@ export async function sendParentDigests(): Promise<number> {
         phone: link.parent.phone || null,
         whatsappPhone: link.parent.whatsappPhone || null,
         language: link.parent.language || 'en',
+        subscriptionStatus: link.parent.subscriptionStatus ?? 'free',
         children: [],
       };
     }
@@ -106,25 +139,37 @@ export async function sendParentDigests(): Promise<number> {
   ]);
 
   // Local row shapes to provide typing for downstream callbacks/mappers
-  type WeeklySummaryRow = { studentId: string; sessionsCount?: number; totalMinutes?: number; topicsCovered?: number; testsTaken?: number; averageScore?: number }
-  type AttentionFlagRow = { studentId: string; subject: string; chapter?: string; reason?: string }
-  type ReadinessRow = { studentId: string; subject: string; readinessLabel?: string; readinessScore?: number }
-  type StrengthRow = { studentId: string; subject: string; chapter: string }
-  type StreakRow = { studentId: string; current: number }
+  type WeeklySummaryRow = {
+    studentId: string;
+    sessionsCount?: number;
+    totalMinutes?: number;
+    topicsCovered?: number;
+    testsTaken?: number;
+    averageScore?: number;
+  };
+  type AttentionFlagRow = { studentId: string; subject: string; chapter?: string; reason?: string };
+  type ReadinessRow = {
+    studentId: string;
+    subject: string;
+    readinessLabel?: string;
+    readinessScore?: number;
+  };
+  type StrengthRow = { studentId: string; subject: string; chapter: string };
+  type StreakRow = { studentId: string; current: number };
 
-  const allSummaries = _res[0] as WeeklySummaryRow[]
-  const allLastWeekSummaries = _res[1] as WeeklySummaryRow[]
-  const allFlags = _res[2] as AttentionFlagRow[]
-  const allReadiness = _res[3] as ReadinessRow[]
-  const allStrengths = _res[4] as StrengthRow[]
-  const allStreaks = _res[5] as StreakRow[]
+  const allSummaries = _res[0] as WeeklySummaryRow[];
+  const allLastWeekSummaries = _res[1] as WeeklySummaryRow[];
+  const allFlags = _res[2] as AttentionFlagRow[];
+  const allReadiness = _res[3] as ReadinessRow[];
+  const allStrengths = _res[4] as StrengthRow[];
+  const allStreaks = _res[5] as StreakRow[];
 
   // Build lookup maps keyed by studentId
   const summaryByStudent = new Map<string, (typeof allSummaries)[number]>(
-    allSummaries.map((s) => [s.studentId, s]),
+    allSummaries.map((s) => [s.studentId, s])
   );
   const lastWeekByStudent = new Map<string, (typeof allLastWeekSummaries)[number]>(
-    allLastWeekSummaries.map((s) => [s.studentId, s]),
+    allLastWeekSummaries.map((s) => [s.studentId, s])
   );
 
   const flagsByStudent = new Map<string, typeof allFlags>();
@@ -149,7 +194,7 @@ export async function sendParentDigests(): Promise<number> {
   }
 
   const streakByStudent = new Map<string, (typeof allStreaks)[number]>(
-    allStreaks.map((s) => [s.studentId, s]),
+    allStreaks.map((s) => [s.studentId, s])
   );
 
   let sentCount = 0;
@@ -157,19 +202,29 @@ export async function sendParentDigests(): Promise<number> {
   for (const [parentId, parent] of Object.entries(parentMap)) {
     try {
       // Respect parent digest preferences (opt-out and scheduled day)
-      const profile = await prisma.parentProfile.findUnique({ where: { userId: parentId } })
+      const profile = await prisma.parentProfile.findUnique({ where: { userId: parentId } });
       if (profile?.digestOptOut) {
-        logger.info('parentEmailDigest: skipped due to opt-out', { parentId })
-        continue
+        logger.info('parentEmailDigest: skipped due to opt-out', { parentId });
+        continue;
       }
-      const parentTimezone = profile?.digestTimezone ?? (await prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } }))?.timezone
-      const preferredDay = profile?.digestDay ?? 'Sunday'
+      const parentTimezone =
+        profile?.digestTimezone ??
+        (await prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } }))
+          ?.timezone;
+      const preferredDay = profile?.digestDay ?? 'Sunday';
       if (parentTimezone) {
         try {
-          const localDay = new Date().toLocaleString('en-US', { timeZone: parentTimezone, weekday: 'long' })
+          const localDay = new Date().toLocaleString('en-US', {
+            timeZone: parentTimezone,
+            weekday: 'long',
+          });
           if (String(localDay).toLowerCase() !== String(preferredDay).toLowerCase()) {
-            logger.info('parentEmailDigest: skipping parent due to preferredDay mismatch', { parentId, preferredDay, localDay })
-            continue
+            logger.info('parentEmailDigest: skipping parent due to preferredDay mismatch', {
+              parentId,
+              preferredDay,
+              localDay,
+            });
+            continue;
           }
         } catch {
           // If timezone invalid, fall back to sending
@@ -186,53 +241,88 @@ export async function sendParentDigests(): Promise<number> {
         const newStrengths = (strengthsByStudent.get(child.id) ?? []).slice(0, 5);
         const streak = streakByStudent.get(child.id) ?? null;
 
-        const trustSignals = buildTrustSignals(summary, lastWeekSummary, newStrengths, streak, flags);
+        const trustSignals = buildTrustSignals(
+          summary,
+          lastWeekSummary,
+          newStrengths,
+          streak,
+          flags
+        );
 
         // Build AI-generated short paragraph for this child (best-effort)
-        let aiParagraph = ''
+        let aiParagraph = '';
         try {
           const weekSummary = {
             // `daysActive` was removed from the summary shape; use `sessionsCount` as the active-days proxy
             days_active: summary?.sessionsCount ?? 0,
             time_spent_min: summary?.totalMinutes ?? 0,
             improved_topics: newStrengths.map((s) => s.subject).slice(0, 3),
-            struggling_topics: flags.map((f) => `${f.subject}${f.chapter ? ' / ' + f.chapter : ''}`).slice(0, 3),
+            struggling_topics: flags
+              .map((f) => `${f.subject}${f.chapter ? ' / ' + f.chapter : ''}`)
+              .slice(0, 3),
             streak_days: streak?.current ?? 0,
             tests_taken: summary?.testsTaken ?? 0,
-          }
-          const ai = await generateParentReportAI(child.name, weekSummary as any, parent.language)
-          aiParagraph = ai.summary
+          };
+          const ai = await generateParentReportAI(child.name, weekSummary as any, parent.language);
+          aiParagraph = ai.summary;
         } catch (err) {
-          logger.warn('parentEmailDigest: AI paragraph generation failed', { parentId, childId: child.id, error: String(err) })
-          aiParagraph = ''
+          logger.warn('parentEmailDigest: AI paragraph generation failed', {
+            parentId,
+            childId: child.id,
+            error: String(err),
+          });
+          aiParagraph = '';
         }
 
-        childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals, aiParagraph));
+        childSections.push(
+          buildChildSection(child, summary, flags, readiness, trustSignals, aiParagraph)
+        );
       }
 
-      const html = buildDigestHtml(parent.name, childSections);
-      const subject = t('digest.subject', undefined, parent.language)
-      const text = t('digest.fallback_text', undefined, parent.language)
-      const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
-      const reportUrl = `${baseUrl}/parent/dashboard`
+      // P2.2: zero-activity detection across all children this week
+      const totalSessions = parent.children.reduce<number>((acc, c) => {
+        return acc + (summaryByStudent.get(c.id)?.sessionsCount ?? 0);
+      }, 0);
+      const isPremium = parent.subscriptionStatus !== 'free';
+
+      // P2.2: Zero-activity subject nudges parent to start a session
+      const subject =
+        totalSessions === 0
+          ? `${parent.children[0]?.name ?? 'Your child'} hasn't started this week -- try a quick topic!`
+          : t('digest.subject', undefined, parent.language);
+
+      // P2.2: Free-tier upgrade teaser appended to digest HTML
+      const upgradeTeaserHtml = !isPremium
+        ? `<div style="margin-top:24px;padding:16px;background:#EEEDFE;border-radius:12px;text-align:center;">
+            <p style="margin:0 0 4px;font-weight:bold;color:#534AB7;">&#x2B50; Unlock Premium Features</p>
+            <p style="margin:0 0 12px;font-size:13px;color:#374151;">Get unlimited topics, detailed exam readiness, and priority support for &#x20B9;399/month.</p>
+            <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/pricing" style="display:inline-block;background:#FF6B35;color:#fff;font-weight:bold;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:14px;">Upgrade Now</a>
+           </div>`
+        : '';
+
+      const html = buildDigestHtml(parent.name, [...childSections, upgradeTeaserHtml]);
+      const text = t('digest.fallback_text', undefined, parent.language);
+      const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com';
+      const reportUrl = `${baseUrl}/parent/dashboard`;
 
       // Build WhatsApp digest template using data for the first child (most relevant)
-      const waTemplate = parent.whatsappPhone && parent.children.length > 0
-        ? (() => {
-            const firstChild = parent.children[0]
-            const waSummary = summaryByStudent.get(firstChild.id) ?? null
-            const waStreak = streakByStudent.get(firstChild.id) ?? null
-            const waStrengths = strengthsByStudent.get(firstChild.id) ?? []
-            return buildDigestTemplate(
-              parent.name,
-              firstChild.name,
-              waSummary?.sessionsCount ?? 0,
-              waStreak?.current ?? 0,
-              waStrengths[0]?.subject ?? 'all subjects',
-              reportUrl,
-            )
-          })()
-        : undefined
+      const waTemplate =
+        parent.whatsappPhone && parent.children.length > 0
+          ? (() => {
+              const firstChild = parent.children[0];
+              const waSummary = summaryByStudent.get(firstChild.id) ?? null;
+              const waStreak = streakByStudent.get(firstChild.id) ?? null;
+              const waStrengths = strengthsByStudent.get(firstChild.id) ?? [];
+              return buildDigestTemplate(
+                parent.name,
+                firstChild.name,
+                waSummary?.sessionsCount ?? 0,
+                waStreak?.current ?? 0,
+                waStrengths[0]?.subject ?? 'all subjects',
+                reportUrl
+              );
+            })()
+          : undefined;
 
       await sendParentMilestoneNotification(parentId, {
         email: parent.email,
@@ -242,7 +332,7 @@ export async function sendParentDigests(): Promise<number> {
         html,
         text,
         meta: { type: 'digest', locale: parent.language },
-      })
+      });
 
       sentCount++;
       logger.info('parentEmailDigest: sent', { parentId, childCount: parent.children.length });
@@ -270,7 +360,7 @@ function buildTrustSignals(
   lastWeek: any | null,
   newStrengths: { subject: string; chapter: string }[],
   streak: { current: number } | null,
-  flags: any[],
+  flags: any[]
 ): TrustSignals {
   // Improvement trend
   let improvementTrend: string | null = null;
@@ -289,14 +379,13 @@ function buildTrustSignals(
   }
 
   // Strengths unlocked
-  const strengthsUnlocked = newStrengths.map(
-    (s) => `${s.subject} / ${s.chapter}`,
-  );
+  const strengthsUnlocked = newStrengths.map((s) => `${s.subject} / ${s.chapter}`);
 
   // Suggested action
   let suggestedAction = 'Keep encouraging regular study -- consistency is key!';
   if (flags.length > 0) {
-    suggestedAction = 'Ask about the topics flagged above -- a quick chat can help build confidence.';
+    suggestedAction =
+      'Ask about the topics flagged above -- a quick chat can help build confidence.';
   } else if (strengthsUnlocked.length > 0) {
     suggestedAction = `Celebrate the new strengths unlocked this week! Positive recognition boosts motivation.`;
   } else if (streak && streak.current >= 5) {
@@ -317,7 +406,7 @@ function buildChildSection(
   flags: any[],
   readiness: any[],
   trustSignals?: TrustSignals,
-  aiParagraph?: string,
+  aiParagraph?: string
 ): string {
   const gradeLabel = child.grade ? `Class ${child.grade}` : '';
   const boardLabel = child.board || '';
@@ -351,12 +440,17 @@ function buildChildSection(
 
   let flagsHtml = '';
   if (flags.length > 0) {
-    const flagItems = flags.map((f) => {
-      const friendlyReason = f.reason === 'very_low_accuracy' ? 'developing skills'
-        : f.reason === 'low_mastery' ? 'room to grow'
-        : 'needs a little more support';
-      return `<li style="margin:4px 0;color:#92400E;">${f.subject} / ${f.chapter} -- ${friendlyReason}</li>`;
-    }).join('');
+    const flagItems = flags
+      .map((f) => {
+        const friendlyReason =
+          f.reason === 'very_low_accuracy'
+            ? 'developing skills'
+            : f.reason === 'low_mastery'
+              ? 'room to grow'
+              : 'needs a little more support';
+        return `<li style="margin:4px 0;color:#92400E;">${f.subject} / ${f.chapter} -- ${friendlyReason}</li>`;
+      })
+      .join('');
     flagsHtml = `
       <div style="margin-top:12px;padding:12px;background:#FFFBEB;border-radius:8px;">
         <strong style="color:#92400E;">These topics may need a bit more practice:</strong>
@@ -367,15 +461,27 @@ function buildChildSection(
 
   let readinessHtml = '';
   if (readiness.length > 0) {
-    const readinessItems = readiness.map((r) => {
-      const color = r.readinessLabel === 'ready' ? '#16A34A' :
-                    r.readinessLabel === 'on_track' ? '#D97706' :
-                    r.readinessLabel === 'needs_work' ? '#92400E' : '#666';
-      const friendlyLabel = r.readinessLabel === 'ready' ? 'looking great'
-        : r.readinessLabel === 'on_track' ? 'making progress'
-        : r.readinessLabel === 'needs_work' ? 'developing skills' : 'just getting started';
-      return `<li style="margin:4px 0;"><span style="color:${color};font-weight:bold;">${r.subject}</span>: ${r.readinessScore}% -- ${friendlyLabel}</li>`;
-    }).join('');
+    const readinessItems = readiness
+      .map((r) => {
+        const color =
+          r.readinessLabel === 'ready'
+            ? '#16A34A'
+            : r.readinessLabel === 'on_track'
+              ? '#D97706'
+              : r.readinessLabel === 'needs_work'
+                ? '#92400E'
+                : '#666';
+        const friendlyLabel =
+          r.readinessLabel === 'ready'
+            ? 'looking great'
+            : r.readinessLabel === 'on_track'
+              ? 'making progress'
+              : r.readinessLabel === 'needs_work'
+                ? 'developing skills'
+                : 'just getting started';
+        return `<li style="margin:4px 0;"><span style="color:${color};font-weight:bold;">${r.subject}</span>: ${r.readinessScore}% -- ${friendlyLabel}</li>`;
+      })
+      .join('');
     readinessHtml = `
       <div style="margin-top:12px;">
         <strong>Learning Insights:</strong>
@@ -385,9 +491,9 @@ function buildChildSection(
   }
 
   // AI paragraph (short, parent-friendly) - injected above trust signals when available
-  let aiHtml = ''
+  let aiHtml = '';
   if (aiParagraph && aiParagraph.trim()) {
-    aiHtml = `<div style="margin-top:12px;padding:12px;background:#F8FAFC;border-radius:8px;border-left:3px solid #94A3B8;color:#334155;">${aiParagraph}</div>`
+    aiHtml = `<div style="margin-top:12px;padding:12px;background:#F8FAFC;border-radius:8px;border-left:3px solid #94A3B8;color:#334155;">${aiParagraph}</div>`;
   }
 
   // Trust signals section
@@ -444,7 +550,7 @@ function buildChildSection(
     `;
   }
 
-    return `
+  return `
     <div style="border:1px solid #E5E7EB;border-radius:12px;padding:16px;margin-bottom:16px;">
       <h3 style="margin:0 0 4px 0;color:#1F2937;">${child.name}</h3>
       ${subtitle ? `<p style="margin:0 0 12px 0;color:#6B7280;font-size:14px;">${subtitle}</p>` : ''}

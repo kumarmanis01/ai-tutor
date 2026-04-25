@@ -65,38 +65,38 @@ export function detectLanguage(text: string): LanguageMode {
   const devanagariCount = (text.match(/[\u0900-\u097F]/g) || []).length;
   const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
   const totalChars = text.replace(/\s/g, '').length;
-  
+
   if (totalChars === 0) return 'EN';
-  
+
   const devanagariRatio = devanagariCount / totalChars;
   const englishRatio = englishCount / totalChars;
-  
+
   // Pure Hindi (Devanagari script)
   if (devanagariRatio > 0.5) {
     return 'HI';
   }
-  
+
   // Mixed content (Hinglish)
   if (devanagariRatio > 0.1 && englishRatio > 0.3) {
     return 'HINGLISH';
   }
-  
+
   // Check for romanized Hindi patterns
   const hinglishPatterns = [
     /\b(kya|kaise|kyun|hai|hain|nahi|aur|mein|ko|se|ka|ki|ke)\b/gi,
     /\b(samjhao|batao|padho|likho|karo|dekho)\b/gi,
     /\b(accha|theek|haan|na|bhi)\b/gi,
   ];
-  
+
   let hinglishMatchCount = 0;
   for (const pattern of hinglishPatterns) {
     hinglishMatchCount += (text.match(pattern) || []).length;
   }
-  
+
   if (hinglishMatchCount > 2) {
     return 'HINGLISH';
   }
-  
+
   return 'EN';
 }
 
@@ -106,12 +106,12 @@ export function detectLanguage(text: string): LanguageMode {
 
 /**
  * Token budgets by language and grade.
- * 
+ *
  * TOKEN COST ANALYSIS:
  * - English: Most efficient (1 word ≈ 1.3 tokens avg)
  * - Hinglish: Moderate (1 word ≈ 1.5 tokens avg)
  * - Hindi: Least efficient (1 word ≈ 2.0 tokens avg in Devanagari)
- * 
+ *
  * COST OPTIMIZATION STRATEGY:
  * - Shorter responses for Hindi to control cost
  * - Prefer Hinglish over pure Hindi when acceptable
@@ -125,19 +125,19 @@ export function getTokenBudget(language: LanguageMode, grade: Grade): TokenBudge
       costMultiplier: 1.0,
     },
     HINGLISH: {
-      maxInputTokens: 800,  // Slightly reduced
+      maxInputTokens: 800, // Slightly reduced
       maxOutputTokens: 1200,
       costMultiplier: 1.15,
     },
     HI: {
-      maxInputTokens: 600,  // Significantly reduced
+      maxInputTokens: 600, // Significantly reduced
       maxOutputTokens: 1000,
       costMultiplier: 1.5,
     },
   };
-  
+
   const base = baseBudgets[language];
-  
+
   // Grade adjustments
   let gradeMultiplier = 1.0;
   if (grade <= 3) {
@@ -145,7 +145,7 @@ export function getTokenBudget(language: LanguageMode, grade: Grade): TokenBudge
   } else if (grade <= 7) {
     gradeMultiplier = 0.8;
   }
-  
+
   return {
     maxInputTokens: Math.round(base.maxInputTokens * gradeMultiplier),
     maxOutputTokens: Math.round(base.maxOutputTokens * gradeMultiplier),
@@ -168,21 +168,21 @@ export function rewritePromptForLanguage(
 ): RewrittenPrompt {
   const detectedLanguage = detectLanguage(userPrompt);
   const tokenBudget = getTokenBudget(outputLanguage, grade);
-  
+
   // Get base system prompt for language
   const baseSystemPrompt = getCompleteSystemPrompt(outputLanguage, grade);
-  
+
   // Add output language instruction
   const languageInstruction = getOutputLanguageInstruction(outputLanguage, contentType);
-  
+
   // Simplify user prompt if needed for token optimization
   const optimizedUserPrompt = optimizeUserPrompt(userPrompt, outputLanguage, grade);
-  
+
   // Combine system prompt with language instruction
   const systemPrompt = `${baseSystemPrompt}
 
 OUTPUT LANGUAGE: ${languageInstruction}`;
-  
+
   return {
     systemPrompt,
     userPrompt: optimizedUserPrompt,
@@ -212,49 +212,46 @@ function getOutputLanguageInstruction(
       DOUBT: 'हिंदी में जवाब दें। दोस्ताना लहजे में समझाएं।',
     },
     HINGLISH: {
-      NOTES: 'Hinglish mein jawab do. Hindi-English mix naturally use karo. Technical terms English mein rakho.',
+      NOTES:
+        'Hinglish mein jawab do. Hindi-English mix naturally use karo. Technical terms English mein rakho.',
       PRACTICE: 'Questions Hinglish mein likho. Options clear rakho. Formulas English mein.',
       DOUBT: 'Hinglish mein samjhao. Friendly tone rakho. Student comfortable feel kare.',
     },
   };
-  
+
   return instructions[language][contentType];
 }
 
 /**
  * Optimize user prompt for token efficiency
  */
-function optimizeUserPrompt(
-  prompt: string,
-  language: LanguageMode,
-  grade: Grade
-): string {
+function optimizeUserPrompt(prompt: string, language: LanguageMode, grade: Grade): string {
   let optimized = prompt.trim();
-  
+
   // Remove excessive whitespace
   optimized = optimized.replace(/\s+/g, ' ');
-  
+
   // For Hindi, the prompt is usually shorter anyway
   // For English and Hinglish, we can be more aggressive
-  
+
   // Remove common filler words for token savings
   if (language !== 'HI') {
     const fillerPatterns = [
       /\b(please|kindly|could you|would you|I want to know|tell me about)\b/gi,
       /\b(basically|actually|literally|really)\b/gi,
     ];
-    
+
     for (const pattern of fillerPatterns) {
       optimized = optimized.replace(pattern, '');
     }
   }
-  
+
   // Limit prompt length based on grade
   const maxLength = grade <= 3 ? 200 : grade <= 7 ? 400 : 600;
   if (optimized.length > maxLength) {
     optimized = optimized.substring(0, maxLength) + '...';
   }
-  
+
   return optimized.trim();
 }
 
@@ -265,12 +262,9 @@ function optimizeUserPrompt(
 /**
  * Post-process AI response for language consistency
  */
-export function postProcessResponse(
-  response: string,
-  targetLanguage: LanguageMode
-): string {
+export function postProcessResponse(response: string, targetLanguage: LanguageMode): string {
   let processed = response;
-  
+
   // Clean up any language mixing issues
   if (targetLanguage === 'HI') {
     // Remove any English sentences that slipped in (except technical terms)
@@ -283,7 +277,7 @@ export function postProcessResponse(
       return match; // In production, translate or flag
     });
   }
-  
+
   if (targetLanguage === 'HINGLISH') {
     // Ensure Hinglish formatting is consistent
     // Add Hindi conjunctions where needed
@@ -293,7 +287,7 @@ export function postProcessResponse(
       .replace(/\bso\b/gi, 'toh')
       .replace(/\bbecause\b/gi, 'kyunki');
   }
-  
+
   return processed;
 }
 
@@ -305,28 +299,28 @@ export function validateLanguageOutput(
   targetLanguage: LanguageMode
 ): { isValid: boolean; detectedLanguage: LanguageMode; mixRatio: number } {
   const detected = detectLanguage(response);
-  
+
   // Calculate language mix ratio
   const devanagariCount = (response.match(/[\u0900-\u097F]/g) || []).length;
   const englishCount = (response.match(/[a-zA-Z]/g) || []).length;
   const total = devanagariCount + englishCount;
-  
+
   const mixRatio = total > 0 ? devanagariCount / total : 0;
-  
+
   // Validation rules
   let isValid = true;
-  
+
   if (targetLanguage === 'HI' && mixRatio < 0.5) {
     isValid = false; // Hindi response should be mostly Devanagari
   }
-  
+
   if (targetLanguage === 'EN' && mixRatio > 0.1) {
     isValid = false; // English response should have minimal Hindi
   }
-  
+
   if (targetLanguage === 'HINGLISH' && (mixRatio < 0.05 || mixRatio > 0.5)) {
     isValid = false; // Hinglish should be a mix
   }
-  
+
   return { isValid, detectedLanguage: detected, mixRatio };
 }

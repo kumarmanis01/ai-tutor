@@ -100,12 +100,14 @@ export async function GET(req: Request) {
       logger.logAPI(req, res, { className: 'ProgressNarrativeAPI', methodName: 'GET' }, start);
       return res;
     } catch (e) {
-      logger.error('Failed to enqueue narrative job', { event: 'progress_narrative_enqueue_error', context: { userId, error: String(e) } });
+      logger.error('Failed to enqueue narrative job', {
+        event: 'progress_narrative_enqueue_error',
+        context: { userId, error: String(e) },
+      });
       res = NextResponse.json({ narrative: FALLBACK_NARRATIVE });
       logger.logAPI(req, res, { className: 'ProgressNarrativeAPI', methodName: 'GET' }, start);
       return res;
     }
-    
   } catch (err) {
     logger.error('ProgressNarrativeAPI unexpected error', {
       event: 'progress_narrative_error',

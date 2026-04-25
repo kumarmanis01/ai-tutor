@@ -12,8 +12,11 @@
         if (init && init.headers) console.log('[fetch]   headers:', JSON.stringify(init.headers));
         if (init && init.body) {
           let bodyPreview = init.body;
-          try { bodyPreview = typeof init.body === 'string' ? init.body : JSON.stringify(init.body); } catch (_e) {}
-          if (bodyPreview && bodyPreview.length > 1000) bodyPreview = bodyPreview.slice(0, 1000) + '...';
+          try {
+            bodyPreview = typeof init.body === 'string' ? init.body : JSON.stringify(init.body);
+          } catch (_e) {}
+          if (bodyPreview && bodyPreview.length > 1000)
+            bodyPreview = bodyPreview.slice(0, 1000) + '...';
           console.log('[fetch]   body:', bodyPreview);
         }
         const res = await origFetch(input, init);

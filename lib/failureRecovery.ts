@@ -43,7 +43,7 @@ export async function runRecoveryCheck(): Promise<number> {
     if (!streak.lastActive) continue;
 
     const inactiveDays = Math.floor(
-      (now.getTime() - streak.lastActive.getTime()) / (1000 * 60 * 60 * 24),
+      (now.getTime() - streak.lastActive.getTime()) / (1000 * 60 * 60 * 24)
     );
 
     // Skip if active recently (less than 3 days)
@@ -162,7 +162,7 @@ export async function dismissRecoveryNudge(studentId: string, eventId: string): 
 async function generateRecoveryTask(
   studentId: string,
   nudgeType: RecoveryNudgeType,
-  recoveryEventId: string,
+  recoveryEventId: string
 ): Promise<void> {
   const todayStart = getTodayUTC();
 
@@ -188,9 +188,7 @@ async function generateRecoveryTask(
     orderBy: { accuracy: 'desc' },
   });
 
-  const topicName = easyTopic
-    ? await getTopicName(easyTopic.topicId)
-    : 'Quick Review';
+  const topicName = easyTopic ? await getTopicName(easyTopic.topicId) : 'Quick Review';
 
   const isFreshStart = nudgeType === 'fresh_start';
   const taskType = isFreshStart ? 'confidence' : 'revise';
@@ -201,12 +199,10 @@ async function generateRecoveryTask(
       studentId,
       date: todayStart,
       taskType,
-      title: isFreshStart
-        ? `Welcome Back: ${topicName}`
-        : `Easy Warm-Up: ${topicName}`,
+      title: isFreshStart ? `Welcome Back: ${topicName}` : `Easy Warm-Up: ${topicName}`,
       description: isFreshStart
         ? 'No pressure. Just a quick refresh to get back in the groove.'
-        : 'A gentle warm-up to ease you back in. You\'ve done this before!',
+        : "A gentle warm-up to ease you back in. You've done this before!",
       topicId: easyTopic?.topicId ?? null,
       subject: easyTopic?.subject ?? null,
       chapter: easyTopic?.chapter ?? null,
@@ -235,11 +231,11 @@ async function generateRecoveryTask(
 function getRecoveryMessage(nudgeType: RecoveryNudgeType, inactiveDays: number): string {
   switch (nudgeType) {
     case 'gentle_nudge':
-      return 'Hey! We noticed you\'ve been away. Even 10 minutes of learning today can keep your progress going.';
+      return "Hey! We noticed you've been away. Even 10 minutes of learning today can keep your progress going.";
     case 'easy_task':
       return `It's been ${inactiveDays} days. We've prepared a super easy warm-up just for you -- no pressure!`;
     case 'fresh_start':
-      return 'Welcome back! We\'ve reset your streak so you can start fresh. Here\'s an easy task to get going again.';
+      return "Welcome back! We've reset your streak so you can start fresh. Here's an easy task to get going again.";
     default:
       return 'Ready to pick up where you left off?';
   }

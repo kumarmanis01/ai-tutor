@@ -18,8 +18,14 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const IGNORED_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'coverage', 'vendor', 'eslint-rules',
-  'scripts', 'tests/integration'
+  'node_modules',
+  '.git',
+  'dist',
+  'coverage',
+  'vendor',
+  'eslint-rules',
+  'scripts',
+  'tests/integration',
 ]);
 const FILE_EXTS = new Set(['.ts', '.tsx', '.js', '.cjs', '.mjs', '.jsx']);
 
@@ -37,17 +43,20 @@ function walk(dir) {
 }
 
 function relImport(fromFile) {
-  const rel = path.relative(path.dirname(fromFile), path.join(ROOT, 'lib', 'redis'))
+  const rel = path
+    .relative(path.dirname(fromFile), path.join(ROOT, 'lib', 'redis'))
     .split(path.sep)
     .join('/');
   return rel.startsWith('.') ? rel : `./${rel}`;
 }
 
 function alreadyHasGetRedisImport(text) {
-  return /import\s+\{\s*getRedis\s*\}/.test(text) ||
+  return (
+    /import\s+\{\s*getRedis\s*\}/.test(text) ||
     /require\(['"].*lib\/redis['"]\)/.test(text) ||
     /const\s+\{\s*getRedis\s*\}/.test(text) ||
-    /getRedis\(/.test(text);
+    /getRedis\(/.test(text)
+  );
 }
 
 function shouldSkip(rel) {
@@ -71,9 +80,10 @@ function processFile(file) {
     const shebangMatch = out.match(/^#!.*\n/);
     const insertPos = shebangMatch ? shebangMatch[0].length : 0;
     const ext = path.extname(file).toLowerCase();
-    const importStmt = ext === '.cjs'
-      ? `const { getRedis } = require('${libPath}');\n` 
-      : `import { getRedis } from '${libPath}';\n`;
+    const importStmt =
+      ext === '.cjs'
+        ? `const { getRedis } = require('${libPath}');\n`
+        : `import { getRedis } from '${libPath}';\n`;
     out = out.slice(0, insertPos) + importStmt + out.slice(insertPos);
   }
 

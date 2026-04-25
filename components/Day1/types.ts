@@ -153,7 +153,7 @@ export const WELCOME_COPY_EN = {
 
 We'll learn step by step
 Making mistakes is totally okay 🙂`,
-  cta: '👉 Start today\'s task',
+  cta: "👉 Start today's task",
 } as const;
 
 /**
@@ -169,7 +169,7 @@ export const TODAYS_TASK_COPY_HI = {
  * Today's task copy - English
  */
 export const TODAYS_TASK_COPY_EN = {
-  title: '📘 Today\'s small task',
+  title: "📘 Today's small task",
   subtitle: '⏱️ About 10 minutes',
   cta: '▶️ Start',
 } as const;
@@ -189,7 +189,7 @@ Aaj aapne seekhne ka step liya 👏`,
  * Task completion copy - English
  */
 export const COMPLETION_COPY_EN = {
-  header: '✅ Today\'s task is done!',
+  header: "✅ Today's task is done!",
   message: `Great job!
 You took a step towards learning today 👏`,
   secondary: 'See you tomorrow for 10 more minutes 🙂',
@@ -208,7 +208,7 @@ export const CELEBRATION_COPY_HI = {
  * Celebration copy - English
  */
 export const CELEBRATION_COPY_EN = {
-  title: '🎉 Today\'s learning complete',
+  title: "🎉 Today's learning complete",
   subtitle: 'See you tomorrow!',
 } as const;
 
@@ -276,4 +276,4 @@ export const DAY1_BANNED_FEATURES = [
   'comparison_with_others',
 ] as const;
 
-export type Day1BannedFeature = typeof DAY1_BANNED_FEATURES[number];
+export type Day1BannedFeature = (typeof DAY1_BANNED_FEATURES)[number];

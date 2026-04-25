@@ -1,24 +1,32 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 function ModerationActions({ test, refresh }: { test: any; refresh: () => void }) {
   const handleAction = async (action: string) => {
     const url = `/api/admin/tests/${test.id}/${action}`;
-    const method = "POST";
+    const method = 'POST';
     let body: any = undefined;
-    if (action === "reject") {
-      body = JSON.stringify({ reason: "Rejected by admin" });
+    if (action === 'reject') {
+      body = JSON.stringify({ reason: 'Rejected by admin' });
     }
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body });
+    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body });
     refresh();
   };
   return (
     <div className="flex gap-2">
-      <button className="text-green-600" onClick={() => handleAction("approve")}>Approve</button>
-      <button className="text-red-600" onClick={() => handleAction("reject")}>Reject</button>
-      <button className="text-blue-600" onClick={() => handleAction("regenerate")}>Regenerate</button>
-      <button className="text-gray-600" onClick={() => handleAction("unpublish")}>Unpublish</button>
+      <button className="text-green-600" onClick={() => handleAction('approve')}>
+        Approve
+      </button>
+      <button className="text-red-600" onClick={() => handleAction('reject')}>
+        Reject
+      </button>
+      <button className="text-blue-600" onClick={() => handleAction('regenerate')}>
+        Regenerate
+      </button>
+      <button className="text-gray-600" onClick={() => handleAction('unpublish')}>
+        Unpublish
+      </button>
     </div>
   );
 }
@@ -29,7 +37,7 @@ export default function TestsClient() {
 
   const fetchTests = () => {
     setLoading(true);
-    fetch("/api/tests")
+    fetch('/api/tests')
       .then((res) => res.json())
       .then((data) => {
         setTests(data);

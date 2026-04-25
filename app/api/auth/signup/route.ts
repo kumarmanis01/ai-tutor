@@ -38,15 +38,31 @@ export async function POST(req: NextRequest) {
     const password = typeof body.password === 'string' ? String(body.password) : undefined;
 
     if (!email || !isEmail(email) || !password || password.length < 6) {
-      logger.warn('/api/auth/signup validation failed', { className: 'api.auth.signup', methodName: 'POST', durationMs: Date.now() - start, reason: 'validation_failed' });
-      return NextResponse.json({ error: 'validation_error', message: 'Invalid email or password' }, { status: 400 });
+      logger.warn('/api/auth/signup validation failed', {
+        className: 'api.auth.signup',
+        methodName: 'POST',
+        durationMs: Date.now() - start,
+        reason: 'validation_failed',
+      });
+      return NextResponse.json(
+        { error: 'validation_error', message: 'Invalid email or password' },
+        { status: 400 }
+      );
     }
 
     // Prevent account duplication
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      logger.warn('/api/auth/signup duplicate', { className: 'api.auth.signup', methodName: 'POST', email, durationMs: Date.now() - start });
-      return NextResponse.json({ error: 'user_exists', message: 'Account already exists' }, { status: 409 });
+      logger.warn('/api/auth/signup duplicate', {
+        className: 'api.auth.signup',
+        methodName: 'POST',
+        email,
+        durationMs: Date.now() - start,
+      });
+      return NextResponse.json(
+        { error: 'user_exists', message: 'Account already exists' },
+        { status: 409 }
+      );
     }
 
     // Hash password and create user record
@@ -63,15 +79,21 @@ export async function POST(req: NextRequest) {
 
     // Persist referral code at signup (if present in body or query param)
     try {
-      const refFromBody = typeof body.ref === 'string' ? (body.ref as string).trim() : undefined
-      const refFromQuery = typeof req.url === 'string' ? new URL(req.url).searchParams.get('ref') ?? undefined : undefined
-      const ref = refFromBody || (refFromQuery ? String(refFromQuery).trim() : undefined)
+      const refFromBody = typeof body.ref === 'string' ? (body.ref as string).trim() : undefined;
+      const refFromQuery =
+        typeof req.url === 'string'
+          ? (new URL(req.url).searchParams.get('ref') ?? undefined)
+          : undefined;
+      const ref = refFromBody || (refFromQuery ? String(refFromQuery).trim() : undefined);
       if (ref) {
-        await prisma.user.update({ where: { id: created.id }, data: { preferences: { referredBy: ref } } })
+        await prisma.user.update({
+          where: { id: created.id },
+          data: { preferences: { referredBy: ref } },
+        });
       }
     } catch (err) {
       // Non-fatal: log and continue
-      logger.warn('/api/auth/signup: failed to persist referral code', { err })
+      logger.warn('/api/auth/signup: failed to persist referral code', { err });
     }
 
     // Fire-and-forget welcome email. Use sendMailSafe so failures don't block response.
@@ -82,14 +104,34 @@ export async function POST(req: NextRequest) {
         subject: 'Welcome to Spinzy Academy!',
         html: welcomeEmailHtml(created.name ?? 'there'),
       })
-        .then(() => prisma.user.update({ where: { id: created.id }, data: { welcomeEmailSent: true } }))
-        .catch((e) => logger.warn('/api/auth/signup: welcome email/update flag failed', { className: 'api.auth.signup', methodName: 'POST', error: String(e) }));
+        .then(() =>
+          prisma.user.update({ where: { id: created.id }, data: { welcomeEmailSent: true } })
+        )
+        .catch((e) =>
+          logger.warn('/api/auth/signup: welcome email/update flag failed', {
+            className: 'api.auth.signup',
+            methodName: 'POST',
+            error: String(e),
+          })
+        );
     }
 
-    logger.info('/api/auth/signup success', { className: 'api.auth.signup', methodName: 'POST', userId: created.id, durationMs: Date.now() - start });
+    logger.info('/api/auth/signup success', {
+      className: 'api.auth.signup',
+      methodName: 'POST',
+      userId: created.id,
+      durationMs: Date.now() - start,
+    });
     return NextResponse.json({ ok: true, user: { id: created.id, email: created.email } });
   } catch (err) {
-    logger.error('/api/auth/signup error', { className: 'api.auth.signup', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: formatErrorForResponse(err), message: 'Failed to create account' }, { status: 500 });
+    logger.error('/api/auth/signup error', {
+      className: 'api.auth.signup',
+      methodName: 'POST',
+      error: String(err),
+    });
+    return NextResponse.json(
+      { error: formatErrorForResponse(err), message: 'Failed to create account' },
+      { status: 500 }
+    );
   }
 }

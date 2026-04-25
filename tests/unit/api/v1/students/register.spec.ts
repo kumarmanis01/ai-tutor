@@ -16,9 +16,9 @@
 
 // TODO (next phase): real behavioural tests - adult/minor paths, contact validation, accountStatus enum, explore_token.
 describe.skip('POST /api/v1/students/register', () => {
-  it.todo('adult registration returns scope:full')
-  it.todo('minor registration returns explore_token')
-  it.todo('invalid phone returns 400 invalid_phone')
-  it.todo('invalid email returns 400 invalid_email')
-  it.todo('missing required fields returns 400')
-})
+  it.todo('adult registration returns scope:full');
+  it.todo('minor registration returns explore_token');
+  it.todo('invalid phone returns 400 invalid_phone');
+  it.todo('invalid email returns 400 invalid_email');
+  it.todo('missing required fields returns 400');
+});

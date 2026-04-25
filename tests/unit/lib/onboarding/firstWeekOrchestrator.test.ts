@@ -95,7 +95,7 @@ describe('FirstWeekOrchestrator', () => {
   // ============================================================================
   describe('PARENT_MESSAGES', () => {
     it('should have messages for days 1, 4, and 7', () => {
-      const messageDays = PARENT_MESSAGES.map(m => m.day);
+      const messageDays = PARENT_MESSAGES.map((m) => m.day);
       expect(messageDays).toContain(1);
       expect(messageDays).toContain(4);
       expect(messageDays).toContain(7);
@@ -111,14 +111,14 @@ describe('FirstWeekOrchestrator', () => {
     });
 
     it('should contain placeholders for personalization', () => {
-      const day1 = PARENT_MESSAGES.find(m => m.day === 1);
+      const day1 = PARENT_MESSAGES.find((m) => m.day === 1);
       expect(day1?.templateHi).toContain('{studentName}');
       expect(day1?.templateEn).toContain('{studentName}');
     });
 
     it('should mark day 4 and 7 as mandatory', () => {
-      const day4 = PARENT_MESSAGES.find(m => m.day === 4);
-      const day7 = PARENT_MESSAGES.find(m => m.day === 7);
+      const day4 = PARENT_MESSAGES.find((m) => m.day === 4);
+      const day7 = PARENT_MESSAGES.find((m) => m.day === 7);
       expect(day4?.mandatory).toBe(true);
       expect(day7?.mandatory).toBe(true);
     });
@@ -157,7 +157,7 @@ describe('FirstWeekOrchestrator', () => {
     it('should return correct task for valid day', () => {
       const plan = createFirstWeekPlan('test-student', 5, 'Mathematics');
       const task = getDailyTask(plan, 3);
-      
+
       expect(task).toBeDefined();
       expect(task.day).toBe(3);
       expect(task.taskType).toBe(DayTaskType.PATTERN_RECOGNITION);
@@ -230,40 +230,40 @@ describe('FirstWeekOrchestrator', () => {
   // ============================================================================
   describe('formatParentMessage', () => {
     it('should format Hindi message with student name', () => {
-      const message = PARENT_MESSAGES.find(m => m.day === 1)!;
+      const message = PARENT_MESSAGES.find((m) => m.day === 1)!;
       const formatted = formatParentMessage(message, { studentName: 'Rahul' }, 'hi');
-      
+
       expect(formatted).toContain('Rahul');
       expect(formatted).not.toContain('{studentName}');
     });
 
     it('should format English message with student name', () => {
-      const message = PARENT_MESSAGES.find(m => m.day === 1)!;
+      const message = PARENT_MESSAGES.find((m) => m.day === 1)!;
       const formatted = formatParentMessage(message, { studentName: 'Rahul' }, 'en');
-      
+
       expect(formatted).toContain('Rahul');
       expect(formatted).not.toContain('{studentName}');
     });
 
     it('should format day 4 message with completion rate', () => {
-      const message = PARENT_MESSAGES.find(m => m.day === 4)!;
+      const message = PARENT_MESSAGES.find((m) => m.day === 4)!;
       const formatted = formatParentMessage(
         message,
         { studentName: 'Rahul', completionRate: 85 },
         'en'
       );
-      
+
       expect(formatted).toContain('85');
     });
 
     it('should format day 7 message with streak and improvement', () => {
-      const message = PARENT_MESSAGES.find(m => m.day === 7)!;
+      const message = PARENT_MESSAGES.find((m) => m.day === 7)!;
       const formatted = formatParentMessage(
         message,
         { studentName: 'Rahul', streakDays: 7, improvementPercent: 25 },
         'en'
       );
-      
+
       expect(formatted).toContain('7');
       expect(formatted).toContain('25');
     });
@@ -445,24 +445,28 @@ describe('FirstWeekOrchestrator', () => {
     it('should return base rules for all days', () => {
       for (let i = 1; i <= 7; i++) {
         const rules = getAIRulesForDay(i as FirstWeekDay);
-        expect(rules.some(r => r.includes('syllabus'))).toBe(true);
-        expect(rules.some(r => r.includes('grades') || r.includes('ranks'))).toBe(true);
-        expect(rules.some(r => r.includes('pressure'))).toBe(true);
-        expect(rules.some(r => r.includes('success'))).toBe(true);
+        expect(rules.some((r) => r.includes('syllabus'))).toBe(true);
+        expect(rules.some((r) => r.includes('grades') || r.includes('ranks'))).toBe(true);
+        expect(rules.some((r) => r.includes('pressure'))).toBe(true);
+        expect(rules.some((r) => r.includes('success'))).toBe(true);
       }
     });
 
     it('should include max time rule', () => {
       const rules = getAIRulesForDay(1);
-      expect(rules.some(r => r.includes(String(MAX_DAILY_MINUTES)))).toBe(true);
+      expect(rules.some((r) => r.includes(String(MAX_DAILY_MINUTES)))).toBe(true);
     });
 
     it('should include day-specific rules', () => {
       const day1Rules = getAIRulesForDay(1);
-      expect(day1Rules.some(r => r.toLowerCase().includes('easy'))).toBe(true);
+      expect(day1Rules.some((r) => r.toLowerCase().includes('easy'))).toBe(true);
 
       const day7Rules = getAIRulesForDay(7);
-      expect(day7Rules.some(r => r.toLowerCase().includes('recap') || r.toLowerCase().includes('celebration'))).toBe(true);
+      expect(
+        day7Rules.some(
+          (r) => r.toLowerCase().includes('recap') || r.toLowerCase().includes('celebration')
+        )
+      ).toBe(true);
     });
   });
 

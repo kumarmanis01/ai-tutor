@@ -40,7 +40,7 @@ model User {
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                        Int?
   // Convenience boolean derived at registration time: true when age >= 18
-  isAdult                    Boolean                  @default(false)
+  isAdult                    Boolean       @default(false)
   // Date of birth for child profiles created by a parent (F-PAR-002 AC-01).
   dateOfBirth                DateTime?
   /// Parent account verified at (explicit parent user verification).
@@ -163,11 +163,11 @@ model PaymentOrder {
   currency               String    @default("INR")
   status                 String    @default("created")
   providerIdempotencyKey String?
-  planMonths      Int       @default(1)
+  planMonths             Int       @default(1)
   /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
-  planId          String?
-  createdAt       DateTime  @default(now())
-  paidAt          DateTime?
+  planId                 String?
+  createdAt              DateTime  @default(now())
+  paidAt                 DateTime?
 
   @@index([studentId])
   @@index([razorpayOrderId])
@@ -240,18 +240,22 @@ model DailyCostMetric {
 }
 
 model PhoneOtp {
-  id        String   @id @default(cuid())
-  phone     String
-  codeHash  String
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  attempts  Int      @default(0)
-  consumed  Boolean  @default(false)
-  ip        String?
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  id               String          @id @default(cuid())
+  phone            String
+  /// Optional: associate OTP with a specific ConsentRequest to prevent cross-request replay
+  consentRequestId String?
+  consentRequest   ConsentRequest? @relation(fields: [consentRequestId], references: [id])
+  codeHash         String
+  createdAt        DateTime        @default(now())
+  expiresAt        DateTime
+  attempts         Int             @default(0)
+  consumed         Boolean         @default(false)
+  ip               String?
+  userId           String?
+  user             User?           @relation(fields: [userId], references: [id])
 
   @@index([phone])
+  @@index([consentRequestId])
 }
 
 /// Trial records for short 14-day evaluation periods for prospective users.
@@ -264,19 +268,19 @@ enum TrialStatus {
 }
 
 model Trial {
-  id         String      @id @default(cuid())
-  userId     String?     
-  phone      String
-  parentName String?
-  childClass String?
-  schoolName String?
-  utmSource  String?     @map("utm_source")
-  utmMedium  String?     @map("utm_medium")
-  utmCampaign String?    @map("utm_campaign")
-  startAt    DateTime    @default(now())
-  expiresAt  DateTime
-  status     TrialStatus @default(ACTIVE)
-  createdAt  DateTime    @default(now())
+  id          String      @id @default(cuid())
+  userId      String?
+  phone       String
+  parentName  String?
+  childClass  String?
+  schoolName  String?
+  utmSource   String?     @map("utm_source")
+  utmMedium   String?     @map("utm_medium")
+  utmCampaign String?     @map("utm_campaign")
+  startAt     DateTime    @default(now())
+  expiresAt   DateTime
+  status      TrialStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 
@@ -471,13 +475,13 @@ model Subscription {
   dunningAttempts        Int       @default(0)
   lastDunningAt          DateTime?
   /// If set, subscription remains active until this timestamp while parent is in grace period
-  graceUntil       DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  paymentId    String?
+  graceUntil             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  paymentId              String?
   /// Razorpay subscription ID (e.g. sub_XXXX) for webhook reconciliation. Null for legacy one-time orders.
   razorpaySubscriptionId String?
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Installments linked to this subscription (one-to-many)
   installments      Installment[]
@@ -492,7 +496,7 @@ model TestPlanAccess {
   id        String   @id @default(cuid())
   email     String   @unique
   grantedAt DateTime @default(now())
-  grantedBy String   /// admin userId who granted access
+  grantedBy String /// admin userId who granted access
 
   @@index([email])
 }
@@ -3022,13 +3026,13 @@ enum FlagStatus {
 /// AI content generation queue job. Created when a student requests new content.
 /// Separate from RegenerationJob (which regenerates existing curated content).
 model GenerationJob {
-  id              String                    @id @default(cuid())
+  id              String                     @id @default(cuid())
   topic           String
   normalizedTopic String
   subject         String
   grade           Int
   board           String
-  language        LanguageCode              @default(en)
+  language        LanguageCode               @default(en)
   status          ContentGenerationJobStatus @default(PENDING)
   /// Array of studentIds subscribed to this job (dedup merging)
   subscriberIds   String[]
@@ -3036,11 +3040,11 @@ model GenerationJob {
   contentId       String?
   errorMessage    String?
   createdById     String
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
 
-  createdBy       User                      @relation(fields: [createdById], references: [id])
-  content         Content?                  @relation(fields: [contentId], references: [id])
+  createdBy User     @relation(fields: [createdById], references: [id])
+  content   Content? @relation(fields: [contentId], references: [id])
 
   @@index([normalizedTopic, status])
   @@index([createdById, createdAt])
@@ -3063,12 +3067,12 @@ model Content {
   createdById String
   jobId       String?       @unique
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdBy    User             @relation(fields: [createdById], references: [id])
-  versions     ContentVersion[]
-  flags        ContentFlag[]
+  createdBy      User             @relation(fields: [createdById], references: [id])
+  versions       ContentVersion[]
+  flags          ContentFlag[]
   generationJobs GenerationJob[]
 
   @@index([subject, grade, board, status])
@@ -3094,14 +3098,14 @@ model ContentVersion {
 // ── ContentFlag ───────────────────────────────────────────────────────────────
 /// Moderation flag raised by student, parent, or automated safety checks.
 model ContentFlag {
-  id         String     @id @default(cuid())
-  contentId  String
-  reason     FlagReason
-  status     FlagStatus @default(OPEN)
-  flaggedBy  String?
-  notes      String?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id        String     @id @default(cuid())
+  contentId String
+  reason    FlagReason
+  status    FlagStatus @default(OPEN)
+  flaggedBy String?
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
@@ -3124,8 +3128,9 @@ model ConsentRequest {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  student     User               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student     User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
   messageLogs ConsentMessageLog[]
+  phoneOtps   PhoneOtp[]
 
   @@index([studentId, status])
   @@index([token])
@@ -3135,16 +3140,16 @@ model ConsentRequest {
 // ── ConsentMessageLog ─────────────────────────────────────────────────────────
 /// Delivery receipt for each message sent as part of a ConsentRequest.
 model ConsentMessageLog {
-  id               String        @id @default(cuid())
+  id               String         @id @default(cuid())
   consentRequestId String
   channel          ConsentChannel
   messageId        String?
-  status           MessageStatus @default(SENT)
-  sentAt           DateTime      @default(now())
+  status           MessageStatus  @default(SENT)
+  sentAt           DateTime       @default(now())
   deliveredAt      DateTime?
   readAt           DateTime?
   failedAt         DateTime?
-  createdAt        DateTime      @default(now())
+  createdAt        DateTime       @default(now())
 
   consentRequest ConsentRequest @relation(fields: [consentRequestId], references: [id], onDelete: Cascade)
 
@@ -3160,14 +3165,14 @@ model AdminUser {
   role           AdminRole   @default(SUPPORT_ADMIN)
   status         AdminStatus @default(ACTIVE)
   mfaSecret      String?
-  mfaBackupCodes String?     /// JSON array of bcrypt-hashed backup codes
+  mfaBackupCodes String? /// JSON array of bcrypt-hashed backup codes
   lastLoginAt    DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   trustedDevices AdminTrustedDevice[]
-  auditLogs     AdminAuditLog[]
+  auditLogs      AdminAuditLog[]
 
   @@index([role, status])
 }
@@ -3175,12 +3180,12 @@ model AdminUser {
 // ── AdminTrustedDevice ────────────────────────────────────────────────────────
 /// TOTP-verified device for an admin. Valid for 30 days (remember-device flow).
 model AdminTrustedDevice {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   adminUserId String
-  deviceHash  String    /// SHA-256 of user-agent + IP
-  label       String?   /// optional human label
+  deviceHash  String /// SHA-256 of user-agent + IP
+  label       String? /// optional human label
   expiresAt   DateTime
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
   adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
 
@@ -3192,7 +3197,7 @@ model AdminTrustedDevice {
 // ── AdminAuditLog ─────────────────────────────────────────────────────────────
 /// Immutable audit trail for every admin action.
 model AdminAuditLog {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   adminUserId String
   action      String
   entityType  String?
@@ -3200,7 +3205,7 @@ model AdminAuditLog {
   payload     Json?
   ipAddress   String?
   userAgent   String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
   adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
 
@@ -3211,16 +3216,16 @@ model AdminAuditLog {
 // ── SchoolPartner ─────────────────────────────────────────────────────────────
 /// Registered school or institution that partners with Spinzy.
 model SchoolPartner {
-  id        String   @id @default(cuid())
-  name      String
-  city      String?
-  state     String?
-  board     String?
+  id           String   @id @default(cuid())
+  name         String
+  city         String?
+  state        String?
+  board        String?
   contactEmail String?
   contactPhone String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   leads SchoolLead[]
 
@@ -3230,16 +3235,16 @@ model SchoolPartner {
 // ── SchoolLead ────────────────────────────────────────────────────────────────
 /// Inbound lead from or for a school partner.
 model SchoolLead {
-  id          String     @id @default(cuid())
-  name        String
-  phone       String?
-  email       String?
-  schoolName  String
-  partnerId   String?
-  status      LeadStatus @default(NEW)
-  notes       String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id         String     @id @default(cuid())
+  name       String
+  phone      String?
+  email      String?
+  schoolName String
+  partnerId  String?
+  status     LeadStatus @default(NEW)
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   partner SchoolPartner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
 

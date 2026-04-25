@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * FILE OBJECTIVE:
@@ -61,7 +61,10 @@ export default function PricingPage() {
       const createData = await createRes.json();
 
       if (!createRes.ok || !createData.subscriptionId) {
-        logger.warn('pricing: create-subscription failed', { status: createRes.status, body: createData });
+        logger.warn('pricing: create-subscription failed', {
+          status: createRes.status,
+          body: createData,
+        });
         toast("Couldn't start checkout -- please try again.");
         return;
       }
@@ -104,12 +107,15 @@ export default function PricingPage() {
                 window.location.href = '/';
               } else {
                 const errData = await verifyRes.json().catch(() => ({}));
-                logger.warn('pricing: verify-subscription failed', { status: verifyRes.status, body: errData });
+                logger.warn('pricing: verify-subscription failed', {
+                  status: verifyRes.status,
+                  body: errData,
+                });
                 toast("Payment received but couldn't activate -- contact support.");
               }
             } catch (err) {
               logger.error('pricing: verify-subscription threw', { error: String(err) });
-              toast("Something went wrong -- please contact support.");
+              toast('Something went wrong -- please contact support.');
             } finally {
               resolve();
             }
@@ -130,7 +136,7 @@ export default function PricingPage() {
       });
     } catch (err) {
       logger.error('pricing: subscription flow threw', { error: String(err) });
-      toast("Subscription failed -- please try again.");
+      toast('Subscription failed -- please try again.');
     } finally {
       setLoadingPlan(null);
     }
@@ -172,7 +178,7 @@ export default function PricingPage() {
             type="checkbox"
             className="sr-only peer"
             checked={billingCycle === 'annual'}
-            onChange={() => setBillingCycle(c => c === 'monthly' ? 'annual' : 'monthly')}
+            onChange={() => setBillingCycle((c) => (c === 'monthly' ? 'annual' : 'monthly'))}
           />
           <div className="relative w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-[#534AB7] transition-colors">
             <div className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform peer-checked:translate-x-6" />
@@ -197,8 +203,9 @@ export default function PricingPage() {
       </div>
 
       {/* Plan Cards */}
-      <div className={`grid gap-6 ${ENABLE_LITE_PLAN ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto'}`}>
-
+      <div
+        className={`grid gap-6 ${ENABLE_LITE_PLAN ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto'}`}
+      >
         {/* Lite -- only when ENABLE_LITE_PLAN=true */}
         {ENABLE_LITE_PLAN && (
           <PricingCard
@@ -252,8 +259,8 @@ export default function PricingPage() {
               {loadingPlan === standardPlanId
                 ? 'Processing...'
                 : session
-                ? 'Subscribe Now'
-                : 'Start Now'}
+                  ? 'Subscribe Now'
+                  : 'Start Now'}
             </button>
           }
         />
@@ -283,8 +290,8 @@ export default function PricingPage() {
               {loadingPlan === familyPlanId
                 ? 'Processing...'
                 : session
-                ? 'Subscribe Now'
-                : 'Start Now'}
+                  ? 'Subscribe Now'
+                  : 'Start Now'}
             </button>
           }
         />

@@ -30,7 +30,7 @@ function getClient(): Resend {
     const key = process.env.RESEND_API_KEY;
     if (!key) {
       throw new Error(
-        '[mailer] RESEND_API_KEY not set. Add to .env.production and ecosystem.config.cjs',
+        '[mailer] RESEND_API_KEY not set. Add to .env.production and ecosystem.config.cjs'
       );
     }
     _client = new Resend(key);
@@ -59,8 +59,7 @@ export interface MailOptions {
  * to crash the job.
  */
 export async function sendMail(opts: MailOptions): Promise<string> {
-  const from =
-    process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@send.spinzyacademy.com>';
+  const from = process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@send.spinzyacademy.com>';
   const { data, error } = await getClient().emails.send({
     from,
     to: Array.isArray(opts.to) ? opts.to : [opts.to],
@@ -79,7 +78,11 @@ export async function sendMail(opts: MailOptions): Promise<string> {
     }),
   });
   if (error) {
-    logger.error('[mailer] Send failed', { error: error.message, to: opts.to, subject: opts.subject });
+    logger.error('[mailer] Send failed', {
+      error: error.message,
+      to: opts.to,
+      subject: opts.subject,
+    });
     throw new Error(`[mailer] ${error.message}`);
   }
   const id = data?.id ?? '';
@@ -109,11 +112,7 @@ export const sendEmail = sendMailSafe;
 /**
  * Send a one-time password email.
  */
-export async function sendOTP(
-  to: string,
-  otp: string,
-  expiryMinutes = 10,
-): Promise<void> {
+export async function sendOTP(to: string, otp: string, expiryMinutes = 10): Promise<void> {
   await sendMailSafe({
     to,
     subject: `${otp} is your Spinzy verification code`,
@@ -123,6 +122,7 @@ export async function sendOTP(
 
 /**
  * Send a parent consent request email with a link to approve/deny.
+ * P1.2-R: updated subject and opts for board + deny link.
  */
 export async function sendConsentRequest(
   to: string,
@@ -130,11 +130,12 @@ export async function sendConsentRequest(
   childName: string,
   grade: string,
   consentLink: string,
+  opts?: { board?: string; denyLink?: string }
 ): Promise<void> {
   await sendMailSafe({
     to,
-    subject: `Action needed: Approve ${childName}'s Spinzy Academy account`,
-    html: consentRequestEmailHtml(parentName, childName, grade, consentLink),
+    subject: `${childName} wants to learn with Spinzy Academy -- Your Approval Needed`,
+    html: consentRequestEmailHtml(parentName, childName, grade, consentLink, opts),
   });
 }
 
@@ -144,14 +145,14 @@ export async function sendConsentRequest(
 export async function sendWeeklyReport(
   to: string,
   data: {
-    parentName: string
-    studentName: string
-    sessionsThisWeek: number
-    weeklyGoal: number
-    streakDays: number
-    topSubject: string
-    dashboardUrl?: string
-  },
+    parentName: string;
+    studentName: string;
+    sessionsThisWeek: number;
+    weeklyGoal: number;
+    streakDays: number;
+    topSubject: string;
+    dashboardUrl?: string;
+  }
 ): Promise<void> {
   await sendMailSafe({
     to,
@@ -163,11 +164,7 @@ export async function sendWeeklyReport(
 /**
  * Send an admin invitation email with an account setup link.
  */
-export async function sendAdminInvite(
-  to: string,
-  setupLink: string,
-  role: string,
-): Promise<void> {
+export async function sendAdminInvite(to: string, setupLink: string, role: string): Promise<void> {
   await sendMailSafe({
     to,
     subject: 'You have been invited to Spinzy Admin',
@@ -181,13 +178,13 @@ export async function sendAdminInvite(
 export async function sendPaymentInvoice(
   to: string,
   data: {
-    studentName: string
-    invoiceNumber: string
-    plan: string
-    amountRupees: number
-    billingCycle: string
-    invoiceUrl: string
-  },
+    studentName: string;
+    invoiceNumber: string;
+    plan: string;
+    amountRupees: number;
+    billingCycle: string;
+    invoiceUrl: string;
+  }
 ): Promise<void> {
   await sendMailSafe({
     to,

@@ -70,7 +70,7 @@ const { prisma } = require('@/lib/prisma');
 // so the returned rows MUST include a nested `question` object with a `prompt` field.
 function mockRecentIds(ids: string[]) {
   prisma.attemptQuestion.findMany.mockResolvedValue(
-    ids.map((id) => ({ questionId: id, question: { prompt: `mock prompt for ${id}` } })),
+    ids.map((id) => ({ questionId: id, question: { prompt: `mock prompt for ${id}` } }))
   );
 }
 
@@ -78,9 +78,12 @@ function mockRecentIds(ids: string[]) {
 function mockBuckets(mcqCount: number, shortCount: number, longCount: number) {
   prisma.question.findMany.mockImplementation((args: any) => {
     const type = args?.where?.type;
-    if (type === 'mcq') return Promise.resolve(Array.from({ length: mcqCount }, () => makeQ('mcq')));
-    if (type === 'short') return Promise.resolve(Array.from({ length: shortCount }, () => makeQ('short')));
-    if (type === 'long_answer') return Promise.resolve(Array.from({ length: longCount }, () => makeQ('long_answer')));
+    if (type === 'mcq')
+      return Promise.resolve(Array.from({ length: mcqCount }, () => makeQ('mcq')));
+    if (type === 'short')
+      return Promise.resolve(Array.from({ length: shortCount }, () => makeQ('short')));
+    if (type === 'long_answer')
+      return Promise.resolve(Array.from({ length: longCount }, () => makeQ('long_answer')));
     return Promise.resolve([]);
   });
   prisma.generatedQuestion.findMany.mockResolvedValue([]);
@@ -137,7 +140,7 @@ describe('selectQuestionsWithMix', () => {
     mockBuckets(10, 10, 10);
     await selectQuestionsWithMix(
       { subject: 'Math', grade: '10', board: 'CBSE', chapter: 'Quadratics' },
-      6,
+      6
     );
     // Each call to question.findMany should carry the filter fields
     const calls = prisma.question.findMany.mock.calls;
@@ -172,7 +175,7 @@ describe('selectQuestionsWithMix', () => {
     const { questions } = await selectQuestionsWithMix(
       { chapter: 'Algebra', subject: 'Math' },
       10,
-      'student-123',
+      'student-123'
     );
     // The excluded ID should not appear in selected questions
     const ids = questions.map((q) => q.id);

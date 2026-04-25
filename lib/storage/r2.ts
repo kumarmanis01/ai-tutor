@@ -8,7 +8,9 @@ function getS3Client() {
   const endpoint = process.env.R2_ENDPOINT; // e.g. https://<account>.r2.cloudflarestorage.com
   const region = process.env.R2_REGION ?? 'auto';
   if (!accessKeyId || !secretAccessKey || !endpoint) {
-    throw new Error('[r2] R2 configuration missing (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ENDPOINT)');
+    throw new Error(
+      '[r2] R2 configuration missing (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ENDPOINT)'
+    );
   }
   _s3 = new S3Client({
     region,
@@ -19,7 +21,11 @@ function getS3Client() {
   return _s3;
 }
 
-export async function uploadBufferToR2(buffer: Buffer, key: string, contentType = 'application/pdf') {
+export async function uploadBufferToR2(
+  buffer: Buffer,
+  key: string,
+  contentType = 'application/pdf'
+) {
   const bucket = process.env.R2_BUCKET;
   if (!bucket) throw new Error('[r2] R2_BUCKET not configured');
   const client = getS3Client();

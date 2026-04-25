@@ -17,70 +17,70 @@
 // ── Event payload types ───────────────────────────────────────────────────────
 
 export interface ConsentApprovedPayload {
-  consentToken: string
-  studentId: string
-  parentName?: string
+  consentToken: string;
+  studentId: string;
+  parentName?: string;
 }
 
 export interface ConsentDeniedPayload {
-  consentToken: string
-  studentId: string
+  consentToken: string;
+  studentId: string;
 }
 
 export interface ConsentExpiredPayload {
-  consentToken: string
-  studentId: string
+  consentToken: string;
+  studentId: string;
 }
 
 export interface PremiumActivatedPayload {
-  plan: string
-  expiresAt: string
+  plan: string;
+  expiresAt: string;
 }
 
 export interface ContentGeneratedPayload {
-  contentId: string
-  topic: string
+  contentId: string;
+  topic: string;
 }
 
 export interface NewBadgePayload {
-  badgeId: string
-  badgeName: string
-  badgeIcon: string
+  badgeId: string;
+  badgeName: string;
+  badgeIcon: string;
 }
 
 export interface AssignmentReceivedPayload {
-  assignmentId: string
-  title: string
-  dueDate?: string
-  subject?: string
+  assignmentId: string;
+  title: string;
+  dueDate?: string;
+  subject?: string;
 }
 
 export interface AssignmentCompletedPayload {
-  assignmentId: string
-  childName: string
-  score?: number
+  assignmentId: string;
+  childName: string;
+  score?: number;
 }
 
 // ── Server → Client events (typed) ───────────────────────────────────────────
 
 export interface ServerToClientEvents {
-  consent_approved: (payload: ConsentApprovedPayload) => void
-  consent_denied: (payload: ConsentDeniedPayload) => void
-  consent_expired: (payload: ConsentExpiredPayload) => void
-  premium_activated: (payload: PremiumActivatedPayload) => void
-  content_generated: (payload: ContentGeneratedPayload) => void
-  new_badge: (payload: NewBadgePayload) => void
-  assignment_received: (payload: AssignmentReceivedPayload) => void
-  assignment_completed: (payload: AssignmentCompletedPayload) => void
+  consent_approved: (payload: ConsentApprovedPayload) => void;
+  consent_denied: (payload: ConsentDeniedPayload) => void;
+  consent_expired: (payload: ConsentExpiredPayload) => void;
+  premium_activated: (payload: PremiumActivatedPayload) => void;
+  content_generated: (payload: ContentGeneratedPayload) => void;
+  new_badge: (payload: NewBadgePayload) => void;
+  assignment_received: (payload: AssignmentReceivedPayload) => void;
+  assignment_completed: (payload: AssignmentCompletedPayload) => void;
 }
 
 // ── Client → Server events ────────────────────────────────────────────────────
 
 export interface ClientToServerEvents {
   /** Client requests to join a consent-specific room */
-  join_consent_room: (consentToken: string) => void
+  join_consent_room: (consentToken: string) => void;
   /** Client leaves a consent room after resolution */
-  leave_consent_room: (consentToken: string) => void
+  leave_consent_room: (consentToken: string) => void;
 }
 
 // ── Inter-server events (for Socket.IO adapter scaling) ──────────────────────
@@ -91,9 +91,9 @@ export interface InterServerEvents {}
 // ── Socket data ───────────────────────────────────────────────────────────────
 
 export interface SocketData {
-  userId: string
-  role: string
-  scope: 'user' | 'admin'
+  userId: string;
+  role: string;
+  scope: 'user' | 'admin';
 }
 
 // ── Room naming helpers ───────────────────────────────────────────────────────
@@ -102,4 +102,4 @@ export const rooms = {
   user: (userId: string) => `user:${userId}`,
   student: (profileId: string) => `student:${profileId}`,
   consent: (consentToken: string) => `consent:${consentToken}`,
-} as const
+} as const;

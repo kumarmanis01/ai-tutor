@@ -4,24 +4,24 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> },
-) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'admin') return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
+  if (!session?.user)
+    return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'admin')
+    return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
 
   const { jobId } = await params;
 
   try {
     const job = await prisma.hydrationJob.findUnique({ where: { id: jobId } });
-    if (!job) return NextResponse.json({ code: 'NOT_FOUND', message: 'Job not found' }, { status: 404 });
+    if (!job)
+      return NextResponse.json({ code: 'NOT_FOUND', message: 'Job not found' }, { status: 404 });
 
     if (job.status !== 'running' && job.status !== 'pending') {
       return NextResponse.json(
         { code: 'INVALID_STATE', message: `Cannot pause job in state: ${job.status}` },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -56,6 +56,9 @@ export async function POST(
       event: 'job_pause_error',
       context: { jobId, error: String(err) },
     });
-    return NextResponse.json({ code: 'INTERNAL_ERROR', message: 'Failed to pause job' }, { status: 500 });
+    return NextResponse.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to pause job' },
+      { status: 500 }
+    );
   }
 }

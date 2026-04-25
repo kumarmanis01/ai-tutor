@@ -14,26 +14,26 @@
  * - 2025-01-15T00:00:00Z | copilot | created -- B2.2 Google OAuth API route
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyGoogleToken, findOrCreateUser } from '@/lib/auth/google.service'
-import { generateTokenPair } from '@/lib/auth/token.service'
-import { getRedis } from '@/lib/redis'
-import { logger } from '@/lib/logger'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyGoogleToken, findOrCreateUser } from '@/lib/auth/google.service';
+import { generateTokenPair } from '@/lib/auth/token.service';
+import { getRedis } from '@/lib/redis';
+import { logger } from '@/lib/logger';
 
 // ── Rate limit helpers ────────────────────────────────────────────────────────
 
-const RATE_LIMIT_MAX = 10
-const RATE_LIMIT_WINDOW_SECONDS = 60
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 async function checkRateLimit(ip: string): Promise<boolean> {
-  const redis = getRedis()
-  const key = `ratelimit:google:auth:${ip}`
-  const count = await redis.incr(key)
+  const redis = getRedis();
+  const key = `ratelimit:google:auth:${ip}`;
+  const count = await redis.incr(key);
   if (count === 1) {
     // First request in window -- set expiry
-    await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS)
+    await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS);
   }
-  return count <= RATE_LIMIT_MAX
+  return count <= RATE_LIMIT_MAX;
 }
 
 function getClientIp(req: NextRequest): string {
@@ -41,88 +41,88 @@ function getClientIp(req: NextRequest): string {
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     req.headers.get('x-real-ip') ??
     'unknown'
-  )
+  );
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const ip = getClientIp(req)
+  const ip = getClientIp(req);
 
   // Rate limit check
   try {
-    const allowed = await checkRateLimit(ip)
+    const allowed = await checkRateLimit(ip);
     if (!allowed) {
       return NextResponse.json(
         { code: 'RATE_LIMITED', message: 'Too many requests. Try again in a minute.' },
-        { status: 429 },
-      )
+        { status: 429 }
+      );
     }
   } catch (err: unknown) {
     // Redis failure: allow the request through -- do not block auth on infra error
-    logger.error('Rate limit check failed', { ip, error: err })
+    logger.error('Rate limit check failed', { ip, error: err });
   }
 
   // Parse body
-  let idToken: string
+  let idToken: string;
   try {
-    const body = (await req.json()) as { idToken?: unknown }
+    const body = (await req.json()) as { idToken?: unknown };
     if (typeof body.idToken !== 'string' || !body.idToken) {
       return NextResponse.json(
         { code: 'INVALID_REQUEST', message: 'idToken is required' },
-        { status: 400 },
-      )
+        { status: 400 }
+      );
     }
-    idToken = body.idToken
+    idToken = body.idToken;
   } catch {
     return NextResponse.json(
       { code: 'INVALID_REQUEST', message: 'Invalid JSON body' },
-      { status: 400 },
-    )
+      { status: 400 }
+    );
   }
 
   // Verify Google token
-  let googlePayload
+  let googlePayload;
   try {
-    googlePayload = await verifyGoogleToken(idToken)
+    googlePayload = await verifyGoogleToken(idToken);
   } catch {
     return NextResponse.json(
       { code: 'INVALID_TOKEN', message: 'Invalid or expired Google ID token' },
-      { status: 401 },
-    )
+      { status: 401 }
+    );
   }
 
   // Find or create user
-  let result
+  let result;
   try {
-    result = await findOrCreateUser(googlePayload)
+    result = await findOrCreateUser(googlePayload);
   } catch (err: unknown) {
-    logger.error('findOrCreateUser failed', { error: err })
+    logger.error('findOrCreateUser failed', { error: err });
     return NextResponse.json(
       { code: 'SERVER_ERROR', message: 'Authentication failed. Please try again.' },
-      { status: 500 },
-    )
+      { status: 500 }
+    );
   }
 
   // Generate token pair
-  let tokens
+  let tokens;
   try {
     tokens = await generateTokenPair({
       sub: result.userId,
       role: 'user',
       scope: 'user',
-    })
+    });
   } catch (err: unknown) {
-    logger.error('Token generation failed', { error: err })
+    logger.error('Token generation failed', { error: err });
     return NextResponse.json(
       { code: 'SERVER_ERROR', message: 'Authentication failed. Please try again.' },
-      { status: 500 },
-    )
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     isNewUser: result.isNewUser,
-  })
+  });
 }

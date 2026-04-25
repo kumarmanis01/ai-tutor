@@ -19,12 +19,15 @@ const tmpDir = path.join(__dirname, 'tmp');
 if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 
 const configPath = path.join(tmpDir, 'tmp_eslintrc.cjs');
-fs.writeFileSync(configPath, `module.exports = {
+fs.writeFileSync(
+  configPath,
+  `module.exports = {
   plugins: { 'ai-guards': require('../../index.cjs') },
   rules: {
     'ai-guards/no-import-time-redis': 'error'
   }
-}`);
+}`
+);
 
 const fixturesDir = path.join(__dirname, 'fixtures');
 const tests = [
@@ -32,7 +35,12 @@ const tests = [
   { file: path.join(fixturesDir, 'invalid.js'), shouldPass: false },
 ];
 
-const eslintBin = path.join(process.cwd(), 'node_modules', '.bin', process.platform === 'win32' ? 'eslint.cmd' : 'eslint');
+const eslintBin = path.join(
+  process.cwd(),
+  'node_modules',
+  '.bin',
+  process.platform === 'win32' ? 'eslint.cmd' : 'eslint'
+);
 if (!fs.existsSync(eslintBin)) {
   logger.error('Local eslint binary not found at ' + eslintBin);
   process.exit(1);
@@ -68,4 +76,3 @@ if (failed > 0) {
   logger.info('All ESLint rule CLI tests passed.');
   process.exit(0);
 }
-

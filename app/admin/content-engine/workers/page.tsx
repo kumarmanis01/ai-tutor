@@ -4,7 +4,10 @@ import WorkersTable from '../../../../components/admin/WorkersTable';
 export const dynamic = 'force-dynamic';
 
 export default async function WorkersPage() {
-  const workers = await prisma.workerLifecycle.findMany({ orderBy: { lastHeartbeatAt: 'desc' }, take: 100 });
+  const workers = await prisma.workerLifecycle.findMany({
+    orderBy: { lastHeartbeatAt: 'desc' },
+    take: 100,
+  });
 
   // Serialize rows for client component
   const rows = workers.map((w) => ({

@@ -109,23 +109,33 @@ describe('Phase 4: Hydrator Compliance', () => {
     });
 
     test('imports handleNotesJob from worker services', () => {
-      expect(bootstrapContent).toMatch(/import.*handleNotesJob.*from.*["']\.\/services\/notesWorker/);
+      expect(bootstrapContent).toMatch(
+        /import.*handleNotesJob.*from.*["']\.\/services\/notesWorker/
+      );
     });
 
     test('imports handleQuestionsJob from worker services', () => {
-      expect(bootstrapContent).toMatch(/import.*handleQuestionsJob.*from.*["']\.\/services\/questionsWorker/);
+      expect(bootstrapContent).toMatch(
+        /import.*handleQuestionsJob.*from.*["']\.\/services\/questionsWorker/
+      );
     });
 
     test('imports handleAssembleJob from worker services', () => {
-      expect(bootstrapContent).toMatch(/import.*handleAssembleJob.*from.*["']\.\/services\/assembleWorker/);
+      expect(bootstrapContent).toMatch(
+        /import.*handleAssembleJob.*from.*["']\.\/services\/assembleWorker/
+      );
     });
 
     test('does NOT import hydrateNotes from hydrators (deprecated)', () => {
-      expect(bootstrapContent).not.toMatch(/import.*hydrateNotes.*from.*["']\.\.\/hydrators\/hydrateNotes/);
+      expect(bootstrapContent).not.toMatch(
+        /import.*hydrateNotes.*from.*["']\.\.\/hydrators\/hydrateNotes/
+      );
     });
 
     test('does NOT import hydrateQuestions from hydrators (deprecated)', () => {
-      expect(bootstrapContent).not.toMatch(/import.*hydrateQuestions.*from.*["']\.\.\/hydrators\/hydrateQuestions/);
+      expect(bootstrapContent).not.toMatch(
+        /import.*hydrateQuestions.*from.*["']\.\.\/hydrators\/hydrateQuestions/
+      );
     });
 
     test('NOTES case calls handleNotesJob with jobId', () => {

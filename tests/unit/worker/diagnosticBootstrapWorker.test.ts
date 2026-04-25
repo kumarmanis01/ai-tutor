@@ -18,36 +18,39 @@ function makeJob(overrides: Record<string, unknown> = {}): any {
       gradeId: 'g1',
       ...overrides,
     },
-  }
+  };
 }
 
 describe('processDiagnosticBootstrap', () => {
   beforeEach(() => {
-    jest.resetModules()
-    jest.clearAllMocks()
-  })
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
 
   it('should return early without seeding when job data is invalid (missing studentId)', async () => {
-    const warnMock = jest.fn()
+    const warnMock = jest.fn();
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: {} }))
-    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: warnMock, error: jest.fn() } }))
-    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }))
-    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn() }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: {} }));
+    jest.doMock('@/lib/logger', () => ({
+      logger: { info: jest.fn(), warn: warnMock, error: jest.fn() },
+    }));
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }));
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn() }));
 
-    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+    const { processDiagnosticBootstrap } =
+      await import('@/worker/services/diagnosticBootstrapWorker');
 
-    await processDiagnosticBootstrap(makeJob({ studentId: '' }))
+    await processDiagnosticBootstrap(makeJob({ studentId: '' }));
 
     expect(warnMock).toHaveBeenCalledWith(
       '[diagnostic-bootstrap] invalid job data',
-      expect.objectContaining({ jobId: 'job-1' }),
-    )
-  })
+      expect.objectContaining({ jobId: 'job-1' })
+    );
+  });
 
   it('should seed concept states with correct initial mastery when all answers provided', async () => {
-    const createMock = jest.fn(async () => ({}))
-    const updateMock = jest.fn(async () => ({}))
+    const createMock = jest.fn(async () => ({}));
+    const updateMock = jest.fn(async () => ({}));
 
     const prismaMock: any = {
       concept: {
@@ -59,8 +62,8 @@ describe('processDiagnosticBootstrap', () => {
       },
       answerEvent: {
         findMany: jest.fn(async () => [
-          { conceptId: 'c1', isCorrect: true },   // correct -> 0.6
-          { conceptId: 'c2', isCorrect: false },   // wrong   -> 0.15
+          { conceptId: 'c1', isCorrect: true }, // correct -> 0.6
+          { conceptId: 'c2', isCorrect: false }, // wrong   -> 0.15
           // c3 unanswered -> 0.3
         ]),
       },
@@ -71,36 +74,47 @@ describe('processDiagnosticBootstrap', () => {
       },
       chapterDef: { findUnique: jest.fn(async () => null) },
       learningPlanItem: { count: jest.fn(async () => 0) },
-    }
+    };
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
-    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
+    jest.doMock('@/lib/logger', () => ({
+      logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+    }));
     // Supply more answers than minValid so we are NOT in partial-abandon mode
-    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }))
-    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }));
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({
+      generateLearningPlan: jest.fn().mockResolvedValue(null),
+    }));
 
-    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+    const { processDiagnosticBootstrap } =
+      await import('@/worker/services/diagnosticBootstrapWorker');
 
-    await processDiagnosticBootstrap(makeJob())
+    await processDiagnosticBootstrap(makeJob());
 
     // Correct answer -> masteryScore 0.6
     expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c1', masteryScore: 0.6 }) }),
-    )
+      expect.objectContaining({
+        data: expect.objectContaining({ conceptId: 'c1', masteryScore: 0.6 }),
+      })
+    );
     // Wrong answer -> masteryScore 0.15
     expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c2', masteryScore: 0.15 }) }),
-    )
+      expect.objectContaining({
+        data: expect.objectContaining({ conceptId: 'c2', masteryScore: 0.15 }),
+      })
+    );
     // Unanswered (not partial abandon) -> masteryScore 0.3
     expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c3', masteryScore: 0.3 }) }),
-    )
+      expect.objectContaining({
+        data: expect.objectContaining({ conceptId: 'c3', masteryScore: 0.3 }),
+      })
+    );
     // No updates when no prior state exists
-    expect(updateMock).not.toHaveBeenCalled()
-  })
+    expect(updateMock).not.toHaveBeenCalled();
+  });
 
   it('should use masteryScore 0.5 for unanswered concepts when partial abandon detected', async () => {
-    const createMock = jest.fn(async () => ({}))
+    const createMock = jest.fn(async () => ({}));
 
     const prismaMock: any = {
       concept: {
@@ -120,30 +134,39 @@ describe('processDiagnosticBootstrap', () => {
       },
       chapterDef: { findUnique: jest.fn(async () => null) },
       learningPlanItem: { count: jest.fn(async () => 0) },
-    }
+    };
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
-    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
-    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }))
-    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
+    jest.doMock('@/lib/logger', () => ({
+      logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+    }));
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }));
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({
+      generateLearningPlan: jest.fn().mockResolvedValue(null),
+    }));
 
-    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+    const { processDiagnosticBootstrap } =
+      await import('@/worker/services/diagnosticBootstrapWorker');
 
-    await processDiagnosticBootstrap(makeJob())
+    await processDiagnosticBootstrap(makeJob());
 
     // cA was answered correctly -> 0.6 regardless of partial abandon
     expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'cA', masteryScore: 0.6 }) }),
-    )
+      expect.objectContaining({
+        data: expect.objectContaining({ conceptId: 'cA', masteryScore: 0.6 }),
+      })
+    );
     // cB was unanswered under partial abandon -> 0.5
     expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'cB', masteryScore: 0.5 }) }),
-    )
-  })
+      expect.objectContaining({
+        data: expect.objectContaining({ conceptId: 'cB', masteryScore: 0.5 }),
+      })
+    );
+  });
 
   it('should skip update when existing mastery is already higher (idempotency)', async () => {
-    const updateMock = jest.fn(async () => ({}))
-    const createMock = jest.fn(async () => ({}))
+    const updateMock = jest.fn(async () => ({}));
+    const createMock = jest.fn(async () => ({}));
 
     const prismaMock: any = {
       concept: {
@@ -160,18 +183,23 @@ describe('processDiagnosticBootstrap', () => {
       },
       chapterDef: { findUnique: jest.fn(async () => null) },
       learningPlanItem: { count: jest.fn(async () => 0) },
-    }
+    };
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
-    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
-    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }))
-    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
+    jest.doMock('@/lib/logger', () => ({
+      logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+    }));
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }));
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({
+      generateLearningPlan: jest.fn().mockResolvedValue(null),
+    }));
 
-    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+    const { processDiagnosticBootstrap } =
+      await import('@/worker/services/diagnosticBootstrapWorker');
 
-    await processDiagnosticBootstrap(makeJob())
+    await processDiagnosticBootstrap(makeJob());
 
-    expect(createMock).not.toHaveBeenCalled()
-    expect(updateMock).not.toHaveBeenCalled()
-  })
-})
+    expect(createMock).not.toHaveBeenCalled();
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+});

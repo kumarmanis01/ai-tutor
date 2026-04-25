@@ -64,21 +64,22 @@ export async function GET(req: Request) {
 
     // Resolve names for weak topics
     const weakTopicIds = weakTopicRows.map((w) => w.topicId);
-    const weakTopicDefs = weakTopicIds.length > 0
-      ? await prisma.topicDef.findMany({
-          where: { id: { in: weakTopicIds } },
-          select: {
-            id: true,
-            name: true,
-            chapter: {
-              select: {
-                name: true,
-                subject: { select: { name: true } },
+    const weakTopicDefs =
+      weakTopicIds.length > 0
+        ? await prisma.topicDef.findMany({
+            where: { id: { in: weakTopicIds } },
+            select: {
+              id: true,
+              name: true,
+              chapter: {
+                select: {
+                  name: true,
+                  subject: { select: { name: true } },
+                },
               },
             },
-          },
-        })
-      : [];
+          })
+        : [];
 
     const topicDefMap = new Map(weakTopicDefs.map((t) => [t.id, t]));
 

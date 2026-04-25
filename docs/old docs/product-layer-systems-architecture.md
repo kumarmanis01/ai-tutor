@@ -13,13 +13,13 @@
 
 Spinzy is an AI-powered digital home tutor. The **core tutoring engine** (sessions, phases, recommendations) is already implemented. The following **product-layer systems** close gaps between engine output and user-facing value:
 
-| System | Business need | User need |
-|--------|----------------|-----------|
-| **Recommendation Reason UI** | Transparency builds trust; reduces “why this topic?” support. | Student and parent see why the tutor suggested this topic. |
-| **Weak Topic Recovery** | Reduces drop-off on struggling topics; aligns with “fix gaps” positioning. | Clear “strengthen this topic” path without a separate “recovery” product. |
-| **Curriculum Progress Map** | Demonstrates progress; supports parent and school conversations. | Student sees subject/chapter completion at a glance. |
-| **Parent Report Automation** | Differentiator; supports subscription and retention. | Parent gets a weekly, AI-summarized view without logging in daily. |
-| **Learning Outcome Analytics** | Evidence of improvement; supports sales and retention. | Student/parent see “improved” / “stable” / “needs practice” at a glance. |
+| System                         | Business need                                                              | User need                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Recommendation Reason UI**   | Transparency builds trust; reduces “why this topic?” support.              | Student and parent see why the tutor suggested this topic.                |
+| **Weak Topic Recovery**        | Reduces drop-off on struggling topics; aligns with “fix gaps” positioning. | Clear “strengthen this topic” path without a separate “recovery” product. |
+| **Curriculum Progress Map**    | Demonstrates progress; supports parent and school conversations.           | Student sees subject/chapter completion at a glance.                      |
+| **Parent Report Automation**   | Differentiator; supports subscription and retention.                       | Parent gets a weekly, AI-summarized view without logging in daily.        |
+| **Learning Outcome Analytics** | Evidence of improvement; supports sales and retention.                     | Student/parent see “improved” / “stable” / “needs practice” at a glance.  |
 
 ### 1.2 Design Principles
 
@@ -213,60 +213,60 @@ Each step creates or modifies **exactly one file**. Session engine files are nev
 
 ### Recommendation Reason UI (Steps 1–4)
 
-| Step | File | Purpose |
-|------|------|---------|
-| 1 | `components/home/PrimaryActionCard.tsx` | Add optional `reasonLabel` (and `ruleId`) to recommendation props; render one line in Start state. |
-| 2 | `app/(student)/dashboard/page.tsx` | Pass `reasonLabel` and optional `ruleId` from `rawAction` into PrimaryActionCard. |
-| 3 | `components/session/SessionHeader.tsx` | Add optional `reasonLabel` prop; render one line under breadcrumb when present. |
-| 4 | `components/session/SessionContainer.tsx` | Pass `reasonLabel` to SessionHeader. |
+| Step | File                                      | Purpose                                                                                            |
+| ---- | ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1    | `components/home/PrimaryActionCard.tsx`   | Add optional `reasonLabel` (and `ruleId`) to recommendation props; render one line in Start state. |
+| 2    | `app/(student)/dashboard/page.tsx`        | Pass `reasonLabel` and optional `ruleId` from `rawAction` into PrimaryActionCard.                  |
+| 3    | `components/session/SessionHeader.tsx`    | Add optional `reasonLabel` prop; render one line under breadcrumb when present.                    |
+| 4    | `components/session/SessionContainer.tsx` | Pass `reasonLabel` to SessionHeader.                                                               |
 
 ### Weak Topic Recovery (Steps 5–7)
 
-| Step | File | Purpose |
-|------|------|---------|
-| 5 | `lib/weakTopic/WeakTopicService.ts` (new) | Read-only: getWeakTopicsForStudent, isRecoveryRecommendation. |
-| 6 | `components/home/PrimaryActionCard.tsx` | Add `isWeakTopicRecovery` prop; conditional copy and optional badge in Start state. |
-| 7 | `app/(student)/dashboard/page.tsx` | Set `isWeakTopicRecovery` from `rawAction?.ruleId`; pass to PrimaryActionCard and optionally to WeakTopicsSection. |
+| Step | File                                      | Purpose                                                                                                            |
+| ---- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 5    | `lib/weakTopic/WeakTopicService.ts` (new) | Read-only: getWeakTopicsForStudent, isRecoveryRecommendation.                                                      |
+| 6    | `components/home/PrimaryActionCard.tsx`   | Add `isWeakTopicRecovery` prop; conditional copy and optional badge in Start state.                                |
+| 7    | `app/(student)/dashboard/page.tsx`        | Set `isWeakTopicRecovery` from `rawAction?.ruleId`; pass to PrimaryActionCard and optionally to WeakTopicsSection. |
 
 ### Curriculum Progress Map (Step 8)
 
-| Step | File | Purpose |
-|------|------|---------|
-| 8 | `app/(student)/dashboard/page.tsx` | Add “Curriculum progress” section; render SubjectMasteryBars. |
+| Step | File                               | Purpose                                                       |
+| ---- | ---------------------------------- | ------------------------------------------------------------- |
+| 8    | `app/(student)/dashboard/page.tsx` | Add “Curriculum progress” section; render SubjectMasteryBars. |
 
 ### Parent Report Automation (Steps 9–14)
 
-| Step | File | Purpose |
-|------|------|---------|
-| 9 | `prisma/schema.prisma` | Add optional `reportText` (or `aiSummary`) to WeeklyStudentSummary. |
-| 10 | New migration file | Add column to WeeklyStudentSummary. |
-| 11 | `lib/parentReport/ParentReportService.ts` (new) | buildWeekSummaryInput, generateAndStoreReport, getReportForWeek. |
-| 12 | `worker/jobs/weeklyParentSummary.ts` | After aggregateForStudent, call ParentReportService.generateAndStoreReport for students with linked parents. |
-| 13 | `app/api/parent/dashboard/route.ts` | Include report text for each student’s current week in response. |
-| 14 | `app/(student)/parent/ParentDashboardClient.tsx` | Add “Weekly summary” card; display report text or placeholder. |
+| Step | File                                             | Purpose                                                                                                      |
+| ---- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| 9    | `prisma/schema.prisma`                           | Add optional `reportText` (or `aiSummary`) to WeeklyStudentSummary.                                          |
+| 10   | New migration file                               | Add column to WeeklyStudentSummary.                                                                          |
+| 11   | `lib/parentReport/ParentReportService.ts` (new)  | buildWeekSummaryInput, generateAndStoreReport, getReportForWeek.                                             |
+| 12   | `worker/jobs/weeklyParentSummary.ts`             | After aggregateForStudent, call ParentReportService.generateAndStoreReport for students with linked parents. |
+| 13   | `app/api/parent/dashboard/route.ts`              | Include report text for each student’s current week in response.                                             |
+| 14   | `app/(student)/parent/ParentDashboardClient.tsx` | Add “Weekly summary” card; display report text or placeholder.                                               |
 
 ### Learning Outcome Analytics (Steps 15–20)
 
-| Step | File | Purpose |
-|------|------|---------|
-| 15 | `lib/learningOutcome/LearningOutcomeService.ts` (new) | getOutcomesForStudent, optional getTrend; read-only from existing tables. |
-| 16 | `app/api/student/learning-outcomes/route.ts` (new) | GET endpoint calling LearningOutcomeService. |
-| 17 | `components/dashboard/LearningOutcomeBlock.tsx` (new) | Client component that fetches and displays outcomes. |
-| 18 | `app/(student)/dashboard/page.tsx` | Add section that renders LearningOutcomeBlock. |
-| 19 | `app/api/parent/dashboard/route.ts` | Include learning-outcome summary in each student’s payload. |
-| 20 | `app/(student)/parent/ParentDashboardClient.tsx` | Display learning outcomes in each student card. |
+| Step | File                                                  | Purpose                                                                   |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| 15   | `lib/learningOutcome/LearningOutcomeService.ts` (new) | getOutcomesForStudent, optional getTrend; read-only from existing tables. |
+| 16   | `app/api/student/learning-outcomes/route.ts` (new)    | GET endpoint calling LearningOutcomeService.                              |
+| 17   | `components/dashboard/LearningOutcomeBlock.tsx` (new) | Client component that fetches and displays outcomes.                      |
+| 18   | `app/(student)/dashboard/page.tsx`                    | Add section that renders LearningOutcomeBlock.                            |
+| 19   | `app/api/parent/dashboard/route.ts`                   | Include learning-outcome summary in each student’s payload.               |
+| 20   | `app/(student)/parent/ParentDashboardClient.tsx`      | Display learning outcomes in each student card.                           |
 
 ---
 
 ## 9. Data Models Used (No New Tables Except Optional Column)
 
-| System | Tables / models used |
-|--------|----------------------|
-| Recommendation Reason UI | None (engine output only). |
-| Weak Topic Recovery | getWeakTopicsWithNames (reads StudentTopicProgress / weak-topic logic); getNextAction result. |
-| Curriculum Progress Map | SubjectDef, ChapterDef, TopicDef, StudentTopicMastery; learning-snapshot aggregation. |
-| Parent Report Automation | WeeklyStudentSummary (optional `reportText`), SubjectProgressSummary, parent link tables; generateParentReportAI. |
-| Learning Outcome Analytics | StudentTopicMastery, StudentTopicProgress; optional one column for baseline if needed. |
+| System                     | Tables / models used                                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Recommendation Reason UI   | None (engine output only).                                                                                        |
+| Weak Topic Recovery        | getWeakTopicsWithNames (reads StudentTopicProgress / weak-topic logic); getNextAction result.                     |
+| Curriculum Progress Map    | SubjectDef, ChapterDef, TopicDef, StudentTopicMastery; learning-snapshot aggregation.                             |
+| Parent Report Automation   | WeeklyStudentSummary (optional `reportText`), SubjectProgressSummary, parent link tables; generateParentReportAI. |
+| Learning Outcome Analytics | StudentTopicMastery, StudentTopicProgress; optional one column for baseline if needed.                            |
 
 ---
 
@@ -288,4 +288,4 @@ Each step creates or modifies **exactly one file**. Session engine files are nev
 
 ---
 
-*This document describes the architecture and implementation plan for the five product-layer systems. Implementation proceeds step-by-step with one file per step; the session engine and recommendation rules remain unchanged.*
+_This document describes the architecture and implementation plan for the five product-layer systems. Implementation proceeds step-by-step with one file per step; the session engine and recommendation rules remain unchanged._

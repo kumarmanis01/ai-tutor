@@ -34,11 +34,17 @@ const { chromium } = require('playwright');
       // This avoids waiting for full DOMContentLoaded on streaming/SSR pages.
       await page.goto(url, { waitUntil: 'commit', timeout: 15000 });
     } catch (commitErr) {
-      console.warn('Goto commit warning:', commitErr && commitErr.message ? commitErr.message : String(commitErr));
+      console.warn(
+        'Goto commit warning:',
+        commitErr && commitErr.message ? commitErr.message : String(commitErr)
+      );
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 5000 });
       } catch (domErr) {
-        console.warn('Goto domcontentloaded warning:', domErr && domErr.message ? domErr.message : String(domErr));
+        console.warn(
+          'Goto domcontentloaded warning:',
+          domErr && domErr.message ? domErr.message : String(domErr)
+        );
       }
     }
 
@@ -56,7 +62,9 @@ const { chromium } = require('playwright');
     process.exit(0);
   } catch (err) {
     console.error('Smoke run error', err);
-    try { await browser.close(); } catch {}
+    try {
+      await browser.close();
+    } catch {}
     process.exit(3);
   }
 })();

@@ -34,12 +34,42 @@ import { prisma } from '../lib/prisma';
 import { getNextAction } from '../lib/homeEngine/getNextAction';
 
 const SCENARIO_EMAILS = [
-  { scenario: 'A -- Fresh', email: 'fresh@scenario.test', expectedRule: 'next_new_topic', phase2: false },
-  { scenario: 'B -- Mid-session', email: 'midsession@scenario.test', expectedRule: 'resume_session', phase2: false },
-  { scenario: 'C -- Weak topic', email: 'weak@scenario.test', expectedRule: 'low_accuracy', phase2: false },
-  { scenario: 'D -- Spaced revision', email: 'spaced@scenario.test', expectedRule: 'spaced_revision', phase2: true },
-  { scenario: 'E -- Homework pending', email: 'homework@scenario.test', expectedRule: 'homework_pending', phase2: true },
-  { scenario: 'P2 -- Daily task', email: 'daily@scenario.test', expectedRule: 'daily_task', phase2: false },
+  {
+    scenario: 'A -- Fresh',
+    email: 'fresh@scenario.test',
+    expectedRule: 'next_new_topic',
+    phase2: false,
+  },
+  {
+    scenario: 'B -- Mid-session',
+    email: 'midsession@scenario.test',
+    expectedRule: 'resume_session',
+    phase2: false,
+  },
+  {
+    scenario: 'C -- Weak topic',
+    email: 'weak@scenario.test',
+    expectedRule: 'low_accuracy',
+    phase2: false,
+  },
+  {
+    scenario: 'D -- Spaced revision',
+    email: 'spaced@scenario.test',
+    expectedRule: 'spaced_revision',
+    phase2: true,
+  },
+  {
+    scenario: 'E -- Homework pending',
+    email: 'homework@scenario.test',
+    expectedRule: 'homework_pending',
+    phase2: true,
+  },
+  {
+    scenario: 'P2 -- Daily task',
+    email: 'daily@scenario.test',
+    expectedRule: 'daily_task',
+    phase2: false,
+  },
 ] as const;
 
 function unwrap(result: Awaited<ReturnType<typeof getNextAction>>) {
@@ -53,20 +83,24 @@ function unwrap(result: Awaited<ReturnType<typeof getNextAction>>) {
 
 async function main() {
   console.log('Recommendation engine scenario validation\n');
-  console.log('Expectations: Phase-1 engine uses resume_session, daily_task, low_mastery, low_accuracy, next_new_topic.');
-  console.log('Phase-2 rules (homework_pending, spaced_revision) may show as next_new_topic/low_accuracy until implemented.\n');
+  console.log(
+    'Expectations: Phase-1 engine uses resume_session, daily_task, low_mastery, low_accuracy, next_new_topic.'
+  );
+  console.log(
+    'Phase-2 rules (homework_pending, spaced_revision) may show as next_new_topic/low_accuracy until implemented.\n'
+  );
 
   const users = await prisma.user.findMany({
     where: { email: { in: SCENARIO_EMAILS.map((s) => s.email) } },
     select: { id: true, email: true },
   });
-  const byEmail = new Map<string, string>(
-    users.map((u) => [u.email!, u.id] as [string, string]),
-  );
+  const byEmail = new Map<string, string>(users.map((u) => [u.email!, u.id] as [string, string]));
 
   const missing = SCENARIO_EMAILS.filter((s) => !byEmail.has(s.email));
   if (missing.length) {
-    console.error('Missing scenario students. Run seed first: npx tsx scripts/seed-scenario-curriculum.ts');
+    console.error(
+      'Missing scenario students. Run seed first: npx tsx scripts/seed-scenario-curriculum.ts'
+    );
     console.error('Missing:', missing.map((m) => m.email).join(', '));
     process.exit(1);
   }
@@ -79,13 +113,22 @@ async function main() {
     const result = await getNextAction(studentId, { returnTrace: true });
     const { action, trace } = unwrap(result);
 
-    const actualRule = action && typeof action === 'object' && 'ruleId' in action ? (action as { ruleId: string }).ruleId : 'null';
+    const actualRule =
+      action && typeof action === 'object' && 'ruleId' in action
+        ? (action as { ruleId: string }).ruleId
+        : 'null';
     const ok = actualRule === expectedRule;
     if (ok) passed++;
     else if (!phase2) failed++;
 
-    const latencyMs = trace && typeof trace === 'object' && 'latencyMs' in trace ? (trace as { latencyMs?: number }).latencyMs : undefined;
-    const rulesEval = trace && typeof trace === 'object' && 'rulesEvaluated' in trace ? (trace as { rulesEvaluated?: string[] }).rulesEvaluated : [];
+    const latencyMs =
+      trace && typeof trace === 'object' && 'latencyMs' in trace
+        ? (trace as { latencyMs?: number }).latencyMs
+        : undefined;
+    const rulesEval =
+      trace && typeof trace === 'object' && 'rulesEvaluated' in trace
+        ? (trace as { rulesEvaluated?: string[] }).rulesEvaluated
+        : [];
 
     console.log(`Scenario ${scenario}`);
     console.log(`  Email: ${email}`);
@@ -94,7 +137,12 @@ async function main() {
     console.log(`  ${ok ? 'PASS' : phase2 ? 'Phase-2 (data ready)' : 'FAIL'}`);
     if (latencyMs != null) console.log(`  Latency: ${latencyMs}ms`);
     if (rulesEval.length) console.log(`  Rules evaluated: ${rulesEval.join(' → ')}`);
-    if (action && typeof action === 'object' && 'resumePhase' in action && (action as { resumePhase?: string }).resumePhase) {
+    if (
+      action &&
+      typeof action === 'object' &&
+      'resumePhase' in action &&
+      (action as { resumePhase?: string }).resumePhase
+    ) {
       console.log(`  resumePhase: ${(action as { resumePhase: string }).resumePhase}`);
     }
     console.log('');

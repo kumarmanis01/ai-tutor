@@ -27,7 +27,7 @@ export interface CrunchResult {
  */
 export function computeCrunchMode(
   perUserExamDate: Date | string | null | undefined,
-  latestPlan?: { examDate?: Date | string | null } | null,
+  latestPlan?: { examDate?: Date | string | null } | null
 ): CrunchResult {
   const toDate = (v: unknown): Date | null => {
     if (!v) return null;

@@ -150,7 +150,7 @@ export async function invalidateTopicRankerCache(studentId: string): Promise<voi
  */
 export async function rankTopics(
   studentId: string,
-  options: RankTopicsOptions = {},
+  options: RankTopicsOptions = {}
 ): Promise<ScoredTopic[]> {
   // ── Fetch all signals in parallel ──────────────────────────────────────────
   // We always need: weakSubjects, allProgress, curriculumGraph, momentum, weakTopicIds.
@@ -201,15 +201,13 @@ export async function rankTopics(
 
   const allProgressTyped = allProgress as StudentTopicProgressRow[];
   type ProgressRow = StudentTopicProgressRow;
-  const progressByTopic = new Map<string, ProgressRow>(
-    allProgressTyped.map((p) => [p.topicId, p]),
-  );
+  const progressByTopic = new Map<string, ProgressRow>(allProgressTyped.map((p) => [p.topicId, p]));
 
   // For prerequisite checks: topics with sufficient mastery (>= 0.4, practiceCount > 0).
   const sufficientlyMasteredIds = new Set<string>(
     allProgressTyped
       .filter((p) => p.mastery >= MASTERY_THRESHOLD_SUFFICIENT && p.practiceCount > 0)
-      .map((p) => p.topicId),
+      .map((p) => p.topicId)
   );
 
   // ── Find the curriculum frontier ───────────────────────────────────────────
@@ -235,7 +233,7 @@ export async function rankTopics(
   // Slice to FRONTIER_SIZE topics starting from the frontier.
   const frontierTopics = curriculumTopics.slice(
     frontierStartIndex,
-    frontierStartIndex + FRONTIER_SIZE,
+    frontierStartIndex + FRONTIER_SIZE
   );
 
   // ── Score each frontier topic ──────────────────────────────────────────────

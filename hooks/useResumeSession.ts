@@ -6,9 +6,9 @@
  * EDIT LOG:
  * - 2026-03-06 | claude | created for ResumeLessonCard
  */
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 export interface ResumeSession {
   sessionId: string;
@@ -27,7 +27,7 @@ export function useResumeSession(): { session: ResumeSession | null; loading: bo
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/session/resume")
+    fetch('/api/session/resume')
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) setSession(data?.session ?? null);

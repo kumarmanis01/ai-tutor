@@ -47,7 +47,9 @@ export async function POST(req: NextRequest) {
     const answers = rawAnswers
       .filter(
         (a): a is Record<string, unknown> =>
-          !!a && typeof a === 'object' && typeof (a as Record<string, unknown>).questionId === 'string',
+          !!a &&
+          typeof a === 'object' &&
+          typeof (a as Record<string, unknown>).questionId === 'string'
       )
       .map((a) => ({
         questionId: String(a.questionId),

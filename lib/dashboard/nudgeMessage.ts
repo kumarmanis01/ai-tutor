@@ -25,13 +25,13 @@
  */
 
 export interface NudgeContext {
-  daysSinceLastSession: number;      // 0 = today, 1 = yesterday, etc.
-  lastSessionDate: Date | null;      // null for users who have never had a session
+  daysSinceLastSession: number; // 0 = today, 1 = yesterday, etc.
+  lastSessionDate: Date | null; // null for users who have never had a session
   pendingHomeworkCount: number;
   sessionsThisWeek: number;
-  weeklyGoalSessions: number;        // student's chosen weekly goal
-  daysLeftInWeek: number;            // 1-7, Mon=7 days, Sun=1 day
-  lastCompletedUnitName?: string;    // set when a unit was just completed
+  weeklyGoalSessions: number; // student's chosen weekly goal
+  daysLeftInWeek: number; // 1-7, Mon=7 days, Sun=1 day
+  lastCompletedUnitName?: string; // set when a unit was just completed
 }
 
 /**

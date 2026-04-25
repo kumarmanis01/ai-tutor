@@ -14,33 +14,33 @@
  */
 
 export interface TimelineItem {
-  id: string
-  conceptId: string
-  conceptName: string
-  chapterName: string
-  chapterId: string
-  orderInWeek: number
-  status: 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED' | 'DEFERRED'
-  isMandatory: boolean
+  id: string;
+  conceptId: string;
+  conceptName: string;
+  chapterName: string;
+  chapterId: string;
+  orderInWeek: number;
+  status: 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED' | 'DEFERRED';
+  isMandatory: boolean;
 }
 
 export interface TimelineWeek {
-  weekNumber: number
-  startDate: string
-  items: TimelineItem[]
-  chapterSummary: { chapterName: string; sessionCount: number }[]
+  weekNumber: number;
+  startDate: string;
+  items: TimelineItem[];
+  chapterSummary: { chapterName: string; sessionCount: number }[];
 }
 
 export interface TimelineResponse {
-  planId: string
-  subjectId: string
-  subjectName: string
-  examDate: string | null
-  weeklyGoal: number
-  totalWeeks: number
-  totalConcepts: number
-  completedConcepts: number
-  weeks: TimelineWeek[]
+  planId: string;
+  subjectId: string;
+  subjectName: string;
+  examDate: string | null;
+  weeklyGoal: number;
+  totalWeeks: number;
+  totalConcepts: number;
+  completedConcepts: number;
+  weeks: TimelineWeek[];
 }
 
 /**
@@ -48,12 +48,12 @@ export interface TimelineResponse {
  * week 1 = the Monday of the week containing baseDate.
  */
 export function weekStartDate(baseDate: Date | string, weekNumber: number): string {
-  const base = new Date(baseDate)
-  const dayOfWeek = base.getDay() === 0 ? 7 : base.getDay() // Mon=1 ... Sun=7
-  const monday = new Date(base)
-  monday.setDate(base.getDate() - dayOfWeek + 1 + (weekNumber - 1) * 7)
-  monday.setHours(0, 0, 0, 0)
-  return monday.toISOString().split('T')[0]
+  const base = new Date(baseDate);
+  const dayOfWeek = base.getDay() === 0 ? 7 : base.getDay(); // Mon=1 ... Sun=7
+  const monday = new Date(base);
+  monday.setDate(base.getDate() - dayOfWeek + 1 + (weekNumber - 1) * 7);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split('T')[0];
 }
 
 /**
@@ -62,13 +62,13 @@ export function weekStartDate(baseDate: Date | string, weekNumber: number): stri
  *   may be passed separately via `rawItems`.
  */
 export function buildTimeline(plan: any, rawItems?: any[], subjectName?: string): TimelineResponse {
-  const items = rawItems ?? plan.items ?? []
+  const items = rawItems ?? plan.items ?? [];
 
-  const weekMap = new Map<number, TimelineItem[]>()
+  const weekMap = new Map<number, TimelineItem[]>();
   for (const item of items) {
-    const chapterId = item.concept.topic.chapter.id
-    const chapterName = item.concept.topic.chapter.name
-    const chapterWeight = item.concept.topic.chapter.boardChapterWeights?.[0]?.weightMarks ?? 0
+    const chapterId = item.concept.topic.chapter.id;
+    const chapterName = item.concept.topic.chapter.name;
+    const chapterWeight = item.concept.topic.chapter.boardChapterWeights?.[0]?.weightMarks ?? 0;
     const tItem: TimelineItem = {
       id: item.id,
       conceptId: item.conceptId,
@@ -78,32 +78,36 @@ export function buildTimeline(plan: any, rawItems?: any[], subjectName?: string)
       orderInWeek: item.orderInWeek,
       status: item.status as TimelineItem['status'],
       isMandatory: (chapterWeight ?? 0) > 0,
-    }
-    const existing = weekMap.get(item.weekNumber) ?? []
-    existing.push(tItem)
-    weekMap.set(item.weekNumber, existing)
+    };
+    const existing = weekMap.get(item.weekNumber) ?? [];
+    existing.push(tItem);
+    weekMap.set(item.weekNumber, existing);
   }
 
-  const totalWeeks = weekMap.size > 0 ? Math.max(...weekMap.keys()) : 0
-  const baseDate = new Date(plan.generatedAt)
+  const totalWeeks = weekMap.size > 0 ? Math.max(...weekMap.keys()) : 0;
+  const baseDate = new Date(plan.generatedAt);
 
   const weeks: TimelineWeek[] = Array.from(weekMap.entries())
     .sort(([a], [b]) => a - b)
     .map(([weekNumber, items]) => {
-      const chapterCountMap = new Map<string, number>()
+      const chapterCountMap = new Map<string, number>();
       for (const it of items) {
-        chapterCountMap.set(it.chapterName, (chapterCountMap.get(it.chapterName) ?? 0) + 1)
+        chapterCountMap.set(it.chapterName, (chapterCountMap.get(it.chapterName) ?? 0) + 1);
       }
-      const chapterSummary = Array.from(chapterCountMap.entries()).map(([chapterName, sessionCount]) => ({ chapterName, sessionCount }))
+      const chapterSummary = Array.from(chapterCountMap.entries()).map(
+        ([chapterName, sessionCount]) => ({ chapterName, sessionCount })
+      );
       return {
         weekNumber,
         startDate: weekStartDate(baseDate, weekNumber),
         items,
         chapterSummary,
-      }
-    })
+      };
+    });
 
-  const completedConcepts = items.filter((i: { status?: string }) => i.status === 'COMPLETED').length
+  const completedConcepts = items.filter(
+    (i: { status?: string }) => i.status === 'COMPLETED'
+  ).length;
 
   const payload: TimelineResponse = {
     planId: plan.id,
@@ -115,7 +119,7 @@ export function buildTimeline(plan: any, rawItems?: any[], subjectName?: string)
     totalConcepts: items.length,
     completedConcepts,
     weeks,
-  }
+  };
 
-  return payload
+  return payload;
 }

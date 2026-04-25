@@ -91,7 +91,7 @@ export function resetPrismaMock(): void {
       if (typeof value === 'function' && 'mockReset' in value) {
         (value as jest.Mock).mockReset();
       }
-      continue
+      continue;
     }
 
     if (typeof value === 'object' && value !== null) {
@@ -101,11 +101,11 @@ export function resetPrismaMock(): void {
 
           // Provide safe defaults so tests don't need to stub every single model method
           if (fnName === 'findMany') {
-            (fn as jest.Mock).mockResolvedValue([])
+            (fn as jest.Mock).mockResolvedValue([]);
           } else if (fnName === 'findUnique' || fnName === 'findFirst') {
-            (fn as jest.Mock).mockResolvedValue(null)
+            (fn as jest.Mock).mockResolvedValue(null);
           } else if (fnName === 'upsert' || fnName === 'create' || fnName === 'update') {
-            (fn as jest.Mock).mockResolvedValue({})
+            (fn as jest.Mock).mockResolvedValue({});
           } else {
             // leave other methods as reset (undefined) unless a test overrides them
           }

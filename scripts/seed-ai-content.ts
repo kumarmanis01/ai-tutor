@@ -18,53 +18,51 @@
  */
 import { prisma } from '../lib/prisma';
 
-
-
 type SubjectSeed = {
-  name: string
-  slug: string
-}
+  name: string;
+  slug: string;
+};
 
 type ClassSeed = {
-  grade: number
-  subjects: SubjectSeed[]
-}
+  grade: number;
+  subjects: SubjectSeed[];
+};
 
 type BoardSeed = {
-  name: string
-  slug: string
-  classes: ClassSeed[]
-}
+  name: string;
+  slug: string;
+  classes: ClassSeed[];
+};
 
 const BOARDS: BoardSeed[] = [
   {
-    name: "CBSE",
-    slug: "cbse",
+    name: 'CBSE',
+    slug: 'cbse',
     classes: [
       {
         grade: 1,
         subjects: [
-          { name: "English", slug: "english" },
-          { name: "Hindi", slug: "hindi" },
-          { name: "Mathematics", slug: "mathematics" },
-          { name: "Environmental Studies", slug: "evs" },
-          { name: "Art Education", slug: "art-education" },
-          { name: "Health & Physical Education", slug: "physical-education" },
-          { name: "Computer Science", slug: "computer-science" },
+          { name: 'English', slug: 'english' },
+          { name: 'Hindi', slug: 'hindi' },
+          { name: 'Mathematics', slug: 'mathematics' },
+          { name: 'Environmental Studies', slug: 'evs' },
+          { name: 'Art Education', slug: 'art-education' },
+          { name: 'Health & Physical Education', slug: 'physical-education' },
+          { name: 'Computer Science', slug: 'computer-science' },
         ],
       },
       { grade: 2, subjects: [] },
       {
         grade: 3,
         subjects: [
-          { name: "English", slug: "english" },
-          { name: "Hindi", slug: "hindi" },
-          { name: "Mathematics", slug: "mathematics" },
-          { name: "Environmental Studies", slug: "evs" },
-          { name: "General Knowledge", slug: "general-knowledge" },
-          { name: "Art Education", slug: "art-education" },
-          { name: "Health & Physical Education", slug: "physical-education" },
-          { name: "Computer Science", slug: "computer-science" },
+          { name: 'English', slug: 'english' },
+          { name: 'Hindi', slug: 'hindi' },
+          { name: 'Mathematics', slug: 'mathematics' },
+          { name: 'Environmental Studies', slug: 'evs' },
+          { name: 'General Knowledge', slug: 'general-knowledge' },
+          { name: 'Art Education', slug: 'art-education' },
+          { name: 'Health & Physical Education', slug: 'physical-education' },
+          { name: 'Computer Science', slug: 'computer-science' },
         ],
       },
       { grade: 4, subjects: [] },
@@ -72,12 +70,12 @@ const BOARDS: BoardSeed[] = [
       {
         grade: 6,
         subjects: [
-          { name: "English", slug: "english" },
-          { name: "Hindi", slug: "hindi" },
-          { name: "Mathematics", slug: "mathematics" },
-          { name: "Science", slug: "science" },
-          { name: "Social Science", slug: "social-science" },
-          { name: "Computer Science", slug: "computer-science" },
+          { name: 'English', slug: 'english' },
+          { name: 'Hindi', slug: 'hindi' },
+          { name: 'Mathematics', slug: 'mathematics' },
+          { name: 'Science', slug: 'science' },
+          { name: 'Social Science', slug: 'social-science' },
+          { name: 'Computer Science', slug: 'computer-science' },
         ],
       },
       { grade: 7, subjects: [] },
@@ -85,50 +83,50 @@ const BOARDS: BoardSeed[] = [
       {
         grade: 9,
         subjects: [
-          { name: "English", slug: "english" },
-          { name: "Mathematics", slug: "mathematics" },
-          { name: "Physics", slug: "physics" },
-          { name: "Chemistry", slug: "chemistry" },
-          { name: "Biology", slug: "biology" },
-          { name: "History", slug: "history" },
-          { name: "Geography", slug: "geography" },
-          { name: "Economics", slug: "economics" },
-          { name: "Computer Applications", slug: "computer-applications" },
+          { name: 'English', slug: 'english' },
+          { name: 'Mathematics', slug: 'mathematics' },
+          { name: 'Physics', slug: 'physics' },
+          { name: 'Chemistry', slug: 'chemistry' },
+          { name: 'Biology', slug: 'biology' },
+          { name: 'History', slug: 'history' },
+          { name: 'Geography', slug: 'geography' },
+          { name: 'Economics', slug: 'economics' },
+          { name: 'Computer Applications', slug: 'computer-applications' },
         ],
       },
       { grade: 10, subjects: [] },
       {
         grade: 11,
         subjects: [
-          { name: "English", slug: "english" },
-          { name: "Physics", slug: "physics" },
-          { name: "Chemistry", slug: "chemistry" },
-          { name: "Mathematics", slug: "mathematics" },
-          { name: "Biology", slug: "biology" },
-          { name: "Accountancy", slug: "accountancy" },
-          { name: "Business Studies", slug: "business-studies" },
-          { name: "Economics", slug: "economics" },
-          { name: "History", slug: "history" },
-          { name: "Political Science", slug: "political-science" },
+          { name: 'English', slug: 'english' },
+          { name: 'Physics', slug: 'physics' },
+          { name: 'Chemistry', slug: 'chemistry' },
+          { name: 'Mathematics', slug: 'mathematics' },
+          { name: 'Biology', slug: 'biology' },
+          { name: 'Accountancy', slug: 'accountancy' },
+          { name: 'Business Studies', slug: 'business-studies' },
+          { name: 'Economics', slug: 'economics' },
+          { name: 'History', slug: 'history' },
+          { name: 'Political Science', slug: 'political-science' },
         ],
       },
       { grade: 12, subjects: [] },
     ],
   },
   {
-    name: "ICSE",
-    slug: "icse",
+    name: 'ICSE',
+    slug: 'icse',
     classes: [
       {
         grade: 1,
         subjects: [
-          { name: "English", slug: "english" },
-          { name: "Second Language", slug: "second-language" },
-          { name: "Mathematics", slug: "mathematics" },
-          { name: "Environmental Studies", slug: "evs" },
-          { name: "Computer Applications", slug: "computer-applications" },
-          { name: "Art & Music", slug: "art-music" },
-          { name: "Physical Education", slug: "physical-education" },
+          { name: 'English', slug: 'english' },
+          { name: 'Second Language', slug: 'second-language' },
+          { name: 'Mathematics', slug: 'mathematics' },
+          { name: 'Environmental Studies', slug: 'evs' },
+          { name: 'Computer Applications', slug: 'computer-applications' },
+          { name: 'Art & Music', slug: 'art-music' },
+          { name: 'Physical Education', slug: 'physical-education' },
         ],
       },
       { grade: 2, subjects: [] },
@@ -138,25 +136,25 @@ const BOARDS: BoardSeed[] = [
       {
         grade: 9,
         subjects: [
-          { name: "English", slug: "english" },
-          { name: "Mathematics", slug: "mathematics" },
-          { name: "Physics", slug: "physics" },
-          { name: "Chemistry", slug: "chemistry" },
-          { name: "Biology", slug: "biology" },
-          { name: "History Civics & Geography", slug: "history-civics-geography" },
-          { name: "Computer Applications", slug: "computer-applications" },
+          { name: 'English', slug: 'english' },
+          { name: 'Mathematics', slug: 'mathematics' },
+          { name: 'Physics', slug: 'physics' },
+          { name: 'Chemistry', slug: 'chemistry' },
+          { name: 'Biology', slug: 'biology' },
+          { name: 'History Civics & Geography', slug: 'history-civics-geography' },
+          { name: 'Computer Applications', slug: 'computer-applications' },
         ],
       },
       { grade: 10, subjects: [] },
     ],
   },
-]
+];
 
 async function main() {
-  console.log("🌱 [START] Academic base seeding initiated...\n")
+  console.log('🌱 [START] Academic base seeding initiated...\n');
 
   for (const boardSeed of BOARDS) {
-    console.log(`➡️  [STEP] Processing board: ${boardSeed.name} (${boardSeed.slug})`)
+    console.log(`➡️  [STEP] Processing board: ${boardSeed.name} (${boardSeed.slug})`);
     const board = await prisma.board.upsert({
       where: { slug: boardSeed.slug },
       update: {},
@@ -164,12 +162,12 @@ async function main() {
         name: boardSeed.name,
         slug: boardSeed.slug,
       },
-    })
-    console.log(`✅ [BOARD] Board upserted: ${board.name} (slug: ${board.slug})`)
+    });
+    console.log(`✅ [BOARD] Board upserted: ${board.name} (slug: ${board.slug})`);
 
     // Normalize classes for this board: ensure grades 1..12, inherit subjects when
     // a grade has an empty array, dedupe subject slugs, and ignore duplicate grade entries.
-    console.log(`🔄 [STEP] Normalizing classes for board: ${board.name}`)
+    console.log(`🔄 [STEP] Normalizing classes for board: ${board.name}`);
     const classMap = new Map<number, SubjectSeed[]>();
     for (const cs of boardSeed.classes) {
       if (!cs || typeof cs.grade !== 'number') continue;
@@ -196,9 +194,7 @@ async function main() {
     }
 
     for (const classSeed of normalizedClasses) {
-      console.log(
-        `➡️  [STEP] Upserting class: Grade ${classSeed.grade} for board: ${board.name}`
-      );
+      console.log(`➡️  [STEP] Upserting class: Grade ${classSeed.grade} for board: ${board.name}`);
       const classLevel = await prisma.classLevel.upsert({
         where: {
           boardId_grade: {
@@ -251,14 +247,14 @@ async function main() {
     console.log(`\n✅ [DONE] Finished processing board: ${board.name}\n`);
   }
 
-  console.log("🎉 [COMPLETE] Academic base seeding completed successfully");
+  console.log('🎉 [COMPLETE] Academic base seeding completed successfully');
 }
 
 main()
   .catch((err) => {
-    console.error("❌ [ERROR] Seed failed", err)
-    process.exit(1)
+    console.error('❌ [ERROR] Seed failed', err);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });

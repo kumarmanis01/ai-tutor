@@ -64,7 +64,11 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
             .trackEvent as TrackFn;
         }
       } catch (err) {
-        logger.warn('analytics client import failed', { component: 'AuthRedeemOnSignIn', methodName: 'init', error: String(err) });
+        logger.warn('analytics client import failed', {
+          component: 'AuthRedeemOnSignIn',
+          methodName: 'init',
+          error: String(err),
+        });
         track = undefined; // best-effort analytics only
       }
 
@@ -72,13 +76,17 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         // Analytics: attempt to record redemption start (non-blocking)
         if (track) {
           try {
-            const s = session as unknown as AppSession | null
+            const s = session as unknown as AppSession | null;
             void track('referral_redeem_attempt', {
               code: referralCode,
               userId: s?.user?.id ?? null,
             });
           } catch (err) {
-            logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_attempt', error: String(err) });
+            logger.warn('analytics track failed', {
+              component: 'AuthRedeemOnSignIn',
+              methodName: 'track_attempt',
+              error: String(err),
+            });
           }
         }
 
@@ -95,7 +103,11 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
           try {
             void track('referral_redeem_result', { code: referralCode, status: res.status });
           } catch (err) {
-            logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_result', error: String(err) });
+            logger.warn('analytics track failed', {
+              component: 'AuthRedeemOnSignIn',
+              methodName: 'track_result',
+              error: String(err),
+            });
           }
         }
       } catch (err) {
@@ -109,7 +121,11 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
               detail: String(err),
             });
           } catch (err2) {
-            logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_error', error: String(err2) });
+            logger.warn('analytics track failed', {
+              component: 'AuthRedeemOnSignIn',
+              methodName: 'track_error',
+              error: String(err2),
+            });
           }
         }
       } finally {
@@ -120,7 +136,11 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         try {
           document.cookie = 'referral=; path=/; max-age=0';
         } catch (err) {
-          logger.warn('failed to clear referral cookie', { component: 'AuthRedeemOnSignIn', methodName: 'cleanup', error: String(err) });
+          logger.warn('failed to clear referral cookie', {
+            component: 'AuthRedeemOnSignIn',
+            methodName: 'cleanup',
+            error: String(err),
+          });
         }
         try {
           const url = new URL(window.location.href);
@@ -128,7 +148,11 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
           url.searchParams.delete('referral');
           window.history.replaceState({}, document.title, url.toString());
         } catch (err) {
-          logger.warn('failed to clear referral query params', { component: 'AuthRedeemOnSignIn', methodName: 'cleanup', error: String(err) });
+          logger.warn('failed to clear referral query params', {
+            component: 'AuthRedeemOnSignIn',
+            methodName: 'cleanup',
+            error: String(err),
+          });
         }
       }
     })();

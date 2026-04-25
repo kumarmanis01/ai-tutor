@@ -1,18 +1,15 @@
-import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { prisma } from '@/lib/prisma';
+import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { reason } = await req.json()
+  const { reason } = await req.json();
 
   const chapter = await prisma.chapterDef.findFirst({
-    where: { id, lifecycle: "active" },
-  })
+    where: { id, lifecycle: 'active' },
+  });
 
-  if (!chapter) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (!chapter) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const session = await getServerSessionForHandlers();
   // Resolve canonical DB user id for audit safety; fall back to null
@@ -33,19 +30,29 @@ export async function POST(
   await prisma.$transaction([
     prisma.chapterDef.update({
       where: { id },
-      data: { status: "rejected" },
+      data: { status: 'rejected' },
     }),
     prisma.approvalAudit.create({
       data: {
-        entityType: "chapter",
+        entityType: 'chapter',
         entityId: id,
         fromStatus: chapter.status,
-        toStatus: "rejected",
+        toStatus: 'rejected',
         reason,
       },
     }),
-    prisma.auditLog.create({ data: { adminId, targetEntity: 'ChapterDef', targetId: id, action: 'CONTENT_REJECT', previousValue: { status: chapter.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
-  ])
+    prisma.auditLog.create({
+      data: {
+        adminId,
+        targetEntity: 'ChapterDef',
+        targetId: id,
+        action: 'CONTENT_REJECT',
+        previousValue: { status: chapter.status },
+        newValue: { status: 'rejected' },
+        reason: reason ?? null,
+      },
+    }),
+  ]);
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true });
 }

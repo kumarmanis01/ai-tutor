@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 export const MisconceptionCreateSchema = z.object({
   name: z.string().min(1),
@@ -8,7 +8,7 @@ export const MisconceptionCreateSchema = z.object({
   prevalenceRate: z.number().min(0).max(1).optional(),
   subjectId: z.string().min(1),
   conceptId: z.string().min(1),
-})
+});
 
 export const MisconceptionPatchSchema = z.object({
   name: z.string().min(1).optional(),
@@ -18,7 +18,7 @@ export const MisconceptionPatchSchema = z.object({
   prevalenceRate: z.number().min(0).max(1).optional(),
   subjectId: z.string().min(1).optional(),
   conceptId: z.string().min(1).optional(),
-})
+});
 
-export type MisconceptionCreate = z.infer<typeof MisconceptionCreateSchema>
-export type MisconceptionPatch = z.infer<typeof MisconceptionPatchSchema>
+export type MisconceptionCreate = z.infer<typeof MisconceptionCreateSchema>;
+export type MisconceptionPatch = z.infer<typeof MisconceptionPatchSchema>;

@@ -16,7 +16,7 @@
 
 import type { RateLimiter } from './types';
 import Redis from 'ioredis';
-import { getRedis } from '@/lib/redis'
+import { getRedis } from '@/lib/redis';
 
 /**
  * Redis-backed fixed-window rate limiter.
@@ -50,7 +50,7 @@ export class RedisRateLimiter implements RateLimiter {
 
     if (this.client && typeof this.client.on === 'function') {
       // swallow network errors when Redis is not available in dev/dry-run
-      this.client.on('error', () => { });
+      this.client.on('error', () => {});
     }
 
     this.capacity = opts?.capacity ?? 5;

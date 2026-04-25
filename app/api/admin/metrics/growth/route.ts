@@ -10,31 +10,31 @@
  *   churnRate    - subscriptions deactivated in last 30 days / active at start of period (0..1)
  *   sessionsPerStudentPerWeek - total sessions last 7 days / distinct students last 7 days
  */
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSessionForHandlers } from '@/lib/session'
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerSessionForHandlers } from '@/lib/session';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
-const PLAN_PRICE_INR = 399
+const PLAN_PRICE_INR = 399;
 
 export async function GET(_req: Request) {
-  const session = await getServerSessionForHandlers()
+  const session = await getServerSessionForHandlers();
   if (!session?.user?.id || (session.user as any).role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // IST boundaries for today
-  const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000
-  const nowIst = new Date(Date.now() + IST_OFFSET_MS)
-  const todayIstMidnight = new Date(nowIst)
-  todayIstMidnight.setUTCHours(0, 0, 0, 0)
-  const todayStart = new Date(todayIstMidnight.getTime() - IST_OFFSET_MS)
+  const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+  const nowIst = new Date(Date.now() + IST_OFFSET_MS);
+  const todayIstMidnight = new Date(nowIst);
+  todayIstMidnight.setUTCHours(0, 0, 0, 0);
+  const todayStart = new Date(todayIstMidnight.getTime() - IST_OFFSET_MS);
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  type CountRow = { count: bigint }
+  type CountRow = { count: bigint };
 
   const [
     dasRow,
@@ -88,19 +88,19 @@ export async function GET(_req: Request) {
       FROM "LearningSession"
       WHERE "startedAt" >= ${sevenDaysAgo}
     `,
-  ])
+  ]);
 
-  const das = Number(dasRow[0]?.count ?? 0)
-  const was = Number(wasRows[0]?.count ?? 0)
-  const mrrInr = activeSubCount * PLAN_PRICE_INR
-  const totalUsers = totalUsersRow
-  const paidUsers = Number(paidUsersRow[0]?.count ?? 0)
-  const conversionRate = totalUsers > 0 ? paidUsers / totalUsers : 0
-  const churnedSubs = Number(churnedSubsRow[0]?.count ?? 0)
-  const activeAtStart = Number(activeAtStartRow[0]?.count ?? 0)
-  const churnRate = activeAtStart > 0 ? churnedSubs / activeAtStart : 0
-  const weeklySessions = Number(weeklySessionsRow[0]?.count ?? 0)
-  const sessionsPerStudentPerWeek = was > 0 ? weeklySessions / was : 0
+  const das = Number(dasRow[0]?.count ?? 0);
+  const was = Number(wasRows[0]?.count ?? 0);
+  const mrrInr = activeSubCount * PLAN_PRICE_INR;
+  const totalUsers = totalUsersRow;
+  const paidUsers = Number(paidUsersRow[0]?.count ?? 0);
+  const conversionRate = totalUsers > 0 ? paidUsers / totalUsers : 0;
+  const churnedSubs = Number(churnedSubsRow[0]?.count ?? 0);
+  const activeAtStart = Number(activeAtStartRow[0]?.count ?? 0);
+  const churnRate = activeAtStart > 0 ? churnedSubs / activeAtStart : 0;
+  const weeklySessions = Number(weeklySessionsRow[0]?.count ?? 0);
+  const sessionsPerStudentPerWeek = was > 0 ? weeklySessions / was : 0;
 
   return NextResponse.json({
     das,
@@ -113,5 +113,5 @@ export async function GET(_req: Request) {
     churnRate: Math.round(churnRate * 10000) / 10000,
     sessionsPerStudentPerWeek: Math.round(sessionsPerStudentPerWeek * 100) / 100,
     computedAt: new Date().toISOString(),
-  })
+  });
 }

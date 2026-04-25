@@ -13,7 +13,6 @@
  */
 const { prisma } = require('../lib/prisma');
 
-
 async function main() {
   console.log('Starting curriculum depth audit...');
 
@@ -43,18 +42,26 @@ async function main() {
       if (subjects.length === 0) console.warn(`    WARN: No subjects for grade ${cls.grade}`);
 
       for (const subject of subjects) {
-        const chapters = await prisma.chapterDef.findMany({ where: { subjectId: subject.id }, orderBy: { order: 'asc' } });
+        const chapters = await prisma.chapterDef.findMany({
+          where: { subjectId: subject.id },
+          orderBy: { order: 'asc' },
+        });
         console.log(`    Subject: ${subject.name} -- Chapters: ${chapters.length}`);
-        if (chapters.length < 2) console.warn(`      WARN: Subject ${subject.name} has <2 chapters (${chapters.length})`);
+        if (chapters.length < 2)
+          console.warn(`      WARN: Subject ${subject.name} has <2 chapters (${chapters.length})`);
         if (chapters.length === 0) {
           fatal = true;
           console.error(`      FATAL: Subject ${subject.name} has zero chapters`);
         }
 
         for (const chapter of chapters) {
-          const topics = await prisma.topicDef.findMany({ where: { chapterId: chapter.id }, orderBy: [{ order: 'asc' }] });
+          const topics = await prisma.topicDef.findMany({
+            where: { chapterId: chapter.id },
+            orderBy: [{ order: 'asc' }],
+          });
           console.log(`      Chapter: ${chapter.name} -- Topics: ${topics.length}`);
-          if (topics.length < 5) console.warn(`        WARN: Chapter ${chapter.name} has <5 topics (${topics.length})`);
+          if (topics.length < 5)
+            console.warn(`        WARN: Chapter ${chapter.name} has <5 topics (${topics.length})`);
           if (topics.length === 0) {
             fatal = true;
             console.error(`        FATAL: Chapter ${chapter.name} has zero topics`);
@@ -63,10 +70,16 @@ async function main() {
 
           for (const topic of topics) {
             const qCount = await prisma.question.count({ where: { topicId: topic.id } });
-            const genCount = await prisma.generatedTest.count({ where: { topicId: topic.id } }).catch(() => 0);
-            console.log(`        Topic: ${topic.name} -- Questions: ${qCount} -- GeneratedTests: ${genCount}`);
-            if (qCount < 5) console.warn(`          WARN: Topic ${topic.name} has <5 questions (${qCount})`);
-            if (genCount === 0) console.warn(`          WARN: Topic ${topic.name} is missing GeneratedTest`);
+            const genCount = await prisma.generatedTest
+              .count({ where: { topicId: topic.id } })
+              .catch(() => 0);
+            console.log(
+              `        Topic: ${topic.name} -- Questions: ${qCount} -- GeneratedTests: ${genCount}`
+            );
+            if (qCount < 5)
+              console.warn(`          WARN: Topic ${topic.name} has <5 questions (${qCount})`);
+            if (genCount === 0)
+              console.warn(`          WARN: Topic ${topic.name} is missing GeneratedTest`);
             if (qCount === 0) {
               fatal = true;
               console.error(`          FATAL: Topic ${topic.name} has zero questions`);

@@ -1,18 +1,18 @@
-import type { Job } from 'bullmq'
-import { prisma } from '@/lib/prisma.js'
-import { logger } from '@/lib/logger.js'
-import { updateSM18 } from '@/lib/ai/tutor/sm18.js'
-import { getRedis } from '@/lib/redis.js'
-import { sendPushSafe } from '@/lib/push/send.js'
-import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
+import type { Job } from 'bullmq';
+import { prisma } from '@/lib/prisma.js';
+import { logger } from '@/lib/logger.js';
+import { updateSM18 } from '@/lib/ai/tutor/sm18.js';
+import { getRedis } from '@/lib/redis.js';
+import { sendPushSafe } from '@/lib/push/send.js';
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js';
 
-const BATCH_SIZE = 100
-const MS_PER_DAY = 86400000
+const BATCH_SIZE = 100;
+const MS_PER_DAY = 86400000;
 /** AC-07 (F-STU-022): use higher targetRetention when exam <= this many days away. */
-const PRE_EXAM_DAYS = 14
-const PRE_EXAM_TARGET_RETENTION = 0.92
+const PRE_EXAM_DAYS = 14;
+const PRE_EXAM_TARGET_RETENTION = 0.92;
 /** Redis key TTL for pre-exam notification rate-limit (30 days). */
-const PRE_EXAM_NOTIFY_TTL_SECONDS = 30 * 24 * 60 * 60
+const PRE_EXAM_NOTIFY_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 /**
  * AC-07 (F-STU-022): Notify students whose exam is within 14 days that
@@ -21,44 +21,44 @@ const PRE_EXAM_NOTIFY_TTL_SECONDS = 30 * 24 * 60 * 60
  * Best-effort -- never throws.
  */
 async function notifyPreExamStudents(
-  upcomingExams: Array<{ studentId: string; subjectId: string; subjectName?: string | null }>,
+  upcomingExams: Array<{ studentId: string; subjectId: string; subjectName?: string | null }>
 ): Promise<void> {
-  const redis = getRedis()
-  if (!redis) return
-  const yearMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+  const redis = getRedis();
+  if (!redis) return;
+  const yearMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
   for (const exam of upcomingExams) {
     try {
-      const key = `pre-exam:notified:${exam.studentId}:${yearMonth}`
-      const already = await redis.get(key)
-      if (already) continue
-      const subjectName = exam.subjectName ?? 'your subject'
+      const key = `pre-exam:notified:${exam.studentId}:${yearMonth}`;
+      const already = await redis.get(key);
+      if (already) continue;
+      const subjectName = exam.subjectName ?? 'your subject';
       void sendPushSafe(
         exam.studentId,
-        PUSH_NOTIFICATIONS.exam_14_days(subjectName, 0), // readiness filled as 0 -- notification text shows urgency regardless
-      )
-      await redis.set(key, '1', 'EX', PRE_EXAM_NOTIFY_TTL_SECONDS)
+        PUSH_NOTIFICATIONS.exam_14_days(subjectName, 0) // readiness filled as 0 -- notification text shows urgency regardless
+      );
+      await redis.set(key, '1', 'EX', PRE_EXAM_NOTIFY_TTL_SECONDS);
       logger.info('[sm18-worker] pre-exam notification sent', {
         event: 'pre_exam_mode_activated',
         context: { studentId: exam.studentId, subjectId: exam.subjectId },
-      })
+      });
     } catch (err) {
       // never let notification errors break the worker
       logger.warn('[sm18-worker] pre-exam notification failed', {
         studentId: exam.studentId,
         error: String((err as any)?.message ?? err),
-      })
+      });
     }
   }
 }
 
 export async function processNightlySM18(_job?: Job): Promise<void> {
-  const now = new Date()
-  let totalProcessed = 0
-  let totalUpdated = 0
-  let totalErrors = 0
+  const now = new Date();
+  let totalProcessed = 0;
+  let totalUpdated = 0;
+  let totalErrors = 0;
 
   // AC-07: pre-load upcoming exams indexed by studentId for O(1) lookup per row
-  const preExamCutoff = new Date(now.getTime() + PRE_EXAM_DAYS * MS_PER_DAY)
+  const preExamCutoff = new Date(now.getTime() + PRE_EXAM_DAYS * MS_PER_DAY);
 
   // Local row types for strict mode
   type ExamRow = { studentId: string; subjectId: string };
@@ -73,21 +73,23 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
     masteryScore?: number | null;
   };
 
-  const upcomingExams = await prisma.learningPlan.findMany({
+  const upcomingExams = (await prisma.learningPlan.findMany({
     where: { examDate: { gte: now, lte: preExamCutoff } },
     select: { studentId: true, subjectId: true },
-  }) as ExamRow[]
-  const preExamStudentIds = new Set((upcomingExams as ExamRow[]).map((p: ExamRow) => p.studentId))
+  })) as ExamRow[];
+  const preExamStudentIds = new Set((upcomingExams as ExamRow[]).map((p: ExamRow) => p.studentId));
 
   // Look up subject names for the notifications (best-effort -- no subject = no name)
-  const subjectIds = [...new Set((upcomingExams as ExamRow[]).map((e: ExamRow) => e.subjectId))]
+  const subjectIds = [...new Set((upcomingExams as ExamRow[]).map((e: ExamRow) => e.subjectId))];
   const subjectDefs = subjectIds.length
-    ? await prisma.subjectDef.findMany({
+    ? ((await prisma.subjectDef.findMany({
         where: { id: { in: subjectIds } },
         select: { id: true, name: true },
-      }) as SubjectDefRow[]
-    : []
-  const subjectNameById = new Map((subjectDefs as SubjectDefRow[]).map((s: SubjectDefRow) => [s.id, s.name]))
+      })) as SubjectDefRow[])
+    : [];
+  const subjectNameById = new Map(
+    (subjectDefs as SubjectDefRow[]).map((s: SubjectDefRow) => [s.id, s.name])
+  );
 
   // AC-07: notify students entering pre-exam mode (fire-and-forget, never throws)
   void notifyPreExamStudents(
@@ -95,32 +97,29 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
       studentId: e.studentId,
       subjectId: e.subjectId,
       subjectName: subjectNameById.get(e.subjectId) ?? null,
-    })),
-  )
+    }))
+  );
 
   try {
     for (;;) {
-      const batch = await prisma.studentConceptState.findMany({
+      const batch = (await prisma.studentConceptState.findMany({
         where: {
-          OR: [
-            { nextReviewAt: { lte: now } },
-            { nextReviewAt: null },
-          ],
+          OR: [{ nextReviewAt: { lte: now } }, { nextReviewAt: null }],
         },
         take: BATCH_SIZE,
         orderBy: { id: 'asc' },
-      }) as StudentConceptStateRow[]
+      })) as StudentConceptStateRow[];
 
-      if (batch.length === 0) break
+      if (batch.length === 0) break;
 
       for (const row of batch as StudentConceptStateRow[]) {
-        totalProcessed += 1
+        totalProcessed += 1;
         try {
-          const elapsedMs = now.getTime() - row.lastInteraction.getTime()
-          const elapsedDays = elapsedMs / MS_PER_DAY
+          const elapsedMs = now.getTime() - row.lastInteraction.getTime();
+          const elapsedDays = elapsedMs / MS_PER_DAY;
 
           // AC-07: shorten intervals for students with exams within 14 days
-          const isPreExam = preExamStudentIds.has(row.studentId)
+          const isPreExam = preExamStudentIds.has(row.studentId);
 
           const result = updateSM18({
             stability: row.stability,
@@ -128,9 +127,9 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
             isCorrect: true,
             elapsedDays,
             targetRetention: isPreExam ? PRE_EXAM_TARGET_RETENTION : undefined,
-          })
+          });
 
-          const nextReviewAt = new Date(now.getTime() + result.nextReviewInDays * MS_PER_DAY)
+          const nextReviewAt = new Date(now.getTime() + result.nextReviewInDays * MS_PER_DAY);
 
           await prisma.studentConceptState.update({
             where: { id: row.id },
@@ -138,18 +137,19 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
               stability: result.newStability,
               retention: result.newRetention,
               nextReviewAt,
-              memoryStrength: Math.round((result.newRetention * (row.masteryScore ?? 0)) * 1000) / 1000,
+              memoryStrength:
+                Math.round(result.newRetention * (row.masteryScore ?? 0) * 1000) / 1000,
             },
-          })
-          totalUpdated += 1
+          });
+          totalUpdated += 1;
         } catch (err) {
-          totalErrors += 1
+          totalErrors += 1;
           logger.warn('[sm18-worker] row update failed', {
             id: row.id,
             studentId: row.studentId,
             conceptId: row.conceptId,
             error: String((err as any)?.message ?? err),
-          })
+          });
         }
       }
     }
@@ -158,11 +158,11 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
       processed: totalProcessed,
       updated: totalUpdated,
       errors: totalErrors,
-    })
+    });
   } catch (err) {
     logger.error('[sm18-worker] nightly run failed', {
       error: String((err as any)?.message ?? err),
-    })
-    throw err
+    });
+    throw err;
   }
 }

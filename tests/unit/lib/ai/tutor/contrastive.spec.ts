@@ -1,4 +1,4 @@
-import { generateContrastiveExplanation } from '@/lib/ai/tutor/contrastive'
+import { generateContrastiveExplanation } from '@/lib/ai/tutor/contrastive';
 
 describe('generateContrastiveExplanation', () => {
   it('returns expected artifact shape for a minimal misconception', () => {
@@ -8,12 +8,12 @@ describe('generateContrastiveExplanation', () => {
       triggerPatterns: ['pattern'],
       correction: 'Use the correct idea X.',
       description: 'Commonly confuses X with Y.',
-    }
-    const art = generateContrastiveExplanation(mis as any)
-    expect(art).toHaveProperty('misconceptionId', 'M1')
-    expect(art).toHaveProperty('name', 'Test confusion')
-    expect(art).toHaveProperty('correction', 'Use the correct idea X.')
-    expect(typeof art.applyTip).toBe('string')
-    expect(typeof art.suggestedPractice).toBe('string')
-  })
-})
+    };
+    const art = generateContrastiveExplanation(mis as any);
+    expect(art).toHaveProperty('misconceptionId', 'M1');
+    expect(art).toHaveProperty('name', 'Test confusion');
+    expect(art).toHaveProperty('correction', 'Use the correct idea X.');
+    expect(typeof art.applyTip).toBe('string');
+    expect(typeof art.suggestedPractice).toBe('string');
+  });
+});

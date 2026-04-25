@@ -76,13 +76,20 @@ describe('POST /api/admin/regeneration-jobs — unique-constraint / idempotency'
   });
 
   it('returns the existing job when create throws a Prisma P2002 error', async () => {
-    const existingJob = { id: 'job-existing', status: 'PENDING', targetType: 'LESSON', targetId: 'lesson-1' };
+    const existingJob = {
+      id: 'job-existing',
+      status: 'PENDING',
+      targetType: 'LESSON',
+      targetId: 'lesson-1',
+    };
     const p2002 = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
 
     mockRegenerationJob.create.mockRejectedValue(p2002);
     mockRegenerationJob.findFirst.mockResolvedValue(existingJob);
 
-    const res = await POST(makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-1' }));
+    const res = await POST(
+      makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-1' })
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.job).toEqual(existingJob);
@@ -90,18 +97,27 @@ describe('POST /api/admin/regeneration-jobs — unique-constraint / idempotency'
     expect(mockRegenerationJob.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ targetType: 'LESSON', targetId: 'lesson-1' }),
-      }),
+      })
     );
   });
 
   it('returns the existing job when create throws a postgres 23505 error', async () => {
-    const existingJob = { id: 'job-existing-2', status: 'PENDING', targetType: 'TOPIC', targetId: 'topic-9' };
-    const pg23505 = Object.assign(new Error('duplicate key value violates unique constraint'), { code: '23505' });
+    const existingJob = {
+      id: 'job-existing-2',
+      status: 'PENDING',
+      targetType: 'TOPIC',
+      targetId: 'topic-9',
+    };
+    const pg23505 = Object.assign(new Error('duplicate key value violates unique constraint'), {
+      code: '23505',
+    });
 
     mockRegenerationJob.create.mockRejectedValue(pg23505);
     mockRegenerationJob.findFirst.mockResolvedValue(existingJob);
 
-    const res = await POST(makeRequest({ suggestionId: 'suggestion-1', targetType: 'TOPIC', targetId: 'topic-9' }));
+    const res = await POST(
+      makeRequest({ suggestionId: 'suggestion-1', targetType: 'TOPIC', targetId: 'topic-9' })
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.job).toEqual(existingJob);
@@ -111,7 +127,9 @@ describe('POST /api/admin/regeneration-jobs — unique-constraint / idempotency'
     const dbError = Object.assign(new Error('connection timeout'), { code: 'P1001' });
     mockRegenerationJob.create.mockRejectedValue(dbError);
 
-    const res = await POST(makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-2' }));
+    const res = await POST(
+      makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-2' })
+    );
     expect(res.status).toBe(500);
     // Must NOT have attempted an idempotency lookup for a non-constraint error
     expect(mockRegenerationJob.findFirst).not.toHaveBeenCalled();
@@ -119,20 +137,28 @@ describe('POST /api/admin/regeneration-jobs — unique-constraint / idempotency'
 
   it('does NOT treat "already exists" message alone as a unique constraint (broad match removed)', async () => {
     // An error that previously would be misclassified by the broad lc.includes('already exists') check
-    const unrelatedError = Object.assign(new Error('Table already exists in schema'), { code: 'P3001' });
+    const unrelatedError = Object.assign(new Error('Table already exists in schema'), {
+      code: 'P3001',
+    });
     mockRegenerationJob.create.mockRejectedValue(unrelatedError);
 
-    const res = await POST(makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-3' }));
+    const res = await POST(
+      makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-3' })
+    );
     expect(res.status).toBe(500);
     expect(mockRegenerationJob.findFirst).not.toHaveBeenCalled();
   });
 
   it('does NOT treat a generic "unique" keyword in message alone as a unique constraint', async () => {
     // "unique" appears in the message but it is NOT a real DB unique violation
-    const genericError = Object.assign(new Error('Value must be unique per user request'), { code: 'CUSTOM_CODE' });
+    const genericError = Object.assign(new Error('Value must be unique per user request'), {
+      code: 'CUSTOM_CODE',
+    });
     mockRegenerationJob.create.mockRejectedValue(genericError);
 
-    const res = await POST(makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-4' }));
+    const res = await POST(
+      makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-4' })
+    );
     expect(res.status).toBe(500);
     expect(mockRegenerationJob.findFirst).not.toHaveBeenCalled();
   });
@@ -143,7 +169,9 @@ describe('POST /api/admin/regeneration-jobs — unique-constraint / idempotency'
     // Simulate race: job was deleted between the failed create and the lookup
     mockRegenerationJob.findFirst.mockResolvedValue(null);
 
-    const res = await POST(makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-5' }));
+    const res = await POST(
+      makeRequest({ suggestionId: 'suggestion-1', targetType: 'LESSON', targetId: 'lesson-5' })
+    );
     // No matching job for the original key → treat as real error → 500
     expect(res.status).toBe(500);
   });

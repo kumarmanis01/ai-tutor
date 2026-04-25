@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 
@@ -28,7 +28,10 @@ export default function ToastHost() {
   return (
     <div className="fixed right-4 bottom-4 z-50 flex flex-col gap-2">
       {toasts.map((t) => (
-        <div key={t.id} className="max-w-xs bg-card border border-border rounded px-3 py-2 shadow-lg">
+        <div
+          key={t.id}
+          className="max-w-xs bg-card border border-border rounded px-3 py-2 shadow-lg"
+        >
           <div className="text-sm text-foreground">{t.message}</div>
         </div>
       ))}

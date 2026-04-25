@@ -13,17 +13,14 @@
  * Never throws -- all errors are caught and logged.
  */
 
-import type { Job } from 'bullmq'
-import { prisma } from '@/lib/prisma.js'
-import { logger } from '@/lib/logger.js'
-import { sendMail } from '@/lib/mailer.js'
-import type { DistressNotificationJobData } from '../../jobs/distressNotification.js'
+import type { Job } from 'bullmq';
+import { prisma } from '@/lib/prisma.js';
+import { logger } from '@/lib/logger.js';
+import { sendMail } from '@/lib/mailer.js';
+import type { DistressNotificationJobData } from '../../jobs/distressNotification.js';
 
-function buildParentEmailHtml(params: {
-  childName: string
-  severity: string
-}): string {
-  const { childName } = params
+function buildParentEmailHtml(params: { childName: string; severity: string }): string {
+  const { childName } = params;
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -53,18 +50,18 @@ function buildParentEmailHtml(params: {
     Student messages are not shared verbatim to protect privacy.
   </p>
 </body>
-</html>`
+</html>`;
 }
 
 export async function processDistressNotification(
-  job: Job<DistressNotificationJobData>,
+  job: Job<DistressNotificationJobData>
 ): Promise<void> {
-  const { studentId, sessionId, turnId, severity, triggerPhrases, studentMessage } = job.data
+  const { studentId, sessionId, turnId, severity, triggerPhrases, studentMessage } = job.data;
 
   // Gate: skip if flag is off (code ready but not yet live)
   if (process.env.ENABLE_DISTRESS_DETECTION !== 'true') {
-    logger.info('distressNotification.skipped', { reason: 'flag_off', studentId, severity })
-    return
+    logger.info('distressNotification.skipped', { reason: 'flag_off', studentId, severity });
+    return;
   }
 
   try {
@@ -79,7 +76,7 @@ export async function processDistressNotification(
         // Never store verbatim -- store trigger phrase list only
         inputPreview: triggerPhrases.join(', ').slice(0, 200),
       },
-    })
+    });
 
     // 2. Look up linked parent
     const parentLink = await prisma.parentStudent.findFirst({
@@ -88,26 +85,26 @@ export async function processDistressNotification(
         parent: { select: { name: true, email: true } },
         student: { select: { name: true } },
       },
-    })
+    });
 
     // 3. No parent linked → flag for admin review
     if (!parentLink?.parent?.email) {
       await prisma.safetyEvent.update({
         where: { id: safetyEvent.id },
         data: { resolution: 'no_parent_linked_admin_review_required' },
-      })
+      });
       logger.error('distressNotification.noParent', {
         studentId,
         severity,
         message: 'CRITICAL: distress detected but no parent linked -- admin must review',
         safetyEventId: safetyEvent.id,
-      })
-      return
+      });
+      return;
     }
 
     // 4. Send warm support email to parent
-    const childName = parentLink.student?.name ?? 'your child'
-    const parentEmail = parentLink.parent.email
+    const childName = parentLink.student?.name ?? 'your child';
+    const parentEmail = parentLink.parent.email;
 
     // sendMail (not sendMailSafe) -- distress alerts must never be silently dropped
     await sendMail({
@@ -128,20 +125,20 @@ export async function processDistressNotification(
         ``,
         `- Spinzy Team`,
       ].join('\n'),
-    })
+    });
 
     logger.info('distressNotification.sent', {
       studentId,
       severity,
       safetyEventId: safetyEvent.id,
       parentEmail,
-    })
+    });
   } catch (err) {
     logger.error('distressNotification.error', {
       studentId,
       severity,
       error: err instanceof Error ? err.message : String(err),
-    })
+    });
     // Never rethrow -- student-facing response must not be affected
   }
 }

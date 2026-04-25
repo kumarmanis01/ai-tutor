@@ -7,29 +7,33 @@
  */
 import { prisma } from '../../../lib/prisma';
 
-
-
 function randomVectorLiteral(dim: number) {
-  const values = Array.from({ length: dim }, () => (Math.random() * 2 - 1).toFixed(6))
-  return `[${values.join(',')}]`
+  const values = Array.from({ length: dim }, () => (Math.random() * 2 - 1).toFixed(6));
+  return `[${values.join(',')}]`;
 }
 
 describe('DoubtKb IVFFLAT index and latency', () => {
   beforeAll(async () => {
     // No-op: tests will create minimal artifacts as needed.
-  })
+  });
 
   afterAll(async () => {
-    await prisma.$executeRawUnsafe(`DELETE FROM "DoubtKb" WHERE "subjectId" = 'integration-test-subject'`).catch(() => {})
-    await prisma.$disconnect()
-  })
+    await prisma
+      .$executeRawUnsafe(`DELETE FROM "DoubtKb" WHERE "subjectId" = 'integration-test-subject'`)
+      .catch(() => {});
+    await prisma.$disconnect();
+  });
 
   test('IVFFLAT index exists when pgvector is installed and retrieval is fast', async () => {
     // Check for pgvector extension presence
-    const hasVectorExtRows: any[] = await prisma.$queryRawUnsafe(`SELECT extname FROM pg_extension WHERE extname = 'vector'`)
+    const hasVectorExtRows: any[] = await prisma.$queryRawUnsafe(
+      `SELECT extname FROM pg_extension WHERE extname = 'vector'`
+    );
     if (!hasVectorExtRows || hasVectorExtRows.length === 0) {
-      console.warn('pgvector extension not installed in DB; skipping IVFFLAT/index latency assertions')
-      return
+      console.warn(
+        'pgvector extension not installed in DB; skipping IVFFLAT/index latency assertions'
+      );
+      return;
     }
 
     // Ensure minimal DoubtKb table exists with embedding column
@@ -39,59 +43,65 @@ describe('DoubtKb IVFFLAT index and latency', () => {
         "subjectId" TEXT,
         embedding vector(1536)
       )
-    `)
+    `);
 
     // Confirm IVFFLAT index exists
     const idxRows: any[] = await prisma.$queryRawUnsafe(`
       SELECT indexname FROM pg_indexes
       WHERE tablename = 'DoubtKb' AND indexdef LIKE '%USING ivfflat%'
-    `)
-    expect(idxRows.length).toBeGreaterThanOrEqual(1)
+    `);
+    expect(idxRows.length).toBeGreaterThanOrEqual(1);
 
     // Seed a modest number of synthetic vectors for a small latency check
-    const DIM = 1536
-    const ROWS = 200
-    const subject = 'integration-test-subject'
+    const DIM = 1536;
+    const ROWS = 200;
+    const subject = 'integration-test-subject';
 
-    const values: string[] = []
+    const values: string[] = [];
     for (let i = 0; i < ROWS; i++) {
-      const v = randomVectorLiteral(DIM)
+      const v = randomVectorLiteral(DIM);
       // Provide required non-null columns (studentId, sessionId, question, answer)
       // so the insert doesn't violate table constraints when the real table has
       // additional non-nullable columns.
-      const studentId = `seed-student-${i}`
-      const sessionId = `seed-session-${i}`
-      const q = `synthetic question ${i}`.replace("'", "")
-      const a = `synthetic answer ${i}`.replace("'", "")
-      values.push(`(gen_random_uuid(), '${studentId}', '${sessionId}', '${q}', '${a}', '${subject}', '${v}')`)
+      const studentId = `seed-student-${i}`;
+      const sessionId = `seed-session-${i}`;
+      const q = `synthetic question ${i}`.replace("'", '');
+      const a = `synthetic answer ${i}`.replace("'", '');
+      values.push(
+        `(gen_random_uuid(), '${studentId}', '${sessionId}', '${q}', '${a}', '${subject}', '${v}')`
+      );
     }
 
     // Insert specifying explicit columns to satisfy production schema.
-    const insertSql = `INSERT INTO "DoubtKb" (id, "studentId", "sessionId", question, answer, "subjectId", embedding) VALUES ${values.join(',')} ON CONFLICT DO NOTHING`
-    await prisma.$executeRawUnsafe(insertSql)
+    const insertSql = `INSERT INTO "DoubtKb" (id, "studentId", "sessionId", question, answer, "subjectId", embedding) VALUES ${values.join(',')} ON CONFLICT DO NOTHING`;
+    await prisma.$executeRawUnsafe(insertSql);
 
     // Run several similarity queries and measure average time
-    const QUERIES = 20
-    const queryVector = randomVectorLiteral(DIM)
-    const times: number[] = []
+    const QUERIES = 20;
+    const queryVector = randomVectorLiteral(DIM);
+    const times: number[] = [];
 
     for (let q = 0; q < QUERIES; q++) {
-      const start = Date.now()
-      await prisma.$queryRawUnsafe(`
+      const start = Date.now();
+      await prisma.$queryRawUnsafe(
+        `
         SELECT id, 1 - (embedding <=> $1::vector) AS similarity
         FROM "DoubtKb"
         WHERE "subjectId" = $2 AND embedding IS NOT NULL
         ORDER BY similarity DESC
         LIMIT 1
-      `, queryVector, subject)
-      times.push(Date.now() - start)
+      `,
+        queryVector,
+        subject
+      );
+      times.push(Date.now() - start);
     }
 
-    const avg = times.reduce((a, b) => a + b, 0) / times.length
+    const avg = times.reduce((a, b) => a + b, 0) / times.length;
     // Expect average retrieval latency to be reasonable under test infra.
     // Use conservative threshold to avoid brittle failures in CI/staging.
     // Increase threshold to accommodate slower CI infra
-    const THRESHOLD_MS = 500
-    expect(avg).toBeLessThanOrEqual(THRESHOLD_MS)
-  }, 180_000)
-})
+    const THRESHOLD_MS = 500;
+    expect(avg).toBeLessThanOrEqual(THRESHOLD_MS);
+  }, 180_000);
+});

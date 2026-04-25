@@ -12,11 +12,13 @@ Stack: AI Content Engine with OpenAI models, BullMQ workers, Redis, Prisma, Next
 1. Overview
 
 In v1, the “AI Tutor” is primarily:
+
 - An **AI Content Engine** (notes, practice questions, tests) with strict worker isolation.
 - A **Q&A/chat tutor** exposed via `/api/chat` with subject-specific prompts.
 - A newer **structured session shell** that consumes AI-generated content and explanations, but does not yet implement the full v2 7-stage pedagogical engine or per-concept knowledge graph updates.
 
 Design mandate (v1, from internal docs):
+
 - Separate AI content generation from the student-facing APIs.
 - Keep LLM calls auditable (`AIContentLog`) and idempotent where possible.
 - Use workers + queues as the only place where LLMs are invoked.
@@ -25,18 +27,18 @@ Design mandate (v1, from internal docs):
 
 1.1 Subsystem Map (v1 reality)
 
-Subsystem | Code | Responsibility | Status
---------- | ---- | -------------- | ------
-Content Engine | `worker/*`, `lib/ai/prompts/*` | Notes, practice, and test generation | Implemented
-AI Tutor Chat | `/api/chat`, `lib/subjectEngines` | Subject chat Q&A tutor with language handling | Implemented
-Diagnostic Engine | `services/diagnostic/engine.ts` | Adaptive baseline diagnostic flow | Implemented
-Recommendation Engine | `lib/homeEngine/getNextAction.ts` | Deterministic “what to do now” home logic | Implemented
-Teaching Engine | (none dedicated) | Tutor behaviour embedded in prompts; no standalone engine | Not implemented as separate module
-Knowledge Graph | `StudentTopicProgress`, `StudentTopicMastery` | Per-topic mastery & progress proxies | Implemented (topic-level), not full concept KG
-Session State Machine | `StructuredSession` + `SessionPhase` | 5-phase session shell (overview/explanation/practice/test/homework) | Implemented
-LLM Router | `lib/callLLM.ts` | Model selection, retries, cost logging, env controls | Implemented
-Prompt Assembly | `lib/ai/prompts/promptBuilder.ts` | Schema-based prompts for notes/practice/doubts | Implemented
-Safety Layer | `checkProfanity`, off-topic checks in prompts | Basic input guardrails | Implemented in limited form
+| Subsystem             | Code                                          | Responsibility                                                      | Status                                         |
+| --------------------- | --------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
+| Content Engine        | `worker/*`, `lib/ai/prompts/*`                | Notes, practice, and test generation                                | Implemented                                    |
+| AI Tutor Chat         | `/api/chat`, `lib/subjectEngines`             | Subject chat Q&A tutor with language handling                       | Implemented                                    |
+| Diagnostic Engine     | `services/diagnostic/engine.ts`               | Adaptive baseline diagnostic flow                                   | Implemented                                    |
+| Recommendation Engine | `lib/homeEngine/getNextAction.ts`             | Deterministic “what to do now” home logic                           | Implemented                                    |
+| Teaching Engine       | (none dedicated)                              | Tutor behaviour embedded in prompts; no standalone engine           | Not implemented as separate module             |
+| Knowledge Graph       | `StudentTopicProgress`, `StudentTopicMastery` | Per-topic mastery & progress proxies                                | Implemented (topic-level), not full concept KG |
+| Session State Machine | `StructuredSession` + `SessionPhase`          | 5-phase session shell (overview/explanation/practice/test/homework) | Implemented                                    |
+| LLM Router            | `lib/callLLM.ts`                              | Model selection, retries, cost logging, env controls                | Implemented                                    |
+| Prompt Assembly       | `lib/ai/prompts/promptBuilder.ts`             | Schema-based prompts for notes/practice/doubts                      | Implemented                                    |
+| Safety Layer          | `checkProfanity`, off-topic checks in prompts | Basic input guardrails                                              | Implemented in limited form                    |
 
 ---
 
@@ -45,7 +47,8 @@ Safety Layer | `checkProfanity`, off-topic checks in prompts | Basic input guard
 F-AI-V1-010 — Tutor Behaviour
 
 Characteristics:
-- In v1, *teaching behaviour* is largely encoded in:
+
+- In v1, _teaching behaviour_ is largely encoded in:
   - Subject-specific system prompts (e.g., “You are a helpful [subject] tutor…”).
   - Content prompts for notes/practice/doubts with schemas and examples.
 - There is no engine enforcing:
@@ -54,6 +57,7 @@ Characteristics:
   - Explicit “I don’t know” handling paths or prerequisite-remediation flows.
 
 Implications:
+
 - The AI behaves like an enhanced subject tutor/chatbot, not a strict pedagogical state machine.
 - It can guide and explain, but does not consistently adhere to the v2 Socratic and no-direct-answer rules.
 
@@ -74,6 +78,7 @@ F-AI-V1-020 — Diagnostic & Assessment Integration
   - Topic-level mastery and progress tables are updated based on results.
 
 Key gaps vs v2:
+
 - No 3-parameter IRT calibration or theta-based question selection.
 - No formal mapping from diagnostics/tests into a Bayesian knowledge graph with variance.
 
@@ -133,4 +138,3 @@ F-AI-V1-050 — Safety Layer (Basic)
   - Emotional distress or jailbreak detection.
 
 Status: **Basic safety measures are present; v2-spec safety/event plumbing is not yet implemented.**
-

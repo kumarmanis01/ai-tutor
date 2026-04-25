@@ -14,25 +14,25 @@
  * - 2026-04-24T12:00:00Z | copilot | validate grade (parseInt, range 1-12); case-insensitive board slug
  */
 
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const start = Date.now()
+  const start = Date.now();
   try {
-    const url = new URL(req.url)
-    const grade = url.searchParams.get('grade')
-    const board = url.searchParams.get('board')
+    const url = new URL(req.url);
+    const grade = url.searchParams.get('grade');
+    const board = url.searchParams.get('board');
 
-    if (!grade || !board) return NextResponse.json({ error: 'missing_params' }, { status: 400 })
+    if (!grade || !board) return NextResponse.json({ error: 'missing_params' }, { status: 400 });
 
     // Validate grade: must be an integer in [1, 12].
-    const gradeNum = parseInt(grade, 10)
+    const gradeNum = parseInt(grade, 10);
     if (Number.isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) {
-      return NextResponse.json({ error: 'invalid_grade' }, { status: 400 })
+      return NextResponse.json({ error: 'invalid_grade' }, { status: 400 });
     }
 
     const topics = await prisma.topicDef.findMany({
@@ -54,16 +54,20 @@ export async function GET(req: Request) {
         name: true,
         notes: { take: 1, select: { content: true } },
       },
-    })
+    });
 
-    const payload = topics.map((t) => ({ id: t.id, name: t.name, sampleNote: t.notes?.[0]?.content ?? null }))
-    const res = NextResponse.json({ ok: true, topics: payload })
-    logger.logAPI(req, res, { className: 'ExploreContentAPI', methodName: 'GET' }, start)
-    return res
+    const payload = topics.map((t) => ({
+      id: t.id,
+      name: t.name,
+      sampleNote: t.notes?.[0]?.content ?? null,
+    }));
+    const res = NextResponse.json({ ok: true, topics: payload });
+    logger.logAPI(req, res, { className: 'ExploreContentAPI', methodName: 'GET' }, start);
+    return res;
   } catch (err) {
-    logger.error('explore-content failed', { error: String(err) })
-    const res = NextResponse.json({ error: 'server_error' }, { status: 500 })
-    logger.logAPI(req, res, { className: 'ExploreContentAPI', methodName: 'GET' }, start)
-    return res
+    logger.error('explore-content failed', { error: String(err) });
+    const res = NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'ExploreContentAPI', methodName: 'GET' }, start);
+    return res;
   }
 }

@@ -11,14 +11,20 @@ module.exports = {
     '^@/(.*)\\.js$': '<rootDir>/src/$1.ts',
     // NOTE: avoid broad 'lib/' fallbacks — they can accidentally remap
     // node_modules internal lib/* imports (e.g. jose/dist/.../lib/*.js).
-    '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
+    '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1'],
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
   setupFiles: ['<rootDir>/tests/setup/forceTestNodeEnv.cjs'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup/jsdomPolyfills.ts', '<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/normalizePaths.ts', '<rootDir>/tests/setup/prismaEnsureColumns.ts', '<rootDir>/tests/setup/loggerTeardown.ts'],
+  setupFilesAfterEnv: [
+    '<rootDir>/tests/setup/jsdomPolyfills.ts',
+    '<rootDir>/tests/setup/normalizePaths.cjs',
+    '<rootDir>/tests/setup/normalizePaths.ts',
+    '<rootDir>/tests/setup/prismaEnsureColumns.ts',
+    '<rootDir>/tests/setup/loggerTeardown.ts',
+  ],
   forceExit: true,
   collectCoverage: false,
 };

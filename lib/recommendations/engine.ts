@@ -27,7 +27,11 @@ import type { RecommendationTraceInput } from '@/lib/recommendations/trace';
  * Normalize a candidate's content ID to canonical format: {type}:{topicId}.
  * Falls back to original contentId when topicId is unavailable.
  */
-export function normalizeContentId(item: { type: string; contentId: string; meta?: Record<string, unknown> }): string {
+export function normalizeContentId(item: {
+  type: string;
+  contentId: string;
+  meta?: Record<string, unknown>;
+}): string {
   const topicId = item.meta?.topicId as string | undefined;
   if (!topicId) return item.contentId;
 
@@ -43,7 +47,10 @@ export function normalizeContentId(item: { type: string; contentId: string; meta
  * Extract a topicId from a learning session's activity reference and metadata.
  * Used to normalize incomplete-session signals to topicId for matching.
  */
-function extractSessionTopicId(activityRef: string | null, meta: Record<string, unknown> | null): string | null {
+function extractSessionTopicId(
+  activityRef: string | null,
+  meta: Record<string, unknown> | null
+): string | null {
   const m = meta ?? {};
   if (typeof m.topicId === 'string' && m.topicId) return m.topicId;
   if (typeof m.topic === 'string' && m.topic) return m.topic;
@@ -106,12 +113,15 @@ interface UserSignals {
     activeHours: number[];
     typeCounts: Record<string, number>;
   };
-  engagementByType: Record<string, {
-    shown: number;
-    clicked: number;
-    completed: number;
-    ignored: number;
-  }>;
+  engagementByType: Record<
+    string,
+    {
+      shown: number;
+      clicked: number;
+      completed: number;
+      ignored: number;
+    }
+  >;
 }
 
 interface CandidateContent {
@@ -167,7 +177,7 @@ export class RecommendationEngine {
       this.signals = await this.gatherUserSignals();
       const candidates = await this.getCandidateContent();
 
-      const filtered = candidates.filter(c => {
+      const filtered = candidates.filter((c) => {
         const nId = normalizeContentId(c);
         if (this.signals!.completedContentIds.has(nId)) return false;
         if (this.signals!.completedContentIds.has(c.contentId)) return false;
@@ -175,7 +185,7 @@ export class RecommendationEngine {
         return true;
       });
 
-      const scored = filtered.map(c => this.scoreCandidate(c));
+      const scored = filtered.map((c) => this.scoreCandidate(c));
       const result = this.diversifyAndSort(scored, limit);
 
       if (isTraceEnabled()) {
@@ -184,7 +194,9 @@ export class RecommendationEngine {
           entityType: r.type,
           entityId: r.contentId,
           score: r.score,
-          signals: (this._signalCache.get(r.contentId) as Record<string, unknown>) || { reasoning: r.reasoning },
+          signals: (this._signalCache.get(r.contentId) as Record<string, unknown>) || {
+            reasoning: r.reasoning,
+          },
         }));
         persistRecommendationTraces(traces).catch(() => {});
       }
@@ -202,58 +214,59 @@ export class RecommendationEngine {
   // ── Signal Gathering (Prompt 3 -- topic-first signals) ──────────────────
 
   private async gatherUserSignals(): Promise<UserSignals> {
-    const [user, profile, testResults, sessions, completedRecs, engagementHistory] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: this.userId },
-        select: { board: true, grade: true, language: true, subjects: true },
-      }),
-      prisma.studentLearningProfile.findUnique({
-        where: { studentId: this.userId },
-        select: { weakSubjects: true, recommendations: true },
-      }),
-      prisma.testResult.findMany({
-        where: { studentId: this.userId },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-        include: {
-          AttemptQuestions: {
-            include: {
-              question: { select: { subject: true, chapter: true } },
-              answer: { select: { autoScore: true } },
+    const [user, profile, testResults, sessions, completedRecs, engagementHistory] =
+      await Promise.all([
+        prisma.user.findUnique({
+          where: { id: this.userId },
+          select: { board: true, grade: true, language: true, subjects: true },
+        }),
+        prisma.studentLearningProfile.findUnique({
+          where: { studentId: this.userId },
+          select: { weakSubjects: true, recommendations: true },
+        }),
+        prisma.testResult.findMany({
+          where: { studentId: this.userId },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: {
+            AttemptQuestions: {
+              include: {
+                question: { select: { subject: true, chapter: true } },
+                answer: { select: { autoScore: true } },
+              },
             },
           },
-        },
-      }),
-      prisma.learningSession.findMany({
-        where: { studentId: this.userId },
-        orderBy: { lastAccessed: 'desc' },
-        take: 30,
-        select: {
-          activityType: true,
-          activityRef: true,
-          isCompleted: true,
-          completionPercentage: true,
-          difficultyLevel: true,
-          actualTimeSpent: true,
-          startedAt: true,
-          meta: true,
-        },
-      }),
-      prisma.contentRecommendation.findMany({
-        where: { userId: this.userId, isCompleted: true },
-        select: { contentId: true },
-      }),
-      prisma.contentRecommendation.findMany({
-        where: { userId: this.userId },
-        select: {
-          contentId: true,
-          isShown: true,
-          isClicked: true,
-          isCompleted: true,
-          isIgnored: true,
-        },
-      }),
-    ]);
+        }),
+        prisma.learningSession.findMany({
+          where: { studentId: this.userId },
+          orderBy: { lastAccessed: 'desc' },
+          take: 30,
+          select: {
+            activityType: true,
+            activityRef: true,
+            isCompleted: true,
+            completionPercentage: true,
+            difficultyLevel: true,
+            actualTimeSpent: true,
+            startedAt: true,
+            meta: true,
+          },
+        }),
+        prisma.contentRecommendation.findMany({
+          where: { userId: this.userId, isCompleted: true },
+          select: { contentId: true },
+        }),
+        prisma.contentRecommendation.findMany({
+          where: { userId: this.userId },
+          select: {
+            contentId: true,
+            isShown: true,
+            isClicked: true,
+            isCompleted: true,
+            isIgnored: true,
+          },
+        }),
+      ]);
 
     // ── Test performance → low-score chapters ──
     const chapterScores: Record<string, { total: number; correct: number }> = {};
@@ -317,20 +330,34 @@ export class RecommendationEngine {
       meta?: Record<string, unknown> | null;
     };
     type CompletedRec = { contentId: unknown };
-    type EngagementRow = { contentId: string; isShown?: boolean; isClicked?: boolean; isCompleted?: boolean; isIgnored?: boolean };
+    type EngagementRow = {
+      contentId: string;
+      isShown?: boolean;
+      isClicked?: boolean;
+      isCompleted?: boolean;
+      isIgnored?: boolean;
+    };
 
-    const lowScoreTopicIds = lowScoreChapterDefs.flatMap((c: ChapterWithTopics) => c.topics.map((t: TopicRow) => t.id));
+    const lowScoreTopicIds = lowScoreChapterDefs.flatMap((c: ChapterWithTopics) =>
+      c.topics.map((t: TopicRow) => t.id)
+    );
     const weakSubjectTopicIds = weakSubjectTopics.map((t: TopicRow) => t.id);
 
     // ── Engagement patterns ──
-    const difficulties = (sessions as SessionRow[]).map((s) => s.difficultyLevel).filter(Boolean) as string[];
+    const difficulties = (sessions as SessionRow[])
+      .map((s) => s.difficultyLevel)
+      .filter(Boolean) as string[];
     const preferredDifficulty = this.getMostCommon(difficulties) || 'MEDIUM';
-    const sessionDurations = (sessions as SessionRow[]).map((s) => s.actualTimeSpent).filter(Boolean) as number[];
+    const sessionDurations = (sessions as SessionRow[])
+      .map((s) => s.actualTimeSpent)
+      .filter(Boolean) as number[];
     const averageSessionDuration =
       sessionDurations.length > 0
         ? sessionDurations.reduce((a: number, b: number) => a + b, 0) / sessionDurations.length
         : 15;
-    const sessionHours = (sessions as SessionRow[]).map((s) => new Date(String(s.startedAt)).getHours());
+    const sessionHours = (sessions as SessionRow[]).map((s) =>
+      new Date(String(s.startedAt)).getHours()
+    );
     const activeHours = [...new Set(sessionHours)].slice(0, 5) as number[];
     const typeCounts: Record<string, number> = {};
     for (const s of sessions as SessionRow[]) {
@@ -339,7 +366,9 @@ export class RecommendationEngine {
     }
 
     // ── Completed content (both raw and normalized) ──
-    const completedContentIds = new Set<string>((completedRecs as CompletedRec[]).map((r) => String(r.contentId)));
+    const completedContentIds = new Set<string>(
+      (completedRecs as CompletedRec[]).map((r) => String(r.contentId))
+    );
     const completedTopicIds = new Set<string>();
     for (const r of completedRecs as CompletedRec[]) {
       const cid = String(r.contentId);
@@ -350,9 +379,13 @@ export class RecommendationEngine {
     }
 
     // ── Engagement by type (Prompt 2 -- mapped keys) ──
-    const engagementByType: Record<string, { shown: number; clicked: number; completed: number; ignored: number }> = {};
+    const engagementByType: Record<
+      string,
+      { shown: number; clicked: number; completed: number; ignored: number }
+    > = {};
     for (const rec of engagementHistory as EngagementRow[]) {
-      const rawPrefix = rec.contentId && rec.contentId.includes(':') ? rec.contentId.split(':')[0] : 'catalog';
+      const rawPrefix =
+        rec.contentId && rec.contentId.includes(':') ? rec.contentId.split(':')[0] : 'catalog';
       const mapped = SOURCE_TO_ENGAGEMENT_TYPE[rawPrefix] || rawPrefix;
       if (!engagementByType[mapped]) {
         engagementByType[mapped] = { shown: 0, clicked: 0, completed: 0, ignored: 0 };
@@ -395,108 +428,115 @@ export class RecommendationEngine {
     const { board, grade, subjects, language } = this.signals;
     const hasSubjects = subjects && subjects.length > 0;
 
-    const [catalogItems, chapters, questions, notes, topicNotes, generatedTests] = await Promise.all([
-      prisma.contentCatalog.findMany({
-        where: {
-          active: true,
-          OR: [{ board, grade }, hasSubjects ? { subject: { in: subjects } } : {}, { language: language as LanguageCode }],
-        },
-        take: 100,
-        orderBy: { updatedAt: 'desc' },
-      }),
-      prisma.chapterDef.findMany({
-        where: {
-          lifecycle: 'active',
-          ...(hasSubjects ? { subject: { name: { in: subjects } } } : {}),
-        },
-        take: 50,
-        include: {
-          subject: { select: { id: true, name: true, classId: true } },
-          topics: { select: { id: true, name: true }, take: 1, orderBy: { order: 'asc' } },
-        },
-      }),
-      prisma.question.findMany({
-        where: {
-          // quarantined questions excluded -- do not remove this filter
-          status: 'ACTIVE',
-          OR: [{ board, grade }, hasSubjects ? { subject: { in: subjects } } : {}],
-        },
-        take: 50,
-        orderBy: { updatedAt: 'desc' },
-        include: {
-          topic: {
-            select: {
-              id: true,
-              name: true,
-              chapterId: true,
-              chapter: { select: { id: true, name: true, subject: { select: { id: true, name: true } } } },
-            },
+    const [catalogItems, chapters, questions, notes, topicNotes, generatedTests] =
+      await Promise.all([
+        prisma.contentCatalog.findMany({
+          where: {
+            active: true,
+            OR: [
+              { board, grade },
+              hasSubjects ? { subject: { in: subjects } } : {},
+              { language: language as LanguageCode },
+            ],
           },
-        },
-      }),
-      prisma.note.findMany({
-        where: {
-          isPublic: true,
-          subject: subjects.length ? { in: subjects } : undefined,
-        },
-        take: 30,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.topicNote.findMany({
-        where: {
-          status: 'approved',
-          lifecycle: 'active',
-          language: language as any,
-          ...(hasSubjects ? { topic: { chapter: { subject: { name: { in: subjects } } } } } : {}),
-        },
-        take: 50,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          topic: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              chapter: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  subject: { select: { id: true, name: true } },
+          take: 100,
+          orderBy: { updatedAt: 'desc' },
+        }),
+        prisma.chapterDef.findMany({
+          where: {
+            lifecycle: 'active',
+            ...(hasSubjects ? { subject: { name: { in: subjects } } } : {}),
+          },
+          take: 50,
+          include: {
+            subject: { select: { id: true, name: true, classId: true } },
+            topics: { select: { id: true, name: true }, take: 1, orderBy: { order: 'asc' } },
+          },
+        }),
+        prisma.question.findMany({
+          where: {
+            // quarantined questions excluded -- do not remove this filter
+            status: 'ACTIVE',
+            OR: [{ board, grade }, hasSubjects ? { subject: { in: subjects } } : {}],
+          },
+          take: 50,
+          orderBy: { updatedAt: 'desc' },
+          include: {
+            topic: {
+              select: {
+                id: true,
+                name: true,
+                chapterId: true,
+                chapter: {
+                  select: { id: true, name: true, subject: { select: { id: true, name: true } } },
                 },
               },
             },
           },
-        },
-      }),
-      prisma.generatedTest.findMany({
-        where: {
-          status: 'approved',
-          lifecycle: 'active',
-          language: language as any,
-          ...(hasSubjects ? { topic: { chapter: { subject: { name: { in: subjects } } } } } : {}),
-        },
-        take: 50,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          topic: {
-            select: {
-              id: true,
-              name: true,
-              chapter: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  subject: { select: { id: true, name: true } },
+        }),
+        prisma.note.findMany({
+          where: {
+            isPublic: true,
+            subject: subjects.length ? { in: subjects } : undefined,
+          },
+          take: 30,
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.topicNote.findMany({
+          where: {
+            status: 'approved',
+            lifecycle: 'active',
+            language: language as any,
+            ...(hasSubjects ? { topic: { chapter: { subject: { name: { in: subjects } } } } } : {}),
+          },
+          take: 50,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            topic: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                chapter: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    subject: { select: { id: true, name: true } },
+                  },
                 },
               },
             },
           },
-          questions: { select: { id: true } },
-        },
-      }),
-    ]);
+        }),
+        prisma.generatedTest.findMany({
+          where: {
+            status: 'approved',
+            lifecycle: 'active',
+            language: language as any,
+            ...(hasSubjects ? { topic: { chapter: { subject: { name: { in: subjects } } } } } : {}),
+          },
+          take: 50,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            topic: {
+              select: {
+                id: true,
+                name: true,
+                chapter: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    subject: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+            questions: { select: { id: true } },
+          },
+        }),
+      ]);
 
     const candidates: CandidateContent[] = [];
 
@@ -702,7 +742,8 @@ export class RecommendationEngine {
 
     // 3. Weak subject boost (topic-first, then fall back to subject string)
     const candidateTopicId = candidate.topicId || (candidate.meta?.topicId as string | undefined);
-    const weakByTopic = candidateTopicId && this.signals.weakSubjectTopicIds.includes(candidateTopicId);
+    const weakByTopic =
+      candidateTopicId && this.signals.weakSubjectTopicIds.includes(candidateTopicId);
     const weakBySubject = this.signals.weakSubjects.includes(candidate.subject);
     if (weakByTopic || weakBySubject) {
       weakSubjectBoost = SCORE_WEIGHTS.WEAK_SUBJECT_BOOST;
@@ -713,7 +754,8 @@ export class RecommendationEngine {
 
     // 4. Low-score boost (topic-first, then fall back to chapter string)
     const lowByTopic = candidateTopicId && this.signals.lowScoreTopicIds.includes(candidateTopicId);
-    const lowByChapter = candidate.chapter && this.signals.lowScoreChapters.includes(candidate.chapter);
+    const lowByChapter =
+      candidate.chapter && this.signals.lowScoreChapters.includes(candidate.chapter);
     if (lowByTopic || lowByChapter) {
       lowScoreBoost = SCORE_WEIGHTS.LOW_SCORE_CHAPTER;
       score += lowScoreBoost;
@@ -763,7 +805,8 @@ export class RecommendationEngine {
 
     // 10. Activity type frequency
     const typeCounts = this.signals.engagementPatterns.typeCounts;
-    const activityType = candidate.type === 'test' ? 'test' : candidate.type === 'notes' ? 'notes' : candidate.type;
+    const activityType =
+      candidate.type === 'test' ? 'test' : candidate.type === 'notes' ? 'notes' : candidate.type;
     if (typeCounts[activityType] && typeCounts[activityType] >= 3) {
       typeFrequencyBoost = SCORE_WEIGHTS.ENGAGEMENT_HISTORY;
       score += typeFrequencyBoost;
@@ -855,7 +898,7 @@ export class RecommendationEngine {
   private toRecommendationItem(
     candidate: CandidateContent,
     score: number,
-    reasoning: string[],
+    reasoning: string[]
   ): RecommendationItem {
     const nId = normalizeContentId(candidate);
 
@@ -889,7 +932,7 @@ export class RecommendationEngine {
 
   private diversifyAndSort(items: RecommendationItem[], limit: number): RecommendationItem[] {
     const seenIds = new Set<string>();
-    const unique = items.filter(item => {
+    const unique = items.filter((item) => {
       if (seenIds.has(item.contentId)) return false;
       seenIds.add(item.contentId);
       return true;
@@ -918,7 +961,9 @@ export class RecommendationEngine {
     // Phase 1: guarantee one slot per diversity type
     for (const slotType of DIVERSITY_SLOTS) {
       if (result.length >= limit) break;
-      const pick = unique.find(item => item.type === slotType && canAdd(item) && !result.includes(item));
+      const pick = unique.find(
+        (item) => item.type === slotType && canAdd(item) && !result.includes(item)
+      );
       if (pick) addItem(pick);
     }
 
@@ -954,12 +999,15 @@ export class RecommendationEngine {
   }
 
   private groupBy<T extends Record<string, unknown>>(arr: T[], key: string): Record<string, T[]> {
-    return arr.reduce((acc, item) => {
-      const k = String(item[key] || 'unknown');
-      acc[k] = acc[k] || [];
-      acc[k].push(item);
-      return acc;
-    }, {} as Record<string, T[]>);
+    return arr.reduce(
+      (acc, item) => {
+        const k = String(item[key] || 'unknown');
+        acc[k] = acc[k] || [];
+        acc[k].push(item);
+        return acc;
+      },
+      {} as Record<string, T[]>
+    );
   }
 }
 
@@ -967,7 +1015,7 @@ export class RecommendationEngine {
 
 export async function getRecommendationsForUser(
   userId: string,
-  limit: number = 10,
+  limit: number = 10
 ): Promise<RecommendationItem[]> {
   const engine = new RecommendationEngine(userId);
   return engine.getRecommendations(limit);

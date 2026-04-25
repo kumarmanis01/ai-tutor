@@ -143,7 +143,13 @@ export async function getStudentRiskList(opts: {
   ]);
 
   // Strongly-type the returned user rows to avoid implicit-any in callbacks
-  const usersTyped = users as { id: string; email?: string | null; name?: string | null; board?: string | null; grade?: string | null }[];
+  const usersTyped = users as {
+    id: string;
+    email?: string | null;
+    name?: string | null;
+    board?: string | null;
+    grade?: string | null;
+  }[];
   const studentIds = usersTyped.map((u) => u.id);
   if (studentIds.length === 0) return { students: [], total };
 
@@ -151,43 +157,63 @@ export async function getStudentRiskList(opts: {
   const recentStart7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const priorStart14d = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-  const [lastActive, sessionsStarted, sessionsCompleted, weakCounts, masteryRows] = await Promise.all([
-    prisma.structuredSession.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds } },
-      _max: { startedAt: true, completedAt: true },
-    }),
-    prisma.structuredSession.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds }, startedAt: { gte: since30d } },
-      _count: { id: true },
-    }),
-    prisma.structuredSession.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds }, state: 'COMPLETE', completedAt: { gte: since30d } },
-      _count: { id: true },
-    }),
-    prisma.studentTopicProgress.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds }, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
-      _count: { topicId: true },
-    }),
-    prisma.studentTopicMastery.findMany({
-      where: {
-        studentId: { in: studentIds },
-        lastAttemptedAt: { gte: priorStart14d },
-      },
-      select: { studentId: true, accuracy: true, questionsAttempted: true, lastAttemptedAt: true },
-      take: 50_000,
-    }),
-  ]);
+  const [lastActive, sessionsStarted, sessionsCompleted, weakCounts, masteryRows] =
+    await Promise.all([
+      prisma.structuredSession.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds } },
+        _max: { startedAt: true, completedAt: true },
+      }),
+      prisma.structuredSession.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, startedAt: { gte: since30d } },
+        _count: { id: true },
+      }),
+      prisma.structuredSession.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, state: 'COMPLETE', completedAt: { gte: since30d } },
+        _count: { id: true },
+      }),
+      prisma.studentTopicProgress.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
+        _count: { topicId: true },
+      }),
+      prisma.studentTopicMastery.findMany({
+        where: {
+          studentId: { in: studentIds },
+          lastAttemptedAt: { gte: priorStart14d },
+        },
+        select: {
+          studentId: true,
+          accuracy: true,
+          questionsAttempted: true,
+          lastAttemptedAt: true,
+        },
+        take: 50_000,
+      }),
+    ]);
 
   // Cast groupBy/findMany results to local types to avoid implicit any
-  const lastActiveTyped = lastActive as Array<{ studentId: string; _max: { startedAt?: Date | null; completedAt?: Date | null } }>;
-  const sessionsStartedTyped = sessionsStarted as Array<{ studentId: string; _count: { id: number } }>;
-  const sessionsCompletedTyped = sessionsCompleted as Array<{ studentId: string; _count: { id: number } }>;
+  const lastActiveTyped = lastActive as Array<{
+    studentId: string;
+    _max: { startedAt?: Date | null; completedAt?: Date | null };
+  }>;
+  const sessionsStartedTyped = sessionsStarted as Array<{
+    studentId: string;
+    _count: { id: number };
+  }>;
+  const sessionsCompletedTyped = sessionsCompleted as Array<{
+    studentId: string;
+    _count: { id: number };
+  }>;
   const weakCountsTyped = weakCounts as Array<{ studentId: string; _count: { topicId: number } }>;
-  const masteryRowsTyped = masteryRows as Array<{ studentId: string; accuracy: number; questionsAttempted: number; lastAttemptedAt: Date }>;
+  const masteryRowsTyped = masteryRows as Array<{
+    studentId: string;
+    accuracy: number;
+    questionsAttempted: number;
+    lastAttemptedAt: Date;
+  }>;
 
   const lastMap = new Map<string, Date | null>();
   for (const r of lastActiveTyped) {
@@ -205,7 +231,10 @@ export async function getStudentRiskList(opts: {
   const recentPairs = new Map<string, Array<{ value: number; weight: number }>>();
   const priorPairs = new Map<string, Array<{ value: number; weight: number }>>();
   for (const r of masteryRowsTyped) {
-    const qa = typeof r.questionsAttempted === 'number' && Number.isFinite(r.questionsAttempted) ? r.questionsAttempted : 0;
+    const qa =
+      typeof r.questionsAttempted === 'number' && Number.isFinite(r.questionsAttempted)
+        ? r.questionsAttempted
+        : 0;
     const w = qa > 0 ? qa : 1;
     if (r.lastAttemptedAt >= recentStart7d) {
       const arr = recentPairs.get(r.studentId) ?? [];
@@ -272,8 +301,15 @@ export async function getStudentRiskSummary(opts: {
   board?: string;
   grade?: string;
 }): Promise<{ low: number; medium: number; high: number }> {
-  const { students } = await getStudentRiskList({ limit: 200, offset: 0, board: opts.board, grade: opts.grade });
-  let low = 0, medium = 0, high = 0;
+  const { students } = await getStudentRiskList({
+    limit: 200,
+    offset: 0,
+    board: opts.board,
+    grade: opts.grade,
+  });
+  let low = 0,
+    medium = 0,
+    high = 0;
   for (const s of students) {
     if (s.category === 'high') high++;
     else if (s.category === 'medium') medium++;
@@ -281,4 +317,3 @@ export async function getStudentRiskSummary(opts: {
   }
   return { low, medium, high };
 }
-

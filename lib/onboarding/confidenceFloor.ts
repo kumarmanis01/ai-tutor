@@ -153,11 +153,11 @@ export const ENCOURAGEMENT_MESSAGES: Record<string, string[]> = {
     'Practice se perfect hota hai! Chalo aage! 🎯',
   ],
   en: [
-    'Great effort! Let\'s try another one! 💪',
-    'No worries, you\'ll get it next time! 🌟',
+    "Great effort! Let's try another one! 💪",
+    "No worries, you'll get it next time! 🌟",
     'You can do this! Want to see an example first? 📚',
-    'We\'ll learn step by step, no rush! 🐢',
-    'Practice makes perfect! Let\'s continue! 🎯',
+    "We'll learn step by step, no rush! 🐢",
+    "Practice makes perfect! Let's continue! 🎯",
   ],
 };
 
@@ -203,7 +203,7 @@ export function updateConfidenceScore(
   hintsUsed: number
 ): ConfidenceScore {
   let delta = 0;
-  
+
   if (correct) {
     // Correct answer increases confidence
     delta = hintsUsed > 0 ? 0.3 : 0.5; // Less boost if hints used
@@ -211,9 +211,9 @@ export function updateConfidenceScore(
     // Wrong answer decreases confidence
     delta = -0.5;
   }
-  
+
   const newScore = currentScore + delta;
-  
+
   // Clamp to valid range
   return Math.max(MIN_CONFIDENCE_SCORE, Math.min(MAX_CONFIDENCE_SCORE, newScore));
 }
@@ -221,25 +221,28 @@ export function updateConfidenceScore(
 /**
  * Check for trigger conditions
  */
-export function checkTriggers(state: ConfidenceState, attempt: AttemptResult): ConfidenceTrigger | null {
+export function checkTriggers(
+  state: ConfidenceState,
+  attempt: AttemptResult
+): ConfidenceTrigger | null {
   // Priority order: Early exit > Consecutive wrong > Time struggle > Hint overuse
-  
+
   if (attempt.earlyExit) {
     return ConfidenceTrigger.EARLY_EXIT;
   }
-  
+
   if (state.consecutiveWrong >= CONSECUTIVE_FAILURE_THRESHOLD) {
     return ConfidenceTrigger.CONSECUTIVE_WRONG;
   }
-  
+
   if (attempt.timeTaken >= TIME_STRUGGLE_THRESHOLD) {
     return ConfidenceTrigger.TIME_STRUGGLE;
   }
-  
+
   if (state.hintsUsed >= HINT_OVERUSE_THRESHOLD) {
     return ConfidenceTrigger.HINT_OVERUSE;
   }
-  
+
   return null;
 }
 
@@ -284,12 +287,13 @@ export function processAttempt(
   const newTotalWrong = currentState.totalWrong + (attempt.correct ? 0 : 1);
   const newTotalCorrect = currentState.totalCorrect + (attempt.correct ? 1 : 0);
   const newHintsUsed = currentState.hintsUsed + attempt.hintsUsed;
-  const newTimeStruggling = currentState.timeStruggling + 
+  const newTimeStruggling =
+    currentState.timeStruggling +
     (attempt.timeTaken >= TIME_STRUGGLE_THRESHOLD ? attempt.timeTaken : 0);
-  
+
   // Update confidence score
   const newScore = updateConfidenceScore(currentState.score, attempt.correct, attempt.hintsUsed);
-  
+
   // Check for triggers
   const intermediateState: ConfidenceState = {
     ...currentState,
@@ -300,23 +304,23 @@ export function processAttempt(
     hintsUsed: newHintsUsed,
     timeStruggling: newTimeStruggling,
   };
-  
+
   const trigger = checkTriggers(intermediateState, attempt);
   const shouldIntervene = trigger !== null;
   const action = trigger ? determineAction(trigger) : null;
-  
+
   // Calculate effective difficulty
   const effectiveDifficulty = calculateEffectiveDifficulty(plannedDifficulty, newScore);
-  
+
   // Get encouragement message if intervening
   const encouragementMessage = shouldIntervene ? getEncouragementMessage(language) : null;
-  
+
   // If action is REDUCE_DIFFICULTY, reset consecutive wrong counter
   // (we're giving them an easier question)
   if (action === ConfidenceAction.REDUCE_DIFFICULTY) {
     newConsecutiveWrong = 0;
   }
-  
+
   const newState: ConfidenceState = {
     score: newScore,
     consecutiveWrong: newConsecutiveWrong,
@@ -327,7 +331,7 @@ export function processAttempt(
     lastTrigger: trigger,
     lastAction: action,
   };
-  
+
   return {
     shouldIntervene,
     trigger,
@@ -347,12 +351,12 @@ export function shouldSuggestBreak(state: ConfidenceState): boolean {
   if (state.consecutiveWrong >= MAX_CONSECUTIVE_FAILURES) {
     return true;
   }
-  
+
   // If confidence score is at floor and still struggling
   if (state.score <= MIN_CONFIDENCE_SCORE && state.totalWrong > state.totalCorrect) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -363,7 +367,7 @@ export function getBreakSuggestion(language: 'hi' | 'en' = 'hi'): string {
   if (language === 'hi') {
     return '🌟 Bahut mehnat kar li! Thoda break le lo, phir fresh start karenge! 💪';
   }
-  return '🌟 You\'ve worked hard! Take a short break, then we\'ll start fresh! 💪';
+  return "🌟 You've worked hard! Take a short break, then we'll start fresh! 💪";
 }
 
 /**
@@ -379,7 +383,7 @@ export function calculateSessionSummary(state: ConfidenceState): {
   const accuracy = totalAttempts > 0 ? state.totalCorrect / totalAttempts : 0;
   const confidenceChange = state.score - INITIAL_CONFIDENCE_SCORE;
   const interventions = state.lastTrigger ? 1 : 0; // Simplified count
-  
+
   let recommendation: string;
   if (accuracy >= 0.8) {
     recommendation = 'Ready for slight difficulty increase';
@@ -388,7 +392,7 @@ export function calculateSessionSummary(state: ConfidenceState): {
   } else {
     recommendation = 'Reduce difficulty next session';
   }
-  
+
   return { accuracy, confidenceChange, interventions, recommendation };
 }
 

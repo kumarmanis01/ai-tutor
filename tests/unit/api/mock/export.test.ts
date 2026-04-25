@@ -7,7 +7,9 @@ jest.mock('@/lib/prisma', () => ({
 
 jest.mock('@/lib/session', () => ({ getServerSessionForHandlers: jest.fn() }));
 jest.mock('@/lib/rateLimit', () => ({ allowRequest: jest.fn().mockReturnValue(true) }));
-jest.mock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), info: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/logger', () => ({
+  logger: { logAPI: jest.fn(), info: jest.fn(), error: jest.fn() },
+}));
 
 const { prisma } = require('@/lib/prisma');
 const { getServerSessionForHandlers } = require('@/lib/session');

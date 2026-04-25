@@ -29,7 +29,8 @@ export async function POST(req: Request) {
     if (!session) return new Response('Unauthorized', { status: 401 });
 
     const sessionUser = session.user as SessionUser;
-    if (!sessionUser || !sessionUser.id) return NextResponse.json({ error: 'login_required' }, { status: 401 });
+    if (!sessionUser || !sessionUser.id)
+      return NextResponse.json({ error: 'login_required' }, { status: 401 });
 
     // Parse and validate request body
     const body = await req.json().catch(() => ({}));
@@ -45,12 +46,16 @@ export async function POST(req: Request) {
         resolvedLang = p.region ? `${p.code}-${p.region}` : p.code;
       }
     } catch (err) {
-      logger.debug('Failed to parse Accept-Language header', { className: 'api.chat', error: String(err) });
+      logger.debug('Failed to parse Accept-Language header', {
+        className: 'api.chat',
+        error: String(err),
+      });
       resolvedLang = undefined;
     }
 
     if (!message) return NextResponse.json({ error: 'message_required' }, { status: 400 });
-    if (checkProfanity(message)) return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
+    if (checkProfanity(message))
+      return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
 
     const userId = sessionUser.id as string;
     const premium = await isPremiumUser(userId);
@@ -59,24 +64,41 @@ export async function POST(req: Request) {
       const txResult = await prisma.$transaction(async (tx) => {
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) return { notFound: true } as const;
-        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) return { limitReached: true } as const;
-        const updated = await tx.user.update({ where: { id: userId }, data: { todaysFreeQuestionsCount: { decrement: 1 } } });
+        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0)
+          return { limitReached: true } as const;
+        const updated = await tx.user.update({
+          where: { id: userId },
+          data: { todaysFreeQuestionsCount: { decrement: 1 } },
+        });
         return { updated } as const;
       });
       if ('notFound' in txResult) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-      if ('limitReached' in txResult) return NextResponse.json({ error: 'free_limit_reached', message: 'Free limit reached.' }, { status: 403 });
+      if ('limitReached' in txResult)
+        return NextResponse.json(
+          { error: 'free_limit_reached', message: 'Free limit reached.' },
+          { status: 403 }
+        );
     }
 
     // Persist the user's question (best-effort) before handing off to worker
-    await prisma.chat.create({ data: { userId, role: 'user', content: message, subject } }).catch((e) => {
-      logger.warn('Failed to persist user chat', { className: 'api.chat', methodName: 'POST', error: e });
-    });
+    await prisma.chat
+      .create({ data: { userId, role: 'user', content: message, subject } })
+      .catch((e) => {
+        logger.warn('Failed to persist user chat', {
+          className: 'api.chat',
+          methodName: 'POST',
+          error: e,
+        });
+      });
 
     // Prepare system prompt and messages
     const basePrompt = subjectPrompts[subject] ?? `You are a helpful ${subject} tutor.`;
     const systemPrompt = `${basePrompt} Please respond in ${resolvedLang ?? 'English'}.
 Return ONLY valid JSON with a key named "answerMarkdown" whose value is a markdown-formatted string containing the assistant's reply.`;
-    const messages = [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }];
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: message },
+    ];
 
     // Enqueue job to AI worker
     try {
@@ -92,7 +114,11 @@ Return ONLY valid JSON with a key named "answerMarkdown" whose value is a markdo
       });
       return NextResponse.json({ status: 'queued', jobId: job.id }, { status: 202 });
     } catch (e) {
-      logger.error('Failed to enqueue AI chat request', { className: 'api.chat', methodName: 'POST', error: String(e) });
+      logger.error('Failed to enqueue AI chat request', {
+        className: 'api.chat',
+        methodName: 'POST',
+        error: String(e),
+      });
       return NextResponse.json({ error: 'Could not enqueue AI request' }, { status: 500 });
     }
   } catch (err) {

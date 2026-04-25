@@ -60,10 +60,7 @@ export async function getOrderedTopicsForStudent(studentId: string) {
         },
       },
     },
-    orderBy: [
-      { chapter: { order: 'asc' } },
-      { order: 'asc' },
-    ],
+    orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }],
     include: {
       chapter: {
         include: {

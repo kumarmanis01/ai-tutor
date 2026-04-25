@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React, { useMemo } from 'react';
 import useSWR from 'swr';
 
@@ -39,7 +39,11 @@ export default function TelemetryView({ fromIso, toIso }: { fromIso: string; toI
     'alerts.active.count',
   ].join(',');
 
-  const { data, error } = useSWR(`/api/admin/system/telemetry?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}&keys=${encodeURIComponent(keys)}&bucket=auto`, fetcher, { refreshInterval: 30000 });
+  const { data, error } = useSWR(
+    `/api/admin/system/telemetry?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}&keys=${encodeURIComponent(keys)}&bucket=auto`,
+    fetcher,
+    { refreshInterval: 30000 }
+  );
 
   const samples = useMemo(() => {
     if (!data?.series) return [] as any[];
@@ -49,11 +53,16 @@ export default function TelemetryView({ fromIso, toIso }: { fromIso: string; toI
       const item = raw[seriesKey];
       const base = seriesKeyBase(seriesKey);
       byKey[base] = byKey[base] ?? [];
-      byKey[base].push({ key: item.key, dimensions: item.dimensions ?? null, points: item.points.map((p: any) => ({ ts: p.ts, value: Number(p.value) })) });
+      byKey[base].push({
+        key: item.key,
+        dimensions: item.dimensions ?? null,
+        points: item.points.map((p: any) => ({ ts: p.ts, value: Number(p.value) })),
+      });
     }
 
     const tsSet = new Set<string>();
-    for (const groups of Object.values(byKey)) for (const s of groups) for (const p of s.points) tsSet.add(p.ts);
+    for (const groups of Object.values(byKey))
+      for (const s of groups) for (const p of s.points) tsSet.add(p.ts);
     const allTs = Array.from(tsSet).sort();
 
     const samplesArr = allTs.map((ts) => {
@@ -95,23 +104,33 @@ export default function TelemetryView({ fromIso, toIso }: { fromIso: string; toI
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white p-3 rounded shadow">
           <div className="text-xs text-gray-500">Queue depth</div>
-          <div className="text-lg font-semibold">{samples[samples.length - 1]?.['queue.depth.value'] ?? '-'}</div>
+          <div className="text-lg font-semibold">
+            {samples[samples.length - 1]?.['queue.depth.value'] ?? '-'}
+          </div>
         </div>
         <div className="bg-white p-3 rounded shadow">
           <div className="text-xs text-gray-500">Running jobs</div>
-          <div className="text-lg font-semibold">{samples[samples.length - 1]?.['jobs.running.count'] ?? '-'}</div>
+          <div className="text-lg font-semibold">
+            {samples[samples.length - 1]?.['jobs.running.count'] ?? '-'}
+          </div>
         </div>
         <div className="bg-white p-3 rounded shadow">
           <div className="text-xs text-gray-500">Failed jobs (range)</div>
-          <div className="text-lg font-semibold">{samples.reduce((a, s) => a + (s['jobs.failed.count'] ?? 0), 0)}</div>
+          <div className="text-lg font-semibold">
+            {samples.reduce((a, s) => a + (s['jobs.failed.count'] ?? 0), 0)}
+          </div>
         </div>
         <div className="bg-white p-3 rounded shadow">
           <div className="text-xs text-gray-500">Active alerts</div>
-          <div className="text-lg font-semibold">{samples[samples.length - 1]?.['alerts.active.count'] ?? 0}</div>
+          <div className="text-lg font-semibold">
+            {samples[samples.length - 1]?.['alerts.active.count'] ?? 0}
+          </div>
         </div>
       </div>
 
-      <pre className="text-xs bg-gray-50 p-2 rounded">{/* JSON.stringify(seriesMap, null, 2) */}</pre>
+      <pre className="text-xs bg-gray-50 p-2 rounded">
+        {/* JSON.stringify(seriesMap, null, 2) */}
+      </pre>
     </div>
   );
 }

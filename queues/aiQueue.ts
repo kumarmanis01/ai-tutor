@@ -8,15 +8,15 @@
  * EDIT LOG:
  * - 2026-04-18T18:00:00Z | copilot | use getSharedConnection() to share IORedis singleton
  */
-import { Queue } from 'bullmq'
-import { getSharedConnection } from '@/lib/redis'
-import { AI_REQUEST_QUEUE } from '@/lib/queues/constants'
+import { Queue } from 'bullmq';
+import { getSharedConnection } from '@/lib/redis';
+import { AI_REQUEST_QUEUE } from '@/lib/queues/constants';
 
-let _aiQueue: Queue | null = null
+let _aiQueue: Queue | null = null;
 
 function getConnection() {
   // Returns the shared IORedis singleton rather than ConnectionOptions.
-  return getSharedConnection()
+  return getSharedConnection();
 }
 
 export function getAIRequestQueue() {
@@ -29,9 +29,9 @@ export function getAIRequestQueue() {
         removeOnComplete: 100,
         removeOnFail: 50,
       },
-    })
+    });
   }
-  return _aiQueue
+  return _aiQueue;
 }
 
-export default getAIRequestQueue
+export default getAIRequestQueue;

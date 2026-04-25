@@ -36,7 +36,7 @@ function getRazorpayClient() {
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) return null;
   // Support both ESM default export mocks and direct constructor exports
-  const R = (Razorpay && (Razorpay as any).default) ? (Razorpay as any).default : Razorpay as any;
+  const R = Razorpay && (Razorpay as any).default ? (Razorpay as any).default : (Razorpay as any);
   if (typeof R !== 'function') return null;
   try {
     return new R({ key_id: keyId, key_secret: keySecret });
@@ -49,7 +49,11 @@ function getRazorpayClient() {
 
 export async function POST(req: Request) {
   const raw = await req.text();
-  const idempotencyHeader = req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || req.headers.get('x-idempotency') || '';
+  const idempotencyHeader =
+    req.headers.get('idempotency-key') ||
+    req.headers.get('x-idempotency-key') ||
+    req.headers.get('x-idempotency') ||
+    '';
   const signature = req.headers.get('x-razorpay-signature') || '';
   const secret = getWebhookSecret();
   if (!secret || !signature) {
@@ -66,7 +70,12 @@ export async function POST(req: Request) {
   }
 
   let payload: any;
-  try { payload = JSON.parse(raw); } catch (err) { logger.warn('Invalid webhook payload JSON', { err }); return NextResponse.json({ ok: true }, { status: 200 }); }
+  try {
+    payload = JSON.parse(raw);
+  } catch (err) {
+    logger.warn('Invalid webhook payload JSON', { err });
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
 
   const ev = payload?.event;
   if (ev === 'payment.captured') {
@@ -85,11 +94,14 @@ export async function POST(req: Request) {
           orderId,
           eventType: 'webhook.received',
           payload,
-        })
+        });
       } catch (err) {
-        logger.warn('Failed to write webhook.received event', { err })
+        logger.warn('Failed to write webhook.received event', { err });
       }
-      const orderRow = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true } });
+      const orderRow = await prisma.paymentOrder.findUnique({
+        where: { razorpayOrderId: orderId },
+        select: { studentId: true, status: true },
+      });
       if (!orderRow) {
         logger.warn('Webhook payment.captured for unknown order', { orderId });
         return NextResponse.json({ ok: true }, { status: 200 });
@@ -103,101 +115,248 @@ export async function POST(req: Request) {
       const client = getRazorpayClient();
       let notes: any = {};
       if (client) {
-        try { const rzOrder = await client.orders.fetch(orderId); notes = rzOrder?.notes || {}; } catch (err) { logger.warn('Could not fetch rz order in webhook', { orderId, err }); }
+        try {
+          const rzOrder = await client.orders.fetch(orderId);
+          notes = rzOrder?.notes || {};
+        } catch (err) {
+          logger.warn('Could not fetch rz order in webhook', { orderId, err });
+        }
         if (process.env.NODE_ENV === 'test') {
           logger.debug('webhook.notes (test)', { notes });
         }
       }
 
-      const childIds = notes?.childIds ? (() => { try { return JSON.parse(notes.childIds); } catch { return [] } })() : [];
+      const childIds = notes?.childIds
+        ? (() => {
+            try {
+              return JSON.parse(notes.childIds);
+            } catch {
+              return [];
+            }
+          })()
+        : [];
       const now = new Date();
 
       // Reconciliation: mark order paid and create/update a Payment record (idempotent)
       await prisma.$transaction(async (tx) => {
-        await tx.paymentOrder.update({ where: { razorpayOrderId: orderId }, data: { status: 'paid', paidAt: now } });
+        await tx.paymentOrder.update({
+          where: { razorpayOrderId: orderId },
+          data: { status: 'paid', paidAt: now },
+        });
 
         // Try to find existing payment by transactionId or idempotency key
         let existing = null as any;
         if (paymentId) {
-          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', transactionId: paymentId } });
+          existing = await tx.payment.findFirst({
+            where: { provider: 'razorpay', transactionId: paymentId },
+          });
         }
         if (!existing && idempotencyHeader) {
-          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
+          existing = await tx.payment.findFirst({
+            where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader },
+          });
         }
 
         let paymentRecordId: string | null = null;
         if (!existing) {
           // create payment record
-          const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment.amount, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'success', transactionId: paymentId, orderId, meta: { notes } } });
+          const newPayment = await tx.payment.create({
+            data: {
+              userId: orderRow.studentId,
+              amount: payment.amount,
+              provider: 'razorpay',
+              providerIdempotencyKey: idempotencyHeader || undefined,
+              status: 'success',
+              transactionId: paymentId,
+              orderId,
+              meta: { notes },
+            },
+          });
           paymentRecordId = newPayment.id;
           // Log event in the same transaction
-          await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.created.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
+          await recordPaymentEvent(tx, {
+            paymentId: newPayment.id,
+            userId: orderRow.studentId,
+            provider: 'razorpay',
+            providerIdempotencyKey: idempotencyHeader || undefined,
+            transactionId: paymentId,
+            orderId,
+            eventType: 'payment.created.webhook',
+            payload: { notes },
+            amount: payment.amount,
+            status: 'success',
+          });
           // Attempt auto-redemption for referral (if user was invited and this is their first paid event)
           try {
-            const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
-            const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
-            const referralCode = fromPrefs || notes?.referralCode || notes?.ref
+            const userRow = await tx.user.findUnique({
+              where: { id: orderRow.studentId },
+              select: { preferences: true },
+            });
+            const fromPrefs =
+              userRow?.preferences && typeof userRow.preferences === 'object'
+                ? (userRow.preferences as any).referredBy
+                : undefined;
+            const referralCode = fromPrefs || notes?.referralCode || notes?.ref;
             if (typeof referralCode === 'string' && referralCode) {
               // Use purchaser IP saved in order notes to enable same-IP fraud detection
-              const redeemerIp = typeof notes?.purchaserIp === 'string' && notes.purchaserIp ? notes.purchaserIp : (typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip ? notes.purchaser_ip : (typeof notes?.buyerIp === 'string' && notes.buyerIp ? notes.buyerIp : (typeof notes?.buyer_ip === 'string' && notes.buyer_ip ? notes.buyer_ip : null)));
-              const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, redeemerIp)
+              const redeemerIp =
+                typeof notes?.purchaserIp === 'string' && notes.purchaserIp
+                  ? notes.purchaserIp
+                  : typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip
+                    ? notes.purchaser_ip
+                    : typeof notes?.buyerIp === 'string' && notes.buyerIp
+                      ? notes.buyerIp
+                      : typeof notes?.buyer_ip === 'string' && notes.buyer_ip
+                        ? notes.buyer_ip
+                        : null;
+              const redeemRes = await redeemReferral(
+                tx,
+                referralCode,
+                orderRow.studentId,
+                redeemerIp
+              );
               if (redeemRes.status !== 200) {
-                logger.warn('auto-redeem referral returned non-200', { orderId, referralCode, res: redeemRes })
+                logger.warn('auto-redeem referral returned non-200', {
+                  orderId,
+                  referralCode,
+                  res: redeemRes,
+                });
               }
             }
 
             // Coupon auto-redeem (if couponCode present in order notes). We already applied discount at order creation,
             // so record redemption but skip applying credit to avoid double-credits.
             try {
-              const couponCode = typeof notes?.couponCode === 'string' && notes.couponCode ? notes.couponCode : (typeof notes?.coupon === 'string' && notes.coupon ? notes.coupon : undefined)
+              const couponCode =
+                typeof notes?.couponCode === 'string' && notes.couponCode
+                  ? notes.couponCode
+                  : typeof notes?.coupon === 'string' && notes.coupon
+                    ? notes.coupon
+                    : undefined;
               if (couponCode) {
-                const cres = await redeemCoupon(tx, couponCode, orderRow.studentId, undefined, { applyAsCredit: false })
-                if (cres.status !== 200) logger.warn('auto-redeem coupon returned non-200', { orderId, couponCode, res: cres })
+                const cres = await redeemCoupon(tx, couponCode, orderRow.studentId, undefined, {
+                  applyAsCredit: false,
+                });
+                if (cres.status !== 200)
+                  logger.warn('auto-redeem coupon returned non-200', {
+                    orderId,
+                    couponCode,
+                    res: cres,
+                  });
               }
             } catch (err) {
-              logger.warn('auto-redeem coupon failed', { err, orderId })
+              logger.warn('auto-redeem coupon failed', { err, orderId });
             }
           } catch (err) {
-            logger.warn('auto-redeem referral failed', { err, orderId })
+            logger.warn('auto-redeem referral failed', { err, orderId });
           }
         } else {
           paymentRecordId = existing.id;
           // update existing payment status if needed
           if (existing.status !== 'success') {
-            await tx.payment.update({ where: { id: existing.id }, data: { status: 'success', transactionId: paymentId, orderId, meta: { ...(existing.meta || {}), notes } } });
-            await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
+            await tx.payment.update({
+              where: { id: existing.id },
+              data: {
+                status: 'success',
+                transactionId: paymentId,
+                orderId,
+                meta: { ...(existing.meta || {}), notes },
+              },
+            });
+            await recordPaymentEvent(tx, {
+              paymentId: existing.id,
+              userId: orderRow.studentId,
+              provider: 'razorpay',
+              providerIdempotencyKey: idempotencyHeader || undefined,
+              transactionId: paymentId,
+              orderId,
+              eventType: 'payment.updated.webhook',
+              payload: { notes },
+              amount: payment.amount,
+              status: 'success',
+            });
             // If an existing failed/updated payment now became successful, also attempt referral redemption
-              try {
-                const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
-                const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
-                const referralCode = fromPrefs || notes?.referralCode || notes?.ref
-                if (typeof referralCode === 'string' && referralCode) {
-                  const redeemerIp = typeof notes?.purchaserIp === 'string' && notes.purchaserIp ? notes.purchaserIp : (typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip ? notes.purchaser_ip : (typeof notes?.buyerIp === 'string' && notes.buyerIp ? notes.buyerIp : (typeof notes?.buyer_ip === 'string' && notes.buyer_ip ? notes.buyer_ip : null)));
-                  const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, redeemerIp)
-                  if (redeemRes.status !== 200) {
-                    logger.warn('auto-redeem referral returned non-200 (updated payment)', { orderId, referralCode, res: redeemRes })
-                  }
+            try {
+              const userRow = await tx.user.findUnique({
+                where: { id: orderRow.studentId },
+                select: { preferences: true },
+              });
+              const fromPrefs =
+                userRow?.preferences && typeof userRow.preferences === 'object'
+                  ? (userRow.preferences as any).referredBy
+                  : undefined;
+              const referralCode = fromPrefs || notes?.referralCode || notes?.ref;
+              if (typeof referralCode === 'string' && referralCode) {
+                const redeemerIp =
+                  typeof notes?.purchaserIp === 'string' && notes.purchaserIp
+                    ? notes.purchaserIp
+                    : typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip
+                      ? notes.purchaser_ip
+                      : typeof notes?.buyerIp === 'string' && notes.buyerIp
+                        ? notes.buyerIp
+                        : typeof notes?.buyer_ip === 'string' && notes.buyer_ip
+                          ? notes.buyer_ip
+                          : null;
+                const redeemRes = await redeemReferral(
+                  tx,
+                  referralCode,
+                  orderRow.studentId,
+                  redeemerIp
+                );
+                if (redeemRes.status !== 200) {
+                  logger.warn('auto-redeem referral returned non-200 (updated payment)', {
+                    orderId,
+                    referralCode,
+                    res: redeemRes,
+                  });
                 }
-              } catch (err) {
-                logger.warn('auto-redeem referral failed (updated payment)', { err, orderId })
               }
+            } catch (err) {
+              logger.warn('auto-redeem referral failed (updated payment)', { err, orderId });
+            }
           }
         }
 
         // If this payment was for an installment (notes contain subscriptionId & installmentNumber), reconcile Installment row
         try {
-          const subscriptionId = notes?.subscriptionId || notes?.subscription_id || notes?.subscription;
-          const installmentNumberRaw = notes?.installmentNumber || notes?.installment_no || notes?.installment || notes?.installmentIndex || notes?.installment_index;
+          const subscriptionId =
+            notes?.subscriptionId || notes?.subscription_id || notes?.subscription;
+          const installmentNumberRaw =
+            notes?.installmentNumber ||
+            notes?.installment_no ||
+            notes?.installment ||
+            notes?.installmentIndex ||
+            notes?.installment_index;
           const installmentNumber = installmentNumberRaw ? Number(installmentNumberRaw) : null;
           if (subscriptionId && installmentNumber) {
-            const inst = await tx.installment.findUnique({ where: { subscriptionId_number: { subscriptionId: String(subscriptionId), number: Number(installmentNumber) } } });
+            const inst = await tx.installment.findUnique({
+              where: {
+                subscriptionId_number: {
+                  subscriptionId: String(subscriptionId),
+                  number: Number(installmentNumber),
+                },
+              },
+            });
             if (inst) {
-              await tx.installment.update({ where: { id: inst.id }, data: { status: 'PAID', providerPaymentId: paymentId, paymentId: paymentRecordId ?? undefined, paidAt: now, attemptCount: { increment: 1 } } });
+              await tx.installment.update({
+                where: { id: inst.id },
+                data: {
+                  status: 'PAID',
+                  providerPaymentId: paymentId,
+                  paymentId: paymentRecordId ?? undefined,
+                  paidAt: now,
+                  attemptCount: { increment: 1 },
+                },
+              });
             }
           }
         } catch (err) {
           // Non-fatal: log and continue
-          logger.warn('Failed to reconcile installment on payment.captured', { err, orderId, paymentId });
+          logger.warn('Failed to reconcile installment on payment.captured', {
+            err,
+            orderId,
+            paymentId,
+          });
         }
 
         // If childIds present, attempt to activate child subscriptions similarly to verify endpoint
@@ -206,7 +365,10 @@ export async function POST(req: Request) {
           const expiry = new Date(now);
           expiry.setMonth(expiry.getMonth() + planMonths);
           for (const sid of childIds) {
-            await tx.user.update({ where: { id: sid }, data: { subscriptionStatus: 'active', subscriptionExpiry: expiry } });
+            await tx.user.update({
+              where: { id: sid },
+              data: { subscriptionStatus: 'active', subscriptionExpiry: expiry },
+            });
           }
         }
       });
@@ -225,7 +387,10 @@ export async function POST(req: Request) {
       const reason = payment?.error_reason || payment?.error_description || null;
       if (!orderId || !paymentId) return NextResponse.json({ ok: true }, { status: 200 });
 
-      const orderRow = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true, planMonths: true } });
+      const orderRow = await prisma.paymentOrder.findUnique({
+        where: { razorpayOrderId: orderId },
+        select: { studentId: true, status: true, planMonths: true },
+      });
       if (!orderRow) {
         logger.warn('Webhook payment.failed for unknown order', { orderId });
         return NextResponse.json({ ok: true }, { status: 200 });
@@ -239,60 +404,136 @@ export async function POST(req: Request) {
       const client = getRazorpayClient();
       let notes: any = {};
       if (client) {
-        try { const rzOrder = await client.orders.fetch(orderId); notes = rzOrder?.notes || {}; } catch (err) { logger.warn('Could not fetch rz order in webhook (failed)', { orderId, err }); }
+        try {
+          const rzOrder = await client.orders.fetch(orderId);
+          notes = rzOrder?.notes || {};
+        } catch (err) {
+          logger.warn('Could not fetch rz order in webhook (failed)', { orderId, err });
+        }
       }
 
       const now = new Date();
 
       await prisma.$transaction(async (tx) => {
-        await tx.paymentOrder.update({ where: { razorpayOrderId: orderId }, data: { status: 'failed' } });
+        await tx.paymentOrder.update({
+          where: { razorpayOrderId: orderId },
+          data: { status: 'failed' },
+        });
 
         // Try to reconcile existing payment by transactionId or idempotency key
         let existing = null as any;
         if (paymentId) {
-          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', transactionId: paymentId } });
+          existing = await tx.payment.findFirst({
+            where: { provider: 'razorpay', transactionId: paymentId },
+          });
         }
         if (!existing && idempotencyHeader) {
-          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
+          existing = await tx.payment.findFirst({
+            where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader },
+          });
         }
 
         let _paymentRecordId: string | null = null;
         if (!existing) {
-          const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
+          const newPayment = await tx.payment.create({
+            data: {
+              userId: orderRow.studentId,
+              amount: payment?.amount ?? orderRow.planMonths ?? 0,
+              provider: 'razorpay',
+              providerIdempotencyKey: idempotencyHeader || undefined,
+              status: 'failed',
+              transactionId: paymentId,
+              orderId,
+              meta: { reason },
+            },
+          });
           _paymentRecordId = newPayment.id;
-          await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })
+          await recordPaymentEvent(tx, {
+            paymentId: newPayment.id,
+            userId: orderRow.studentId,
+            provider: 'razorpay',
+            providerIdempotencyKey: idempotencyHeader || undefined,
+            transactionId: paymentId,
+            orderId,
+            eventType: 'payment.failed.webhook',
+            payload: { reason },
+            amount: payment?.amount ?? orderRow.planMonths ?? 0,
+            status: 'failed',
+          });
         } else {
           _paymentRecordId = existing.id;
           if (existing.status !== 'failed') {
-            await tx.payment.update({ where: { id: existing.id }, data: { status: 'failed', meta: { ...(existing.meta || {}), reason } } });
-            await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated_failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })
+            await tx.payment.update({
+              where: { id: existing.id },
+              data: { status: 'failed', meta: { ...(existing.meta || {}), reason } },
+            });
+            await recordPaymentEvent(tx, {
+              paymentId: existing.id,
+              userId: orderRow.studentId,
+              provider: 'razorpay',
+              providerIdempotencyKey: idempotencyHeader || undefined,
+              transactionId: paymentId,
+              orderId,
+              eventType: 'payment.updated_failed.webhook',
+              payload: { reason },
+              amount: payment?.amount ?? orderRow.planMonths ?? 0,
+              status: 'failed',
+            });
           }
         }
 
         // If this failed payment corresponds to an Installment, update the installment row (attemptCount/status)
         try {
-          const subscriptionId = notes?.subscriptionId || notes?.subscription_id || notes?.subscription;
-          const installmentNumberRaw = notes?.installmentNumber || notes?.installment_no || notes?.installment || notes?.installmentIndex || notes?.installment_index;
+          const subscriptionId =
+            notes?.subscriptionId || notes?.subscription_id || notes?.subscription;
+          const installmentNumberRaw =
+            notes?.installmentNumber ||
+            notes?.installment_no ||
+            notes?.installment ||
+            notes?.installmentIndex ||
+            notes?.installment_index;
           const installmentNumber = installmentNumberRaw ? Number(installmentNumberRaw) : null;
           if (subscriptionId && installmentNumber) {
-            const inst = await tx.installment.findUnique({ where: { subscriptionId_number: { subscriptionId: String(subscriptionId), number: Number(installmentNumber) } } });
+            const inst = await tx.installment.findUnique({
+              where: {
+                subscriptionId_number: {
+                  subscriptionId: String(subscriptionId),
+                  number: Number(installmentNumber),
+                },
+              },
+            });
             if (inst) {
-              await tx.installment.update({ where: { id: inst.id }, data: { status: 'FAILED', attemptCount: { increment: 1 }, lastAttemptAt: now } });
+              await tx.installment.update({
+                where: { id: inst.id },
+                data: { status: 'FAILED', attemptCount: { increment: 1 }, lastAttemptAt: now },
+              });
             }
           } else {
             // Fallback to subscription-level dunning seed if no installment found
-            const sub = await tx.subscription.findFirst({ where: { userId: orderRow.studentId, active: true } });
+            const sub = await tx.subscription.findFirst({
+              where: { userId: orderRow.studentId, active: true },
+            });
             if (sub) {
-              await tx.subscription.update({ where: { id: sub.id }, data: { dunningAttempts: { increment: 1 }, lastDunningAt: now } });
+              await tx.subscription.update({
+                where: { id: sub.id },
+                data: { dunningAttempts: { increment: 1 }, lastDunningAt: now },
+              });
             }
           }
         } catch (err) {
-          logger.warn('Failed to update installment on payment.failed', { err, orderId, paymentId });
+          logger.warn('Failed to update installment on payment.failed', {
+            err,
+            orderId,
+            paymentId,
+          });
         }
       });
 
       // Notify parent (best-effort) and enqueue dunning job to run immediately (installment-level preferred)
-      const parent = await prisma.user.findUnique({ where: { id: orderRow.studentId }, select: { id: true, email: true, phone: true, name: true } });
+      const parent = await prisma.user.findUnique({
+        where: { id: orderRow.studentId },
+        select: { id: true, email: true, phone: true, name: true },
+      });
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
         const subject = `Payment failed -- action required`;
@@ -300,14 +541,21 @@ export async function POST(req: Request) {
         await sendMailSafe({ to: parent.email, subject, html });
       }
       if (parent?.phone) {
-        await sendSms(parent.phone, `Payment failed for your Spinzy subscription. Update payment: ${retryLink}`);
+        await sendSms(
+          parent.phone,
+          `Payment failed for your Spinzy subscription. Update payment: ${retryLink}`
+        );
       }
 
       try {
         const q = getPaymentDunningQueue();
         // Enqueue a payment-level dunning job. Tests mock getPaymentDunningQueue and
         // expect an enqueue call for failed webhooks.
-        await q.add('payment-dunning', { notes: notes || {}, orderId, paymentId }, { removeOnComplete: true });
+        await q.add(
+          'payment-dunning',
+          { notes: notes || {}, orderId, paymentId },
+          { removeOnComplete: true }
+        );
       } catch (err) {
         logger.error('Failed to enqueue payment dunning job from webhook', { err });
       }

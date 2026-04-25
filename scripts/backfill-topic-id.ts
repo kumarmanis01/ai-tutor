@@ -40,7 +40,11 @@ async function main() {
   // Pre-load chapter → first topic mapping for Strategy 2
   const chapters = await prisma.chapterDef.findMany({
     where: { lifecycle: 'active' },
-    select: { name: true, slug: true, topics: { select: { id: true }, orderBy: { order: 'asc' }, take: 1 } },
+    select: {
+      name: true,
+      slug: true,
+      topics: { select: { id: true }, orderBy: { order: 'asc' }, take: 1 },
+    },
   });
   const chapterToTopicId = new Map<string, string>();
   for (const ch of chapters) {
@@ -52,7 +56,7 @@ async function main() {
   }
 
   // Pre-load GeneratedQuestion → topicId mapping for Strategy 1
-  const questionIds = questions.map(q => q.id);
+  const questionIds = questions.map((q) => q.id);
   const generatedRows = await prisma.generatedQuestion.findMany({
     where: { id: { in: questionIds } },
     select: { id: true, test: { select: { topicId: true } } },
@@ -107,7 +111,7 @@ async function main() {
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error('Backfill failed:', e);
     process.exit(1);
   })

@@ -6,7 +6,13 @@ import { prisma } from '@/lib/prisma';
 
 // Local row types for strict mode
 type ParentStudentLinkRow = { studentId: string };
-type UserRow = { id: string; email: string | null; name: string | null; board: string | null; grade: string | null };
+type UserRow = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  board: string | null;
+  grade: string | null;
+};
 type WeeklyStudentSummaryRow = { studentId: string; weekStart: Date };
 
 const CONFIG_KEY_REPORTS_PAUSED = 'parent_reports_paused';
@@ -74,12 +80,14 @@ export async function getParentReportStudents(opts: {
   const limit = Math.min(opts.limit ?? 50, 200);
   const offset = opts.offset ?? 0;
 
-  const links = await prisma.parentStudent.findMany({
+  const links = (await prisma.parentStudent.findMany({
     where: { status: 'active' },
     select: { studentId: true },
     distinct: ['studentId'],
-  }) as ParentStudentLinkRow[];
-  const studentIds = (links as ParentStudentLinkRow[]).map((l: ParentStudentLinkRow) => l.studentId);
+  })) as ParentStudentLinkRow[];
+  const studentIds = (links as ParentStudentLinkRow[]).map(
+    (l: ParentStudentLinkRow) => l.studentId
+  );
 
   if (studentIds.length === 0) {
     return { students: [], total: 0 };
@@ -92,7 +100,7 @@ export async function getParentReportStudents(opts: {
   };
   const total = await prisma.user.count({ where });
 
-  const students = await prisma.user.findMany({
+  const students = (await prisma.user.findMany({
     where,
     select: {
       id: true,
@@ -103,17 +111,17 @@ export async function getParentReportStudents(opts: {
     },
     skip: offset,
     take: limit,
-  }) as UserRow[];
+  })) as UserRow[];
 
   const weekStart = await getCurrentWeekStart();
-  const summaries = await prisma.weeklyStudentSummary.findMany({
+  const summaries = (await prisma.weeklyStudentSummary.findMany({
     where: {
       studentId: { in: students.map((s: UserRow) => s.id) },
       weekStart: { gte: new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000) },
     },
     select: { studentId: true, weekStart: true },
     orderBy: { weekStart: 'desc' },
-  }) as WeeklyStudentSummaryRow[];
+  })) as WeeklyStudentSummaryRow[];
 
   const latestByStudent = new Map<string, Date>();
   for (const s of summaries as WeeklyStudentSummaryRow[]) {

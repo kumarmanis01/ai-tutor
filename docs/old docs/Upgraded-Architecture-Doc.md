@@ -327,6 +327,7 @@ And it integrates perfectly with your:
 ---
 
 ## Admin
+
 Manish, this is a **very important question** because the **Admin side determines how scalable Spinzy becomes**.
 
 Students see a **tutor-like interface**, but admins (you + internal operators) must see a **control center**.
@@ -976,6 +977,7 @@ Before generating **thousands of topics**, generate **only 5–10 topics first**
 ---
 
 ## Complete Spinzy System Architecture Diagram (Student App + Admin App + Workers + AI pipeline + Prompts + Analytics)
+
 Manish, I’ll give you a **clear, end-to-end architecture blueprint for Spinzy** so the whole system becomes easy to reason about and scale.
 I’ll break it into:
 
@@ -1282,15 +1284,16 @@ Most edtech platforms fail because they build a **Content library**. Spinzy is c
 ---
 
 ## Deployment using Almalinux
+
 Yes, Manish — **you absolutely can deploy Spinzy on AlmaLinux using PM2**, and for an MVP or early-stage platform this is actually a **very practical and controllable setup**. Many production Node.js systems run this way.
 
 However, the **key is structuring the server correctly** so that:
 
-* the **Next.js app**
-* the **BullMQ workers**
-* the **Redis connection**
-* the **database**
-* and the **AI generation jobs**
+- the **Next.js app**
+- the **BullMQ workers**
+- the **Redis connection**
+- the **database**
+- and the **AI generation jobs**
 
 all run reliably without interfering with each other.
 
@@ -1420,41 +1423,39 @@ Example:
 ```javascript
 module.exports = {
   apps: [
-
     {
-      name: "spinzy-web",
-      script: "npm",
-      args: "start",
-      cwd: "/opt/spinzy/app",
+      name: 'spinzy-web',
+      script: 'npm',
+      args: 'start',
+      cwd: '/opt/spinzy/app',
       instances: 1,
-      exec_mode: "fork",
+      exec_mode: 'fork',
       env: {
-        NODE_ENV: "production"
-      }
+        NODE_ENV: 'production',
+      },
     },
 
     {
-      name: "spinzy-worker-content",
-      script: "dist/workers/contentWorker.js",
-      cwd: "/opt/spinzy/app",
-      instances: 1
+      name: 'spinzy-worker-content',
+      script: 'dist/workers/contentWorker.js',
+      cwd: '/opt/spinzy/app',
+      instances: 1,
     },
 
     {
-      name: "spinzy-worker-questions",
-      script: "dist/workers/questionWorker.js",
-      cwd: "/opt/spinzy/app",
-      instances: 1
+      name: 'spinzy-worker-questions',
+      script: 'dist/workers/questionWorker.js',
+      cwd: '/opt/spinzy/app',
+      instances: 1,
     },
 
     {
-      name: "spinzy-worker-analytics",
-      script: "dist/workers/analyticsWorker.js",
-      cwd: "/opt/spinzy/app",
-      instances: 1
-    }
-
-  ]
+      name: 'spinzy-worker-analytics',
+      script: 'dist/workers/analyticsWorker.js',
+      cwd: '/opt/spinzy/app',
+      instances: 1,
+    },
+  ],
 };
 ```
 
@@ -2077,10 +2078,10 @@ This architecture supports **long-term scalability and personalized learning**.
 
 ---
 
-*End of Document.*
+_End of Document._
 
 ---
 
 ## Production server setup checklist (30 steps)
 
-*See **Almalinux-Deployment-Guide.md** for the full 30-step production server setup checklist.*
+_See **Almalinux-Deployment-Guide.md** for the full 30-step production server setup checklist._

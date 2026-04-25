@@ -44,29 +44,51 @@ export async function POST(req: NextRequest) {
 
   // attempt transaction, retry once on P2028 (transaction not found)
   try {
-    const res = await prisma.$transaction(async (tx) => redeemReferral(tx, code, userId, redeemerIp));
+    const res = await prisma.$transaction(async (tx) =>
+      redeemReferral(tx, code, userId, redeemerIp)
+    );
 
     // Post-transaction: send best-effort push/email notifications (non-blocking)
     if (res.body.voided) {
       void (async () => {
         try {
-          const redeemer = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true } });
+          const redeemer = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true, name: true },
+          });
           const referralRow = await prisma.referral.findUnique({ where: { code } });
-          const creator = referralRow?.createdBy ? await prisma.user.findUnique({ where: { id: referralRow.createdBy }, select: { id: true, email: true, name: true } }) : null;
+          const creator = referralRow?.createdBy
+            ? await prisma.user.findUnique({
+                where: { id: referralRow.createdBy },
+                select: { id: true, email: true, name: true },
+              })
+            : null;
 
           const { sendPushSafe } = await import('@/lib/push/send');
           const { PUSH_NOTIFICATIONS } = await import('@/lib/push/notifications');
-          const mailer = await import('@/lib/mailer').then(m => m.sendMailSafe).catch(() => undefined);
+          const mailer = await import('@/lib/mailer')
+            .then((m) => m.sendMailSafe)
+            .catch(() => undefined);
 
           const subject = 'Referral reward voided';
 
           if (redeemer) {
             void sendPushSafe(redeemer.id, PUSH_NOTIFICATIONS.referral_voided_redeemer(code));
-            if (redeemer.email && mailer) void mailer({ to: redeemer.email!, subject, html: `<p>Hi ${redeemer.name ?? 'Student'},</p><p>Your referral attempt using code <strong>${code}</strong> was voided due to suspected fraud (same device or network). If you think this is a mistake, contact support.</p>` }).catch(() => {});
+            if (redeemer.email && mailer)
+              void mailer({
+                to: redeemer.email!,
+                subject,
+                html: `<p>Hi ${redeemer.name ?? 'Student'},</p><p>Your referral attempt using code <strong>${code}</strong> was voided due to suspected fraud (same device or network). If you think this is a mistake, contact support.</p>`,
+              }).catch(() => {});
           }
           if (creator) {
             void sendPushSafe(creator.id, PUSH_NOTIFICATIONS.referral_voided_creator(code));
-            if (creator.email && mailer) void mailer({ to: creator.email!, subject, html: `<p>Hi ${creator.name ?? 'Student'},</p><p>Your referral <strong>${code}</strong> was marked void due to suspected fraud and no reward will be issued. If you need help, contact support.</p>` }).catch(() => {});
+            if (creator.email && mailer)
+              void mailer({
+                to: creator.email!,
+                subject,
+                html: `<p>Hi ${creator.name ?? 'Student'},</p><p>Your referral <strong>${code}</strong> was marked void due to suspected fraud and no reward will be issued. If you need help, contact support.</p>`,
+              }).catch(() => {});
           }
         } catch (e) {
           logger.warn('referral/redeem: post-transaction notifications failed', { err: String(e) });
@@ -79,27 +101,51 @@ export async function POST(req: NextRequest) {
     const err = e as { code?: string };
     if (err?.code === 'P2028') {
       try {
-        const res = await prisma.$transaction(async (tx) => redeemReferral(tx, code, userId, redeemerIp));
+        const res = await prisma.$transaction(async (tx) =>
+          redeemReferral(tx, code, userId, redeemerIp)
+        );
         if (res.body.voided) {
           void (async () => {
             try {
-              const redeemer = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true } });
+              const redeemer = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { id: true, email: true, name: true },
+              });
               const referralRow = await prisma.referral.findUnique({ where: { code } });
-              const creator = referralRow?.createdBy ? await prisma.user.findUnique({ where: { id: referralRow.createdBy }, select: { id: true, email: true, name: true } }) : null;
+              const creator = referralRow?.createdBy
+                ? await prisma.user.findUnique({
+                    where: { id: referralRow.createdBy },
+                    select: { id: true, email: true, name: true },
+                  })
+                : null;
               const { sendPushSafe } = await import('@/lib/push/send');
               const { PUSH_NOTIFICATIONS } = await import('@/lib/push/notifications');
-              const mailer = await import('@/lib/mailer').then(m => m.sendMailSafe).catch(() => undefined);
+              const mailer = await import('@/lib/mailer')
+                .then((m) => m.sendMailSafe)
+                .catch(() => undefined);
               const subject = 'Referral reward voided';
               if (redeemer) {
                 void sendPushSafe(redeemer.id, PUSH_NOTIFICATIONS.referral_voided_redeemer(code));
-                if (redeemer.email && mailer) void mailer({ to: redeemer.email!, subject, html: `<p>Hi ${redeemer.name ?? 'Student'},</p><p>Your referral attempt using code <strong>${code}</strong> was voided due to suspected fraud (same device or network). If you think this is a mistake, contact support.</p>` }).catch(() => {});
+                if (redeemer.email && mailer)
+                  void mailer({
+                    to: redeemer.email!,
+                    subject,
+                    html: `<p>Hi ${redeemer.name ?? 'Student'},</p><p>Your referral attempt using code <strong>${code}</strong> was voided due to suspected fraud (same device or network). If you think this is a mistake, contact support.</p>`,
+                  }).catch(() => {});
               }
               if (creator) {
                 void sendPushSafe(creator.id, PUSH_NOTIFICATIONS.referral_voided_creator(code));
-                if (creator.email && mailer) void mailer({ to: creator.email!, subject, html: `<p>Hi ${creator.name ?? 'Student'},</p><p>Your referral <strong>${code}</strong> was marked void due to suspected fraud and no reward will be issued. If you need help, contact support.</p>` }).catch(() => {});
+                if (creator.email && mailer)
+                  void mailer({
+                    to: creator.email!,
+                    subject,
+                    html: `<p>Hi ${creator.name ?? 'Student'},</p><p>Your referral <strong>${code}</strong> was marked void due to suspected fraud and no reward will be issued. If you need help, contact support.</p>`,
+                  }).catch(() => {});
               }
             } catch (e) {
-              logger.warn('referral/redeem: post-transaction notifications failed (retry)', { err: String(e) });
+              logger.warn('referral/redeem: post-transaction notifications failed (retry)', {
+                err: String(e),
+              });
             }
           })();
         }

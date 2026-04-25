@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | LP-2.1: rewrite hero with parent-permission headline,
  *   horizontal trust badge bar, parent/child illustration placeholder, 100vh mobile / 90vh desktop
+ * - 2026-04-24T12:00:00Z | staff-engineer | P0.1: CTA -> /parent-onboarding; add 3 value prop icons
  */
 'use client';
 
@@ -77,7 +78,9 @@ const HeroSection = () => {
                 key={badge.label}
                 className="inline-flex items-center gap-1.5 text-xs md:text-sm font-medium text-secondary shrink-0"
               >
-                <span role="img" aria-hidden="true">{badge.icon}</span>
+                <span role="img" aria-hidden="true">
+                  {badge.icon}
+                </span>
                 {badge.label}
               </span>
             ))}
@@ -106,14 +109,15 @@ const HeroSection = () => {
                 AI Tutor जो पहले आपकी अनुमति लेता है
               </p>
               <p className="font-body text-base md:text-lg text-foreground/80 max-w-xl mx-auto lg:mx-0">
-                Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared.
+                Spinzy Academy lets your child learn with an AI tutor while you control what they
+                access, for how long, and what data is shared.
               </p>
             </div>
 
             {/* CTA buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link
-                href="/auth/signup"
+                href="/parent-onboarding"
                 className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 md:px-8 md:py-4 min-h-[48px] bg-[#FF6B35] text-white font-cta font-semibold rounded-lg hover:bg-[#e85f2a] transition-all duration-250 text-base md:text-lg shadow-lg"
               >
                 <Icon name="SparklesIcon" size={20} variant="solid" />
@@ -144,6 +148,25 @@ const HeroSection = () => {
               </span>
             </div>
 
+            {/* P0.1: Three value prop icons */}
+            <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+              {[
+                { icon: '📚', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
+                { icon: '🛡️', label: 'Parental Control', sub: 'You approve every session' },
+                { icon: '⭐', label: 'Free to Start', sub: 'No credit card needed' },
+              ].map(({ icon, label, sub }) => (
+                <div key={label} className="flex items-center gap-3 bg-[#EEEDFE] rounded-2xl px-4 py-3 min-w-[140px]">
+                  <span aria-hidden="true" className="text-2xl">
+                    {icon}
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-[#534AB7] leading-tight">{label}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Rotating testimonials */}
             {isHydrated && (
               <div className="bg-muted/50 rounded-lg p-3 md:p-4 border border-border">
@@ -170,18 +193,26 @@ const HeroSection = () => {
                     Allow 1hr Math session?
                   </p>
                   <div className="flex gap-1 mt-2">
-                    <span className="flex-1 bg-[#1D9E75] text-white text-[8px] font-bold rounded py-1 text-center">Approve</span>
-                    <span className="flex-1 bg-gray-200 text-gray-600 text-[8px] font-bold rounded py-1 text-center">Deny</span>
+                    <span className="flex-1 bg-[#1D9E75] text-white text-[8px] font-bold rounded py-1 text-center">
+                      Approve
+                    </span>
+                    <span className="flex-1 bg-gray-200 text-gray-600 text-[8px] font-bold rounded py-1 text-center">
+                      Deny
+                    </span>
                   </div>
                 </div>
-                <p className="text-[8px] text-center text-muted-foreground mt-1">🛡️ You are in control</p>
+                <p className="text-[8px] text-center text-muted-foreground mt-1">
+                  🛡️ You are in control
+                </p>
               </div>
 
               {/* Child tablet mockup */}
               <div className="ml-20 md:ml-24 bg-white rounded-3xl shadow-2xl border-4 border-[#534AB7]/40 p-4">
                 <div className="text-xs font-bold text-secondary mb-2 text-center">Student</div>
                 <div className="bg-[#EAF3DE] rounded-xl p-3 mb-2">
-                  <p className="text-[10px] font-semibold text-[#1D9E75] mb-1">Teacher Vidya asks:</p>
+                  <p className="text-[10px] font-semibold text-[#1D9E75] mb-1">
+                    Teacher Vidya asks:
+                  </p>
                   <p className="text-[9px] text-secondary leading-snug">
                     "If 2x + 4 = 10, what is the value of x? Think step by step!"
                   </p>
@@ -192,7 +223,9 @@ const HeroSection = () => {
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-[8px] text-muted-foreground">Session: 23 min</span>
-                  <span className="text-[8px] bg-[#EEEDFE] text-[#534AB7] rounded-full px-2 py-0.5 font-medium">Maths · Ch 3</span>
+                  <span className="text-[8px] bg-[#EEEDFE] text-[#534AB7] rounded-full px-2 py-0.5 font-medium">
+                    Maths · Ch 3
+                  </span>
                 </div>
               </div>
 
@@ -205,7 +238,12 @@ const HeroSection = () => {
               <div className="absolute -bottom-4 -right-2 md:-right-6 bg-white rounded-xl shadow-xl p-3 border border-border">
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 bg-success/10 rounded-full flex items-center justify-center">
-                    <Icon name="AcademicCapIcon" size={22} variant="solid" className="text-success" />
+                    <Icon
+                      name="AcademicCapIcon"
+                      size={22}
+                      variant="solid"
+                      className="text-success"
+                    />
                   </div>
                   <div>
                     <p className="font-headline font-bold text-xl text-secondary">5L+</p>

@@ -37,9 +37,7 @@ function PlanRow({
       aria-pressed={isSelected ? 'true' : 'false'}
       className={[
         'w-full text-left rounded-xl px-4 py-4 min-h-[56px] flex items-center gap-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]',
-        isFeatured
-          ? 'border-2 border-[#534AB7]'
-          : 'border border-gray-200 dark:border-slate-700',
+        isFeatured ? 'border-2 border-[#534AB7]' : 'border border-gray-200 dark:border-slate-700',
         isSelected
           ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/20'
           : 'bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700',
@@ -49,9 +47,7 @@ function PlanRow({
       <span
         className={[
           'flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center',
-          isSelected
-            ? 'border-[#534AB7] bg-[#534AB7]'
-            : 'border-gray-300 dark:border-slate-500',
+          isSelected ? 'border-[#534AB7] bg-[#534AB7]' : 'border-gray-300 dark:border-slate-500',
         ].join(' ')}
         aria-hidden
       >
@@ -93,9 +89,7 @@ function PlanRow({
 export function PlanSelector({ selected, onSelect }: PlanSelectorProps) {
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-        Choose your plan
-      </h2>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Choose your plan</h2>
       <div className="space-y-2">
         {PLAN_ORDER.map((id) => (
           <PlanRow

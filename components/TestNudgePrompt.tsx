@@ -137,7 +137,11 @@ export default function TestNudgePrompt({
         body: JSON.stringify({ nudgeType: nudge.type, action: 'click' }),
       });
     } catch (error) {
-      logger.warn('Failed to record nudge click', { className: CLASS_NAME, methodName: 'handleClick', error: String(error) });
+      logger.warn('Failed to record nudge click', {
+        className: CLASS_NAME,
+        methodName: 'handleClick',
+        error: String(error),
+      });
       // Don't block navigation on error
     }
   };
@@ -159,9 +163,7 @@ export default function TestNudgePrompt({
   if (status !== 'authenticated' || loading || !visible) return null;
 
   // Filter dismissed nudges and limit
-  const visibleNudges = nudges
-    .filter((n) => !dismissed.has(n.type))
-    .slice(0, maxNudges);
+  const visibleNudges = nudges.filter((n) => !dismissed.has(n.type)).slice(0, maxNudges);
 
   if (visibleNudges.length === 0) return null;
 
@@ -201,7 +203,12 @@ export default function TestNudgePrompt({
                   aria-label="Dismiss"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               )}

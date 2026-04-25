@@ -39,11 +39,7 @@ interface AnswerInput {
  * Check if a selected option is correct.
  * Handles correctAnswer = full option text or numeric index string.
  */
-function isAnswerCorrect(
-  correctAnswer: string,
-  choices: unknown,
-  selectedOption: string,
-): boolean {
+function isAnswerCorrect(correctAnswer: string, choices: unknown, selectedOption: string): boolean {
   if (correctAnswer === selectedOption) return true;
   // Numeric index fallback
   const idx = parseInt(correctAnswer, 10);
@@ -79,7 +75,9 @@ export async function POST(req: NextRequest) {
     const answers: AnswerInput[] = rawAnswers
       .filter(
         (a): a is Record<string, unknown> =>
-          !!a && typeof a === 'object' && typeof (a as Record<string, unknown>).questionId === 'string',
+          !!a &&
+          typeof a === 'object' &&
+          typeof (a as Record<string, unknown>).questionId === 'string'
       )
       .map((a) => ({
         questionId: String(a.questionId),
@@ -101,9 +99,7 @@ export async function POST(req: NextRequest) {
     const questionMap = new Map(questions.map((q) => [q.id, q]));
 
     // Resolve topicId → first conceptId for AnswerEvent
-    const topicIds = [
-      ...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t)),
-    ];
+    const topicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
     const concepts =
       topicIds.length > 0
         ? await prisma.concept.findMany({
@@ -165,11 +161,7 @@ export async function POST(req: NextRequest) {
       const conceptId = q.topicId ? topicToConceptId.get(q.topicId) : undefined;
       if (!conceptId) continue; // skip if no concept mapped
 
-      const correct = isAnswerCorrect(
-        q.correctAnswer ?? '',
-        q.choices,
-        answer.selectedOption,
-      );
+      const correct = isAnswerCorrect(q.correctAnswer ?? '', q.choices, answer.selectedOption);
 
       answerEventData.push({
         studentId: userId,
@@ -188,7 +180,8 @@ export async function POST(req: NextRequest) {
 
     // Rapid-fire gaming detection (AC-08): flag sessions where >30% of answers were too fast.
     const rapidFireCount = answers.filter(
-      (a) => typeof a.timeSpentMs === 'number' && a.timeSpentMs < diagnosticConfig.rapidFireThresholdMs,
+      (a) =>
+        typeof a.timeSpentMs === 'number' && a.timeSpentMs < diagnosticConfig.rapidFireThresholdMs
     ).length;
     const gamingFlag =
       answers.length > 0 &&
@@ -299,11 +292,14 @@ export async function POST(req: NextRequest) {
         try {
           await analyticsQueue.add('analytics.ingest', analyticsEventData);
         } catch (enqueueErr) {
-          logger.warn('diagnostic.submit: analytics enqueue failed; falling back to direct DB write', {
-            className: 'DiagnosticSubmitAPI',
-            methodName: 'POST',
-            error: String(enqueueErr),
-          });
+          logger.warn(
+            'diagnostic.submit: analytics enqueue failed; falling back to direct DB write',
+            {
+              className: 'DiagnosticSubmitAPI',
+              methodName: 'POST',
+              error: String(enqueueErr),
+            }
+          );
           try {
             await prisma.analyticsEvent.create({ data: analyticsEventData });
           } catch (dbErr) {

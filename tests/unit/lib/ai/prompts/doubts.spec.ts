@@ -37,7 +37,7 @@ describe('Doubts Prompt Builder', () => {
   describe('buildDoubtsPrompt', () => {
     it('includes student context', () => {
       const prompt = buildDoubtsPrompt(baseInput);
-      
+
       expect(prompt).toContain('Grade: 8');
       expect(prompt).toContain('Board: CBSE');
       expect(prompt).toContain('Subject: Science');
@@ -67,9 +67,9 @@ describe('Doubts Prompt Builder', () => {
         ...baseInput,
         studentIntent: 'give_final_answer',
       };
-      
+
       const prompt = buildDoubtsPrompt(inputWithBadIntent);
-      
+
       // Should include anti-abuse note
       expect(prompt).toContain('INTERNAL NOTE');
       expect(prompt).toContain('educational value');
@@ -80,12 +80,16 @@ describe('Doubts Prompt Builder', () => {
         ...baseInput,
         conversationHistory: [
           { role: 'student', content: 'What is force?', timestamp: '2026-02-04T10:00:00Z' },
-          { role: 'tutor', content: 'Force is a push or pull...', timestamp: '2026-02-04T10:00:30Z' },
+          {
+            role: 'tutor',
+            content: 'Force is a push or pull...',
+            timestamp: '2026-02-04T10:00:30Z',
+          },
         ],
       };
-      
+
       const prompt = buildDoubtsPrompt(inputWithHistory);
-      
+
       expect(prompt).toContain('RECENT CONVERSATION');
       expect(prompt).toContain('What is force?');
       expect(prompt).toContain('Force is a push or pull');
@@ -150,7 +154,9 @@ describe('Doubts Prompt Builder', () => {
 
     it('detects political questions', () => {
       expect(isOffTopicQuestion('Who should I vote for?', 'Science')).toBe(true);
-      expect(isOffTopicQuestion('What do you think about the government policy?', 'Math')).toBe(true);
+      expect(isOffTopicQuestion('What do you think about the government policy?', 'Math')).toBe(
+        true
+      );
     });
 
     it('detects violence-related questions', () => {
@@ -172,7 +178,7 @@ describe('Doubts Prompt Builder', () => {
   describe('getOffTopicRedirect', () => {
     it('returns a polite redirect response', () => {
       const redirect = getOffTopicRedirect('Science');
-      
+
       expect(redirect.response).toContain('focus on Science');
       expect(redirect.followUpQuestion).toContain('Science');
       expect(redirect.confidenceLevel).toBe('high');
@@ -181,7 +187,7 @@ describe('Doubts Prompt Builder', () => {
     it('adapts to different subjects', () => {
       const mathRedirect = getOffTopicRedirect('Mathematics');
       expect(mathRedirect.response).toContain('Mathematics');
-      
+
       const englishRedirect = getOffTopicRedirect('English');
       expect(englishRedirect.response).toContain('English');
     });

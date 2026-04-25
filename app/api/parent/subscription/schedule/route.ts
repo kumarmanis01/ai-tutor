@@ -110,7 +110,11 @@ export async function GET(req: NextRequest) {
       installments,
     };
 
-    logger.info('EMI schedule fetched', { className: CLASS_NAME, parentId, subscriptionId: subscription.id });
+    logger.info('EMI schedule fetched', {
+      className: CLASS_NAME,
+      parentId,
+      subscriptionId: subscription.id,
+    });
 
     const response = NextResponse.json(payload);
     logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'GET' }, start);

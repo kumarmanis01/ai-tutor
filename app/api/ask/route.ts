@@ -8,7 +8,14 @@ import { checkProfanity } from '@/lib/guardrails';
 import { parse as parseAcceptLanguage } from 'accept-language-parser';
 import crypto from 'crypto';
 
-type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string };
+type Req = {
+  text?: string;
+  language?: string;
+  images?: string[];
+  consentToShare?: boolean;
+  conversationId?: string;
+  subject?: string;
+};
 
 const SYSTEM_PROMPT = `You are an AI assistant. Detect the user's language automatically based on the user's message.
 Always respond in the same language the user used.
@@ -28,13 +35,17 @@ export async function POST(req: Request) {
     try {
       await logApiUsage('/api/ask', 'POST');
     } catch (e) {
-      logger.error('logApiUsage failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+      logger.error('logApiUsage failed for /api/ask', {
+        className: 'api.ask',
+        methodName: 'POST',
+        error: e,
+      });
     }
 
-    const body: Req = await req.json().catch(() => ({} as Req));
+    const body: Req = await req.json().catch(() => ({}) as Req);
     const text = body.text;
     if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
-    const subject = (body.subject && typeof body.subject === 'string' ? body.subject : 'general');
+    const subject = body.subject && typeof body.subject === 'string' ? body.subject : 'general';
 
     // Conversation threading: accept or generate a conversationId and persist via Conversation + Chat relation
     let conversationId: string = body.conversationId || '';
@@ -48,7 +59,8 @@ export async function POST(req: Request) {
 
     // Profanity guard
     try {
-      if (checkProfanity(text)) return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
+      if (checkProfanity(text))
+        return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
     } catch (e) {
       logger.error('profanity guard error', { className: 'api.ask', methodName: 'POST', error: e });
     }
@@ -60,14 +72,36 @@ export async function POST(req: Request) {
       if (session && (session as any).user && (session as any).user.id) {
         sessionUserId = (session as any).user.id as string;
         try {
-          await prisma.conversation.upsert({ where: { id: conversationId }, update: {}, create: { id: conversationId, userId: sessionUserId } });
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } }).catch((e) => { logger.warn('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: e }); });
+          await prisma.conversation.upsert({
+            where: { id: conversationId },
+            update: {},
+            create: { id: conversationId, userId: sessionUserId },
+          });
+          await prisma.chat
+            .create({
+              data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject },
+            })
+            .catch((e) => {
+              logger.warn('Failed to persist user question for /api/ask', {
+                className: 'api.ask',
+                methodName: 'POST',
+                error: e,
+              });
+            });
         } catch (e) {
-          logger.warn('Failed to persist session conversation', { className: 'api.ask', methodName: 'POST', error: e });
+          logger.warn('Failed to persist session conversation', {
+            className: 'api.ask',
+            methodName: 'POST',
+            error: e,
+          });
         }
       }
     } catch (e) {
-      logger.error('session check failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+      logger.error('session check failed for /api/ask', {
+        className: 'api.ask',
+        methodName: 'POST',
+        error: e,
+      });
     }
 
     // Language normalization
@@ -80,28 +114,45 @@ export async function POST(req: Request) {
         const p = parts[0];
         return p.region ? `${p.code}-${p.region}` : p.code;
       } catch (e) {
-        logger.error('Accept-Language parse error', { className: 'api.ask', methodName: 'POST', error: e });
+        logger.error('Accept-Language parse error', {
+          className: 'api.ask',
+          methodName: 'POST',
+          error: e,
+        });
         return undefined;
       }
     }
 
     const clientLangHint = body.language;
-    const resolvedLang = resolveBcp47(req.headers.get('accept-language') ?? undefined, clientLangHint as any);
+    const resolvedLang = resolveBcp47(
+      req.headers.get('accept-language') ?? undefined,
+      clientLangHint as any
+    );
 
-    const systemPromptWithLang = resolvedLang ? `${SYSTEM_PROMPT}\nPreferred-Language: ${resolvedLang}` : SYSTEM_PROMPT;
+    const systemPromptWithLang = resolvedLang
+      ? `${SYSTEM_PROMPT}\nPreferred-Language: ${resolvedLang}`
+      : SYSTEM_PROMPT;
 
     // Build conversation history for context if available
     const priorMessages: { role: 'system' | 'user' | 'assistant'; content: any }[] = [];
     try {
       if (sessionUserId && conversationId) {
-        const history = await prisma.chat.findMany({ where: { userId: sessionUserId, conversationId }, orderBy: { createdAt: 'asc' }, take: 12 });
+        const history = await prisma.chat.findMany({
+          where: { userId: sessionUserId, conversationId },
+          orderBy: { createdAt: 'asc' },
+          take: 12,
+        });
         for (const h of history) {
           const role = h.role === 'assistant' ? 'assistant' : 'user';
           priorMessages.push({ role, content: h.content });
         }
       }
     } catch (e) {
-      logger.error('Failed to load conversation history', { className: 'api.ask', methodName: 'POST', error: e });
+      logger.error('Failed to load conversation history', {
+        className: 'api.ask',
+        methodName: 'POST',
+        error: e,
+      });
     }
 
     const messagesToSend = [
@@ -122,9 +173,16 @@ export async function POST(req: Request) {
           meta: { subject, conversationId, language: resolvedLang, sessionUserId },
         },
       });
-      return NextResponse.json({ status: 'queued', jobId: job.id, conversationId }, { status: 202 });
+      return NextResponse.json(
+        { status: 'queued', jobId: job.id, conversationId },
+        { status: 202 }
+      );
     } catch (e) {
-      logger.error('Failed to enqueue AI request', { className: 'api.ask', methodName: 'POST', error: String(e) });
+      logger.error('Failed to enqueue AI request', {
+        className: 'api.ask',
+        methodName: 'POST',
+        error: String(e),
+      });
       return NextResponse.json({ error: 'Could not enqueue AI request' }, { status: 500 });
     }
   } catch (err: any) {

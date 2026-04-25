@@ -38,7 +38,13 @@ function sanitizeObject(obj: Record<string, unknown> | null | undefined): unknow
     const lk = k.toLowerCase();
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const val = (obj as any)[k];
-    if (lk.includes('token') || lk.includes('jwt') || lk.includes('session') || lk.includes('password') || lk.includes('secret')) {
+    if (
+      lk.includes('token') ||
+      lk.includes('jwt') ||
+      lk.includes('session') ||
+      lk.includes('password') ||
+      lk.includes('secret')
+    ) {
       (out as Record<string, unknown>)[k] = '[REDACTED]';
       continue;
     }
@@ -139,7 +145,8 @@ const levelWeight: Record<Level, number> = {
 
 function parseLevel(s?: string | null): Level {
   const v = String(s || '').toLowerCase();
-  if (v === 'error' || v === 'warn' || v === 'info' || v === 'debug' || v === 'log') return v as Level;
+  if (v === 'error' || v === 'warn' || v === 'info' || v === 'debug' || v === 'log')
+    return v as Level;
   return 'error';
 }
 
@@ -149,7 +156,9 @@ function parseLevel(s?: string | null): Level {
 // - Otherwise, derive from `LOG_LEVEL` (fallback handled by `parseLevel`).
 const serverMinLevel = isWorkerDebug
   ? levelWeight.debug
-  : (ENV === 'development' ? levelWeight.debug : levelWeight[parseLevel(process.env.LOG_LEVEL)]);
+  : ENV === 'development'
+    ? levelWeight.debug
+    : levelWeight[parseLevel(process.env.LOG_LEVEL)];
 // Client min level: allow error logs even when debug is off; otherwise gate by NEXT_PUBLIC_DEBUG_MODE
 const clientMinLevel = isDebug ? levelWeight.debug : levelWeight.error;
 
@@ -187,7 +196,9 @@ class Logger {
       output(mapLevel[level] as LogLevel, msg, { ...context });
     } catch {
       // fallback to console.error if structured output fails
-      try { console.error(entry); } catch {}
+      try {
+        console.error(entry);
+      } catch {}
     }
   }
 
@@ -208,7 +219,7 @@ class Logger {
   }
 
   getLogs() {
-    return (isDebug || isWorkerDebug) ? [...this.logs] : [];
+    return isDebug || isWorkerDebug ? [...this.logs] : [];
   }
 
   subscribe(cb: LogCallback) {
@@ -268,7 +279,11 @@ class Logger {
             try {
               const parsed = safeJson(reqBody);
               if (parsed && typeof parsed === 'object') {
-                return { keys: Object.keys(parsed), hasBody: true, size: JSON.stringify(parsed).length };
+                return {
+                  keys: Object.keys(parsed),
+                  hasBody: true,
+                  size: JSON.stringify(parsed).length,
+                };
               }
               return { hasBody: true, size: String(reqBody).length };
             } catch {
@@ -277,21 +292,26 @@ class Logger {
           })()
         : { hasBody: false };
 
-      const responseInfo: any = res && resBody
-        ? (() => {
-            try {
-              const parsed = safeJson(resBody);
-              if (parsed && typeof parsed === 'object') {
-                return { status: resStatus, keys: Object.keys(parsed), size: JSON.stringify(parsed).length };
+      const responseInfo: any =
+        res && resBody
+          ? (() => {
+              try {
+                const parsed = safeJson(resBody);
+                if (parsed && typeof parsed === 'object') {
+                  return {
+                    status: resStatus,
+                    keys: Object.keys(parsed),
+                    size: JSON.stringify(parsed).length,
+                  };
+                }
+                return { status: resStatus, hasBody: true, size: String(resBody).length };
+              } catch {
+                return { status: resStatus, hasBody: true, size: String(resBody).length };
               }
-              return { status: resStatus, hasBody: true, size: String(resBody).length };
-            } catch {
-              return { status: resStatus, hasBody: true, size: String(resBody).length };
-            }
-          })()
-        : res
-        ? { status: resStatus, hasBody: false }
-        : undefined;
+            })()
+          : res
+            ? { status: resStatus, hasBody: false }
+            : undefined;
 
       const logObj: any = {
         route: { method, url },

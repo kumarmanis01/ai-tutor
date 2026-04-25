@@ -43,7 +43,11 @@ export async function GET() {
       total: DAILY_FREE_LIMIT,
     });
   } catch (err) {
-    logger.error('free-questions GET error', { className: 'api.free-questions', methodName: 'GET', error: err });
+    logger.error('free-questions GET error', {
+      className: 'api.free-questions',
+      methodName: 'GET',
+      error: err,
+    });
     return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }
@@ -108,7 +112,11 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('free-questions POST error', { className: 'api.free-questions', methodName: 'POST', error: err });
+    logger.error('free-questions POST error', {
+      className: 'api.free-questions',
+      methodName: 'POST',
+      error: err,
+    });
     const res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
     return res;

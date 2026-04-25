@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React, { useState } from 'react';
 
 type WorkerRow = {
@@ -50,8 +50,12 @@ export default function WorkersTable({ workers }: { workers: WorkerRow[] }) {
               <td className="p-3 text-sm truncate">{w.id}</td>
               <td className="p-3 text-sm">{w.type}</td>
               <td className="p-3 text-sm">{w.status}</td>
-              <td className="p-3 text-sm">{w.lastHeartbeatAt ? new Date(w.lastHeartbeatAt).toLocaleString() : '--'}</td>
-              <td className="p-3 text-sm">{w.host ?? '--'} / {w.pid ?? '--'}</td>
+              <td className="p-3 text-sm">
+                {w.lastHeartbeatAt ? new Date(w.lastHeartbeatAt).toLocaleString() : '--'}
+              </td>
+              <td className="p-3 text-sm">
+                {w.host ?? '--'} / {w.pid ?? '--'}
+              </td>
               <td className="p-3 text-sm">
                 <button
                   className="px-3 py-1 bg-red-600 text-white rounded disabled:opacity-50"

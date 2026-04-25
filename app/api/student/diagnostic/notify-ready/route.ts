@@ -50,7 +50,10 @@ export async function POST(req: NextRequest) {
   try {
     const key = `diagnostic:notify:${userId}:${subjectId}`;
     await (redis as any).set(key, '1', 'EX', TTL_SECONDS);
-    logger.info('[notify-ready] preference stored', { event: 'diagnostic.notify_ready.stored', context: { studentId: userId, subjectId } });
+    logger.info('[notify-ready] preference stored', {
+      event: 'diagnostic.notify_ready.stored',
+      context: { studentId: userId, subjectId },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     logger.error('[notify-ready] failed to store preference', {

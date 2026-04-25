@@ -37,7 +37,10 @@ function loadEnvFileIfPresent() {
         if (!m) continue;
         const key = m[1];
         let val = m[2];
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        )
           val = val.slice(1, -1);
         if (!process.env[key]) process.env[key] = val;
       }
@@ -51,7 +54,6 @@ function loadEnvFileIfPresent() {
 loadEnvFileIfPresent();
 const { prisma } = require('../lib/prisma');
 
-
 async function main() {
   console.log('=== seed-home-engine-test-data ===\n');
 
@@ -60,7 +62,9 @@ async function main() {
 
   if (!WEAK_USER_ID && !ACTIVE_USER_ID) {
     console.log('No user IDs provided. Set WEAK_USER_ID and/or ACTIVE_USER_ID env vars.');
-    console.log('Example: WEAK_USER_ID=abc ACTIVE_USER_ID=xyz node scripts/seed-home-engine-test-data.cjs');
+    console.log(
+      'Example: WEAK_USER_ID=abc ACTIVE_USER_ID=xyz node scripts/seed-home-engine-test-data.cjs'
+    );
     process.exit(0);
   }
 

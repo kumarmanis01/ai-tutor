@@ -83,9 +83,7 @@ describe('useTopicProgress', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/progress?subjectId=Math&chapterId=Algebra'
-    );
+    expect(global.fetch).toHaveBeenCalledWith('/api/progress?subjectId=Math&chapterId=Algebra');
   });
 
   it('handles 401 unauthorized gracefully', async () => {

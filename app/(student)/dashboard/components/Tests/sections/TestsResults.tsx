@@ -14,7 +14,7 @@ import { useTests, TestResult } from '../context/TestsProvider';
 
 export function TestsResults() {
   const { results, loading } = useTests();
-  
+
   const viewResult = useCallback((result: TestResult) => {
     window.location.assign(`/tests?review=${encodeURIComponent(result.id)}`);
   }, []);
@@ -31,17 +31,21 @@ export function TestsResults() {
       {loading && results.length === 0 ? (
         <div className="text-sm text-muted-foreground">Loading...</div>
       ) : results.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No results yet. Take a test to see your scores!</div>
+        <div className="text-sm text-muted-foreground">
+          No results yet. Take a test to see your scores!
+        </div>
       ) : (
         <div className="space-y-2">
           {results.map((r) => (
-            <button 
-              key={r.id} 
+            <button
+              key={r.id}
               onClick={() => viewResult(r)}
               className="w-full px-3 py-2 border rounded text-left flex items-center justify-between hover:bg-muted/50 active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-2">
-                <span className="text-lg">{r.score >= 80 ? '🏆' : r.score >= 60 ? '📊' : '📈'}</span>
+                <span className="text-lg">
+                  {r.score >= 80 ? '🏆' : r.score >= 60 ? '📊' : '📈'}
+                </span>
                 <div>
                   <p className="font-medium text-sm">{r.title}</p>
                   <p className="text-xs text-muted-foreground">

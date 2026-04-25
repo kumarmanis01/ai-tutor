@@ -1,1 +1,2481 @@
-{"numFailedTestSuites":3,"numFailedTests":3,"numPassedTestSuites":16,"numPassedTests":155,"numPendingTestSuites":1,"numPendingTests":1,"numRuntimeErrorTestSuites":0,"numTodoTests":2,"numTotalTestSuites":20,"numTotalTests":161,"openHandles":[],"snapshot":{"added":0,"didUpdate":false,"failure":false,"filesAdded":0,"filesRemoved":0,"filesRemovedList":[],"filesUnmatched":0,"filesUpdated":0,"matched":0,"total":0,"unchecked":0,"uncheckedKeysByFile":[],"unmatched":0,"updated":0},"startTime":1776160659353,"success":false,"testResults":[{"assertionResults":[{"ancestorTitles":[],"duration":null,"failureDetails":[],"failureMessages":[],"fullName":"DB integration tests disabled (set RUN_DB_INTEGRATION=1 to enable)","invocations":1,"location":null,"numPassingAsserts":0,"retryReasons":[],"status":"pending","title":"DB integration tests disabled (set RUN_DB_INTEGRATION=1 to enable)"}],"coverage":{},"endTime":1776160685674,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\admin\\audit_immutability.test.ts","startTime":1776160685674,"status":"skipped","summary":""},{"assertionResults":[{"ancestorTitles":["DoubtKb IVFFLAT index and latency"],"duration":3184,"failureDetails":[],"failureMessages":[],"fullName":"DoubtKb IVFFLAT index and latency IVFFLAT index exists when pgvector is installed and retrieval is fast","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"IVFFLAT index exists when pgvector is installed and retrieval is fast"}],"endTime":1776160664324,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\infra\\doubtkb_ivfflat.integration.test.ts","startTime":1776160660883,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["Parent subscription: order → verify integration"],"duration":1,"failureDetails":[{"code":"P2022","meta":{"modelName":"User","column":"User.schoolName"},"clientVersion":"6.19.1","name":"PrismaClientKnownRequestError"}],"failureMessages":["PrismaClientKnownRequestError: \nInvalid `prisma.user.create()` invocation in\nD:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts:68:38\n\n  65 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n  66 \n  67 // Create parent and two child users\n→ 68 const parent = await prisma.user.create(\nThe column `User.schoolName` does not exist in the current database.\n    at ei.handleRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:228:13)\n    at ei.handleAndLogRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:174:12)\n    at ei.request (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:143:12)\n    at a (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\getPrismaClient.ts:833:24)\n    at Object.<anonymous> (D:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts:68:20)"],"fullName":"Parent subscription: order → verify integration parent can create order and verify payment; children receive subscriptions and invoice sent","invocations":1,"location":null,"numPassingAsserts":0,"retryReasons":[],"status":"failed","title":"parent can create order and verify payment; children receive subscriptions and invoice sent"}],"endTime":1776160665256,"message":"\u001b[1m\u001b[31m  \u001b[1m● \u001b[22m\u001b[1mParent subscription: order → verify integration › parent can create order and verify payment; children receive subscriptions and invoice sent\u001b[39m\u001b[22m\n\n    PrismaClientKnownRequestError: \n    Invalid `prisma.user.create()` invocation in\n    D:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts:68:38\n\n      65 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n      66 \n      67 // Create parent and two child users\n    → 68 const parent = await prisma.user.create(\n    The column `User.schoolName` does not exist in the current database.\n\u001b[2m\u001b[22m\n\u001b[2m    \u001b[0m \u001b[90m 66 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 67 |\u001b[39m     \u001b[90m// Create parent and two child users\u001b[39m\u001b[22m\n\u001b[2m    \u001b[31m\u001b[1m>\u001b[22m\u001b[2m\u001b[39m\u001b[90m 68 |\u001b[39m     \u001b[36mconst\u001b[39m parent \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Parent Tester'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'parent-tester@example.test'\u001b[39m\u001b[33m,\u001b[39m role\u001b[33m:\u001b[39m \u001b[32m'parent'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m    |\u001b[39m                    \u001b[31m\u001b[1m^\u001b[22m\u001b[2m\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 69 |\u001b[39m     parentId \u001b[33m=\u001b[39m parent\u001b[33m.\u001b[39mid\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 70 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 71 |\u001b[39m     \u001b[36mconst\u001b[39m childA \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Child A'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'child-a@example.test'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[0m\u001b[22m\n\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:228:13)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleAndLogRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:174:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.request (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:143:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat a (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/getPrismaClient.ts\u001b[2m:833:24)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat Object.<anonymous> (\u001b[22m\u001b[2m\u001b[0m\u001b[36mtests/integration/parent_subscription.integration.test.ts\u001b[39m\u001b[0m\u001b[2m:68:20)\u001b[22m\u001b[2m\u001b[22m\n","name":"D:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts","startTime":1776160664350,"status":"failed","summary":""},{"assertionResults":[{"ancestorTitles":["Order → Verify → Invoice integration"],"duration":0,"failureDetails":[{"code":"P2022","meta":{"modelName":"User","column":"User.schoolName"},"clientVersion":"6.19.1","name":"PrismaClientKnownRequestError"}],"failureMessages":["PrismaClientKnownRequestError: \nInvalid `prisma.user.create()` invocation in\nD:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts:66:36\n\n  63 }\n  64 \n  65 // Create a test user\n→ 66 const user = await prisma.user.create(\nThe column `User.schoolName` does not exist in the current database.\n    at ei.handleRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:228:13)\n    at ei.handleAndLogRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:174:12)\n    at ei.request (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:143:12)\n    at a (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\getPrismaClient.ts:833:24)\n    at Object.<anonymous> (D:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts:66:18)"],"fullName":"Order → Verify → Invoice integration creates invoice and sends email with PDF attachment","invocations":1,"location":null,"numPassingAsserts":0,"retryReasons":[],"status":"failed","title":"creates invoice and sends email with PDF attachment"}],"endTime":1776160666290,"message":"\u001b[1m\u001b[31m  \u001b[1m● \u001b[22m\u001b[1mOrder → Verify → Invoice integration › creates invoice and sends email with PDF attachment\u001b[39m\u001b[22m\n\n    PrismaClientKnownRequestError: \n    Invalid `prisma.user.create()` invocation in\n    D:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts:66:36\n\n      63 }\n      64 \n      65 // Create a test user\n    → 66 const user = await prisma.user.create(\n    The column `User.schoolName` does not exist in the current database.\n\u001b[2m\u001b[22m\n\u001b[2m    \u001b[0m \u001b[90m 64 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 65 |\u001b[39m     \u001b[90m// Create a test user\u001b[39m\u001b[22m\n\u001b[2m    \u001b[31m\u001b[1m>\u001b[22m\u001b[2m\u001b[39m\u001b[90m 66 |\u001b[39m     \u001b[36mconst\u001b[39m user \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Test Parent'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'parent-invoice@test.local'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[2m\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 67 |\u001b[39m     userId \u001b[33m=\u001b[39m user\u001b[33m.\u001b[39mid\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 68 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 69 |\u001b[39m     \u001b[90m// Create a paymentOrder row\u001b[39m\u001b[0m\u001b[22m\n\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:228:13)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleAndLogRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:174:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.request (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:143:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat a (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/getPrismaClient.ts\u001b[2m:833:24)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat Object.<anonymous> (\u001b[22m\u001b[2m\u001b[0m\u001b[36mtests/integration/order_invoice.integration.test.ts\u001b[39m\u001b[0m\u001b[2m:66:18)\u001b[22m\u001b[2m\u001b[22m\n","name":"D:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts","startTime":1776160665347,"status":"failed","summary":""},{"assertionResults":[{"ancestorTitles":["Freemium session cap"],"duration":16,"failureDetails":[],"failureMessages":[],"fullName":"Freemium session cap returns allowed:false when sessionsUsed >= FREE_TIER_SESSION_LIMIT","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns allowed:false when sessionsUsed >= FREE_TIER_SESSION_LIMIT"},{"ancestorTitles":["Freemium session cap"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Freemium session cap returns allowed:true when sessionsUsed < FREE_TIER_SESSION_LIMIT","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"returns allowed:true when sessionsUsed < FREE_TIER_SESSION_LIMIT"},{"ancestorTitles":["Freemium session cap"],"duration":5,"failureDetails":[],"failureMessages":[],"fullName":"Freemium session cap returns allowed:true for premium users (bypasses cap)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns allowed:true for premium users (bypasses cap)"},{"ancestorTitles":["Freemium session cap"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Freemium session cap creates new FreeTierUsage when none exists","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"creates new FreeTierUsage when none exists"},{"ancestorTitles":["Freemium session cap","enforceTutorFreemiumCap() — daily free questions"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"Freemium session cap enforceTutorFreemiumCap() — daily free questions throws RATE_LIMITED when todaysFreeQuestionsCount is 0","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"throws RATE_LIMITED when todaysFreeQuestionsCount is 0"},{"ancestorTitles":["Freemium session cap","enforceTutorFreemiumCap() — daily free questions"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Freemium session cap enforceTutorFreemiumCap() — daily free questions succeeds when todaysFreeQuestionsCount > 0","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"succeeds when todaysFreeQuestionsCount > 0"},{"ancestorTitles":["Freemium session cap","enforceTutorFreemiumCap() — daily free questions"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Freemium session cap enforceTutorFreemiumCap() — daily free questions does not check cap for premium users","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"does not check cap for premium users"},{"ancestorTitles":["Consent gate"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Consent gate returns false when no AI_INTERACTION consent record exists","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns false when no AI_INTERACTION consent record exists"},{"ancestorTitles":["Consent gate"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Consent gate returns true when valid non-withdrawn AI_INTERACTION consent exists","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns true when valid non-withdrawn AI_INTERACTION consent exists"},{"ancestorTitles":["Consent gate"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"Consent gate returns false when consent exists but is withdrawn (withdrawnAt set)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when consent exists but is withdrawn (withdrawnAt set)"},{"ancestorTitles":["Consent gate"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Consent gate returns false on DB error","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false on DB error"},{"ancestorTitles":["classifyStreakGap() — pure function"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"classifyStreakGap() — pure function returns 'broken' when lastSessionDate is null","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 'broken' when lastSessionDate is null"},{"ancestorTitles":["classifyStreakGap() — pure function"],"duration":247,"failureDetails":[],"failureMessages":[],"fullName":"classifyStreakGap() — pure function returns 'same_day' when lastSessionDate is today","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 'same_day' when lastSessionDate is today"},{"ancestorTitles":["classifyStreakGap() — pure function"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"classifyStreakGap() — pure function returns 'consecutive' when lastSessionDate is yesterday","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 'consecutive' when lastSessionDate is yesterday"},{"ancestorTitles":["classifyStreakGap() — pure function"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"classifyStreakGap() — pure function returns 'broken' when lastSessionDate is 2+ days ago","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 'broken' when lastSessionDate is 2+ days ago"},{"ancestorTitles":["updateStreak()"],"duration":13,"failureDetails":[],"failureMessages":[],"fullName":"updateStreak() increments streak when session is on consecutive day","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"increments streak when session is on consecutive day"},{"ancestorTitles":["updateStreak()"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"updateStreak() does NOT double-increment when updateStreak is called twice on the same calendar day","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"does NOT double-increment when updateStreak is called twice on the same calendar day"},{"ancestorTitles":["updateStreak()"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"updateStreak() resets streak to 1 when gap > 1 day (broken streak)","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"resets streak to 1 when gap > 1 day (broken streak)"},{"ancestorTitles":["updateStreak()"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"updateStreak() updates longestStreak when currentStreak exceeds it","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"updates longestStreak when currentStreak exceeds it"},{"ancestorTitles":["updateStreak()"],"duration":0,"failureDetails":[],"failureMessages":[],"fullName":"updateStreak() returns null when user not found","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns null when user not found"},{"ancestorTitles":["updateStreak()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"updateStreak() returns null on DB error","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns null on DB error"},{"ancestorTitles":["Streak shield"],"duration":null,"failureDetails":[],"failureMessages":[],"fullName":"Streak shield GIVEN streak=5 and no shield used WHEN missed day THEN streak preserved (shield consumed)","invocations":1,"location":null,"numPassingAsserts":0,"retryReasons":[],"status":"todo","title":"GIVEN streak=5 and no shield used WHEN missed day THEN streak preserved (shield consumed)"},{"ancestorTitles":["Streak shield"],"duration":null,"failureDetails":[],"failureMessages":[],"fullName":"Streak shield GIVEN shield already consumed WHEN another missed day THEN streak breaks","invocations":1,"location":null,"numPassingAsserts":0,"retryReasons":[],"status":"todo","title":"GIVEN shield already consumed WHEN another missed day THEN streak breaks"}],"endTime":1776160669732,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\student\\session.test.ts","startTime":1776160666353,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["Payment methods flow"],"duration":0,"failureDetails":[{"code":"P2022","meta":{"modelName":"User","column":"User.schoolName"},"clientVersion":"6.19.1","name":"PrismaClientKnownRequestError"}],"failureMessages":["PrismaClientKnownRequestError: \nInvalid `prisma.user.create()` invocation in\nD:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts:37:38\n\n  34 process.env.RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? 'test-key-id';\n  35 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n  36 \n→ 37 const user = await prisma.user.create(\nThe column `User.schoolName` does not exist in the current database.\n    at ei.handleRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:228:13)\n    at ei.handleAndLogRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:174:12)\n    at ei.request (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:143:12)\n    at a (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\getPrismaClient.ts:833:24)\n    at Object.<anonymous> (D:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts:37:20)"],"fullName":"Payment methods flow create customer, add payment method, verify method","invocations":1,"location":null,"numPassingAsserts":0,"retryReasons":[],"status":"failed","title":"create customer, add payment method, verify method"}],"endTime":1776160670415,"message":"\u001b[1m\u001b[31m  \u001b[1m● \u001b[22m\u001b[1mPayment methods flow › create customer, add payment method, verify method\u001b[39m\u001b[22m\n\n    PrismaClientKnownRequestError: \n    Invalid `prisma.user.create()` invocation in\n    D:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts:37:38\n\n      34 process.env.RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? 'test-key-id';\n      35 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n      36 \n    → 37 const user = await prisma.user.create(\n    The column `User.schoolName` does not exist in the current database.\n\u001b[2m\u001b[22m\n\u001b[2m    \u001b[0m \u001b[90m 35 |\u001b[39m       process\u001b[33m.\u001b[39menv\u001b[33m.\u001b[39m\u001b[33mRAZORPAY_KEY_SECRET\u001b[39m \u001b[33m=\u001b[39m process\u001b[33m.\u001b[39menv\u001b[33m.\u001b[39m\u001b[33mRAZORPAY_KEY_SECRET\u001b[39m \u001b[33m?\u001b[39m\u001b[33m?\u001b[39m \u001b[32m'test-secret'\u001b[39m\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 36 |\u001b[39m\u001b[22m\n\u001b[2m    \u001b[31m\u001b[1m>\u001b[22m\u001b[2m\u001b[39m\u001b[90m 37 |\u001b[39m       \u001b[36mconst\u001b[39m user \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'PM Test'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'pmtest@example.test'\u001b[39m\u001b[33m,\u001b[39m phone\u001b[33m:\u001b[39m \u001b[32m'9999999999'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m    |\u001b[39m                    \u001b[31m\u001b[1m^\u001b[22m\u001b[2m\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 38 |\u001b[39m       userId \u001b[33m=\u001b[39m user\u001b[33m.\u001b[39mid\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 39 |\u001b[39m     })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 40 |\u001b[39m\u001b[0m\u001b[22m\n\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:228:13)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleAndLogRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:174:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.request (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:143:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat a (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/getPrismaClient.ts\u001b[2m:833:24)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat Object.<anonymous> (\u001b[22m\u001b[2m\u001b[0m\u001b[36mtests/integration/payment_methods.integration.test.ts\u001b[39m\u001b[0m\u001b[2m:37:20)\u001b[22m\u001b[2m\u001b[22m\n","name":"D:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts","startTime":1776160669766,"status":"failed","summary":""},{"assertionResults":[{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":27,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should accept valid notes with sections structure","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should accept valid notes with sections structure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":16,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should accept valid notes with paragraphs structure","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should accept valid notes with paragraphs structure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should accept valid notes with explanation structure","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should accept valid notes with explanation structure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":88,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should reject notes with placeholder content","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject notes with placeholder content"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should reject notes with empty/thin content (SemanticWeaknessError)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject notes with empty/thin content (SemanticWeaknessError)"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should reject notes with too-short content","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject notes with too-short content"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should reject null/empty responses","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"should reject null/empty responses"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should detect language mismatch in notes","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should detect language mismatch in notes"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should produce detailed validation report for invalid notes","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"should produce detailed validation report for invalid notes"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should produce clean report for valid notes","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"should produce clean report for valid notes"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should flag missing title in notes shape","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"should flag missing title in notes shape"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Notes Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Notes Content Validation should flag missing audience in notes shape","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"should flag missing audience in notes shape"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":7,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should accept valid questions with MCQ and short answer types","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should accept valid questions with MCQ and short answer types"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should reject questions with missing/short explanations","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject questions with missing/short explanations"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":15,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should detect difficulty mismatch","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should detect difficulty mismatch"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":85,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should reject empty questions array","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject empty questions array"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should reject questions without schema-required fields","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject questions without schema-required fields"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should produce detailed validation report for questions","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"should produce detailed validation report for questions"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should flag invalid MCQ options in questions report","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"should flag invalid MCQ options in questions report"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should validate math-specific answer structure","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should validate math-specific answer structure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should flag missing math solution steps","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"should flag missing math solution steps"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Questions Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Questions Content Validation should validate science-specific answer structure","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should validate science-specific answer structure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Syllabus Content Validation"],"duration":0,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Syllabus Content Validation should accept valid syllabus structure","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should accept valid syllabus structure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Syllabus Content Validation"],"duration":0,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject syllabus with no chapters","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject syllabus with no chapters"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Syllabus Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject syllabus with missing chapter titles","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject syllabus with missing chapter titles"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Syllabus Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject syllabus with invalid topic structure","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject syllabus with invalid topic structure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Syllabus Content Validation"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Syllabus Content Validation should accept syllabus chapters without explicit topics","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should accept syllabus chapters without explicit topics"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Syllabus Content Validation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject non-object input","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"should reject non-object input"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Unknown Job Type Handling"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Unknown Job Type Handling should reject unknown job types in central validator","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should reject unknown job types in central validator"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","DB-Backed Content Validation (Container)"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should persist and validate notes through the DB","invocations":1,"location":null,"numPassingAsserts":5,"retryReasons":[],"status":"passed","title":"should persist and validate notes through the DB"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","DB-Backed Content Validation (Container)"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should persist and validate questions through the DB","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"should persist and validate questions through the DB"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","DB-Backed Content Validation (Container)"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should persist syllabus content and validate hierarchy","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"should persist syllabus content and validate hierarchy"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","DB-Backed Content Validation (Container)"],"duration":5,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should create and validate a HydrationJob with expected counts","invocations":1,"location":null,"numPassingAsserts":12,"retryReasons":[],"status":"passed","title":"should create and validate a HydrationJob with expected counts"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Validation Failure Scenarios"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Validation Failure Scenarios should mark job as failed when content has placeholders","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"should mark job as failed when content has placeholders"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Validation Failure Scenarios"],"duration":11,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Validation Failure Scenarios should mark job as failed when schema is invalid","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"should mark job as failed when schema is invalid"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Validation Failure Scenarios"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Validation Failure Scenarios should handle retry after validation failure","invocations":1,"location":null,"numPassingAsserts":7,"retryReasons":[],"status":"passed","title":"should handle retry after validation failure"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Validation Failure Scenarios"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Validation Failure Scenarios should log validation failure to AIContentLog","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"should log validation failure to AIContentLog"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Concurrent Job Validation"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Concurrent Job Validation should handle multiple simultaneous validations without interference","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"should handle multiple simultaneous validations without interference"},{"ancestorTitles":["HydrateAll Content Validation (Container-based)","Concurrent Job Validation"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"HydrateAll Content Validation (Container-based) Concurrent Job Validation should correctly isolate validation failures in concurrent runs","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"should correctly isolate validation failures in concurrent runs"}],"endTime":1776160672372,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\hydrateAll-validation.test.ts","startTime":1776160670461,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["Analytics job integration — suggestions + audit idempotency"],"duration":1725,"failureDetails":[],"failureMessages":[],"fullName":"Analytics job integration — suggestions + audit idempotency creates suggestions once per signal and writes audit log","invocations":1,"location":null,"numPassingAsserts":6,"retryReasons":[],"status":"passed","title":"creates suggestions once per signal and writes audit log"}],"endTime":1776160674786,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\analytics_job_suggestions.integration.test.ts","startTime":1776160672623,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["ingest-curriculum integration"],"duration":665,"failureDetails":[],"failureMessages":[],"fullName":"ingest-curriculum integration re-running ingest is idempotent and bumps version on content change","invocations":1,"location":null,"numPassingAsserts":9,"retryReasons":[],"status":"passed","title":"re-running ingest is idempotent and bumps version on content change"}],"endTime":1776160676947,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\scripts\\ingest-curriculum.integration.test.ts","startTime":1776160674823,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["runInactivityAlerts (integration with Redis)"],"duration":224,"failureDetails":[],"failureMessages":[],"fullName":"runInactivityAlerts (integration with Redis) sets suppression key, prevents double-send, and updateStreak clears it","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"sets suppression key, prevents double-send, and updateStreak clears it"}],"endTime":1776160677562,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\worker\\runInactivityAlerts.integration.test.ts","startTime":1776160676991,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["Parent auth gate — GET /api/parent/progress"],"duration":514,"failureDetails":[],"failureMessages":[],"fullName":"Parent auth gate — GET /api/parent/progress returns 403 when authenticated user has role=student (not parent)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns 403 when authenticated user has role=student (not parent)"},{"ancestorTitles":["Parent auth gate — GET /api/parent/progress"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"Parent auth gate — GET /api/parent/progress returns 401 when not authenticated","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 401 when not authenticated"},{"ancestorTitles":["Parent auth gate — GET /api/parent/progress"],"duration":10,"failureDetails":[],"failureMessages":[],"fullName":"Parent auth gate — GET /api/parent/progress returns 200 with children array for a parent session","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"returns 200 with children array for a parent session"},{"ancestorTitles":["Child data isolation"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Child data isolation returns empty children array when parent is not linked to any student","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns empty children array when parent is not linked to any student"},{"ancestorTitles":["Child data isolation"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"Child data isolation only returns data for linked children — not-linked student returns null (filtered out)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"only returns data for linked children — not-linked student returns null (filtered out)"},{"ancestorTitles":["No transcript access"],"duration":11,"failureDetails":[],"failureMessages":[],"fullName":"No transcript access parent progress response does NOT include studentMessage or rawInput fields","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"parent progress response does NOT include studentMessage or rawInput fields"},{"ancestorTitles":["Invite token lifecycle — POST /api/parent/link-child"],"duration":1177,"failureDetails":[],"failureMessages":[],"fullName":"Invite token lifecycle — POST /api/parent/link-child creates ParentStudent row when a valid invite token is used","invocations":1,"location":null,"numPassingAsserts":5,"retryReasons":[],"status":"passed","title":"creates ParentStudent row when a valid invite token is used"},{"ancestorTitles":["Invite token lifecycle — POST /api/parent/link-child"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Invite token lifecycle — POST /api/parent/link-child returns 404 when token does not exist in Redis (burned or expired)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns 404 when token does not exist in Redis (burned or expired)"},{"ancestorTitles":["Invite token lifecycle — POST /api/parent/link-child"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Invite token lifecycle — POST /api/parent/link-child is idempotent when parent is already linked (active status)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"is idempotent when parent is already linked (active status)"},{"ancestorTitles":["Invite token lifecycle — POST /api/parent/link-child"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"Invite token lifecycle — POST /api/parent/link-child returns 400 when inviteToken field is missing","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 400 when inviteToken field is missing"}],"endTime":1776160679626,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\parent\\progress.test.ts","startTime":1776160677579,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["ProfileCompletionGate — isProfileComplete()"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"ProfileCompletionGate — isProfileComplete() returns false when all four fields are null","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when all four fields are null"},{"ancestorTitles":["ProfileCompletionGate — isProfileComplete()"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"ProfileCompletionGate — isProfileComplete() returns false when subjects array is empty","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when subjects array is empty"},{"ancestorTitles":["ProfileCompletionGate — isProfileComplete()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"ProfileCompletionGate — isProfileComplete() returns false when any single field is missing","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"returns false when any single field is missing"},{"ancestorTitles":["ProfileCompletionGate — isProfileComplete()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"ProfileCompletionGate — isProfileComplete() returns true when all four fields are populated","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns true when all four fields are populated"},{"ancestorTitles":["requiresParentOTPGate()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"requiresParentOTPGate() returns false when user is active and age is 17","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when user is active and age is 17"},{"ancestorTitles":["requiresParentOTPGate()"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"requiresParentOTPGate() returns false when age is null (missing age must NOT trigger gate)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when age is null (missing age must NOT trigger gate)"},{"ancestorTitles":["requiresParentOTPGate()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"requiresParentOTPGate() returns true when age=10 and accountStatus=pending_parent_verification","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns true when age=10 and accountStatus=pending_parent_verification"},{"ancestorTitles":["requiresParentOTPGate()"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"requiresParentOTPGate() returns false when user does not exist","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when user does not exist"},{"ancestorTitles":["requiresParentOTPGate()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"requiresParentOTPGate() returns false on DB error","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false on DB error"},{"ancestorTitles":["Grade immutability"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Grade immutability strips grade from update payload when user already has a grade (PATCH-equivalent)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"strips grade from update payload when user already has a grade (PATCH-equivalent)"},{"ancestorTitles":["Grade immutability"],"duration":5,"failureDetails":[],"failureMessages":[],"fullName":"Grade immutability preserves grade in updates when user.grade is null (first-time onboarding)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"preserves grade in updates when user.grade is null (first-time onboarding)"},{"ancestorTitles":["Grade immutability"],"duration":11,"failureDetails":[],"failureMessages":[],"fullName":"Grade immutability strips grade in updates when user.grade is already 10 (second onboarding attempt)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"strips grade in updates when user.grade is already 10 (second onboarding attempt)"},{"ancestorTitles":["Grade immutability"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Grade immutability onboarding route calls prisma.user.update WITHOUT grade when user already has grade","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"onboarding route calls prisma.user.update WITHOUT grade when user already has grade"},{"ancestorTitles":["hasDiagnosticForSubject()"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"hasDiagnosticForSubject() returns false when no StudentConceptState rows exist for subject","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when no StudentConceptState rows exist for subject"},{"ancestorTitles":["hasDiagnosticForSubject()"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"hasDiagnosticForSubject() returns true when ≥1 StudentConceptState rows exist for subject","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns true when ≥1 StudentConceptState rows exist for subject"},{"ancestorTitles":["hasDiagnosticForSubject()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"hasDiagnosticForSubject() returns false on DB error","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false on DB error"},{"ancestorTitles":["generateLearningPlan()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"generateLearningPlan() returns null when no concepts found for subject","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns null when no concepts found for subject"},{"ancestorTitles":["generateLearningPlan()"],"duration":14,"failureDetails":[],"failureMessages":[],"fullName":"generateLearningPlan() creates LearningPlan and orders items weakest-concept-first","invocations":1,"location":null,"numPassingAsserts":5,"retryReasons":[],"status":"passed","title":"creates LearningPlan and orders items weakest-concept-first"},{"ancestorTitles":["generateLearningPlan()"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"generateLearningPlan() distributes items across weeks correctly (weeklyGoal = 5 default)","invocations":1,"location":null,"numPassingAsserts":5,"retryReasons":[],"status":"passed","title":"distributes items across weeks correctly (weeklyGoal = 5 default)"},{"ancestorTitles":["generateLearningPlan()"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"generateLearningPlan() updates existing plan (upsert path)","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"updates existing plan (upsert path)"}],"endTime":1776160680116,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\student\\onboarding.test.ts","startTime":1776160679666,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["Full hydration flow: syllabus -> notes -> questions -> assembleTest"],"duration":138,"failureDetails":[],"failureMessages":[],"fullName":"Full hydration flow: syllabus -> notes -> questions -> assembleTest generates syllabus, topics, notes and questions and approves test","invocations":1,"location":null,"numPassingAsserts":7,"retryReasons":[],"status":"passed","title":"generates syllabus, topics, notes and questions and approves test"}],"endTime":1776160681216,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\hydrationFlow.test.ts","startTime":1776160680164,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["notification suppression Redis semantics (integration)"],"duration":200,"failureDetails":[],"failureMessages":[],"fullName":"notification suppression Redis semantics (integration) sets suppression with EX NX and is cleared on activity","invocations":1,"location":null,"numPassingAsserts":5,"retryReasons":[],"status":"passed","title":"sets suppression with EX NX and is cleared on activity"}],"endTime":1776160681888,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\worker\\suppressionSemantics.integration.test.ts","startTime":1776160681303,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["Jailbreak detection — checkInputSafety()"],"duration":18,"failureDetails":[],"failureMessages":[],"fullName":"Jailbreak detection — checkInputSafety() detects jailbreak with \"ignore all previous instructions\"","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"detects jailbreak with \"ignore all previous instructions\""},{"ancestorTitles":["Jailbreak detection — checkInputSafety()"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Jailbreak detection — checkInputSafety() detects jailbreak with \"jailbreak\" keyword","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"detects jailbreak with \"jailbreak\" keyword"},{"ancestorTitles":["Jailbreak detection — checkInputSafety()"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Jailbreak detection — checkInputSafety() returns safe=true for normal student message","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns safe=true for normal student message"},{"ancestorTitles":["Jailbreak detection — checkInputSafety()"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Jailbreak detection — checkInputSafety() redacts mobile number from input","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"redacts mobile number from input"},{"ancestorTitles":["Jailbreak detection — checkInputSafety()"],"duration":10,"failureDetails":[],"failureMessages":[],"fullName":"Jailbreak detection — checkInputSafety() redacts email from input","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"redacts email from input"},{"ancestorTitles":["Jailbreak detection — checkInputSafety()"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Jailbreak detection — checkInputSafety() allows \"you are now a tutor\" (not a jailbreak)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"allows \"you are now a tutor\" (not a jailbreak)"},{"ancestorTitles":["Circuit breaker"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Circuit breaker returns false when cb:llm:open key is absent in Redis","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns false when cb:llm:open key is absent in Redis"},{"ancestorTitles":["Circuit breaker"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Circuit breaker returns true when cb:llm:open key is \"1\" in Redis","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns true when cb:llm:open key is \"1\" in Redis"},{"ancestorTitles":["Circuit breaker"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Circuit breaker sets cb:llm:open after FAILURE_THRESHOLD failures","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"sets cb:llm:open after FAILURE_THRESHOLD failures"},{"ancestorTitles":["Circuit breaker"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Circuit breaker does not set cb:llm:open when failure count is below threshold","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"does not set cb:llm:open when failure count is below threshold"},{"ancestorTitles":["Circuit breaker"],"duration":7,"failureDetails":[],"failureMessages":[],"fullName":"Circuit breaker deletes cb:llm:failures and cb:llm:open on recordSuccess()","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"deletes cb:llm:failures and cb:llm:open on recordSuccess()"},{"ancestorTitles":["Circuit breaker"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Circuit breaker is resilient to Redis errors — never throws","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"is resilient to Redis errors — never throws"},{"ancestorTitles":["Explanation cache"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Explanation cache returns null when no cached explanation exists","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns null when no cached explanation exists"},{"ancestorTitles":["Explanation cache"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Explanation cache returns cached explanation when key exists","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"returns cached explanation when key exists"},{"ancestorTitles":["Explanation cache"],"duration":8,"failureDetails":[],"failureMessages":[],"fullName":"Explanation cache stores explanation with correct key and TTL","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"stores explanation with correct key and TTL"},{"ancestorTitles":["Explanation cache"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Explanation cache returns null on malformed JSON in cache","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns null on malformed JSON in cache"},{"ancestorTitles":["Explanation cache"],"duration":0,"failureDetails":[],"failureMessages":[],"fullName":"Explanation cache builds cache key with correct pattern","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"builds cache key with correct pattern"},{"ancestorTitles":["Explanation cache"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Explanation cache never throws on Redis error","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"never throws on Redis error"},{"ancestorTitles":["Turn processing pipeline"],"duration":34,"failureDetails":[],"failureMessages":[],"fullName":"Turn processing pipeline calls LLM and returns answerText + complete on a normal HOOK turn","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"calls LLM and returns answerText + complete on a normal HOOK turn"},{"ancestorTitles":["Turn processing pipeline"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Turn processing pipeline does NOT call LLM when jailbreak is detected (stops pipeline)","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"does NOT call LLM when jailbreak is detected (stops pipeline)"},{"ancestorTitles":["Turn processing pipeline"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"Turn processing pipeline writes analyticsEvent when hallucination detector flags response","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"writes analyticsEvent when hallucination detector flags response"},{"ancestorTitles":["Turn processing pipeline"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"Turn processing pipeline marks turn as completed even on error","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"marks turn as completed even on error"},{"ancestorTitles":["Direct answer prevention"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Direct answer prevention checkInputSafety passes \"just tell me the answer\" as safe input","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"checkInputSafety passes \"just tell me the answer\" as safe input"},{"ancestorTitles":["Direct answer prevention"],"duration":5,"failureDetails":[],"failureMessages":[],"fullName":"Direct answer prevention parseTutorTag returns QUESTION or HINT_OFFER tags (Vidya never gives direct answer)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"parseTutorTag returns QUESTION or HINT_OFFER tags (Vidya never gives direct answer)"},{"ancestorTitles":["Direct answer prevention"],"duration":5,"failureDetails":[],"failureMessages":[],"fullName":"Direct answer prevention pipeline produces QUESTION tag (not VALIDATE) for a \"tell me the answer\" prompt","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"pipeline produces QUESTION tag (not VALIDATE) for a \"tell me the answer\" prompt"}],"endTime":1776160682414,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\ai\\orchestrator.test.ts","startTime":1776160681913,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["getYesterdayIstBounds()"],"duration":16,"failureDetails":[],"failureMessages":[],"fullName":"getYesterdayIstBounds() returns start, end, and dateLabel in IST","invocations":1,"location":null,"numPassingAsserts":5,"retryReasons":[],"status":"passed","title":"returns start, end, and dateLabel in IST"},{"ancestorTitles":["Rolling average anomaly detection"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"Rolling average anomaly detection sends alert when costPerSession is 2× above rolling 7-day average (>1.5x threshold)","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"sends alert when costPerSession is 2× above rolling 7-day average (>1.5x threshold)"},{"ancestorTitles":["Rolling average anomaly detection"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"Rolling average anomaly detection does NOT send alert when costPerSession is 1.25× rolling average (below 1.5× threshold)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"does NOT send alert when costPerSession is 1.25× rolling average (below 1.5× threshold)"},{"ancestorTitles":["Rolling average anomaly detection"],"duration":8,"failureDetails":[],"failureMessages":[],"fullName":"Rolling average anomaly detection does NOT compute rolling anomaly when fewer than 3 historical data points exist","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"does NOT compute rolling anomaly when fewer than 3 historical data points exist"},{"ancestorTitles":["Zero session dropout detection"],"duration":6,"failureDetails":[],"failureMessages":[],"fullName":"Zero session dropout detection sends dropout alert when today has 0 sessions but yesterday had > 10","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"sends dropout alert when today has 0 sessions but yesterday had > 10"},{"ancestorTitles":["Zero session dropout detection"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Zero session dropout detection does NOT send dropout alert when today has 0 sessions but yesterday also had ≤10","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"does NOT send dropout alert when today has 0 sessions but yesterday also had ≤10"},{"ancestorTitles":["Cache hit rate warning"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Cache hit rate warning logs cache warning when hit rate is below 55% target (40% hit rate)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"logs cache warning when hit rate is below 55% target (40% hit rate)"},{"ancestorTitles":["Cache hit rate warning"],"duration":4,"failureDetails":[],"failureMessages":[],"fullName":"Cache hit rate warning does NOT log cache warning when hit rate exceeds 55% target (60% hit rate)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"does NOT log cache warning when hit rate exceeds 55% target (60% hit rate)"},{"ancestorTitles":["Cache hit rate warning"],"duration":7,"failureDetails":[],"failureMessages":[],"fullName":"Cache hit rate warning upserts DailyCostMetric row for the reporting date","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"upserts DailyCostMetric row for the reporting date"},{"ancestorTitles":["Cache hit rate warning"],"duration":8,"failureDetails":[],"failureMessages":[],"fullName":"Cache hit rate warning returns cost report with correct shape regardless of alert status","invocations":1,"location":null,"numPassingAsserts":8,"retryReasons":[],"status":"passed","title":"returns cost report with correct shape regardless of alert status"},{"ancestorTitles":["Cache hit rate warning"],"duration":81,"failureDetails":[],"failureMessages":[],"fullName":"Cache hit rate warning never throws — returns safe result even on DB error","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"never throws — returns safe result even on DB error"}],"endTime":1776160683070,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\cost\\reporting.test.ts","startTime":1776160682446,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["AuditLog on admin grade change"],"duration":158,"failureDetails":[],"failureMessages":[],"fullName":"AuditLog on admin grade change creates AuditLog with GRADE_CHANGE action when admin PATCHes grade","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"creates AuditLog with GRADE_CHANGE action when admin PATCHes grade"},{"ancestorTitles":["AuditLog on admin grade change"],"duration":5,"failureDetails":[],"failureMessages":[],"fullName":"AuditLog on admin grade change deletes StudentConceptState rows when grade is changed","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"deletes StudentConceptState rows when grade is changed"},{"ancestorTitles":["Grade change requires reason"],"duration":5,"failureDetails":[],"failureMessages":[],"fullName":"Grade change requires reason returns 400 when grade is supplied but reason field is missing","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"returns 400 when grade is supplied but reason field is missing"},{"ancestorTitles":["Grade change requires reason"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Grade change requires reason returns 400 when grade is supplied with an empty reason string","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 400 when grade is supplied with an empty reason string"},{"ancestorTitles":["Grade change requires reason"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Grade change requires reason returns 403 when called by a non-admin user","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 403 when called by a non-admin user"},{"ancestorTitles":["Question quarantine on 3 flags"],"duration":33,"failureDetails":[],"failureMessages":[],"fullName":"Question quarantine on 3 flags sets Question.status=QUARANTINED when total flags reach threshold (3)","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"sets Question.status=QUARANTINED when total flags reach threshold (3)"},{"ancestorTitles":["Question quarantine on 3 flags"],"duration":11,"failureDetails":[],"failureMessages":[],"fullName":"Question quarantine on 3 flags does NOT quarantine when flag count is 2 (below threshold)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"does NOT quarantine when flag count is 2 (below threshold)"},{"ancestorTitles":["Question quarantine on 3 flags"],"duration":7,"failureDetails":[],"failureMessages":[],"fullName":"Question quarantine on 3 flags returns 400 for an invalid reason","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"returns 400 for an invalid reason"},{"ancestorTitles":["Doubt escalation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Doubt escalation makeDoubtHash produces a consistent 8-char hex string for same inputs","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"makeDoubtHash produces a consistent 8-char hex string for same inputs"},{"ancestorTitles":["Doubt escalation"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Doubt escalation makeDoubtHash produces different hashes for different inputs","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"makeDoubtHash produces different hashes for different inputs"},{"ancestorTitles":["Doubt escalation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Doubt escalation trackDoubtAttempt increments counter and appends to history","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"trackDoubtAttempt increments counter and appends to history"},{"ancestorTitles":["Doubt escalation"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"Doubt escalation trackDoubtAttempt caps history at 3 entries","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"trackDoubtAttempt caps history at 3 entries"},{"ancestorTitles":["Doubt escalation"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"Doubt escalation trackDoubtAttempt returns { count: 0, history: [] } on Redis error","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"trackDoubtAttempt returns { count: 0, history: [] } on Redis error"},{"ancestorTitles":["Doubt escalation"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"Doubt escalation resetDoubtCounter deletes both counter and history keys","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"resetDoubtCounter deletes both counter and history keys"},{"ancestorTitles":["DPDP erasure phases"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"DPDP erasure phases Phase 1: pseudonymises user PII after 7+ days","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"Phase 1: pseudonymises user PII after 7+ days"},{"ancestorTitles":["DPDP erasure phases"],"duration":3,"failureDetails":[],"failureMessages":[],"fullName":"DPDP erasure phases Phase 1: sets pseudonymisedAt on DeletionRequest","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"Phase 1: sets pseudonymisedAt on DeletionRequest"},{"ancestorTitles":["DPDP erasure phases"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"DPDP erasure phases Phase 2: purges SafetyEvent rows after 30+ days from pseudonymisation","invocations":1,"location":null,"numPassingAsserts":3,"retryReasons":[],"status":"passed","title":"Phase 2: purges SafetyEvent rows after 30+ days from pseudonymisation"},{"ancestorTitles":["DPDP erasure phases"],"duration":2,"failureDetails":[],"failureMessages":[],"fullName":"DPDP erasure phases Phase 2: sets purgedAt on DeletionRequest","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"Phase 2: sets purgedAt on DeletionRequest"},{"ancestorTitles":["DPDP erasure phases"],"duration":0,"failureDetails":[],"failureMessages":[],"fullName":"DPDP erasure phases Phase 2: does NOT delete AuditLog rows (required for 7yr legal compliance)","invocations":1,"location":null,"numPassingAsserts":1,"retryReasons":[],"status":"passed","title":"Phase 2: does NOT delete AuditLog rows (required for 7yr legal compliance)"},{"ancestorTitles":["DPDP erasure phases"],"duration":1,"failureDetails":[],"failureMessages":[],"fullName":"DPDP erasure phases handles errors per-request and continues to next (never throws)","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"handles errors per-request and continues to next (never throws)"}],"endTime":1776160683840,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\admin\\audit.test.ts","startTime":1776160683116,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["worker/jobs/inactivityAlert (integration-ish)"],"duration":142,"failureDetails":[],"failureMessages":[],"fullName":"worker/jobs/inactivityAlert (integration-ish) sends inactivity alert and persists audit record","invocations":1,"location":null,"numPassingAsserts":2,"retryReasons":[],"status":"passed","title":"sends inactivity alert and persists audit record"}],"endTime":1776160684244,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\worker\\inactivityAlert.integration.test.ts","startTime":1776160683870,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":[],"duration":41,"failureDetails":[],"failureMessages":[],"fullName":"integration: readiness drop alerts send remediation","invocations":1,"location":null,"numPassingAsserts":4,"retryReasons":[],"status":"passed","title":"integration: readiness drop alerts send remediation"}],"endTime":1776160684661,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\worker\\readinessDrop.integration.test.ts","startTime":1776160684277,"status":"passed","summary":""},{"assertionResults":[{"ancestorTitles":["submitJob -> syllabus hydration integration"],"duration":44,"failureDetails":[],"failureMessages":[],"fullName":"submitJob -> syllabus hydration integration creates ExecutionJob and calls hydrateSyllabus, links hydrationJobId","invocations":1,"location":null,"numPassingAsserts":5,"retryReasons":[],"status":"passed","title":"creates ExecutionJob and calls hydrateSyllabus, links hydrationJobId"}],"endTime":1776160685614,"message":"","name":"D:\\projects\\ai-tutor\\tests\\integration\\submitSyllabus.integration.test.ts","startTime":1776160684729,"status":"passed","summary":""}],"wasInterrupted":false}
+{
+  "numFailedTestSuites": 3,
+  "numFailedTests": 3,
+  "numPassedTestSuites": 16,
+  "numPassedTests": 155,
+  "numPendingTestSuites": 1,
+  "numPendingTests": 1,
+  "numRuntimeErrorTestSuites": 0,
+  "numTodoTests": 2,
+  "numTotalTestSuites": 20,
+  "numTotalTests": 161,
+  "openHandles": [],
+  "snapshot": {
+    "added": 0,
+    "didUpdate": false,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0
+  },
+  "startTime": 1776160659353,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "duration": null,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DB integration tests disabled (set RUN_DB_INTEGRATION=1 to enable)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 0,
+          "retryReasons": [],
+          "status": "pending",
+          "title": "DB integration tests disabled (set RUN_DB_INTEGRATION=1 to enable)"
+        }
+      ],
+      "coverage": {},
+      "endTime": 1776160685674,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\admin\\audit_immutability.test.ts",
+      "startTime": 1776160685674,
+      "status": "skipped",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["DoubtKb IVFFLAT index and latency"],
+          "duration": 3184,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DoubtKb IVFFLAT index and latency IVFFLAT index exists when pgvector is installed and retrieval is fast",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "IVFFLAT index exists when pgvector is installed and retrieval is fast"
+        }
+      ],
+      "endTime": 1776160664324,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\infra\\doubtkb_ivfflat.integration.test.ts",
+      "startTime": 1776160660883,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Parent subscription: order → verify integration"],
+          "duration": 1,
+          "failureDetails": [
+            {
+              "code": "P2022",
+              "meta": { "modelName": "User", "column": "User.schoolName" },
+              "clientVersion": "6.19.1",
+              "name": "PrismaClientKnownRequestError"
+            }
+          ],
+          "failureMessages": [
+            "PrismaClientKnownRequestError: \nInvalid `prisma.user.create()` invocation in\nD:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts:68:38\n\n  65 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n  66 \n  67 // Create parent and two child users\n→ 68 const parent = await prisma.user.create(\nThe column `User.schoolName` does not exist in the current database.\n    at ei.handleRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:228:13)\n    at ei.handleAndLogRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:174:12)\n    at ei.request (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:143:12)\n    at a (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\getPrismaClient.ts:833:24)\n    at Object.<anonymous> (D:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts:68:20)"
+          ],
+          "fullName": "Parent subscription: order → verify integration parent can create order and verify payment; children receive subscriptions and invoice sent",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 0,
+          "retryReasons": [],
+          "status": "failed",
+          "title": "parent can create order and verify payment; children receive subscriptions and invoice sent"
+        }
+      ],
+      "endTime": 1776160665256,
+      "message": "\u001b[1m\u001b[31m  \u001b[1m● \u001b[22m\u001b[1mParent subscription: order → verify integration › parent can create order and verify payment; children receive subscriptions and invoice sent\u001b[39m\u001b[22m\n\n    PrismaClientKnownRequestError: \n    Invalid `prisma.user.create()` invocation in\n    D:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts:68:38\n\n      65 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n      66 \n      67 // Create parent and two child users\n    → 68 const parent = await prisma.user.create(\n    The column `User.schoolName` does not exist in the current database.\n\u001b[2m\u001b[22m\n\u001b[2m    \u001b[0m \u001b[90m 66 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 67 |\u001b[39m     \u001b[90m// Create parent and two child users\u001b[39m\u001b[22m\n\u001b[2m    \u001b[31m\u001b[1m>\u001b[22m\u001b[2m\u001b[39m\u001b[90m 68 |\u001b[39m     \u001b[36mconst\u001b[39m parent \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Parent Tester'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'parent-tester@example.test'\u001b[39m\u001b[33m,\u001b[39m role\u001b[33m:\u001b[39m \u001b[32m'parent'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m    |\u001b[39m                    \u001b[31m\u001b[1m^\u001b[22m\u001b[2m\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 69 |\u001b[39m     parentId \u001b[33m=\u001b[39m parent\u001b[33m.\u001b[39mid\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 70 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 71 |\u001b[39m     \u001b[36mconst\u001b[39m childA \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Child A'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'child-a@example.test'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[0m\u001b[22m\n\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:228:13)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleAndLogRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:174:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.request (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:143:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat a (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/getPrismaClient.ts\u001b[2m:833:24)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat Object.<anonymous> (\u001b[22m\u001b[2m\u001b[0m\u001b[36mtests/integration/parent_subscription.integration.test.ts\u001b[39m\u001b[0m\u001b[2m:68:20)\u001b[22m\u001b[2m\u001b[22m\n",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\parent_subscription.integration.test.ts",
+      "startTime": 1776160664350,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Order → Verify → Invoice integration"],
+          "duration": 0,
+          "failureDetails": [
+            {
+              "code": "P2022",
+              "meta": { "modelName": "User", "column": "User.schoolName" },
+              "clientVersion": "6.19.1",
+              "name": "PrismaClientKnownRequestError"
+            }
+          ],
+          "failureMessages": [
+            "PrismaClientKnownRequestError: \nInvalid `prisma.user.create()` invocation in\nD:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts:66:36\n\n  63 }\n  64 \n  65 // Create a test user\n→ 66 const user = await prisma.user.create(\nThe column `User.schoolName` does not exist in the current database.\n    at ei.handleRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:228:13)\n    at ei.handleAndLogRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:174:12)\n    at ei.request (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:143:12)\n    at a (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\getPrismaClient.ts:833:24)\n    at Object.<anonymous> (D:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts:66:18)"
+          ],
+          "fullName": "Order → Verify → Invoice integration creates invoice and sends email with PDF attachment",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 0,
+          "retryReasons": [],
+          "status": "failed",
+          "title": "creates invoice and sends email with PDF attachment"
+        }
+      ],
+      "endTime": 1776160666290,
+      "message": "\u001b[1m\u001b[31m  \u001b[1m● \u001b[22m\u001b[1mOrder → Verify → Invoice integration › creates invoice and sends email with PDF attachment\u001b[39m\u001b[22m\n\n    PrismaClientKnownRequestError: \n    Invalid `prisma.user.create()` invocation in\n    D:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts:66:36\n\n      63 }\n      64 \n      65 // Create a test user\n    → 66 const user = await prisma.user.create(\n    The column `User.schoolName` does not exist in the current database.\n\u001b[2m\u001b[22m\n\u001b[2m    \u001b[0m \u001b[90m 64 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 65 |\u001b[39m     \u001b[90m// Create a test user\u001b[39m\u001b[22m\n\u001b[2m    \u001b[31m\u001b[1m>\u001b[22m\u001b[2m\u001b[39m\u001b[90m 66 |\u001b[39m     \u001b[36mconst\u001b[39m user \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'Test Parent'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'parent-invoice@test.local'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[2m\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 67 |\u001b[39m     userId \u001b[33m=\u001b[39m user\u001b[33m.\u001b[39mid\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 68 |\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 69 |\u001b[39m     \u001b[90m// Create a paymentOrder row\u001b[39m\u001b[0m\u001b[22m\n\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:228:13)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleAndLogRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:174:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.request (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:143:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat a (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/getPrismaClient.ts\u001b[2m:833:24)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat Object.<anonymous> (\u001b[22m\u001b[2m\u001b[0m\u001b[36mtests/integration/order_invoice.integration.test.ts\u001b[39m\u001b[0m\u001b[2m:66:18)\u001b[22m\u001b[2m\u001b[22m\n",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\order_invoice.integration.test.ts",
+      "startTime": 1776160665347,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Freemium session cap"],
+          "duration": 16,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Freemium session cap returns allowed:false when sessionsUsed >= FREE_TIER_SESSION_LIMIT",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns allowed:false when sessionsUsed >= FREE_TIER_SESSION_LIMIT"
+        },
+        {
+          "ancestorTitles": ["Freemium session cap"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Freemium session cap returns allowed:true when sessionsUsed < FREE_TIER_SESSION_LIMIT",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns allowed:true when sessionsUsed < FREE_TIER_SESSION_LIMIT"
+        },
+        {
+          "ancestorTitles": ["Freemium session cap"],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Freemium session cap returns allowed:true for premium users (bypasses cap)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns allowed:true for premium users (bypasses cap)"
+        },
+        {
+          "ancestorTitles": ["Freemium session cap"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Freemium session cap creates new FreeTierUsage when none exists",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "creates new FreeTierUsage when none exists"
+        },
+        {
+          "ancestorTitles": [
+            "Freemium session cap",
+            "enforceTutorFreemiumCap() — daily free questions"
+          ],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Freemium session cap enforceTutorFreemiumCap() — daily free questions throws RATE_LIMITED when todaysFreeQuestionsCount is 0",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "throws RATE_LIMITED when todaysFreeQuestionsCount is 0"
+        },
+        {
+          "ancestorTitles": [
+            "Freemium session cap",
+            "enforceTutorFreemiumCap() — daily free questions"
+          ],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Freemium session cap enforceTutorFreemiumCap() — daily free questions succeeds when todaysFreeQuestionsCount > 0",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "succeeds when todaysFreeQuestionsCount > 0"
+        },
+        {
+          "ancestorTitles": [
+            "Freemium session cap",
+            "enforceTutorFreemiumCap() — daily free questions"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Freemium session cap enforceTutorFreemiumCap() — daily free questions does not check cap for premium users",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does not check cap for premium users"
+        },
+        {
+          "ancestorTitles": ["Consent gate"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Consent gate returns false when no AI_INTERACTION consent record exists",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when no AI_INTERACTION consent record exists"
+        },
+        {
+          "ancestorTitles": ["Consent gate"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Consent gate returns true when valid non-withdrawn AI_INTERACTION consent exists",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns true when valid non-withdrawn AI_INTERACTION consent exists"
+        },
+        {
+          "ancestorTitles": ["Consent gate"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Consent gate returns false when consent exists but is withdrawn (withdrawnAt set)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when consent exists but is withdrawn (withdrawnAt set)"
+        },
+        {
+          "ancestorTitles": ["Consent gate"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Consent gate returns false on DB error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false on DB error"
+        },
+        {
+          "ancestorTitles": ["classifyStreakGap() — pure function"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "classifyStreakGap() — pure function returns 'broken' when lastSessionDate is null",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 'broken' when lastSessionDate is null"
+        },
+        {
+          "ancestorTitles": ["classifyStreakGap() — pure function"],
+          "duration": 247,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "classifyStreakGap() — pure function returns 'same_day' when lastSessionDate is today",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 'same_day' when lastSessionDate is today"
+        },
+        {
+          "ancestorTitles": ["classifyStreakGap() — pure function"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "classifyStreakGap() — pure function returns 'consecutive' when lastSessionDate is yesterday",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 'consecutive' when lastSessionDate is yesterday"
+        },
+        {
+          "ancestorTitles": ["classifyStreakGap() — pure function"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "classifyStreakGap() — pure function returns 'broken' when lastSessionDate is 2+ days ago",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 'broken' when lastSessionDate is 2+ days ago"
+        },
+        {
+          "ancestorTitles": ["updateStreak()"],
+          "duration": 13,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "updateStreak() increments streak when session is on consecutive day",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "increments streak when session is on consecutive day"
+        },
+        {
+          "ancestorTitles": ["updateStreak()"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "updateStreak() does NOT double-increment when updateStreak is called twice on the same calendar day",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does NOT double-increment when updateStreak is called twice on the same calendar day"
+        },
+        {
+          "ancestorTitles": ["updateStreak()"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "updateStreak() resets streak to 1 when gap > 1 day (broken streak)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "resets streak to 1 when gap > 1 day (broken streak)"
+        },
+        {
+          "ancestorTitles": ["updateStreak()"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "updateStreak() updates longestStreak when currentStreak exceeds it",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "updates longestStreak when currentStreak exceeds it"
+        },
+        {
+          "ancestorTitles": ["updateStreak()"],
+          "duration": 0,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "updateStreak() returns null when user not found",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns null when user not found"
+        },
+        {
+          "ancestorTitles": ["updateStreak()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "updateStreak() returns null on DB error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns null on DB error"
+        },
+        {
+          "ancestorTitles": ["Streak shield"],
+          "duration": null,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Streak shield GIVEN streak=5 and no shield used WHEN missed day THEN streak preserved (shield consumed)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 0,
+          "retryReasons": [],
+          "status": "todo",
+          "title": "GIVEN streak=5 and no shield used WHEN missed day THEN streak preserved (shield consumed)"
+        },
+        {
+          "ancestorTitles": ["Streak shield"],
+          "duration": null,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Streak shield GIVEN shield already consumed WHEN another missed day THEN streak breaks",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 0,
+          "retryReasons": [],
+          "status": "todo",
+          "title": "GIVEN shield already consumed WHEN another missed day THEN streak breaks"
+        }
+      ],
+      "endTime": 1776160669732,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\student\\session.test.ts",
+      "startTime": 1776160666353,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Payment methods flow"],
+          "duration": 0,
+          "failureDetails": [
+            {
+              "code": "P2022",
+              "meta": { "modelName": "User", "column": "User.schoolName" },
+              "clientVersion": "6.19.1",
+              "name": "PrismaClientKnownRequestError"
+            }
+          ],
+          "failureMessages": [
+            "PrismaClientKnownRequestError: \nInvalid `prisma.user.create()` invocation in\nD:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts:37:38\n\n  34 process.env.RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? 'test-key-id';\n  35 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n  36 \n→ 37 const user = await prisma.user.create(\nThe column `User.schoolName` does not exist in the current database.\n    at ei.handleRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:228:13)\n    at ei.handleAndLogRequestError (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:174:12)\n    at ei.request (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\RequestHandler.ts:143:12)\n    at a (D:\\projects\\ai-tutor\\node_modules\\@prisma\\client\\src\\runtime\\getPrismaClient.ts:833:24)\n    at Object.<anonymous> (D:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts:37:20)"
+          ],
+          "fullName": "Payment methods flow create customer, add payment method, verify method",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 0,
+          "retryReasons": [],
+          "status": "failed",
+          "title": "create customer, add payment method, verify method"
+        }
+      ],
+      "endTime": 1776160670415,
+      "message": "\u001b[1m\u001b[31m  \u001b[1m● \u001b[22m\u001b[1mPayment methods flow › create customer, add payment method, verify method\u001b[39m\u001b[22m\n\n    PrismaClientKnownRequestError: \n    Invalid `prisma.user.create()` invocation in\n    D:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts:37:38\n\n      34 process.env.RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? 'test-key-id';\n      35 process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';\n      36 \n    → 37 const user = await prisma.user.create(\n    The column `User.schoolName` does not exist in the current database.\n\u001b[2m\u001b[22m\n\u001b[2m    \u001b[0m \u001b[90m 35 |\u001b[39m       process\u001b[33m.\u001b[39menv\u001b[33m.\u001b[39m\u001b[33mRAZORPAY_KEY_SECRET\u001b[39m \u001b[33m=\u001b[39m process\u001b[33m.\u001b[39menv\u001b[33m.\u001b[39m\u001b[33mRAZORPAY_KEY_SECRET\u001b[39m \u001b[33m?\u001b[39m\u001b[33m?\u001b[39m \u001b[32m'test-secret'\u001b[39m\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 36 |\u001b[39m\u001b[22m\n\u001b[2m    \u001b[31m\u001b[1m>\u001b[22m\u001b[2m\u001b[39m\u001b[90m 37 |\u001b[39m       \u001b[36mconst\u001b[39m user \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m prisma\u001b[33m.\u001b[39muser\u001b[33m.\u001b[39mcreate({ data\u001b[33m:\u001b[39m { name\u001b[33m:\u001b[39m \u001b[32m'PM Test'\u001b[39m\u001b[33m,\u001b[39m email\u001b[33m:\u001b[39m \u001b[32m'pmtest@example.test'\u001b[39m\u001b[33m,\u001b[39m phone\u001b[33m:\u001b[39m \u001b[32m'9999999999'\u001b[39m\u001b[33m,\u001b[39m language\u001b[33m:\u001b[39m \u001b[32m'en'\u001b[39m } })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m    |\u001b[39m                    \u001b[31m\u001b[1m^\u001b[22m\u001b[2m\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 38 |\u001b[39m       userId \u001b[33m=\u001b[39m user\u001b[33m.\u001b[39mid\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 39 |\u001b[39m     })\u001b[33m;\u001b[39m\u001b[22m\n\u001b[2m     \u001b[90m 40 |\u001b[39m\u001b[0m\u001b[22m\n\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:228:13)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.handleAndLogRequestError (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:174:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat ei.request (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/RequestHandler.ts\u001b[2m:143:12)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat a (\u001b[22m\u001b[2mnode_modules/@prisma/client/src/runtime/getPrismaClient.ts\u001b[2m:833:24)\u001b[22m\u001b[2m\u001b[22m\n\u001b[2m      \u001b[2mat Object.<anonymous> (\u001b[22m\u001b[2m\u001b[0m\u001b[36mtests/integration/payment_methods.integration.test.ts\u001b[39m\u001b[0m\u001b[2m:37:20)\u001b[22m\u001b[2m\u001b[22m\n",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\payment_methods.integration.test.ts",
+      "startTime": 1776160669766,
+      "status": "failed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 27,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should accept valid notes with sections structure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should accept valid notes with sections structure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 16,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should accept valid notes with paragraphs structure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should accept valid notes with paragraphs structure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should accept valid notes with explanation structure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should accept valid notes with explanation structure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 88,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should reject notes with placeholder content",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject notes with placeholder content"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should reject notes with empty/thin content (SemanticWeaknessError)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject notes with empty/thin content (SemanticWeaknessError)"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should reject notes with too-short content",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject notes with too-short content"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should reject null/empty responses",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject null/empty responses"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should detect language mismatch in notes",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should detect language mismatch in notes"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should produce detailed validation report for invalid notes",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should produce detailed validation report for invalid notes"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should produce clean report for valid notes",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should produce clean report for valid notes"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should flag missing title in notes shape",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should flag missing title in notes shape"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Notes Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Notes Content Validation should flag missing audience in notes shape",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should flag missing audience in notes shape"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 7,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should accept valid questions with MCQ and short answer types",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should accept valid questions with MCQ and short answer types"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should reject questions with missing/short explanations",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject questions with missing/short explanations"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 15,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should detect difficulty mismatch",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should detect difficulty mismatch"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 85,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should reject empty questions array",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject empty questions array"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should reject questions without schema-required fields",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject questions without schema-required fields"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should produce detailed validation report for questions",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should produce detailed validation report for questions"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should flag invalid MCQ options in questions report",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should flag invalid MCQ options in questions report"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should validate math-specific answer structure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should validate math-specific answer structure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should flag missing math solution steps",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should flag missing math solution steps"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Questions Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Questions Content Validation should validate science-specific answer structure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should validate science-specific answer structure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Syllabus Content Validation"
+          ],
+          "duration": 0,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Syllabus Content Validation should accept valid syllabus structure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should accept valid syllabus structure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Syllabus Content Validation"
+          ],
+          "duration": 0,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject syllabus with no chapters",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject syllabus with no chapters"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Syllabus Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject syllabus with missing chapter titles",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject syllabus with missing chapter titles"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Syllabus Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject syllabus with invalid topic structure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject syllabus with invalid topic structure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Syllabus Content Validation"
+          ],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Syllabus Content Validation should accept syllabus chapters without explicit topics",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should accept syllabus chapters without explicit topics"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Syllabus Content Validation"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Syllabus Content Validation should reject non-object input",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject non-object input"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Unknown Job Type Handling"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Unknown Job Type Handling should reject unknown job types in central validator",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should reject unknown job types in central validator"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "DB-Backed Content Validation (Container)"
+          ],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should persist and validate notes through the DB",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should persist and validate notes through the DB"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "DB-Backed Content Validation (Container)"
+          ],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should persist and validate questions through the DB",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should persist and validate questions through the DB"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "DB-Backed Content Validation (Container)"
+          ],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should persist syllabus content and validate hierarchy",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should persist syllabus content and validate hierarchy"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "DB-Backed Content Validation (Container)"
+          ],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) DB-Backed Content Validation (Container) should create and validate a HydrationJob with expected counts",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 12,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should create and validate a HydrationJob with expected counts"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Validation Failure Scenarios"
+          ],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Validation Failure Scenarios should mark job as failed when content has placeholders",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should mark job as failed when content has placeholders"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Validation Failure Scenarios"
+          ],
+          "duration": 11,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Validation Failure Scenarios should mark job as failed when schema is invalid",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should mark job as failed when schema is invalid"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Validation Failure Scenarios"
+          ],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Validation Failure Scenarios should handle retry after validation failure",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 7,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should handle retry after validation failure"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Validation Failure Scenarios"
+          ],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Validation Failure Scenarios should log validation failure to AIContentLog",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should log validation failure to AIContentLog"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Concurrent Job Validation"
+          ],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Concurrent Job Validation should handle multiple simultaneous validations without interference",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should handle multiple simultaneous validations without interference"
+        },
+        {
+          "ancestorTitles": [
+            "HydrateAll Content Validation (Container-based)",
+            "Concurrent Job Validation"
+          ],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "HydrateAll Content Validation (Container-based) Concurrent Job Validation should correctly isolate validation failures in concurrent runs",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "should correctly isolate validation failures in concurrent runs"
+        }
+      ],
+      "endTime": 1776160672372,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\hydrateAll-validation.test.ts",
+      "startTime": 1776160670461,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Analytics job integration — suggestions + audit idempotency"],
+          "duration": 1725,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Analytics job integration — suggestions + audit idempotency creates suggestions once per signal and writes audit log",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 6,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "creates suggestions once per signal and writes audit log"
+        }
+      ],
+      "endTime": 1776160674786,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\analytics_job_suggestions.integration.test.ts",
+      "startTime": 1776160672623,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["ingest-curriculum integration"],
+          "duration": 665,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "ingest-curriculum integration re-running ingest is idempotent and bumps version on content change",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 9,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "re-running ingest is idempotent and bumps version on content change"
+        }
+      ],
+      "endTime": 1776160676947,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\scripts\\ingest-curriculum.integration.test.ts",
+      "startTime": 1776160674823,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["runInactivityAlerts (integration with Redis)"],
+          "duration": 224,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "runInactivityAlerts (integration with Redis) sets suppression key, prevents double-send, and updateStreak clears it",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "sets suppression key, prevents double-send, and updateStreak clears it"
+        }
+      ],
+      "endTime": 1776160677562,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\worker\\runInactivityAlerts.integration.test.ts",
+      "startTime": 1776160676991,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Parent auth gate — GET /api/parent/progress"],
+          "duration": 514,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Parent auth gate — GET /api/parent/progress returns 403 when authenticated user has role=student (not parent)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 403 when authenticated user has role=student (not parent)"
+        },
+        {
+          "ancestorTitles": ["Parent auth gate — GET /api/parent/progress"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Parent auth gate — GET /api/parent/progress returns 401 when not authenticated",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 401 when not authenticated"
+        },
+        {
+          "ancestorTitles": ["Parent auth gate — GET /api/parent/progress"],
+          "duration": 10,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Parent auth gate — GET /api/parent/progress returns 200 with children array for a parent session",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 200 with children array for a parent session"
+        },
+        {
+          "ancestorTitles": ["Child data isolation"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Child data isolation returns empty children array when parent is not linked to any student",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns empty children array when parent is not linked to any student"
+        },
+        {
+          "ancestorTitles": ["Child data isolation"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Child data isolation only returns data for linked children — not-linked student returns null (filtered out)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "only returns data for linked children — not-linked student returns null (filtered out)"
+        },
+        {
+          "ancestorTitles": ["No transcript access"],
+          "duration": 11,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "No transcript access parent progress response does NOT include studentMessage or rawInput fields",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "parent progress response does NOT include studentMessage or rawInput fields"
+        },
+        {
+          "ancestorTitles": ["Invite token lifecycle — POST /api/parent/link-child"],
+          "duration": 1177,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Invite token lifecycle — POST /api/parent/link-child creates ParentStudent row when a valid invite token is used",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "creates ParentStudent row when a valid invite token is used"
+        },
+        {
+          "ancestorTitles": ["Invite token lifecycle — POST /api/parent/link-child"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Invite token lifecycle — POST /api/parent/link-child returns 404 when token does not exist in Redis (burned or expired)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 404 when token does not exist in Redis (burned or expired)"
+        },
+        {
+          "ancestorTitles": ["Invite token lifecycle — POST /api/parent/link-child"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Invite token lifecycle — POST /api/parent/link-child is idempotent when parent is already linked (active status)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "is idempotent when parent is already linked (active status)"
+        },
+        {
+          "ancestorTitles": ["Invite token lifecycle — POST /api/parent/link-child"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Invite token lifecycle — POST /api/parent/link-child returns 400 when inviteToken field is missing",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 400 when inviteToken field is missing"
+        }
+      ],
+      "endTime": 1776160679626,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\parent\\progress.test.ts",
+      "startTime": 1776160677579,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["ProfileCompletionGate — isProfileComplete()"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "ProfileCompletionGate — isProfileComplete() returns false when all four fields are null",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when all four fields are null"
+        },
+        {
+          "ancestorTitles": ["ProfileCompletionGate — isProfileComplete()"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "ProfileCompletionGate — isProfileComplete() returns false when subjects array is empty",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when subjects array is empty"
+        },
+        {
+          "ancestorTitles": ["ProfileCompletionGate — isProfileComplete()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "ProfileCompletionGate — isProfileComplete() returns false when any single field is missing",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when any single field is missing"
+        },
+        {
+          "ancestorTitles": ["ProfileCompletionGate — isProfileComplete()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "ProfileCompletionGate — isProfileComplete() returns true when all four fields are populated",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns true when all four fields are populated"
+        },
+        {
+          "ancestorTitles": ["requiresParentOTPGate()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "requiresParentOTPGate() returns false when user is active and age is 17",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when user is active and age is 17"
+        },
+        {
+          "ancestorTitles": ["requiresParentOTPGate()"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "requiresParentOTPGate() returns false when age is null (missing age must NOT trigger gate)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when age is null (missing age must NOT trigger gate)"
+        },
+        {
+          "ancestorTitles": ["requiresParentOTPGate()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "requiresParentOTPGate() returns true when age=10 and accountStatus=pending_parent_verification",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns true when age=10 and accountStatus=pending_parent_verification"
+        },
+        {
+          "ancestorTitles": ["requiresParentOTPGate()"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "requiresParentOTPGate() returns false when user does not exist",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when user does not exist"
+        },
+        {
+          "ancestorTitles": ["requiresParentOTPGate()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "requiresParentOTPGate() returns false on DB error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false on DB error"
+        },
+        {
+          "ancestorTitles": ["Grade immutability"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Grade immutability strips grade from update payload when user already has a grade (PATCH-equivalent)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "strips grade from update payload when user already has a grade (PATCH-equivalent)"
+        },
+        {
+          "ancestorTitles": ["Grade immutability"],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Grade immutability preserves grade in updates when user.grade is null (first-time onboarding)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "preserves grade in updates when user.grade is null (first-time onboarding)"
+        },
+        {
+          "ancestorTitles": ["Grade immutability"],
+          "duration": 11,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Grade immutability strips grade in updates when user.grade is already 10 (second onboarding attempt)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "strips grade in updates when user.grade is already 10 (second onboarding attempt)"
+        },
+        {
+          "ancestorTitles": ["Grade immutability"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Grade immutability onboarding route calls prisma.user.update WITHOUT grade when user already has grade",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "onboarding route calls prisma.user.update WITHOUT grade when user already has grade"
+        },
+        {
+          "ancestorTitles": ["hasDiagnosticForSubject()"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "hasDiagnosticForSubject() returns false when no StudentConceptState rows exist for subject",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when no StudentConceptState rows exist for subject"
+        },
+        {
+          "ancestorTitles": ["hasDiagnosticForSubject()"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "hasDiagnosticForSubject() returns true when ≥1 StudentConceptState rows exist for subject",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns true when ≥1 StudentConceptState rows exist for subject"
+        },
+        {
+          "ancestorTitles": ["hasDiagnosticForSubject()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "hasDiagnosticForSubject() returns false on DB error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false on DB error"
+        },
+        {
+          "ancestorTitles": ["generateLearningPlan()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "generateLearningPlan() returns null when no concepts found for subject",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns null when no concepts found for subject"
+        },
+        {
+          "ancestorTitles": ["generateLearningPlan()"],
+          "duration": 14,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "generateLearningPlan() creates LearningPlan and orders items weakest-concept-first",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "creates LearningPlan and orders items weakest-concept-first"
+        },
+        {
+          "ancestorTitles": ["generateLearningPlan()"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "generateLearningPlan() distributes items across weeks correctly (weeklyGoal = 5 default)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "distributes items across weeks correctly (weeklyGoal = 5 default)"
+        },
+        {
+          "ancestorTitles": ["generateLearningPlan()"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "generateLearningPlan() updates existing plan (upsert path)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "updates existing plan (upsert path)"
+        }
+      ],
+      "endTime": 1776160680116,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\student\\onboarding.test.ts",
+      "startTime": 1776160679666,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Full hydration flow: syllabus -> notes -> questions -> assembleTest"],
+          "duration": 138,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Full hydration flow: syllabus -> notes -> questions -> assembleTest generates syllabus, topics, notes and questions and approves test",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 7,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "generates syllabus, topics, notes and questions and approves test"
+        }
+      ],
+      "endTime": 1776160681216,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\hydrationFlow.test.ts",
+      "startTime": 1776160680164,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["notification suppression Redis semantics (integration)"],
+          "duration": 200,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "notification suppression Redis semantics (integration) sets suppression with EX NX and is cleared on activity",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "sets suppression with EX NX and is cleared on activity"
+        }
+      ],
+      "endTime": 1776160681888,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\worker\\suppressionSemantics.integration.test.ts",
+      "startTime": 1776160681303,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Jailbreak detection — checkInputSafety()"],
+          "duration": 18,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Jailbreak detection — checkInputSafety() detects jailbreak with \"ignore all previous instructions\"",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "detects jailbreak with \"ignore all previous instructions\""
+        },
+        {
+          "ancestorTitles": ["Jailbreak detection — checkInputSafety()"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Jailbreak detection — checkInputSafety() detects jailbreak with \"jailbreak\" keyword",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "detects jailbreak with \"jailbreak\" keyword"
+        },
+        {
+          "ancestorTitles": ["Jailbreak detection — checkInputSafety()"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Jailbreak detection — checkInputSafety() returns safe=true for normal student message",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns safe=true for normal student message"
+        },
+        {
+          "ancestorTitles": ["Jailbreak detection — checkInputSafety()"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Jailbreak detection — checkInputSafety() redacts mobile number from input",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "redacts mobile number from input"
+        },
+        {
+          "ancestorTitles": ["Jailbreak detection — checkInputSafety()"],
+          "duration": 10,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Jailbreak detection — checkInputSafety() redacts email from input",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "redacts email from input"
+        },
+        {
+          "ancestorTitles": ["Jailbreak detection — checkInputSafety()"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Jailbreak detection — checkInputSafety() allows \"you are now a tutor\" (not a jailbreak)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "allows \"you are now a tutor\" (not a jailbreak)"
+        },
+        {
+          "ancestorTitles": ["Circuit breaker"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Circuit breaker returns false when cb:llm:open key is absent in Redis",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns false when cb:llm:open key is absent in Redis"
+        },
+        {
+          "ancestorTitles": ["Circuit breaker"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Circuit breaker returns true when cb:llm:open key is \"1\" in Redis",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns true when cb:llm:open key is \"1\" in Redis"
+        },
+        {
+          "ancestorTitles": ["Circuit breaker"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Circuit breaker sets cb:llm:open after FAILURE_THRESHOLD failures",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "sets cb:llm:open after FAILURE_THRESHOLD failures"
+        },
+        {
+          "ancestorTitles": ["Circuit breaker"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Circuit breaker does not set cb:llm:open when failure count is below threshold",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does not set cb:llm:open when failure count is below threshold"
+        },
+        {
+          "ancestorTitles": ["Circuit breaker"],
+          "duration": 7,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Circuit breaker deletes cb:llm:failures and cb:llm:open on recordSuccess()",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "deletes cb:llm:failures and cb:llm:open on recordSuccess()"
+        },
+        {
+          "ancestorTitles": ["Circuit breaker"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Circuit breaker is resilient to Redis errors — never throws",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "is resilient to Redis errors — never throws"
+        },
+        {
+          "ancestorTitles": ["Explanation cache"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Explanation cache returns null when no cached explanation exists",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns null when no cached explanation exists"
+        },
+        {
+          "ancestorTitles": ["Explanation cache"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Explanation cache returns cached explanation when key exists",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns cached explanation when key exists"
+        },
+        {
+          "ancestorTitles": ["Explanation cache"],
+          "duration": 8,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Explanation cache stores explanation with correct key and TTL",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "stores explanation with correct key and TTL"
+        },
+        {
+          "ancestorTitles": ["Explanation cache"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Explanation cache returns null on malformed JSON in cache",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns null on malformed JSON in cache"
+        },
+        {
+          "ancestorTitles": ["Explanation cache"],
+          "duration": 0,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Explanation cache builds cache key with correct pattern",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "builds cache key with correct pattern"
+        },
+        {
+          "ancestorTitles": ["Explanation cache"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Explanation cache never throws on Redis error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "never throws on Redis error"
+        },
+        {
+          "ancestorTitles": ["Turn processing pipeline"],
+          "duration": 34,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Turn processing pipeline calls LLM and returns answerText + complete on a normal HOOK turn",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "calls LLM and returns answerText + complete on a normal HOOK turn"
+        },
+        {
+          "ancestorTitles": ["Turn processing pipeline"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Turn processing pipeline does NOT call LLM when jailbreak is detected (stops pipeline)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does NOT call LLM when jailbreak is detected (stops pipeline)"
+        },
+        {
+          "ancestorTitles": ["Turn processing pipeline"],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Turn processing pipeline writes analyticsEvent when hallucination detector flags response",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "writes analyticsEvent when hallucination detector flags response"
+        },
+        {
+          "ancestorTitles": ["Turn processing pipeline"],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Turn processing pipeline marks turn as completed even on error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "marks turn as completed even on error"
+        },
+        {
+          "ancestorTitles": ["Direct answer prevention"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Direct answer prevention checkInputSafety passes \"just tell me the answer\" as safe input",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "checkInputSafety passes \"just tell me the answer\" as safe input"
+        },
+        {
+          "ancestorTitles": ["Direct answer prevention"],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Direct answer prevention parseTutorTag returns QUESTION or HINT_OFFER tags (Vidya never gives direct answer)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "parseTutorTag returns QUESTION or HINT_OFFER tags (Vidya never gives direct answer)"
+        },
+        {
+          "ancestorTitles": ["Direct answer prevention"],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Direct answer prevention pipeline produces QUESTION tag (not VALIDATE) for a \"tell me the answer\" prompt",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "pipeline produces QUESTION tag (not VALIDATE) for a \"tell me the answer\" prompt"
+        }
+      ],
+      "endTime": 1776160682414,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\ai\\orchestrator.test.ts",
+      "startTime": 1776160681913,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["getYesterdayIstBounds()"],
+          "duration": 16,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "getYesterdayIstBounds() returns start, end, and dateLabel in IST",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns start, end, and dateLabel in IST"
+        },
+        {
+          "ancestorTitles": ["Rolling average anomaly detection"],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Rolling average anomaly detection sends alert when costPerSession is 2× above rolling 7-day average (>1.5x threshold)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "sends alert when costPerSession is 2× above rolling 7-day average (>1.5x threshold)"
+        },
+        {
+          "ancestorTitles": ["Rolling average anomaly detection"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Rolling average anomaly detection does NOT send alert when costPerSession is 1.25× rolling average (below 1.5× threshold)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does NOT send alert when costPerSession is 1.25× rolling average (below 1.5× threshold)"
+        },
+        {
+          "ancestorTitles": ["Rolling average anomaly detection"],
+          "duration": 8,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Rolling average anomaly detection does NOT compute rolling anomaly when fewer than 3 historical data points exist",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does NOT compute rolling anomaly when fewer than 3 historical data points exist"
+        },
+        {
+          "ancestorTitles": ["Zero session dropout detection"],
+          "duration": 6,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Zero session dropout detection sends dropout alert when today has 0 sessions but yesterday had > 10",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "sends dropout alert when today has 0 sessions but yesterday had > 10"
+        },
+        {
+          "ancestorTitles": ["Zero session dropout detection"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Zero session dropout detection does NOT send dropout alert when today has 0 sessions but yesterday also had ≤10",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does NOT send dropout alert when today has 0 sessions but yesterday also had ≤10"
+        },
+        {
+          "ancestorTitles": ["Cache hit rate warning"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Cache hit rate warning logs cache warning when hit rate is below 55% target (40% hit rate)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "logs cache warning when hit rate is below 55% target (40% hit rate)"
+        },
+        {
+          "ancestorTitles": ["Cache hit rate warning"],
+          "duration": 4,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Cache hit rate warning does NOT log cache warning when hit rate exceeds 55% target (60% hit rate)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does NOT log cache warning when hit rate exceeds 55% target (60% hit rate)"
+        },
+        {
+          "ancestorTitles": ["Cache hit rate warning"],
+          "duration": 7,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Cache hit rate warning upserts DailyCostMetric row for the reporting date",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "upserts DailyCostMetric row for the reporting date"
+        },
+        {
+          "ancestorTitles": ["Cache hit rate warning"],
+          "duration": 8,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Cache hit rate warning returns cost report with correct shape regardless of alert status",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 8,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns cost report with correct shape regardless of alert status"
+        },
+        {
+          "ancestorTitles": ["Cache hit rate warning"],
+          "duration": 81,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Cache hit rate warning never throws — returns safe result even on DB error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "never throws — returns safe result even on DB error"
+        }
+      ],
+      "endTime": 1776160683070,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\cost\\reporting.test.ts",
+      "startTime": 1776160682446,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["AuditLog on admin grade change"],
+          "duration": 158,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "AuditLog on admin grade change creates AuditLog with GRADE_CHANGE action when admin PATCHes grade",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "creates AuditLog with GRADE_CHANGE action when admin PATCHes grade"
+        },
+        {
+          "ancestorTitles": ["AuditLog on admin grade change"],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "AuditLog on admin grade change deletes StudentConceptState rows when grade is changed",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "deletes StudentConceptState rows when grade is changed"
+        },
+        {
+          "ancestorTitles": ["Grade change requires reason"],
+          "duration": 5,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Grade change requires reason returns 400 when grade is supplied but reason field is missing",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 400 when grade is supplied but reason field is missing"
+        },
+        {
+          "ancestorTitles": ["Grade change requires reason"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Grade change requires reason returns 400 when grade is supplied with an empty reason string",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 400 when grade is supplied with an empty reason string"
+        },
+        {
+          "ancestorTitles": ["Grade change requires reason"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Grade change requires reason returns 403 when called by a non-admin user",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 403 when called by a non-admin user"
+        },
+        {
+          "ancestorTitles": ["Question quarantine on 3 flags"],
+          "duration": 33,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Question quarantine on 3 flags sets Question.status=QUARANTINED when total flags reach threshold (3)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "sets Question.status=QUARANTINED when total flags reach threshold (3)"
+        },
+        {
+          "ancestorTitles": ["Question quarantine on 3 flags"],
+          "duration": 11,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Question quarantine on 3 flags does NOT quarantine when flag count is 2 (below threshold)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "does NOT quarantine when flag count is 2 (below threshold)"
+        },
+        {
+          "ancestorTitles": ["Question quarantine on 3 flags"],
+          "duration": 7,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Question quarantine on 3 flags returns 400 for an invalid reason",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "returns 400 for an invalid reason"
+        },
+        {
+          "ancestorTitles": ["Doubt escalation"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Doubt escalation makeDoubtHash produces a consistent 8-char hex string for same inputs",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "makeDoubtHash produces a consistent 8-char hex string for same inputs"
+        },
+        {
+          "ancestorTitles": ["Doubt escalation"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Doubt escalation makeDoubtHash produces different hashes for different inputs",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "makeDoubtHash produces different hashes for different inputs"
+        },
+        {
+          "ancestorTitles": ["Doubt escalation"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Doubt escalation trackDoubtAttempt increments counter and appends to history",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "trackDoubtAttempt increments counter and appends to history"
+        },
+        {
+          "ancestorTitles": ["Doubt escalation"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Doubt escalation trackDoubtAttempt caps history at 3 entries",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "trackDoubtAttempt caps history at 3 entries"
+        },
+        {
+          "ancestorTitles": ["Doubt escalation"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Doubt escalation trackDoubtAttempt returns { count: 0, history: [] } on Redis error",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "trackDoubtAttempt returns { count: 0, history: [] } on Redis error"
+        },
+        {
+          "ancestorTitles": ["Doubt escalation"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "Doubt escalation resetDoubtCounter deletes both counter and history keys",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "resetDoubtCounter deletes both counter and history keys"
+        },
+        {
+          "ancestorTitles": ["DPDP erasure phases"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DPDP erasure phases Phase 1: pseudonymises user PII after 7+ days",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Phase 1: pseudonymises user PII after 7+ days"
+        },
+        {
+          "ancestorTitles": ["DPDP erasure phases"],
+          "duration": 3,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DPDP erasure phases Phase 1: sets pseudonymisedAt on DeletionRequest",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Phase 1: sets pseudonymisedAt on DeletionRequest"
+        },
+        {
+          "ancestorTitles": ["DPDP erasure phases"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DPDP erasure phases Phase 2: purges SafetyEvent rows after 30+ days from pseudonymisation",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Phase 2: purges SafetyEvent rows after 30+ days from pseudonymisation"
+        },
+        {
+          "ancestorTitles": ["DPDP erasure phases"],
+          "duration": 2,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DPDP erasure phases Phase 2: sets purgedAt on DeletionRequest",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Phase 2: sets purgedAt on DeletionRequest"
+        },
+        {
+          "ancestorTitles": ["DPDP erasure phases"],
+          "duration": 0,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DPDP erasure phases Phase 2: does NOT delete AuditLog rows (required for 7yr legal compliance)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "Phase 2: does NOT delete AuditLog rows (required for 7yr legal compliance)"
+        },
+        {
+          "ancestorTitles": ["DPDP erasure phases"],
+          "duration": 1,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "DPDP erasure phases handles errors per-request and continues to next (never throws)",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "handles errors per-request and continues to next (never throws)"
+        }
+      ],
+      "endTime": 1776160683840,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\admin\\audit.test.ts",
+      "startTime": 1776160683116,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["worker/jobs/inactivityAlert (integration-ish)"],
+          "duration": 142,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "worker/jobs/inactivityAlert (integration-ish) sends inactivity alert and persists audit record",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "sends inactivity alert and persists audit record"
+        }
+      ],
+      "endTime": 1776160684244,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\worker\\inactivityAlert.integration.test.ts",
+      "startTime": 1776160683870,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "duration": 41,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "integration: readiness drop alerts send remediation",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "integration: readiness drop alerts send remediation"
+        }
+      ],
+      "endTime": 1776160684661,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\worker\\readinessDrop.integration.test.ts",
+      "startTime": 1776160684277,
+      "status": "passed",
+      "summary": ""
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["submitJob -> syllabus hydration integration"],
+          "duration": 44,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "submitJob -> syllabus hydration integration creates ExecutionJob and calls hydrateSyllabus, links hydrationJobId",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 5,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "creates ExecutionJob and calls hydrateSyllabus, links hydrationJobId"
+        }
+      ],
+      "endTime": 1776160685614,
+      "message": "",
+      "name": "D:\\projects\\ai-tutor\\tests\\integration\\submitSyllabus.integration.test.ts",
+      "startTime": 1776160684729,
+      "status": "passed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}

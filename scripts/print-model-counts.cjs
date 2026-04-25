@@ -1,7 +1,6 @@
 const { prisma } = require('../lib/prisma');
 
 async function main() {
-  
   try {
     const rows = [];
     rows.push(['Board', await prisma.board.count()]);
@@ -26,4 +25,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

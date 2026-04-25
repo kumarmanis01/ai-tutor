@@ -58,15 +58,14 @@ const STUDENT_ID = 'student-phase5';
 // ─── Part 1: resolveTargetDifficulty() ───────────────────────────────────────
 
 describe('resolveTargetDifficulty', () => {
-
   // ── Spec-mandated thresholds ──────────────────────────────────────────────
 
   it('returns "easy" for accuracy 0.30 (< 0.50)', () => {
-    expect(resolveTargetDifficulty(0.30)).toBe('easy');
+    expect(resolveTargetDifficulty(0.3)).toBe('easy');
   });
 
   it('returns "medium" for accuracy 0.60 (in [0.50, 0.75))', () => {
-    expect(resolveTargetDifficulty(0.60)).toBe('medium');
+    expect(resolveTargetDifficulty(0.6)).toBe('medium');
   });
 
   it('returns "hard" for accuracy 0.85 (>= 0.75)', () => {
@@ -80,7 +79,7 @@ describe('resolveTargetDifficulty', () => {
   // ── Boundary values ───────────────────────────────────────────────────────
 
   it('returns "medium" for accuracy exactly 0.50 (lower bound of medium band)', () => {
-    expect(resolveTargetDifficulty(0.50)).toBe('medium');
+    expect(resolveTargetDifficulty(0.5)).toBe('medium');
   });
 
   it('returns "hard" for accuracy exactly 0.75 (lower bound of hard band)', () => {
@@ -104,40 +103,36 @@ describe('resolveTargetDifficulty', () => {
   it('returns "hard" for accuracy 1.0 (absolute ceiling)', () => {
     expect(resolveTargetDifficulty(1.0)).toBe('hard');
   });
-
 });
 
 // ─── Part 2: resolvePhaseContent PRACTICE — difficulty selector integration ───
 
 describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () => {
-
   beforeEach(() => {
     jest.clearAllMocks();
     // Default: questions available at every difficulty band
-    (prisma.question.findMany as jest.Mock).mockResolvedValue([
-      makeQuestion('medium'),
-    ]);
+    (prisma.question.findMany as jest.Mock).mockResolvedValue([makeQuestion('medium')]);
   });
 
   // ── Difficulty selection from mastery ─────────────────────────────────────
 
   it('queries "easy" questions for studentMastery 0.30', async () => {
-    await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.30);
+    await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.3);
 
     expect(prisma.question.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ topicId: TOPIC_ID, difficulty: 'easy' }),
-      }),
+      })
     );
   });
 
   it('queries "medium" questions for studentMastery 0.60', async () => {
-    await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.60);
+    await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.6);
 
     expect(prisma.question.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ topicId: TOPIC_ID, difficulty: 'medium' }),
-      }),
+      })
     );
   });
 
@@ -147,7 +142,7 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
     expect(prisma.question.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ topicId: TOPIC_ID, difficulty: 'hard' }),
-      }),
+      })
     );
   });
 
@@ -159,7 +154,7 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
     expect(prisma.question.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ difficulty: 'medium' }),
-      }),
+      })
     );
   });
 
@@ -169,7 +164,7 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
     expect(prisma.question.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ difficulty: 'medium' }),
-      }),
+      })
     );
   });
 
@@ -177,8 +172,8 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
 
   it('falls back to any-difficulty query when target band returns no questions', async () => {
     (prisma.question.findMany as jest.Mock)
-      .mockResolvedValueOnce([])                        // primary (hard) → empty
-      .mockResolvedValueOnce([makeQuestion('easy')]);   // fallback → returns something
+      .mockResolvedValueOnce([]) // primary (hard) → empty
+      .mockResolvedValueOnce([makeQuestion('easy')]); // fallback → returns something
 
     const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.85);
 
@@ -193,7 +188,7 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
   it('returns pending when topic has no questions at any difficulty', async () => {
     (prisma.question.findMany as jest.Mock).mockResolvedValue([]); // both queries fail
 
-    const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.60);
+    const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.6);
 
     expect(result.type).toBe('pending');
     expect(prisma.question.findMany).toHaveBeenCalledTimes(2);
@@ -207,12 +202,11 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
       makeQuestion('medium'),
     ]);
 
-    const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.60);
+    const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.6);
 
     expect(result.type).toBe('practice');
     if (result.type === 'practice') {
       expect(result.questions).toHaveLength(2);
     }
   });
-
 });

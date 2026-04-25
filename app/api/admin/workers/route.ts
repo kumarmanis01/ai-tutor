@@ -12,32 +12,38 @@
  * - Use router.refresh() with SWR
  */
 
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { requireAdminOrModerator } from '@/lib/auth'
-import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireAdminOrModerator } from '@/lib/auth';
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
 export async function GET() {
-  await requireAdminOrModerator()
-  const workers = await prisma.workerLifecycle.findMany({ orderBy: { updatedAt: 'desc' }, take: 100 })
+  await requireAdminOrModerator();
+  const workers = await prisma.workerLifecycle.findMany({
+    orderBy: { updatedAt: 'desc' },
+    take: 100,
+  });
   // Include minimal health indicators for UI: lastHeartbeat age (ms)
   const now = new Date();
-  const enriched = workers.map(w => ({
+  const enriched = workers.map((w) => ({
     ...w,
-    lastHeartbeatAgeMs: w.lastHeartbeatAt ? now.getTime() - new Date(w.lastHeartbeatAt).getTime() : null,
-  }))
-  return NextResponse.json(enriched)
+    lastHeartbeatAgeMs: w.lastHeartbeatAt
+      ? now.getTime() - new Date(w.lastHeartbeatAt).getTime()
+      : null,
+  }));
+  return NextResponse.json(enriched);
 }
 
 export async function POST(req: Request) {
-  const session = await requireAdminOrModerator()
-  const body = await req.json().catch(() => ({} as any))
+  const session = await requireAdminOrModerator();
+  const body = await req.json().catch(() => ({}) as any);
 
-  const action = String(body.action || '').toLowerCase()
+  const action = String(body.action || '').toLowerCase();
 
   if (action === 'start') {
-    const type = String(body.type || CONTENT_HYDRATION_QUEUE)
-    if (!type || type.length === 0) return NextResponse.json({ error: 'type required' }, { status: 400 })
+    const type = String(body.type || CONTENT_HYDRATION_QUEUE);
+    if (!type || type.length === 0)
+      return NextResponse.json({ error: 'type required' }, { status: 400 });
 
     const created = await prisma.workerLifecycle.create({
       data: {
@@ -49,7 +55,7 @@ export async function POST(req: Request) {
         lastHeartbeatAt: new Date(),
         meta: body.meta ?? null,
       },
-    })
+    });
 
     // Resolve canonical DB user id for audit safety; fall back to null
     let auditUserId: string | null = null;
@@ -66,18 +72,29 @@ export async function POST(req: Request) {
       auditUserId = null;
     }
 
-    await prisma.auditLog.create({ data: { adminId: auditUserId, targetEntity: 'Worker', targetId: created.id, action: 'WORKER_START', details: { reason: body.reason ?? null } } })
+    await prisma.auditLog.create({
+      data: {
+        adminId: auditUserId,
+        targetEntity: 'Worker',
+        targetId: created.id,
+        action: 'WORKER_START',
+        details: { reason: body.reason ?? null },
+      },
+    });
 
     // Return minimal response the orchestrator / CLI expects
-    return NextResponse.json({ lifecycleId: created.id, type: created.type })
+    return NextResponse.json({ lifecycleId: created.id, type: created.type });
   }
 
   if (action === 'stop') {
-    const id = String(body.id || '')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    const id = String(body.id || '');
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-    const drain = body.drain === undefined ? true : Boolean(body.drain)
-    const update = await prisma.workerLifecycle.update({ where: { id }, data: { status: drain ? 'DRAINING' : 'STOPPED', stoppedAt: drain ? null : new Date() } })
+    const drain = body.drain === undefined ? true : Boolean(body.drain);
+    const update = await prisma.workerLifecycle.update({
+      where: { id },
+      data: { status: drain ? 'DRAINING' : 'STOPPED', stoppedAt: drain ? null : new Date() },
+    });
 
     // Resolve canonical DB user id for audit safety; fall back to null
     let auditUserId2: string | null = null;
@@ -94,10 +111,18 @@ export async function POST(req: Request) {
       auditUserId2 = null;
     }
 
-    await prisma.auditLog.create({ data: { adminId: auditUserId2, targetEntity: 'Worker', targetId: id, action: 'WORKER_STOP', details: { reason: body.reason ?? null, drain } } })
+    await prisma.auditLog.create({
+      data: {
+        adminId: auditUserId2,
+        targetEntity: 'Worker',
+        targetId: id,
+        action: 'WORKER_STOP',
+        details: { reason: body.reason ?? null, drain },
+      },
+    });
 
-    return NextResponse.json(update)
+    return NextResponse.json(update);
   }
 
-  return NextResponse.json({ error: 'unknown action' }, { status: 400 })
+  return NextResponse.json({ error: 'unknown action' }, { status: 400 });
 }

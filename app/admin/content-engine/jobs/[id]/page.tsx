@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -15,7 +15,11 @@ function StatusBadge({ status }: { status: string }) {
   else if (status === JobStatusConst.Pending) color = 'bg-yellow-100 text-yellow-800';
   else if (status === JobStatusConst.Running) color = 'bg-blue-100 text-blue-800';
   else if (status === JobStatusConst.Cancelled) color = 'bg-gray-300 text-gray-500';
-  return <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{String(status).toUpperCase()}</span>;
+  return (
+    <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>
+      {String(status).toUpperCase()}
+    </span>
+  );
 }
 
 import { useParams } from 'next/navigation';
@@ -23,8 +27,15 @@ import { useParams } from 'next/navigation';
 export default function JobDetailPage() {
   const params = useParams();
   const id = params?.id as string | undefined;
-  const { data: jobRes, error: jobErr, mutate: mutateJob } = useSWR(id ? `/api/admin/content-engine/jobs/${id}` : null, fetcher);
-  const { data: timelineRes, mutate: mutateTimeline } = useSWR(id ? `/api/admin/content-engine/jobs/${id}/timeline` : null, fetcher);
+  const {
+    data: jobRes,
+    error: jobErr,
+    mutate: mutateJob,
+  } = useSWR(id ? `/api/admin/content-engine/jobs/${id}` : null, fetcher);
+  const { data: timelineRes, mutate: mutateTimeline } = useSWR(
+    id ? `/api/admin/content-engine/jobs/${id}/timeline` : null,
+    fetcher
+  );
   const [errorsOnly, setErrorsOnly] = useState(false);
 
   const job = jobRes?.job;
@@ -37,29 +48,53 @@ export default function JobDetailPage() {
 
   if (jobErr) return <div className="p-6 text-red-600">Failed to load job.</div>;
   if (!jobRes) return <div className="p-6">Loading...</div>;
-  if (!job) return <div className="p-6 text-red-600">Job not found. It may be a pipeline job -- <Link href="/admin/jobs" className="underline text-blue-600">view all jobs</Link>.</div>;
+  if (!job)
+    return (
+      <div className="p-6 text-red-600">
+        Job not found. It may be a pipeline job --{' '}
+        <Link href="/admin/jobs" className="underline text-blue-600">
+          view all jobs
+        </Link>
+        .
+      </div>
+    );
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold">Job {job.id}</h1>
-          <div className="text-sm text-gray-600">{job.jobType} -- {job.entityType} {job.entityName ? `→ ${job.entityName}` : ''}</div>
+          <div className="text-sm text-gray-600">
+            {job.jobType} -- {job.entityType} {job.entityName ? `→ ${job.entityName}` : ''}
+          </div>
         </div>
         <div>
-          <JobActions jobId={job.id} status={job.status} onDone={() => { mutateJob(); mutateTimeline(); }} />
+          <JobActions
+            jobId={job.id}
+            status={job.status}
+            onDone={() => {
+              mutateJob();
+              mutateTimeline();
+            }}
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded shadow p-4">
           <div className="text-xs text-gray-500">Status</div>
-          <div className="mt-2"><StatusBadge status={job.status} /></div>
+          <div className="mt-2">
+            <StatusBadge status={job.status} />
+          </div>
         </div>
         <div className="bg-white rounded shadow p-4">
           <div className="text-xs text-gray-500">Timestamps</div>
-          <div className="mt-2 text-sm">Created: {job.createdAt ? new Date(job.createdAt).toLocaleString() : '-'}</div>
-          <div className="mt-1 text-sm">Updated: {job.updatedAt ? new Date(job.updatedAt).toLocaleString() : '-'}</div>
+          <div className="mt-2 text-sm">
+            Created: {job.createdAt ? new Date(job.createdAt).toLocaleString() : '-'}
+          </div>
+          <div className="mt-1 text-sm">
+            Updated: {job.updatedAt ? new Date(job.updatedAt).toLocaleString() : '-'}
+          </div>
         </div>
       </div>
 
@@ -67,7 +102,9 @@ export default function JobDetailPage() {
         <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
           <div className="font-semibold mb-1">Error Message</div>
           <div className="text-sm text-red-700 whitespace-pre-wrap">{job.error}</div>
-          <div className="text-xs text-gray-500 mt-1">This error was returned by the worker or provider.</div>
+          <div className="text-xs text-gray-500 mt-1">
+            This error was returned by the worker or provider.
+          </div>
         </div>
       )}
 
@@ -75,7 +112,11 @@ export default function JobDetailPage() {
         <h2 className="text-lg font-medium">Timeline</h2>
         <div className="flex items-center gap-2">
           <label className="text-sm">Errors only</label>
-          <input type="checkbox" checked={errorsOnly} onChange={(e) => setErrorsOnly(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={errorsOnly}
+            onChange={(e) => setErrorsOnly(e.target.checked)}
+          />
         </div>
       </div>
 
@@ -86,14 +127,28 @@ export default function JobDetailPage() {
             <li key={l.id} className="flex gap-3">
               <div className="w-10 flex-none text-center">
                 <span className="text-lg">
-                  {String(l.event).toUpperCase().includes('FAILED') ? '❌' : String(l.event).toUpperCase().includes('RUNNING') ? '▶️' : String(l.event).toUpperCase().includes('COMPLETED') ? '✅' : '●'}
+                  {String(l.event).toUpperCase().includes('FAILED')
+                    ? '❌'
+                    : String(l.event).toUpperCase().includes('RUNNING')
+                      ? '▶️'
+                      : String(l.event).toUpperCase().includes('COMPLETED')
+                        ? '✅'
+                        : '●'}
                 </span>
               </div>
               <div className="flex-1">
-                <div className="text-xs text-gray-500">{new Date(l.createdAt).toLocaleString()}</div>
+                <div className="text-xs text-gray-500">
+                  {new Date(l.createdAt).toLocaleString()}
+                </div>
                 <div className="font-medium">{l.event}</div>
-                {l.message && <div className="text-sm text-red-700 whitespace-pre-wrap">{l.message}</div>}
-                {l.meta && <pre className="text-xs mt-1 whitespace-pre-wrap bg-gray-50 p-2 rounded">{JSON.stringify(l.meta, null, 2)}</pre>}
+                {l.message && (
+                  <div className="text-sm text-red-700 whitespace-pre-wrap">{l.message}</div>
+                )}
+                {l.meta && (
+                  <pre className="text-xs mt-1 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                    {JSON.stringify(l.meta, null, 2)}
+                  </pre>
+                )}
               </div>
             </li>
           ))}
@@ -101,7 +156,12 @@ export default function JobDetailPage() {
       </div>
 
       <div className="mt-6">
-        <Link href={`/admin/content-engine/audit-logs?jobId=${job.id}`} className="text-sm underline text-blue-600">View audit trail →</Link>
+        <Link
+          href={`/admin/content-engine/audit-logs?jobId=${job.id}`}
+          className="text-sm underline text-blue-600"
+        >
+          View audit trail →
+        </Link>
       </div>
     </div>
   );

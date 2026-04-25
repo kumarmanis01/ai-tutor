@@ -26,7 +26,7 @@ describe('InterruptedSessionSheet (component)', () => {
   });
 
   it('renders without crash (placeholder)', () => {
-    render(<InterruptedSessionSheet /> as any);
+    render((<InterruptedSessionSheet />) as any);
     expect(true).toBe(true);
   });
 

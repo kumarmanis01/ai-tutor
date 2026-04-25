@@ -78,11 +78,11 @@ export interface ResolvedIntent {
 export function resolveSessionIntent(input: IntentResolutionInput): ResolvedIntent {
   const gradeConfig = getIntentConfig(input.grade);
   const sessionId = uuidv4();
-  
+
   let intent: SessionIntent;
   let resolutionMethod: 'explicit' | 'inferred' | 'default';
   let confidence: number;
-  
+
   // Case 1: Explicit intent provided
   if (input.statedIntent && isIntentValidForGrade(input.statedIntent, input.grade)) {
     intent = input.statedIntent;
@@ -102,7 +102,7 @@ export function resolveSessionIntent(input: IntentResolutionInput): ResolvedInte
     resolutionMethod = 'default';
     confidence = 0.5;
   }
-  
+
   // Build intent data
   const intentData: SessionIntentData = {
     intent,
@@ -114,13 +114,13 @@ export function resolveSessionIntent(input: IntentResolutionInput): ResolvedInte
     capturedAt: new Date().toISOString(),
     sessionId,
   };
-  
+
   // Get modifiers for this intent
   const modifiers = getIntentModifiers(intent);
-  
+
   // Apply adjustments based on urgency and mood
   const adjustedModifiers = applyContextAdjustments(modifiers, input);
-  
+
   return {
     intentData,
     resolutionMethod,
@@ -138,42 +138,42 @@ function inferIntentFromContext(
   config: GradeIntentConfig
 ): { intent: SessionIntent; confidence: number } {
   const { recentActivity, selfConfidence, availableMinutes } = input;
-  
+
   // Exam coming up?
   if (recentActivity?.hasUpcomingExam) {
     const daysAway = recentActivity.examDaysAway ?? 7;
-    
+
     if (daysAway <= 2) {
       return { intent: SessionIntent.EXAM_PREP, confidence: 0.85 };
     }
     if (daysAway <= 7) {
       return { intent: SessionIntent.BUILD_CONFIDENCE, confidence: 0.75 };
     }
-    return { intent: SessionIntent.REVISE, confidence: 0.70 };
+    return { intent: SessionIntent.REVISE, confidence: 0.7 };
   }
-  
+
   // Low confidence? Build it up
   if (selfConfidence !== undefined && selfConfidence <= 2) {
     return { intent: SessionIntent.BUILD_CONFIDENCE, confidence: 0.75 };
   }
-  
+
   // Short time available? Quick practice
   if (availableMinutes !== undefined && availableMinutes <= 15) {
-    return { intent: SessionIntent.PRACTICE, confidence: 0.70 };
+    return { intent: SessionIntent.PRACTICE, confidence: 0.7 };
   }
-  
+
   // Returning after long break? Revise
   if (recentActivity && recentActivity.daysSinceLastSession >= 3) {
     return { intent: SessionIntent.REVISE, confidence: 0.65 };
   }
-  
+
   // Continue what they were doing
   if (recentActivity?.lastIntent && config.availableIntents.includes(recentActivity.lastIntent)) {
-    return { intent: recentActivity.lastIntent, confidence: 0.60 };
+    return { intent: recentActivity.lastIntent, confidence: 0.6 };
   }
-  
+
   // Default to learning new concept
-  return { intent: config.defaultIntent, confidence: 0.50 };
+  return { intent: config.defaultIntent, confidence: 0.5 };
 }
 
 /**
@@ -184,34 +184,34 @@ function applyContextAdjustments(
   input: IntentResolutionInput
 ): IntentPromptModifiers {
   const adjusted = { ...modifiers };
-  
+
   // Urgent? Be more focused
   if (input.urgency === IntentUrgency.HIGH || input.urgency === IntentUrgency.CRITICAL) {
     adjusted.responseLength = 'concise';
     adjusted.includeExamTips = true;
     adjusted.toneAdjustment = 'focused';
   }
-  
+
   // Anxious mood? Be encouraging
   if (input.mood === StudentMood.ANXIOUS) {
     adjusted.toneAdjustment = 'encouraging';
     adjusted.difficultyBias = 'easier';
   }
-  
+
   // Low confidence? Start easier
   if (input.selfConfidence !== undefined && input.selfConfidence <= 2) {
     adjusted.difficultyBias = 'easier';
     adjusted.toneAdjustment = 'encouraging';
     adjusted.exampleCount = Math.max(adjusted.exampleCount, 2);
   }
-  
+
   // Limited time? Be concise
   if (input.availableMinutes !== undefined && input.availableMinutes <= 15) {
     adjusted.responseLength = 'concise';
     adjusted.explanationDepth = Math.min(adjusted.explanationDepth, 3) as 1 | 2 | 3 | 4 | 5;
     adjusted.exampleCount = Math.min(adjusted.exampleCount, 1);
   }
-  
+
   return adjusted;
 }
 
@@ -224,47 +224,47 @@ function applyContextAdjustments(
  */
 export function buildIntentSystemPrompt(resolved: ResolvedIntent): string {
   const { intentData, modifiers } = resolved;
-  
+
   const lines: string[] = [];
-  
+
   // Intent context
   lines.push(`## Session Intent Context`);
   lines.push(`Student's goal this session: ${formatIntentDescription(intentData.intent)}`);
-  
+
   // Urgency
   if (intentData.urgency !== IntentUrgency.NORMAL) {
     lines.push(`Urgency level: ${intentData.urgency}`);
   }
-  
+
   // Tone guidance
   lines.push('');
   lines.push(`## Response Guidelines`);
   lines.push(`- Explanation depth: ${modifiers.explanationDepth}/5`);
   lines.push(`- Response length: ${modifiers.responseLength}`);
   lines.push(`- Tone: ${modifiers.toneAdjustment}`);
-  
+
   if (modifiers.includeExamples) {
     lines.push(`- Include ${modifiers.exampleCount} example(s)`);
   }
-  
+
   if (modifiers.includePractice) {
     lines.push(`- Include practice question(s), difficulty bias: ${modifiers.difficultyBias}`);
   }
-  
+
   if (modifiers.includeMemoryTips) {
     lines.push(`- Include memory/retention tips when relevant`);
   }
-  
+
   if (modifiers.includeExamTips) {
     lines.push(`- Include exam-specific tips and common mistakes`);
   }
-  
+
   // Specific topic focus
   if (intentData.topicFocus) {
     lines.push('');
     lines.push(`Focus area: ${intentData.topicFocus}`);
   }
-  
+
   return lines.join('\n');
 }
 
@@ -273,7 +273,7 @@ export function buildIntentSystemPrompt(resolved: ResolvedIntent): string {
  */
 export function buildIntentUserPromptPrefix(resolved: ResolvedIntent): string {
   const { intentData, modifiers } = resolved;
-  
+
   const prefixes: Record<SessionIntent, string> = {
     [SessionIntent.LEARN_CONCEPT]: 'I want to learn about',
     [SessionIntent.PRACTICE]: 'I need practice questions on',
@@ -283,7 +283,7 @@ export function buildIntentUserPromptPrefix(resolved: ResolvedIntent): string {
     [SessionIntent.EXPLORE]: 'Tell me something interesting about',
     [SessionIntent.HOMEWORK_HELP]: 'I need help with my homework on',
   };
-  
+
   return prefixes[intentData.intent] || 'Help me with';
 }
 
@@ -300,7 +300,7 @@ function formatIntentDescription(intent: SessionIntent): string {
     [SessionIntent.EXPLORE]: 'Exploring and discovering',
     [SessionIntent.HOMEWORK_HELP]: 'Getting help with homework',
   };
-  
+
   return descriptions[intent];
 }
 
@@ -314,16 +314,16 @@ function formatIntentDescription(intent: SessionIntent): string {
  */
 export function createJuniorDefaultIntent(grade: number, sessionId?: string): ResolvedIntent {
   const config = getIntentConfig(grade);
-  
+
   const intentData: SessionIntentData = {
     intent: SessionIntent.LEARN_CONCEPT,
     urgency: IntentUrgency.LOW, // No pressure for young kids
     capturedAt: new Date().toISOString(),
     sessionId: sessionId ?? uuidv4(),
   };
-  
+
   const modifiers = getIntentModifiers(SessionIntent.LEARN_CONCEPT);
-  
+
   // Adjust for junior: more encouraging, simpler
   const juniorModifiers: IntentPromptModifiers = {
     ...modifiers,
@@ -332,7 +332,7 @@ export function createJuniorDefaultIntent(grade: number, sessionId?: string): Re
     responseLength: 'concise',
     includeExamTips: false, // No exam stress for young kids
   };
-  
+
   return {
     intentData,
     resolutionMethod: 'default',

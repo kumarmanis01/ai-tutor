@@ -42,8 +42,8 @@ interface InvoiceRow {
 
 interface AnnualSummaryResponse {
   financialYear: string; // e.g. "2025-26"
-  fyStart: string;       // ISO date of April 1
-  fyEnd: string;         // ISO date of March 31
+  fyStart: string; // ISO date of April 1
+  fyEnd: string; // ISO date of March 31
   totalAmount: number;
   invoiceCount: number;
   invoices: InvoiceRow[];
@@ -94,13 +94,19 @@ export async function GET(req: NextRequest) {
       // Expect format "YYYY-YY" e.g. "2025-26"
       const match = /^(\d{4})-(\d{2})$/.exec(fyParam);
       if (!match) {
-        return NextResponse.json({ error: 'fy must be in format YYYY-YY, e.g. 2025-26' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'fy must be in format YYYY-YY, e.g. 2025-26' },
+          { status: 400 }
+        );
       }
       const startYear = parseInt(match[1], 10);
       const endYearShort = parseInt(match[2], 10);
       // Validate the year suffix is consistent (e.g. 2025-26: 25+1=26)
       if ((startYear + 1) % 100 !== endYearShort) {
-        return NextResponse.json({ error: 'fy year suffix must be consecutive, e.g. 2025-26' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'fy year suffix must be consecutive, e.g. 2025-26' },
+          { status: 400 }
+        );
       }
       fyStart = new Date(Date.UTC(startYear, 3, 1, 0, 0, 0, 0));
       fyEnd = new Date(Date.UTC(startYear + 1, 2, 31, 23, 59, 59, 999));
@@ -169,7 +175,10 @@ export async function GET(req: NextRequest) {
         logger.error('Failed to generate merged PDF', { className: CLASS_NAME, error: String(e) });
         // If no invoices were found for the FY, return a 404 JSON response instead
         if (String(e).toLowerCase().includes('no invoices')) {
-          return NextResponse.json({ error: 'No invoices found for requested financial year' }, { status: 404 });
+          return NextResponse.json(
+            { error: 'No invoices found for requested financial year' },
+            { status: 404 }
+          );
         }
         return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
       }

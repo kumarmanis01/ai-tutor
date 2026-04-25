@@ -26,7 +26,13 @@ describe('subscription renewal worker', () => {
 
   beforeAll(async () => {
     try {
-      const user = await prisma.user.create({ data: { name: 'Renewal Tester', email: `renewal-${Date.now()}@example.test`, language: 'en' } });
+      const user = await prisma.user.create({
+        data: {
+          name: 'Renewal Tester',
+          email: `renewal-${Date.now()}@example.test`,
+          language: 'en',
+        },
+      });
       userId = user.id;
     } catch {
       // DB is configured but unreachable or schema mismatch — skip all tests gracefully
@@ -48,7 +54,16 @@ describe('subscription renewal worker', () => {
     const end = new Date(now);
     end.setDate(end.getDate() - 1);
 
-    const sub = await prisma.subscription.create({ data: { userId, plan: 'individual', billingCycle: 'monthly', startDate: start, endDate: end, active: true } });
+    const sub = await prisma.subscription.create({
+      data: {
+        userId,
+        plan: 'individual',
+        billingCycle: 'monthly',
+        startDate: start,
+        endDate: end,
+        active: true,
+      },
+    });
     subId = sub.id;
 
     // Run worker initial
@@ -94,9 +109,17 @@ describe('subscription renewal worker', () => {
     const u = await prisma.user.findUnique({ where: { id: userId } });
     // Log metadata to aid debugging
     // eslint-disable-next-line no-console
-    console.log('payments:', allPayments.map((p) => ({ id: p.id, status: p.status, meta: p.meta })));
+    console.log(
+      'payments:',
+      allPayments.map((p) => ({ id: p.id, status: p.status, meta: p.meta }))
+    );
     // eslint-disable-next-line no-console
-    console.log('subscription.active:', updatedSub?.active, 'user.subscriptionStatus:', u?.subscriptionStatus);
+    console.log(
+      'subscription.active:',
+      updatedSub?.active,
+      'user.subscriptionStatus:',
+      u?.subscriptionStatus
+    );
     expect(updatedSub?.active).toBe(false);
     expect(u?.subscriptionStatus).toBe('free');
   }, 30_000);

@@ -147,8 +147,8 @@ This avoids:
 ### 5.2 Status & Soft Delete
 
 ```ts
-status: draft | pending | approved | rejected
-lifecycle: active | deleted
+status: draft | pending | approved | rejected;
+lifecycle: active | deleted;
 ```
 
 No hard deletes.
@@ -191,7 +191,7 @@ Output:
 Abstracted via:
 
 ```ts
-LLMAdapter.generate(prompt, config)
+LLMAdapter.generate(prompt, config);
 ```
 
 Supports:
@@ -220,8 +220,8 @@ Failures go to AI Logs.
 Content saved as:
 
 ```ts
-status = "pending"
-lifecycle = "active"
+status = 'pending';
+lifecycle = 'active';
 ```
 
 Never auto-approved.
@@ -380,7 +380,6 @@ This architecture:
 - protects you from **AI mistakes**
 - keeps **trust with parents**
 
-
 ---
 
 # PART A — SEQUENCE DIAGRAMS (AI CONTENT ENGINE)
@@ -389,10 +388,10 @@ I’ll give you **5 core sequence diagrams** that together cover the entire life
 
 You can later paste these into:
 
-* Mermaid Live
-* Notion
-* Draw.io
-* Markdown docs
+- Mermaid Live
+- Notion
+- Draw.io
+- Markdown docs
 
 ---
 
@@ -426,9 +425,9 @@ sequenceDiagram
 
 Key guarantees:
 
-* No publish
-* Pending only
-* Fully reproducible
+- No publish
+- Pending only
+- Fully reproducible
 
 ---
 
@@ -461,8 +460,8 @@ sequenceDiagram
 
 Key insight:
 
-* Language is **first-class**
-* One language failure does not block others
+- Language is **first-class**
+- One language failure does not block others
 
 ---
 
@@ -485,9 +484,9 @@ sequenceDiagram
 
 If rejected:
 
-* status = rejected
-* regeneration allowed
-* old content preserved
+- status = rejected
+- regeneration allowed
+- old content preserved
 
 ---
 
@@ -516,8 +515,8 @@ sequenceDiagram
 
 Guarantee:
 
-* No overwrite
-* Full history retained
+- No overwrite
+- Full history retained
 
 ---
 
@@ -550,10 +549,10 @@ AND lifecycle = active
 
 These prompts are:
 
-* JSON-first
-* Deterministic
-* Board-safe
-* Regeneration-friendly
+- JSON-first
+- Deterministic
+- Board-safe
+- Regeneration-friendly
 
 ---
 

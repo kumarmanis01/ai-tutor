@@ -36,7 +36,9 @@ jest.mock('@/lib/diagnostics/stateStore', () => ({
   upsertSubjectDiagnosticStatus: mockUpsertStatus,
 }));
 jest.mock('@/lib/diagnostics/sessionStore', () => ({ createSession: mockCreateSession }));
-jest.mock('@/jobs/diagnosticAutoSubmit', () => ({ enqueueDiagnosticAutoSubmit: mockEnqueueAutoSubmit }));
+jest.mock('@/jobs/diagnosticAutoSubmit', () => ({
+  enqueueDiagnosticAutoSubmit: mockEnqueueAutoSubmit,
+}));
 jest.mock('@/lib/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), logAPI: jest.fn() },
 }));
@@ -104,7 +106,7 @@ describe('POST /api/student/diagnostic/start — retake question exclusion', () 
     expect(mockAnswerEventFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ studentId: 'student-1', sessionId: PREV_RUN_ID }),
-      }),
+      })
     );
   });
 
@@ -180,7 +182,9 @@ describe('POST /api/student/diagnostic/start — retake question exclusion', () 
     mockAnswerEventFindMany.mockRejectedValue(new Error('DB connection lost'));
 
     const { POST } = await import('@/app/api/student/diagnostic/start/route');
-    const res = await POST(makeRequest({ boardSlug: 'cbse', grade: 9, subjectSlug: 'mathematics' }));
+    const res = await POST(
+      makeRequest({ boardSlug: 'cbse', grade: 9, subjectSlug: 'mathematics' })
+    );
 
     // The error is caught internally; session creation still proceeds
     expect(res.status).toBe(200);

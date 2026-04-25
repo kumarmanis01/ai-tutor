@@ -4,11 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SpinnerLoader } from '@/components/UI/loaders';
 
-export default function VerifyParentForm({
-  maskedEmail,
-}: {
-  maskedEmail: string;
-}) {
+export default function VerifyParentForm({ maskedEmail }: { maskedEmail: string }) {
   const router = useRouter();
   const [otp, setOtp] = useState('');
   const [sending, setSending] = useState(false);
@@ -61,7 +57,7 @@ export default function VerifyParentForm({
         data.error ??
           (data.attemptsRemaining !== undefined
             ? `Wrong OTP. ${data.attemptsRemaining} attempts remaining.`
-            : 'Verification failed'),
+            : 'Verification failed')
       );
     } finally {
       setConfirming(false);
@@ -70,9 +66,7 @@ export default function VerifyParentForm({
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">
-        We&apos;ll send a one-time code to your parent&apos;s email:
-      </p>
+      <p className="text-gray-600">We&apos;ll send a one-time code to your parent&apos;s email:</p>
       <p className="font-medium text-gray-900">{maskedEmail}</p>
 
       <div>

@@ -128,7 +128,10 @@ export async function expireStaleTasks(): Promise<number> {
 
 // ── Internal helpers ────────────────────────────────────────────────
 
-async function generateDailyTask(studentId: string, todayStart: Date): Promise<DailyTaskResult | null> {
+async function generateDailyTask(
+  studentId: string,
+  todayStart: Date
+): Promise<DailyTaskResult | null> {
   try {
     const [user, mastery, recentTasks, streak] = await Promise.all([
       prisma.user.findUnique({
@@ -202,7 +205,7 @@ interface TopicPick {
 function selectTaskType(
   mastery: { masteryLevel: string; accuracy: number; questionsAttempted: number }[],
   recentTasks: { taskType: DailyTaskType; status: DailyTaskStatus }[],
-  streak: { current: number } | null,
+  streak: { current: number } | null
 ): DailyTaskType {
   // If returning from inactivity (streak broken), start easy
   if (!streak || streak.current === 0) {
@@ -211,17 +214,17 @@ function selectTaskType(
 
   // Count weak topics (beginner with 3+ attempts)
   const weakTopics = mastery.filter(
-    (m) => m.masteryLevel === 'beginner' && m.questionsAttempted >= 3,
+    (m) => m.masteryLevel === 'beginner' && m.questionsAttempted >= 3
   );
 
   // Count topics needing revision (intermediate, not attempted in 7+ days)
   const needsRevision = mastery.filter(
-    (m) => m.masteryLevel === 'intermediate' || m.masteryLevel === 'advanced',
+    (m) => m.masteryLevel === 'intermediate' || m.masteryLevel === 'advanced'
   );
 
   // Count strong topics for confidence tasks
   const strongTopics = mastery.filter(
-    (m) => m.masteryLevel === 'advanced' || m.masteryLevel === 'expert',
+    (m) => m.masteryLevel === 'advanced' || m.masteryLevel === 'expert'
   );
 
   // Get recent task types to avoid repetition
@@ -259,7 +262,7 @@ async function pickTopic(
     lastAttemptedAt: Date | null;
   }[],
   user: { board: string | null; grade: string | null; subjects: string[] },
-  recentTasks: { topicId: string | null }[],
+  recentTasks: { topicId: string | null }[]
 ): Promise<TopicPick | null> {
   const recentTopicIds = new Set(recentTasks.map((t) => t.topicId).filter(Boolean));
 
@@ -497,13 +500,13 @@ function buildDescription(taskType: DailyTaskType, _topic: TopicPick | null): st
     case 'learn':
       return 'Discover something new today. Read through the notes and try a few questions to get started.';
     case 'practice':
-      return 'Sharpen your skills with focused practice. You\'ve got this!';
+      return "Sharpen your skills with focused practice. You've got this!";
     case 'revise':
       return 'A quick revisit to keep things fresh. Spaced repetition makes learning stick.';
     case 'fix_gap':
       return 'This topic needs a bit more attention. Take it slow -- understanding beats speed.';
     case 'confidence':
-      return 'You\'re strong here! A quick test to prove it to yourself.';
+      return "You're strong here! A quick test to prove it to yourself.";
     default:
       return 'Your personalized task for today.';
   }
@@ -516,8 +519,8 @@ function pickMotivationMessage(): string {
     'Another day, another step forward. Well done!',
     'Consistency is your superpower. See you tomorrow!',
     'Done for the day! Your future self will thank you.',
-    'Small steps, big results. You\'re building something great.',
-    'That\'s the way! Learning is a journey, not a sprint.',
+    "Small steps, big results. You're building something great.",
+    "That's the way! Learning is a journey, not a sprint.",
     'You crushed it! Rest up and come back strong tomorrow.',
   ];
   return messages[Math.floor(Math.random() * messages.length)];

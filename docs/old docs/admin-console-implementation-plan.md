@@ -211,14 +211,14 @@
 
 ## Summary
 
-| Steps | System |
-|-------|--------|
-| 1–5   | Weak Topic Monitoring |
-| 6–11  | Student Learning Analytics |
-| 12–16 | Learning Outcome Analytics |
-| 17–24 | Parent Report Monitoring (includes schema, migration, job check) |
+| Steps | System                                                            |
+| ----- | ----------------------------------------------------------------- |
+| 1–5   | Weak Topic Monitoring                                             |
+| 6–11  | Student Learning Analytics                                        |
+| 12–16 | Learning Outcome Analytics                                        |
+| 17–24 | Parent Report Monitoring (includes schema, migration, job check)  |
 | 25–29 | Content Readiness Dashboard (includes pause in one trigger route) |
-| 30–34 | Content Quality Monitoring |
-| 35    | AdminSidebar navigation |
+| 30–34 | Content Quality Monitoring                                        |
+| 35    | AdminSidebar navigation                                           |
 
 **Total: 35 steps. One file per step. Session engine and recommendation engine unchanged. No refactor of existing admin systems.**

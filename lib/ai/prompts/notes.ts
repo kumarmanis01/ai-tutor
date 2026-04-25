@@ -15,7 +15,12 @@
  * - 2026-02-04 | claude | created notes prompt builder with schema-first approach
  */
 
-import type { NotesInputContract, NotesOutputSchema, ExplanationLevel, ContentLength } from './schemas';
+import type {
+  NotesInputContract,
+  NotesOutputSchema,
+  ExplanationLevel,
+  ContentLength,
+} from './schemas';
 
 /**
  * JSON schema definition for Notes output
@@ -51,14 +56,14 @@ function getExplanationGuidance(level: ExplanationLevel): string {
 - One idea per paragraph.
 - Heavy use of analogies and real-life examples.
 - Avoid technical jargon entirely.`;
-    
+
     case 'conceptual':
       return `
 - Focus on building understanding of core concepts.
 - Introduce technical terms with clear definitions.
 - Connect new concepts to what student already knows.
 - Balance depth with accessibility.`;
-    
+
     case 'detailed':
       return `
 - Provide comprehensive coverage of the topic.
@@ -79,14 +84,14 @@ function getLengthGuidance(length: ContentLength): string {
 - 2-3 core explanation sections maximum.
 - 1-2 worked examples.
 - Focus on essential concepts only.`;
-    
+
     case 'medium':
       return `
 - Target 500-1000 words total.
 - 3-4 core explanation sections.
 - 2-3 worked examples.
 - Cover topic comprehensively but concisely.`;
-    
+
     case 'long':
       return `
 - Can extend to 1000-1500 words if needed.
@@ -98,7 +103,7 @@ function getLengthGuidance(length: ContentLength): string {
 
 /**
  * Build the complete notes generation prompt
- * 
+ *
  * @param input - Notes input contract from backend
  * @returns Formatted prompt string for LLM
  */
@@ -159,9 +164,9 @@ Do NOT wrap in markdown code blocks.`;
  */
 export function isValidNotesResponse(data: unknown): data is NotesOutputSchema {
   if (!data || typeof data !== 'object') return false;
-  
+
   const obj = data as Record<string, unknown>;
-  
+
   return (
     typeof obj.title === 'string' &&
     Array.isArray(obj.learningObjectives) &&

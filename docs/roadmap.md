@@ -1,9 +1,11 @@
 # Spinzy Academy — Roadmap
 
 ## Phase 1 — Foundation (CURRENT)
+
 Goal: First real student can complete full learning loop end to end.
 
 Milestones:
+
 - [x] Auth (Google OAuth)
 - [x] Onboarding (grade, board, subjects, language)
 - [x] Taxonomy seeded (CBSE + ICSE, Grades 1-12)
@@ -16,6 +18,7 @@ Milestones:
 - [ ] Content generated for CBSE Gr10 core subjects
 
 ## Phase 2 — Quality & Retention
+
 Goal: Students return daily. Parents see value.
 
 - [ ] Spaced repetition (SM-18 revision queue)
@@ -28,6 +31,7 @@ Goal: Students return daily. Parents see value.
 - [ ] Freemium gate (session cap)
 
 ## Phase 3 — Scale & Monetisation
+
 Goal: First 1000 paying students.
 
 - [ ] Razorpay / UPI payment integration
@@ -41,6 +45,7 @@ Goal: First 1000 paying students.
 - [ ] SLA monitoring + alerting
 
 ## Non-goals (deliberately excluded)
+
 - Video content
 - Live tutoring / human handoff
 - Social features (leaderboards, chat)

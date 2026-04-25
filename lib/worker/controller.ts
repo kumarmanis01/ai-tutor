@@ -1,6 +1,12 @@
-import { prisma } from '../prisma'
+import { prisma } from '../prisma';
 
-export async function createWorkerLifecycle(data: { id: string; type: string; host?: string; pid?: number; meta?: any }) {
+export async function createWorkerLifecycle(data: {
+  id: string;
+  type: string;
+  host?: string;
+  pid?: number;
+  meta?: any;
+}) {
   return prisma.workerLifecycle.create({
     data: {
       id: data.id,
@@ -12,21 +18,30 @@ export async function createWorkerLifecycle(data: { id: string; type: string; ho
       startedAt: new Date(),
       lastHeartbeatAt: new Date(),
     },
-  })
+  });
 }
 
 export async function updateHeartbeat(id: string) {
-  return prisma.workerLifecycle.update({ where: { id }, data: { lastHeartbeatAt: new Date(), status: 'RUNNING' } })
+  return prisma.workerLifecycle.update({
+    where: { id },
+    data: { lastHeartbeatAt: new Date(), status: 'RUNNING' },
+  });
 }
 
 export async function markDraining(id: string) {
-  return prisma.workerLifecycle.update({ where: { id }, data: { status: 'DRAINING' } })
+  return prisma.workerLifecycle.update({ where: { id }, data: { status: 'DRAINING' } });
 }
 
 export async function markStopped(id: string) {
-  return prisma.workerLifecycle.update({ where: { id }, data: { status: 'STOPPED', stoppedAt: new Date() } })
+  return prisma.workerLifecycle.update({
+    where: { id },
+    data: { status: 'STOPPED', stoppedAt: new Date() },
+  });
 }
 
 export async function markFailed(id: string, meta?: any) {
-  return prisma.workerLifecycle.update({ where: { id }, data: { status: 'FAILED', stoppedAt: new Date(), meta } })
+  return prisma.workerLifecycle.update({
+    where: { id },
+    data: { status: 'FAILED', stoppedAt: new Date(), meta },
+  });
 }

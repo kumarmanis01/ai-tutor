@@ -16,7 +16,6 @@ EDIT LOG:
 
 - **Start script:** Use `scripts/pm2-start.sh` to install `pm2` if missing, start processes defined in `ecosystem.config.cjs` with the `production` env, persist the process list, and generate a systemd startup hook.
 - Run from repo root:
-
   - `chmod +x scripts/pm2-start.sh`
   - `sudo scripts/pm2-start.sh`
 
@@ -68,6 +67,7 @@ EDIT LOG:
 
 - PM2 `--env-file` is not supported in many PM2 versions. Use one of these patterns:
   - Load `.env.production` into the shell (safely) and then `pm2 start` so PM2 inherits the env vars.
+
     ```bash
     # safe loader - avoids problems with special characters or background tokens
     while IFS= read -r line; do
@@ -78,6 +78,7 @@ EDIT LOG:
     pm2 start dist/worker/entry.js --name content-engine-worker
     pm2 restart content-engine-worker --update-env
     ```
+
   - Prefer starting via an `ecosystem` file (recommended) and use `pm2 start ecosystem.pm2.production.cjs --env production`.
 
 - Do NOT `source .env.production` directly if values contain `&` or unescaped shell characters — this can start background jobs or break the shell. Use the safe loader above or `dotenv/config` for ephemeral debug runs only.
@@ -89,4 +90,3 @@ EDIT LOG:
 - Operational checks to run after deploy:
   - `pm2 logs content-engine-worker --lines 200` — confirm no Redis TLS/eviction errors.
   - Verify heartbeats in DB: `SELECT id, status, lastHeartbeatAt FROM "WorkerLifecycle" ORDER BY updatedAt DESC LIMIT 10;`
-

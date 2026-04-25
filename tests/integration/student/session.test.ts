@@ -173,7 +173,7 @@ describe('Consent gate', () => {
           scope: ConsentScope.AI_INTERACTION,
           withdrawnAt: null,
         }),
-      }),
+      })
     );
   });
 
@@ -250,7 +250,11 @@ describe('updateStreak()', () => {
     prismaMock.user.findUnique
       .mockResolvedValueOnce({ lastSessionDate: today, currentStreak: 3, longestStreak: 3 })
       .mockResolvedValueOnce({ lastSessionDate: today, currentStreak: 3, longestStreak: 3 });
-    prismaMock.user.update.mockResolvedValue({ currentStreak: 3, longestStreak: 3, lastSessionDate: today });
+    prismaMock.user.update.mockResolvedValue({
+      currentStreak: 3,
+      longestStreak: 3,
+      lastSessionDate: today,
+    });
 
     const result1 = await updateStreak('student-streak-2');
     const result2 = await updateStreak('student-streak-2');
@@ -317,9 +321,7 @@ describe('updateStreak()', () => {
 // ---------------------------------------------------------------------------
 describe('Streak shield', () => {
   test.todo(
-    'GIVEN streak=5 and no shield used WHEN missed day THEN streak preserved (shield consumed)',
+    'GIVEN streak=5 and no shield used WHEN missed day THEN streak preserved (shield consumed)'
   );
-  test.todo(
-    'GIVEN shield already consumed WHEN another missed day THEN streak breaks',
-  );
+  test.todo('GIVEN shield already consumed WHEN another missed day THEN streak breaks');
 });

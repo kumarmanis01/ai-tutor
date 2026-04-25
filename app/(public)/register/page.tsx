@@ -14,14 +14,14 @@
  * - 2026-04-24T00:00:00Z | copilot | created
  */
 
-import type { Metadata } from 'next'
-import StudentRegistrationWizard from '@/components/student/registration/StudentRegistrationWizard'
+import type { Metadata } from 'next';
+import StudentRegistrationWizard from '@/components/student/registration/StudentRegistrationWizard';
 
 export const metadata: Metadata = {
   title: 'Get Started -- Spinzy AI Tutor',
   description: 'Create your student profile and start learning with Spinzy AI Tutor.',
-}
+};
 
 export default function RegisterPage() {
-  return <StudentRegistrationWizard />
+  return <StudentRegistrationWizard />;
 }

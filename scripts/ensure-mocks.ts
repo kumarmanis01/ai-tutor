@@ -25,7 +25,10 @@ async function main() {
   logger.info('ensure-mocks.start', { min });
   try {
     const result = await ensureMinimumMocks({ minPer: min, dryRun });
-    logger.info('ensure-mocks.done', { createdCount: result.created.length, minPer: result.minPer });
+    logger.info('ensure-mocks.done', {
+      createdCount: result.created.length,
+      minPer: result.minPer,
+    });
     for (const c of result.created) {
       logger.info('ensure-mocks.created_item', c);
     }

@@ -14,21 +14,22 @@
  */
 
 interface DayEntry {
-  date: string // ISO yyyy-mm-dd
-  count: number
+  date: string; // ISO yyyy-mm-dd
+  count: number;
 }
 
 interface ActivityHeatmapProps {
-  days: DayEntry[] // expected length: 30
+  days: DayEntry[]; // expected length: 30
 }
 
 export default function ActivityHeatmap({ days }: ActivityHeatmapProps) {
   // Color scale based on activity count
   function colorClass(count: number) {
-    if (count === 0) return 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
-    if (count === 1) return 'bg-green-200 dark:bg-green-800'
-    if (count === 2) return 'bg-green-400 dark:bg-green-700'
-    return 'bg-green-600 dark:bg-green-500'
+    if (count === 0)
+      return 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700';
+    if (count === 1) return 'bg-green-200 dark:bg-green-800';
+    if (count === 2) return 'bg-green-400 dark:bg-green-700';
+    return 'bg-green-600 dark:bg-green-500';
   }
 
   return (
@@ -63,5 +64,5 @@ export default function ActivityHeatmap({ days }: ActivityHeatmapProps) {
         </span>
       </div>
     </div>
-  )
+  );
 }

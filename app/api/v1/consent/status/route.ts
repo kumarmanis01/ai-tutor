@@ -14,41 +14,56 @@
  * - 2026-04-24T12:00:00Z | copilot | use _count instead of loading all messageLogs to reduce query overhead
  */
 
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 function maskContact(phone?: string | null, email?: string | null) {
-  if (phone) return phone.replace(/(\d)(?=\d{4})/g, '*')
+  if (phone) return phone.replace(/(\d)(?=\d{4})/g, '*');
   if (email) {
-    const [local, domain] = email.split('@')
-    const visible = local.slice(0, 1)
-    return `${visible}***@${domain}`
+    const [local, domain] = email.split('@');
+    const visible = local.slice(0, 1);
+    return `${visible}***@${domain}`;
   }
-  return null
+  return null;
 }
 
 export async function GET(req: Request) {
-  const start = Date.now()
+  const start = Date.now();
   try {
-    const url = new URL(req.url)
-    const token = url.searchParams.get('consent_token')
-    if (!token) return NextResponse.json({ error: 'missing_token' }, { status: 400 })
+    const url = new URL(req.url);
+    const token = url.searchParams.get('consent_token');
+    if (!token) return NextResponse.json({ error: 'missing_token' }, { status: 400 });
 
     const cr = await prisma.consentRequest.findUnique({
       where: { token },
-      include: { _count: { select: { messageLogs: true } } },
-    })
-    if (!cr) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+      include: {
+        _count: { select: { messageLogs: true } },
+        student: { select: { name: true, grade: true, board: true } },
+      },
+    });
+    if (!cr) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-    const reminderCount = cr._count.messageLogs
-    const res = NextResponse.json({ ok: true, status: cr.status, expiresAt: cr.expiresAt, sentTo: maskContact(cr.parentPhone, cr.parentEmail), channel: cr.channel, reminderCount })
-    logger.logAPI(req, res, { className: 'ConsentStatusAPI', methodName: 'GET' }, start)
-    return res
+    const reminderCount = cr._count.messageLogs;
+    const expired = cr.expiresAt < new Date() && cr.status === 'PENDING';
+    const status = expired ? 'expired' : String(cr.status).toLowerCase();
+    const res = NextResponse.json({
+      ok: true,
+      status,
+      expiresAt: cr.expiresAt,
+      sentTo: maskContact(cr.parentPhone, cr.parentEmail),
+      channel: cr.channel,
+      reminderCount,
+      child: cr.student
+        ? { name: cr.student.name, grade: cr.student.grade, board: cr.student.board }
+        : null,
+    });
+    logger.logAPI(req, res, { className: 'ConsentStatusAPI', methodName: 'GET' }, start);
+    return res;
   } catch (err) {
-    logger.error('consent.status failed', { error: String(err) })
-    const res = NextResponse.json({ error: 'server_error' }, { status: 500 })
-    logger.logAPI(req, res, { className: 'ConsentStatusAPI', methodName: 'GET' }, start)
-    return res
+    logger.error('consent.status failed', { error: String(err) });
+    const res = NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'ConsentStatusAPI', methodName: 'GET' }, start);
+    return res;
   }
 }

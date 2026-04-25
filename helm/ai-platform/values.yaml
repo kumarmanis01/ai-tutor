@@ -26,11 +26,11 @@ secrets:
 
 postgres:
   enabled: false
-  externalUrl: ""
+  externalUrl: ''
 
 redis:
   enabled: false
-  externalUrl: ""
+  externalUrl: ''
 
 autoscaling:
   enabled: true
@@ -40,4 +40,4 @@ autoscaling:
 
 metrics:
   enabled: true
-  pushgatewayUrl: ""
+  pushgatewayUrl: ''

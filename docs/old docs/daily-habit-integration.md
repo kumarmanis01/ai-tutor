@@ -6,12 +6,12 @@ Integration of the Daily Learning Habit system with the Spinzy Academy student d
 
 ## SECTION 1 — API route structure
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|--------|
-| GET | `/api/engagement` | Session required | Combined: today goal + streak + weekly (preferred for dashboard) |
-| GET | `/api/engagement/today-goal` | Session required | Today’s completion state only |
-| GET | `/api/engagement/streak` | Session required | Current and longest streak |
-| GET | `/api/engagement/weekly` | Session required | Weekly activity (array of days) |
+| Method | Path                         | Auth             | Purpose                                                          |
+| ------ | ---------------------------- | ---------------- | ---------------------------------------------------------------- |
+| GET    | `/api/engagement`            | Session required | Combined: today goal + streak + weekly (preferred for dashboard) |
+| GET    | `/api/engagement/today-goal` | Session required | Today’s completion state only                                    |
+| GET    | `/api/engagement/streak`     | Session required | Current and longest streak                                       |
+| GET    | `/api/engagement/weekly`     | Session required | Weekly activity (array of days)                                  |
 
 **Auth:** All routes use `getServerSessionForHandlers()`. Missing session → `401 Unauthorized` with `{ error: 'Unauthorized' }`.
 
@@ -74,9 +74,9 @@ All handlers use `engagementService` from `@/lib/engagement/engagementService`.
 
 1. **HTTP:** If `!res.ok`, do not treat the body as success. Do not set state from the response; apply fallbacks.
 2. **Network/parse:** In `.catch()` or when `parseCombined` returns null, apply the same fallbacks.
-3. **Fallbacks:**  
-   - Today: `{ state: 'NOT_STARTED' }`  
-   - Streak: `{ current: 0, longest: 0 }`  
+3. **Fallbacks:**
+   - Today: `{ state: 'NOT_STARTED' }`
+   - Streak: `{ current: 0, longest: 0 }`
    - Weekly: `[]`
 4. **Loading:** `setLoading(false)` is always called in `.finally()`, so loading never stays true indefinitely after an error.
 

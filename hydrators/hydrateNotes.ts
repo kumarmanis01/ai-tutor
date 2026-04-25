@@ -22,12 +22,12 @@
  * - Never mutate existing content
  */
 
-import { enqueueNotesHydration } from "@/lib/execution-pipeline/enqueueTopicHydration"
-import { logger } from "@/lib/logger"
+import { enqueueNotesHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
+import { logger } from '@/lib/logger';
 
 // Test-only legacy behavior requires direct LLM call and DB writes
 
-const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
+const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1';
 
 /**
  * @deprecated Use `submitJob({ jobType: 'notes', entityType: 'TOPIC', entityId, payload: { language } })`
@@ -38,9 +38,13 @@ const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CO
  */
 export async function hydrateNotes(
   topicId: string,
-  language: "en" | "hi"
+  language: 'en' | 'hi'
 ): Promise<{ enqueued: boolean; jobId?: string; reason?: string }> {
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] hydrateNotes called (deprecated wrapper)', { topicId, language })
+  if (HYDRATION_DEBUG)
+    logger.debug('[hydration][DEBUG] hydrateNotes called (deprecated wrapper)', {
+      topicId,
+      language,
+    });
 
   // Test environment: run legacy in-process hydration via test helper (DB writes)
   if (process.env.NODE_ENV === 'test') {
@@ -52,38 +56,41 @@ export async function hydrateNotes(
       // Dynamically import the test helper so this file has no static imports of the helper/prisma
       // Try local-relative import first, then fall back to absolute path alias which
       // some test transforms may require.
-      let helper: any
+      let helper: any;
       try {
-        helper = await import('./testLegacyHydrateHelpers')
+        helper = await import('./testLegacyHydrateHelpers');
       } catch (e) {
-        helper = await import('@/hydrators/testLegacyHydrateHelpers')
+        helper = await import('@/hydrators/testLegacyHydrateHelpers');
       }
-      await helper.runLegacyNotesHydrate(topicId, language)
-      return { enqueued: false }
+      await helper.runLegacyNotesHydrate(topicId, language);
+      return { enqueued: false };
     } catch (err: any) {
       // Ensure the actual error message/stack are captured as enumerable fields
       // so test output and CI logs show useful debugging information.
-      logger.error('hydrateNotes (test) failed', { error: String(err), stack: err?.stack ? String(err.stack) : undefined })
-      return { enqueued: false, reason: 'llm_error' }
+      logger.error('hydrateNotes (test) failed', {
+        error: String(err),
+        stack: err?.stack ? String(err.stack) : undefined,
+      });
+      return { enqueued: false, reason: 'llm_error' };
     }
   }
 
   // Delegate to the proper enqueue function (production)
-  const result = await enqueueNotesHydration({ topicId, language })
+  const result = await enqueueNotesHydration({ topicId, language });
 
   if (HYDRATION_DEBUG) {
-    logger.debug('[hydration][DEBUG] hydrateNotes enqueue result', { 
-      topicId, 
-      language, 
+    logger.debug('[hydration][DEBUG] hydrateNotes enqueue result', {
+      topicId,
+      language,
       created: result.created,
       jobId: result.jobId,
-      reason: result.created ? undefined : (result as any).reason
-    })
+      reason: result.created ? undefined : (result as any).reason,
+    });
   }
 
   if (result.created) {
-    return { enqueued: true, jobId: result.jobId }
+    return { enqueued: true, jobId: result.jobId };
   } else {
-    return { enqueued: false, reason: (result as any).reason, jobId: result.jobId }
+    return { enqueued: false, reason: (result as any).reason, jobId: result.jobId };
   }
 }

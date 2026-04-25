@@ -3,7 +3,13 @@
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
 jest.mock('@/lib/logger', () => ({
-  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    logAPI: jest.fn(),
+  },
 }));
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
@@ -64,9 +70,24 @@ describe('GET /api/parent/subject-mastery', () => {
       ])
       // Chapter-level groupBy
       .mockResolvedValueOnce([
-        { subject: 'Mathematics', chapter: 'Algebra', _avg: { accuracy: 0.85 }, _count: { topicId: 3 } },
-        { subject: 'Mathematics', chapter: 'Trigonometry', _avg: { accuracy: 0.60 }, _count: { topicId: 3 } },
-        { subject: 'Mathematics', chapter: 'Statistics', _avg: { accuracy: 0.55 }, _count: { topicId: 2 } },
+        {
+          subject: 'Mathematics',
+          chapter: 'Algebra',
+          _avg: { accuracy: 0.85 },
+          _count: { topicId: 3 },
+        },
+        {
+          subject: 'Mathematics',
+          chapter: 'Trigonometry',
+          _avg: { accuracy: 0.6 },
+          _count: { topicId: 3 },
+        },
+        {
+          subject: 'Mathematics',
+          chapter: 'Statistics',
+          _avg: { accuracy: 0.55 },
+          _count: { topicId: 2 },
+        },
       ]);
 
     prismaMock.learningPlanItem.findMany.mockResolvedValue([

@@ -174,7 +174,9 @@ export default function LessonViewClient({
           <p className="font-semibold mb-2">📚 Learning Objectives</p>
           <ul className="list-disc pl-5 space-y-1">
             {lesson.objectives.map((o, i) => (
-              <li key={i} className="text-sm text-foreground/80 dark:text-foreground/70">{o}</li>
+              <li key={i} className="text-sm text-foreground/80 dark:text-foreground/70">
+                {o}
+              </li>
             ))}
           </ul>
         </div>
@@ -183,7 +185,9 @@ export default function LessonViewClient({
       {/* Content */}
       <div className="mt-5 space-y-4">
         {lesson.explanation?.overview && (
-          <p className="leading-[1.7] text-[15px] text-foreground/90">{lesson.explanation.overview}</p>
+          <p className="leading-[1.7] text-[15px] text-foreground/90">
+            {lesson.explanation.overview}
+          </p>
         )}
         {Array.isArray(lesson.explanation?.concepts) && lesson.explanation.concepts.length > 0 && (
           <div className="space-y-4">

@@ -37,7 +37,7 @@ export interface DailyResetResult {
 /**
  * Reset the free question count for all non-premium users.
  * This should run at midnight UTC daily.
- * 
+ *
  * Premium users (those with active subscriptions) are excluded.
  */
 export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
@@ -53,9 +53,13 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
         targetEntity: 'System',
         targetId: 'daily_free_reset',
         action: null,
-        details: { legacyAction: 'DAILY_FREE_RESET_RUN', status: 'SKIPPED', reason: (lock as any).reason ?? 'locked' },
+        details: {
+          legacyAction: 'DAILY_FREE_RESET_RUN',
+          status: 'SKIPPED',
+          reason: (lock as any).reason ?? 'locked',
+        },
       });
-      
+
       const durationMs = Date.now() - started;
       return {
         success: false,
@@ -110,7 +114,12 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
       targetEntity: 'System',
       targetId: 'daily_free_reset',
       action: null,
-      details: { legacyAction: 'DAILY_FREE_RESET_RUN', status: 'SUCCESS', usersUpdated: result.count, durationMs },
+      details: {
+        legacyAction: 'DAILY_FREE_RESET_RUN',
+        status: 'SUCCESS',
+        usersUpdated: result.count,
+        durationMs,
+      },
     });
 
     return {
@@ -134,7 +143,12 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
       targetEntity: 'System',
       targetId: 'daily_free_reset',
       action: null,
-      details: { legacyAction: 'DAILY_FREE_RESET_RUN', status: 'FAILED', error: errorMsg, durationMs },
+      details: {
+        legacyAction: 'DAILY_FREE_RESET_RUN',
+        status: 'FAILED',
+        error: errorMsg,
+        durationMs,
+      },
     });
 
     return {
@@ -155,7 +169,7 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
  */
 export function scheduleDailyFreeQuestionReset(): void {
   const resetHour = Number(process.env.FREE_QUESTION_RESET_HOUR || '0'); // Default: midnight UTC
-  
+
   const scheduleReset = async () => {
     try {
       logger.info('Running scheduled daily free question reset', {
@@ -198,8 +212,11 @@ export function scheduleDailyFreeQuestionReset(): void {
   // Set up the schedule: run once at the calculated time, then every 24h
   setTimeout(() => {
     void scheduleReset();
-    setInterval(() => {
-      void scheduleReset();
-    }, 24 * 60 * 60 * 1000);
+    setInterval(
+      () => {
+        void scheduleReset();
+      },
+      24 * 60 * 60 * 1000
+    );
   }, firstDelay);
 }

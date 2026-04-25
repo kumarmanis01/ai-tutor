@@ -12,6 +12,7 @@
 This document defines the complete, end‑to‑end architecture, contracts, guardrails, and operating principles for the AI Content Engine.
 
 **Objectives:**
+
 - Consistency of design across APIs, workers, queues, DB, and UI
 - Predictable behavior of AI generation jobs
 - Zero ambiguity in hierarchy (Board → Class → Subject → Chapter → Topic)
@@ -25,6 +26,7 @@ This document defines the complete, end‑to‑end architecture, contracts, guar
 ## 2. Core Domain Model
 
 ### 2.1 Curriculum Hierarchy (Non‑Negotiable)
+
 ```
 Board
  └─ Class / Grade
@@ -54,11 +56,13 @@ Board
 ## 3. Prisma Schema Guardrails
 
 ### 3.1 ID‑First Rule (Absolute)
+
 - All relations use foreign keys (IDs)
 - Strings (name, slug) are display‑only
 - No writes based on strings
 
 ### 3.2 Example (Conceptual)
+
 - `Board(id)`
 - `ClassLevel(id, boardId)`
 - `SubjectDef(id, classId)`
@@ -66,6 +70,7 @@ Board
 - `TopicDef(id, chapterId)`
 
 **Content tables:**
+
 - `TopicNote(topicId, language, status)`
 - `Question(topicId, difficulty, marks)`
 - `GeneratedTest(topicId | chapterId)`
@@ -75,11 +80,13 @@ Board
 ## 4. API Architecture & Contracts
 
 ### 4.1 API Philosophy
+
 - APIs are thin orchestration layers
 - **No AI calls in API routes**
 - APIs validate, enqueue, and observe
 
 ### 4.2 `/api/hierarchy` (Foundational)
+
 - **Read‑only**
 - Used by all UI and admin tools
 - Returns full hierarchy tree
@@ -87,6 +94,7 @@ Board
 - **Guarantees:** Stable IDs, no derived or inferred hierarchy
 
 ### 4.3 Job Submission APIs
+
 - `POST /api/admin/content-engine/jobs`
 - **Payload must include:**
   - `jobType`
@@ -103,13 +111,16 @@ Board
 ## 5. Execution Pipeline
 
 ### 5.1 Why a Pipeline Exists
+
 All execution must pass through one pipeline to manage:
+
 - retries
 - failures
 - cancellation
 - observability
 
 ### 5.2 Pipeline Responsibilities
+
 - Deduplicate jobs
 - Track state transitions
 - Retry with backoff
@@ -117,12 +128,14 @@ All execution must pass through one pipeline to manage:
 - Support cancellation
 
 ### 5.3 Job Lifecycle (Mandatory)
+
 ```
 CREATED
  → QUEUED
  → RUNNING
  → (SUCCESS | FAILED | CANCELLED)
 ```
+
 > Jobs stuck in PENDING are a bug, not a state.
 
 ---
@@ -130,10 +143,12 @@ CREATED
 ## 6. Workers & Queues
 
 ### 6.1 Queue Creation Guardrail
+
 - ❌ No queue or Redis client at module load
 - ✅ Lazy initialization only
 
 ### 6.2 Worker Responsibilities
+
 - Fetch job by ID
 - Lock job
 - Execute AI call
@@ -142,6 +157,7 @@ CREATED
 - Update job status
 
 **Workers NEVER:**
+
 - accept user input
 - infer hierarchy
 - bypass approval
@@ -151,11 +167,13 @@ CREATED
 ## 7. Retry, Failure, Cancellation
 
 ### 7.1 Retry Policy
+
 - Network errors → retry
 - AI transient errors → retry
 - Validation errors → fail fast
 
 ### 7.2 Cancellation
+
 - Admin‑initiated
 - Worker checks cancellation flag between steps
 
@@ -164,12 +182,14 @@ CREATED
 ## 8. Content Moderation & Approval
 
 ### 8.1 Status Model
+
 - `DRAFT`
 - `APPROVED`
 - `REJECTED`
 - `ARCHIVED`
 
 ### 8.2 Rules
+
 - No DRAFT content visible to users
 - Rejected content cannot be published
 - Regeneration creates new draft
@@ -187,14 +207,17 @@ CREATED
 ## 10. UI/UX Guiding Principles
 
 ### 10.1 Hierarchy‑First UX
+
 - User selects hierarchy before action
 - UI never accepts free‑text identifiers
 
 ### 10.2 Deterministic UX
+
 - Same inputs → same outcome
 - No implicit defaults
 
 ### 10.3 Admin is a Supervisor, Not an Operator
+
 - Admin triggers jobs
 - System executes independently
 
@@ -203,6 +226,7 @@ CREATED
 ## 11. Telemetry & Health Dashboard
 
 ### 11.1 Telemetry Must Capture
+
 - Job latency
 - Success/failure rate
 - Retry counts
@@ -210,6 +234,7 @@ CREATED
 - AI error classes
 
 ### 11.2 Dashboards
+
 - API health
 - Worker health
 - Queue backlog
@@ -220,12 +245,14 @@ CREATED
 ## 12. Copilot Guardrails (MANDATORY)
 
 Copilot MUST:
+
 - ❌ Never introduce string‑based filters for hierarchy
 - ❌ Never create queues at import time
 - ❌ Never bypass approval flow
 - ❌ Never add AI calls in API routes
 
 Copilot MUST:
+
 - Use IDs only
 - Respect job lifecycle
 - Log state transitions
@@ -239,6 +266,7 @@ Copilot MUST:
 
 **Symptom:** Job stuck in PENDING  
 **Root Causes:**
+
 - enqueue failed silently
 - worker not running
 - Redis unavailable
@@ -317,6 +345,7 @@ If a design violates this sentence, it is wrong.
 ```
 
 **Key Rules:**
+
 - ❌ UI never talks to workers
 - ❌ Workers never expose HTTP
 - ✅ API layer is the only ingress
@@ -339,17 +368,17 @@ Board
 ```
 
 **Definitions:**
-| Entity        | Meaning                                   |
+| Entity | Meaning |
 | ------------- | ----------------------------------------- |
-| Board         | Governing curriculum body (CBSE, ICSE, State) |
-| ClassLevel    | Grade under a board (unique per board)    |
-| SubjectDef    | Subject for a class (Maths, Physics)      |
-| ChapterDef    | Curriculum chapter (versioned)            |
-| TopicDef      | Atomic learning unit                      |
-| Syllabus      | Chapters + Topics generated for a Subject |
-| Notes         | Explanatory content for a Topic           |
-| Test          | Difficulty-based assessment for a Topic   |
-| Questions     | Items belonging to a Test                 |
+| Board | Governing curriculum body (CBSE, ICSE, State) |
+| ClassLevel | Grade under a board (unique per board) |
+| SubjectDef | Subject for a class (Maths, Physics) |
+| ChapterDef | Curriculum chapter (versioned) |
+| TopicDef | Atomic learning unit |
+| Syllabus | Chapters + Topics generated for a Subject |
+| Notes | Explanatory content for a Topic |
+| Test | Difficulty-based assessment for a Topic |
+| Questions | Items belonging to a Test |
 
 > **Nothing exists outside TopicDef. All content is topic-scoped by design.**
 
@@ -360,24 +389,33 @@ Board
 **Example: Generate Notes for a Topic**
 
 1. **Admin UI**
-  - `POST /api/admin/content-engine/jobs`  
-   `{ entityType: "TOPIC", entityId }`
+
+- `POST /api/admin/content-engine/jobs`  
+  `{ entityType: "TOPIC", entityId }`
+
 2. **API Route**
-  - validate IDs
-  - verify hierarchy integrity
-  - create Job (`status=PENDING`)
+
+- validate IDs
+- verify hierarchy integrity
+- create Job (`status=PENDING`)
+
 3. **Execution Pipeline**
-  - enqueue(jobId)
+
+- enqueue(jobId)
+
 4. **Queue**
 5. **Worker**
-  - fetch topic + hierarchy
-  - callLLM()
-  - validate output
-  - save as DRAFT
-  - update job status = COMPLETED
+
+- fetch topic + hierarchy
+- callLLM()
+- validate output
+- save as DRAFT
+- update job status = COMPLETED
+
 6. **Prisma / DB**
 
 **Failure Path (Connectivity / LLM Failure):**
+
 - Worker: LLM timeout / network error
 - Execution Pipeline: retry (policy-based), exponential backoff, emit telemetry
 - Max retries exceeded → Job status = FAILED
@@ -401,6 +439,7 @@ RUNNING
 ```
 
 **Rules:**
+
 - ❌ No job may remain in PENDING beyond enqueue timeout
 - ❌ Workers cannot create jobs
 - ✅ Pipeline must update state at every transition
@@ -411,6 +450,7 @@ RUNNING
 ### 5. Execution Pipeline (Critical)
 
 **Responsibilities:**
+
 - Retry (configurable per job type)
 - Cancellation
 - Idempotency keys
@@ -419,6 +459,7 @@ RUNNING
 - Queue connectivity handling
 
 **Pseudocode:**
+
 ```js
 execute(job) {
   markRunning(job)
@@ -437,6 +478,7 @@ execute(job) {
 ### 6. Telemetry & Health Dashboard
 
 **Telemetry Events:**
+
 - job_created
 - job_enqueued
 - job_started
@@ -447,6 +489,7 @@ execute(job) {
 - llm_timeout
 
 **Admin Dashboard Panels:**
+
 - **Job Health:** Pending, Running, Failed, Avg Duration
 - **LLM Health:** Timeout %, Cost, Retry rate
 - **Queue Health:** Connectivity, Depth, Consumer lag
@@ -473,6 +516,7 @@ execute(job) {
 ```
 
 **UX Rules:**
+
 - Dropdowns reset downstream selections
 - IDs only, never strings
 - Empty states explain why (e.g., “Generate syllabus first”)
@@ -483,12 +527,14 @@ execute(job) {
 ### 8. ESLint + Runtime Guardrails (Copilot Enforced)
 
 **Forbidden:**
+
 - ❌ Prisma access in UI
 - ❌ Direct LLM calls
 - ❌ String-based filters (subject="Maths")
 - ❌ Queue creation at module load
 
 **Required:**
+
 - ✅ callLLM() wrapper
 - ✅ ExecutionPipeline.execute()
 - ✅ ID-based APIs
@@ -509,15 +555,15 @@ execute(job) {
 
 ### 10. How All Pieces Interact (Summary)
 
-| Layer      | Responsibility           |
-| ---------- | ----------------------- |
-| UI         | Human intent            |
-| API        | Validation & submission |
-| Pipeline   | Reliability & control   |
-| Queue      | Async decoupling        |
-| Worker     | Pure execution          |
-| DB         | Source of truth         |
-| Telemetry  | Observability           |
+| Layer     | Responsibility          |
+| --------- | ----------------------- |
+| UI        | Human intent            |
+| API       | Validation & submission |
+| Pipeline  | Reliability & control   |
+| Queue     | Async decoupling        |
+| Worker    | Pure execution          |
+| DB        | Source of truth         |
+| Telemetry | Observability           |
 
 ---
 
@@ -527,7 +573,7 @@ execute(job) {
    - Zip the repo and upload directly in chat for full review.
 2. **Paste Files Incrementally:**
    - Start with `/prisma/schema.prisma`, `/lib/queues/*`, `/api/admin/content-engine/*`, `workers`.
-3. **GitHub Link:**  
+3. **GitHub Link:**
    - Not accessible unless you paste files.
 
 ---
@@ -538,6 +584,7 @@ What you’re building is not just an edtech app —
 it is a content factory with human oversight and AI automation.
 
 **Without:**
+
 - diagrams
 - lifecycle clarity
 - pipeline ownership
@@ -601,6 +648,7 @@ Each module maps to specific API routes and specific DB tables.
 Canonical, read-only navigation of the entire academic hierarchy.
 
 **UI Wireframe**
+
 ```
 ┌────────────────────────────────────────────┐
 │ Academic Explorer                           │
@@ -640,6 +688,7 @@ Canonical, read-only navigation of the entire academic hierarchy.
 Human approval of AI-generated academic content.
 
 **UI Wireframe**
+
 ```
 ┌────────────────────────────────────────────┐
 │ Content Moderation                         │
@@ -688,6 +737,7 @@ Human approval of AI-generated academic content.
 Answer: “Why is my job stuck / failed / retrying?”
 
 **UI Wireframe**
+
 ```
 ┌────────────────────────────────────────────┐
 │ Job Monitor                                │
@@ -737,6 +787,7 @@ Answer: “Why is my job stuck / failed / retrying?”
 Detect systemic failures, not content issues.
 
 **UI Wireframe**
+
 ```
 ┌────────────────────────────────────────────┐
 │ Execution Pipeline Health                  │
@@ -756,13 +807,13 @@ Detect systemic failures, not content issues.
 
 - Pipeline status  
   `GET /api/admin/pipeline/status`  
-  Returns:  
+  Returns:
   ```json
   {
-  "queueConnected": true,
-  "activeWorkers": 3,
-  "pendingJobs": 12,
-  "oldestPendingMs": 480000
+    "queueConnected": true,
+    "activeWorkers": 3,
+    "pendingJobs": 12,
+    "oldestPendingMs": 480000
   }
   ```
 
@@ -774,6 +825,7 @@ Detect systemic failures, not content issues.
 Cost + reliability governance.
 
 **UI Wireframe**
+
 ```
 ┌────────────────────────────────────────────┐
 │ AI Telemetry                               │
@@ -801,6 +853,7 @@ Cost + reliability governance.
 Compliance, debugging, trust.
 
 **Captures:**
+
 - Job state transitions
 - Content approvals
 - Deletions (soft)
@@ -816,15 +869,15 @@ Compliance, debugging, trust.
 ## 9. HOW DASHBOARDS INTERACT WITH PIPELINE (IMPORTANT)
 
 Dashboard Action  
-   ↓  
+ ↓  
 Admin API  
-   ↓  
+ ↓  
 Execution Pipeline  
-   ↓  
+ ↓  
 Queue / Worker  
-   ↓  
+ ↓  
 Telemetry Event  
-   ↓  
+ ↓  
 Dashboard Refresh
 
 Dashboards never talk to workers directly.
@@ -874,41 +927,42 @@ These APIs are read-only by default, ID-driven, audited, and pipeline-aware.
 
 ```ts
 // /api/admin/hierarchy/route.ts
-import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
+import { prisma } from '@/lib/prisma';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   const boards = await prisma.board.findMany({
-  where: { lifecycle: "active" },
-  include: {
-    classes: {
-    where: { lifecycle: "active" },
-    orderBy: { grade: "asc" },
+    where: { lifecycle: 'active' },
     include: {
-      subjects: {
-      include: {
-        chapters: {
-        where: { lifecycle: "active" },
-        orderBy: { order: "asc" },
+      classes: {
+        where: { lifecycle: 'active' },
+        orderBy: { grade: 'asc' },
         include: {
-          topics: {
-          where: { lifecycle: "active" },
-          orderBy: { order: "asc" }
-          }
-        }
-        }
-      }
-      }
-    }
-    }
-  }
-  })
+          subjects: {
+            include: {
+              chapters: {
+                where: { lifecycle: 'active' },
+                orderBy: { order: 'asc' },
+                include: {
+                  topics: {
+                    where: { lifecycle: 'active' },
+                    orderBy: { order: 'asc' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
 
-  return NextResponse.json(boards)
+  return NextResponse.json(boards);
 }
 ```
 
 **Guardrails**
+
 - ❌ No writes
 - ❌ No filtering by string
 - ✅ IDs only
@@ -922,22 +976,22 @@ export async function GET() {
 
 ```ts
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const status = searchParams.get("status") ?? "draft"
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status') ?? 'draft';
 
   const notes = await prisma.topicNote.findMany({
-  where: { status },
-  include: {
-    topic: {
+    where: { status },
     include: {
-      chapter: { include: { subject: { include: { class: { include: { board: true }}}}}}
-    }
-    }
-  },
-  orderBy: { createdAt: "desc" }
-  })
+      topic: {
+        include: {
+          chapter: { include: { subject: { include: { class: { include: { board: true } } } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
-  return NextResponse.json(notes)
+  return NextResponse.json(notes);
 }
 ```
 
@@ -946,13 +1000,13 @@ export async function GET(req: Request) {
   `POST /api/admin/moderation/notes/:id/reject`
 
 ```ts
-export async function POST(_: Request, { params }: { params: { id: string }}) {
+export async function POST(_: Request, { params }: { params: { id: string } }) {
   await prisma.topicNote.update({
-  where: { id: params.id },
-  data: { status: "approved" }
-  })
+    where: { id: params.id },
+    data: { status: 'approved' },
+  });
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true });
 }
 ```
 
@@ -965,15 +1019,15 @@ Audit log must be written here (see schema section).
 
 ```ts
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const status = searchParams.get("status")
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status');
 
   const jobs = await prisma.hydrationJob.findMany({
-  where: status ? { status } : {},
-  orderBy: { createdAt: "desc" }
-  })
+    where: status ? { status } : {},
+    orderBy: { createdAt: 'desc' },
+  });
 
-  return NextResponse.json(jobs)
+  return NextResponse.json(jobs);
 }
 ```
 
@@ -984,14 +1038,14 @@ export async function GET(req: Request) {
 ```ts
 export async function POST(_: Request, { params }: any) {
   await prisma.hydrationJob.update({
-  where: { id: params.id },
-  data: { status: "pending", retries: { increment: 1 } }
-  })
+    where: { id: params.id },
+    data: { status: 'pending', retries: { increment: 1 } },
+  });
 
   // enqueue via pipeline (lazy init queue)
-  await enqueueJob(params.id)
+  await enqueueJob(params.id);
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true });
 }
 ```
 
@@ -1000,6 +1054,7 @@ export async function POST(_: Request, { params }: any) {
 - `GET /api/admin/pipeline/status`
 
 Returns:
+
 ```json
 {
   "queueConnected": true,
@@ -1024,33 +1079,34 @@ These are clean, composable dashboards, not bloated pages.
 
 ```tsx
 export function AcademicExplorer() {
-  const { data } = useSWR("/api/admin/hierarchy", fetcher)
+  const { data } = useSWR('/api/admin/hierarchy', fetcher);
 
   return (
-  <div>
-    <HierarchyTree data={data} />
-    <ContentSummaryPanel />
-  </div>
-  )
+    <div>
+      <HierarchyTree data={data} />
+      <ContentSummaryPanel />
+    </div>
+  );
 }
 ```
+
 Hierarchy tree is read-only.
 
 #### 2.2 Content Moderation UI
 
 ```tsx
 export function ModerationQueue() {
-  const { data } = useSWR("/api/admin/moderation/notes?status=draft", fetcher)
+  const { data } = useSWR('/api/admin/moderation/notes?status=draft', fetcher);
 
-  return data.map(note => (
-  <ModerationCard
-    key={note.id}
-    title={note.title}
-    content={note.contentJson}
-    onApprove={() => approve(note.id)}
-    onReject={() => reject(note.id)}
-  />
-  ))
+  return data.map((note) => (
+    <ModerationCard
+      key={note.id}
+      title={note.title}
+      content={note.contentJson}
+      onApprove={() => approve(note.id)}
+      onReject={() => reject(note.id)}
+    />
+  ));
 }
 ```
 
@@ -1058,19 +1114,15 @@ export function ModerationQueue() {
 
 ```tsx
 export function JobMonitor() {
-  const { data } = useSWR("/api/admin/jobs", fetcher)
+  const { data } = useSWR('/api/admin/jobs', fetcher);
 
   return (
-  <table>
-    {data.map(job => (
-    <JobRow
-      job={job}
-      onRetry={() => retry(job.id)}
-      onCancel={() => cancel(job.id)}
-    />
-    ))}
-  </table>
-  )
+    <table>
+      {data.map((job) => (
+        <JobRow job={job} onRetry={() => retry(job.id)} onCancel={() => cancel(job.id)} />
+      ))}
+    </table>
+  );
 }
 ```
 
@@ -1078,19 +1130,17 @@ export function JobMonitor() {
 
 ```tsx
 export function PipelineHealth() {
-  const { data } = useSWR("/api/admin/pipeline/status", fetcher, { refreshInterval: 5000 })
+  const { data } = useSWR('/api/admin/pipeline/status', fetcher, { refreshInterval: 5000 });
 
-  return (
-  <StatsGrid stats={data} />
-  )
+  return <StatsGrid stats={data} />;
 }
 ```
 
 #### 2.5 AI Telemetry Dashboard
 
-- Charts:  
-  - Latency over time  
-  - Failure rates  
+- Charts:
+  - Latency over time
+  - Failure rates
   - Cost per job type
 
 ---
@@ -1169,15 +1219,15 @@ model AdminAuditLog {
 ## HOW ALL OF THIS INTERACTS (MENTAL MODEL)
 
 Admin UI  
-  ↓  
+ ↓  
 Admin API (ID-based)  
-  ↓  
+ ↓  
 Execution Pipeline  
-  ↓  
+ ↓  
 Queue / Worker  
-  ↓  
+ ↓  
 Telemetry + Job Logs  
-  ↓  
+ ↓  
 Admin Dashboards
 
 No shortcuts. No hidden state.
@@ -1194,7 +1244,6 @@ No shortcuts. No hidden state.
 - Copilot-safe guardrails
 
 Here is your excerpt, converted to Markdown (with code blocks and diagrams preserved):
-
 
 ## Sequence Diagrams (Canonical)
 
@@ -1397,6 +1446,7 @@ Board: CBSE ▼
 [Generate Syllabus]
 [Generate Content]
 ```
+
 Purpose: Read-only navigation, context provider for all actions
 
 ### 3. Job Monitor Dashboard

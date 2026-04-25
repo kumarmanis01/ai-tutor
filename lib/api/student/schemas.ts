@@ -644,35 +644,34 @@ export const ERROR_CODES = {
   AUTH_REQUIRED: 'AUTH_REQUIRED',
   AUTH_INVALID: 'AUTH_INVALID',
   AUTH_EXPIRED: 'AUTH_EXPIRED',
-  
+
   // Authorization
   FORBIDDEN: 'FORBIDDEN',
   SUBSCRIPTION_REQUIRED: 'SUBSCRIPTION_REQUIRED',
-  
+
   // Validation
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   INVALID_INPUT: 'INVALID_INPUT',
-  
+
   // Resources
   NOT_FOUND: 'NOT_FOUND',
   ALREADY_EXISTS: 'ALREADY_EXISTS',
-  
+
   // Rate limiting
   RATE_LIMITED: 'RATE_LIMITED',
   QUOTA_EXCEEDED: 'QUOTA_EXCEEDED',
-  
+
   // Server errors
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
-  
+
   // Practice specific
   SESSION_EXPIRED: 'SESSION_EXPIRED',
   SESSION_COMPLETED: 'SESSION_COMPLETED',
   NO_QUESTIONS_AVAILABLE: 'NO_QUESTIONS_AVAILABLE',
 } as const;
 
-
-export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
 
 // ============================================================================
 // API CONTRACT HELPERS (REQUIRED FOR TESTS)
@@ -709,8 +708,10 @@ export function buildSuccessResponse<T>(
   // Top-level cache, rateLimit, pagination passthrough if present in extra
   if (meta.cache || extra?.cache) response.cache = meta.cache || extra?.cache;
   // Accept rateLimit/pagination from either metaOverrides or extra for test compatibility
-  if ((meta as any).rateLimit || extra?.rateLimit) response.rateLimit = (meta as any).rateLimit || extra?.rateLimit;
-  if ((meta as any).pagination || extra?.pagination) response.pagination = (meta as any).pagination || extra?.pagination;
+  if ((meta as any).rateLimit || extra?.rateLimit)
+    response.rateLimit = (meta as any).rateLimit || extra?.rateLimit;
+  if ((meta as any).pagination || extra?.pagination)
+    response.pagination = (meta as any).pagination || extra?.pagination;
   // Remove error if present
   delete response.error;
   return response;
@@ -733,7 +734,8 @@ export function buildErrorResponse(
   if (details) {
     safeDetails = JSON.parse(JSON.stringify(details), (k, v) => {
       if (typeof v === 'string' && v.startsWith('sk-')) return '[REDACTED]';
-      if (typeof v === 'string' && v.match(/sk-[A-Za-z0-9]+/)) return v.replace(/sk-[A-Za-z0-9]+/g, '[REDACTED]');
+      if (typeof v === 'string' && v.match(/sk-[A-Za-z0-9]+/))
+        return v.replace(/sk-[A-Za-z0-9]+/g, '[REDACTED]');
       return v;
     });
   }
@@ -756,27 +758,35 @@ export function buildErrorResponse(
   };
   if (meta.cache || extra?.cache) response.cache = meta.cache || extra?.cache;
   // Accept rateLimit/pagination from metaOverrides as well as extra
-  if ((meta as any).rateLimit || extra?.rateLimit) response.rateLimit = (meta as any).rateLimit || extra?.rateLimit;
-  if ((meta as any).pagination || extra?.pagination) response.pagination = (meta as any).pagination || extra?.pagination;
+  if ((meta as any).rateLimit || extra?.rateLimit)
+    response.rateLimit = (meta as any).rateLimit || extra?.rateLimit;
+  if ((meta as any).pagination || extra?.pagination)
+    response.pagination = (meta as any).pagination || extra?.pagination;
   return response;
 }
 
-
-export function validateRequestSchema(type: string, data: any): { valid: boolean; errors: string[] } {
+export function validateRequestSchema(
+  type: string,
+  data: any
+): { valid: boolean; errors: string[] } {
   // In production, use Zod or similar. Here, just basic checks for test compliance.
   const errors: string[] = [];
   if (type === 'notes') {
     if (!data.topic) errors.push('topic is required');
-    if (typeof data.grade !== 'number' || data.grade < 1 || data.grade > 12) errors.push('grade must be 1-12');
+    if (typeof data.grade !== 'number' || data.grade < 1 || data.grade > 12)
+      errors.push('grade must be 1-12');
   }
   if (type === 'practice') {
     // Accept case-insensitive difficulty tokens (tests pass uppercase values)
-    const diff = typeof data.difficulty === 'string' ? data.difficulty.toLowerCase() : data.difficulty;
+    const diff =
+      typeof data.difficulty === 'string' ? data.difficulty.toLowerCase() : data.difficulty;
     if (!['easy', 'medium', 'hard', 'adaptive'].includes(diff)) errors.push('difficulty invalid');
-    if (typeof data.count !== 'number' || data.count < 1 || data.count > 20) errors.push('count out of range');
+    if (typeof data.count !== 'number' || data.count < 1 || data.count > 20)
+      errors.push('count out of range');
   }
   if (type === 'doubt') {
-    if (!data.question || typeof data.question !== 'string' || data.question.length < 5) errors.push('question invalid');
+    if (!data.question || typeof data.question !== 'string' || data.question.length < 5)
+      errors.push('question invalid');
   }
   if (errors.length > 0) {
     // Return validation result rather than throwing. Tests expect structured validation results.
@@ -785,8 +795,10 @@ export function validateRequestSchema(type: string, data: any): { valid: boolean
   return { valid: true, errors: [] };
 }
 
-
-export function validateResponseSchema(type: string, data: any): { valid: boolean; errors: string[] } {
+export function validateResponseSchema(
+  type: string,
+  data: any
+): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   if (type === 'notes') {
     // Support both new schema (topic_title, key_concepts, learning_objectives)
@@ -794,14 +806,17 @@ export function validateResponseSchema(type: string, data: any): { valid: boolea
     if (data.content && typeof data.content === 'object') {
       const content = data.content as Record<string, any>;
       if (!content.conceptTitle) errors.push('conceptTitle required');
-      if (!Array.isArray(content.keyTerms) || content.keyTerms.length === 0) errors.push('keyTerms required');
-      if (!Array.isArray(content.sections) || content.sections.length === 0) errors.push('sections required');
+      if (!Array.isArray(content.keyTerms) || content.keyTerms.length === 0)
+        errors.push('keyTerms required');
+      if (!Array.isArray(content.sections) || content.sections.length === 0)
+        errors.push('sections required');
     } else {
       if (!data.topic_title) errors.push('topic_title required');
       if (!Array.isArray(data.key_concepts) || data.key_concepts.length === 0) {
         errors.push('key_concepts required');
       }
-      if (!Array.isArray(data.learning_objectives) || data.learning_objectives.length < 2) errors.push('learning_objectives required');
+      if (!Array.isArray(data.learning_objectives) || data.learning_objectives.length < 2)
+        errors.push('learning_objectives required');
     }
   }
   if (type === 'practice') {
@@ -809,9 +824,18 @@ export function validateResponseSchema(type: string, data: any): { valid: boolea
     if (Array.isArray(data.questions)) {
       // Ensure each question has required fields
       for (const q of data.questions) {
-        if (!q.questionText && !q.question_text) { errors.push('question_text required'); break; }
-        if (!q.correctAnswer && !q.correct_answer) { errors.push('correct_answer required'); break; }
-        if (!q.explanation && !q.explanation) { errors.push('explanation required'); break; }
+        if (!q.questionText && !q.question_text) {
+          errors.push('question_text required');
+          break;
+        }
+        if (!q.correctAnswer && !q.correct_answer) {
+          errors.push('correct_answer required');
+          break;
+        }
+        if (!q.explanation && !q.explanation) {
+          errors.push('explanation required');
+          break;
+        }
       }
     } else {
       if (!data.correct_answer && !data.correctAnswer) errors.push('correct_answer required');
@@ -819,11 +843,15 @@ export function validateResponseSchema(type: string, data: any): { valid: boolea
     }
   }
   if (type === 'doubt') {
-    if (typeof data.confidence_score === 'number' && data.confidence_score < 0.6) errors.push('Low confidence response (confidence_score)');
+    if (typeof data.confidence_score === 'number' && data.confidence_score < 0.6)
+      errors.push('Low confidence response (confidence_score)');
     if (typeof data.confidence_score === 'undefined') errors.push('confidence_score required');
   }
   // No free text rule
-  if (typeof data === 'string' || (data && typeof data === 'object' && Object.keys(data).length === 1 && data.message)) {
+  if (
+    typeof data === 'string' ||
+    (data && typeof data === 'object' && Object.keys(data).length === 1 && data.message)
+  ) {
     errors.push('structured response required');
   }
   if (errors.length > 0) {

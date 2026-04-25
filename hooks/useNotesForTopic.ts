@@ -32,7 +32,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
  */
 export function useNotesForTopic(
   topicId: string | null | undefined,
-  language?: string | null | undefined,
+  language?: string | null | undefined
 ) {
   const shouldFetch = !!topicId;
 

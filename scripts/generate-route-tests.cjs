@@ -38,7 +38,8 @@ function analyzeRoute(filePath) {
 
   // Check for auth requirements
   const requiresAuth = content.includes('requireAuth') || content.includes('getServerSession');
-  const requiresAdmin = content.includes('requireAdmin') || content.includes('requireAdminOrModerator');
+  const requiresAdmin =
+    content.includes('requireAdmin') || content.includes('requireAdminOrModerator');
 
   // Check for route params
   const hasParams = relativePath.includes('[') && relativePath.includes(']');
@@ -81,11 +82,15 @@ function generateMethodTests(route, method, importPath, paramsString) {
 
     const { ${method} } = await import('${importPath}');
     const request = new Request('http://localhost:3000${route.relativePath.replace('app', '').replace('\\route.ts', '').replace(/\\/g, '/')}', {
-      method: '${method}',${requiresBody ? `
+      method: '${method}',${
+        requiresBody
+          ? `
       body: JSON.stringify({
         // TODO: Add request body fields
       }),
-      headers: { 'Content-Type': 'application/json' },` : ''}
+      headers: { 'Content-Type': 'application/json' },`
+          : ''
+      }
     });
 
     const response = await ${method}(request${route.hasParams ? `, { params: ${paramsString} }` : ''});
@@ -94,7 +99,9 @@ function generateMethodTests(route, method, importPath, paramsString) {
     expect(response.status).toBeLessThan(500);
   });
 
-  ${requiresBody ? `it('should validate request body', async () => {
+  ${
+    requiresBody
+      ? `it('should validate request body', async () => {
     const { ${method} } = await import('${importPath}');
     const request = new Request('http://localhost:3000${route.relativePath.replace('app', '').replace('\\route.ts', '').replace(/\\/g, '/')}', {
       method: '${method}',
@@ -106,21 +113,31 @@ function generateMethodTests(route, method, importPath, paramsString) {
 
     // TODO: Verify proper validation error
     expect(response.status).toBeGreaterThanOrEqual(400);
-  });` : ''}
+  });`
+      : ''
+  }
 
-  ${route.requiresAuth ? `it('should require authentication', async () => {
+  ${
+    route.requiresAuth
+      ? `it('should require authentication', async () => {
     const authMock = require('@/lib/auth');
     authMock.requireAuth.mockRejectedValueOnce(new Error('Unauthorized'));
 
     const { ${method} } = await import('${importPath}');
     const request = new Request('http://localhost:3000${route.relativePath.replace('app', '').replace('\\route.ts', '').replace(/\\/g, '/')}', {
-      method: '${method}',${requiresBody ? `
+      method: '${method}',${
+        requiresBody
+          ? `
       body: JSON.stringify({}),
-      headers: { 'Content-Type': 'application/json' },` : ''}
+      headers: { 'Content-Type': 'application/json' },`
+          : ''
+      }
     });
 
     await expect(${method}(request${route.hasParams ? `, { params: ${paramsString} }` : ''})).rejects.toThrow();
-  });` : ''}
+  });`
+      : ''
+  }
 
   it('should handle errors gracefully', async () => {
     // Simulate a database error
@@ -128,9 +145,13 @@ function generateMethodTests(route, method, importPath, paramsString) {
 
     const { ${method} } = await import('${importPath}');
     const request = new Request('http://localhost:3000${route.relativePath.replace('app', '').replace('\\route.ts', '').replace(/\\/g, '/')}', {
-      method: '${method}',${requiresBody ? `
+      method: '${method}',${
+        requiresBody
+          ? `
       body: JSON.stringify({}),
-      headers: { 'Content-Type': 'application/json' },` : ''}
+      headers: { 'Content-Type': 'application/json' },`
+          : ''
+      }
     });
 
     const response = await ${method}(request${route.hasParams ? `, { params: ${paramsString} }` : ''});
@@ -150,9 +171,7 @@ function generateTestContent(route, testFilePath) {
     .replace(/\\/g, '/')
     .replace('/route.ts', '');
 
-  const importPath = '@/' + route.relativePath
-    .replace(/\\/g, '/')
-    .replace('.ts', '');
+  const importPath = '@/' + route.relativePath.replace(/\\/g, '/').replace('.ts', '');
 
   const mockParams = route.paramNames.reduce((acc, param) => {
     acc[param] = `mock-${param}-123`;
@@ -163,7 +182,9 @@ function generateTestContent(route, testFilePath) {
 
   // Calculate correct relative path to helpers based on test file depth
   const testDir = path.dirname(testFilePath);
-  const helpersPath = path.relative(testDir, path.join(process.cwd(), 'tests', 'helpers')).replace(/\\/g, '/');
+  const helpersPath = path
+    .relative(testDir, path.join(process.cwd(), 'tests', 'helpers'))
+    .replace(/\\/g, '/');
 
   return `/**
  * UNIT TESTS: ${testPath}
@@ -193,7 +214,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { prismaMock, resetPrismaMock } from '${helpersPath}/prismaMock';
 import '${helpersPath}/mockSession';
 
-${route.methods.map(method => generateMethodTests(route, method, importPath, paramsString)).join('\n\n')}
+${route.methods.map((method) => generateMethodTests(route, method, importPath, paramsString)).join('\n\n')}
 `;
 }
 
@@ -217,7 +238,7 @@ async function main() {
   console.log('🔍 Finding all route files...');
   const routeFiles = glob.sync('app/api/**/route.ts', {
     cwd: process.cwd(),
-    absolute: true
+    absolute: true,
   });
 
   console.log(`Found ${routeFiles.length} route files`);

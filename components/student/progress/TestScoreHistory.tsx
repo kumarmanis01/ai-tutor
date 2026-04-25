@@ -13,7 +13,7 @@ import Link from 'next/link';
 
 export interface SessionRow {
   id: string;
-  date: string;        // ISO string
+  date: string; // ISO string
   topicName: string;
   score: number | null; // 0-100, or null if not recorded
   durationMin: number;
@@ -62,10 +62,7 @@ export default function TestScoreHistory({ sessions }: TestScoreHistoryProps) {
             </thead>
             <tbody>
               {sessions.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-t border-gray-100 dark:border-slate-700"
-                >
+                <tr key={row.id} className="border-t border-gray-100 dark:border-slate-700">
                   <td className="py-2.5 pr-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">
                     {formatDate(row.date)}
                   </td>
@@ -79,8 +76,8 @@ export default function TestScoreHistory({ sessions }: TestScoreHistoryProps) {
                           row.score >= 70
                             ? 'text-[#1D9E75] font-semibold'
                             : row.score >= 40
-                            ? 'text-[#BA7517] font-semibold'
-                            : 'text-[#E24B4A] font-semibold'
+                              ? 'text-[#BA7517] font-semibold'
+                              : 'text-[#E24B4A] font-semibold'
                         }
                       >
                         {row.score}%

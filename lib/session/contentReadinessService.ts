@@ -1,4 +1,3 @@
-
 /**
  * FILE OBJECTIVE:
  * - ContentReadinessService: Determines if a topic has sufficient content for a session (notes, practice, test questions).
@@ -33,23 +32,17 @@ export interface ContentReadinessResult {
  * @returns ContentReadinessResult with readiness level and per-content flags.
  */
 async function isTopicReady(topicId: string): Promise<ContentReadinessResult> {
-
   // All Prisma .count() calls return number, so no local row types needed for those.
   const [hasNotes, hasPracticeQuestions, hasTestQuestions] = await Promise.all([
-    prisma.topicNote
-      .count({ where: { topicId, lifecycle: 'active' } })
-      .then((n: number) => n > 0),
-    prisma.question
-      .count({ where: { topicId } })
-      .then((n: number) => n > 0),
+    prisma.topicNote.count({ where: { topicId, lifecycle: 'active' } }).then((n: number) => n > 0),
+    prisma.question.count({ where: { topicId } }).then((n: number) => n > 0),
     prisma.generatedQuestion
       .count({ where: { test: { topicId, lifecycle: 'active' } } })
       .then((n: number) => n > 0),
   ]);
 
   const count = [hasNotes, hasPracticeQuestions, hasTestQuestions].filter(Boolean).length;
-  const readiness: ContentReadiness =
-    count === 3 ? 'READY' : count > 0 ? 'PARTIAL' : 'MISSING';
+  const readiness: ContentReadiness = count === 3 ? 'READY' : count > 0 ? 'PARTIAL' : 'MISSING';
 
   return {
     status: readiness,

@@ -15,14 +15,14 @@
  * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate callback param to remove implicit any
  */
 
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma';
 
 /**
  * Check if a user has an active premium subscription.
  * Also checks if the user is covered by a parent's family plan.
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
-  const now = new Date()
+  const now = new Date();
 
   // Direct active subscription for the user
   const directSub = await prisma.subscription.findFirst({
@@ -33,16 +33,19 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
       endDate: { gte: now },
     },
     select: { id: true },
-  })
+  });
 
-  if (directSub) return true
+  if (directSub) return true;
 
   // Check parent links to see if covered by a parent's family plan
-  const parentLinks = await prisma.parentStudent.findMany({ where: { studentId: userId, status: 'active' }, select: { parentId: true } })
-  if (parentLinks.length === 0) return false
+  const parentLinks = await prisma.parentStudent.findMany({
+    where: { studentId: userId, status: 'active' },
+    select: { parentId: true },
+  });
+  if (parentLinks.length === 0) return false;
 
   // Annotate callback param to satisfy strict-mode (no implicit any)
-  const parentIds = parentLinks.map((l: { parentId: string }) => l.parentId)
+  const parentIds = parentLinks.map((l: { parentId: string }) => l.parentId);
   const familySub = await prisma.subscription.findFirst({
     where: {
       userId: { in: parentIds },
@@ -52,9 +55,9 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
       endDate: { gte: now },
     },
     select: { id: true },
-  })
+  });
 
-  return familySub != null
+  return familySub != null;
 }
 
 /**
@@ -62,12 +65,12 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
  * Used for free-tier enforcement.
  */
 export async function getTodaysQuestionCount(userId: string): Promise<number> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const count = await prisma.chat.count({ where: { userId, createdAt: { gte: today } } })
-  return count
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const count = await prisma.chat.count({ where: { userId, createdAt: { gte: today } } });
+  return count;
 }
 
-const SubscriptionHelpers = { isPremiumUser, getTodaysQuestionCount }
+const SubscriptionHelpers = { isPremiumUser, getTodaysQuestionCount };
 
-export default SubscriptionHelpers
+export default SubscriptionHelpers;

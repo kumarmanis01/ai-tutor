@@ -8,7 +8,12 @@ jest.mock('@/lib/prisma', () => ({
 
 const { prisma } = require('@/lib/prisma');
 
-import { getReadinessSummary, getReadinessList, getGenerationPaused, setGenerationPaused } from '@/lib/admin/contentReadiness';
+import {
+  getReadinessSummary,
+  getReadinessList,
+  getGenerationPaused,
+  setGenerationPaused,
+} from '@/lib/admin/contentReadiness';
 
 describe('contentReadiness', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -27,10 +32,22 @@ describe('contentReadiness', () => {
   test('getReadinessList returns items and total', async () => {
     prisma.hydrationJob.count.mockResolvedValue(1);
     prisma.hydrationJob.findMany.mockResolvedValue([
-      { id: 'j1', topicId: 't1', status: 'pending', contentReady: false, lastError: null, updatedAt: new Date() },
+      {
+        id: 'j1',
+        topicId: 't1',
+        status: 'pending',
+        contentReady: false,
+        lastError: null,
+        updatedAt: new Date(),
+      },
     ]);
     prisma.topicDef.findMany.mockResolvedValue([
-      { id: 't1', name: 'Topic 1', chapterId: 'c1', chapter: { name: 'Chapter 1', subjectId: 's1', subject: { name: 'Subject 1' } } },
+      {
+        id: 't1',
+        name: 'Topic 1',
+        chapterId: 'c1',
+        chapter: { name: 'Chapter 1', subjectId: 's1', subject: { name: 'Subject 1' } },
+      },
     ]);
 
     const { items, total } = await getReadinessList({});

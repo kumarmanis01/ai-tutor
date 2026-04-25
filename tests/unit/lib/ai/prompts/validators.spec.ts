@@ -64,12 +64,8 @@ describe('JSON Validators', () => {
     const validNotes = {
       title: 'Test Title',
       learningObjectives: ['Objective 1', 'Objective 2'],
-      coreExplanation: [
-        { heading: 'Section 1', content: 'Content 1' },
-      ],
-      workedExamples: [
-        { question: 'Q1', explanation: 'E1' },
-      ],
+      coreExplanation: [{ heading: 'Section 1', content: 'Content 1' }],
+      workedExamples: [{ question: 'Q1', explanation: 'E1' }],
       keyTakeaways: ['Takeaway 1'],
       commonMistakes: ['Mistake 1'],
     };
@@ -131,10 +127,12 @@ describe('JSON Validators', () => {
 
     it('rejects MCQ without 4 options', () => {
       const result = validatePracticeOutput({
-        questions: [{
-          ...validPractice.questions[0],
-          options: ['A', 'B', 'C'], // Only 3 options
-        }],
+        questions: [
+          {
+            ...validPractice.questions[0],
+            options: ['A', 'B', 'C'], // Only 3 options
+          },
+        ],
       });
       expect(result.valid).toBe(false);
       expect(result.errors[0]).toContain('4 options');
@@ -142,10 +140,12 @@ describe('JSON Validators', () => {
 
     it('rejects MCQ with correctAnswer not in options', () => {
       const result = validatePracticeOutput({
-        questions: [{
-          ...validPractice.questions[0],
-          correctAnswer: '10', // Not in options
-        }],
+        questions: [
+          {
+            ...validPractice.questions[0],
+            correctAnswer: '10', // Not in options
+          },
+        ],
       });
       expect(result.valid).toBe(false);
       expect(result.errors[0]).toContain('must match one of the options');
@@ -153,10 +153,12 @@ describe('JSON Validators', () => {
 
     it('rejects invalid question type', () => {
       const result = validatePracticeOutput({
-        questions: [{
-          ...validPractice.questions[0],
-          type: 'essay', // Invalid type
-        }],
+        questions: [
+          {
+            ...validPractice.questions[0],
+            type: 'essay', // Invalid type
+          },
+        ],
       });
       expect(result.valid).toBe(false);
       expect(result.errors[0]).toContain('type');
@@ -164,10 +166,12 @@ describe('JSON Validators', () => {
 
     it('rejects invalid difficulty', () => {
       const result = validatePracticeOutput({
-        questions: [{
-          ...validPractice.questions[0],
-          difficulty: 'extreme', // Invalid
-        }],
+        questions: [
+          {
+            ...validPractice.questions[0],
+            difficulty: 'extreme', // Invalid
+          },
+        ],
       });
       expect(result.valid).toBe(false);
       expect(result.errors[0]).toContain('difficulty');
@@ -175,16 +179,18 @@ describe('JSON Validators', () => {
 
     it('validates short_answer questions', () => {
       const result = validatePracticeOutput({
-        questions: [{
-          id: 'q1',
-          type: 'short_answer',
-          question: 'What is the capital of India?',
-          options: null,
-          correctAnswer: 'New Delhi',
-          explanation: 'New Delhi is the capital',
-          difficulty: 'easy',
-          conceptTested: 'Indian geography',
-        }],
+        questions: [
+          {
+            id: 'q1',
+            type: 'short_answer',
+            question: 'What is the capital of India?',
+            options: null,
+            correctAnswer: 'New Delhi',
+            explanation: 'New Delhi is the capital',
+            difficulty: 'easy',
+            conceptTested: 'Indian geography',
+          },
+        ],
       });
       expect(result.valid).toBe(true);
     });
@@ -246,16 +252,18 @@ describe('JSON Validators', () => {
 
     it('parses and validates practice response', () => {
       const rawResponse = JSON.stringify({
-        questions: [{
-          id: 'q1',
-          type: 'short_answer',
-          question: 'Q',
-          options: null,
-          correctAnswer: 'A',
-          explanation: 'E',
-          difficulty: 'easy',
-          conceptTested: 'C',
-        }],
+        questions: [
+          {
+            id: 'q1',
+            type: 'short_answer',
+            question: 'Q',
+            options: null,
+            correctAnswer: 'A',
+            explanation: 'E',
+            difficulty: 'easy',
+            conceptTested: 'C',
+          },
+        ],
       });
 
       const result = validateLLMResponse(rawResponse, 'practice');

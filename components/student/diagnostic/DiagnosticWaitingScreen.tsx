@@ -69,7 +69,9 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
 
     const scheduleNext = () => {
       if (cancelled) return;
-      pollRef.current = setTimeout(poll, POLL_INTERVAL_MS) as unknown as ReturnType<typeof setInterval>;
+      pollRef.current = setTimeout(poll, POLL_INTERVAL_MS) as unknown as ReturnType<
+        typeof setInterval
+      >;
     };
 
     const poll = async () => {
@@ -77,7 +79,7 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
       inFlightRef.current = true;
       try {
         const res = await fetch(
-          `/api/student/diagnostic/check-ready?subjectId=${encodeURIComponent(subjectId)}`,
+          `/api/student/diagnostic/check-ready?subjectId=${encodeURIComponent(subjectId)}`
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { ready: boolean; phase: Phase };

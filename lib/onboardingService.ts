@@ -40,7 +40,9 @@ export class HttpOnboardingService implements OnboardingService {
       const data = await res.json();
       return data as OnboardingProfile;
     } catch (e) {
-      logger.warn(`OnboardingService.loadProfile error: ${String(e)}`, { className: 'OnboardingService' });
+      logger.warn(`OnboardingService.loadProfile error: ${String(e)}`, {
+        className: 'OnboardingService',
+      });
       return null;
     }
   }

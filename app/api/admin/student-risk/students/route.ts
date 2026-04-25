@@ -16,9 +16,17 @@ export async function GET(req: NextRequest) {
   const board = searchParams.get('board') ?? undefined;
   const grade = searchParams.get('grade') ?? undefined;
   const category = (searchParams.get('category') as any) ?? undefined;
-  const minScore = searchParams.get('minScore') ? parseInt(searchParams.get('minScore')!, 10) : undefined;
+  const minScore = searchParams.get('minScore')
+    ? parseInt(searchParams.get('minScore')!, 10)
+    : undefined;
 
-  const { students, total } = await getStudentRiskList({ limit, offset, board, grade, category, minScore });
+  const { students, total } = await getStudentRiskList({
+    limit,
+    offset,
+    board,
+    grade,
+    category,
+    minScore,
+  });
   return NextResponse.json({ students, total });
 }
-

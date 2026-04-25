@@ -121,7 +121,10 @@ function calculateActualDuration(startedAt: Date | null, finishedAt: Date | null
 // GET Handler
 // ============================================
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ jobId: string }> }
+) {
   try {
     const { jobId } = await params;
 
@@ -275,7 +278,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 // DELETE Handler - Cancel Job
 // ============================================
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ jobId: string }> }
+) {
   try {
     const { jobId } = await params;
 

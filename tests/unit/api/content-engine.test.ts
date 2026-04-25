@@ -7,11 +7,16 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
-jest.mock('@/lib/auth', () => ({ authOptions: {}, requireAdminOrModerator: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('@/lib/auth', () => ({
+  authOptions: {},
+  requireAdminOrModerator: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('@/lib/systemSettings', () => ({
   isSystemSettingEnabled: (val: any) => val === 'true' || val === '1' || val === true,
 }));
-jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
+jest.mock('@/lib/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
 jest.mock('@/lib/session', () => ({
   requireAdminOrModerator: jest.fn().mockResolvedValue(undefined),
   getServerSessionForHandlers: jest.fn().mockResolvedValue({

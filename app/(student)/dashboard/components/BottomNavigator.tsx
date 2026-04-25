@@ -68,7 +68,10 @@ const BottomNavigation: React.FC = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card/98 dark:bg-slate-900/98 backdrop-blur-lg border-t border-border/40 z-50 md:hidden">
-      <div className="max-w-md mx-auto px-2" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      <div
+        className="max-w-md mx-auto px-2"
+        style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+      >
         <div className="grid grid-cols-5 gap-0">
           {tabs.map((tab) => {
             const active = isActive(tab);
@@ -80,7 +83,9 @@ const BottomNavigation: React.FC = () => {
                 aria-label={tab.label}
                 aria-current={active ? 'page' : undefined}
               >
-                <div className={`relative p-1.5 rounded-xl transition-all ${active ? 'bg-primary/15' : ''}`}>
+                <div
+                  className={`relative p-1.5 rounded-xl transition-all ${active ? 'bg-primary/15' : ''}`}
+                >
                   <svg
                     className={`w-6 h-6 transition-colors ${active ? 'text-primary' : 'text-muted-foreground'}`}
                     viewBox="0 0 24 24"
@@ -94,7 +99,9 @@ const BottomNavigation: React.FC = () => {
                     <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />
                   )}
                 </div>
-                <span className={`text-[10px] mt-0.5 font-medium ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span
+                  className={`text-[10px] mt-0.5 font-medium ${active ? 'text-primary' : 'text-muted-foreground'}`}
+                >
                   {tab.label}
                 </span>
               </Link>
