@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       return res;
     }
 
-    // Cooldown check — prevent OTP spam
+    // Cooldown check -- prevent OTP spam
     const recentOtp = await prisma.phoneOtp.findFirst({
       where: { phone: contactKey, consumed: false, expiresAt: { gte: new Date() } },
       orderBy: { createdAt: 'desc' },

@@ -1,7 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - P1.3-R / P1.6-R: Deny a parent consent request by token.
- *   No auth required — parent clicks the deny link from email or mini-page.
+ *   No auth required -- parent clicks the deny link from email or mini-page.
  *   On success: ConsentRequest -> DENIED, logs the event.
  *
  * LINKED UNIT TEST:
