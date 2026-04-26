@@ -13,10 +13,11 @@
  *
  * EDIT LOG:
  * - 2026-04-26T14:30:00Z | staff-engineer | created PromptService with DB + Redis (PR-1.2)
+ * - 2026-04-26T07:34:23Z | copilot | fix: use named prisma import; type catch err as unknown
  */
 
 import { PromptVersion, PromptType, PromptStatus } from '@prisma/client';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 import { PromptRegistry } from './registry';
@@ -306,10 +307,10 @@ export class PromptService {
               : undefined,
         },
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         logger.warn('Failed to log generation', {
           promptType: input.promptType,
-          error: err.message,
+          error: err instanceof Error ? err.message : String(err),
         });
       });
   }
