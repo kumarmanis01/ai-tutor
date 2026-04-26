@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | restore clean PricingSection and imports; remove corrupted leading fragment
  * - 2026-04-26T00:00:00Z | copilot | LP-6.2: add annual savings calculation and display to tuition comparison section
+ * - 2026-04-26T00:00:00Z | copilot | fix(currency): use consistent INR formatter for monthly and annual savings; use Intl.NumberFormat instead of mixed formatting
  */
 'use client';
 
@@ -138,10 +139,11 @@ const PricingSection = () => {
   const spinzyPriceDisplay = `₹${standardPlan.billedRupees}`;
   const traditionalMin = 3000;
   const savingsMin = traditionalMin - standardPlan.billedRupees;
-  const savingsText = `₹${savingsMin}+`;
-  // LP-6.2: Annual savings calculation
+  // LP-6.2: Use consistent INR formatter for both monthly and annual savings
+  const iNRFormatter = new Intl.NumberFormat('en-IN');
+  const savingsText = `₹${iNRFormatter.format(savingsMin)}+`;
   const annualSavingsMin = savingsMin * 12;
-  const annualSavingsText = `₹${annualSavingsMin.toLocaleString('en-IN')}+`;
+  const annualSavingsText = `₹${iNRFormatter.format(annualSavingsMin)}+`;
 
   return (
     <section

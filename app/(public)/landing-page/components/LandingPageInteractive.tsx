@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Compose full landing page interactive sections with server-side SEO markup.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(public)/landing-page/components/landing-page-interactive.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-26T00:00:00Z | copilot | add FAQSchemaMarkup server component for SEO, move JSON-LD from client
+ */
+
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
 import TrustMoat from './TrustMoat';
@@ -6,6 +21,7 @@ import ProblemSection from './ProblemSection';
 import TestimonialsSection from './TestimonialsSection';
 import PricingSection from './PricingSection';
 import FAQSection from './FAQSection';
+import { FAQSchemaMarkup } from './FAQSchemaMarkup';
 import OtpSignupForm from '@/components/auth/OtpSignupForm';
 import FinalCTA from './FinalCTA';
 import Footer from './Footer';
@@ -13,6 +29,7 @@ import Footer from './Footer';
 const LandingPageInteractive = () => {
   return (
     <>
+      <FAQSchemaMarkup />
       <main className="min-h-screen">
         <HeroSection />
         <TrustBar />
