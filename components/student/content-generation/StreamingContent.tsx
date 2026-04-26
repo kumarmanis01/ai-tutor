@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - S3.2: StreamingContent — renders AI-generated content blocks as they
+ * - S3.2: StreamingContent -- renders AI-generated content blocks as they
  *   arrive via SSE. Supports partial rendering with "AI Draft" badge.
  *
  * LINKED UNIT TEST:
@@ -88,8 +88,8 @@ function BlockRenderer({ block }: { block: ContentBlock }) {
 }
 
 /**
- * S3.2 — Renders content blocks as they arrive via SSE.
- * Shows an "AI Draft — pending review" badge while streaming.
+ * S3.2 -- Renders content blocks as they arrive via SSE.
+ * Shows an "AI Draft -- pending review" badge while streaming.
  */
 export function StreamingContent({ topic, blocks, isStreaming }: StreamingContentProps) {
   return (
@@ -101,7 +101,7 @@ export function StreamingContent({ topic, blocks, isStreaming }: StreamingConten
           <p className="text-sm text-gray-500">AI-generated study notes</p>
         </div>
         <span className="rounded-full bg-[#FAEEDA] px-3 py-1 text-xs font-semibold text-[#BA7517]">
-          AI Draft — pending review
+          AI Draft -- pending review
         </span>
       </div>
 
@@ -118,7 +118,7 @@ export function StreamingContent({ topic, blocks, isStreaming }: StreamingConten
       {isStreaming && (
         <div className="mt-4 flex items-center gap-2 text-sm text-[#534AB7]">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#534AB7]" />
-          More content arriving…
+          More content arriving...
         </div>
       )}
 

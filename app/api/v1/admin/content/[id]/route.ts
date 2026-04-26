@@ -1,7 +1,7 @@
 /**
  * FILE OBJECTIVE:
- * - A1.2: GET /api/v1/admin/content/[id] — fetch single content item for review.
- *   POST /api/v1/admin/content/[id] — update content (save draft with edited markdown).
+ * - A1.2: GET /api/v1/admin/content/[id] -- fetch single content item for review.
+ *   POST /api/v1/admin/content/[id] -- update content (save draft with edited markdown).
  *   Admin/moderator-only. Returns full contentJson + version history.
  *
  * LINKED UNIT TEST:

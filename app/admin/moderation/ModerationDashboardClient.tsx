@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - A1.1: ModerationDashboardClient — client component that shows the V3
+ * - A1.1: ModerationDashboardClient -- client component that shows the V3
  *   content moderation table with filters, batch actions, and 30s polling.
  *
  * LINKED UNIT TEST:
@@ -221,7 +221,7 @@ export function ModerationDashboardClient({ initialItems, initialTotal }: {
           <option value="createdAt_desc">Newest First</option>
           <option value="createdAt_asc">Oldest First</option>
           <option value="status_asc">Status</option>
-          <option value="topic_asc">Topic A–Z</option>
+          <option value="topic_asc">Topic A-Z</option>
         </select>
       </div>
 
@@ -338,7 +338,7 @@ export function ModerationDashboardClient({ initialItems, initialTotal }: {
                       {item.topic}
                     </td>
                     <td className="px-3 py-3 text-gray-600">{item.subject}</td>
-                    <td className="px-3 py-3 text-center text-gray-600">{item.grade ?? '—'}</td>
+                    <td className="px-3 py-3 text-center text-gray-600">{item.grade ?? '--'}</td>
                     <td className="px-3 py-3 text-gray-600">{item.board}</td>
                     <td className="px-3 py-3 text-center font-semibold text-[#534AB7]">
                       {item.requestCount}

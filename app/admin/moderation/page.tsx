@@ -82,7 +82,7 @@ export default async function ModerationPage() {
     });
     initialTotal = total;
   } catch {
-    // Non-fatal — client will fetch on mount
+    // Non-fatal -- client will fetch on mount
   }
 
   return (

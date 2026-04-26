@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - S3.2: Student generation page — connects to the SSE stream for a jobId,
+ * - S3.2: Student generation page -- connects to the SSE stream for a jobId,
  *   shows ContentGenerationLoading while waiting, transitions to StreamingContent
  *   as blocks arrive, and falls back to a push notification message after 60s.
  *
@@ -36,7 +36,7 @@ type StreamState = 'loading' | 'streaming' | 'done' | 'fallback' | 'error';
 const FALLBACK_TIMEOUT_MS = 60_000; // 60s before showing fallback notification
 
 /**
- * S3.2 — Generation experience page.
+ * S3.2 -- Generation experience page.
  * Route: /student/learning-map/generate/[jobId]
  */
 export default function GeneratePage() {
@@ -55,7 +55,7 @@ export default function GeneratePage() {
   useEffect(() => {
     if (!jobId) return;
 
-    // Set fallback timer — if no content arrives within 60s, show push notification message
+    // Set fallback timer -- if no content arrives within 60s, show push notification message
     fallbackTimerRef.current = setTimeout(() => {
       if (streamState === 'loading') {
         setStreamState('fallback');
@@ -68,7 +68,7 @@ export default function GeneratePage() {
     evtSourceRef.current = source;
 
     source.onopen = () => {
-      // Stream connected — keep loading state until first block
+      // Stream connected -- keep loading state until first block
     };
 
     source.addEventListener('start', (ev: MessageEvent) => {
@@ -76,7 +76,7 @@ export default function GeneratePage() {
         const data = JSON.parse(ev.data as string) as { topic?: string };
         if (data.topic) setTopic(data.topic);
       } catch {
-        // Non-critical — topic already defaulted
+        // Non-critical -- topic already defaulted
       }
       setStreamState('streaming');
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
@@ -117,7 +117,7 @@ export default function GeneratePage() {
     });
 
     source.onerror = () => {
-      // SSE disconnected — check if we already have content
+      // SSE disconnected -- check if we already have content
       setStreamState((prev) => {
         if (prev === 'streaming') return 'done';
         if (prev === 'loading') return 'fallback';

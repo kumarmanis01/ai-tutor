@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - S3.1: ContentRequestCard — shows "We don't have notes on X yet" card
+ * - S3.1: ContentRequestCard -- shows "We don't have notes on X yet" card
  *   with a "Generate Notes for Me" button when search returns 0 results.
  *
  * LINKED UNIT TEST:
@@ -30,7 +30,7 @@ type ContentRequestCardProps = {
 type GenerationState = 'idle' | 'checking' | 'pending' | 'requesting' | 'done' | 'error';
 
 /**
- * S3.1 — Shown when content search returns 0 results.
+ * S3.1 -- Shown when content search returns 0 results.
  * Offers "Generate Notes for Me" which enqueues a GenerationJob (S3.2).
  */
 export function ContentRequestCard({ query, grade, board, subject }: ContentRequestCardProps) {
@@ -91,7 +91,7 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
       {isPending ? (
         <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#534AB7]/10 px-4 py-3">
           <span className="animate-spin text-lg">⏳</span>
-          <span className="text-sm font-medium text-[#534AB7]">Content is being prepared…</span>
+          <span className="text-sm font-medium text-[#534AB7]">Content is being prepared...</span>
         </div>
       ) : (
         <button
@@ -100,7 +100,7 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
           onClick={() => void handleGenerate()}
           className="mt-4 min-h-[44px] w-full rounded-xl bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#4239a0] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isRequesting ? 'Sending request…' : 'Generate Notes for Me'}
+          {isRequesting ? 'Sending request...' : 'Generate Notes for Me'}
         </button>
       )}
 
