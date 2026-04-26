@@ -13,14 +13,17 @@
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.1 learning map UI
  * - 2026-04-25T01:45:00Z | copilot | routed premium-locked nodes to freemium wall and added completed-chapter practice entry
+ * - 2026-04-25T12:00:00Z | copilot | S3.1 — added DB content search with debounce + ContentRequestCard fallback
  */
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LearningMapNode, LearningMapPayload } from '@/hooks/useLearningMap';
 import FreemiumWallModal from '@/components/student/practice/FreemiumWallModal';
+import { SearchResults } from '@/components/student/search/SearchResults';
+import type { SearchResult } from '@/components/student/search/SearchResults';
 import ChapterNode from './ChapterNode';
 import ChapterInfo from './ChapterInfo';
 
@@ -29,14 +32,61 @@ type LearningMapProps = {
   data: LearningMapPayload;
   isOfflineCache: boolean;
   onRefresh: () => Promise<void>;
+  grade?: number;
+  board?: string;
 };
 
-export function LearningMap({ studentId, data, isOfflineCache, onRefresh }: LearningMapProps) {
+export function LearningMap({ studentId, data, isOfflineCache, onRefresh, grade, board }: LearningMapProps) {
   const router = useRouter();
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(data.currentChapter?.chapterId ?? null);
   const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [premiumTopicId, setPremiumTopicId] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce the search query to avoid hammering the API
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 2) {
+      setDebouncedQuery('');
+      setIsSearchOpen(false);
+      return;
+    }
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(value.trim());
+      setIsSearchOpen(true);
+    }, 400);
+  }, []);
+
+  // Fetch search results from the DB when debouncedQuery changes
+  useEffect(() => {
+    if (!debouncedQuery || debouncedQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearchLoading(true);
+    const params = new URLSearchParams({ q: debouncedQuery });
+    if (grade) params.set('grade', String(grade));
+    if (board) params.set('board', board);
+    fetch(`/api/v1/content/search?${params.toString()}`)
+      .then(async (r) => {
+        const json = (await r.json()) as { results?: SearchResult[] };
+        if (!cancelled) setSearchResults(json.results ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setSearchResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSearchLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [debouncedQuery, grade, board]);
 
   const selectedChapter = useMemo(() => {
     if (!selectedChapterId) return data.currentChapter;
@@ -115,12 +165,25 @@ export function LearningMap({ studentId, data, isOfflineCache, onRefresh }: Lear
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search chapter or subject"
-            className="min-h-[44px] flex-1 rounded-xl border border-gray-300 px-3 text-sm text-gray-900 focus:border-[#534AB7] focus:outline-none"
-          />
+          <div className="relative flex-1">
+            <input
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search chapter, subject or topic..."
+              aria-label="Search content"
+              className="min-h-[44px] w-full rounded-xl border border-gray-300 py-2 pl-3 pr-9 text-sm text-gray-900 focus:border-[#534AB7] focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => { handleSearchChange(''); setIsSearchOpen(false); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => router.push('/dashboard')}
@@ -129,6 +192,19 @@ export function LearningMap({ studentId, data, isOfflineCache, onRefresh }: Lear
             Back to Dashboard
           </button>
         </div>
+
+        {/* S3.1 — DB search results panel */}
+        {isSearchOpen && (
+          <div className="mt-3">
+            <SearchResults
+              results={searchResults}
+              query={debouncedQuery}
+              grade={grade ?? 0}
+              board={board ?? ''}
+              isLoading={searchLoading}
+            />
+          </div>
+        )}
 
         <p className="mt-2 text-xs text-gray-500">
           Last synced: {new Date(data.lastSyncedAt).toLocaleString('en-IN')} {isOfflineCache ? '• Offline cache' : ''}
