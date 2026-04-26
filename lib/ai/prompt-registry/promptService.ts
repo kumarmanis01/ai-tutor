@@ -12,9 +12,10 @@
  *
  * EDIT LOG:
  * - 2026-04-26T15:00:00Z | copilot | created PromptService with DB cache and fallback registry support
+ * - 2026-04-26T07:00:56Z | copilot | switch Prisma enum import from PromptTypeEnum to PromptType after schema deduplication
  */
 
-import { PromptStatus as PrismaPromptStatus, PromptTypeEnum } from '@prisma/client';
+import { PromptStatus as PrismaPromptStatus, PromptType as PrismaPromptType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { cacheDelPattern, cacheGet, cacheSet } from '@/lib/cache';
@@ -33,7 +34,7 @@ const CACHE_TTL_SECONDS = 60 * 60;
 const CACHE_KEY = 'prompts:registry:v1:all';
 const FALLBACK_REGISTRY = new PromptRegistry(DEFAULT_PROMPTS);
 
-function toPromptType(value: PromptTypeEnum): PromptType {
+function toPromptType(value: PrismaPromptType): PromptType {
   return value as unknown as PromptType;
 }
 
@@ -41,8 +42,8 @@ function toPromptStatus(value: PrismaPromptStatus): PromptStatus {
   return value as unknown as PromptStatus;
 }
 
-function toPrismaPromptType(value: PromptType): PromptTypeEnum {
-  return value as unknown as PromptTypeEnum;
+function toPrismaPromptType(value: PromptType): PrismaPromptType {
+  return value as unknown as PrismaPromptType;
 }
 
 function toPrismaPromptStatus(value: PromptStatus): PrismaPromptStatus {
@@ -68,7 +69,7 @@ function toPromptConfig(record: PromptVersionRecord): PromptConfig {
 
 function toPromptVersionRecord(record: {
   id: string;
-  promptType: PromptTypeEnum;
+  promptType: PrismaPromptType;
   version: string;
   systemPrompt: string;
   userPromptTemplate: string;
