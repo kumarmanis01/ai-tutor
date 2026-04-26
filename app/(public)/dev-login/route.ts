@@ -3,9 +3,23 @@ import { encode } from 'next-auth/jwt';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: Request) {
-  // Security guard: only available in non-production
+  // Security guard 1: only available when ENABLE_DEV_LOGIN=1 is explicitly set
+  if (process.env.ENABLE_DEV_LOGIN !== '1') {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
+  // Security guard 2: hard block in production regardless of the flag
   if (process.env.NODE_ENV === 'production') {
     return new NextResponse('Not found', { status: 404 });
+  }
+
+  // Fail fast when NEXTAUTH_SECRET is not configured -- never use a fallback
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    return NextResponse.json(
+      { error: 'NEXTAUTH_SECRET is not configured -- refusing to mint session cookie' },
+      { status: 500 }
+    );
   }
 
   const url = new URL(req.url);
@@ -21,6 +35,7 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'user not found' }, { status: 404 });
 
   // Build token payload similar to next-auth jwt callback
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- next-auth token shape is not fully typed
   const token: any = {
     id: user.id,
     name: user.name ?? null,
@@ -29,28 +44,22 @@ export async function GET(req: Request) {
     role: user.role ?? null,
   };
 
-  const secret = process.env.NEXTAUTH_SECRET || process.env.SECRET || 'dev-secret';
-
   // Encode JWT using next-auth utility so cookie matches next-auth expectations
   const encoded = await encode({ token, secret });
 
   const res = NextResponse.redirect(new URL('/dashboard', req.url));
 
-  // Set NextAuth session cookie name used in non-https dev environments.
-  // Use both common names to increase compatibility with app helpers.
+  // Set NextAuth session cookie.
+  // Derive `secure` from the actual request scheme so local HTTP dev works
+  // while HTTPS staging/preview environments still get a secure cookie.
   const cookieName = 'next-auth.session-token';
   res.cookies.set(cookieName, String(encoded), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: url.protocol === 'https:',
     path: '/',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 30,
   });
-
-  // Also set __Secure- prefixed cookie when applicable (won't be used in dev)
-  if (process.env.NODE_ENV !== 'production') {
-    // avoid setting __Secure- cookie in dev if not needed
-  }
 
   return res;
 }

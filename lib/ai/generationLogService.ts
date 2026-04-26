@@ -12,8 +12,16 @@
  *
  * EDIT LOG:
  * - 2026-04-26T15:00:00Z | copilot | created GenerationLogService and token-cost estimator for Sprint 7 logging
+ * - 2026-04-26T08:03:49Z | copilot | use Prisma PromptType and InputJsonValue casts for aIGenerationLog.create worker build type checks
+ * - 2026-04-26T08:03:49Z | copilot | switch PromptType to local enum and cast to Prisma namespace enum for DB writes
+ * - 2026-04-26T09:10:00Z | copilot | replace Prisma.$Enums usage with direct PromptType import and normalize string prompt types for stable VPS typecheck
+ * - 2026-04-26T09:35:00Z | copilot | type normalized promptType against Prisma AIGenerationLogCreateInput to satisfy worker build strictness
+ * - 2026-04-26T10:58:00Z | copilot | infer promptType from prisma client create signature instead of Prisma namespace type for VPS compatibility
+ * - 2026-04-26T11:20:00Z | copilot | tighten prisma promptType inference from create-data union extraction to avoid string widening in worker builds
  */
 
+import { Prisma } from '@prisma/client';
+import { PromptType } from '@/lib/ai/prompt-registry/types';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { redactPIIFromText } from '@/lib/ai/piiRedaction';
@@ -31,7 +39,7 @@ const MODEL_RATES: Record<string, ModelRate> = {
 };
 
 export interface GenerationLogInput {
-  promptType: string;
+  promptType: PromptType | string;
   promptVersion?: string;
   abTestId?: string | null;
   abVariant?: string | null;
@@ -51,6 +59,47 @@ export interface GenerationLogInput {
   profileId?: string | null;
   contentId?: string | null;
   jobId?: string | null;
+}
+
+type GenerationLogCreateArgs = Parameters<typeof prisma.aIGenerationLog.create>[0];
+type GenerationLogCreateData = GenerationLogCreateArgs extends { data: infer DataShape }
+  ? DataShape
+  : never;
+type PrismaPromptType = Extract<GenerationLogCreateData, { promptType: unknown }>['promptType'];
+
+function normalizePromptType(value: PromptType | string): PrismaPromptType {
+  if (Object.values(PromptType).includes(value as PromptType)) {
+    return value as unknown as PrismaPromptType;
+  }
+
+  const normalized = String(value).trim().toUpperCase();
+  switch (normalized) {
+    case 'LESSON_GENERATION':
+    case 'NOTES':
+      return PromptType.LESSON_GENERATION as unknown as PrismaPromptType;
+    case 'PRACTICE_QUESTIONS':
+    case 'PRACTICE':
+    case 'QUESTIONS':
+      return PromptType.PRACTICE_QUESTIONS as unknown as PrismaPromptType;
+    case 'DOUBT_SOLVING':
+    case 'DOUBTS':
+    case 'CHAT':
+      return PromptType.DOUBT_SOLVING as unknown as PrismaPromptType;
+    case 'SIMPLE_EXPLANATION':
+    case 'EXPLANATION':
+      return PromptType.SIMPLE_EXPLANATION as unknown as PrismaPromptType;
+    case 'CONTENT_TAGGING':
+      return PromptType.CONTENT_TAGGING as unknown as PrismaPromptType;
+    case 'DIAGNOSTIC_QUIZ':
+      return PromptType.DIAGNOSTIC_QUIZ as unknown as PrismaPromptType;
+    case 'PROGRESSIVE_HINTS':
+      return PromptType.PROGRESSIVE_HINTS as unknown as PrismaPromptType;
+    case 'WEEKLY_REPORT':
+      return PromptType.WEEKLY_REPORT as unknown as PrismaPromptType;
+    case 'CONTENT_ENHANCEMENT':
+    default:
+      return PromptType.CONTENT_ENHANCEMENT as unknown as PrismaPromptType;
+  }
 }
 
 function sanitizeRequestVariables(
@@ -95,11 +144,11 @@ export class GenerationLogService {
 
       await prisma.aIGenerationLog.create({
         data: {
-          promptType: log.promptType,
+          promptType: normalizePromptType(log.promptType),
           promptVersion: log.promptVersion ?? 'unknown',
           abTestId: log.abTestId ?? null,
           abVariant: log.abVariant ?? null,
-          requestVariables: sanitizeRequestVariables(log.requestVariables),
+          requestVariables: (sanitizeRequestVariables(log.requestVariables) ?? Prisma.JsonNull) as Prisma.InputJsonValue,
           requestTokens: log.requestTokens ?? null,
           responseText: log.responseText ? redactPIIFromText(log.responseText) : null,
           responseTokens: log.responseTokens ?? null,
@@ -110,7 +159,7 @@ export class GenerationLogService {
           errorMessage: log.errorMessage ?? null,
           retryCount: log.retryCount ?? 0,
           qualityScore: log.qualityScore ?? null,
-          qualityDetails: log.qualityDetails ?? null,
+          qualityDetails: (log.qualityDetails ?? Prisma.JsonNull) as Prisma.InputJsonValue,
           userId: log.userId ?? null,
           profileId: log.profileId ?? null,
           contentId: log.contentId ?? null,

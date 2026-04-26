@@ -13,13 +13,13 @@
  * - 2026-04-19T00:00:00Z | copilot | fix(lint): alias unused imports to _-prefixed vars
  * - 2026-04-26T00:00:00Z | copilot | LP-7.1: add FAQPage schema markup (JSON-LD) for SEO
  * - 2026-04-26T00:00:00Z | copilot | fix(security): remove JSON-LD from client component, move to server; extract FAQ data as constant
+ * - 2026-04-26T11:20:00Z | copilot | remove unused PLANS import to keep lint clean
  */
 
 'use client';
 
 import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
-import { PLANS } from '@/lib/billing/plans';
 import { getFAQs } from './faq-data';
 
 const FAQSection = () => {

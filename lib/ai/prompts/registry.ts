@@ -13,12 +13,15 @@
  *
  * EDIT LOG:
  * - 2026-04-26T14:30:00Z | staff-engineer | created centralized prompt registry (PR-1.1)
+ * - 2026-04-26T07:41:39Z | copilot | fix: import PromptType/PromptStatus from local types.ts not @prisma/client to avoid VPS generate timing issues
+ * - 2026-04-26T08:03:49Z | copilot | revert to Prisma PromptType/PromptStatus for compatibility with DB-facing prompt services
+ * - 2026-04-26T08:03:49Z | copilot | switch back to local prompt types to avoid named @prisma/client enum import failures
  */
 
-import { PromptType, PromptStatus } from '@prisma/client';
+import { PromptType, PromptStatus } from '@/lib/ai/prompt-registry/types';
 
 /**
- * PR-1.1: PromptConfig interface — defines the structure of a prompt
+ * PR-1.1: PromptConfig interface -- defines the structure of a prompt
  */
 export interface PromptConfig {
   id: string;
@@ -51,7 +54,7 @@ const DEFAULT_REGISTRY: Record<PromptType, PromptConfig> = {
 Your role: Generate comprehensive, classroom-quality lesson notes that guide students to mastery.
 
 CORE PRINCIPLES:
-1. NEVER give direct answers to practice problems — guide with questions instead
+1. NEVER give direct answers to practice problems -- guide with questions instead
 2. Match the curriculum exactly (board + grade + subject + chapter)
 3. Write for the student's level: foundation (grades 6-8), standard (grades 9-10), advanced (grades 11-12)
 4. Use Indian examples: math (vegetables, cricket scores), science (local flora), social studies (Indian history)
@@ -92,10 +95,10 @@ Follow all output format rules and return valid JSON.`;
 Your role: Enhance existing content for clarity, pedagogy, and curriculum alignment.
 
 Evaluate content on:
-1. Pedagogical soundness — does it guide learning without direct answers?
-2. Curriculum alignment — matches board standards exactly
-3. Language appropriateness — reads naturally for target grade
-4. Engagement — uses Indian examples and relatable scenarios
+1. Pedagogical soundness -- does it guide learning without direct answers?
+2. Curriculum alignment -- matches board standards exactly
+3. Language appropriateness -- reads naturally for target grade
+4. Engagement -- uses Indian examples and relatable scenarios
 
 Always preserve the original intent while improving clarity.`,
     userPromptBuilder: (vars: Record<string, any>) => {
@@ -121,7 +124,7 @@ Provide only the enhanced content, no explanations.`;
 Your role: Answer the student's specific doubt with a guiding question, not a direct answer.
 
 CORE RULES:
-1. NEVER give the final answer — always guide with carefully chosen questions
+1. NEVER give the final answer -- always guide with carefully chosen questions
 2. Understand the misconception from conversation history
 3. Ask ONE guiding question that leads to the answer
 4. Reference relevant concepts from the curriculum
@@ -156,7 +159,7 @@ Your role: Break down difficult concepts into bite-sized, memorable pieces.
 
 RULES:
 1. Use analogies from Indian daily life (markets, cricket, festivals, cooking)
-2. Avoid jargon — explain every term
+2. Avoid jargon -- explain every term
 3. Use number examples: 5-6 sentences max per paragraph
 4. Always include: What it is → Why it matters → Example → Key takeaway`,
     userPromptBuilder: (vars: Record<string, any>) => {
@@ -231,9 +234,9 @@ Format: JSON array of {question, options, correctAnswer, conceptTested}.`;
 Your role: Generate 3-level hints, each more specific than the last.
 
 RULES:
-1. Hint 1 (Tier 1): Conceptual nudge — What should you think about?
-2. Hint 2 (Tier 2): Process hint — What steps should you take?
-3. Hint 3 (Tier 3): Near-answer — Almost there, what's the final piece?
+1. Hint 1 (Tier 1): Conceptual nudge -- What should you think about?
+2. Hint 2 (Tier 2): Process hint -- What steps should you take?
+3. Hint 3 (Tier 3): Near-answer -- Almost there, what's the final piece?
 4. NEVER give the complete answer in Hint 3`,
     userPromptBuilder: (vars: Record<string, any>) => {
       const { problem, studentLevel } = vars;
@@ -280,8 +283,8 @@ Your role: Summarize learning in plain language, highlight strengths, and sugges
 
 RULES:
 1. Write for low-digital-literacy parents
-2. Use encouraging language — focus on growth
-3. Avoid jargon and percentages — use descriptive terms
+2. Use encouraging language -- focus on growth
+3. Avoid jargon and percentages -- use descriptive terms
 4. Always suggest ONE actionable next step`,
     userPromptBuilder: (vars: Record<string, any>) => {
       const { studentName, weekData } = vars;
@@ -294,7 +297,7 @@ ${JSON.stringify(weekData, null, 2)}`;
 };
 
 /**
- * PR-1.1: PromptRegistry class — retrieves prompts with versioning
+ * PR-1.1: PromptRegistry class -- retrieves prompts with versioning
  */
 export class PromptRegistry {
   /**

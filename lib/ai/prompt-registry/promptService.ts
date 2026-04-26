@@ -12,9 +12,16 @@
  *
  * EDIT LOG:
  * - 2026-04-26T15:00:00Z | copilot | created PromptService with DB cache and fallback registry support
+ * - 2026-04-26T07:00:56Z | copilot | switch Prisma enum import from PromptTypeEnum to PromptType after schema deduplication
+ * - 2026-04-26T07:50:16Z | copilot | remove direct Prisma enum imports to avoid TS2614 during VPS pre-flight type check
+ * - 2026-04-26T07:55:36Z | copilot | fix TS2693 by replacing PrismaPromptStatus value usage with PromptStatus constants
+ * - 2026-04-26T08:03:49Z | copilot | restore Prisma enum imports for DB-facing assignments to satisfy worker build type checks
+ * - 2026-04-26T08:03:49Z | copilot | replace named Prisma enum imports with Prisma namespace aliases to avoid TS2614
+ * - 2026-04-26T09:10:00Z | copilot | replace Prisma.$Enums type references with direct @prisma/client enum imports for VPS compiler compatibility
+ * - 2026-04-26T09:25:00Z | copilot | remove direct Prisma enum imports and rely on string-safe local enum casts for broader client compatibility
+ * - 2026-04-26T11:20:00Z | copilot | infer PromptType and PromptStatus from prisma.promptVersion.create args to satisfy strict worker build types
  */
 
-import { PromptStatus as PrismaPromptStatus, PromptTypeEnum } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { cacheDelPattern, cacheGet, cacheSet } from '@/lib/cache';
@@ -29,11 +36,18 @@ import {
 import { buildUserPromptFromTemplate, DEFAULT_PROMPTS } from './defaults';
 import { PromptRegistry } from './promptRegistry';
 
+type PromptVersionCreateArgs = Parameters<typeof prisma.promptVersion.create>[0];
+type PromptVersionCreateData = PromptVersionCreateArgs extends { data: infer DataShape }
+  ? DataShape
+  : never;
+type PrismaPromptType = Extract<PromptVersionCreateData, { promptType: unknown }>['promptType'];
+type PrismaPromptStatus = Extract<PromptVersionCreateData, { status?: unknown }>['status'];
+
 const CACHE_TTL_SECONDS = 60 * 60;
 const CACHE_KEY = 'prompts:registry:v1:all';
 const FALLBACK_REGISTRY = new PromptRegistry(DEFAULT_PROMPTS);
 
-function toPromptType(value: PromptTypeEnum): PromptType {
+function toPromptType(value: PrismaPromptType): PromptType {
   return value as unknown as PromptType;
 }
 
@@ -41,12 +55,12 @@ function toPromptStatus(value: PrismaPromptStatus): PromptStatus {
   return value as unknown as PromptStatus;
 }
 
-function toPrismaPromptType(value: PromptType): PromptTypeEnum {
-  return value as unknown as PromptTypeEnum;
+function toPrismaPromptType(value: PromptType): PrismaPromptType {
+  return value as unknown as PrismaPromptType;
 }
 
-function toPrismaPromptStatus(value: PromptStatus): PrismaPromptStatus {
-  return value as unknown as PrismaPromptStatus;
+function toPrismaPromptStatus(value: PromptStatus): NonNullable<PrismaPromptStatus> {
+  return value as unknown as NonNullable<PrismaPromptStatus>;
 }
 
 function toPromptConfig(record: PromptVersionRecord): PromptConfig {
@@ -68,7 +82,7 @@ function toPromptConfig(record: PromptVersionRecord): PromptConfig {
 
 function toPromptVersionRecord(record: {
   id: string;
-  promptType: PromptTypeEnum;
+  promptType: PrismaPromptType;
   version: string;
   systemPrompt: string;
   userPromptTemplate: string;
@@ -170,7 +184,7 @@ export class PromptService {
         modelName: input.modelName,
         maxTokens: input.maxTokens,
         temperature: input.temperature,
-        status: PrismaPromptStatus.DRAFT,
+        status: toPrismaPromptStatus(PromptStatus.DRAFT),
         changeNotes: input.changeNotes ?? null,
         createdBy: input.createdBy ?? null,
       },
@@ -189,7 +203,7 @@ export class PromptService {
       select: { id: true, status: true },
     });
 
-    if (!existing || existing.status !== PrismaPromptStatus.DRAFT) {
+    if (!existing || existing.status !== toPrismaPromptStatus(PromptStatus.DRAFT)) {
       return null;
     }
 
@@ -217,15 +231,15 @@ export class PromptService {
       await tx.promptVersion.updateMany({
         where: {
           promptType: existing.promptType,
-          status: PrismaPromptStatus.ACTIVE,
+          status: toPrismaPromptStatus(PromptStatus.ACTIVE),
           NOT: { id },
         },
-        data: { status: PrismaPromptStatus.DEPRECATED },
+        data: { status: toPrismaPromptStatus(PromptStatus.DEPRECATED) },
       });
 
       return tx.promptVersion.update({
         where: { id },
-        data: { status: PrismaPromptStatus.ACTIVE },
+        data: { status: toPrismaPromptStatus(PromptStatus.ACTIVE) },
       });
     });
 
@@ -237,7 +251,7 @@ export class PromptService {
     try {
       const row = await prisma.promptVersion.update({
         where: { id },
-        data: { status: PrismaPromptStatus.DEPRECATED },
+        data: { status: toPrismaPromptStatus(PromptStatus.DEPRECATED) },
       });
       await this.invalidateCache();
       return toPromptVersionRecord(row);
@@ -274,7 +288,7 @@ export class PromptService {
       take: pageSize,
     });
 
-    const mapped = rows.map((item) => toPromptVersionRecord(item));
+    const mapped = rows.map((item: Parameters<typeof toPromptVersionRecord>[0]) => toPromptVersionRecord(item));
 
     if (useCache) {
       await cacheSet(CACHE_KEY, mapped, CACHE_TTL_SECONDS);
