@@ -14,6 +14,8 @@
  * - 2026-04-26T15:00:00Z | copilot | created GenerationLogService and token-cost estimator for Sprint 7 logging
  * - 2026-04-26T08:03:49Z | copilot | use Prisma PromptType and InputJsonValue casts for aIGenerationLog.create worker build type checks
  * - 2026-04-26T08:03:49Z | copilot | switch PromptType to local enum and cast to Prisma namespace enum for DB writes
+ * - 2026-04-26T09:10:00Z | copilot | replace Prisma.$Enums usage with direct PromptType import and normalize string prompt types for stable VPS typecheck
+ * - 2026-04-26T09:35:00Z | copilot | type normalized promptType against Prisma AIGenerationLogCreateInput to satisfy worker build strictness
  */
 
 import { Prisma } from '@prisma/client';
@@ -35,7 +37,7 @@ const MODEL_RATES: Record<string, ModelRate> = {
 };
 
 export interface GenerationLogInput {
-  promptType: PromptType;
+  promptType: PromptType | string;
   promptVersion?: string;
   abTestId?: string | null;
   abVariant?: string | null;
@@ -55,6 +57,43 @@ export interface GenerationLogInput {
   profileId?: string | null;
   contentId?: string | null;
   jobId?: string | null;
+}
+
+type PrismaPromptType = Prisma.AIGenerationLogCreateInput['promptType'];
+
+function normalizePromptType(value: PromptType | string): PrismaPromptType {
+  if (Object.values(PromptType).includes(value as PromptType)) {
+    return value as unknown as PrismaPromptType;
+  }
+
+  const normalized = String(value).trim().toUpperCase();
+  switch (normalized) {
+    case 'LESSON_GENERATION':
+    case 'NOTES':
+      return PromptType.LESSON_GENERATION as unknown as PrismaPromptType;
+    case 'PRACTICE_QUESTIONS':
+    case 'PRACTICE':
+    case 'QUESTIONS':
+      return PromptType.PRACTICE_QUESTIONS as unknown as PrismaPromptType;
+    case 'DOUBT_SOLVING':
+    case 'DOUBTS':
+    case 'CHAT':
+      return PromptType.DOUBT_SOLVING as unknown as PrismaPromptType;
+    case 'SIMPLE_EXPLANATION':
+    case 'EXPLANATION':
+      return PromptType.SIMPLE_EXPLANATION as unknown as PrismaPromptType;
+    case 'CONTENT_TAGGING':
+      return PromptType.CONTENT_TAGGING as unknown as PrismaPromptType;
+    case 'DIAGNOSTIC_QUIZ':
+      return PromptType.DIAGNOSTIC_QUIZ as unknown as PrismaPromptType;
+    case 'PROGRESSIVE_HINTS':
+      return PromptType.PROGRESSIVE_HINTS as unknown as PrismaPromptType;
+    case 'WEEKLY_REPORT':
+      return PromptType.WEEKLY_REPORT as unknown as PrismaPromptType;
+    case 'CONTENT_ENHANCEMENT':
+    default:
+      return PromptType.CONTENT_ENHANCEMENT as unknown as PrismaPromptType;
+  }
 }
 
 function sanitizeRequestVariables(
@@ -99,7 +138,7 @@ export class GenerationLogService {
 
       await prisma.aIGenerationLog.create({
         data: {
-          promptType: log.promptType as unknown as Prisma.$Enums.PromptType,
+          promptType: normalizePromptType(log.promptType),
           promptVersion: log.promptVersion ?? 'unknown',
           abTestId: log.abTestId ?? null,
           abVariant: log.abVariant ?? null,

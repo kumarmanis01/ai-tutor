@@ -17,6 +17,8 @@
  * - 2026-04-26T07:41:39Z | copilot | fix: import PromptType/PromptStatus from local types.ts; replace PromptVersion Prisma model with local interface
  * - 2026-04-26T08:03:49Z | copilot | restore Prisma PromptVersion/PromptType/PromptStatus types and Prisma JSON input casts for worker build
  * - 2026-04-26T08:03:49Z | copilot | remove named Prisma enum/model imports; use local prompt types with Prisma namespace casts for DB boundaries
+ * - 2026-04-26T09:10:00Z | copilot | replace Prisma.$Enums type references with direct @prisma/client enum imports for VPS compiler compatibility
+ * - 2026-04-26T09:25:00Z | copilot | remove direct Prisma enum imports and enforce local enum-to-DB string casts for client compatibility
  */
 
 import { Prisma } from '@prisma/client';
@@ -29,24 +31,24 @@ import { PromptRegistry } from './registry';
 const CACHE_TTL = 3600; // 1 hour in seconds (PR-1.2 spec)
 const CACHE_KEY_PREFIX = 'prompt:v1:';
 
-function toPrismaPromptType(value: PromptType): Prisma.$Enums.PromptType {
-  return value as unknown as Prisma.$Enums.PromptType;
+function toPrismaPromptType(value: PromptType): string {
+  return value as unknown as string;
 }
 
-function toPrismaPromptStatus(value: PromptStatus): Prisma.$Enums.PromptStatus {
-  return value as unknown as Prisma.$Enums.PromptStatus;
+function toPrismaPromptStatus(value: PromptStatus): string {
+  return value as unknown as string;
 }
 
 function toPromptVersion(row: {
   id: string;
-  promptType: Prisma.$Enums.PromptType;
+  promptType: string;
   version: string;
   systemPrompt: string;
   userPromptTemplate: string;
   modelName: string;
   maxTokens: number;
   temperature: number;
-  status: Prisma.$Enums.PromptStatus;
+  status: string;
   changeNotes: string | null;
   createdBy: string | null;
   performanceScore: number | null;
@@ -172,7 +174,9 @@ export class PromptService {
         orderBy: [{ promptType: 'asc' }, { createdAt: 'desc' }],
       });
 
-      return prompts.map((row) => toPromptVersion(row));
+      return (prompts as Array<Parameters<typeof toPromptVersion>[0]>).map((row) =>
+        toPromptVersion(row)
+      );
     } catch (error) {
       logger.error('PromptService.listPrompts failed', {
         error: error instanceof Error ? error.message : String(error),
