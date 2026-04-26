@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - A1.2: ContentReviewEditor — side-by-side markdown editor + preview for
+ * - A1.2: ContentReviewEditor -- side-by-side markdown editor + preview for
  *   admin content review. 70% preview / 30% editor layout. Version history
  *   tab, sticky action bar (Approve/Reject/Request Revision/Save Draft).
  *
@@ -90,7 +90,7 @@ type ContentReviewEditorProps = {
 };
 
 /**
- * A1.2 — Side-by-side content review editor for admin/moderator.
+ * A1.2 -- Side-by-side content review editor for admin/moderator.
  */
 export function ContentReviewEditor({ contentId }: ContentReviewEditorProps) {
   const router = useRouter();
@@ -243,7 +243,7 @@ export function ContentReviewEditor({ contentId }: ContentReviewEditorProps) {
       <div className="flex flex-1 overflow-hidden">
         {activeTab === 'editor' && (
           <>
-            {/* Preview — 70% */}
+            {/* Preview -- 70% */}
             <div className="w-7/10 flex-[7] overflow-y-auto border-r border-gray-200 bg-gray-50 p-6">
               <div className="prose prose-sm max-w-none">
                 <h2 className="text-lg font-bold text-gray-900">{content.topic}</h2>
@@ -255,7 +255,7 @@ export function ContentReviewEditor({ contentId }: ContentReviewEditorProps) {
                 </pre>
               </div>
             </div>
-            {/* Editor — 30% */}
+            {/* Editor -- 30% */}
             <div className="flex-[3] overflow-y-auto p-4">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Markdown Editor

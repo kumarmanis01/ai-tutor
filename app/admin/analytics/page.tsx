@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - A4.1: Executive Analytics Dashboard — admin entry point at /admin/analytics.
+ * - A4.1: Executive Analytics Dashboard -- admin entry point at /admin/analytics.
  *   Shows high-level KPIs, active users, content pipeline, and top topics.
  *
  * LINKED UNIT TEST:

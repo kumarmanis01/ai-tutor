@@ -64,7 +64,7 @@ async function tryGetCache(key: string): Promise<unknown | null> {
     const cached = await redis.get(key);
     if (cached) return JSON.parse(cached as string) as unknown;
   } catch {
-    // Redis unavailable — proceed without cache
+    // Redis unavailable -- proceed without cache
   }
   return null;
 }
@@ -75,7 +75,7 @@ async function trySetCache(key: string, value: unknown): Promise<void> {
     const redis = getRedisClient();
     await redis.set(key, JSON.stringify(value), { EX: CACHE_TTL_SECONDS });
   } catch {
-    // Redis unavailable — skip caching
+    // Redis unavailable -- skip caching
   }
 }
 
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       prisma.user.count({ where: { createdAt: { gte: start, lte: end } } }),
       // New registrations in previous period
       prisma.user.count({ where: { createdAt: { gte: prevStart, lte: prevEnd } } }),
-      // Active students (those with structured sessions in period) — proxy for DAU/WAU
+      // Active students (those with structured sessions in period) -- proxy for DAU/WAU
       prisma.structuredSession.groupBy({
         by: ['studentId'],
         where: { startedAt: { gte: start, lte: end } },

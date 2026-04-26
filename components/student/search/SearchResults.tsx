@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - S3.1: SearchResults — renders a list of topics/content found via DB search.
+ * - S3.1: SearchResults -- renders a list of topics/content found via DB search.
  *   Shows ContentRequestCard when results are empty.
  *
  * LINKED UNIT TEST:
@@ -78,7 +78,7 @@ function ResultItem({ result }: { result: SearchResult }) {
 }
 
 /**
- * S3.1 — Renders DB search results or the ContentRequestCard for zero results.
+ * S3.1 -- Renders DB search results or the ContentRequestCard for zero results.
  */
 export function SearchResults({
   results,

@@ -1,4 +1,18 @@
 #!/usr/bin/env node
+/**
+ * FILE OBJECTIVE:
+ * - Rewrite emitted dist JS relative imports to explicit ESM file specifiers (.js or /index.js).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/scripts/fix-dist-imports.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-26T00:00:00Z | copilot | improve import rewrite matcher for deterministic ESM extension patching
+ */
 const fs = require('fs');
 const path = require('path');
 
@@ -43,40 +57,56 @@ function walk(dir, cb) {
   }
 }
 
-const importRe = /(from\s+|import\()(['"])(\.\.?\/[^'"\)]+)(['"])/g;
+const staticImportRe = /(from\s+['"])(\.\.?\/[^'"\n]+)(['"])/g;
+const dynamicImportRe = /(import\s*\(\s*['"])(\.\.?\/[^'"\n]+)(['"]\s*\))/g;
 
-let patched = 0;
-walk(ROOT, (file) => {
-  try {
-    let src = fs.readFileSync(file, 'utf8');
-    const out = src.replace(importRe, (m, prefix, q, imp, q2) => {
-      if (imp.endsWith('.js') || imp.endsWith('.mjs') || imp.endsWith('.cjs')) return m;
+function normalizeSpecifier(file, imp, existsFn) {
+  if (imp.endsWith('.js') || imp.endsWith('.mjs') || imp.endsWith('.cjs')) return imp;
 
-      // Resolve candidate paths relative to the file to decide whether to
-      // append '.js' or '/index.js'. This avoids rewriting imports to
-      // '.../lib/invoices.js' when the compiled output is a directory
-      // containing 'index.js' (e.g., 'lib/invoices/index.js').
-      try {
-        const fileDir = path.dirname(file);
-        const candidateFile = path.resolve(fileDir, imp + '.js');
-        const candidateIndex = path.resolve(fileDir, imp, 'index.js');
-        if (fs.existsSync(candidateFile)) {
-          return `${prefix}${q}${imp}.js${q2}`;
-        } else if (fs.existsSync(candidateIndex)) {
-          return `${prefix}${q}${imp}/index.js${q2}`;
-        }
-      } catch (e) {
-        // On any error, fall back to appending .js to be conservative
+  const fileDir = path.dirname(file);
+  const candidateFile = path.resolve(fileDir, imp + '.js');
+  const candidateIndex = path.resolve(fileDir, imp, 'index.js');
+
+  if (existsFn(candidateFile)) return imp + '.js';
+  if (existsFn(candidateIndex)) return imp + '/index.js';
+
+  return imp + '.js';
+}
+
+function rewriteRelativeImportSpecifiers(source, file, existsFn) {
+  const withStatic = source.replace(staticImportRe, (m, prefix, imp, suffix) => {
+    return `${prefix}${normalizeSpecifier(file, imp, existsFn)}${suffix}`;
+  });
+
+  return withStatic.replace(dynamicImportRe, (m, prefix, imp, suffix) => {
+    return `${prefix}${normalizeSpecifier(file, imp, existsFn)}${suffix}`;
+  });
+}
+
+function run() {
+  let patched = 0;
+  walk(ROOT, (file) => {
+    try {
+      let src = fs.readFileSync(file, 'utf8');
+      const out = rewriteRelativeImportSpecifiers(src, file, fs.existsSync);
+      if (out !== src) {
+        fs.writeFileSync(file, out, 'utf8');
+        patched++;
+        console.log('patched', file);
       }
-      return `${prefix}${q}${imp}.js${q2}`;
-    });
-    if (out !== src) {
-      fs.writeFileSync(file, out, 'utf8');
-      patched++;
-      console.log('patched', file);
+    } catch (e) {
+      console.error('err', file, e && e.message);
     }
-  } catch (e) {
-    console.error('err', file, e && e.message);
-  }
-});
-console.log('done. patched files:', patched);
+  });
+  console.log('done. patched files:', patched);
+}
+
+if (require.main === module) {
+  run();
+}
+
+module.exports = {
+  normalizeSpecifier,
+  rewriteRelativeImportSpecifiers,
+  run,
+};

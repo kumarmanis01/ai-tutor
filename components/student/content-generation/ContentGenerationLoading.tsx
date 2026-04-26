@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - S3.2: ContentGenerationLoading — animated loading screen with cycling
+ * - S3.2: ContentGenerationLoading -- animated loading screen with cycling
  *   study messages shown while AI content is being generated.
  *   Transitions to StreamingContent when first block arrives.
  *
@@ -25,7 +25,7 @@ const LOADING_MESSAGES = [
   'Organising concepts and examples... 🗂️',
   'Crafting explanations just for you... ✍️',
   'Adding practice questions... 🎯',
-  'Almost ready — polishing the final notes... ✨',
+  'Almost ready -- polishing the final notes... ✨',
 ];
 
 // Progress percentage for each step (shown as bar fill)
@@ -36,7 +36,7 @@ type ContentGenerationLoadingProps = {
 };
 
 /**
- * S3.2 — Full-screen loading state for AI content generation.
+ * S3.2 -- Full-screen loading state for AI content generation.
  * Cycles through LOADING_MESSAGES every ~4s.
  */
 export function ContentGenerationLoading({ topic }: ContentGenerationLoadingProps) {
@@ -93,7 +93,7 @@ export function ContentGenerationLoading({ topic }: ContentGenerationLoadingProp
       </p>
 
       <p className="mt-8 max-w-xs text-xs text-gray-400">
-        This usually takes 15–30 seconds. You can come back later and
+        This usually takes 15-30 seconds. You can come back later and
         it will be ready.
       </p>
     </div>

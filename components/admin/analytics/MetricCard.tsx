@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - A4.1: MetricCard — displays a single analytics KPI with value,
+ * - A4.1: MetricCard -- displays a single analytics KPI with value,
  *   trend indicator (+/-%), and an optional bar sparkline.
  *
  * LINKED UNIT TEST:
@@ -61,7 +61,7 @@ function Sparkline({ values }: { values: number[] }) {
 }
 
 /**
- * A4.1 — KPI card with trend and sparkline.
+ * A4.1 -- KPI card with trend and sparkline.
  */
 export function MetricCard({ label, value, suffix, trend, sparkline }: MetricCardProps) {
   return (

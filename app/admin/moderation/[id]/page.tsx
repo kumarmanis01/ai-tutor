@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - A1.2: Admin content review page — entry point for single content item review.
+ * - A1.2: Admin content review page -- entry point for single content item review.
  *   Renders the ContentReviewEditor client component with full-screen layout.
  *
  * LINKED UNIT TEST:

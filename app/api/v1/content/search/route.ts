@@ -24,7 +24,7 @@ import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  // Auth guard — session first, before any DB query
+  // Auth guard -- session first, before any DB query
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id) {
     return NextResponse.json(
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         subject: t.chapter?.subject?.name ?? '',
         grade: t.chapter?.subject?.class?.grade ?? null,
         board: t.chapter?.subject?.class?.board?.name ?? '',
-        description: `${t.chapter?.name ?? ''} — ${t.chapter?.subject?.name ?? ''}`,
+        description: `${t.chapter?.name ?? ''} -- ${t.chapter?.subject?.name ?? ''}`,
         contentStatus: t.status,
         topicId: t.id,
       })),
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         subject: c.subject,
         grade: c.grade,
         board: c.board,
-        description: `AI Generated — ${c.subject}`,
+        description: `AI Generated -- ${c.subject}`,
         contentStatus: c.status,
         contentId: c.id,
       })),

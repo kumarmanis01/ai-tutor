@@ -13,7 +13,7 @@
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.1 learning map UI
  * - 2026-04-25T01:45:00Z | copilot | routed premium-locked nodes to freemium wall and added completed-chapter practice entry
- * - 2026-04-25T12:00:00Z | copilot | S3.1 — added DB content search with debounce + ContentRequestCard fallback
+ * - 2026-04-25T12:00:00Z | copilot | S3.1 -- added DB content search with debounce + ContentRequestCard fallback
  */
 
 'use client';
@@ -193,7 +193,7 @@ export function LearningMap({ studentId, data, isOfflineCache, onRefresh, grade,
           </button>
         </div>
 
-        {/* S3.1 — DB search results panel */}
+        {/* S3.1 -- DB search results panel */}
         {isSearchOpen && (
           <div className="mt-3">
             <SearchResults

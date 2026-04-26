@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - A4.1: TimeFilter — period selector for the executive analytics dashboard.
+ * - A4.1: TimeFilter -- period selector for the executive analytics dashboard.
  *   Options: Today, This Week, This Month, Custom Range.
  *
  * LINKED UNIT TEST:
@@ -35,7 +35,7 @@ const PRESETS: { value: Period; label: string }[] = [
 ];
 
 /**
- * A4.1 — Time period filter for analytics.
+ * A4.1 -- Time period filter for analytics.
  */
 export function TimeFilter({ value, customStart, customEnd, onChange }: TimeFilterProps) {
   const [localStart, setLocalStart] = useState(customStart ?? '');

@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - A4.1: AnalyticsDashboardClient — executive dashboard with time filter,
+ * - A4.1: AnalyticsDashboardClient -- executive dashboard with time filter,
  *   KPI metric cards, top topics table, and auto-refresh every 5 minutes.
  *
  * LINKED UNIT TEST:
@@ -55,7 +55,7 @@ type DashboardData = {
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * A4.1 — Executive analytics dashboard client.
+ * A4.1 -- Executive analytics dashboard client.
  */
 export function AnalyticsDashboardClient() {
   const [period, setPeriod] = useState<Period>('week');
@@ -129,7 +129,7 @@ export function AnalyticsDashboardClient() {
             onClick={() => void fetchDashboard(period, customStart, customEnd)}
             className="min-h-[36px] rounded-xl border border-gray-200 px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
           >
-            {isLoading ? 'Refreshing…' : 'Refresh'}
+            {isLoading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
