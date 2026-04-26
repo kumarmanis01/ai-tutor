@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-19T00:00:00Z | copilot | fix(lint): alias unused imports to _-prefixed vars
+ * - 2026-04-26T00:00:00Z | copilot | LP-7.1: add FAQPage schema markup (JSON-LD) for SEO
  */
 
 'use client';
@@ -114,6 +115,24 @@ const FAQSection = () => {
 
   return (
     <section id="faq" className="py-12 md:py-16 bg-background">
+      {/* LP-7.1: FAQPage schema markup for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: faqs.map((faq) => ({
+              '@type': 'Question',
+              name: faq.questionEn,
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: faq.answerEn,
+              },
+            })),
+          }),
+        }}
+      />
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-4xl">
         <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/10 text-secondary rounded-full text-sm font-medium mb-4">

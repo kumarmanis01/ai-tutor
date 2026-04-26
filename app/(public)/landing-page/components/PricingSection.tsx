@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | restore clean PricingSection and imports; remove corrupted leading fragment
+ * - 2026-04-26T00:00:00Z | copilot | LP-6.2: add annual savings calculation and display to tuition comparison section
  */
 'use client';
 
@@ -138,6 +139,9 @@ const PricingSection = () => {
   const traditionalMin = 3000;
   const savingsMin = traditionalMin - standardPlan.billedRupees;
   const savingsText = `₹${savingsMin}+`;
+  // LP-6.2: Annual savings calculation
+  const annualSavingsMin = savingsMin * 12;
+  const annualSavingsText = `₹${annualSavingsMin.toLocaleString('en-IN')}+`;
 
   return (
     <section
@@ -280,6 +284,15 @@ const PricingSection = () => {
                     <p className="font-body text-sm text-muted-foreground">Every single month</p>
                   </div>
                   <p className="font-headline font-bold text-2xl text-primary">{savingsText}</p>
+                </div>
+
+                {/* LP-6.2: Annual savings display */}
+                <div className="flex items-center justify-between p-4 bg-success/5 rounded-lg border border-success/20">
+                  <div>
+                    <p className="font-headline font-bold text-lg text-secondary">Annual Savings</p>
+                    <p className="font-body text-sm text-muted-foreground">Per year per child</p>
+                  </div>
+                  <p className="font-headline font-bold text-2xl text-success">{annualSavingsText}</p>
                 </div>
               </div>
             </div>
