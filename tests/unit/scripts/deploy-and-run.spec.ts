@@ -33,7 +33,7 @@ describe('deploy-and-run.sh guardrails', () => {
 
   it('should explicitly verify devDependencies are pruned', () => {
     expect(script).toContain('npm prune --omit=dev');
-    expect(script).toContain('FATAL: devDependencies still installed after prune');
+    expect(script).toContain('FATAL: orphaned devDependencies remain after prune');
   });
 
   it('should gate dist output on explicit runtime import specifiers', () => {

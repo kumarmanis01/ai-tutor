@@ -18,6 +18,7 @@ set -euo pipefail
 # - 2026-04-26T00:00:00Z | copilot | add explicit devDependency prune verification and dist import-specifier deploy gate
 # - 2026-04-26T00:00:00Z | copilot | optimize build order to avoid redundant worker rebuild in happy-path
 # - 2026-04-26T00:00:00Z | copilot | add timestamped deploy logging, persistent log file, and global error trap for admin observability
+# - 2026-04-26T00:00:00Z | copilot | replace prune verification with prod-tree aware orphan check to prevent hoist/peer false positives
 #
 # Usage:
 #   ./scripts/deploy-and-run.sh                  # deploy current branch
@@ -327,6 +328,7 @@ log_info "npm prune --omit=dev completed"
 node <<'NODE'
 const fs = require('fs');
 const path = require('path');
+const cp = require('child_process');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
 const devDeps = Object.keys(pkg.devDependencies || {});
@@ -336,15 +338,52 @@ const prodDeps = new Set([
   ...Object.keys(pkg.peerDependencies || {}),
 ]);
 
-const residual = devDeps.filter((dep) => !prodDeps.has(dep) && fs.existsSync(path.join(process.cwd(), 'node_modules', dep)));
+// Build the resolved production dependency tree after prune.
+// This avoids false positives from npm hoisting/peer resolution behavior.
+let prodTree = {};
+try {
+  const raw = cp.execSync('npm ls --omit=dev --all --json', {
+    cwd: process.cwd(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+  });
+  prodTree = JSON.parse(raw);
+} catch (err) {
+  const stdout = err && err.stdout ? String(err.stdout) : '{}';
+  try {
+    prodTree = JSON.parse(stdout);
+  } catch {
+    console.error('FATAL: Unable to parse npm production tree for prune verification.');
+    process.exit(1);
+  }
+}
 
-if (residual.length > 0) {
-  console.error(`FATAL: devDependencies still installed after prune (${residual.length}).`);
-  console.error(`Examples: ${residual.slice(0, 20).join(', ')}`);
+const prodTreeNames = new Set();
+function collectNames(node) {
+  if (!node || typeof node !== 'object') return;
+  const deps = node.dependencies || {};
+  for (const [name, child] of Object.entries(deps)) {
+    prodTreeNames.add(name);
+    collectNames(child);
+  }
+}
+collectNames(prodTree);
+
+const orphaned = devDeps.filter((dep) => {
+  if (prodDeps.has(dep)) return false;
+  const presentOnDisk = fs.existsSync(path.join(process.cwd(), 'node_modules', dep));
+  if (!presentOnDisk) return false;
+  const usedByProdTree = prodTreeNames.has(dep);
+  return !usedByProdTree;
+});
+
+if (orphaned.length > 0) {
+  console.error(`FATAL: orphaned devDependencies remain after prune (${orphaned.length}).`);
+  console.error(`Examples: ${orphaned.slice(0, 20).join(', ')}`);
   process.exit(1);
 }
 
-console.log(`✅ Verified devDependencies pruned: ${devDeps.length - residual.length} checked`);
+console.log(`✅ Verified devDependencies pruned (prod-tree aware): ${devDeps.length - orphaned.length} checked`);
 NODE
 
 # 6c. Verify worker dist
