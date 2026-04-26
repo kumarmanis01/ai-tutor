@@ -18,8 +18,16 @@ node_modules
 dist
 coverage
 logs
+# Environment files — must never enter the build context
+.env
 .env.local
+.env.*.local
+# Development tooling — not needed at runtime
 .vscode
+.github
+docs
+tests
+__tests__
 npm-debug.log
 yarn-error.log
 .git
