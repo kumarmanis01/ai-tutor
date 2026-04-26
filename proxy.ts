@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { logger } from '@/lib/logger';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
@@ -26,28 +25,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Centralized API request logging (dev only)
-  const isApiRoute = pathname.startsWith('/api/');
-  const isDev =
-    process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
-  if (isApiRoute && isDev) {
-    const method = request.method;
-    logger.info(`[API] ${method} ${pathname} called`);
-    if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      try {
-        const clone = request.clone();
-        const body = await clone.text();
-        if (body) logger.debug(`[API] ${method} ${pathname} body: ${body}`);
-      } catch {}
-    }
-  }
-
   // Centralized protected prefixes
   const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session'];
 
   // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    logger.debug('[MIDDLEWARE] Token: ' + String(token));
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
     if (!allowed) {
       if (pathname.startsWith('/api/admin')) {

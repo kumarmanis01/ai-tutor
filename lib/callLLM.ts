@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate callbacks and add header
+ * - 2026-04-26T15:00:00Z | copilot | add non-blocking AIGenerationLog writes for success/failure paths
  */
 
 import crypto from 'crypto';
@@ -20,6 +21,7 @@ import { normalizeLanguage } from '@/lib/normalize';
 import { logger } from '@/lib/logger';
 import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker';
 import { redactPIIFromText, redactPIIFromMessages } from '@/lib/ai/piiRedaction';
+import { generationLogService } from '@/lib/ai/generationLogService';
 
 /** Hash a prompt for audit without storing the raw text. Exported for testing. */
 export function hashPrompt(text: string): string {
@@ -37,6 +39,51 @@ export function buildPromptRequestBody(prompt: string): {
   prompt_redacted_preview: string;
 } {
   return { prompt_hash: hashPrompt(prompt), prompt_redacted_preview: redactedPreview(prompt) };
+}
+
+function writeGenerationLog(params: {
+  meta: any;
+  promptType: string;
+  callType: string;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  content?: string;
+  latencyMs: number;
+  model: string;
+  success: boolean;
+  errorMessage?: string;
+  attempt: number;
+}) {
+  void generationLogService.logGeneration({
+    promptType: params.promptType,
+    promptVersion: params.meta?.promptVersion ? String(params.meta.promptVersion) : 'unknown',
+    requestVariables: {
+      callType: params.callType,
+      board: params.meta?.board,
+      grade: params.meta?.grade,
+      subject: params.meta?.subject,
+      chapter: params.meta?.chapter,
+      topic: params.meta?.topic,
+      language: normalizeLanguage(params.meta?.language),
+      topicId: params.meta?.topicId,
+    },
+    requestTokens: params.usage?.prompt_tokens ?? null,
+    responseText: params.content ?? null,
+    responseTokens: params.usage?.completion_tokens ?? null,
+    totalTokens: params.usage?.total_tokens ?? null,
+    latencyMs: params.latencyMs,
+    modelName: params.model,
+    success: params.success,
+    errorMessage: params.errorMessage,
+    retryCount: Math.max(0, params.attempt - 1),
+    userId: params.meta?.studentId ? String(params.meta.studentId) : null,
+    profileId: params.meta?.profileId ? String(params.meta.profileId) : null,
+    contentId: params.meta?.contentId ? String(params.meta.contentId) : null,
+    jobId: params.meta?.hydrationJobId
+      ? String(params.meta.hydrationJobId)
+      : params.meta?.jobId
+        ? String(params.meta.jobId)
+        : null,
+  });
 }
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval';
@@ -529,12 +576,34 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
             });
           } catch {}
         }
+        writeGenerationLog({
+          meta,
+          promptType,
+          callType,
+          usage,
+          content,
+          latencyMs,
+          model: selectedModel,
+          success: true,
+          attempt,
+        });
         return { content, usage, costUsd, latencyMs, model: selectedModel, attempt };
       } catch (e) {
         logger.error('Failed to write AIContentLog', { error: String(e) });
       }
 
       await recordSuccess();
+      writeGenerationLog({
+        meta,
+        promptType,
+        callType,
+        usage,
+        content,
+        latencyMs,
+        model: selectedModel,
+        success: true,
+        attempt,
+      });
       return { content, usage, costUsd, latencyMs, model: selectedModel, attempt };
     } catch (error: any) {
       lastError = error;
@@ -651,6 +720,17 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
       } catch (e) {
         logger.error('Failed to write AIContentLog on error path', { error: String(e) });
       }
+
+      writeGenerationLog({
+        meta,
+        promptType,
+        callType,
+        latencyMs,
+        model: selectedModel,
+        success: false,
+        errorMessage: error?.message ?? String(error),
+        attempt,
+      });
 
       if (!retryable || isLastAttempt) {
         if (isTutorCall) {
