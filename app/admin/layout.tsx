@@ -40,7 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = await getServerSessionForHandlers();
 
   if (!session || session.user?.role !== 'admin') {
-    redirect('/dashboard');
+    redirect('/auth/signin?callbackUrl=/admin');
   }
 
   // Badge counts -- all run in parallel; individual failures fall back to 0

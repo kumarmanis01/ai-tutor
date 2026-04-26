@@ -63,11 +63,11 @@ export default async function ParentLayout({ children }: { children: React.React
   const session = (await getServerSession(authOptions)) as AppSession | null;
 
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect('/auth/signin?callbackUrl=/parent/dashboard');
   }
 
   if (session.user.role !== 'parent') {
-    redirect('/dashboard');
+    redirect('/auth/signin?callbackUrl=/parent/dashboard');
   }
 
   return (
