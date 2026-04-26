@@ -13,9 +13,9 @@
  * EDIT LOG:
  * - 2026-04-26T15:00:00Z | copilot | created PromptService with DB cache and fallback registry support
  * - 2026-04-26T07:00:56Z | copilot | switch Prisma enum import from PromptTypeEnum to PromptType after schema deduplication
+ * - 2026-04-26T07:50:16Z | copilot | remove direct Prisma enum imports to avoid TS2614 during VPS pre-flight type check
  */
 
-import { PromptStatus as PrismaPromptStatus, PromptType as PrismaPromptType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { cacheDelPattern, cacheGet, cacheSet } from '@/lib/cache';
@@ -29,6 +29,9 @@ import {
 } from './types';
 import { buildUserPromptFromTemplate, DEFAULT_PROMPTS } from './defaults';
 import { PromptRegistry } from './promptRegistry';
+
+type PrismaPromptType = string;
+type PrismaPromptStatus = string;
 
 const CACHE_TTL_SECONDS = 60 * 60;
 const CACHE_KEY = 'prompts:registry:v1:all';
