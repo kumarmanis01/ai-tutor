@@ -14,6 +14,8 @@
  * EDIT LOG:
  * - 2026-04-26T14:30:00Z | staff-engineer | created centralized prompt registry (PR-1.1)
  * - 2026-04-26T07:41:39Z | copilot | fix: import PromptType/PromptStatus from local types.ts not @prisma/client to avoid VPS generate timing issues
+ * - 2026-04-26T08:03:49Z | copilot | revert to Prisma PromptType/PromptStatus for compatibility with DB-facing prompt services
+ * - 2026-04-26T08:03:49Z | copilot | switch back to local prompt types to avoid named @prisma/client enum import failures
  */
 
 import { PromptType, PromptStatus } from '@/lib/ai/prompt-registry/types';

@@ -15,8 +15,11 @@
  * - 2026-04-26T07:00:56Z | copilot | switch Prisma enum import from PromptTypeEnum to PromptType after schema deduplication
  * - 2026-04-26T07:50:16Z | copilot | remove direct Prisma enum imports to avoid TS2614 during VPS pre-flight type check
  * - 2026-04-26T07:55:36Z | copilot | fix TS2693 by replacing PrismaPromptStatus value usage with PromptStatus constants
+ * - 2026-04-26T08:03:49Z | copilot | restore Prisma enum imports for DB-facing assignments to satisfy worker build type checks
+ * - 2026-04-26T08:03:49Z | copilot | replace named Prisma enum imports with Prisma namespace aliases to avoid TS2614
  */
 
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { cacheDelPattern, cacheGet, cacheSet } from '@/lib/cache';
@@ -31,8 +34,8 @@ import {
 import { buildUserPromptFromTemplate, DEFAULT_PROMPTS } from './defaults';
 import { PromptRegistry } from './promptRegistry';
 
-type PrismaPromptType = string;
-type PrismaPromptStatus = string;
+type PrismaPromptType = Prisma.$Enums.PromptType;
+type PrismaPromptStatus = Prisma.$Enums.PromptStatus;
 
 const CACHE_TTL_SECONDS = 60 * 60;
 const CACHE_KEY = 'prompts:registry:v1:all';

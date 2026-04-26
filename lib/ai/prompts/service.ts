@@ -15,8 +15,11 @@
  * - 2026-04-26T14:30:00Z | staff-engineer | created PromptService with DB + Redis (PR-1.2)
  * - 2026-04-26T07:34:23Z | copilot | fix: use named prisma import; type catch err as unknown
  * - 2026-04-26T07:41:39Z | copilot | fix: import PromptType/PromptStatus from local types.ts; replace PromptVersion Prisma model with local interface
+ * - 2026-04-26T08:03:49Z | copilot | restore Prisma PromptVersion/PromptType/PromptStatus types and Prisma JSON input casts for worker build
+ * - 2026-04-26T08:03:49Z | copilot | remove named Prisma enum/model imports; use local prompt types with Prisma namespace casts for DB boundaries
  */
 
+import { Prisma } from '@prisma/client';
 import { PromptType, PromptStatus, PromptVersionRecord as PromptVersion } from '@/lib/ai/prompt-registry/types';
 import { prisma } from '@/lib/prisma';
 import { getRedis } from '@/lib/redis';
@@ -25,6 +28,40 @@ import { PromptRegistry } from './registry';
 
 const CACHE_TTL = 3600; // 1 hour in seconds (PR-1.2 spec)
 const CACHE_KEY_PREFIX = 'prompt:v1:';
+
+function toPrismaPromptType(value: PromptType): Prisma.$Enums.PromptType {
+  return value as unknown as Prisma.$Enums.PromptType;
+}
+
+function toPrismaPromptStatus(value: PromptStatus): Prisma.$Enums.PromptStatus {
+  return value as unknown as Prisma.$Enums.PromptStatus;
+}
+
+function toPromptVersion(row: {
+  id: string;
+  promptType: Prisma.$Enums.PromptType;
+  version: string;
+  systemPrompt: string;
+  userPromptTemplate: string;
+  modelName: string;
+  maxTokens: number;
+  temperature: number;
+  status: Prisma.$Enums.PromptStatus;
+  changeNotes: string | null;
+  createdBy: string | null;
+  performanceScore: number | null;
+  usageCount: number;
+  avgLatencyMs: number | null;
+  avgTokenUsage: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): PromptVersion {
+  return {
+    ...row,
+    promptType: row.promptType as unknown as PromptType,
+    status: row.status as unknown as PromptStatus,
+  };
+}
 
 /**
  * PR-1.2: PromptService -- manages DB storage and Redis caching for prompt versions
@@ -55,20 +92,22 @@ export class PromptService {
       let dbPrompt: PromptVersion | null = null;
 
       if (version) {
-        dbPrompt = await prisma.promptVersion.findUnique({
+        const row = await prisma.promptVersion.findUnique({
           where: {
-            promptType_version: { promptType: type, version },
+            promptType_version: { promptType: toPrismaPromptType(type), version },
           },
         });
+        dbPrompt = row ? toPromptVersion(row) : null;
       } else {
         // Get latest ACTIVE version
-        dbPrompt = await prisma.promptVersion.findFirst({
+        const row = await prisma.promptVersion.findFirst({
           where: {
-            promptType: type,
-            status: PromptStatus.ACTIVE,
+            promptType: toPrismaPromptType(type),
+            status: toPrismaPromptStatus(PromptStatus.ACTIVE),
           },
           orderBy: { createdAt: 'desc' },
         });
+        dbPrompt = row ? toPromptVersion(row) : null;
       }
 
       // Cache if found
@@ -127,13 +166,13 @@ export class PromptService {
     try {
       const prompts = await prisma.promptVersion.findMany({
         where: {
-          ...(filter?.status && { status: filter.status }),
-          ...(filter?.type && { promptType: filter.type }),
+          ...(filter?.status && { status: toPrismaPromptStatus(filter.status) }),
+          ...(filter?.type && { promptType: toPrismaPromptType(filter.type) }),
         },
         orderBy: [{ promptType: 'asc' }, { createdAt: 'desc' }],
       });
 
-      return prompts;
+      return prompts.map((row) => toPromptVersion(row));
     } catch (error) {
       logger.error('PromptService.listPrompts failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -168,14 +207,15 @@ export class PromptService {
     const prompt = await prisma.promptVersion.create({
       data: {
         ...input,
-        status: PromptStatus.DRAFT,
+        promptType: toPrismaPromptType(input.promptType),
+        status: toPrismaPromptStatus(PromptStatus.DRAFT),
       },
     });
 
     // Invalidate any cached listings
     await this.invalidateCache(input.promptType);
 
-    return prompt;
+    return toPromptVersion(prompt);
   }
 
   /**
@@ -193,19 +233,19 @@ export class PromptService {
     await prisma.promptVersion.updateMany({
       where: {
         promptType: prompt.promptType,
-        status: PromptStatus.ACTIVE,
+        status: toPrismaPromptStatus(PromptStatus.ACTIVE),
       },
-      data: { status: PromptStatus.TESTING }, // Move to TESTING instead of DEPRECATED
+      data: { status: toPrismaPromptStatus(PromptStatus.TESTING) }, // Move to TESTING instead of DEPRECATED
     });
 
     // Activate the target version
     const activated = await prisma.promptVersion.update({
       where: { id },
-      data: { status: PromptStatus.ACTIVE },
+      data: { status: toPrismaPromptStatus(PromptStatus.ACTIVE) },
     });
 
     // Invalidate cache to ensure latest is fetched
-    await this.invalidateCache(prompt.promptType);
+    await this.invalidateCache(prompt.promptType as unknown as PromptType);
 
     logger.info('Prompt version activated', {
       promptType: prompt.promptType,
@@ -213,7 +253,7 @@ export class PromptService {
       id,
     });
 
-    return activated;
+    return toPromptVersion(activated);
   }
 
   /**
@@ -222,18 +262,18 @@ export class PromptService {
   static async deprecatePrompt(id: string): Promise<PromptVersion> {
     const deprecated = await prisma.promptVersion.update({
       where: { id },
-      data: { status: PromptStatus.DEPRECATED },
+      data: { status: toPrismaPromptStatus(PromptStatus.DEPRECATED) },
     });
 
     // Invalidate cache
     const prompt = await prisma.promptVersion.findUnique({ where: { id } });
     if (prompt) {
-      await this.invalidateCache(prompt.promptType);
+      await this.invalidateCache(prompt.promptType as unknown as PromptType);
     }
 
     logger.info('Prompt version deprecated', { id, version: deprecated.version });
 
-    return deprecated;
+    return toPromptVersion(deprecated);
   }
 
   /**
@@ -290,9 +330,9 @@ export class PromptService {
     prisma.aIGenerationLog
       .create({
         data: {
-          promptType: input.promptType,
+          promptType: toPrismaPromptType(input.promptType),
           promptVersion: input.promptVersion,
-          requestVariables: input.requestVariables as unknown,
+          requestVariables: (input.requestVariables ?? Prisma.JsonNull) as Prisma.InputJsonValue,
           responseText: input.responseText,
           requestTokens: input.requestTokens,
           responseTokens: input.responseTokens,

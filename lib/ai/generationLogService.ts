@@ -12,8 +12,12 @@
  *
  * EDIT LOG:
  * - 2026-04-26T15:00:00Z | copilot | created GenerationLogService and token-cost estimator for Sprint 7 logging
+ * - 2026-04-26T08:03:49Z | copilot | use Prisma PromptType and InputJsonValue casts for aIGenerationLog.create worker build type checks
+ * - 2026-04-26T08:03:49Z | copilot | switch PromptType to local enum and cast to Prisma namespace enum for DB writes
  */
 
+import { Prisma } from '@prisma/client';
+import { PromptType } from '@/lib/ai/prompt-registry/types';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { redactPIIFromText } from '@/lib/ai/piiRedaction';
@@ -31,7 +35,7 @@ const MODEL_RATES: Record<string, ModelRate> = {
 };
 
 export interface GenerationLogInput {
-  promptType: string;
+  promptType: PromptType;
   promptVersion?: string;
   abTestId?: string | null;
   abVariant?: string | null;
@@ -95,11 +99,11 @@ export class GenerationLogService {
 
       await prisma.aIGenerationLog.create({
         data: {
-          promptType: log.promptType,
+          promptType: log.promptType as unknown as Prisma.$Enums.PromptType,
           promptVersion: log.promptVersion ?? 'unknown',
           abTestId: log.abTestId ?? null,
           abVariant: log.abVariant ?? null,
-          requestVariables: sanitizeRequestVariables(log.requestVariables),
+          requestVariables: (sanitizeRequestVariables(log.requestVariables) ?? Prisma.JsonNull) as Prisma.InputJsonValue,
           requestTokens: log.requestTokens ?? null,
           responseText: log.responseText ? redactPIIFromText(log.responseText) : null,
           responseTokens: log.responseTokens ?? null,
@@ -110,7 +114,7 @@ export class GenerationLogService {
           errorMessage: log.errorMessage ?? null,
           retryCount: log.retryCount ?? 0,
           qualityScore: log.qualityScore ?? null,
-          qualityDetails: log.qualityDetails ?? null,
+          qualityDetails: (log.qualityDetails ?? Prisma.JsonNull) as Prisma.InputJsonValue,
           userId: log.userId ?? null,
           profileId: log.profileId ?? null,
           contentId: log.contentId ?? null,
