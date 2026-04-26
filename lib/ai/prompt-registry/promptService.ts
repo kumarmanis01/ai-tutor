@@ -14,6 +14,7 @@
  * - 2026-04-26T15:00:00Z | copilot | created PromptService with DB cache and fallback registry support
  * - 2026-04-26T07:00:56Z | copilot | switch Prisma enum import from PromptTypeEnum to PromptType after schema deduplication
  * - 2026-04-26T07:50:16Z | copilot | remove direct Prisma enum imports to avoid TS2614 during VPS pre-flight type check
+ * - 2026-04-26T07:55:36Z | copilot | fix TS2693 by replacing PrismaPromptStatus value usage with PromptStatus constants
  */
 
 import { prisma } from '@/lib/prisma';
@@ -174,7 +175,7 @@ export class PromptService {
         modelName: input.modelName,
         maxTokens: input.maxTokens,
         temperature: input.temperature,
-        status: PrismaPromptStatus.DRAFT,
+        status: toPrismaPromptStatus(PromptStatus.DRAFT),
         changeNotes: input.changeNotes ?? null,
         createdBy: input.createdBy ?? null,
       },
@@ -193,7 +194,7 @@ export class PromptService {
       select: { id: true, status: true },
     });
 
-    if (!existing || existing.status !== PrismaPromptStatus.DRAFT) {
+    if (!existing || existing.status !== toPrismaPromptStatus(PromptStatus.DRAFT)) {
       return null;
     }
 
@@ -221,15 +222,15 @@ export class PromptService {
       await tx.promptVersion.updateMany({
         where: {
           promptType: existing.promptType,
-          status: PrismaPromptStatus.ACTIVE,
+          status: toPrismaPromptStatus(PromptStatus.ACTIVE),
           NOT: { id },
         },
-        data: { status: PrismaPromptStatus.DEPRECATED },
+        data: { status: toPrismaPromptStatus(PromptStatus.DEPRECATED) },
       });
 
       return tx.promptVersion.update({
         where: { id },
-        data: { status: PrismaPromptStatus.ACTIVE },
+        data: { status: toPrismaPromptStatus(PromptStatus.ACTIVE) },
       });
     });
 
@@ -241,7 +242,7 @@ export class PromptService {
     try {
       const row = await prisma.promptVersion.update({
         where: { id },
-        data: { status: PrismaPromptStatus.DEPRECATED },
+        data: { status: toPrismaPromptStatus(PromptStatus.DEPRECATED) },
       });
       await this.invalidateCache();
       return toPromptVersionRecord(row);
