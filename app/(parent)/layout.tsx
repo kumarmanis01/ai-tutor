@@ -11,6 +11,7 @@
  * EDIT LOG:
  *   2026-03-08 | claude | created for Parent Progress Dashboard
  *   2026-03-15 | claude | T38 -- add auth gate + top nav
+ *   2026-04-26T00:00:00Z | copilot | PR#375 -- URL-encode callbackUrl in redirects via URLSearchParams
  */
 
 import type { Metadata, Viewport } from 'next';
@@ -63,11 +64,11 @@ export default async function ParentLayout({ children }: { children: React.React
   const session = (await getServerSession(authOptions)) as AppSession | null;
 
   if (!session?.user?.id) {
-    redirect('/auth/signin?callbackUrl=/parent/dashboard');
+    redirect(`/auth/signin?${new URLSearchParams({ callbackUrl: '/parent/dashboard' }).toString()}`);
   }
 
   if (session.user.role !== 'parent') {
-    redirect('/auth/signin?callbackUrl=/parent/dashboard');
+    redirect(`/auth/signin?${new URLSearchParams({ callbackUrl: '/parent/dashboard' }).toString()}`);
   }
 
   return (

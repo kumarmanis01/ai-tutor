@@ -49,11 +49,13 @@ export async function GET(req: Request) {
 
   const res = NextResponse.redirect(new URL('/dashboard', req.url));
 
-  // Set NextAuth session cookie (non-https dev environment)
+  // Set NextAuth session cookie.
+  // Derive `secure` from the actual request scheme so local HTTP dev works
+  // while HTTPS staging/preview environments still get a secure cookie.
   const cookieName = 'next-auth.session-token';
   res.cookies.set(cookieName, String(encoded), {
     httpOnly: true,
-    secure: false,
+    secure: url.protocol === 'https:',
     path: '/',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 30,
