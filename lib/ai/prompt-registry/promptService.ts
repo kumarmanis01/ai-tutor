@@ -275,7 +275,7 @@ export class PromptService {
       take: pageSize,
     });
 
-    const mapped = rows.map((item) => toPromptVersionRecord(item));
+    const mapped = rows.map((item: Parameters<typeof toPromptVersionRecord>[0]) => toPromptVersionRecord(item));
 
     if (useCache) {
       await cacheSet(CACHE_KEY, mapped, CACHE_TTL_SECONDS);

@@ -14,9 +14,10 @@
  * EDIT LOG:
  * - 2026-04-26T14:30:00Z | staff-engineer | created PromptService with DB + Redis (PR-1.2)
  * - 2026-04-26T07:34:23Z | copilot | fix: use named prisma import; type catch err as unknown
+ * - 2026-04-26T07:41:39Z | copilot | fix: import PromptType/PromptStatus from local types.ts; replace PromptVersion Prisma model with local interface
  */
 
-import { PromptVersion, PromptType, PromptStatus } from '@prisma/client';
+import { PromptType, PromptStatus, PromptVersionRecord as PromptVersion } from '@/lib/ai/prompt-registry/types';
 import { prisma } from '@/lib/prisma';
 import { getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';

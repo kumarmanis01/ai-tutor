@@ -13,9 +13,10 @@
  *
  * EDIT LOG:
  * - 2026-04-26T14:30:00Z | staff-engineer | created centralized prompt registry (PR-1.1)
+ * - 2026-04-26T07:41:39Z | copilot | fix: import PromptType/PromptStatus from local types.ts not @prisma/client to avoid VPS generate timing issues
  */
 
-import { PromptType, PromptStatus } from '@prisma/client';
+import { PromptType, PromptStatus } from '@/lib/ai/prompt-registry/types';
 
 /**
  * PR-1.1: PromptConfig interface -- defines the structure of a prompt
