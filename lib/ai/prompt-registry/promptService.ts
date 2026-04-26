@@ -19,6 +19,7 @@
  * - 2026-04-26T08:03:49Z | copilot | replace named Prisma enum imports with Prisma namespace aliases to avoid TS2614
  * - 2026-04-26T09:10:00Z | copilot | replace Prisma.$Enums type references with direct @prisma/client enum imports for VPS compiler compatibility
  * - 2026-04-26T09:25:00Z | copilot | remove direct Prisma enum imports and rely on string-safe local enum casts for broader client compatibility
+ * - 2026-04-26T11:20:00Z | copilot | infer PromptType and PromptStatus from prisma.promptVersion.create args to satisfy strict worker build types
  */
 
 import { prisma } from '@/lib/prisma';
@@ -34,6 +35,13 @@ import {
 } from './types';
 import { buildUserPromptFromTemplate, DEFAULT_PROMPTS } from './defaults';
 import { PromptRegistry } from './promptRegistry';
+
+type PromptVersionCreateArgs = Parameters<typeof prisma.promptVersion.create>[0];
+type PromptVersionCreateData = PromptVersionCreateArgs extends { data: infer DataShape }
+  ? DataShape
+  : never;
+type PrismaPromptType = Extract<PromptVersionCreateData, { promptType: unknown }>['promptType'];
+type PrismaPromptStatus = Extract<PromptVersionCreateData, { status?: unknown }>['status'];
 
 const CACHE_TTL_SECONDS = 60 * 60;
 const CACHE_KEY = 'prompts:registry:v1:all';
@@ -51,12 +59,9 @@ function toPrismaPromptType(value: PromptType): PrismaPromptType {
   return value as unknown as PrismaPromptType;
 }
 
-function toPrismaPromptStatus(value: PromptStatus): PrismaPromptStatus {
-  return value as unknown as PrismaPromptStatus;
+function toPrismaPromptStatus(value: PromptStatus): NonNullable<PrismaPromptStatus> {
+  return value as unknown as NonNullable<PrismaPromptStatus>;
 }
-
-type PrismaPromptType = string;
-type PrismaPromptStatus = string;
 
 function toPromptConfig(record: PromptVersionRecord): PromptConfig {
   return {

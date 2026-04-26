@@ -260,7 +260,7 @@ export async function POST(req: NextRequest) {
               .findUnique({ where: { id: userId }, select: { board: true } })
               .catch(() => null);
             prevBoard = prev?.board ?? null;
-          } catch (e) {
+          } catch {
             prevBoard = null;
           }
         }

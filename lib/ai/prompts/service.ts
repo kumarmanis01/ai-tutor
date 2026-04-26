@@ -19,6 +19,7 @@
  * - 2026-04-26T08:03:49Z | copilot | remove named Prisma enum/model imports; use local prompt types with Prisma namespace casts for DB boundaries
  * - 2026-04-26T09:10:00Z | copilot | replace Prisma.$Enums type references with direct @prisma/client enum imports for VPS compiler compatibility
  * - 2026-04-26T09:25:00Z | copilot | remove direct Prisma enum imports and enforce local enum-to-DB string casts for client compatibility
+ * - 2026-04-26T11:20:00Z | copilot | infer PromptType and PromptStatus from prisma.promptVersion.create args to satisfy strict build typing
  */
 
 import { Prisma } from '@prisma/client';
@@ -31,24 +32,31 @@ import { PromptRegistry } from './registry';
 const CACHE_TTL = 3600; // 1 hour in seconds (PR-1.2 spec)
 const CACHE_KEY_PREFIX = 'prompt:v1:';
 
-function toPrismaPromptType(value: PromptType): string {
-  return value as unknown as string;
+type PromptVersionCreateArgs = Parameters<typeof prisma.promptVersion.create>[0];
+type PromptVersionCreateData = PromptVersionCreateArgs extends { data: infer DataShape }
+  ? DataShape
+  : never;
+type PrismaPromptType = Extract<PromptVersionCreateData, { promptType: unknown }>['promptType'];
+type PrismaPromptStatus = Extract<PromptVersionCreateData, { status?: unknown }>['status'];
+
+function toPrismaPromptType(value: PromptType): PrismaPromptType {
+  return value as unknown as PrismaPromptType;
 }
 
-function toPrismaPromptStatus(value: PromptStatus): string {
-  return value as unknown as string;
+function toPrismaPromptStatus(value: PromptStatus): NonNullable<PrismaPromptStatus> {
+  return value as unknown as NonNullable<PrismaPromptStatus>;
 }
 
 function toPromptVersion(row: {
   id: string;
-  promptType: string;
+  promptType: PrismaPromptType;
   version: string;
   systemPrompt: string;
   userPromptTemplate: string;
   modelName: string;
   maxTokens: number;
   temperature: number;
-  status: string;
+  status: NonNullable<PrismaPromptStatus>;
   changeNotes: string | null;
   createdBy: string | null;
   performanceScore: number | null;

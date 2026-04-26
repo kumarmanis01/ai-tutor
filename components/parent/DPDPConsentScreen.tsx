@@ -14,6 +14,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | staff-engineer | created per P1.2-P AC
+ * - 2026-04-26T11:20:00Z | copilot | remove catch variable binding for lint compliance
  */
 
 'use client';
@@ -66,7 +67,7 @@ export default function DPDPConsentScreen({
         return;
       }
       onConsent();
-    } catch (err: unknown) {
+    } catch {
       setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
