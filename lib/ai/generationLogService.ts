@@ -16,6 +16,7 @@
  * - 2026-04-26T08:03:49Z | copilot | switch PromptType to local enum and cast to Prisma namespace enum for DB writes
  * - 2026-04-26T09:10:00Z | copilot | replace Prisma.$Enums usage with direct PromptType import and normalize string prompt types for stable VPS typecheck
  * - 2026-04-26T09:35:00Z | copilot | type normalized promptType against Prisma AIGenerationLogCreateInput to satisfy worker build strictness
+ * - 2026-04-26T10:58:00Z | copilot | infer promptType from prisma client create signature instead of Prisma namespace type for VPS compatibility
  */
 
 import { Prisma } from '@prisma/client';
@@ -59,7 +60,12 @@ export interface GenerationLogInput {
   jobId?: string | null;
 }
 
-type PrismaPromptType = Prisma.AIGenerationLogCreateInput['promptType'];
+type GenerationLogCreateArgs = Parameters<typeof prisma.aIGenerationLog.create>[0];
+type PrismaPromptType = GenerationLogCreateArgs extends { data: infer DataShape }
+  ? DataShape extends { promptType: infer PromptTypeShape }
+    ? PromptTypeShape
+    : string
+  : string;
 
 function normalizePromptType(value: PromptType | string): PrismaPromptType {
   if (Object.values(PromptType).includes(value as PromptType)) {
