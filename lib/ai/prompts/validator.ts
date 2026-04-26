@@ -19,7 +19,7 @@ import { PromptType } from '@prisma/client';
 import { logger } from '@/lib/logger';
 
 /**
- * PR-1.3: ValidationResult — result of variable validation
+ * PR-1.3: ValidationResult -- result of variable validation
  */
 export interface ValidationResult {
   valid: boolean;
@@ -97,7 +97,7 @@ const PROMPT_VARIABLE_SCHEMAS: Record<PromptType, z.ZodType<any>> = {
 };
 
 /**
- * PR-1.3: PromptVariableValidator — validates variables before LLM calls
+ * PR-1.3: PromptVariableValidator -- validates variables before LLM calls
  */
 export class PromptVariableValidator {
   /**

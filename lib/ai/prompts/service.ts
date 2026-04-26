@@ -26,7 +26,7 @@ const CACHE_TTL = 3600; // 1 hour in seconds (PR-1.2 spec)
 const CACHE_KEY_PREFIX = 'prompt:v1:';
 
 /**
- * PR-1.2: PromptService — manages DB storage and Redis caching for prompt versions
+ * PR-1.2: PromptService -- manages DB storage and Redis caching for prompt versions
  */
 export class PromptService {
   /**
@@ -285,7 +285,7 @@ export class PromptService {
     qualityScore?: number;
     userId?: string;
   }): Promise<void> {
-    // Fire and forget — don't block on logging
+    // Fire and forget -- don't block on logging
     prisma.aIGenerationLog
       .create({
         data: {

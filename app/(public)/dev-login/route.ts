@@ -13,11 +13,11 @@ export async function GET(req: Request) {
     return new NextResponse('Not found', { status: 404 });
   }
 
-  // Fail fast when NEXTAUTH_SECRET is not configured — never use a fallback
+  // Fail fast when NEXTAUTH_SECRET is not configured -- never use a fallback
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
     return NextResponse.json(
-      { error: 'NEXTAUTH_SECRET is not configured — refusing to mint session cookie' },
+      { error: 'NEXTAUTH_SECRET is not configured -- refusing to mint session cookie' },
       { status: 500 }
     );
   }
