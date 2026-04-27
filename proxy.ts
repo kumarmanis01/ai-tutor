@@ -30,6 +30,13 @@ export async function proxy(request: NextRequest) {
 
   // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    const publicAdminUi = pathname === '/admin/login' || pathname === '/admin/setup';
+    if (publicAdminUi) {
+      const passthrough = NextResponse.next();
+      passthrough.headers.set('x-pathname', pathname);
+      return passthrough;
+    }
+
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
     if (!allowed) {
       if (pathname.startsWith('/api/admin')) {

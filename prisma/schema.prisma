@@ -3147,6 +3147,8 @@ enum AdminStatus {
   ACTIVE
   INACTIVE
   LOCKED
+  SUSPENDED
+  DELETED
 }
 
 enum LeadStatus {
@@ -3347,13 +3349,16 @@ model AdminUser {
   mfaSecret      String?
   mfaEnabled     Boolean     @default(false)
   mfaBackupCodes String? /// JSON array of bcrypt-hashed backup codes
+  backupCodesHash String? /// JSON array of bcrypt-hashed backup codes (A0.2 alias)
   failedLoginAttempts Int    @default(0)
   lockoutUntil   DateTime?
   lastLoginAt    DateTime?
+  lastLoginIp    String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions       AdminSession[]
   trustedDevices AdminTrustedDevice[]
   auditLogs      AdminAuditLog[]
 
@@ -3368,9 +3373,13 @@ model AdminTrustedDevice {
   id          String   @id @default(cuid())
   adminUserId String
   deviceHash  String /// SHA-256 of user-agent + IP
+  deviceToken String?  @unique
+  ipSubnet    String? /// /24 subnet for remembered device match
+  fingerprint String? /// user agent hash/fingerprint
   label       String? /// optional human label
   expiresAt   DateTime
   createdAt   DateTime @default(now())
+  lastUsedAt  DateTime @default(now())
 
   adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
 
@@ -3388,7 +3397,10 @@ model AdminAuditLog {
   entityType  String?
   entityId    String?
   payload     Json?
-  ipAddress   String?
+  targetType  String?
+  targetId    String?
+  details     Json?
+  ipAddress   String   @default("0.0.0.0")
   userAgent   String?
   createdAt   DateTime @default(now())
 
@@ -3396,6 +3408,24 @@ model AdminAuditLog {
 
   @@index([adminUserId, createdAt])
   @@index([entityType, entityId])
+}
+
+// ── AdminSession ──────────────────────────────────────────────────────────────
+/// Refresh-token session records for admin authentication and revocation.
+model AdminSession {
+  id           String    @id @default(cuid())
+  adminId      String
+  refreshToken String    @unique
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+  ipAddress    String?
+  userAgent    String?
+
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, expiresAt])
+  @@index([revokedAt])
 }
 
 // ── SchoolPartner ─────────────────────────────────────────────────────────────

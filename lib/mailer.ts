@@ -16,6 +16,7 @@
  * EDIT LOG:
  * - 2025-01-15T00:00:00Z | copilot | initial B3.2 named send methods
  * - 2026-04-27T00:00:00Z | copilot | v3 -- React Email templates, EMAIL_PROVIDER abstraction
+ * - 2026-04-27T18:38:00Z | copilot | align admin invite subject and template payload with A0.1/A0.2 acceptance criteria
  */
 
 import * as React from 'react';
@@ -163,13 +164,18 @@ export async function sendWeeklyReport(
 /**
  * Send an admin invitation email with an account setup link.
  */
-export async function sendAdminInvite(to: string, setupLink: string, role: string): Promise<void> {
+export async function sendAdminInvite(
+  to: string,
+  setupLink: string,
+  role: string,
+  adminName?: string
+): Promise<void> {
   const { html, text } = await renderHtml(
-    React.createElement(AdminInviteEmail, { setupLink, role })
+    React.createElement(AdminInviteEmail, { setupLink, role, adminName })
   );
   await sendMailSafe({
     to,
-    subject: 'You have been invited to Spinzy Admin',
+    subject: `You've been invited to join Spinzy Academy Admin Panel`,
     html,
     text,
   });

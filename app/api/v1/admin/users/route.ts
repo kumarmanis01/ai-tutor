@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created v1 admin users invite/list endpoint for A0.1
+ * - 2026-04-27T18:41:00Z | copilot | enforce strict name validation, invite email copy requirements, and richer audit context
  */
 
 import { NextResponse } from 'next/server';
@@ -19,6 +20,7 @@ import { logger } from '@/lib/logger';
 import { sendAdminInvite } from '@/lib/mailer';
 import { requireSuperAdmin } from '@/lib/admin/guards';
 import {
+  extractClientIp,
   generateInviteToken,
   isCorporateEmail,
   normalizeEmail,
@@ -83,6 +85,8 @@ export async function POST(req: Request) {
       name?: string;
       role?: string;
     };
+    const ipAddress = extractClientIp(req);
+    const userAgent = req.headers.get('user-agent') ?? 'unknown';
 
     const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
     const name = typeof body.name === 'string' ? body.name.trim() : '';
@@ -92,7 +96,7 @@ export async function POST(req: Request) {
     }
 
     if (!validateAdminName(name)) {
-      return NextResponse.json({ error: 'invalid_name_length' }, { status: 400 });
+      return NextResponse.json({ error: 'invalid_name' }, { status: 400 });
     }
 
     if (!isCorporateEmail(email)) {
@@ -155,7 +159,15 @@ export async function POST(req: Request) {
           action: 'admin.invite_created',
           entityType: 'AdminUser',
           entityId: adminUser.id,
+          targetType: 'AdminUser',
+          targetId: adminUser.id,
+          ipAddress,
+          userAgent,
           payload: {
+            invitedEmail: email,
+            invitedRole: body.role,
+          },
+          details: {
             invitedEmail: email,
             invitedRole: body.role,
           },
@@ -174,7 +186,7 @@ export async function POST(req: Request) {
     });
 
     const setupLink = `${getSetupBaseUrl()}/setup?token=${token}`;
-    await sendAdminInvite(email, setupLink, admin.role);
+    await sendAdminInvite(email, setupLink, admin.role, admin.name ?? undefined);
 
     const res = NextResponse.json({ ok: true, admin });
     logger.logAPI(req, res, { className: 'AdminUsersAPI', methodName: 'POST' }, start);

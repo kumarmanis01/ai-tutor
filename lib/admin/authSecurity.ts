@@ -11,15 +11,18 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin invite and MFA security helpers
+ * - 2026-04-27T18:36:00Z | copilot | enforce strict admin-name regex, 32-char invite token, and expanded free-domain blocklist
  */
 
-import { createHash, createHmac, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto';
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const FREE_EMAIL_DOMAINS = new Set([
   'gmail.com',
   'yahoo.com',
   'outlook.com',
+  'live.com',
+  'msn.com',
   'hotmail.com',
   'icloud.com',
   'protonmail.com',
@@ -43,6 +46,28 @@ interface SignedTokenPayload {
   type: 'admin_login_session' | 'admin_device';
   subnet24?: string;
   exp: number;
+}
+
+function getMfaEncryptionKey(): Buffer {
+  const configured = process.env.ADMIN_MFA_ENCRYPTION_KEY;
+  if (!configured) {
+    const fallback = process.env.ADMIN_JWT_ACCESS_SECRET;
+    if (!fallback) {
+      throw new Error('Missing ADMIN_MFA_ENCRYPTION_KEY and ADMIN_JWT_ACCESS_SECRET');
+    }
+    return createHash('sha256').update(fallback).digest();
+  }
+
+  // Supports raw strings, hex-encoded, and base64-encoded values.
+  const asHex = /^[0-9a-fA-F]{64}$/.test(configured)
+    ? Buffer.from(configured, 'hex')
+    : null;
+  const asBase64 = !asHex ? Buffer.from(configured, 'base64') : null;
+  const raw = asHex ?? (asBase64 && asBase64.length === 32 ? asBase64 : Buffer.from(configured));
+  if (raw.length === 32) {
+    return raw;
+  }
+  return createHash('sha256').update(raw).digest();
 }
 
 function getAdminAccessSecret(): Uint8Array {
@@ -74,11 +99,11 @@ export function validateAdminPassword(password: string): PasswordValidationResul
 
 export function validateAdminName(name: string): boolean {
   const n = name.trim();
-  return n.length >= 2 && n.length <= 100;
+  return n.length >= 2 && n.length <= 100 && /^[A-Za-z ]+$/.test(n);
 }
 
 export function generateInviteToken(): string {
-  return randomBytes(32).toString('hex');
+  return randomBytes(16).toString('hex');
 }
 
 function encodeBase32(input: Uint8Array): string {
@@ -131,6 +156,35 @@ export function buildOtpAuthUri(email: string, secret: string): string {
   const account = encodeURIComponent(`Spinzy:${normalizeEmail(email)}`);
   const encodedSecret = encodeURIComponent(secret);
   return `otpauth://totp/${account}?secret=${encodedSecret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+}
+
+export function encryptAdminMfaSecret(secret: string): string {
+  const iv = randomBytes(12);
+  const key = getMfaEncryptionKey();
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `enc:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
+}
+
+export function decryptAdminMfaSecret(stored: string): string {
+  if (!stored.startsWith('enc:')) {
+    return stored;
+  }
+
+  const parts = stored.split(':');
+  if (parts.length !== 4) {
+    throw new Error('Invalid encrypted MFA secret format');
+  }
+
+  const iv = Buffer.from(parts[1], 'hex');
+  const authTag = Buffer.from(parts[2], 'hex');
+  const encrypted = Buffer.from(parts[3], 'hex');
+  const key = getMfaEncryptionKey();
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+  const plain = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return plain.toString('utf8');
 }
 
 function totpAt(secret: string, timestampMs: number, periodSec = 30, digits = 6): string {
