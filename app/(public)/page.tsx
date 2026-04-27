@@ -11,12 +11,16 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const session = await requireActiveSession();
-  // Only redirect to dashboard when the user has a fully active session
-  // and has completed onboarding. Keep the landing page session-agnostic
-  // for users who are mid-onboarding so the onboarding modal does not
-  // render on the public landing page.
-  if (session && (session.user as any)?.onboardingComplete) {
-    redirect('/dashboard');
+  if (session) {
+    const role = (session.user as any)?.role;
+    // Existing parent: go straight to parent dashboard.
+    if (role === 'parent') {
+      redirect('/parent/dashboard');
+    }
+    // Student who completed onboarding: go to student dashboard.
+    if ((session.user as any)?.onboardingComplete) {
+      redirect('/dashboard');
+    }
   }
   return <LandingPageInteractive />;
 }

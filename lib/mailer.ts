@@ -22,7 +22,16 @@ import { logger } from '@/lib/logger';
 import { sendViaProvider } from '@/lib/email/email.provider';
 import { OTPEmail } from '@/lib/email/templates/otp';
 import { ConsentRequestEmail } from '@/lib/email/templates/consent-request';
-import { WeeklyReportEmail, type WeeklyReportData } from '@/lib/email/templates/weekly-report';
+import {
+  WeeklyReportEmail,
+  WeeklyReportEmailFree,
+  WeeklyReportEmailPremium,
+  WeeklyReportEmailZeroActivity,
+  type WeeklyReportData,
+  type WeeklyReportFreeData,
+  type WeeklyReportPremiumData,
+  type WeeklyReportZeroActivityData,
+} from '@/lib/email/templates/weekly-report';
 import { AdminInviteEmail } from '@/lib/email/templates/admin-invite';
 import { InvoiceEmail, type InvoiceEmailData } from '@/lib/email/templates/invoice';
 
@@ -165,6 +174,56 @@ export async function sendWeeklyReport(
   await sendMailSafe({
     to,
     subject: `${data.studentName}'s weekly learning summary`,
+    html,
+    text,
+  });
+}
+
+/**
+ * P2.2: Send a weekly report to a free-tier parent (includes premium teaser).
+ */
+export async function sendWeeklyReportFree(
+  to: string,
+  data: WeeklyReportFreeData
+): Promise<void> {
+  const { html, text } = await renderHtml(React.createElement(WeeklyReportEmailFree, data));
+  await sendMailSafe({
+    to,
+    subject: `${data.studentName}'s weekly learning summary`,
+    html,
+    text,
+  });
+}
+
+/**
+ * P2.2: Send a weekly report to a premium parent (includes weak topics analysis).
+ */
+export async function sendWeeklyReportPremium(
+  to: string,
+  data: WeeklyReportPremiumData
+): Promise<void> {
+  const { html, text } = await renderHtml(React.createElement(WeeklyReportEmailPremium, data));
+  await sendMailSafe({
+    to,
+    subject: `${data.studentName}'s weekly learning summary`,
+    html,
+    text,
+  });
+}
+
+/**
+ * P2.2: Send a zero-activity weekly report (child did not log in).
+ */
+export async function sendWeeklyReportZeroActivity(
+  to: string,
+  data: WeeklyReportZeroActivityData
+): Promise<void> {
+  const { html, text } = await renderHtml(
+    React.createElement(WeeklyReportEmailZeroActivity, data)
+  );
+  await sendMailSafe({
+    to,
+    subject: `${data.studentName} did not study this week -- a gentle nudge`,
     html,
     text,
   });
