@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T10:56:00Z | copilot | add pricing toggle coverage for annual/monthly states
+ * - 2026-04-27T14:30:00Z | copilot | LP-6.2: assert annual savings comparison visibility by billing cycle
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import PricingSection from '@/app/(public)/landing-page/components/PricingSection';
@@ -48,5 +49,14 @@ describe('PricingSection', () => {
 
     expect(screen.getByText('₹999')).toBeTruthy();
     expect(screen.getByRole('link', { name: /Get started -- it takes 2 minutes/i })).toBeTruthy();
+  });
+
+  it('should render savings comparison for annual billing and hide it for monthly', () => {
+    render(<PricingSection />);
+
+    expect(screen.getByText('Save ₹21,001/year vs private tutoring')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Monthly' }));
+    expect(screen.queryByText('Save ₹21,001/year vs private tutoring')).toBeNull();
   });
 });

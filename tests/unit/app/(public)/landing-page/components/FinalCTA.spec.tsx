@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T10:55:00Z | copilot | add FinalCTA coverage for heading and CTA link
+ * - 2026-04-27T14:30:00Z | copilot | LP-9.1: update assertions for new title, subtitle, and CTA label
  */
 import { render, screen } from '@testing-library/react';
 import FinalCTA from '@/app/(public)/landing-page/components/FinalCTA';
@@ -34,17 +35,21 @@ jest.mock('@/components/UI/AppIcon', () => {
 });
 
 describe('FinalCTA', () => {
-  it('should render bilingual heading content', () => {
+  it('should render LP-9.1 heading and subtitle content', () => {
     render(<FinalCTA />);
 
-    expect(screen.getByText('Ready to try it yourself?')).toBeTruthy();
-    expect(screen.getByText('आज ही शुरू करें -- बिल्कुल मुफ्त')).toBeTruthy();
+    expect(screen.getByText("Ready to transform your child's learning?")).toBeTruthy();
+    expect(
+      screen.getByText("Join 10,000+ Indian parents who've switched to smarter tutoring.")
+    ).toBeTruthy();
   });
 
   it('should render primary CTA link to register', () => {
     render(<FinalCTA />);
 
-    const cta = screen.getByRole('link', { name: /Get started -- it takes 2 minutes/i }) as HTMLAnchorElement;
+    const cta = screen.getByRole('link', {
+      name: /Start Free -- Sign in with Google/i,
+    }) as HTMLAnchorElement;
     expect(cta).toBeTruthy();
     expect(cta.getAttribute('href')).toBe('https://app.spinzyacademy.com/register');
   });

@@ -10,6 +10,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | v3 FAQ update: replace test assertions for v3 questions
+ * - 2026-04-27T14:30:00Z | copilot | LP-7.1: assert Sprint 7 FAQ question set and schools/privacy statements
  */
 import { getFAQs, type FAQ } from '@/app/(public)/landing-page/components/faq-data';
 
@@ -39,17 +40,16 @@ describe('getFAQs', () => {
     });
   });
 
-  it('should include board coverage question (Coverage category)', () => {
+  it('should include school-board alignment question (Coverage category)', () => {
     const board = faqs.find((f) => f.category === 'Coverage');
     expect(board).toBeDefined();
-    expect(board?.questionEn.toLowerCase()).toMatch(/cbse|icse|board/);
+    expect(board?.questionEn).toBe("Is Spinzy aligned with my child's school board?");
   });
 
-  it('should include a Pricing category FAQ about free trial', () => {
-    const pricing = faqs.filter((f) => f.category === 'Pricing');
-    expect(pricing.length).toBeGreaterThanOrEqual(1);
-    const trial = pricing.find((f) => f.questionEn.toLowerCase().includes('free'));
+  it('should include free-tier trial messaging', () => {
+    const trial = faqs.find((f) => f.questionEn === 'Can my child try before paying?');
     expect(trial).toBeDefined();
+    expect(trial?.answerEn.toLowerCase()).toMatch(/free tier|no credit card/);
   });
 
   it('should include a Privacy FAQ about data safety', () => {

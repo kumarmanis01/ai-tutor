@@ -14,17 +14,16 @@
  * - 2026-04-26T00:00:00Z | copilot | LP-7.1: add FAQPage schema markup (JSON-LD) for SEO
  * - 2026-04-26T00:00:00Z | copilot | fix(security): remove JSON-LD from client component, move to server; extract FAQ data as constant
  * - 2026-04-26T11:20:00Z | copilot | remove unused PLANS import to keep lint clean
+ * - 2026-04-27T14:30:00Z | copilot | LP-7.1: switch to reusable FAQAccordion with all-collapsed default state
  */
 
 'use client';
 
-import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
 import { getFAQs } from './faq-data';
+import FAQAccordion from './FAQAccordion';
 
 const FAQSection = () => {
-  const [openFAQ, setOpenFAQ] = useState<number | null>(1);
-
   const faqs = getFAQs();
 
   return (
@@ -46,51 +45,7 @@ const FAQSection = () => {
           </p>
         </div>
 
-        <div className="space-y-4">
-          {faqs.map((faq) => (
-            <div
-              key={faq.id}
-              className="bg-background border-2 border-border rounded-xl overflow-hidden hover:border-primary/30 transition-colors"
-            >
-              <button
-                onClick={() => setOpenFAQ(openFAQ === faq.id ? null : faq.id)}
-                className="w-full flex items-center justify-between p-6 text-left"
-              >
-                <div className="flex-1 pr-4">
-                  <h3 className="font-headline font-bold text-lg md:text-xl text-secondary mb-1">
-                    {faq.questionEn}
-                  </h3>
-                  <p className="font-accent text-sm md:text-base text-primary">{faq.questionHi}</p>
-                </div>
-                <div
-                  className={`w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 transition-transform duration-250 ${
-                    openFAQ === faq.id ? 'rotate-180' : ''
-                  }`}
-                >
-                  <Icon
-                    name="ChevronDownIcon"
-                    size={20}
-                    variant="outline"
-                    className="text-primary"
-                  />
-                </div>
-              </button>
-
-              {openFAQ === faq.id && (
-                <div className="px-6 pb-6 space-y-3">
-                  <div className="pt-3 border-t border-border">
-                    <p className="font-body text-base text-foreground leading-relaxed mb-3">
-                      {faq.answerEn}
-                    </p>
-                    <p className="font-accent text-base text-foreground/80 leading-relaxed">
-                      {faq.answerHi}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <FAQAccordion items={faqs} />
 
         <div className="mt-12 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl p-6 md:p-8 border-2 border-border">
           <div className="flex flex-col md:flex-row items-center gap-6">
