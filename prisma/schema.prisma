@@ -20,8 +20,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // directUrl bypasses PgBouncer for Prisma migrate and introspect
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
@@ -158,6 +160,12 @@ model User {
   contentCreated              Content[]
   /// PR-3.1: AI generation logs initiated by this user
   aiGenerationLogs            AIGenerationLog[]
+  /// v3 MVP: user-raised support tickets
+  supportTickets              SupportTicket[]
+  /// v3 MVP: in-app notifications
+  notifications               Notification[]
+  /// v3 MVP: daily streak history log
+  streakHistory               StreakHistory[]
 }
 
 model PaymentOrder {
@@ -3414,4 +3422,123 @@ model SchoolLead {
 
   @@index([status, createdAt])
   @@index([partnerId])
+}
+
+// ── v3 MVP enums ──────────────────────────────────────────────────────────────
+
+/// Reason a student earned XP -- typed alternative to StudentXP.source (String).
+enum XPReason {
+  SESSION_CORRECT
+  STREAK_BONUS
+  REVISION_COMPLETE
+  BADGE_EARNED
+  DIAGNOSTIC_COMPLETE
+  ASSIGNMENT_COMPLETE
+}
+
+/// Typed payment method category. PaymentMethod.type is currently a String;
+/// this enum is provided for new code and future migration.
+enum PaymentType {
+  CARD
+  UPI
+  NET_BANKING
+  WALLET
+  EMI
+}
+
+/// Typed payment status. Payment.status is currently a String;
+/// this enum is provided for new code and future migration.
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+/// Typed referral status. ReferralReward.status is currently a String;
+/// this enum is provided for new code and future migration.
+enum ReferralStatus {
+  PENDING
+  CONVERTED
+  EXPIRED
+  REJECTED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_USER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ── SupportTicket ─────────────────────────────────────────────────────────────
+/// User-raised support tickets. Separate from ContentFlag (content moderation).
+model SupportTicket {
+  id          String         @id @default(cuid())
+  userId      String
+  subject     String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  /// AdminUser.id of the agent handling this ticket
+  assignedTo  String?
+  resolvedAt  DateTime?
+  closedAt    DateTime?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, priority, createdAt])
+  @@index([assignedTo])
+}
+
+// ── Notification ──────────────────────────────────────────────────────────────
+/// User-facing in-app notifications. Distinct from NotificationLog (admin broadcast audit).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  /// e.g. 'badge_earned' | 'streak_milestone' | 'assignment_due' | 'content_ready'
+  type      String
+  title     String
+  body      String
+  actionUrl String?
+  imageUrl  String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ── StreakHistory ─────────────────────────────────────────────────────────────
+/// Immutable daily log of streak state per student for analytics and graphs.
+/// StudentStreak tracks current live state; this tracks the historical record.
+model StreakHistory {
+  id           String   @id @default(cuid())
+  studentId    String
+  /// Calendar date of the streak entry (date-only; no time component)
+  date         DateTime @db.Date
+  streakLength Int
+  wasShielded  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([studentId, date])
 }
