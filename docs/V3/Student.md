@@ -12,25 +12,25 @@ So that I can get started immediately without waiting for my parent to set every
 
 ### Acceptance Criteria
 
-- [ ] Step 1 — Role Selection: App launch screen shows two clear buttons: "I'm a Student" (Primary, Tangerine) and "I'm a Parent" (Secondary, outlined). Tapping "I'm a Student" proceeds to Step 2.
-- [ ] Step 2 — Age Gate: Screen title: "When were you born?" Date picker with three scrollable dropdowns: Day | Month | Year. Helper text: "We need this to comply with India's data protection laws." "Continue" button disabled until a valid date is selected.
-- [ ] If selected DOB indicates age ≥ 18: Skip to Step 5 (Account Created — Adult).
-- [ ] If selected DOB indicates age < 18: Proceed to Step 3.
-- [ ] Step 3 — Profile Creation: Screen title: "Tell us about yourself". Fields: First Name (Text input, required, max 30 characters, no special chars except space). Grade (Dropdown: 1 to 12, required). Board (Dropdown: CBSE, ICSE, State Board — Maharashtra, State Board — Uttar Pradesh, State Board — Other, required). No photo upload. No last name. No location. No school name.
-- [ ] "Next" button disabled until all three fields are filled. Progress indicator at top: Step 2 of 5 (for under-18).
-- [ ] Step 4 — Parent Contact: Screen title: "Who should we ask for permission?" Subtext: "Indian law requires parental consent for learners under 18. We'll send a quick approval message."
-- [ ] Toggle switch (tab-style, not checkbox): [WhatsApp] (default selected, phone icon) [Email] (envelope icon).
-- [ ] WhatsApp selected: Phone input field. +91 prefix pre-filled, 10-digit input with auto-formatting (spaces after every 3 digits). Helper: "We'll send a WhatsApp message. No app download needed."
-- [ ] Email selected: Email input field with standard email validation. Helper: "We'll send an email with an approval link."
-- [ ] "Send Request & Start Exploring" button. Tiny link below: "Why do we need this? Learn about Indian data protection law." → Opens in-app modal with DPDP summary.
-- [ ] Step 5a — Account Created (Under 18) → Explore Mode: On successful registration: StudentProfile created with status: AWAITING_PARENT_CONSENT. Consent request sent via chosen channel (WhatsApp/Email). explore_token (limited JWT) returned to app.
-- [ ] Screen: "You're in, Aarav! 🎉" Body: "We've sent an approval request to +91 98XXXXXX12. While you wait, explore 3 free sample lessons!" Button: [Start Exploring] → Transitions to Explore Mode (Story S0.4). Secondary link: "Send a different contact" → Returns to Step 4.
-- [ ] Step 5b — Account Created (Over 18): On successful registration: StudentProfile created with status: ACTIVE, consent_status: NOT_REQUIRED, isAdult: true. Full access_token returned.
-- [ ] Screen: "Welcome to Spinzy! 🎉" Body: "You're all set. Let's find out where you stand with a quick diagnostic quiz." Button: [Take Diagnostic] → Transitions to Phase 1, Story S1.3 (Diagnostic Quiz). Secondary link: "Skip for now" → Goes directly to Learning Map (Phase 2).
-- [ ] Backend (POST /api/v1/students/register): Request body validated with Zod schema. Age calculation: today - DOB. Precise to the day.
-- [ ] If age ≥ 18: isAdult = true, consentStatus = NOT_REQUIRED, status = ACTIVE. Returns JWT with full scope.
-- [ ] If age < 18: isAdult = false, consentStatus = AWAITING, status = AWAITING_PARENT_CONSENT. Creates ConsentRequest record. Sends WhatsApp/Email via service. Returns JWT with scope: EXPLORE_MODE.
-- [ ] Rate limit: Max 3 registrations per device fingerprint per 24 hours.
+- [x] Step 1 — Role Selection: App launch screen shows two clear buttons: "I'm a Student" (Primary, Tangerine) and "I'm a Parent" (Secondary, outlined). Tapping "I'm a Student" proceeds to Step 2.
+- [x] Step 2 — Age Gate: Screen title: "When were you born?" Date picker with three scrollable dropdowns: Day | Month | Year. Helper text: "We need this to comply with India's data protection laws." "Continue" button disabled until a valid date is selected.
+- [x] If selected DOB indicates age ≥ 18: Skip to Step 5 (Account Created — Adult).
+- [x] If selected DOB indicates age < 18: Proceed to Step 3.
+- [x] Step 3 — Profile Creation: Screen title: "Tell us about yourself". Fields: First Name (Text input, required, max 30 characters, no special chars except space). Grade (Dropdown: 1 to 12, required). Board (Dropdown: CBSE, ICSE, State Board — Maharashtra, State Board — Uttar Pradesh, State Board — Other, required). No photo upload. No last name. No location. No school name.
+- [x] "Next" button disabled until all three fields are filled. Progress indicator at top: Step 2 of 5 (for under-18).
+- [x] Step 4 — Parent Contact: Screen title: "Who should we ask for permission?" Subtext: "Indian law requires parental consent for learners under 18. We'll send a quick approval message."
+- [x] Toggle switch (tab-style, not checkbox): [WhatsApp] (default selected, phone icon) [Email] (envelope icon).
+- [x] WhatsApp selected: Phone input field. +91 prefix pre-filled, 10-digit input with auto-formatting (spaces after every 3 digits). Helper: "We'll send a WhatsApp message. No app download needed."
+- [x] Email selected: Email input field with standard email validation. Helper: "We'll send an email with an approval link."
+- [x] "Send Request & Start Exploring" button. Tiny link below: "Why do we need this? Learn about Indian data protection law." → Opens in-app modal with DPDP summary.
+- [x] Step 5a — Account Created (Under 18) → Explore Mode: On successful registration: StudentProfile created with status: AWAITING_PARENT_CONSENT. Consent request sent via chosen channel (WhatsApp/Email). explore_token (limited JWT) returned to app.
+- [x] Screen: "You're in, Aarav! 🎉" Body: "We've sent an approval request to +91 98XXXXXX12. While you wait, explore 3 free sample lessons!" Button: [Start Exploring] → Transitions to Explore Mode (Story S0.4). Secondary link: "Send a different contact" → Returns to Step 4.
+- [x] Step 5b — Account Created (Over 18): On successful registration: StudentProfile created with status: ACTIVE, consent_status: NOT_REQUIRED, isAdult: true. Full access_token returned.
+- [x] Screen: "Welcome to Spinzy! 🎉" Body: "You're all set. Let's find out where you stand with a quick diagnostic quiz." Button: [Take Diagnostic] → Transitions to Phase 1, Story S1.3 (Diagnostic Quiz). Secondary link: "Skip for now" → Goes directly to Learning Map (Phase 2).
+- [x] Backend (POST /api/v1/students/register): Request body validated with Zod schema. Age calculation: today - DOB. Precise to the day.
+- [x] If age ≥ 18: isAdult = true, consentStatus = NOT_REQUIRED, status = ACTIVE. Returns JWT with full scope.
+- [x] If age < 18: isAdult = false, consentStatus = AWAITING, status = AWAITING_PARENT_CONSENT. Creates ConsentRequest record. Sends WhatsApp/Email via service. Returns JWT with scope: EXPLORE_MODE.
+- [x] Rate limit: Max 3 registrations per device fingerprint per 24 hours.
 
 ### Dev Tasks
 
@@ -39,10 +39,10 @@ So that I can get started immediately without waiting for my parent to set every
 - [ ] Create ProfileCreationForm component
 - [ ] Create ParentContactForm component with WhatsApp/Email toggle
 - [ ] Create RegistrationSuccessScreen component (two variants: under-18, over-18)
-- [ ] Implement Zod schemas: studentRegistrationSchema
-- [ ] Implement age calculation utility (handles leap years, timezone offset)
-- [ ] Implement device fingerprinting for rate limiting (use @fingerprintjs/fingerprintjs or simple hash of device info)
-- [ ] Wire up POST /api/v1/students/register
+- [x] Implement Zod schemas: studentRegistrationSchema
+- [x] Implement age calculation utility (handles leap years, timezone offset)
+- [x] Implement device fingerprinting for rate limiting (use @fingerprintjs/fingerprintjs or simple hash of device info)
+- [x] Wire up POST /api/v1/students/register
 
 ### QA
 
@@ -71,23 +71,23 @@ So that I face no unnecessary friction since I'm legally an adult under DPDP.
 
 ### Acceptance Criteria
 
-- [ ] Age gate (Story S0.1, Step 2) determines adult status
-- [ ] Adult students skip Steps 4 (Parent Contact) entirely
-- [ ] Account created with: isAdult: true, consentStatus: NOT_REQUIRED, status: ACTIVE
-- [ ] No ConsentRequest record created
-- [ ] No parent record created (optional emergency contact can be added later in Settings — P2)
-- [ ] Adult student lands on Diagnostic Quiz prompt (S1.3) or can skip to Learning Map (S2.1)
+- [x] Age gate (Story S0.1, Step 2) determines adult status
+- [x] Adult students skip Steps 4 (Parent Contact) entirely
+- [x] Account created with: isAdult: true, consentStatus: NOT_REQUIRED, status: ACTIVE
+- [x] No ConsentRequest record created
+- [x] No parent record created (optional emergency contact can be added later in Settings — P2)
+- [x] Adult student lands on Diagnostic Quiz prompt (S1.3) or can skip to Learning Map (S2.1)
 - [ ] All features fully unlocked. No freemium wall different from under-18 students
-- [ ] In Admin Dashboard: Adult students are tagged with "Adult Student" badge in user list
-- [ ] Backend: Same endpoint as S0.1. Branching logic at age verification step
-- [ ] Prisma: StudentProfile.isAdult boolean field
+- [x] In Admin Dashboard: Adult students are tagged with "Adult Student" badge in user list
+- [x] Backend: Same endpoint as S0.1. Branching logic at age verification step
+- [x] Prisma: StudentProfile.isAdult boolean field
 
 ### Dev Tasks
 
-- [ ] Extend StudentRegistrationWizard with conditional step skipping for adults
-- [ ] Add isAdult flag to student profile schema
-- [ ] Update JWT scope generation for adult users
-- [ ] Add admin dashboard badge for adult students
+- [x] Extend StudentRegistrationWizard with conditional step skipping for adults
+- [x] Add isAdult flag to student profile schema
+- [x] Update JWT scope generation for adult users
+- [x] Add admin dashboard badge for adult students
 
 ### QA
 
@@ -110,8 +110,8 @@ So that I stay engaged and don't delete the app while waiting for my parent.
 
 ### Acceptance Criteria
 
-- [ ] Explore Mode Home Screen: Top banner (sticky, dismissible): Text: "⏳ Waiting for Mom's approval. Explore 3 free sample lessons while you wait!" Dismiss button: Small "✕" to collapse banner. Banner re-appears on next app open.
-- [ ] Approval Status Bar (collapsed by default, tap to expand): ✅ Profile Created (checkmark, green), ⏳ Approval Sent (pulsing dot, amber), ⬜ Parent Approved (greyed out). Text: "Sent to +91 98XXXXXX12 at 4:32 PM. Expires in 47 hours." "Send Reminder" button below status bar.
+- [x] Explore Mode Home Screen: Top banner (sticky, dismissible): Text: "⏳ Waiting for Mom's approval. Explore 3 free sample lessons while you wait!" Dismiss button: Small "✕" to collapse banner. Banner re-appears on next app open.
+- [x] Approval Status Bar (collapsed by default, tap to expand): ✅ Profile Created (checkmark, green), ⏳ Approval Sent (pulsing dot, amber), ⬜ Parent Approved (greyed out). Text: "Sent to +91 98XXXXXX12 at 4:32 PM. Expires in 47 hours." "Send Reminder" button below status bar.
 - [ ] Explore Mode Content — Sample Lessons: Curriculum Map rendered in locked/paused state. 3 Sample Topics are highlighted with "Free Preview" badge. Selected based on grade + board (e.g., Grade 5 CBSE → "Introduction to Fractions", "Types of Soil", "Parts of Speech"). Topics glow softly (pulsing border animation).
 - [ ] All other topics visible but locked: 🔒 Lock icon overlay. Tapping a locked topic shows a tooltip/modal: "This topic unlocks when your parent approves. Explore our 3 free sample lessons in the meantime!" Button: "Send Reminder to Mom" Link: "View Sample Lessons" (scrolls to highlighted samples)
 - [ ] Tapping a sample topic: Opens full lesson content (pre-generated core notes + video if exists). Fully functional. No paywall or blocker. After viewing: "Want to practice this topic? Unlock unlimited practice when your parent approves." "Mark as Complete" button tracks locally (not synced to server).
@@ -122,7 +122,7 @@ So that I stay engaged and don't delete the app while waiting for my parent.
 - [ ] On Status Change — DENIED: Screen: "Access Not Approved". Body: "Your parent has declined access to Spinzy Academy. We recommend talking to them to understand why." Secondary body: "You can try again with a different parent contact." Button: "Send New Request" → Returns to Step 4 (Parent Contact). Profile anonymized: Name removed, only grade/board retained as aggregate stats. 72-hour cooldown before new request can be sent from same device.
 - [ ] On Status Change — EXPIRED (48 hours): Banner updates: "Your approval request has expired. Send a new one?" Button: "Send New Request" → Returns to Step 4. No cooldown for expiry (different from denial).
 - [ ] Reminder & Re-send: After 24 hours in Explore Mode with no response: Banner updates: "Mom might have missed it. Send a gentle reminder?" Button: "Send Reminder". Reminder re-sends original channel. Cooldown: 1 per 24 hours.
-- [ ] "Change Contact" link: Opens WhatsApp/Email toggle with new input. If contact changed: Old ConsentRequest expires immediately. New request sent to new contact.
+- [x] "Change Contact" link: Opens WhatsApp/Email toggle with new input. If contact changed: Old ConsentRequest expires immediately. New request sent to new contact.
 - [ ] Explore Mode Settings (⚙️ icon, top right): Shows: Current contact: Masked (+91 98XXXXXX12 / mom\*\*\*\*@gmail.com). Request sent at: Timestamp. Expires in: Countdown timer (live). "Send Reminder" button. "Change Contact Method" → Opens Step 4. "Cancel Request" → Confirmation modal. On confirm: Profile deleted. App returns to Step 1 (Role Selection).
 - [ ] Explore Mode Limitations: Sample Lessons (3 topics) ✅ Unlocked; Diagnostic Quiz ✅ Unlocked; AI Tutor (Teacher Vidya) ❌ Locked — "Ask Mom to approve to chat with Teacher Vidya!"; Practice Questions ❌ Locked — "Practice unlocks with parent approval. Explore sample lessons now!"; Topic Generation ❌ Locked — "Requesting new topics unlocks with parent approval."; Progress Tracking ❌ Off — "Your progress will be saved after parent approval."; Streaks & XP ❌ Off — "Streaks and rewards begin after approval!"
 - [ ] Backend: GET /api/v1/students/explore-content?grade=5&board=CBSE — Returns exactly 3 sample topics with full content. GET /api/v1/consent/status?consent_token={token} — Returns { status, expiresAt, sentTo (masked), channel, reminderCount }. WebSocket: Student subscribes to consent:{consent_token} on app open. POST /api/v1/consent/resend — Body: { consent_token, new_channel?, new_contact? }. Validates cooldown (24h for same contact, immediate for new contact).
@@ -134,7 +134,7 @@ So that I stay engaged and don't delete the app while waiting for my parent.
 - [ ] Create ApprovalStatusBar component (expandable timeline)
 - [ ] Create ExploreMap component (locked variant of Learning Map with 3 glowing nodes)
 - [ ] Create LockedFeatureModal component (reusable for locked features)
-- [ ] Create ExploreSettings component (⚙️ menu)
+- [x] Create ExploreSettings component (⚙️ menu)
 - [ ] Implement useConsentStatus hook (WebSocket + polling fallback)
 - [ ] Implement useLocalStorage service for diagnostic result caching
 - [ ] Create ApprovalTransition component (confetti + celebration)
@@ -179,8 +179,8 @@ So that I'm never stuck waiting indefinitely.
 ### Dev Tasks
 
 - [ ] Extend ExploreSettings with reminder, change contact, cancel actions
-- [ ] Implement DELETE /api/v1/students/{id} endpoint
-- [ ] Implement device cooldown tracking in Redis for denied requests
+- [x] Implement DELETE /api/v1/students/{id} endpoint
+- [x] Implement device cooldown tracking in Redis for denied requests
 - [ ] Add cooldown validation middleware for resend endpoint
 
 ### QA
@@ -282,7 +282,7 @@ So that the app places me at the right difficulty level instead of boring me or 
 - [ ] After 5th question: Score ≥ 4: "You're a Prodigy! 🚀 Starting you at an advanced level." → starting_level: ADVANCED. Skips Chapter 1 basics.
 - [ ] Score 2-3: "Solid foundation! 💪 Starting at grade level." → starting_level: STANDARD
 - [ ] Score < 2: "Let's build from the basics. 🧱 Starting with fundamentals." → starting_level: FOUNDATION
-- [ ] Placement stored: POST /api/v1/students/{id}/diagnostic-result
+- [x] Placement stored: POST /api/v1/students/{id}/diagnostic-result
 - [ ] "Continue to Learning Map" button
 - [ ] If student was in Explore Mode: Diagnostic result is synced from local storage after consent
 
@@ -291,8 +291,8 @@ So that the app places me at the right difficulty level instead of boring me or 
 - [ ] Create DiagnosticQuiz component
 - [ ] Create QuizQuestion sub-component
 - [ ] Create QuizResult component (score + placement + avatar reaction)
-- [ ] API: GET /api/v1/content/diagnostic?grade=5&board=CBSE (returns 5 Qs)
-- [ ] API: POST /api/v1/students/{id}/diagnostic-result
+- [x] API: GET /api/v1/content/diagnostic?grade=5&board=CBSE (returns 5 Qs)
+- [x] API: POST /api/v1/students/{id}/diagnostic-result
 
 ### QA
 

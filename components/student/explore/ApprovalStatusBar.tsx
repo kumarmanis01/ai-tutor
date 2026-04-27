@@ -7,11 +7,13 @@
  * - tests/unit/components/student/explore/ApprovalStatusBar.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | created
+ * - 2026-04-27T00:00:00Z | copilot | handle replaced consent tokens and expanded resend error states
  */
 
 'use client';
@@ -24,9 +26,16 @@ interface Props {
   expiresAt: string | null;
   sentTo: string | null;
   consentToken: string;
+  onTokenRotate?: (nextToken: string) => void;
 }
 
-export default function ApprovalStatusBar({ status, expiresAt, sentTo, consentToken }: Props) {
+export default function ApprovalStatusBar({
+  status,
+  expiresAt,
+  sentTo,
+  consentToken,
+  onTokenRotate,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
@@ -44,10 +53,17 @@ export default function ApprovalStatusBar({ status, expiresAt, sentTo, consentTo
       if (!res.ok) {
         setResendMsg(
           data.error === 'cooldown'
-            ? 'Please wait before sending another reminder.'
+            ? 'Please wait 24 hours before sending another reminder.'
+            : data.error === 'max_reminders_reached'
+              ? 'You have already used all reminders for this request.'
+              : data.error === 'different_contact_required'
+                ? 'This request was denied. Please change parent contact details.'
             : 'Could not send. Try again.'
         );
       } else {
+        if (typeof data.consent_token === 'string' && data.consent_token !== consentToken) {
+          onTokenRotate?.(data.consent_token);
+        }
         setResendMsg('Reminder sent!');
       }
     } catch {

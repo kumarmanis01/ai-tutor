@@ -14,6 +14,7 @@ export interface StudentRowData {
   grade: string | null;
   board: string | null;
   age: number | null;
+  isAdult: boolean;
   accountStatus: string;
   subscriptionStatus: string;
   totalXp: number;
@@ -40,7 +41,7 @@ function initials(name: string | null, email: string | null): string {
 
 function statusLabel(student: StudentRowData): { text: string; cls: string } {
   if (student.accountStatus === 'pending_parent_verification') {
-    return { text: 'Pending OTP', cls: 'bg-[#FAEEDA] text-[#633806]' };
+    return { text: 'Awaiting Parent Consent', cls: 'bg-[#FAEEDA] text-[#633806]' };
   }
   if (student.lastSessionDate) {
     const daysSince = Math.floor(
@@ -198,6 +199,11 @@ function StudentRow({
             Paid
           </span>
         )}
+        {student.isAdult && (
+          <span className="ml-1 inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#EAF3DE] text-[#27500A]">
+            Adult Student
+          </span>
+        )}
       </td>
       <td className="px-3 py-2.5 text-[11px] text-gray-500">
         {student.totalXp.toLocaleString()} XP &middot; L{student.level}
@@ -295,6 +301,7 @@ export function StudentsTable({ students }: { students: StudentRowData[] }) {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
           <option value="pending">Pending OTP</option>
+          <option value="pending">Awaiting Parent Consent</option>
         </select>
         <span className="text-[11px] text-gray-400 ml-1">{visible.length} students</span>
       </div>
