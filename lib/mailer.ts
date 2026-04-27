@@ -1,21 +1,18 @@
 /**
  * lib/mailer.ts
  * All transactional email. Renders React Email templates to HTML,
- * then dispatches via EMAIL_PROVIDER (resend | ses).
+ * then dispatches via Resend.
  *
  * Required env vars:
- *   EMAIL_PROVIDER   'resend' (default) | 'ses'
- *   RESEND_API_KEY   Required when EMAIL_PROVIDER=resend
+ *   RESEND_API_KEY   Required
  *   FROM_EMAIL       Sending address (default: no-reply@send.spinzyacademy.com)
  *   FROM_NAME        Display name    (default: Spinzy Academy)
  *   EMAIL_FROM       Full address override (overrides FROM_NAME + FROM_EMAIL)
  *
- *   For EMAIL_PROVIDER=ses:
- *   AWS_SES_SMTP_HOST / AWS_SES_SMTP_PORT / AWS_SES_SMTP_USER / AWS_SES_SMTP_PASS
- *
  * EDIT LOG:
  * - 2025-01-15T00:00:00Z | copilot | initial B3.2 named send methods
  * - 2026-04-27T00:00:00Z | copilot | v3 -- React Email templates, EMAIL_PROVIDER abstraction
+ * - 2026-04-27T00:00:00Z | copilot | review fixes: board/denyLink passthrough, weekly report fields
  */
 
 import * as React from 'react';
@@ -54,10 +51,10 @@ export interface MailOptions {
 export async function sendMail(opts: MailOptions): Promise<string> {
   try {
     const id = await sendViaProvider(opts);
-    logger.info('[mailer] Sent', { id, to: opts.to });
+    logger.info('[mailer] Sent', { id });
     return id;
   } catch (err) {
-    logger.error('[mailer] Send failed', { error: err, to: opts.to, subject: opts.subject });
+    logger.error('[mailer] Send failed', { error: err, subject: opts.subject });
     throw err;
   }
 }

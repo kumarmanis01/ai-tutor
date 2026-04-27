@@ -12,6 +12,8 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | created
  * - 2026-04-24T12:00:00Z | copilot | validate contact per channel; use AccountStatus enum; remove any types
+ * - 2026-04-27T00:00:00Z | copilot | adopt schema-first validation, precise age calculation, and medium/subjects support while preserving existing endpoint
+ * - 2026-04-27T13:55:00Z | copilot | replace placeholder registration tokens with JWT access tokens and expose consent_token separately
  */
 
 import { NextResponse } from 'next/server';
@@ -21,40 +23,27 @@ import { logger } from '@/lib/logger';
 import { sendConsentRequest } from '@/lib/whatsapp/cloud.service';
 import { sendMailSafe } from '@/lib/mailer';
 import { getRedis } from '@/lib/redis';
+import {
+  studentRegistrationSchema,
+  type StudentRegistrationInput,
+} from '@/lib/student/registrationSchema';
+import { calculateAgeFromDob } from '@/lib/student/calculateAgeFromDob';
+import { generateAccessToken } from '@/lib/auth/token.service';
 
 export const dynamic = 'force-dynamic';
 const REG_LIMIT_MAX = 3;
 const REG_LIMIT_WINDOW_SECONDS = 24 * 60 * 60;
 
-/** Mask all but last 4 digits of a phone number. */
-function maskPhone(p: string | null | undefined) {
-  if (!p) return null;
-  const s = p.replace(/[^0-9+]/g, '');
-  return s.replace(/(\d)(?=\d{4})/g, '*');
-}
+function maskContact(input: string | null | undefined, channel: 'email' | 'whatsapp' | null) {
+  if (!input || !channel) return null;
+  if (channel === 'email') {
+    const [local, domain] = input.split('@');
+    if (!local || !domain) return null;
+    return `${local.slice(0, 1)}***@${domain}`;
+  }
 
-/** Basic e-mail format check. */
-function isValidEmail(s: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-}
-
-/**
- * Basic phone check: digits + optional leading '+', 8-15 digits after stripping spaces/dashes.
- * Accepts +91XXXXXXXXXX, 10-digit numbers, etc.
- */
-function isValidPhone(s: string): boolean {
-  const digits = s.replace(/[\s\-()]/g, '');
-  return /^\+?[0-9]{8,15}$/.test(digits);
-}
-
-function calcAgeFromDob(dob: string) {
-  const d = new Date(dob);
-  if (Number.isNaN(d.getTime())) return null;
-  const today = new Date();
-  let age = today.getFullYear() - d.getFullYear();
-  const m = today.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
-  return age;
+  const sanitized = input.replace(/[^0-9+]/g, '');
+  return sanitized.replace(/(\d)(?=\d{4})/g, '*');
 }
 
 export async function POST(req: Request) {
@@ -86,33 +75,43 @@ export async function POST(req: Request) {
     }
   }
 
-  let body: unknown;
+  let parsed: StudentRegistrationInput;
   try {
-    body = await req.json();
+    const rawJson = (await req.json()) as unknown;
+    const result = studentRegistrationSchema.safeParse(rawJson);
+    if (!result.success) {
+      const firstIssue = result.error.issues[0];
+      const res = NextResponse.json(
+        {
+          error: firstIssue?.message ?? 'validation_error',
+          details: result.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
+        { status: 400 }
+      );
+      logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    parsed = result.data;
   } catch {
     const res = NextResponse.json({ error: 'invalid_json' }, { status: 400 });
     logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
     return res;
   }
 
-  const b = body as Record<string, unknown>;
-  const name = typeof b.name === 'string' ? b.name.trim() : undefined;
-  const dob = typeof b.dateOfBirth === 'string' ? b.dateOfBirth : undefined;
-  const grade =
-    typeof b.grade === 'string' || typeof b.grade === 'number' ? String(b.grade) : undefined;
-  const board = typeof b.board === 'string' ? b.board : undefined;
-  const channel =
-    b.channel === 'whatsapp' ? 'whatsapp' : b.channel === 'email' ? 'email' : undefined;
-  const parentContactRaw =
-    typeof b.parent_contact === 'string' ? b.parent_contact.trim() : undefined;
+  const name = parsed.name;
+  const dob = parsed.dateOfBirth;
+  const grade = String(parsed.grade);
+  const board = parsed.board;
+  const medium = parsed.medium;
+  const subjects = parsed.subjects;
+  const channel = parsed.channel;
+  const parentContactRaw = parsed.parent_contact;
 
-  if (!name || !dob || !grade || !board) {
-    const res = NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-    logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
-    return res;
-  }
-
-  const age = calcAgeFromDob(dob);
+  const age = calculateAgeFromDob(dob);
   if (age == null || age < 0 || age > 120) {
     const res = NextResponse.json({ error: 'invalid_dob' }, { status: 400 });
     logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
@@ -134,18 +133,28 @@ export async function POST(req: Request) {
         isAdult,
         grade,
         board,
-        language: 'en',
+        language: medium,
+        subjects,
         accountStatus,
       },
       select: { id: true, name: true, age: true, isAdult: true },
     });
 
-    // Adult: return success with full access scope placeholder
+    const accessToken = await generateAccessToken({
+      sub: user.id,
+      role: 'user',
+      scope: 'user',
+    });
+
+    // Adult: return success with full access scope token.
     if (isAdult) {
       const res = NextResponse.json({
         ok: true,
         user: { id: user.id, isAdult: true },
+        status: 'ACTIVE',
+        consentStatus: 'NOT_REQUIRED',
         scope: 'full',
+        access_token: accessToken,
       });
       logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
       return res;
@@ -158,18 +167,7 @@ export async function POST(req: Request) {
       return res;
     }
 
-    // Validate contact format per channel -- return 400 to avoid sending broken messages.
     const parentContact = parentContactRaw;
-    if (channel === 'whatsapp' && !isValidPhone(parentContact)) {
-      const res = NextResponse.json({ error: 'invalid_phone' }, { status: 400 });
-      logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
-      return res;
-    }
-    if (channel === 'email' && !isValidEmail(parentContact)) {
-      const res = NextResponse.json({ error: 'invalid_email' }, { status: 400 });
-      logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
-      return res;
-    }
 
     // create consent token and consent request
     const token = crypto.randomUUID();
@@ -224,12 +222,16 @@ export async function POST(req: Request) {
       });
     }
 
-    const exploreToken = `explore:${token}`;
+    const exploreToken = accessToken;
     const res = NextResponse.json({
       ok: true,
       user: { id: user.id, isAdult: false },
+      status: 'AWAITING_PARENT_CONSENT',
+      consentStatus: 'AWAITING',
+      scope: 'EXPLORE_MODE',
       explore_token: exploreToken,
-      contactMask: maskPhone(parentContact),
+      consent_token: token,
+      contactMask: maskContact(parentContact, channel),
     });
     logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
     return res;
