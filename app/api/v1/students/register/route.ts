@@ -167,6 +167,7 @@ export async function POST(req: Request) {
       return res;
     }
 
+
     const parentContact = parentContactRaw;
 
     // create consent token and consent request
