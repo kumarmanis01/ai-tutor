@@ -208,31 +208,31 @@ As a Content Admin, I want a prioritized dashboard of all content requiring revi
 
 ### Acceptance Criteria
 
-- [ ] Dashboard at admin.spinzy.academy/content/moderation
-- [ ] Default sort: "Pending Review" sorted by "Request Count" descending
-- [ ] Columns: Topic Name, Subject/Grade/Board, Content Type, Request Count, Flag Count, Status, Date Submitted, Generator, Actions
-- [ ] Filters sidebar: Subject (multi-select), Grade (range or multi-select), Board (CBSE/ICSE/State), Content Type, Status, Date Range
-- [ ] Search bar: By topic name, keyword
-- [ ] Batch actions: Select multiple rows via checkbox, "Approve All Selected", "Reject All Selected"
-- [ ] Pagination: 20 rows per page
-- [ ] Real-time updates: New AI-generated content appears without page refresh (WebSocket or polling every 30s)
+- [x] Dashboard at admin.spinzy.academy/content/moderation
+- [x] Default sort: "Pending Review" sorted by "Request Count" descending
+- [x] Columns: Topic Name, Subject/Grade/Board, Content Type, Request Count, Flag Count, Status, Date Submitted, Generator, Actions
+- [x] Filters sidebar: Subject (multi-select), Grade (range or multi-select), Board (CBSE/ICSE/State), Content Type, Status, Date Range
+- [x] Search bar: By topic name, keyword
+- [x] Batch actions: Select multiple rows via checkbox, "Approve All Selected", "Reject All Selected"
+- [x] Pagination: 20 rows per page
+- [x] Real-time updates: New AI-generated content appears without page refresh (WebSocket or polling every 30s)
 
 ### Dev Tasks
 
-- [ ] Create ContentModerationPage component
-- [ ] Create ModerationTable component (with checkbox selection)
-- [ ] Create ModerationFilters component
-- [ ] Create BatchActionBar component
-- [ ] Implement GET /api/v1/admin/content/moderation (paginated, filterable, sortable)
-- [ ] Implement POST /api/v1/admin/content/batch-action
+- [x] Create ContentModerationPage component
+- [x] Create ModerationTable component (with checkbox selection)
+- [x] Create ModerationFilters component
+- [x] Create BatchActionBar component
+- [x] Implement GET /api/v1/admin/content/moderation (paginated, filterable, sortable)
+- [x] Implement POST /api/v1/admin/content/batch-action
 
 ### QA
 
-- [ ] Dashboard loads within 2 seconds with 100+ items
-- [ ] Default sort by request count works
-- [ ] Filters apply correctly and combine with AND logic
-- [ ] Batch approve/reject processes all selected items
-- [ ] Real-time: New AI content appears within 30 seconds
+- [x] Dashboard loads within 2 seconds with 100+ items
+- [x] Default sort by request count works
+- [x] Filters apply correctly and combine with AND logic
+- [x] Batch approve/reject processes all selected items
+- [x] Real-time: New AI content appears within 30 seconds
 
 ## A1.2 | P0 | Content Review Interface — Side-by-Side Editor
 
@@ -245,41 +245,41 @@ As a Content Admin, I want to open any pending content in a side-by-side view (r
 
 ### Acceptance Criteria
 
-- [ ] Left Panel (70%): Rendered content preview as student sees on mobile (320px mockup)
-- [ ] Supports: Rich text, images, LaTeX equations, tables, videos
-- [ ] Right Panel (30%): Markdown editor with syntax highlighting and toolbar
-- [ ] Live preview updates on edit (debounced 500ms)
-- [ ] AI Content Indicator: Yellow banner for AI-generated content showing model version and confidence score
-- [ ] Version History Tab: Collapsible panel with all versions, timestamps, editors, and "Restore This Version" button
-- [ ] Sticky Action Bar: Approve (Green), Reject (Red with reason modal), Request Revision (Amber with note field), Save Draft (Grey)
-- [ ] Approve: Promotes to public Read DB, removes Beta badge, notifies requesting students
-- [ ] Reject options: "Inaccurate Content", "Inappropriate", "Duplicate", "Poor Quality", "Other"
-- [ ] Request Revision: Sends back to AI queue with admin notes
-- [ ] Keyboard shortcuts: Ctrl+Enter (Approve), Ctrl+Shift+R (Reject), Ctrl+S (Save Draft)
+- [x] Left Panel (70%): Rendered content preview as student sees on mobile (320px mockup)
+- [x] Supports: Rich text, images, LaTeX equations, tables, videos
+- [x] Right Panel (30%): Markdown editor with syntax highlighting and toolbar
+- [x] Live preview updates on edit (debounced 500ms)
+- [x] AI Content Indicator: Yellow banner for AI-generated content showing model version and confidence score
+- [x] Version History Tab: Collapsible panel with all versions, timestamps, editors, and "Restore This Version" button
+- [x] Sticky Action Bar: Approve (Green), Reject (Red with reason modal), Request Revision (Amber with note field), Save Draft (Grey)
+- [x] Approve: Promotes to public Read DB, removes Beta badge, notifies requesting students
+- [x] Reject options: "Inaccurate Content", "Inappropriate", "Duplicate", "Poor Quality", "Other"
+- [x] Request Revision: Sends back to AI queue with admin notes
+- [x] Keyboard shortcuts: Ctrl+Enter (Approve), Ctrl+Shift+R (Reject), Ctrl+S (Save Draft)
 
 ### Dev Tasks
 
-- [ ] Create ContentReviewPage component
-- [ ] Create ContentPreview component (mobile frame)
-- [ ] Create MarkdownEditor component (use @uiw/react-md-editor or similar)
-- [ ] Create VersionHistoryPanel component
-- [ ] Create StickyActionBar component
-- [ ] Implement GET /api/v1/admin/content/{id}
-- [ ] Implement PUT /api/v1/admin/content/{id}
-- [ ] Implement POST /api/v1/admin/content/{id}/approve
-- [ ] Implement POST /api/v1/admin/content/{id}/reject
-- [ ] Implement POST /api/v1/admin/content/{id}/request-revision
-- [ ] Implement keyboard shortcut handler
+- [x] Create ContentReviewPage component
+- [x] Create ContentPreview component (mobile frame)
+- [x] Create MarkdownEditor component (use @uiw/react-md-editor or similar)
+- [x] Create VersionHistoryPanel component
+- [x] Create StickyActionBar component
+- [x] Implement GET /api/v1/admin/content/{id}
+- [x] Implement PUT /api/v1/admin/content/{id}
+- [x] Implement POST /api/v1/admin/content/{id}/approve
+- [x] Implement POST /api/v1/admin/content/{id}/reject
+- [x] Implement POST /api/v1/admin/content/{id}/request-revision
+- [x] Implement keyboard shortcut handler
 
 ### QA
 
-- [ ] Side-by-side view renders correctly on desktop (1920px+)
-- [ ] Markdown edits reflect in preview within 500ms
-- [ ] Approve: Content appears in student search within 1 minute
-- [ ] Reject: Requester student notified
-- [ ] Request Revision: Job appears in AI queue
-- [ ] Version history restore creates new version with correct content
-- [ ] Keyboard shortcuts work
+- [x] Side-by-side view renders correctly on desktop (1920px+)
+- [x] Markdown edits reflect in preview within 500ms
+- [x] Approve: Content appears in student search within 1 minute
+- [x] Reject: Requester student notified
+- [x] Request Revision: Job appears in AI queue
+- [x] Version history restore creates new version with correct content
+- [x] Keyboard shortcuts work
 
 ## A1.3 | P1 | Bulk Pre-Generated Content Upload
 
@@ -635,24 +635,24 @@ As a Super Admin / Content Admin, I want a real-time dashboard with key platform
 
 ### Acceptance Criteria
 
-- [ ] Dashboard at admin.spinzy.academy/analytics with time filter (Today/This Week/This Month/Custom Range)
-- [ ] Metric cards with trend arrows and sparklines for: Total Accounts, Total Active Students, DAU/WAU, New Registrations, Free→Premium Conversion, Churn Rate, Avg. Session Duration, Content Generated, Approval Rate, Avg. Approval Time, Top 5 Requested Topics, Flagged Content Unresolved, WhatsApp API Usage, Consent Pipeline
+- [x] Dashboard at admin.spinzy.academy/analytics with time filter (Today/This Week/This Month/Custom Range)
+- [x] Metric cards with trend arrows and sparklines for: Total Accounts, Total Active Students, DAU/WAU, New Registrations, Free→Premium Conversion, Churn Rate, Avg. Session Duration, Content Generated, Approval Rate, Avg. Approval Time, Top 5 Requested Topics, Flagged Content Unresolved, WhatsApp API Usage, Consent Pipeline
 - [ ] Click any metric → Drill-down detail page
 - [ ] Export dashboard as PDF
 
 ### Dev Tasks
 
-- [ ] Create AnalyticsDashboard component
-- [ ] Create MetricCard sub-component (with sparkline)
-- [ ] Create TimeFilter component
-- [ ] Implement GET /api/v1/admin/analytics/dashboard?period={period}
-- [ ] Implement Redis caching (5-minute TTL for real-time, 1-hour for historical)
+- [x] Create AnalyticsDashboard component
+- [x] Create MetricCard sub-component (with sparkline)
+- [x] Create TimeFilter component
+- [x] Implement GET /api/v1/admin/analytics/dashboard?period={period}
+- [x] Implement Redis caching (5-minute TTL for real-time, 1-hour for historical)
 - [ ] Implement PDF export
 
 ### QA
 
-- [ ] Dashboard loads within 3 seconds
-- [ ] All metrics accurate against raw data
+- [x] Dashboard loads within 3 seconds
+- [x] All metrics accurate against raw data
 - [ ] Drill-down works
 - [ ] PDF export includes all visible metrics
 

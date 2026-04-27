@@ -16,7 +16,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { logger } from '@/lib/logger';
 
@@ -32,11 +32,46 @@ type GenerationState = 'idle' | 'checking' | 'pending' | 'requesting' | 'done' |
 /**
  * S3.1 -- Shown when content search returns 0 results.
  * Offers "Generate Notes for Me" which enqueues a GenerationJob (S3.2).
+ * On mount, checks for an existing pending/in-progress job for this topic
+ * so the button shows "Content is being prepared..." if a job is already queued.
  */
 export function ContentRequestCard({ query, grade, board, subject }: ContentRequestCardProps) {
   const router = useRouter();
-  const [state, setState] = useState<GenerationState>('idle');
+  const [state, setState] = useState<GenerationState>('checking');
+  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Check if there is already a pending/in-progress job for this topic
+  useEffect(() => {
+    if (!query || query.length < 2) {
+      setState('idle');
+      return;
+    }
+    let cancelled = false;
+    setState('checking');
+    const params = new URLSearchParams({ topic: query });
+    fetch(`/api/v1/content/generation/status?${params.toString()}`)
+      .then(async (res) => {
+        if (cancelled) return;
+        const data = (await res.json()) as { job?: { id: string; status: string } | null };
+        if (cancelled) return;
+        if (data.job && (data.job.status === 'PENDING' || data.job.status === 'IN_PROGRESS')) {
+          setPendingJobId(data.job.id);
+          setState('pending');
+        } else {
+          setState('idle');
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          logger.error('ContentRequestCard: pending check failed', { query, error: err });
+          setState('idle');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
 
   async function handleGenerate() {
     setState('requesting');
@@ -71,8 +106,9 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
   }
 
   const isPending = state === 'pending';
+  const isChecking = state === 'checking';
   const isRequesting = state === 'requesting';
-  const isDisabled = isPending || isRequesting || state === 'done';
+  const isDisabled = isPending || isRequesting || isChecking || state === 'done';
 
   return (
     <div className="mt-6 rounded-2xl border border-[#534AB7]/20 bg-[#EEEDFE] p-5">
@@ -89,10 +125,16 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
       </p>
 
       {isPending ? (
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#534AB7]/10 px-4 py-3">
-          <span className="animate-spin text-lg">⏳</span>
-          <span className="text-sm font-medium text-[#534AB7]">Content is being prepared...</span>
-        </div>
+        <button
+          type="button"
+          disabled
+          onClick={pendingJobId ? () => router.push(`/student/learning-map/generate/${pendingJobId}`) : undefined}
+          className="mt-4 flex min-h-[44px] w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#534AB7]/60 px-4 py-2 text-sm font-semibold text-white"
+          aria-label="Content generation already in progress"
+        >
+          <span aria-hidden="true">⏳</span>
+          Content is being prepared...
+        </button>
       ) : (
         <button
           type="button"
@@ -100,7 +142,7 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
           onClick={() => void handleGenerate()}
           className="mt-4 min-h-[44px] w-full rounded-xl bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#4239a0] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isRequesting ? 'Sending request...' : 'Generate Notes for Me'}
+          {isChecking ? 'Checking...' : isRequesting ? 'Sending request...' : 'Generate Notes for Me'}
         </button>
       )}
 

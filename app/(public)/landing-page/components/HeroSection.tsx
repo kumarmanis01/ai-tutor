@@ -29,7 +29,7 @@ import VideoModal from './VideoModal';
 const TRUST_BADGES = [
   { icon: 'ðŸ›¡ï¸', label: 'DPDP Compliant' },
   { icon: 'ðŸ‡®ðŸ‡³', label: 'Servers in India' },
-  { icon: 'ðŸ“š', label: 'CBSE / ICSE / State Boards' },
+  { icon: 'ðŸ"š', label: 'CBSE / ICSE / State Boards' },
   { icon: 'â­', label: 'Free to Start' },
 ] as const;
 
@@ -113,7 +113,7 @@ const HeroSection = () => {
                 </h1>
                 {/* Hindi sub */}
                 <p className="font-accent text-xl md:text-2xl text-[#534AB7]">
-                  CBSE, ICSE à¤”à¤° State Board à¤•à¥‡ à¤²à¤¿à¤ à¤ªà¤°à¥à¤¸à¤¨à¤²à¤¾à¤‡à¤œà¤¼à¥à¤¡ AI à¤Ÿà¥à¤¯à¥‚à¤Ÿà¤°
+                  CBSE, ICSE à¤"à¤° State Board à¤•à¥‡ à¤²à¤¿à¤ à¤ªà¤°à¥à¤¸à¤¨à¤²à¤¾à¤‡à¤œà¤¼à¥à¤¡ AI à¤Ÿà¥à¤¯à¥‚à¤Ÿà¤°
                 </p>
                 <p className="font-body text-base md:text-lg text-foreground/80 max-w-xl mx-auto lg:mx-0">
                   Teacher Vidya guides you with hints and questions -- not just answers -- so you
@@ -159,8 +159,8 @@ const HeroSection = () => {
               {/* Three value prop icons */}
               <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
                 {[
-                  { icon: 'ðŸ“š', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
-                  { icon: 'ðŸ¤–', label: 'Socratic AI Tutor', sub: 'Guides, never just answers' },
+                  { icon: 'ðŸ"š', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
+                  { icon: 'ðŸ¤-', label: 'Socratic AI Tutor', sub: 'Guides, never just answers' },
                   { icon: 'â­', label: 'Free to Start', sub: 'No credit card needed' },
                 ].map(({ icon, label, sub }) => (
                   <div key={label} className="flex items-center gap-3 bg-[#EEEDFE] rounded-2xl px-4 py-3 min-w-[140px]">
