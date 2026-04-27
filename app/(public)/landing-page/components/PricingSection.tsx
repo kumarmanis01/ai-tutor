@@ -4,7 +4,7 @@
  *   "Best Value" badge on annual, 30-day money-back, and free tier callout.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/(public)/landing-page/components/PricingSection.spec.ts
+ * - tests/unit/app/(public)/landing-page/components/PricingSection.spec.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
@@ -14,6 +14,7 @@
  * - 2026-04-24T00:00:00Z | copilot | restore clean PricingSection and imports; remove corrupted leading fragment
  * - 2026-04-26T00:00:00Z | copilot | LP-6.2: add annual savings and tuition comparison
  * - 2026-04-27T00:00:00Z | copilot | v3: replace plan tiers with monthly/quarterly/annual, add billing toggle
+ * - 2026-04-27T10:45:00Z | copilot | align linked unit test path with added pricing component test file
  */
 'use client';
 

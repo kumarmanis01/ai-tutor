@@ -10,9 +10,13 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created for v3 school-partnership route
+ * - 2026-04-27T10:50:00Z | copilot | add deterministic 429 rate-limit test and no-write assertion
  */
 import { POST } from '@/app/api/v1/leads/school-partnership/route';
 import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/db';
+
+var mockAllow: jest.Mock;
 
 jest.mock('@/lib/db', () => ({
   prisma: {
@@ -28,9 +32,12 @@ jest.mock('@/lib/logger', () => ({
 
 jest.mock('@/lib/alerts/redisRateLimiter', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    allow: jest.fn().mockResolvedValue(true),
-  })),
+  default: jest.fn().mockImplementation(() => {
+    mockAllow = jest.fn().mockResolvedValue(true);
+    return {
+      allow: mockAllow,
+    };
+  }),
 }));
 
 const makeRequest = (body: unknown): NextRequest =>
@@ -49,6 +56,12 @@ const VALID_BODY = {
 };
 
 describe('POST /api/v1/leads/school-partnership', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAllow.mockReset();
+    mockAllow.mockResolvedValue(true);
+  });
+
   it('should return 200 for valid request', async () => {
     const res = await POST(makeRequest(VALID_BODY));
     expect(res.status).toBe(200);
@@ -91,8 +104,17 @@ describe('POST /api/v1/leads/school-partnership', () => {
     expect((await res.json()).code).toBe('INVALID_JSON');
   });
 
+  it('should return 429 when rate limited', async () => {
+    mockAllow.mockResolvedValueOnce(false);
+
+    const res = await POST(makeRequest(VALID_BODY));
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe('RATE_LIMITED');
+    expect(prisma.schoolLead.create).not.toHaveBeenCalled();
+  });
+
   it('should return 500 when DB throws', async () => {
-    const { prisma } = require('@/lib/db');
     (prisma.schoolLead.create as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
     const res = await POST(makeRequest(VALID_BODY));
     expect(res.status).toBe(500);

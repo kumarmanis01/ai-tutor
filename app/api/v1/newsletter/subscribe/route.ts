@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created for v3 landing page newsletter signup
+ * - 2026-04-27T10:45:00Z | copilot | standardize source value to snake_case for analytics consistency
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     await prisma.newsletterSubscriber.upsert({
       where: { email },
-      update: { consentGiven: true, source: 'landing-page-v3' },
-      create: { email, consentGiven: true, source: 'landing-page-v3' },
+      update: { consentGiven: true, source: 'newsletter_section' },
+      create: { email, consentGiven: true, source: 'newsletter_section' },
     });
   } catch (err) {
     logger.error('newsletter.subscribe.db_error', { error: err });

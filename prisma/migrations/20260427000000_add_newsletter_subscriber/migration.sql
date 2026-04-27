@@ -14,5 +14,4 @@ CREATE TABLE "NewsletterSubscriber" (
 );
 
 CREATE UNIQUE INDEX "NewsletterSubscriber_email_key" ON "NewsletterSubscriber"("email");
-CREATE INDEX "NewsletterSubscriber_email_idx" ON "NewsletterSubscriber"("email");
 CREATE INDEX "NewsletterSubscriber_createdAt_idx" ON "NewsletterSubscriber"("createdAt");

@@ -10,9 +10,13 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created for v3 newsletter subscribe route
+ * - 2026-04-27T10:50:00Z | copilot | make rate-limit test deterministic and assert no DB write on 429
  */
 import { POST } from '@/app/api/v1/newsletter/subscribe/route';
 import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/db';
+
+var mockAllow: jest.Mock;
 
 // Mocks
 jest.mock('@/lib/db', () => ({
@@ -28,10 +32,11 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 jest.mock('@/lib/alerts/redisRateLimiter', () => {
+  mockAllow = jest.fn().mockResolvedValue(true);
   return {
     __esModule: true,
     default: jest.fn().mockImplementation(() => ({
-      allow: jest.fn().mockResolvedValue(true),
+      allow: mockAllow,
     })),
   };
 });
@@ -48,6 +53,12 @@ const makeRequest = (body: unknown, ip = '1.2.3.4'): NextRequest => {
 };
 
 describe('POST /api/v1/newsletter/subscribe', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAllow.mockReset();
+    mockAllow.mockResolvedValue(true);
+  });
+
   it('should return 200 for valid request', async () => {
     const res = await POST(makeRequest({ email: 'test@example.com', consentGiven: true }));
     expect(res.status).toBe(200);
@@ -87,26 +98,16 @@ describe('POST /api/v1/newsletter/subscribe', () => {
   });
 
   it('should return 429 when rate limited', async () => {
-    // Override mock for this test
-    const RedisRateLimiter = require('@/lib/alerts/redisRateLimiter').default;
-    (RedisRateLimiter as jest.Mock).mockImplementationOnce(() => ({
-      allow: jest.fn().mockResolvedValue(false),
-    }));
+    mockAllow.mockResolvedValueOnce(false);
 
-    // Import fresh instance since the module is already loaded -- re-mock allow
-    const { prisma } = require('@/lib/db');
-    prisma.newsletterSubscriber.upsert.mockClear();
-
-    // We need to directly test rate limiting -- simulate via calling with rate-limited mock
-    // Since module is cached, we test the rate limiter's allow=false path indirectly.
-    // The route will use the cached limiter that returns true; we verify 200 still works.
     const res = await POST(makeRequest({ email: 'test2@example.com', consentGiven: true }));
-    // This test primarily confirms the 200 path still works after mock
-    expect([200, 429]).toContain(res.status);
+    expect(res.status).toBe(429);
+    const json = await res.json();
+    expect(json.code).toBe('RATE_LIMITED');
+    expect(prisma.newsletterSubscriber.upsert).not.toHaveBeenCalled();
   });
 
   it('should return 500 when DB throws', async () => {
-    const { prisma } = require('@/lib/db');
     (prisma.newsletterSubscriber.upsert as jest.Mock).mockRejectedValueOnce(
       new Error('DB error')
     );
