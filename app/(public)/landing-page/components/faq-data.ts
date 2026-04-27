@@ -11,9 +11,8 @@
  *
  * EDIT LOG:
  * - 2026-04-26T00:00:00Z | copilot | extracted FAQ array to separate module for server/client reuse
+ * - 2026-04-27T00:00:00Z | copilot | v3 landing page: replace 5-FAQ list with 8 v3-spec questions
  */
-
-import { PLANS } from '@/lib/billing/plans';
 
 export interface FAQ {
   id: number;
@@ -32,81 +31,83 @@ export function getFAQs(): FAQ[] {
   return [
     {
       id: 1,
-      questionEn: 'Will my child spend too much time on screen?',
-      questionHi: 'क्या मेरा बच्चा स्क्रीन पर बहुत समय बिताएगा?',
+      questionEn: 'Which boards and exams does Spinzy support?',
+      questionHi: 'Spinzy कौन से बोर्ड और परीक्षाओं को सपोर्ट करता है?',
       answerEn:
-        'Spinzy Academy is designed for quick doubt solving, not endless browsing. Average session is just 10-15 minutes. We provide parental controls to set daily time limits and track usage. Unlike social media, every minute spent here is productive learning.',
+        'Spinzy supports CBSE, ICSE, Maharashtra Board, UP Board, Tamil Nadu Board, Karnataka Board, and other major State Boards for Classes 6-12. Content is aligned to board-specific syllabi, question paper patterns, and chapter weightages so your preparation is always exam-focused.',
       answerHi:
-        'Spinzy Academy त्वरित doubt solving के लिए बनाया गया है, अंतहीन ब्राउज़िंग के लिए नहीं। औसत सत्र केवल 10-15 मिनट का है। हम दैनिक समय सीमा निर्धारित करने और उपयोग ट्रैक करने के लिए parental controls प्रदान करते हैं। सोशल मीडिया के विपरीत, यहां बिताया गया हर मिनट उत्पादक सीखना है।',
-      category: 'Usage',
-    },
-    {
-      id: 2,
-      questionEn: "Is my child's data safe and private?",
-      questionHi: 'क्या मेरे बच्चे का डेटा सुरक्षित और निजी है?',
-      answerEn:
-        "Absolutely! We comply with Indian data protection laws. No personal information is shared with third parties. All photos of homework are encrypted and automatically deleted after 30 days. We never show ads or sell data. Your child's privacy is our top priority.",
-      answerHi:
-        'बिल्कुल! हम भारतीय डेटा सुरक्षा कानूनों का पालन करते हैं। कोई व्यक्तिगत जानकारी तीसरे पक्ष के साथ साझा नहीं की जाती है। होमवर्क की सभी तस्वीरें एन्क्रिप्टेड हैं और 30 दिनों के बाद स्वचालित रूप से हटा दी जाती हैं। हम कभी विज्ञापन नहीं दिखाते या डेटा नहीं बेचते। आपके बच्चे की गोपनीयता हमारी सर्वोच्च प्राथमिकता है।',
-      category: 'Privacy',
-    },
-    {
-      id: 3,
-      questionEn: "Will Spinzy Academy really improve my child's grades?",
-      questionHi: 'क्या Spinzy Academy वास्तव में मेरे बच्चे के अंक सुधारेगा?',
-      answerEn:
-        'Yes! Our data shows 78% of students improve grades within 3 months. Teacher Vidya provides instant explanations, helping students understand concepts immediately instead of waiting for next tuition class. Regular practice tests and personalized learning paths ensure consistent improvement.',
-      answerHi:
-        'हां! हमारा डेटा दिखाता है कि 78% छात्र 3 महीने के भीतर अंक सुधारते हैं। Teacher Vidya तत्काल समाधान प्रदान करती है, जिससे छात्रों को अगली ट्यूशन कक्षा की प्रतीक्षा करने के बजाय तुरंत अवधारणाओं को समझने में मदद मिलती है। नियमित अभ्यास परीक्षण और व्यक्तिगत सीखने के रास्ते लगातार सुधार सुनिश्चित करते हैं।',
-      category: 'Effectiveness',
-    },
-    {
-      id: 4,
-      questionEn: "What if we don't have good internet connection?",
-      questionHi: 'अगर हमारे पास अच्छा इंटरनेट कनेक्शन नहीं है तो क्या होगा?',
-      answerEn:
-        "Spinzy Academy works on 2G/3G networks! We've optimized the app for slow internet. You can download NCERT notes and practice questions for offline use. Photo uploads are compressed automatically. Even with basic ₹5000 phones and limited data, your child can learn effectively.",
-      answerHi:
-        'Spinzy Academy 2G/3G नेटवर्क पर काम करता है! हमने धीमे इंटरनेट के लिए ऐप को अनुकूलित किया है। आप ऑफ़लाइन उपयोग के लिए NCERT नोट्स और अभ्यास प्रश्न डाउनलोड कर सकते हैं। फोटो अपलोड स्वचालित रूप से संकुचित हो जाते हैं। बुनियादी ₹5000 फोन और सीमित डेटा के साथ भी, आपका बच्चा प्रभावी ढंग से सीख सकता है।',
-      category: 'Technical',
-    },
-    {
-      id: 5,
-      questionEn: 'Can I try before paying?',
-      questionHi: 'क्या मैं भुगतान करने से पहले आज़मा सकता हूं?',
-      answerEn: `Yes -- try Spinzy Academy with no credit card required. When ready, upgrade to unlimited access for just ${PLANS.standard_monthly.perMonthDisplay}. Refunds are available within 7 days of purchase.`,
-      answerHi: `हां -- बिना क्रेडिट कार्ड के Spinzy Academy आज़माएं। तैयार होने पर, केवल ${PLANS.standard_monthly.perMonthDisplay} में असीमित एक्सेस में अपग्रेड करें। खरीद के 7 दिनों के भीतर रिफंड उपलब्ध हैं।`,
-      category: 'Pricing',
-    },
-    {
-      id: 6,
-      questionEn: 'Which boards and classes are supported?',
-      questionHi: 'कौन से बोर्ड और कक्षाएं समर्थित हैं?',
-      answerEn:
-        'We support CBSE, ICSE, and all State Boards for classes 1-12. All major subjects including Math, Science, Social Studies, English, and Hindi are covered. Our AI understands regional language variations and provides explanations accordingly.',
-      answerHi:
-        'हम कक्षा 1-12 के लिए CBSE, ICSE और सभी State Boards का समर्थन करते हैं। Math, Science, Social Studies, English और Hindi सहित सभी प्रमुख विषय शामिल हैं। हमारा AI क्षेत्रीय भाषा भिन्नताओं को समझता है और तदनुसार समाधान प्रदान करता है।',
+        'Spinzy CBSE, ICSE, Maharashtra Board, UP Board, Tamil Nadu Board, Karnataka Board और अन्य प्रमुख State Boards को Class 6-12 के लिए सपोर्ट करता है। Content board-specific syllabus, question paper patterns और chapter weightages के अनुसार है।',
       category: 'Coverage',
     },
     {
-      id: 7,
-      questionEn: 'Is Teacher Vidya available in Hindi?',
-      questionHi: 'क्या Teacher Vidya हिंदी में उपलब्ध है?',
+      id: 2,
+      questionEn: 'Is there a free trial? What does it include?',
+      questionHi: 'क्या free trial है? उसमें क्या शामिल है?',
       answerEn:
-        'Yes -- Teacher Vidya teaches in both English and Hindi. You can switch language at any time, even mid-session. All explanations, hints, and feedback are available in the language you prefer.',
+        'Yes -- no credit card required. The free tier includes 5 daily practice questions, a personalised diagnostic test, and a preview of your Learning Map so you can see exactly where your gaps are before subscribing. Your data and progress are fully saved so you never lose work when you upgrade.',
       answerHi:
-        'हां -- Teacher Vidya अंग्रेजी और हिंदी दोनों में पढ़ाती है। आप कभी भी, यहाँ तक कि session के बीच में भी, भाषा बदल सकते हैं। सभी explanations, hints और feedback आपकी पसंदीदा भाषा में उपलब्ध हैं।',
-      category: 'Language',
+        'हां -- कोई credit card नहीं चाहिए। Free tier में 5 daily practice questions, एक personalized diagnostic test, और Learning Map का preview शामिल है ताकि आप subscribe करने से पहले अपने gaps देख सकें।',
+      category: 'Pricing',
+    },
+    {
+      id: 3,
+      questionEn: 'How is Spinzy different from other tutoring apps?',
+      questionHi: 'Spinzy अन्य tutoring apps से कैसे अलग है?',
+      answerEn:
+        "Most apps show you the answer. Spinzy's AI tutor Vidya uses the Socratic method -- asking guiding questions and providing progressive hints so you actually understand the concept. This builds real mastery, not dependency. Think of it as a personal coach, not a homework-answer machine.",
+      answerHi:
+        'अधिकांश apps सीधे answer दिखाते हैं। Spinzy की AI tutor Vidya Socratic method उपयोग करती है -- guiding questions पूछकर और progressive hints देकर ताकि आप concept सच में समझ सकें। यह real mastery बनाती है।',
+      category: 'Product',
+    },
+    {
+      id: 4,
+      questionEn: 'Does Spinzy have a parent dashboard?',
+      questionHi: 'क्या Spinzy में parent dashboard है?',
+      answerEn:
+        'Yes. Parents get real-time visibility into their child\'s progress: topics covered, practice accuracy, time spent, and weak areas. You can assign extra practice on any topic, set daily time limits, and receive weekly email reports. Everything is designed so parents stay informed without hovering.',
+      answerHi:
+        'हां। Parents को real-time visibility मिलती है: topics covered, practice accuracy, time spent, और weak areas। आप किसी भी topic पर extra practice assign कर सकते हैं, daily time limits set कर सकते हैं, और weekly email reports पा सकते हैं।',
+      category: 'Parents',
+    },
+    {
+      id: 5,
+      questionEn: 'What devices can I use Spinzy on?',
+      questionHi: 'मैं Spinzy किन devices पर use कर सकता हूं?',
+      answerEn:
+        'Spinzy works on any smartphone, tablet, or computer with a modern browser -- no app download required. It is a Progressive Web App (PWA) optimised for budget Android phones on 4G connections. You can also install it to your home screen for an app-like experience.',
+      answerHi:
+        'Spinzy किसी भी smartphone, tablet, या modern browser वाले computer पर काम करता है -- कोई app download जरूरी नहीं। यह एक Progressive Web App (PWA) है जो budget Android phones पर 4G connection के लिए optimised है।',
+      category: 'Technical',
+    },
+    {
+      id: 6,
+      questionEn: 'Can I cancel my subscription at any time?',
+      questionHi: 'क्या मैं कभी भी subscription cancel कर सकता हूं?',
+      answerEn:
+        'Yes -- cancel any time directly from the parent dashboard. Access continues until the end of your current billing period, so you never lose days you have already paid for. There are no cancellation fees and no questions asked. We also offer a 30-day money-back guarantee on annual plans.',
+      answerHi:
+        'हां -- कभी भी parent dashboard से directly cancel करें। Access current billing period के अंत तक जारी रहती है। कोई cancellation fees नहीं, कोई सवाल नहीं। Annual plans पर 30-day money-back guarantee भी है।',
+      category: 'Pricing',
+    },
+    {
+      id: 7,
+      questionEn: 'Does Spinzy partner with schools?',
+      questionHi: 'क्या Spinzy schools के साथ partner करता है?',
+      answerEn:
+        'We offer institutional partnerships for schools and coaching centres that want to supplement classroom teaching with AI-powered practice. Contact our schools team at schools@spinzyacademy.com to learn about bulk pricing, teacher dashboards, and custom curriculum alignment.',
+      answerHi:
+        'हम schools और coaching centres के लिए institutional partnerships offer करते हैं जो classroom teaching को AI-powered practice से supplement करना चाहते हैं। schools@spinzyacademy.com पर हमारी schools team से संपर्क करें।',
+      category: 'Schools',
     },
     {
       id: 8,
-      questionEn: 'What is Spinzy AI Tutor and how does Teacher Vidya work?',
-      questionHi: 'Spinzy AI Tutor क्या है और Teacher Vidya कैसे काम करती है?',
+      questionEn: 'How does Spinzy keep student data safe?',
+      questionHi: 'Spinzy student data को कैसे safe रखता है?',
       answerEn:
-        'Spinzy AI Tutor provides curriculum-aligned, AI-powered guidance. Teacher Vidya is an AI persona that offers stepwise hints and explanations to help students learn -- to promote mastery, Vidya does not provide direct answers to practice problems. We process minimal usage data to deliver and improve the service; see our Privacy Policy for details. Spinzy AI Tutor is not a substitute for professional educational advice.',
+        'Spinzy is compliant with India\'s Digital Personal Data Protection (DPDP) Act. We never sell student data to third parties, never show ads, and require explicit parental consent for users under 18. All data is encrypted at rest and in transit, stored on servers in India, and subject to our publicly available Privacy Policy.',
       answerHi:
-        'Spinzy AI Tutor पाठ्यक्रम-संगत, AI-आधारित मार्गदर्शन प्रदान करता है। Teacher Vidya एक AI persona है जो चरणबद्ध hints और explanations देती है ताकि छात्र समझें और महारत हासिल कर सकें -- इसलिए Vidya अभ्यास समस्याओं के सीधे उत्तर नहीं देती। सेवा प्रदान करने और सुधारने के लिए हम न्यूनतम उपयोग डेटा संसाधित करते हैं; विवरण के लिए हमारी Privacy Policy देखें। Spinzy AI Tutor पेशेवर शैक्षणिक सलाह का विकल्प नहीं है।',
-      category: 'Product',
+        "Spinzy India के Digital Personal Data Protection (DPDP) Act के अनुसार है। हम कभी student data third parties को नहीं बेचते, कभी ads नहीं दिखाते, और 18 वर्ष से कम उम्र के users के लिए explicit parental consent लेते हैं।",
+      category: 'Privacy',
     },
   ];
 }
