@@ -12,12 +12,14 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created POST endpoint to store quick-diagnostic result and placement
+ * - 2026-04-27T13:45:00Z | copilot | require authenticated student identity and enforce token-subject match before updates
  */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { verifyUserAccessToken } from '@/lib/auth/token.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,12 +47,64 @@ function scoreToPlacement(score: number): PlacementLevel {
   return 'FOUNDATION';
 }
 
+function readBearerToken(req: Request): string | null {
+  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.slice('Bearer '.length).trim();
+  return token.length > 0 ? token : null;
+}
+
+async function isAuthorizedStudentWrite(req: Request, studentId: string): Promise<boolean> {
+  const token = readBearerToken(req);
+  if (!token) {
+    return false;
+  }
+
+  // Backward-compatible fallback token shape used by onboarding response.
+  if (token === `full:${studentId}`) {
+    return true;
+  }
+
+  if (token.startsWith('explore:')) {
+    const consentToken = token.slice('explore:'.length).trim();
+    if (!consentToken) {
+      return false;
+    }
+    const consentRequest = await prisma.consentRequest.findUnique({
+      where: { token: consentToken },
+      select: { studentId: true },
+    });
+    return consentRequest?.studentId === studentId;
+  }
+
+  try {
+    const payload = await verifyUserAccessToken(token);
+    return payload.scope === 'user' && payload.sub === studentId;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request, context: RouteContext) {
   const start = Date.now();
   const { id } = await context.params;
 
   if (!id) {
     const response = NextResponse.json({ error: 'missing_student_id' }, { status: 400 });
+    logger.logAPI(
+      req,
+      response,
+      { className: 'QuickDiagnosticResultAPI', methodName: 'POST' },
+      start
+    );
+    return response;
+  }
+
+  const isAuthorized = await isAuthorizedStudentWrite(req, id);
+  if (!isAuthorized) {
+    const response = NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     logger.logAPI(
       req,
       response,

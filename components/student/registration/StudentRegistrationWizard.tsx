@@ -66,6 +66,7 @@ const MEDIUMS = [
 ];
 
 const GRADES = Array.from({ length: 12 }, (_, i) => i + 1);
+const MAX_ALLOWED_AGE = 120;
 
 function formatPhoneInput(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 10);
@@ -141,9 +142,9 @@ export default function StudentRegistrationWizard({ onComplete }: Props) {
   // Age
   if (step === 'age') {
     const age = dob ? calculateAgeFromDob(dob) : null;
-    const valid = age !== null && age >= 4 && age <= 120;
+    const valid = age !== null && age >= 4 && age <= MAX_ALLOWED_AGE;
     const currentYear = new Date().getUTCFullYear();
-    const years = Array.from({ length: 80 }, (_, i) => String(currentYear - i));
+    const years = Array.from({ length: MAX_ALLOWED_AGE + 1 }, (_, i) => String(currentYear - i));
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-slate-950 p-6 gap-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center">
@@ -422,7 +423,12 @@ export default function StudentRegistrationWizard({ onComplete }: Props) {
         }
         const sd: SuccessData = {
           isAdult: false,
-          exploreToken: typeof data.explore_token === 'string' ? data.explore_token : null,
+          exploreToken:
+            typeof data.consent_token === 'string'
+              ? data.consent_token
+              : typeof data.explore_token === 'string'
+                ? data.explore_token
+                : null,
           name,
           contactMask: typeof data.contactMask === 'string' ? data.contactMask : null,
           studentId:

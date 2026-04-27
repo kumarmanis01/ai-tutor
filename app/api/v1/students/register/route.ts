@@ -13,6 +13,7 @@
  * - 2026-04-24T00:00:00Z | copilot | created
  * - 2026-04-24T12:00:00Z | copilot | validate contact per channel; use AccountStatus enum; remove any types
  * - 2026-04-27T00:00:00Z | copilot | adopt schema-first validation, precise age calculation, and medium/subjects support while preserving existing endpoint
+ * - 2026-04-27T13:55:00Z | copilot | replace placeholder registration tokens with JWT access tokens and expose consent_token separately
  */
 
 import { NextResponse } from 'next/server';
@@ -27,6 +28,7 @@ import {
   type StudentRegistrationInput,
 } from '@/lib/student/registrationSchema';
 import { calculateAgeFromDob } from '@/lib/student/calculateAgeFromDob';
+import { generateAccessToken } from '@/lib/auth/token.service';
 
 export const dynamic = 'force-dynamic';
 const REG_LIMIT_MAX = 3;
@@ -138,7 +140,13 @@ export async function POST(req: Request) {
       select: { id: true, name: true, age: true, isAdult: true },
     });
 
-    // Adult: return success with full access scope placeholder
+    const accessToken = await generateAccessToken({
+      sub: user.id,
+      role: 'user',
+      scope: 'user',
+    });
+
+    // Adult: return success with full access scope token.
     if (isAdult) {
       const res = NextResponse.json({
         ok: true,
@@ -146,7 +154,7 @@ export async function POST(req: Request) {
         status: 'ACTIVE',
         consentStatus: 'NOT_REQUIRED',
         scope: 'full',
-        access_token: `full:${user.id}`,
+        access_token: accessToken,
       });
       logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
       return res;
@@ -214,7 +222,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const exploreToken = `explore:${token}`;
+    const exploreToken = accessToken;
     const res = NextResponse.json({
       ok: true,
       user: { id: user.id, isAdult: false },
@@ -222,6 +230,7 @@ export async function POST(req: Request) {
       consentStatus: 'AWAITING',
       scope: 'EXPLORE_MODE',
       explore_token: exploreToken,
+      consent_token: token,
       contactMask: maskContact(parentContact, channel),
     });
     logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);

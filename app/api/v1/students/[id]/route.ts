@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created DELETE /api/v1/students/{id} soft-delete endpoint for S0.4 cancel request flow
+ * - 2026-04-27T13:30:00Z | copilot | reject delete when consent request is not pending to prevent token reuse after approval/denial
  */
 
 import { NextResponse } from 'next/server';
@@ -55,6 +56,12 @@ export async function DELETE(req: Request, context: RouteContext) {
 
     if (!consentRequest || consentRequest.studentId !== id) {
       const response = NextResponse.json({ error: 'consent_mismatch' }, { status: 403 });
+      logger.logAPI(req, response, { className: 'StudentDeleteAPI', methodName: 'DELETE' }, start);
+      return response;
+    }
+
+    if (consentRequest.status !== 'PENDING') {
+      const response = NextResponse.json({ error: 'consent_request_not_pending' }, { status: 409 });
       logger.logAPI(req, response, { className: 'StudentDeleteAPI', methodName: 'DELETE' }, start);
       return response;
     }

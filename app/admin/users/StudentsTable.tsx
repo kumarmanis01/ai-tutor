@@ -252,7 +252,9 @@ export function StudentsTable({ students }: { students: StudentRowData[] }) {
       const st = statusLabel(s).text.toLowerCase();
       if (statusFilter === 'active' && !st.startsWith('active')) return false;
       if (statusFilter === 'inactive' && !st.startsWith('inactive')) return false;
-      if (statusFilter === 'pending' && !st.includes('pending')) return false;
+      if (statusFilter === 'awaiting-parent-consent' && !st.includes('awaiting parent consent')) {
+        return false;
+      }
     }
     return true;
   });
@@ -300,8 +302,7 @@ export function StudentsTable({ students }: { students: StudentRowData[] }) {
           <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
-          <option value="pending">Pending OTP</option>
-          <option value="pending">Awaiting Parent Consent</option>
+          <option value="awaiting-parent-consent">Pending (OTP / Parent Consent)</option>
         </select>
         <span className="text-[11px] text-gray-400 ml-1">{visible.length} students</span>
       </div>

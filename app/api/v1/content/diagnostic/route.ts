@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created 5-question onboarding diagnostic endpoint with grade-band composition
+ * - 2026-04-27T13:45:00Z | copilot | remove correct-answer fields from public diagnostic payload
  */
 
 import { NextResponse } from 'next/server';
@@ -24,7 +25,6 @@ interface DiagnosticQuestion {
   id: string;
   prompt: string;
   options: string[];
-  correctAnswer: string | null;
   subject: string | null;
   sourceGrade: number;
 }
@@ -61,7 +61,6 @@ async function pullQuestions(
       id: true,
       prompt: true,
       choices: true,
-      correctAnswer: true,
       subject: true,
       grade: true,
     },
@@ -72,7 +71,6 @@ async function pullQuestions(
       id: row.id,
       prompt: row.prompt,
       options: parseOptions(row.choices).slice(0, 4),
-      correctAnswer: row.correctAnswer,
       subject: row.subject,
       sourceGrade: Number(row.grade ?? grade),
     }))
