@@ -34,6 +34,8 @@ interface ConsentRequestEmailProps {
   childName: string;
   grade: string;
   consentLink: string;
+  board?: string;
+  denyLink?: string;
 }
 
 // ── Template ──────────────────────────────────────────────────────────────────
@@ -43,6 +45,8 @@ export function ConsentRequestEmail({
   childName,
   grade,
   consentLink,
+  board,
+  denyLink,
 }: ConsentRequestEmailProps): React.ReactElement {
   return (
     <Html>
@@ -63,9 +67,9 @@ export function ConsentRequestEmail({
           </Heading>
           <Text style={body1}>Dear {parentName},</Text>
           <Text style={body1}>
-            Your child <strong>{childName}</strong> (Grade {grade}) has registered on Spinzy
-            Academy, an AI-powered home tutoring platform. We need your consent before they can
-            begin learning.
+            Your child <strong>{childName}</strong> (Grade {grade}{board ? `, ${board}` : ''}) has
+            registered on Spinzy Academy, an AI-powered home tutoring platform. We need your consent
+            before they can begin learning.
           </Text>
           <Text style={body1}>
             Spinzy Academy uses Vidya -- our AI tutor -- to provide personalised, curriculum-aligned
@@ -74,6 +78,15 @@ export function ConsentRequestEmail({
           <Button href={consentLink} style={btn}>
             Review and Approve
           </Button>
+          {denyLink && (
+            <Text style={body2}>
+              If you do not want {childName} to use Spinzy Academy, you can{' '}
+              <a href={denyLink} style={{ color: '#E24B4A' }}>
+                deny access here
+              </a>
+              .
+            </Text>
+          )}
           <Text style={body2}>
             This link is valid for 48 hours. If you have questions, reply to this email.
           </Text>
