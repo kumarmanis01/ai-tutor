@@ -1,3 +1,16 @@
+# FILE OBJECTIVE:
+# - Keep the local Docker build context small while preserving the files required for the hot-reload development image.
+#
+# LINKED UNIT TEST:
+# - tests/unit/docs/docker_dev_file.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - /docs/ENGINEERING_PRACTICES.md
+# - .github/copilot-instructions.md
+#
+# EDIT LOG:
+# - 2026-04-26T00:00:00Z | copilot | align ignore rules with the rebuilt Docker development image
+
 node_modules
 .pnpm-store
 .pnpm
@@ -5,15 +18,16 @@ node_modules
 dist
 coverage
 logs
+# Environment files — must never enter the build context
 .env
 .env.local
+.env.*.local
+# Development tooling — not needed at runtime
 .vscode
-npm-debug.log
-yarn-error.log
-Dockerfile*
-docker-compose.override.yml
-.git
+.github
 docs
 tests
 __tests__
-.github
+npm-debug.log
+yarn-error.log
+.git

@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-22T12:30:00Z | copilot | added JS helper to expose design tokens for runtime usage
+ * - 2026-04-26T11:20:00Z | copilot | replace anonymous default export with named constant for lint compliance
  */
 
 import type { CSSVariables } from '@/components/UI/variants/designTokens';
@@ -32,7 +33,9 @@ export function getToken(grade: Grade, key: string): string | number | undefined
   return tokens[key as keyof CSSVariables];
 }
 
-export default {
+const ThemeTokens = {
   tokensForGrade,
   getToken,
 };
+
+export default ThemeTokens;

@@ -15,6 +15,8 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | created
  * - 2026-04-24T12:00:00Z | copilot | keep token stable; block terminal statuses; validate contact; fetch student details for WA
+ * - 2026-04-27T00:00:00Z | copilot | implement 24h cooldown, max-reminder cap, and contact-change flow with request replacement
+ * - 2026-04-27T12:00:00Z | copilot | enforce denied same-contact 72h device cooldown while allowing different-contact resend
  */
 
 import { NextResponse } from 'next/server';
@@ -22,17 +24,20 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { sendConsentRequest } from '@/lib/whatsapp/cloud.service';
 import { sendMailSafe } from '@/lib/mailer';
+import { getRedis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 
-const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
+const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_REMINDERS_PER_REQUEST = 3;
+const DENIED_DEVICE_COOLDOWN_SECONDS = 72 * 60 * 60;
 
 /** Basic e-mail format check. */
 function isValidEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
-/** Basic phone check: 8–15 digits with optional leading '+'. */
+/** Basic phone check: 8-15 digits with optional leading '+'. */
 function isValidPhone(s: string): boolean {
   const digits = s.replace(/[\s\-()]/g, '');
   return /^\+?[0-9]{8,15}$/.test(digits);
@@ -40,6 +45,7 @@ function isValidPhone(s: string): boolean {
 
 export async function POST(req: Request) {
   const start = Date.now();
+  const redis = getRedis();
   let body: unknown;
   try {
     body = await req.json();
@@ -58,19 +64,14 @@ export async function POST(req: Request) {
   try {
     const cr = await prisma.consentRequest.findUnique({
       where: { token },
-      include: { messageLogs: { orderBy: { createdAt: 'desc' }, take: 1 } },
+      include: {
+        messageLogs: { orderBy: { createdAt: 'desc' }, take: MAX_REMINDERS_PER_REQUEST },
+      },
     });
     if (!cr) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-    // Block resend for terminal statuses — resending would be misleading and wasteful.
-    if (cr.status === 'APPROVED' || cr.status === 'DENIED') {
+    if (cr.status === 'APPROVED') {
       return NextResponse.json({ error: 'terminal_status' }, { status: 409 });
-    }
-
-    // Cooldown: prevent message spam.
-    const lastLog = cr.messageLogs?.[0];
-    if (lastLog && Date.now() - lastLog.createdAt.getTime() < COOLDOWN_MS) {
-      return NextResponse.json({ error: 'cooldown' }, { status: 429 });
     }
 
     // Resolve effective contact and channel (new_contact overrides stored value).
@@ -90,23 +91,73 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'invalid_email' }, { status: 400 });
     }
 
+    const isContactSwitch =
+      Boolean(newContact) ||
+      Boolean(newChannel && newChannel !== (cr.parentPhone ? 'whatsapp' : 'email'));
+
+    if (cr.status === 'DENIED') {
+      const previousContact = cr.parentPhone ?? cr.parentEmail ?? '';
+      const isSameContact = previousContact === effectiveContact;
+      if (isSameContact) {
+        const fingerprint = req.headers.get('x-device-fingerprint')?.trim() ?? '';
+        if (!fingerprint || !redis) {
+          return NextResponse.json({ error: 'different_contact_required' }, { status: 400 });
+        }
+
+        const deniedKey = `consent:denied:${fingerprint}:${cr.id}`;
+        let retryAfterSeconds = await redis.ttl(deniedKey);
+        if (retryAfterSeconds <= 0) {
+          await redis.setex(deniedKey, DENIED_DEVICE_COOLDOWN_SECONDS, '1');
+          retryAfterSeconds = DENIED_DEVICE_COOLDOWN_SECONDS;
+        }
+
+        return NextResponse.json(
+          {
+            error: 'denied_device_cooldown',
+            retryAfterSeconds,
+            message: 'Please use a different contact or try again after cooldown.',
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    const lastLog = cr.messageLogs?.[0];
+    if (!isContactSwitch && lastLog && Date.now() - lastLog.createdAt.getTime() < COOLDOWN_MS) {
+      return NextResponse.json({ error: 'cooldown' }, { status: 429 });
+    }
+
+    if (!isContactSwitch && cr.messageLogs.length >= MAX_REMINDERS_PER_REQUEST) {
+      return NextResponse.json({ error: 'max_reminders_reached' }, { status: 429 });
+    }
+
     // Fetch student details so the WA template is populated correctly.
     const student = await prisma.user.findUnique({
       where: { id: cr.studentId },
       select: { name: true, grade: true, board: true },
     });
 
-    // If the contact/channel changed, patch the ConsentRequest in-place (no new token).
-    if (newContact || newChannel) {
-      await prisma.consentRequest.update({
-        where: { id: cr.id },
-        data: {
-          parentPhone: effectiveChannel === 'whatsapp' ? effectiveContact : null,
-          parentEmail: effectiveChannel === 'email' ? effectiveContact : null,
-          channel: effectiveChannel === 'whatsapp' ? 'WHATSAPP' : 'EMAIL',
-        },
-      });
-    }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com';
+    const nextToken = isContactSwitch ? crypto.randomUUID() : token;
+    const nextConsentRequest = isContactSwitch
+      ? await prisma.$transaction(async (tx) => {
+          await tx.consentRequest.update({
+            where: { id: cr.id },
+            data: { status: 'EXPIRED' },
+          });
+
+          return tx.consentRequest.create({
+            data: {
+              studentId: cr.studentId,
+              parentPhone: effectiveChannel === 'whatsapp' ? effectiveContact : null,
+              parentEmail: effectiveChannel === 'email' ? effectiveContact : null,
+              channel: effectiveChannel === 'whatsapp' ? 'WHATSAPP' : 'EMAIL',
+              token: nextToken,
+              expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+            },
+          });
+        })
+      : cr;
 
     // Send message (best-effort) and log it.
     try {
@@ -116,28 +167,42 @@ export async function POST(req: Request) {
           student?.name ?? '',
           student?.grade ?? '',
           student?.board ?? '',
-          token
+          nextToken
         );
         await prisma.consentMessageLog.create({
-          data: { consentRequestId: cr.id, channel: 'WHATSAPP', status: 'SENT' },
+          data: {
+            consentRequestId: nextConsentRequest.id,
+            channel: 'WHATSAPP',
+            status: 'SENT',
+          },
         });
       } else {
-        const consentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/consent/${token}`;
+        const consentUrl = `${appUrl}/parent/approve?token=${nextToken}`;
         await sendMailSafe({
           to: effectiveContact,
           subject: `Please approve ${student?.name ?? 'your child'}'s Spinzy account`,
           html: `Please approve: ${consentUrl}`,
         });
         await prisma.consentMessageLog.create({
-          data: { consentRequestId: cr.id, channel: 'EMAIL', status: 'SENT' },
+          data: {
+            consentRequestId: nextConsentRequest.id,
+            channel: 'EMAIL',
+            status: 'SENT',
+          },
         });
       }
     } catch (e) {
-      logger.warn('consent.resend: send failed', { error: String(e), consentRequestId: cr.id });
+      logger.warn('consent.resend: send failed', {
+        error: String(e),
+        consentRequestId: nextConsentRequest.id,
+      });
     }
 
-    // Return the SAME token so the client continues polling without any URL update.
-    const res = NextResponse.json({ ok: true, consent_token: token });
+    const res = NextResponse.json({
+      ok: true,
+      consent_token: nextToken,
+      replaced_request: isContactSwitch,
+    });
     logger.logAPI(req, res, { className: 'ConsentResendAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {

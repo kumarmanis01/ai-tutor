@@ -15,30 +15,30 @@ So that I can understand the value and start without friction.
 ### Acceptance Criteria
 
 - [ ] Landing page loads in under 3 seconds on 4G connection (Lighthouse score ≥ 90)
-- [ ] Headline: "The AI Tutor That Asks YOUR Permission First" visible above fold
-- [ ] Trust badges visible: 🛡️ DPDP Compliant · 👁️ No Tracking · 📵 No Social Features · 🇮🇳 Servers in India
-- [ ] Primary CTA: "Start Free — Sign in with Google" (Tangerine #FF6B35, 48px min height)
-- [ ] Three value prop icons: All Boards Covered, Parental Control, Free to Start
-- [ ] Google OAuth popup/redirect on CTA click
-- [ ] On successful Google sign-in → Redirect to /onboarding (Add Child flow — Story P1.1-P)
-- [ ] Secondary link: "Learn more" (scrolls to How It Works section)
-- [ ] No credit card fields or pricing tables above the fold
-- [ ] Backend: POST /api/v1/auth/google — Validates Google ID token
-- [ ] Backend: Creates User record if new; returns JWT if existing
-- [ ] Backend: User table: email, name, google_id, created_at
+- [x] Headline: "The AI Tutor That Asks YOUR Permission First" visible above fold
+- [x] Trust badges visible: 🛡️ DPDP Compliant · 👁️ No Tracking · 📵 No Social Features · 🇮🇳 Servers in India
+- [x] Primary CTA: "Start Free — Sign in with Google" (Tangerine #FF6B35, 48px min height)
+- [x] Three value prop icons: All Boards Covered, Parental Control, Free to Start
+- [x] Google OAuth popup/redirect on CTA click
+- [x] On successful Google sign-in → Redirect to /onboarding (Add Child flow — Story P1.1-P)
+- [x] Secondary link: "Learn more" (scrolls to How It Works section)
+- [x] No credit card fields or pricing tables above the fold
+- [x] Backend: POST /api/v1/auth/google — Validates Google ID token
+- [x] Backend: Creates User record if new; returns JWT if existing
+- [x] Backend: User table: email, name, google_id, created_at
 
 ### Dev Tasks
 
-- [ ] Create landing page shell (apps/web/src/app/page.tsx)
-- [ ] Implement Google OAuth flow using @react-oauth/google
-- [ ] Create Hero component with trust badges and CTA
+- [x] Create landing page shell (apps/web/src/app/page.tsx)
+- [x] Implement Google OAuth flow using @react-oauth/google
+- [x] Create Hero component with trust badges and CTA
 
 ### QA
 
 - [ ] Page loads on ₹8,000 Android phone (Chrome) without layout shift
 - [ ] Google Sign-In works on mobile Chrome (pre-signed-in device → one tap)
 - [ ] Google Sign-In works on incognito (fresh login flow)
-- [ ] Return user → Redirected to Parent Dashboard (not onboarding)
+- [x] Return user → Redirected to Parent Dashboard (not onboarding)
 - [ ] Error state: Google popup blocked → shows manual sign-in fallback
 
 ## P0.2 | P1 | Referral Landing Page Variant

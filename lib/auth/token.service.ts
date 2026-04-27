@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2025-01-15T00:00:00Z | copilot | created -- B2.1 JWT token service
+ * - 2026-04-27T19:18:00Z | copilot | set admin access-token TTL to 30m for A0.3 session policy
  */
 
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
@@ -91,13 +92,14 @@ export async function generateAccessToken(
 ): Promise<string> {
   const { accessSecret } = chooseSecrets(payload.scope);
   const jti = randomUUID();
+  const accessTtl = payload.scope === 'admin' ? '30m' : '15m';
 
   return new SignJWT({ role: payload.role, scope: payload.scope })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.sub)
     .setJti(jti)
     .setIssuedAt()
-    .setExpirationTime('15m')
+    .setExpirationTime(accessTtl)
     .sign(accessSecret);
 }
 

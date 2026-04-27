@@ -14,6 +14,7 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | created
  * - 2026-04-24T12:00:00Z | copilot | use useRouter for redirect; replace <a> with Link for internal navigation
+ * - 2026-04-27T00:00:00Z | copilot | add Explore settings actions and consent-token rotation support for contact changes
  */
 
 'use client';
@@ -25,6 +26,7 @@ import Link from 'next/link';
 import { useConsentStatus } from '@/hooks/useConsentStatus';
 import ExploreBanner from '@/components/student/explore/ExploreBanner';
 import ApprovalStatusBar from '@/components/student/explore/ApprovalStatusBar';
+import ExploreSettings from '@/components/student/explore/ExploreSettings';
 
 interface TopicPreview {
   id: string;
@@ -36,11 +38,12 @@ export default function ExploreModeClient() {
   const params = useSearchParams();
   const router = useRouter();
   const rawToken = params.get('token') ?? '';
-  // Strip the "explore:" prefix the backend adds
-  const consentToken = rawToken.startsWith('explore:') ? rawToken.slice(8) : rawToken;
+  const initialToken = rawToken.startsWith('explore:') ? rawToken.slice(8) : rawToken;
+  const [consentToken, setConsentToken] = useState(initialToken);
   // eslint-disable-next-line ai-guards/no-string-filters -- grade/board are user-entered URL params from registration, not DB string filters
   const grade = params.get('grade') ?? '';
   const board = params.get('board') ?? '';
+  const studentId = params.get('studentId');
 
   const consent = useConsentStatus(consentToken || null);
   const [topics, setTopics] = useState<TopicPreview[]>([]);
@@ -49,8 +52,8 @@ export default function ExploreModeClient() {
   useEffect(() => {
     if (!grade || !board) return;
     setTopicsLoading(true);
-    // eslint-disable-next-line ai-guards/no-string-filters -- explore-content uses user-facing grade/board inputs, not DB-level string filters
     fetch(
+      // eslint-disable-next-line ai-guards/no-string-filters -- explore-content uses user-facing grade/board inputs, not DB-level string filters
       `/api/v1/students/explore-content?grade=${encodeURIComponent(grade)}&board=${encodeURIComponent(board)}`
     )
       .then((r) => r.json())
@@ -91,7 +94,7 @@ export default function ExploreModeClient() {
           <p className="text-sm text-red-700 dark:text-red-300 mt-1">
             Your parent has declined access. Talk to them and try again.
           </p>
-          {/* Use Link for client-side navigation — no full reload. */}
+          {/* Use Link for client-side navigation -- no full reload. */}
           <Link
             href="/register"
             className="mt-4 inline-block min-h-[44px] px-6 py-2 rounded-xl bg-[#E24B4A] text-white font-semibold text-sm"
@@ -124,6 +127,25 @@ export default function ExploreModeClient() {
           expiresAt={consent.expiresAt}
           sentTo={consent.sentTo}
           consentToken={consentToken}
+          onTokenRotate={(nextToken) => {
+            setConsentToken(nextToken);
+          }}
+        />
+      )}
+
+      {consent.status !== 'APPROVED' && consentToken && (
+        <ExploreSettings
+          studentId={studentId}
+          consentToken={consentToken}
+          sentTo={consent.sentTo}
+          expiresAt={consent.expiresAt}
+          channel={consent.channel}
+          onTokenRotate={(nextToken) => {
+            setConsentToken(nextToken);
+          }}
+          onRequestCancelled={() => {
+            router.push('/register');
+          }}
         />
       )}
 

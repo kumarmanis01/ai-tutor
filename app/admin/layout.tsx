@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import localFont from 'next/font/local';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -37,10 +38,22 @@ export const viewport = {
  * - Fetches sidebar badge counts server-side in parallel
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get('x-pathname') ?? '';
+  const isPublicAdminRoute = pathname === '/admin/login' || pathname === '/admin/setup';
+
+  if (isPublicAdminRoute) {
+    return (
+      <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+        <body className="font-sans antialiased h-full bg-gray-50 dark:bg-gray-950">{children}</body>
+      </html>
+    );
+  }
+
   const session = await getServerSessionForHandlers();
 
   if (!session || session.user?.role !== 'admin') {
-    redirect('/dashboard');
+    redirect(`/auth/signin?${new URLSearchParams({ callbackUrl: '/admin' }).toString()}`);
   }
 
   // Badge counts -- all run in parallel; individual failures fall back to 0

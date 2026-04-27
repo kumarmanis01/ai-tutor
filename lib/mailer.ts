@@ -1,42 +1,41 @@
 /**
  * lib/mailer.ts
- * All transactional email via Resend
+ * All transactional email. Renders React Email templates to HTML,
+ * then dispatches via Resend.
  *
  * Required env vars:
- *   RESEND_API_KEY   (from Resend dashboard -- re_xxxx)
- *   EMAIL_FROM       Spinzy Academy <no-reply@send.spinzyacademy.com>
- *
- * Verified sending domain: send.spinzyacademy.com (subdomain verified in Resend).
- * Free tier: 3,000 emails/month, 100/day.
+ *   RESEND_API_KEY   Required
+ *   FROM_EMAIL       Sending address (default: no-reply@send.spinzyacademy.com)
+ *   FROM_NAME        Display name    (default: Spinzy Academy)
+ *   EMAIL_FROM       Full address override (overrides FROM_NAME + FROM_EMAIL)
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | add B3.2 named send methods: sendOTP, sendConsentRequest, sendWeeklyReport, sendAdminInvite, sendPaymentInvoice
+ * - 2025-01-15T00:00:00Z | copilot | initial B3.2 named send methods
+ * - 2026-04-27T00:00:00Z | copilot | v3 -- React Email templates, EMAIL_PROVIDER abstraction
+ * - 2026-04-27T18:38:00Z | copilot | align admin invite subject and template payload with A0.1/A0.2 acceptance criteria
+ * - 2026-04-27T00:00:00Z | copilot | review fixes: board/denyLink passthrough, weekly report fields
  */
-import { Resend } from 'resend';
-import { logger } from '@/lib/logger';
-import {
-  otpEmailHtml,
-  consentRequestEmailHtml,
-  weeklyReportEmailHtml,
-  adminInviteEmailHtml,
-  paymentInvoiceEmailHtml,
-} from '@/lib/email/templates';
 
-// Lazy singleton -- avoids crash at module load time when RESEND_API_KEY is absent
-// (e.g. during Next.js build or unit tests that do not exercise email).
-let _client: Resend | null = null;
-function getClient(): Resend {
-  if (!_client) {
-    const key = process.env.RESEND_API_KEY;
-    if (!key) {
-      throw new Error(
-        '[mailer] RESEND_API_KEY not set. Add to .env.production and ecosystem.config.cjs'
-      );
-    }
-    _client = new Resend(key);
-  }
-  return _client;
-}
+import * as React from 'react';
+import { render } from '@react-email/render';
+import { logger } from '@/lib/logger';
+import { sendViaProvider } from '@/lib/email/email.provider';
+import { OTPEmail } from '@/lib/email/templates/otp';
+import { ConsentRequestEmail } from '@/lib/email/templates/consent-request';
+import {
+  WeeklyReportEmail,
+  WeeklyReportEmailFree,
+  WeeklyReportEmailPremium,
+  WeeklyReportEmailZeroActivity,
+  type WeeklyReportData,
+  type WeeklyReportFreeData,
+  type WeeklyReportPremiumData,
+  type WeeklyReportZeroActivityData,
+} from '@/lib/email/templates/weekly-report';
+import { AdminInviteEmail } from '@/lib/email/templates/admin-invite';
+import { InvoiceEmail, type InvoiceEmailData } from '@/lib/email/templates/invoice';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface MailOptions {
   to: string | string[];
@@ -47,47 +46,27 @@ export interface MailOptions {
   cc?: string | string[];
   attachments?: Array<{
     filename: string;
-    content: string | Buffer; // Buffer will be base64-encoded for the provider
+    content: string | Buffer;
     contentType?: string;
   }>;
 }
 
+// ── Core send helpers ─────────────────────────────────────────────────────────
+
 /**
- * Send email via Resend. Throws on failure.
- * Returns the Resend message ID for logging/audit.
- * Use sendMailSafe() in workers where you don't want email failure
- * to crash the job.
+ * Send email. Throws on failure.
+ * Returns the provider message ID for logging/audit.
+ * Use sendMailSafe() in workers where email failure must not crash the job.
  */
 export async function sendMail(opts: MailOptions): Promise<string> {
-  const from = process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@send.spinzyacademy.com>';
-  const { data, error } = await getClient().emails.send({
-    from,
-    to: Array.isArray(opts.to) ? opts.to : [opts.to],
-    subject: opts.subject,
-    html: opts.html,
-    ...(opts.text && { text: opts.text }),
-    ...(opts.replyTo && { reply_to: opts.replyTo }),
-    ...(opts.cc && { cc: Array.isArray(opts.cc) ? opts.cc : [opts.cc] }),
-    ...(opts.attachments && {
-      attachments: opts.attachments.map((a) => ({
-        filename: a.filename,
-        // Resend expects base64 content for binary attachments in some SDK versions
-        content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
-        contentType: a.contentType,
-      })),
-    }),
-  });
-  if (error) {
-    logger.error('[mailer] Send failed', {
-      error: error.message,
-      to: opts.to,
-      subject: opts.subject,
-    });
-    throw new Error(`[mailer] ${error.message}`);
+  try {
+    const id = await sendViaProvider(opts);
+    logger.info('[mailer] Sent', { id });
+    return id;
+  } catch (err) {
+    logger.error('[mailer] Send failed', { error: err, subject: opts.subject });
+    throw err;
   }
-  const id = data?.id ?? '';
-  logger.info('[mailer] Sent', { id, to: opts.to });
-  return id;
 }
 
 /**
@@ -102,27 +81,38 @@ export async function sendMailSafe(opts: MailOptions): Promise<void> {
   }
 }
 
-// Alias kept for backwards compatibility with existing call sites.
+// Alias kept for backwards compatibility.
 export const sendEmail = sendMailSafe;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// B3.2 -- Named transactional email methods
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Render helper ─────────────────────────────────────────────────────────────
+
+async function renderHtml(element: React.ReactElement): Promise<{ html: string; text: string }> {
+  const [html, text] = await Promise.all([
+    render(element),
+    render(element, { plainText: true }),
+  ]);
+  return { html, text };
+}
+
+// ── Named transactional methods ───────────────────────────────────────────────
 
 /**
  * Send a one-time password email.
  */
 export async function sendOTP(to: string, otp: string, expiryMinutes = 10): Promise<void> {
+  const { html, text } = await renderHtml(
+    React.createElement(OTPEmail, { otp, expiryMinutes })
+  );
   await sendMailSafe({
     to,
     subject: `${otp} is your Spinzy verification code`,
-    html: otpEmailHtml(otp, expiryMinutes),
+    html,
+    text,
   });
 }
 
 /**
  * Send a parent consent request email with a link to approve/deny.
- * P1.2-R: updated subject and opts for board + deny link.
  */
 export async function sendConsentRequest(
   to: string,
@@ -132,10 +122,21 @@ export async function sendConsentRequest(
   consentLink: string,
   opts?: { board?: string; denyLink?: string }
 ): Promise<void> {
+  const { html, text } = await renderHtml(
+    React.createElement(ConsentRequestEmail, {
+      parentName,
+      childName,
+      grade,
+      consentLink,
+      board: opts?.board,
+      denyLink: opts?.denyLink,
+    })
+  );
   await sendMailSafe({
     to,
     subject: `${childName} wants to learn with Spinzy Academy -- Your Approval Needed`,
-    html: consentRequestEmailHtml(parentName, childName, grade, consentLink, opts),
+    html,
+    text,
   });
 }
 
@@ -152,23 +153,99 @@ export async function sendWeeklyReport(
     streakDays: number;
     topSubject: string;
     dashboardUrl?: string;
+    daysActive?: number;
+    topicsStudied?: number;
+    focusSubject?: string;
   }
 ): Promise<void> {
+  const reportData: WeeklyReportData = {
+    parentName: data.parentName,
+    studentName: data.studentName,
+    daysActive: data.daysActive ?? Math.min(data.sessionsThisWeek, 7),
+    totalSessions: data.sessionsThisWeek,
+    topicsStudied: data.topicsStudied ?? 0,
+    currentStreak: data.streakDays,
+    weeklyGoal: data.weeklyGoal,
+    strongSubject: data.topSubject,
+    focusSubject: data.focusSubject,
+    dashboardUrl: data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard',
+  };
+  const { html, text } = await renderHtml(React.createElement(WeeklyReportEmail, reportData));
   await sendMailSafe({
     to,
     subject: `${data.studentName}'s weekly learning summary`,
-    html: weeklyReportEmailHtml(data),
+    html,
+    text,
+  });
+}
+
+/**
+ * P2.2: Send a weekly report to a free-tier parent (includes premium teaser).
+ */
+export async function sendWeeklyReportFree(
+  to: string,
+  data: WeeklyReportFreeData
+): Promise<void> {
+  const { html, text } = await renderHtml(React.createElement(WeeklyReportEmailFree, data));
+  await sendMailSafe({
+    to,
+    subject: `${data.studentName}'s weekly learning summary`,
+    html,
+    text,
+  });
+}
+
+/**
+ * P2.2: Send a weekly report to a premium parent (includes weak topics analysis).
+ */
+export async function sendWeeklyReportPremium(
+  to: string,
+  data: WeeklyReportPremiumData
+): Promise<void> {
+  const { html, text } = await renderHtml(React.createElement(WeeklyReportEmailPremium, data));
+  await sendMailSafe({
+    to,
+    subject: `${data.studentName}'s weekly learning summary`,
+    html,
+    text,
+  });
+}
+
+/**
+ * P2.2: Send a zero-activity weekly report (child did not log in).
+ */
+export async function sendWeeklyReportZeroActivity(
+  to: string,
+  data: WeeklyReportZeroActivityData
+): Promise<void> {
+  const { html, text } = await renderHtml(
+    React.createElement(WeeklyReportEmailZeroActivity, data)
+  );
+  await sendMailSafe({
+    to,
+    subject: `${data.studentName} did not study this week -- a gentle nudge`,
+    html,
+    text,
   });
 }
 
 /**
  * Send an admin invitation email with an account setup link.
  */
-export async function sendAdminInvite(to: string, setupLink: string, role: string): Promise<void> {
+export async function sendAdminInvite(
+  to: string,
+  setupLink: string,
+  role: string,
+  adminName?: string
+): Promise<void> {
+  const { html, text } = await renderHtml(
+    React.createElement(AdminInviteEmail, { setupLink, role, adminName })
+  );
   await sendMailSafe({
     to,
-    subject: 'You have been invited to Spinzy Admin',
-    html: adminInviteEmailHtml(setupLink, role),
+    subject: `You've been invited to join Spinzy Academy Admin Panel`,
+    html,
+    text,
   });
 }
 
@@ -186,9 +263,19 @@ export async function sendPaymentInvoice(
     invoiceUrl: string;
   }
 ): Promise<void> {
+  const invoiceData: InvoiceEmailData = {
+    invoiceNumber: data.invoiceNumber,
+    studentName: data.studentName,
+    plan: data.plan,
+    amountPaise: data.amountRupees * 100,
+    billingDate: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+    invoiceUrl: data.invoiceUrl,
+  };
+  const { html, text } = await renderHtml(React.createElement(InvoiceEmail, invoiceData));
   await sendMailSafe({
     to,
     subject: `Payment confirmed -- Invoice #${data.invoiceNumber}`,
-    html: paymentInvoiceEmailHtml(data),
+    html,
+    text,
   });
 }

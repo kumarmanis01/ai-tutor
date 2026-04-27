@@ -33,7 +33,12 @@ type ParentProfileLocal = {
   digestTimezone?: string;
 };
 import { logger } from '@/lib/logger';
-import { sendMailSafe } from '@/lib/mailer';
+import {
+  sendMailSafe,
+  sendWeeklyReportFree,
+  sendWeeklyReportPremium,
+  sendWeeklyReportZeroActivity,
+} from '@/lib/mailer';
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
 import { callLLM } from '@/lib/callLLM';
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone';
@@ -375,19 +380,18 @@ export async function processParentDigest(
 ): Promise<void> {
   const monday = weekStartIso ? new Date(weekStartIso) : weekStart();
   try {
-    // Load first active child for the parent
-    // Local row type for parentStudent link (single)
+    // Load first active child + parent subscription status in one query
     type ParentStudentLinkSingleRow = {
       studentId: string;
       student: { name: string | null };
-      parent: { name: string | null; email: string | null };
+      parent: { name: string | null; email: string | null; subscriptionStatus: string | null };
     } | null;
     const link = (await prisma.parentStudent.findFirst({
       where: { parentId, status: 'active', excludeFromParentReport: false },
       select: {
         studentId: true,
         student: { select: { name: true } },
-        parent: { select: { name: true, email: true } },
+        parent: { select: { name: true, email: true, subscriptionStatus: true } },
       },
     })) as ParentStudentLinkSingleRow;
     if (!link || !link.parent?.email) {
@@ -395,90 +399,135 @@ export async function processParentDigest(
       return;
     }
 
-    const parent = { id: parentId, name: link.parent.name ?? 'Parent', email: link.parent.email };
+    const parent = {
+      id: parentId,
+      name: link.parent.name ?? 'Parent',
+      email: link.parent.email,
+      isPremium: link.parent.subscriptionStatus === 'premium',
+    };
     const child = { studentId: link.studentId, name: link.student?.name ?? 'Student' };
 
-    // Sessions this week
-    // Local row type for structuredSession
-    type StructuredSessionRow = { id: string };
-    const sessions = (await prisma.structuredSession.findMany({
-      where: { studentId: child.studentId, startedAt: { gte: monday } },
-      select: { id: true },
-    })) as StructuredSessionRow[];
+    const appUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '');
+    const dashboardUrl = `${appUrl}/parent/dashboard`;
+    const unsubscribeUrl = `${appUrl}/parent/settings?tab=notifications`;
 
-    // Streak
-    // Local row type for studentStreak
-    type StudentStreakRow = { current: number | null } | null;
-    const streak = (await prisma.studentStreak.findFirst({
-      where: { studentId: child.studentId, kind: 'daily' },
-      select: { current: true },
-    })) as StudentStreakRow;
+    // Fetch all needed data in parallel
+    type WeeklyActivityRow = {
+      totalMinutes: number;
+      topicsCovered: number;
+      averageScore: number;
+      sessionsCount: number;
+    } | null;
+    type StreakRow = { current: number | null } | null;
+    type TopicSessionRow = { topic: { name: string } | null };
+    type XpRow = { amount: number };
+    type AttentionFlagRow = { subject: string; chapter: string; accuracy: number };
 
-    // Top subject (most recent activity)
+    const [weeklyActivity, streakRow, topicSessions, xpRows, attentionFlags] = await Promise.all([
+      prisma.weeklyStudentSummary.findFirst({
+        where: { studentId: child.studentId, weekStart: monday },
+        select: { totalMinutes: true, topicsCovered: true, averageScore: true, sessionsCount: true },
+      }) as Promise<WeeklyActivityRow>,
+      prisma.studentStreak.findFirst({
+        where: { studentId: child.studentId, kind: 'daily' },
+        select: { current: true },
+      }) as Promise<StreakRow>,
+      // Fetch up to 5 distinct topic names from this week's sessions
+      prisma.structuredSession.findMany({
+        where: { studentId: child.studentId, startedAt: { gte: monday } },
+        select: { topic: { select: { name: true } } },
+        take: 5,
+      }) as Promise<TopicSessionRow[]>,
+      // XP earned this week
+      prisma.studentXP.findMany({
+        where: { studentId: child.studentId, awardedAt: { gte: monday } },
+        select: { amount: true },
+      }) as Promise<XpRow[]>,
+      // Weak topics (accuracy < 60%) for premium variant
+      prisma.attentionFlag.findMany({
+        where: { studentId: child.studentId, resolved: false, accuracy: { lt: 0.6 } },
+        select: { subject: true, chapter: true, accuracy: true },
+        orderBy: { accuracy: 'asc' },
+        take: 5,
+      }) as Promise<AttentionFlagRow[]>,
+    ]);
+
+    const currentStreak = streakRow?.current ?? 0;
+    const totalMinutes = weeklyActivity?.totalMinutes ?? 0;
+    const avgAccuracy = weeklyActivity
+      ? Math.round(weeklyActivity.averageScore * 100)
+      : 0;
+    const sessionsCount = weeklyActivity?.sessionsCount ?? 0;
+    const xpEarned = xpRows.reduce((s: number, r: XpRow) => s + r.amount, 0);
+
+    // Deduplicate topic names while preserving order
+    const seenTopics = new Set<string>();
+    const topicsCovered: string[] = [];
+    for (const s of topicSessions) {
+      const name = s.topic?.name;
+      if (name && !seenTopics.has(name)) {
+        seenTopics.add(name);
+        topicsCovered.push(name);
+      }
+    }
+
+    // Fallback "suggested topic" for zero-activity: most recent concept from any week
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    // Local row type for studentConceptState
-    type StudentConceptStateRow = {
+    type ConceptStateRow = {
       concept?: { subject?: { name?: string | null } | null } | null;
     } | null;
     const recentState = (await prisma.studentConceptState.findFirst({
       where: { studentId: child.studentId, updatedAt: { gte: sevenDaysAgo } },
       orderBy: { masteryScore: 'desc' },
       select: { concept: { select: { subject: { select: { name: true } } } } },
-    })) as StudentConceptStateRow;
-    const topSubject = recentState?.concept?.subject?.name ?? null;
+    })) as ConceptStateRow;
+    const suggestedTopic = recentState?.concept?.subject?.name ?? 'Mathematics';
 
-    // Mastery delta (proxy)
-    // Local row type for studentConceptState mastery
-    type StudentConceptStateMasteryRow = { masteryScore: number };
-    const [recentStates, allStates] = await Promise.all([
-      prisma.studentConceptState.findMany({
-        where: { studentId: child.studentId, updatedAt: { gte: sevenDaysAgo } },
-        select: { masteryScore: true },
-      }) as Promise<StudentConceptStateMasteryRow[]>,
-      prisma.studentConceptState.findMany({
-        where: { studentId: child.studentId },
-        select: { masteryScore: true },
-      }) as Promise<StudentConceptStateMasteryRow[]>,
-    ]);
-
-    let readinessDelta: number | null = null;
-    if (recentStates.length > 0 && allStates.length > 0) {
-      const allAvg =
-        allStates.reduce((s: number, r: StudentConceptStateMasteryRow) => s + r.masteryScore, 0) /
-        allStates.length;
-      const recentAvg =
-        recentStates.reduce(
-          (s: number, r: StudentConceptStateMasteryRow) => s + r.masteryScore,
-          0
-        ) / recentStates.length;
-      readinessDelta = recentAvg - allAvg;
+    // Route to the correct email variant
+    if (sessionsCount === 0) {
+      await sendWeeklyReportZeroActivity(parent.email, {
+        studentName: child.name,
+        parentName: parent.name,
+        currentStreak,
+        suggestedTopic,
+        dashboardUrl,
+        unsubscribeUrl,
+      });
+    } else if (parent.isPremium) {
+      await sendWeeklyReportPremium(parent.email, {
+        studentName: child.name,
+        parentName: parent.name,
+        totalMinutes,
+        topicsCovered,
+        avgAccuracy,
+        xpEarned,
+        currentStreak,
+        weakTopics: attentionFlags.map((f: AttentionFlagRow) => ({
+          name: `${f.subject} -- ${f.chapter}`,
+          accuracy: Math.round(f.accuracy * 100),
+        })),
+        dashboardUrl,
+        unsubscribeUrl,
+      });
+    } else {
+      await sendWeeklyReportFree(parent.email, {
+        studentName: child.name,
+        parentName: parent.name,
+        totalMinutes,
+        topicsCovered,
+        avgAccuracy,
+        xpEarned,
+        currentStreak,
+        dashboardUrl,
+        unsubscribeUrl,
+      });
     }
 
-    const narrative = await generateNarrative(child.name, sessions.length, topSubject);
-
-    const subject = `Teacher Vidya's weekly report for ${child.name}`;
-    const appUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '');
-    const html = buildEmailHtml({
-      parentName: parent.name,
-      childName: child.name,
-      sessionsThisWeek: sessions.length,
-      streak: streak?.current ?? 0,
-      readinessDelta,
-      narrative,
-      dashboardUrl: `${appUrl}/parent/dashboard`,
-    });
-
-    await sendParentMilestoneNotification(parentId, {
-      email: parent.email,
-      subject,
-      html,
-      text: subject,
-      meta: { type: 'digest', channel: 'email' },
-    });
-    logger.info('[parentDigest] sent via delivery helper', {
+    logger.info('[parentDigest] sent', {
       parentId,
       email: parent.email,
       childName: child.name,
+      variant: sessionsCount === 0 ? 'zero_activity' : parent.isPremium ? 'premium' : 'free',
     });
   } catch (err) {
     logger.error('[parentDigest] failed', {

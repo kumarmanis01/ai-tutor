@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - LP-5.2 animated counter metrics bar showing platform scale and trust indicators.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(public)/landing-page/components/TrustBar.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | LP-5.2: animated counter metrics
+ * - 2026-04-27T00:00:00Z | copilot | v3: update counters to 10k students, 50k hours, 95% satisfaction
+ */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,9 +28,9 @@ interface TrustMetric {
 const TrustBar = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const [counts, setCounts] = useState({
-    questions: 0,
     students: 0,
-    towns: 0,
+    hours: 0,
+    satisfaction: 0,
   });
 
   useEffect(() => {
@@ -26,9 +41,9 @@ const TrustBar = () => {
     if (!isHydrated) return;
 
     const targets = {
-      questions: 500000,
-      students: 100000,
-      towns: 40,
+      students: 10000,
+      hours: 50000,
+      satisfaction: 95,
     };
 
     const duration = 2000;
@@ -42,9 +57,9 @@ const TrustBar = () => {
       const progress = currentStep / steps;
 
       setCounts({
-        questions: Math.floor(targets.questions * progress),
         students: Math.floor(targets.students * progress),
-        towns: Math.floor(targets.towns * progress),
+        hours: Math.floor(targets.hours * progress),
+        satisfaction: Math.floor(targets.satisfaction * progress),
       });
 
       if (currentStep >= steps) {
@@ -58,21 +73,21 @@ const TrustBar = () => {
 
   const metrics: TrustMetric[] = [
     {
-      icon: 'CheckCircleIcon',
-      value: isHydrated ? `${(counts.questions / 100000).toFixed(1)}L+` : '5L+',
-      label: 'Questions Solved',
-      color: 'text-success',
-    },
-    {
       icon: 'UserGroupIcon',
-      value: isHydrated ? `${(counts.students / 1000).toFixed(0)}K+` : '100K+',
-      label: 'Happy Students',
+      value: isHydrated ? `${counts.students.toLocaleString('en-IN')}+` : '10,000+',
+      label: 'Active Students',
       color: 'text-primary',
     },
     {
-      icon: 'BuildingOffice2Icon',
-      value: isHydrated ? `${counts.towns}+` : '40+',
-      label: 'Towns Covered',
+      icon: 'ClockIcon',
+      value: isHydrated ? `${counts.hours.toLocaleString('en-IN')}+` : '50,000+',
+      label: 'Hours of Learning',
+      color: 'text-success',
+    },
+    {
+      icon: 'StarIcon',
+      value: isHydrated ? `${counts.satisfaction}%` : '95%',
+      label: 'Parent Satisfaction',
       color: 'text-secondary',
     },
     {

@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2025-01-15T00:00:00Z | copilot | created -- B4.1 ContentGenerationWorker
+ * - 2026-04-26T15:00:00Z | copilot | add non-blocking AIGenerationLog writes for content generation attempts
  */
 
 import { Worker, type Job } from 'bullmq';
@@ -20,6 +21,8 @@ import OpenAI from 'openai';
 import { prisma } from '@/lib/db';
 import { getSharedConnection, getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
+import { emitContentGenerated } from '@/lib/socket/server';
+import { generationLogService } from '@/lib/ai/generationLogService';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -145,6 +148,24 @@ async function processContentGenerationJob(job: Job<ContentGenerationJobData>): 
     );
   } catch (err: unknown) {
     logger.error('ContentGenerationWorker: OpenAI streaming failed', { jobId, error: err });
+    void generationLogService.logGeneration({
+      promptType: 'LESSON_GENERATION',
+      promptVersion: 'unknown',
+      requestVariables: {
+        topic: job.data.topic,
+        subject: job.data.subject,
+        grade: job.data.grade,
+        board: job.data.board,
+        language: job.data.language ?? 'en',
+      },
+      responseText: fullContent || null,
+      modelName: 'gpt-4o-mini',
+      success: false,
+      errorMessage: err instanceof Error ? err.message : String(err),
+      retryCount: Math.max(0, (job.attemptsMade ?? 1) - 1),
+      userId: requesterId,
+      jobId,
+    });
     throw err;
   }
 
@@ -180,8 +201,43 @@ async function processContentGenerationJob(job: Job<ContentGenerationJobData>): 
     JSON.stringify({ type: 'complete', contentId: content.id, fullContent })
   );
 
+  // Notify all subscribers via Socket.IO rooms.
+  try {
+    const jobState = await prisma.generationJob.findUnique({
+      where: { id: jobId },
+      select: { subscriberIds: true, topic: true },
+    });
+    for (const studentId of jobState?.subscriberIds ?? []) {
+      emitContentGenerated(studentId, content.id, jobState?.topic ?? job.data.topic);
+    }
+  } catch (notifyErr) {
+    logger.warn('ContentGenerationWorker: socket notify failed', {
+      jobId,
+      error: String(notifyErr),
+    });
+  }
+
   // Clean up partial cache after a short delay (keep for 10 minutes post-completion)
   await redis.expire(`content_gen:${jobId}:partial`, 600);
+
+  void generationLogService.logGeneration({
+    promptType: 'LESSON_GENERATION',
+    promptVersion: 'unknown',
+    requestVariables: {
+      topic: job.data.topic,
+      subject: job.data.subject,
+      grade: job.data.grade,
+      board: job.data.board,
+      language: job.data.language ?? 'en',
+    },
+    responseText: fullContent,
+    modelName: 'gpt-4o-mini',
+    success: true,
+    retryCount: Math.max(0, (job.attemptsMade ?? 1) - 1),
+    userId: requesterId,
+    contentId: content.id,
+    jobId,
+  });
 
   logger.info('ContentGenerationWorker: job completed', { jobId, contentId: content.id });
 }
@@ -209,6 +265,24 @@ export function getContentGenerationWorker(): Worker {
     _worker.on('failed', async (job, err) => {
       if (!job) return;
       logger.error('ContentGenerationWorker: job failed', { jobId: job.data.jobId, error: err });
+
+      void generationLogService.logGeneration({
+        promptType: 'LESSON_GENERATION',
+        promptVersion: 'unknown',
+        requestVariables: {
+          topic: job.data.topic,
+          subject: job.data.subject,
+          grade: job.data.grade,
+          board: job.data.board,
+          language: job.data.language ?? 'en',
+        },
+        modelName: 'gpt-4o-mini',
+        success: false,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        retryCount: Math.max(0, (job.attemptsMade ?? 1) - 1),
+        userId: job.data.requesterId,
+        jobId: job.data.jobId,
+      });
 
       // On final failure (no more retries), update job status
       if ((job.attemptsMade ?? 0) >= (job.opts.attempts ?? 3)) {

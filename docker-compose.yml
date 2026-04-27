@@ -1,24 +1,18 @@
 # FILE OBJECTIVE:
-# - Docker Compose for local development: orchestrate web, worker, scheduler,
-#   Postgres (pgvector), and Redis services.
+# - Docker Compose for a local hot-reload development stack with Next.js, worker, scheduler, Postgres, and Redis.
 #
 # LINKED UNIT TEST:
 # - tests/unit/docs/docker_compose.spec.ts
 #
 # COPILOT INSTRUCTIONS FOLLOWED:
-# - .github/copilot-instructions.md
 # - /docs/ENGINEERING_PRACTICES.md
+# - .github/copilot-instructions.md
 #
 # EDIT LOG:
-# - 2026-04-20T16:35:00Z | copilot | add header and adjust web healthcheck start_period
+# - 2026-04-20T16:35:00Z | copilot | add header and adjust web healthcheck start period
 # - 2026-04-21T03:48:00Z | copilot | mount .next to named volume `next_cache` and add curl to dev image for reliable healthchecks on Windows hosts
+# - 2026-04-26T00:00:00Z | copilot | replace the old multi-Dockerfile stack with a simpler shared hot-reload compose setup
 
-## Development docker-compose for ai-tutor
-## Project uses npm (not pnpm). Scripts match package.json exactly.
-## Hot-reload: source bind-mounted; node_modules in named volumes (avoids Windows/macOS inode conflicts).
-## Healthchecks guard start order: web/worker/scheduler wait for healthy postgres + redis.
-
-version: '3.9'
 services:
   postgres:
     image: pgvector/pgvector:pg15
@@ -33,10 +27,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_dev}']
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -50,94 +44,131 @@ services:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.22.1
+    container_name: ai_tutor_pgbouncer
+    restart: unless-stopped
+    environment:
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-pass}
+      DB_HOST: postgres
+      DB_NAME: ${POSTGRES_DB:-ai_dev}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      SERVER_CONNECT_TIMEOUT: 10
+      SERVER_IDLE_TIMEOUT: 600
+    ports:
+      - '${PGBOUNCER_PORT:-6432}:5432'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_USER:-postgres} || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   web:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev.web
-      target: dev
+      dockerfile: docker/Dockerfile.dev
     container_name: ai_tutor_web
-    # env_file loads .env; environment block below overrides keys that differ inside Docker networking
-    env_file: .env
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
-      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
+      WATCHPACK_POLLING: 'true'
+      CHOKIDAR_USEPOLLING: 'true'
+      # Route runtime queries through PgBouncer (transaction-mode pooling)
+      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@pgbouncer:5432/${POSTGRES_DB:-ai_dev}?pgbouncer=true&connection_limit=20'
+      # Direct connection used by Prisma migrate / introspect (bypasses pgbouncer)
+      DIRECT_DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
       REDIS_URL: 'redis://redis:6379'
       NEXTAUTH_URL: 'http://localhost:3000'
-      # Inspector disabled by default. To enable, set NODE_OPTIONS in your .env (example: "--inspect=127.0.0.1:9229").
-      NODE_OPTIONS: '${NODE_OPTIONS:-}'
+    command: sh -c "node scripts/prisma-generate-with-retry.cjs && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    working_dir: /workspace
     volumes:
-      - ./:/workspace:cached
-      - node_modules_web:/workspace/node_modules
+      - ./:/workspace
+      - node_modules:/workspace/node_modules
       - next_cache:/workspace/.next
     ports:
-      - '3001:3000'
+      - '3000:3000'
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'curl -sf http://127.0.0.1:3000/api/health/redis || exit 1']
-      interval: 30s
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3000/api/health/redis || exit 1']
+      interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 20
+      start_period: 45s
 
   worker:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev.worker
-      target: dev
+      dockerfile: docker/Dockerfile.dev
     container_name: ai_tutor_worker
-    env_file: .env
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
-      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
+      CHOKIDAR_USEPOLLING: 'true'
+      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@pgbouncer:5432/${POSTGRES_DB:-ai_dev}?pgbouncer=true&connection_limit=20'
+      DIRECT_DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
       REDIS_URL: 'redis://redis:6379'
-      # Override: inside containers these must reach the 'web' service, not 127.0.0.1
       METRICS_URL: 'http://web:3000/api/metrics'
       JOBS_STATUS_URL: 'http://web:3000/api/admin/jobs/status'
-      # Inspector disabled by default; set NODE_OPTIONS in .env to enable
-      NODE_OPTIONS: '${NODE_OPTIONS:-}'
+    command: sh -c "node scripts/prisma-generate-with-retry.cjs && npx tsx watch worker/dev-entry.ts --type content-hydration"
+    working_dir: /workspace
     volumes:
-      - ./:/workspace:cached
-      - node_modules_worker:/workspace/node_modules
+      - ./:/workspace
+      - node_modules:/workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
 
   scheduler:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev.scheduler
-      target: dev
+      dockerfile: docker/Dockerfile.dev
     container_name: ai_tutor_scheduler
-    env_file: .env
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
-      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
+      CHOKIDAR_USEPOLLING: 'true'
+      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@pgbouncer:5432/${POSTGRES_DB:-ai_dev}?pgbouncer=true&connection_limit=20'
+      DIRECT_DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
       REDIS_URL: 'redis://redis:6379'
       METRICS_URL: 'http://web:3000/api/metrics'
       JOBS_STATUS_URL: 'http://web:3000/api/admin/jobs/status'
-      NODE_OPTIONS: '${NODE_OPTIONS:-}'
+    command: sh -c "node scripts/prisma-generate-with-retry.cjs && npx tsx watch worker/scheduler.ts"
+    working_dir: /workspace
     volumes:
-      - ./:/workspace:cached
-      - node_modules_scheduler:/workspace/node_modules
-    # scheduler does not expose an inspector port by default
+      - ./:/workspace
+      - node_modules:/workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   redis_data:
-  node_modules_web:
-  node_modules_worker:
-  node_modules_scheduler:
+  node_modules:
   next_cache:
