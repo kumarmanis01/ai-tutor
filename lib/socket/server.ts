@@ -100,11 +100,18 @@ export function initSocketIO(httpServer: HTTPServer): AppIO {
   // ── Connection handler ────────────────────────────────────────────────────
 
   _io.on('connection', (socket: AppSocket) => {
-    const { userId } = socket.data;
+    const { userId, scope } = socket.data;
     logger.info('Socket.IO: client connected', { userId, socketId: socket.id });
 
-    // Auto-join personal user room
+    // Auto-join personal user room (all scopes)
     void socket.join(rooms.user(userId));
+
+    // Auto-join student room for user-scope tokens so that student-targeted
+    // events (content_generated, premium_activated, assignment_received) are
+    // delivered without a separate explicit join call from the client.
+    if (scope === 'user') {
+      void socket.join(rooms.student(userId));
+    }
 
     // Handle consent room join request
     socket.on('join_consent_room', (consentToken: string) => {

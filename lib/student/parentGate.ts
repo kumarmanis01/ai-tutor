@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | align age gate threshold from <18 to <13 per spec
+ * - 2026-04-27T00:00:00Z | copilot | update parent gate threshold to under-18 for DPDP compliance
  */
 
 import { prisma } from '@/lib/prisma';
@@ -23,13 +24,13 @@ export interface ParentGateResult {
 }
 
 /**
- * Gate required when age is known and < 13 (DPDP / product policy).
+ * Gate required when age is known and < 18 (DPDP / product policy).
  * Null/unknown age = no gate.
  */
 function requiresGateByAge(age: number | null | undefined): boolean {
   if (age == null || !Number.isFinite(age)) return false;
-  // Product decision: parents required for children under 13.
-  return age < 13;
+  // Product decision: parents required for learners under 18.
+  return age < 18;
 }
 
 /**
