@@ -46,6 +46,32 @@ services:
       timeout: 5s
       retries: 10
 
+  pgbouncer:
+    image: edoburu/pgbouncer:1.22.1
+    container_name: ai_tutor_pgbouncer
+    restart: unless-stopped
+    environment:
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-pass}
+      DB_HOST: postgres
+      DB_NAME: ${POSTGRES_DB:-ai_dev}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      SERVER_CONNECT_TIMEOUT: 10
+      SERVER_IDLE_TIMEOUT: 600
+    ports:
+      - '${PGBOUNCER_PORT:-6432}:5432'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_USER:-postgres} || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   web:
     build:
       context: .
@@ -57,7 +83,10 @@ services:
       NODE_ENV: development
       WATCHPACK_POLLING: 'true'
       CHOKIDAR_USEPOLLING: 'true'
-      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
+      # Route runtime queries through PgBouncer (transaction-mode pooling)
+      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@pgbouncer:5432/${POSTGRES_DB:-ai_dev}?pgbouncer=true&connection_limit=20'
+      # Direct connection used by Prisma migrate / introspect (bypasses pgbouncer)
+      DIRECT_DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
       REDIS_URL: 'redis://redis:6379'
       NEXTAUTH_URL: 'http://localhost:3000'
     command: sh -c "node scripts/prisma-generate-with-retry.cjs && npm run dev -- --hostname 0.0.0.0 --port 3000"
@@ -72,6 +101,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
     healthcheck:
       test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3000/api/health/redis || exit 1']
@@ -90,7 +121,8 @@ services:
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: 'true'
-      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
+      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@pgbouncer:5432/${POSTGRES_DB:-ai_dev}?pgbouncer=true&connection_limit=20'
+      DIRECT_DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
       REDIS_URL: 'redis://redis:6379'
       METRICS_URL: 'http://web:3000/api/metrics'
       JOBS_STATUS_URL: 'http://web:3000/api/admin/jobs/status'
@@ -104,6 +136,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
 
   scheduler:
     build:
@@ -115,7 +149,8 @@ services:
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: 'true'
-      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
+      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@pgbouncer:5432/${POSTGRES_DB:-ai_dev}?pgbouncer=true&connection_limit=20'
+      DIRECT_DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}'
       REDIS_URL: 'redis://redis:6379'
       METRICS_URL: 'http://web:3000/api/metrics'
       JOBS_STATUS_URL: 'http://web:3000/api/admin/jobs/status'
@@ -128,6 +163,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
 
 volumes:

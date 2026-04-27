@@ -3,7 +3,7 @@
  * - Server page entry for S2.1 Learning Map Home Screen.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/student/learning-map/page.spec.ts
+ * - __tests__/app/(student)/student/learning-map/page.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/ENGINEERING_PRACTICES.md

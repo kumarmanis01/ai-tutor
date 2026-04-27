@@ -12,14 +12,15 @@
  *
  * EDIT LOG:
  * - 2026-04-26T14:30:00Z | staff-engineer | created prompt variable validator (PR-1.3)
+ * - 2026-04-26T07:41:39Z | copilot | fix: import PromptType from local types.ts not @prisma/client
  */
 
 import { z } from 'zod';
-import { PromptType } from '@prisma/client';
+import { PromptType } from '@/lib/ai/prompt-registry/types';
 import { logger } from '@/lib/logger';
 
 /**
- * PR-1.3: ValidationResult — result of variable validation
+ * PR-1.3: ValidationResult -- result of variable validation
  */
 export interface ValidationResult {
   valid: boolean;
@@ -97,7 +98,7 @@ const PROMPT_VARIABLE_SCHEMAS: Record<PromptType, z.ZodType<any>> = {
 };
 
 /**
- * PR-1.3: PromptVariableValidator — validates variables before LLM calls
+ * PR-1.3: PromptVariableValidator -- validates variables before LLM calls
  */
 export class PromptVariableValidator {
   /**

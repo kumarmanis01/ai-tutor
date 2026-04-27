@@ -18,6 +18,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { ModerationDashboardClient } from './ModerationDashboardClient';
 
 export const dynamic = 'force-dynamic';
@@ -81,8 +82,14 @@ export default async function ModerationPage() {
       };
     });
     initialTotal = total;
-  } catch {
-    // Non-fatal -- client will fetch on mount
+  } catch (error: unknown) {
+    // Non-fatal -- client will fetch on mount; log so SSR failures are diagnosable
+    logger.error('ModerationPage SSR prefetch failed', {
+      route: 'app/admin/moderation/page.tsx',
+      operation: 'ModerationPage.initialDataFetch',
+      userId: session.user.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   return (

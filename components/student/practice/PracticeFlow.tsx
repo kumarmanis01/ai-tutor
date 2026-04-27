@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.3 practice flow and S2.4 freemium wall integration
  * - 2026-04-25T01:15:00Z | copilot | added explicit answer feedback states, review mode, and offline sync status
+ * - 2026-04-26T11:20:00Z | copilot | prefix unused restart hook value with underscore for lint compliance
  */
 
 'use client';
@@ -51,7 +52,7 @@ export default function PracticeFlow({ studentId, topicId }: PracticeFlowProps) 
     isFinished,
     canShowFreemiumWall,
     remaining,
-    restart,
+    restart: _restart,
     results,
     queuedCount,
     syncStatus,
