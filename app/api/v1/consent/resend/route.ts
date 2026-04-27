@@ -32,7 +32,7 @@ function isValidEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
-/** Basic phone check: 8–15 digits with optional leading '+'. */
+/** Basic phone check: 8-15 digits with optional leading '+'. */
 function isValidPhone(s: string): boolean {
   const digits = s.replace(/[\s\-()]/g, '');
   return /^\+?[0-9]{8,15}$/.test(digits);
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     });
     if (!cr) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-    // Block resend for terminal statuses — resending would be misleading and wasteful.
+    // Block resend for terminal statuses -- resending would be misleading and wasteful.
     if (cr.status === 'APPROVED' || cr.status === 'DENIED') {
       return NextResponse.json({ error: 'terminal_status' }, { status: 409 });
     }

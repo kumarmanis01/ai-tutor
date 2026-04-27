@@ -91,7 +91,7 @@ export default function ExploreModeClient() {
           <p className="text-sm text-red-700 dark:text-red-300 mt-1">
             Your parent has declined access. Talk to them and try again.
           </p>
-          {/* Use Link for client-side navigation — no full reload. */}
+          {/* Use Link for client-side navigation -- no full reload. */}
           <Link
             href="/register"
             className="mt-4 inline-block min-h-[44px] px-6 py-2 rounded-xl bg-[#E24B4A] text-white font-semibold text-sm"

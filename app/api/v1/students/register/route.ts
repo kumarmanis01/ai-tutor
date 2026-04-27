@@ -36,7 +36,7 @@ function isValidEmail(s: string): boolean {
 }
 
 /**
- * Basic phone check: digits + optional leading '+', 8–15 digits after stripping spaces/dashes.
+ * Basic phone check: digits + optional leading '+', 8-15 digits after stripping spaces/dashes.
  * Accepts +91XXXXXXXXXX, 10-digit numbers, etc.
  */
 function isValidPhone(s: string): boolean {
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Create student user record (minimal). Use AccountStatus enum — never `as any`.
+    // Create student user record (minimal). Use AccountStatus enum -- never `as any`.
     const isAdult = age >= 18;
     const accountStatus: AccountStatus = isAdult
       ? AccountStatus.active
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
       return res;
     }
 
-    // Validate contact format per channel — return 400 to avoid sending broken messages.
+    // Validate contact format per channel -- return 400 to avoid sending broken messages.
     const parentContact = parentContactRaw;
     if (channel === 'whatsapp' && !isValidPhone(parentContact)) {
       const res = NextResponse.json({ error: 'invalid_phone' }, { status: 400 });
