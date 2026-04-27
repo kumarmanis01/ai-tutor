@@ -1,0 +1,51 @@
+/** @jest-environment jsdom */
+
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for FinalCTA landing page component.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(public)/landing-page/components/FinalCTA.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-27T10:55:00Z | copilot | add FinalCTA coverage for heading and CTA link
+ */
+import { render, screen } from '@testing-library/react';
+import FinalCTA from '@/app/(public)/landing-page/components/FinalCTA';
+
+jest.mock('next/link', () => {
+  const MockLink = ({ href, children, ...rest }: any) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+  MockLink.displayName = 'Link';
+  return MockLink;
+});
+
+jest.mock('@/components/UI/AppIcon', () => {
+  const MockIcon = ({ name }: { name: string }) => <span data-testid={`icon-${name}`} />;
+  MockIcon.displayName = 'AppIcon';
+  return MockIcon;
+});
+
+describe('FinalCTA', () => {
+  it('should render bilingual heading content', () => {
+    render(<FinalCTA />);
+
+    expect(screen.getByText('Ready to try it yourself?')).toBeTruthy();
+    expect(screen.getByText('आज ही शुरू करें -- बिल्कुल मुफ्त')).toBeTruthy();
+  });
+
+  it('should render primary CTA link to register', () => {
+    render(<FinalCTA />);
+
+    const cta = screen.getByRole('link', { name: /Get started -- it takes 2 minutes/i }) as HTMLAnchorElement;
+    expect(cta).toBeTruthy();
+    expect(cta.getAttribute('href')).toBe('https://app.spinzyacademy.com/register');
+  });
+});

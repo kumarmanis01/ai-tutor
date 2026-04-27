@@ -3585,3 +3585,18 @@ model StreakHistory {
   @@unique([studentId, date])
   @@index([studentId, date])
 }
+
+
+// -- LP v3: Newsletter subscriber for email capture --
+/// Email subscriber captured from the landing page newsletter form.
+/// DPDP-compliant: consentGiven MUST be true before persisting.
+model NewsletterSubscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  consentGiven Boolean  @default(false)
+  source       String?  // 'landing_page_hero' | 'landing_page_footer' | 'newsletter_section'
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([createdAt])
+}

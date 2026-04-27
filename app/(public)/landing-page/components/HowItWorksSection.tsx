@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | LP-4.1: rewrite with parallel Student/Parent journeys,
  *   mobile tab toggle, Intersection Observer scroll animation
+ * - 2026-04-27T00:00:00Z | copilot | v3: add 4th student journey step (Practice & Master)
  */
 'use client';
 
@@ -52,6 +53,14 @@ const STUDENT_STEPS: JourneyStep[] = [
     titleEn: 'Request Any Topic',
     descEn:
       "Can't find a topic? AI generates curriculum-aligned notes and practice questions in ~30 seconds. You study exactly what you need.",
+  },
+  {
+    number: '04',
+    emoji: '🏆',
+    emojiLabel: 'Trophy',
+    titleEn: 'Practice & Master',
+    descEn:
+      'Unlimited practice, AI hints, and board exam mock tests. Track your mastery level topic by topic until exam day.',
   },
 ];
 
