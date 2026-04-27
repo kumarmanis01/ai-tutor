@@ -11,10 +11,12 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin suspend endpoint
+ * - 2026-04-27T18:42:00Z | copilot | switch suspend status to SUSPENDED and add audit metadata
  */
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { extractClientIp } from '@/lib/admin/authSecurity';
 import { requireSuperAdmin } from '@/lib/admin/guards';
 
 export const dynamic = 'force-dynamic';
@@ -30,11 +32,16 @@ export async function POST(_req: Request, { params }: Params) {
   }
 
   const { adminUserId } = await params;
+  const ipAddress = extractClientIp(_req);
+  const userAgent = _req.headers.get('user-agent') ?? 'unknown';
 
-  await prisma.adminUser.update({
-    where: { id: adminUserId },
-    data: { status: 'INACTIVE' },
-  });
+  await prisma.$transaction([
+    prisma.adminUser.update({
+      where: { id: adminUserId },
+      data: { status: 'SUSPENDED' },
+    }),
+    prisma.adminTrustedDevice.deleteMany({ where: { adminUserId } }),
+  ]);
 
   await prisma.adminAuditLog.create({
     data: {
@@ -42,6 +49,10 @@ export async function POST(_req: Request, { params }: Params) {
       action: 'admin.suspended',
       entityType: 'AdminUser',
       entityId: adminUserId,
+      targetType: 'AdminUser',
+      targetId: adminUserId,
+      ipAddress,
+      userAgent,
     },
   });
 

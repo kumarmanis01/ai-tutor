@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin login MFA verification endpoint
+ * - 2026-04-27T18:49:00Z | copilot | persist admin refresh sessions and decrypt MFA secret at verification time
  */
 
 import bcrypt from 'bcryptjs';
@@ -20,6 +21,7 @@ import { logger } from '@/lib/logger';
 import { generateTokenPair } from '@/lib/auth/token.service';
 import {
   computeTrustedDeviceHash,
+  decryptAdminMfaSecret,
   extractClientIp,
   signAdminDeviceToken,
   toIpv4Subnet24,
@@ -78,7 +80,7 @@ export async function POST(req: Request) {
       mfaVerified = backup.ok;
       remainingBackupHashes = backup.remaining;
     } else if (admin.mfaSecret && totpCode) {
-      mfaVerified = verifyTotp(admin.mfaSecret, totpCode, 1);
+      mfaVerified = verifyTotp(decryptAdminMfaSecret(admin.mfaSecret), totpCode, 1);
     }
 
     if (!mfaVerified) {
@@ -91,6 +93,7 @@ export async function POST(req: Request) {
     const deviceHash = computeTrustedDeviceHash(userAgent, subnet24);
 
     if (body.rememberDevice === true) {
+      const signedDeviceToken = await signAdminDeviceToken(admin.id, subnet24);
       await prisma.adminTrustedDevice.upsert({
         where: {
           adminUserId_deviceHash: {
@@ -101,22 +104,42 @@ export async function POST(req: Request) {
         create: {
           adminUserId: admin.id,
           deviceHash,
+          deviceToken: signedDeviceToken,
+          ipSubnet: subnet24,
+          fingerprint: deviceHash,
           label: 'Remembered device',
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          lastUsedAt: new Date(),
         },
         update: {
+          deviceToken: signedDeviceToken,
+          ipSubnet: subnet24,
+          fingerprint: deviceHash,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          lastUsedAt: new Date(),
         },
       });
     }
 
     const tokens = await generateTokenPair({ sub: admin.user.id, role: admin.role, scope: 'admin' });
 
+    await prisma.adminSession.create({
+      data: {
+        adminId: admin.id,
+        refreshToken: tokens.refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ipAddress: ip,
+        userAgent,
+      },
+    });
+
     await prisma.adminUser.update({
       where: { id: admin.id },
       data: {
         lastLoginAt: new Date(),
+        lastLoginIp: ip,
         mfaBackupCodes: remainingBackupHashes ? JSON.stringify(remainingBackupHashes) : admin.mfaBackupCodes,
+        backupCodesHash: remainingBackupHashes ? JSON.stringify(remainingBackupHashes) : admin.backupCodesHash,
       },
     });
 
@@ -130,6 +153,14 @@ export async function POST(req: Request) {
           usedBackupCode: Boolean(backupCode),
           rememberedDevice: body.rememberDevice === true,
         },
+        details: {
+          usedBackupCode: Boolean(backupCode),
+          rememberedDevice: body.rememberDevice === true,
+        },
+        targetType: 'AdminUser',
+        targetId: admin.id,
+        ipAddress: ip,
+        userAgent,
       },
     });
 

@@ -11,12 +11,15 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin setup complete endpoint
+ * - 2026-04-27T18:46:00Z | copilot | decrypt MFA secret for verification and persist backupCodesHash alias
  */
 
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
+  decryptAdminMfaSecret,
+  extractClientIp,
   generateBackupCodes,
   validateAdminPassword,
   verifyTotp,
@@ -38,6 +41,8 @@ export async function POST(req: Request) {
   const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : '';
   const totpCode = typeof body.totpCode === 'string' ? body.totpCode : '';
   const backupCodesSaved = body.backupCodesSaved === true;
+  const ipAddress = extractClientIp(req);
+  const userAgent = req.headers.get('user-agent') ?? 'unknown';
 
   if (!token || !password || !confirmPassword || !totpCode) {
     return NextResponse.json({ error: 'missing_required_fields' }, { status: 400 });
@@ -57,7 +62,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_or_expired_token' }, { status: 404 });
   }
 
-  if (!admin.mfaSecret || !verifyTotp(admin.mfaSecret, totpCode, 1)) {
+  const mfaSecret = admin.mfaSecret ? decryptAdminMfaSecret(admin.mfaSecret) : null;
+  if (!mfaSecret || !verifyTotp(mfaSecret, totpCode, 1)) {
     return NextResponse.json({ error: 'invalid_mfa_code' }, { status: 400 });
   }
 
@@ -79,6 +85,7 @@ export async function POST(req: Request) {
         inviteToken: null,
         inviteExpiresAt: null,
         mfaBackupCodes: JSON.stringify(backupCodeHashes),
+        backupCodesHash: JSON.stringify(backupCodeHashes),
         failedLoginAttempts: 0,
         lockoutUntil: null,
       },
@@ -90,6 +97,10 @@ export async function POST(req: Request) {
         action: 'admin.setup_complete',
         entityType: 'AdminUser',
         entityId: admin.id,
+        targetType: 'AdminUser',
+        targetId: admin.id,
+        ipAddress,
+        userAgent,
       },
     });
   });

@@ -11,11 +11,13 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin login verify-mfa tests
+ * - 2026-04-27T20:05:00Z | copilot | add mocks for decrypt and AdminSession persistence in updated MFA flow
  */
 
 jest.mock('@/lib/admin/authSecurity', () => ({
   verifyAdminLoginSessionToken: jest.fn(),
   verifyTotp: jest.fn(),
+  decryptAdminMfaSecret: jest.fn((v: string) => v),
   signAdminDeviceToken: jest.fn(async () => 'device-token'),
   extractClientIp: jest.fn(() => '127.0.0.1'),
   toIpv4Subnet24: jest.fn(() => '127.0.0.0/24'),
@@ -38,6 +40,9 @@ jest.mock('@/lib/prisma', () => ({
     adminAuditLog: {
       create: jest.fn(),
     },
+    adminSession: {
+      create: jest.fn(),
+    },
   },
 }));
 
@@ -55,6 +60,7 @@ const prismaMock = prisma as unknown as {
   adminUser: { findUnique: jest.Mock; update: jest.Mock };
   adminTrustedDevice: { upsert: jest.Mock };
   adminAuditLog: { create: jest.Mock };
+  adminSession: { create: jest.Mock };
 };
 
 describe('admin login verify-mfa', () => {

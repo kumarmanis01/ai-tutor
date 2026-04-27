@@ -11,10 +11,12 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin reactivate endpoint
+ * - 2026-04-27T18:42:00Z | copilot | align reactivation with SUSPENDED flow and audit metadata
  */
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { extractClientIp } from '@/lib/admin/authSecurity';
 import { requireSuperAdmin } from '@/lib/admin/guards';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +32,8 @@ export async function POST(_req: Request, { params }: Params) {
   }
 
   const { adminUserId } = await params;
+  const ipAddress = extractClientIp(_req);
+  const userAgent = _req.headers.get('user-agent') ?? 'unknown';
 
   await prisma.adminUser.update({
     where: { id: adminUserId },
@@ -42,6 +46,10 @@ export async function POST(_req: Request, { params }: Params) {
       action: 'admin.reactivated',
       entityType: 'AdminUser',
       entityId: adminUserId,
+      targetType: 'AdminUser',
+      targetId: adminUserId,
+      ipAddress,
+      userAgent,
     },
   });
 

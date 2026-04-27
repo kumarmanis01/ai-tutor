@@ -11,11 +11,17 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin setup MFA QR endpoint
+ * - 2026-04-27T18:46:00Z | copilot | store MFA secret encrypted and return qr_code_data_url alias
  */
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { buildOtpAuthUri, generateMfaSecret } from '@/lib/admin/authSecurity';
+import {
+  buildOtpAuthUri,
+  decryptAdminMfaSecret,
+  encryptAdminMfaSecret,
+  generateMfaSecret,
+} from '@/lib/admin/authSecurity';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +44,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'invalid_or_expired_token' }, { status: 404 });
   }
 
-  const secret = admin.mfaSecret ?? generateMfaSecret();
+  const secret = admin.mfaSecret ? decryptAdminMfaSecret(admin.mfaSecret) : generateMfaSecret();
   if (!admin.mfaSecret) {
     await prisma.adminUser.update({
       where: { id: admin.id },
-      data: { mfaSecret: secret },
+      data: { mfaSecret: encryptAdminMfaSecret(secret) },
     });
   }
 
@@ -54,5 +60,6 @@ export async function GET(req: Request) {
     secret,
     otpauthUri,
     qrCodeUrl,
+    qr_code_data_url: qrCodeUrl,
   });
 }

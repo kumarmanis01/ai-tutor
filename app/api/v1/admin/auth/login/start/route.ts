@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin login start endpoint with lockout and MFA session
+ * - 2026-04-27T18:49:00Z | copilot | enforce admin IP whitelist and align lockout/session behavior with A0.3
  */
 
 import bcrypt from 'bcryptjs';
@@ -19,6 +20,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { sendMailSafe } from '@/lib/mailer';
 import { generateTokenPair } from '@/lib/auth/token.service';
+import { isAllowedAdminIp } from '@/lib/admin/ipWhitelist';
 import {
   computeTrustedDeviceHash,
   extractClientIp,
@@ -58,6 +60,15 @@ export async function POST(req: Request) {
     const body = (await req.json().catch(() => ({}))) as { email?: string; password?: string };
     const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
     const password = typeof body.password === 'string' ? body.password : '';
+    const ip = extractClientIp(req);
+    const userAgent = req.headers.get('user-agent') ?? 'unknown';
+
+    if (!isAllowedAdminIp(ip)) {
+      return NextResponse.json(
+        { error: 'unauthorized_network', message: 'Access Denied: Unauthorized Network' },
+        { status: 403 }
+      );
+    }
 
     if (!email || !password) {
       return NextResponse.json({ error: 'missing_credentials' }, { status: 400 });
@@ -72,7 +83,13 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!admin || !admin.passwordHash || admin.status !== 'ACTIVE') {
+    if (
+      !admin ||
+      !admin.passwordHash ||
+      admin.status !== 'ACTIVE' ||
+      admin.status === 'SUSPENDED' ||
+      admin.status === 'DELETED'
+    ) {
       return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
     }
 
@@ -105,9 +122,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
     }
 
-    const ip = extractClientIp(req);
     const subnet24 = toIpv4Subnet24(ip);
-    const userAgent = req.headers.get('user-agent') ?? 'unknown';
     const deviceHash = computeTrustedDeviceHash(userAgent, subnet24);
 
     const trustedDevice = await prisma.adminTrustedDevice.findUnique({
@@ -129,7 +144,10 @@ export async function POST(req: Request) {
 
     if (trustedDevice && trustedDevice.expiresAt > new Date()) {
       const tokens = await generateTokenPair({ sub: admin.user.id, role: admin.role, scope: 'admin' });
-      await prisma.adminUser.update({ where: { id: admin.id }, data: { lastLoginAt: new Date() } });
+      await prisma.adminUser.update({
+        where: { id: admin.id },
+        data: { lastLoginAt: new Date(), lastLoginIp: ip },
+      });
       return NextResponse.json({
         requiresMfa: false,
         accessToken: tokens.accessToken,

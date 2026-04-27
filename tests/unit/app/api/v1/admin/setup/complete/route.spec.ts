@@ -11,11 +11,14 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin setup complete tests
+ * - 2026-04-27T20:05:00Z | copilot | mock decrypt/extract helpers for updated setup complete route behavior
  */
 
 jest.mock('bcryptjs', () => ({ hash: jest.fn(async () => 'hashed') }));
 
 jest.mock('@/lib/admin/authSecurity', () => ({
+  decryptAdminMfaSecret: jest.fn((v: string) => v),
+  extractClientIp: jest.fn(() => '127.0.0.1'),
   generateBackupCodes: jest.fn(() => Array.from({ length: 10 }, (_, i) => `CODE000${i}`)),
   validateAdminPassword: jest.fn(() => ({ valid: true, issues: [] })),
   verifyTotp: jest.fn(() => true),

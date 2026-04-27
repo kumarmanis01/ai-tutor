@@ -10,27 +10,27 @@ As a Super Admin, I want to create admin accounts with specific roles via a secu
 
 ### Acceptance Criteria
 
-- [ ] Only Super Admin can access admin creation page
-- [ ] Email field required and validated
-- [ ] Free email domains are blocked
-- [ ] Name must be 2–100 characters
-- [ ] Role dropdown available (Content Admin, Support Admin)
-- [ ] Admin created with INVITED status
-- [ ] Invite token generated (24h expiry)
-- [ ] Invite email sent
-- [ ] Audit log entry created
-- [ ] Admin list table visible
-- [ ] Actions available (Resend, Suspend, Reactivate)
+- [x] Only Super Admin can access admin creation page
+- [x] Email field required and validated
+- [x] Free email domains are blocked
+- [x] Name must be 2–100 characters
+- [x] Role dropdown available (Content Admin, Support Admin)
+- [x] Admin created with INVITED status
+- [x] Invite token generated (24h expiry)
+- [x] Invite email sent
+- [x] Audit log entry created
+- [x] Admin list table visible
+- [x] Actions available (Resend, Suspend, Reactivate)
 
 ### Dev Tasks
 
-- [ ] Build AdminTeamPage
-- [ ] Build CreateAdminForm
-- [ ] Build AdminListTable
-- [ ] Create validation schema
-- [ ] Implement POST API
-- [ ] Setup email service
-- [ ] Implement audit logging
+- [x] Build AdminTeamPage
+- [x] Build CreateAdminForm
+- [x] Build AdminListTable
+- [x] Create validation schema
+- [x] Implement POST API
+- [x] Setup email service
+- [x] Implement audit logging
 
 ### QA
 
@@ -53,35 +53,35 @@ As a newly invited admin, I want to receive an invite email, click a setup link,
 
 ### Acceptance Criteria
 
-- [ ] Invite email sent with subject "You've been invited to join Spinzy Academy Admin Panel"
-- [ ] Invite email contains admin name, role, setup link, and expiry notice (24 hours)
+- [x] Invite email sent with subject "You've been invited to join Spinzy Academy Admin Panel"
+- [x] Invite email contains admin name, role, setup link, and expiry notice (24 hours)
 - [ ] Setup URL: https://admin.spinzy.academy/setup?token={invite_token}
-- [ ] Invalid/expired token shows error message
-- [ ] Valid token allows multi-step setup
-- [ ] Password requirements: Min 12 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
-- [ ] Password strength meter (zxcvbn, score ≥ 3/4 required)
-- [ ] Confirm password field with match validation
-- [ ] QR code displayed for MFA enrollment
-- [ ] Secret key provided for manual entry
-- [ ] 6-digit code field to verify MFA enrollment
-- [ ] 10 backup codes displayed (8-char hex, uppercase)
-- [ ] Warning message: "Save these codes. You won't see them again."
-- [ ] "Download as TXT" button for backup codes
-- [ ] Checkbox: "I have saved my backup codes" enables "Complete Setup" button
-- [ ] On complete setup: AdminUser.status = ACTIVE, mfa_enabled = true, invite_token = null
-- [ ] Redirect to Admin Login page
-- [ ] Audit log: admin.setup_complete
+- [x] Invalid/expired token shows error message
+- [x] Valid token allows multi-step setup
+- [x] Password requirements: Min 12 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+- [x] Password strength meter (zxcvbn, score ≥ 3/4 required)
+- [x] Confirm password field with match validation
+- [x] QR code displayed for MFA enrollment
+- [x] Secret key provided for manual entry
+- [x] 6-digit code field to verify MFA enrollment
+- [x] 10 backup codes displayed (8-char hex, uppercase)
+- [x] Warning message: "Save these codes. You won't see them again."
+- [x] "Download as TXT" button for backup codes
+- [x] Checkbox: "I have saved my backup codes" enables "Complete Setup" button
+- [x] On complete setup: AdminUser.status = ACTIVE, mfa_enabled = true, invite_token = null
+- [x] Redirect to Admin Login page
+- [x] Audit log: admin.setup_complete
 
 ### Dev Tasks
 
-- [ ] Create AdminSetupPage component (multi-step)
-- [ ] Create PasswordStrengthMeter component
-- [ ] Create MFAEnrollment component (QR + input)
-- [ ] Create BackupCodesDisplay component
-- [ ] Implement GET /api/v1/admin/setup/validate?token={token}
-- [ ] Implement GET /api/v1/admin/setup/mfa-qr?token={token}
-- [ ] Implement POST /api/v1/admin/setup/complete
-- [ ] Implement bcrypt hashing for password (cost factor 12)
+- [x] Create AdminSetupPage component (multi-step)
+- [x] Create PasswordStrengthMeter component
+- [x] Create MFAEnrollment component (QR + input)
+- [x] Create BackupCodesDisplay component
+- [x] Implement GET /api/v1/admin/setup/validate?token={token}
+- [x] Implement GET /api/v1/admin/setup/mfa-qr?token={token}
+- [x] Implement POST /api/v1/admin/setup/complete
+- [x] Implement bcrypt hashing for password (cost factor 12)
 - [ ] Implement speakeasy.totp.verify with window:1
 
 ### QA
@@ -104,35 +104,35 @@ As an admin, I want to log in via a dedicated subdomain with email, password, an
 
 ### Acceptance Criteria
 
-- [ ] Two-step login flow on admin.spinzy.academy/login
-- [ ] Step 1: Email + Password fields with "Sign In" button
-- [ ] Valid credentials return login_session_token (JWT, 5-min TTL, scope: MFA_REQUIRED)
-- [ ] Invalid credentials show error message and increment failed attempt count
-- [ ] 3 failed attempts → 15-minute lockout message
-- [ ] 5 failed attempts → Super Admin email alert
-- [ ] Step 2: 6-digit TOTP input (6 separate boxes, auto-advance, paste support)
-- [ ] Valid TOTP returns access_token (JWT, 30-min TTL) + refresh_token (7-day TTL)
-- [ ] Invalid TOTP shows error without incrementing failed_attempts
-- [ ] "Use Backup Code" link toggles to backup code input (8-char)
-- [ ] "Remember this device" checkbox returns device_token (JWT, 30-day TTL, bound to IP /24 subnet)
-- [ ] Subsequent logins from same device + IP skip MFA
-- [ ] Session timeout: 30 minutes inactivity → Auto-logout
-- [ ] IP Whitelist: Access from non-whitelisted IP shows "Access Denied: Unauthorized Network"
+- [x] Two-step login flow on admin.spinzy.academy/login
+- [x] Step 1: Email + Password fields with "Sign In" button
+- [x] Valid credentials return login_session_token (JWT, 5-min TTL, scope: MFA_REQUIRED)
+- [x] Invalid credentials show error message and increment failed attempt count
+- [x] 3 failed attempts → 15-minute lockout message
+- [x] 5 failed attempts → Super Admin email alert
+- [x] Step 2: 6-digit TOTP input (6 separate boxes, auto-advance, paste support)
+- [x] Valid TOTP returns access_token (JWT, 30-min TTL) + refresh_token (7-day TTL)
+- [x] Invalid TOTP shows error without incrementing failed_attempts
+- [x] "Use Backup Code" link toggles to backup code input (8-char)
+- [x] "Remember this device" checkbox returns device_token (JWT, 30-day TTL, bound to IP /24 subnet)
+- [x] Subsequent logins from same device + IP skip MFA
+- [x] Session timeout: 30 minutes inactivity → Auto-logout
+- [x] IP Whitelist: Access from non-whitelisted IP shows "Access Denied: Unauthorized Network"
 
 ### Dev Tasks
 
-- [ ] Create AdminLoginPage component (two-step)
-- [ ] Create LoginStep1 component (email + password)
-- [ ] Create LoginStep2 component (MFA code + backup code toggle)
-- [ ] Create OTPInput component (reusable: 6-digit, pasteable)
-- [ ] Implement useAdminAuth hook
-- [ ] Implement POST /api/v1/admin/auth/login
-- [ ] Implement POST /api/v1/admin/auth/mfa
-- [ ] Implement POST /api/v1/admin/auth/refresh
-- [ ] Implement POST /api/v1/admin/auth/device
-- [ ] Implement POST /api/v1/admin/auth/logout
-- [ ] Implement lockout logic (3 failed → 15-min lockout)
-- [ ] Implement IP whitelist middleware
+- [x] Create AdminLoginPage component (two-step)
+- [x] Create LoginStep1 component (email + password)
+- [x] Create LoginStep2 component (MFA code + backup code toggle)
+- [x] Create OTPInput component (reusable: 6-digit, pasteable)
+- [x] Implement useAdminAuth hook
+- [x] Implement POST /api/v1/admin/auth/login
+- [x] Implement POST /api/v1/admin/auth/mfa
+- [x] Implement POST /api/v1/admin/auth/refresh
+- [x] Implement POST /api/v1/admin/auth/device
+- [x] Implement POST /api/v1/admin/auth/logout
+- [x] Implement lockout logic (3 failed → 15-min lockout)
+- [x] Implement IP whitelist middleware
 
 ### QA
 

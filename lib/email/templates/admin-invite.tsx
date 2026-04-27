@@ -7,6 +7,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created -- B3.2 React Email admin invite template
+ * - 2026-04-27T18:39:00Z | copilot | align subject/copy with A0.1/A0.2 admin invite requirements
  */
 
 import * as React from 'react';
@@ -31,11 +32,12 @@ const PRIMARY = '#534AB7';
 interface AdminInviteEmailProps {
   setupLink: string;
   role: string;
+  adminName?: string;
 }
 
 // ── Template ──────────────────────────────────────────────────────────────────
 
-export function AdminInviteEmail({ setupLink, role }: AdminInviteEmailProps): React.ReactElement {
+export function AdminInviteEmail({ setupLink, role, adminName }: AdminInviteEmailProps): React.ReactElement {
   const roleLabel = role
     .replace(/_/g, ' ')
     .toLowerCase()
@@ -44,7 +46,7 @@ export function AdminInviteEmail({ setupLink, role }: AdminInviteEmailProps): Re
   return (
     <Html>
       <Head />
-      <Preview>You have been invited to join Spinzy Academy as {roleLabel}</Preview>
+      <Preview>You've been invited to join Spinzy Academy Admin Panel</Preview>
       <Body style={body}>
         <Container style={container}>
           <Img
@@ -54,14 +56,15 @@ export function AdminInviteEmail({ setupLink, role }: AdminInviteEmailProps): Re
             style={logo}
           />
           <Heading style={{ color: PRIMARY, fontSize: '22px', margin: '0 0 16px' }}>
-            Admin Invitation
+            You have been invited to join Spinzy Academy Admin Panel
           </Heading>
+          {adminName ? <Text style={body1}>Hi {adminName},</Text> : null}
           <Text style={body1}>
             You have been invited to join the Spinzy Academy admin panel as{' '}
             <strong>{roleLabel}</strong>.
           </Text>
           <Text style={body1}>
-            Click the button below to set up your account. This link expires in 48 hours.
+            Click the button below to set up your account. This link expires in 24 hours.
           </Text>
           <Button href={setupLink} style={btn}>
             Set Up Your Account

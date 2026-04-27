@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created admin setup validate endpoint
+ * - 2026-04-27T18:46:00Z | copilot | align invalid/expired token message with A0.2 acceptance criteria
  */
 
 import { NextResponse } from 'next/server';
@@ -34,7 +35,15 @@ export async function GET(req: Request) {
   });
 
   if (!admin || admin.status !== 'INVITED' || !admin.inviteExpiresAt || admin.inviteExpiresAt < new Date()) {
-    return NextResponse.json({ valid: false, error: 'invalid_or_expired_token' }, { status: 404 });
+    return NextResponse.json(
+      {
+        valid: false,
+        error: 'invalid_or_expired_token',
+        message:
+          'This invite link is invalid or has expired. Please contact your Super Admin for a new invite.',
+      },
+      { status: 404 }
+    );
   }
 
   return NextResponse.json({
