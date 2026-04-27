@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 /**
  * FILE OBJECTIVE:
@@ -37,7 +37,10 @@ export async function GET(req: Request) {
     const language = searchParams.get('language');
 
     if (!topicId) {
-      return NextResponse.json({ error: 'topicId is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'topicId is required' },
+        { status: 400 }
+      );
     }
 
     const where: Record<string, unknown> = {
@@ -56,7 +59,11 @@ export async function GET(req: Request) {
 
     const tests = await prisma.generatedTest.findMany({
       where,
-      orderBy: [{ difficulty: 'asc' }, { language: 'asc' }, { version: 'desc' }],
+      orderBy: [
+        { difficulty: 'asc' },
+        { language: 'asc' },
+        { version: 'desc' },
+      ],
       select: {
         id: true,
         title: true,

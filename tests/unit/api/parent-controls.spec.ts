@@ -7,17 +7,9 @@
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
 jest.mock('@/lib/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    logAPI: jest.fn(),
-  },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
-jest.mock('@/lib/student/streakShield', () => ({
-  consumeShield: jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock('@/lib/student/streakShield', () => ({ consumeShield: jest.fn().mockResolvedValue(undefined) }));
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
 import '../../helpers/mockSession';
@@ -31,20 +23,11 @@ function makeLink() {
 
 function makeControls(overrides: any = {}) {
   return {
-    id: 'ctrl-1',
-    parentId: PARENT_ID,
-    studentId: STUDENT_ID,
-    dailyTimeLimitMin: null,
-    allowedSubjects: [],
-    focusMode: 'balanced',
-    studyHoursStart: null,
-    studyHoursEnd: null,
-    weeklyHoursTarget: null,
-    schedulePreference: null,
-    topicFocusRequest: null,
-    isPaused: false,
-    pausedUntil: null,
-    pauseReason: null,
+    id: 'ctrl-1', parentId: PARENT_ID, studentId: STUDENT_ID,
+    dailyTimeLimitMin: null, allowedSubjects: [], focusMode: 'balanced',
+    studyHoursStart: null, studyHoursEnd: null,
+    weeklyHoursTarget: null, schedulePreference: null, topicFocusRequest: null,
+    isPaused: false, pausedUntil: null, pauseReason: null,
     ...overrides,
   };
 }
@@ -105,11 +88,7 @@ describe('PUT /api/parent/controls', () => {
     const { PUT } = await import('@/app/api/parent/controls/route');
     const req = new Request('http://localhost', {
       method: 'PUT',
-      body: JSON.stringify({
-        studentId: STUDENT_ID,
-        weeklyHoursTarget: 15,
-        schedulePreference: 'evening',
-      }),
+      body: JSON.stringify({ studentId: STUDENT_ID, weeklyHoursTarget: 15, schedulePreference: 'evening' }),
       headers: { 'Content-Type': 'application/json' },
     });
     const res = await PUT(req as any);
@@ -165,10 +144,7 @@ describe('PUT /api/parent/controls', () => {
     const { PUT } = await import('@/app/api/parent/controls/route');
     const req = new Request('http://localhost', {
       method: 'PUT',
-      body: JSON.stringify({
-        studentId: STUDENT_ID,
-        topicFocusRequest: 'Focus on algebra and quadratic equations',
-      }),
+      body: JSON.stringify({ studentId: STUDENT_ID, topicFocusRequest: 'Focus on algebra and quadratic equations' }),
       headers: { 'Content-Type': 'application/json' },
     });
     const res = await PUT(req as any);

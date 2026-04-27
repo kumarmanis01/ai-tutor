@@ -4,6 +4,7 @@
 require('dotenv').config({ path: '.env.production' });
 const { prisma } = require('../lib/prisma');
 
+
 (async () => {
   try {
     const rows = await prisma.aIContentLog.findMany({
@@ -18,8 +19,8 @@ const { prisma } = require('../lib/prisma');
         error: true,
         requestBody: true,
         responseBody: true,
-        createdAt: true,
-      },
+        createdAt: true
+      }
     });
     console.log(JSON.stringify(rows, null, 2));
   } catch (err) {

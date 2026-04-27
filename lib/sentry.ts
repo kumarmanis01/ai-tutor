@@ -49,11 +49,7 @@ export interface ErrorContext {
 export function captureException(error: unknown, context?: ErrorContext): string | undefined {
   // Only capture in production with Sentry configured
   if (process.env.NODE_ENV !== 'production' || !process.env.NEXT_PUBLIC_SENTRY_DSN) {
-    logger.error('[Sentry disabled] Error captured', {
-      className: CLASS_NAME,
-      error: String(error),
-      context,
-    });
+    logger.error('[Sentry disabled] Error captured', { className: CLASS_NAME, error: String(error), context });
     return undefined;
   }
 
@@ -144,7 +140,11 @@ export function addBreadcrumb(
 /**
  * Start a performance transaction/span
  */
-export function startTransaction(name: string, op: string, data?: Record<string, unknown>): any {
+export function startTransaction(
+  name: string,
+  op: string,
+  data?: Record<string, unknown>
+): any {
   if (process.env.NODE_ENV !== 'production' || !process.env.NEXT_PUBLIC_SENTRY_DSN) {
     return undefined;
   }

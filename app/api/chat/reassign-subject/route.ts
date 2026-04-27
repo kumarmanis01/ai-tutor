@@ -14,11 +14,9 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: 'login_required' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const conversationId =
-      typeof body.conversationId === 'string' ? body.conversationId.trim() : '';
+    const conversationId = typeof body.conversationId === 'string' ? body.conversationId.trim() : '';
     const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
-    if (!conversationId || !subject)
-      return NextResponse.json({ error: 'missing_params' }, { status: 400 });
+    if (!conversationId || !subject) return NextResponse.json({ error: 'missing_params' }, { status: 400 });
 
     const result = await prisma.chat.updateMany({
       where: { userId, conversationId },
@@ -27,11 +25,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, updated: result.count, conversationId, subject });
   } catch (e) {
-    logger.error('POST /api/chat/reassign-subject error', {
-      className: 'api.chat.reassignSubject',
-      methodName: 'POST',
-      error: e,
-    });
+    logger.error('POST /api/chat/reassign-subject error', { className: 'api.chat.reassignSubject', methodName: 'POST', error: e });
     return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

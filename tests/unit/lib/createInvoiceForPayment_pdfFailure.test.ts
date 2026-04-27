@@ -44,27 +44,17 @@ describe('createInvoiceForPayment — PDF failure handling', () => {
     // Mock prisma, r2 upload and logger before importing the module
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
     jest.doMock('@/lib/storage/r2', () => ({ uploadBufferToR2: uploadMock }));
-    jest.doMock('@/lib/logger', () => ({
-      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
-    }));
+    jest.doMock('@/lib/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() } }));
 
     // Force pdf-lib to fail so generateInvoicePdf throws (fallback path failing)
     jest.doMock('pdf-lib', () => ({
-      PDFDocument: {
-        create: jest.fn(() => {
-          throw new Error('pdf-lib failure');
-        }),
-      },
+      PDFDocument: { create: jest.fn(() => { throw new Error('pdf-lib failure') }) },
       StandardFonts: { Helvetica: {} },
     }));
 
     const invoices = await import('@/lib/invoices');
 
-    const res = await invoices.createInvoiceForPayment({
-      userId: 'u2',
-      paymentId: 'pay-2',
-      amountPaise: 12345,
-    });
+    const res = await invoices.createInvoiceForPayment({ userId: 'u2', paymentId: 'pay-2', amountPaise: 12345 });
 
     expect(res).toBeDefined();
     expect(res.invoiceNumber).toBe(999);

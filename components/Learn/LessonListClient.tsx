@@ -20,9 +20,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTopicProgress } from '@/hooks/useTopicProgress';
-import TopicCompletionIndicator, {
-  getCompletionStatus,
-} from '@/components/TopicCompletionIndicator';
+import TopicCompletionIndicator, { getCompletionStatus } from '@/components/TopicCompletionIndicator';
 import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 function calculateProgress(completed: number, total: number): number {
   return total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -67,10 +65,7 @@ export default function LessonListClient({
 
   // Calculate overall progress
   const completedCount = lessons.filter((l) => {
-    const p = progress.find(
-      (pr: { topicId: string; isCompleted?: boolean }) =>
-        pr.topicId === l.id || pr.topicId === `${courseId}-${l.lessonIndex}`
-    );
+    const p = progress.find((pr: { topicId: string; isCompleted?: boolean }) => pr.topicId === l.id || pr.topicId === `${courseId}-${l.lessonIndex}`);
     return p?.isCompleted;
   }).length;
   const overallProgress = calculateProgress(completedCount, lessons.length);
@@ -144,8 +139,8 @@ export default function LessonListClient({
         <div className="mt-4 mb-6">
           <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${overallProgress >= 100 ? 'bg-[#1D9E75]' : 'bg-[#534AB7]'} ${progressClassWidth}`}
-            />
+                className={`h-full rounded-full transition-all duration-300 ${overallProgress >= 100 ? 'bg-[#1D9E75]' : 'bg-[#534AB7]'} ${progressClassWidth}`}
+              />
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {completedCount} of {lessons.length} {isSubject ? 'chapters' : 'lessons'} completed
@@ -153,10 +148,8 @@ export default function LessonListClient({
         </div>
       )}
 
-      <h2 className="text-lg font-semibold mt-6 mb-3">
-        {isSubject ? '📚 Chapters' : '📖 Lessons'}
-      </h2>
-
+      <h2 className="text-lg font-semibold mt-6 mb-3">{isSubject ? '📚 Chapters' : '📖 Lessons'}</h2>
+      
       {lessons.length === 0 ? (
         <div className="text-center p-5 bg-gray-50 rounded-md">
           <p className="text-gray-600">No content available yet.</p>
@@ -181,7 +174,10 @@ export default function LessonListClient({
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       {/* Progress Indicator */}
-                      <TopicCompletionIndicator status={completionStatus} size="md" />
+                      <TopicCompletionIndicator
+                        status={completionStatus}
+                        size="md"
+                      />
                       <div>
                         <div className="font-semibold text-[15px]">{l.title}</div>
                         {Array.isArray(l.objectives) && l.objectives.length > 0 && (
@@ -191,20 +187,13 @@ export default function LessonListClient({
                         )}
                       </div>
                     </div>
-                    <div
-                      className={`text-[13px] flex items-center gap-1 ${completionStatus === 'completed' ? 'text-green-500' : 'text-[#0070f3]'}`}
-                    >
-                      {completionStatus === 'completed'
-                        ? 'Review'
-                        : completionStatus === 'in-progress'
-                          ? 'Continue'
-                          : 'Start'}{' '}
-                      →
+                    <div className={`text-[13px] flex items-center gap-1 ${completionStatus === 'completed' ? 'text-green-500' : 'text-[#0070f3]'}`}>
+                      {completionStatus === 'completed' ? 'Review' : completionStatus === 'in-progress' ? 'Continue' : 'Start'} →
                     </div>
                   </div>
                 </Link>
               </li>
-            );
+            )
           })}
         </ul>
       )}

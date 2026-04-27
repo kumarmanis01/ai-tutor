@@ -4,7 +4,6 @@ This folder contains fixtures used by the ESLint custom-rule test harness.
 - `invalid.js` — example that SHOULD fail the rule by importing the OpenAI SDK directly.
 
 For clarity, two additional descriptive copies are provided:
-
 - `uses-callLLM.js` — same as `valid.js` but with a clearer name.
 - `uses-openai-directly.js` — same as `invalid.js` but with a clearer name.
 

@@ -20,10 +20,7 @@ function loadEnvFileIfPresent() {
         const key = m[1];
         let val = m[2];
         // strip quotes
-        if (
-          (val.startsWith('"') && val.endsWith('"')) ||
-          (val.startsWith("'") && val.endsWith("'"))
-        ) {
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
           val = val.slice(1, -1);
         }
         // Only set if not already provided in environment (imitates bash default assignment)
@@ -47,6 +44,8 @@ const logger = {
   info: (...args) => console.log('[INFO]', ...args),
   error: (...args) => console.error('[ERROR]', ...args),
 };
+
+
 
 async function main() {
   const email = process.argv[2];

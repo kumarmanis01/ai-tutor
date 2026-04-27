@@ -20,7 +20,9 @@ export function WelcomeBanner() {
     // Show banner if user was created recently (within last 5 minutes)
     // or if they have no test results yet (new user)
     const createdAt = (profile as any).createdAt;
-    const isNew = createdAt ? Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000 : false;
+    const isNew = createdAt
+      ? Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
+      : false;
 
     // Also check if there's a fresh onboarding flag in the URL
     const params = new URLSearchParams(window.location.search);
@@ -52,7 +54,9 @@ export function WelcomeBanner() {
       >
         x
       </button>
-      <h2 className="text-lg font-bold mb-1">Welcome to Spinzy Academy, {firstName}!</h2>
+      <h2 className="text-lg font-bold mb-1">
+        Welcome to Spinzy Academy, {firstName}!
+      </h2>
       <p className="text-sm text-indigo-100 mb-3">
         Your personalized learning journey starts now. Here&apos;s your quick start checklist:
       </p>

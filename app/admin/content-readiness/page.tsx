@@ -36,32 +36,22 @@ export default function AdminContentReadinessPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {summary?.pending ?? '--'}
-          </div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.pending ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Running</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {summary?.running ?? '--'}
-          </div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.running ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {summary?.failed ?? '--'}
-          </div>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary?.failed ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {summary?.completed ?? '--'}
-          </div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary?.completed ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Generation paused
-          </div>
+          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Generation paused</div>
           <div className="text-sm font-bold">{summary?.generationPaused ? 'Yes' : 'No'}</div>
         </div>
       </div>
@@ -92,11 +82,7 @@ export default function AdminContentReadinessPage() {
           <option value="completed">Completed</option>
           <option value="failed">Failed</option>
         </select>
-        <button
-          type="button"
-          onClick={() => setPage(0)}
-          className="px-3 py-1.5 rounded bg-gray-200 dark:bg-gray-700 text-sm font-medium"
-        >
+        <button type="button" onClick={() => setPage(0)} className="px-3 py-1.5 rounded bg-gray-200 dark:bg-gray-700 text-sm font-medium">
           Apply
         </button>
       </div>
@@ -118,42 +104,23 @@ export default function AdminContentReadinessPage() {
             <tbody>
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-4 text-center text-gray-500">
-                    No jobs match filters.
-                  </td>
+                  <td colSpan={6} className="p-4 text-center text-gray-500">No jobs match filters.</td>
                 </tr>
               )}
-              {items.map(
-                (j: {
-                  jobId: string;
-                  topicName: string;
-                  subjectName: string;
-                  chapterName: string;
-                  status: string;
-                  contentReady: boolean;
-                  lastError: string | null;
-                  updatedAt: string;
-                }) => (
-                  <tr key={j.jobId} className="border-t border-gray-200 dark:border-gray-700">
-                    <td className="p-3 font-medium">{j.topicName}</td>
-                    <td className="p-3">
-                      {j.subjectName} / {j.chapterName}
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs ${j.status === 'failed' ? 'bg-red-100 text-red-800' : j.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
-                      >
-                        {j.status}
-                      </span>
-                    </td>
-                    <td className="p-3">{j.contentReady ? 'Yes' : 'No'}</td>
-                    <td className="p-3 max-w-xs truncate" title={j.lastError ?? ''}>
-                      {j.lastError ?? '--'}
-                    </td>
-                    <td className="p-3">{new Date(j.updatedAt).toLocaleString()}</td>
-                  </tr>
-                )
-              )}
+              {items.map((j: { jobId: string; topicName: string; subjectName: string; chapterName: string; status: string; contentReady: boolean; lastError: string | null; updatedAt: string }) => (
+                <tr key={j.jobId} className="border-t border-gray-200 dark:border-gray-700">
+                  <td className="p-3 font-medium">{j.topicName}</td>
+                  <td className="p-3">{j.subjectName} / {j.chapterName}</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded text-xs ${j.status === 'failed' ? 'bg-red-100 text-red-800' : j.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {j.status}
+                    </span>
+                  </td>
+                  <td className="p-3">{j.contentReady ? 'Yes' : 'No'}</td>
+                  <td className="p-3 max-w-xs truncate" title={j.lastError ?? ''}>{j.lastError ?? '--'}</td>
+                  <td className="p-3">{new Date(j.updatedAt).toLocaleString()}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

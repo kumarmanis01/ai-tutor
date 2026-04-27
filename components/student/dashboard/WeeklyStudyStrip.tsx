@@ -72,7 +72,8 @@ export default function WeeklyStudyStrip({ data: initialData }: WeeklyStudyStrip
   // Days left in week (counting today)
   const daysLeft = 7 - todayIdx;
 
-  const footerText = `${sessionCountThisWeek} of ${weeklyGoal} sessions done · ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`;
+  const footerText =
+    `${sessionCountThisWeek} of ${weeklyGoal} sessions done · ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`;
 
   return (
     <article className="rounded-2xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
@@ -90,23 +91,14 @@ export default function WeeklyStudyStrip({ data: initialData }: WeeklyStudyStrip
                   day.hasSession
                     ? 'bg-[#534AB7]'
                     : isToday
-                      ? 'bg-gray-100 dark:bg-slate-700 ring-2 ring-[#1D9E75]'
-                      : 'bg-gray-100 dark:bg-slate-700',
+                    ? 'bg-gray-100 dark:bg-slate-700 ring-2 ring-[#1D9E75]'
+                    : 'bg-gray-100 dark:bg-slate-700',
                 ].join(' ')}
                 aria-label={`${day.dayLabel}: ${day.hasSession ? 'studied' : 'no session'}${isToday ? ' (today)' : ''}`}
               >
                 {day.hasSession && (
-                  <svg
-                    className="w-4 h-4 text-white"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
+                  <svg className="w-4 h-4 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 )}
               </div>

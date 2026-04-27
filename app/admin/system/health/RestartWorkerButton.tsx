@@ -1,33 +1,30 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export function RestartWorkerButton() {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
 
   async function restart() {
-    if (
-      !window.confirm('Restart the task worker process via pm2? Active jobs will be interrupted.')
-    )
-      return;
-    setBusy(true);
-    setMsg(null);
-    setErr(null);
+    if (!window.confirm('Restart the task worker process via pm2? Active jobs will be interrupted.')) return
+    setBusy(true)
+    setMsg(null)
+    setErr(null)
     try {
-      const r = await fetch('/api/admin/system/restart-worker', { method: 'POST' });
-      const body = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(body.error ?? 'Restart failed');
-      setMsg(body.message ?? 'Worker restarted -- waiting for heartbeat...');
+      const r = await fetch('/api/admin/system/restart-worker', { method: 'POST' })
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(body.error ?? 'Restart failed')
+      setMsg(body.message ?? 'Worker restarted -- waiting for heartbeat...')
       // Refresh after a brief delay so the new worker has time to register
-      setTimeout(() => router.refresh(), 5_000);
+      setTimeout(() => router.refresh(), 5_000)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Error');
+      setErr(e instanceof Error ? e.message : 'Error')
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
@@ -43,5 +40,5 @@ export function RestartWorkerButton() {
       {msg && <span className="text-[10px] text-[#1D9E75]">{msg}</span>}
       {err && <span className="text-[10px] text-[#E24B4A]">{err}</span>}
     </div>
-  );
+  )
 }

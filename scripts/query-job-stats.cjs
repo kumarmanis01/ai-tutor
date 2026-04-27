@@ -1,22 +1,19 @@
 const { prisma } = require('../lib/prisma');
 
-(async function main() {
-  try {
-    const res = await prisma.$queryRawUnsafe(
-      'SELECT "status", count(*) FROM "HydrationJob" GROUP BY "status";'
-    );
+(async function main(){
+  
+  try{
+    const res = await prisma.$queryRawUnsafe('SELECT "status", count(*) FROM "HydrationJob" GROUP BY "status";');
     console.log('HydrationJob counts by status:');
     console.log(res);
 
-    const exec = await prisma.$queryRawUnsafe(
-      'SELECT "status", count(*) FROM "ExecutionJob" GROUP BY "status";'
-    );
+    const exec = await prisma.$queryRawUnsafe('SELECT "status", count(*) FROM "ExecutionJob" GROUP BY "status";');
     console.log('ExecutionJob counts by status:');
     console.log(exec);
-  } catch (e) {
+  }catch(e){
     console.error('Error:', e && e.message ? e.message : e);
     process.exit(1);
-  } finally {
+  }finally{
     await prisma.$disconnect();
   }
 })();

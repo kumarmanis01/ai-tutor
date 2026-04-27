@@ -24,13 +24,7 @@ jest.mock('@/lib/session', () => ({ getServerSessionForHandlers: jest.fn() }));
 jest.mock('@/lib/mock/buildPriorityPlan', () => ({ buildPriorityPlan: jest.fn() }));
 jest.mock('@/lib/mock/selectMockQuestions', () => ({ computeSectionScores: jest.fn() }));
 jest.mock('@/lib/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    logAPI: jest.fn(),
-  },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
 
 import { POST } from '@/app/api/mock/attempt/[attemptId]/complete/route';
@@ -174,7 +168,7 @@ describe('POST /api/mock/attempt/[attemptId]/complete -- edge cases', () => {
         attemptId: 'att-1',
         subjectName: 'Mathematics',
         sectionScores,
-      })
+      }),
     );
     const callArg = mockBuild.mock.calls[0][0];
     expect(typeof callArg.overallScore).toBe('number');
@@ -185,9 +179,7 @@ describe('POST /api/mock/attempt/[attemptId]/complete -- edge cases', () => {
     mockSession.mockResolvedValueOnce({ user: { id: 'stu-1' } });
     // Only sec-a was submitted; sec-b and sec-c were not
     const partialAttempt = makeAttempt({
-      sectionAttempts: [
-        { sectionId: 'sec-a', submittedAt: new Date(), scorePercent: 60, answers: [] },
-      ],
+      sectionAttempts: [{ sectionId: 'sec-a', submittedAt: new Date(), scorePercent: 60, answers: [] }],
     });
     mp.mockExamAttempt.findFirst.mockResolvedValueOnce(partialAttempt);
     mp.mockExamSectionAttempt.findMany.mockResolvedValueOnce([]);
@@ -205,9 +197,7 @@ describe('POST /api/mock/attempt/[attemptId]/complete -- edge cases', () => {
     // upsert should be called for sec-b and sec-c (the two unsubmitted sections)
     const upsertCalls = mp.mockExamSectionAttempt.upsert.mock.calls;
     expect(upsertCalls.length).toBe(2);
-    const upsertedSectionIds = upsertCalls.map(
-      (c: any) => c[0].where.attemptId_sectionId.sectionId
-    );
+    const upsertedSectionIds = upsertCalls.map((c: any) => c[0].where.attemptId_sectionId.sectionId);
     expect(upsertedSectionIds).toContain('sec-b');
     expect(upsertedSectionIds).toContain('sec-c');
     // Each auto-submit has scorePercent = 0

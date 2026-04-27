@@ -39,13 +39,25 @@ describe('QuestionFeedback', () => {
   });
 
   it('shows incorrect status when answer is wrong', () => {
-    render(<QuestionFeedback {...defaultProps} userAnswer="3" isCorrect={false} />);
+    render(
+      <QuestionFeedback
+        {...defaultProps}
+        userAnswer="3"
+        isCorrect={false}
+      />
+    );
     expect(screen.getByText('Incorrect')).toBeInTheDocument();
     expect(screen.getByText('✗')).toBeInTheDocument();
   });
 
   it('shows partial status when answer is partially correct', () => {
-    render(<QuestionFeedback {...defaultProps} isCorrect={false} isPartial={true} />);
+    render(
+      <QuestionFeedback
+        {...defaultProps}
+        isCorrect={false}
+        isPartial={true}
+      />
+    );
     expect(screen.getByText('Partial')).toBeInTheDocument();
     expect(screen.getByText('◐')).toBeInTheDocument();
   });
@@ -57,7 +69,12 @@ describe('QuestionFeedback', () => {
 
   it('displays correct answer when incorrect', () => {
     render(
-      <QuestionFeedback {...defaultProps} userAnswer="3" correctAnswer="4" isCorrect={false} />
+      <QuestionFeedback
+        {...defaultProps}
+        userAnswer="3"
+        correctAnswer="4"
+        isCorrect={false}
+      />
     );
     expect(screen.getByText('Correct answer:')).toBeInTheDocument();
   });

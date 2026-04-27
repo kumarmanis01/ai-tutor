@@ -79,9 +79,7 @@ export function useSession() {
   }, [state.session?.sessionId]);
 
   const submitPractice = useCallback(
-    async (
-      answers: { questionId: string; answer: string }[]
-    ): Promise<SubmitActionResult | null> => {
+    async (answers: { questionId: string; answer: string }[]): Promise<SubmitActionResult | null> => {
       const sessionId = state.session?.sessionId;
       if (!sessionId) return null;
       setState((s) => ({ ...s, submitting: true }));
@@ -94,13 +92,11 @@ export function useSession() {
         return null;
       }
     },
-    [state.session?.sessionId]
+    [state.session?.sessionId],
   );
 
   const submitTest = useCallback(
-    async (
-      answers: { questionId: string; answer: string }[]
-    ): Promise<SubmitActionResult | null> => {
+    async (answers: { questionId: string; answer: string }[]): Promise<SubmitActionResult | null> => {
       const sessionId = state.session?.sessionId;
       if (!sessionId) return null;
       setState((s) => ({ ...s, submitting: true }));
@@ -113,27 +109,24 @@ export function useSession() {
         return null;
       }
     },
-    [state.session?.sessionId]
+    [state.session?.sessionId],
   );
 
-  const navigateToPhase = useCallback(
-    async (targetPhase: string) => {
-      const sessionId = state.session?.sessionId;
-      if (!sessionId) return;
-      setState((s) => ({ ...s, submitting: true, error: null }));
-      try {
-        const result = await navigateToPhaseAction(sessionId, targetPhase);
-        setState((s) => ({ ...s, ...applyResult(result), submitting: false }));
-      } catch (err) {
-        setState((s) => ({
-          ...s,
-          submitting: false,
-          error: err instanceof Error ? err.message : 'Failed to navigate',
-        }));
-      }
-    },
-    [state.session?.sessionId]
-  );
+  const navigateToPhase = useCallback(async (targetPhase: string) => {
+    const sessionId = state.session?.sessionId;
+    if (!sessionId) return;
+    setState((s) => ({ ...s, submitting: true, error: null }));
+    try {
+      const result = await navigateToPhaseAction(sessionId, targetPhase);
+      setState((s) => ({ ...s, ...applyResult(result), submitting: false }));
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        submitting: false,
+        error: err instanceof Error ? err.message : 'Failed to navigate',
+      }));
+    }
+  }, [state.session?.sessionId]);
 
   return { ...state, startSession, advancePhase, navigateToPhase, submitPractice, submitTest };
 }

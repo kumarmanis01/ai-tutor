@@ -75,48 +75,44 @@ export enum CognitiveSkill {
 export const DiagnosticQuestionSchema = z.object({
   /** Unique question ID */
   id: z.string(),
-
+  
   /** Subject area */
   subject: z.string(),
-
+  
   /** Topic within subject */
   topic: z.string(),
-
+  
   /** Question difficulty */
   difficulty: z.nativeEnum(DiagnosticDifficulty),
-
+  
   /** Question type */
   type: z.nativeEnum(DiagnosticQuestionType),
-
+  
   /** Cognitive skill assessed */
   skill: z.nativeEnum(CognitiveSkill),
-
+  
   /** The question text (NO test-like language) */
   questionText: z.string().min(10).max(500),
-
+  
   /** Options for MCQ/TRUE_FALSE */
-  options: z
-    .array(
-      z.object({
-        id: z.string(),
-        text: z.string(),
-        isCorrect: z.boolean(),
-      })
-    )
-    .optional(),
-
+  options: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    isCorrect: z.boolean(),
+  })).optional(),
+  
   /** Correct answer for FILL_BLANK/NUMERIC */
   correctAnswer: z.string().optional(),
-
+  
   /** Acceptable variations of answer */
   acceptableAnswers: z.array(z.string()).optional(),
-
+  
   /** Hint text (friendly, not giving away) */
   hintText: z.string().max(200).optional(),
-
+  
   /** Expected time in seconds */
   expectedTimeSeconds: z.number().int().min(10).max(180),
-
+  
   /** Curriculum alignment (optional) */
   curriculumRef: z.string().optional(),
 });
@@ -133,22 +129,22 @@ export type DiagnosticQuestion = z.infer<typeof DiagnosticQuestionSchema>;
 export const DiagnosticResponseSchema = z.object({
   /** Question ID */
   questionId: z.string(),
-
+  
   /** Selected option ID (for MCQ/TRUE_FALSE) */
   selectedOptionId: z.string().optional(),
-
+  
   /** Text answer (for FILL_BLANK/NUMERIC) */
   textAnswer: z.string().optional(),
-
+  
   /** Time taken in seconds */
   timeTakenSeconds: z.number().int().min(0),
-
+  
   /** Was a hint requested? */
   hintRequested: z.boolean(),
-
+  
   /** Did student skip? */
   skipped: z.boolean(),
-
+  
   /** Timestamp */
   answeredAt: z.string().datetime(),
 });
@@ -165,35 +161,38 @@ export type DiagnosticResponse = z.infer<typeof DiagnosticResponseSchema>;
 export const DiagnosticSessionSchema = z.object({
   /** Session ID */
   sessionId: z.string(),
-
+  
   /** Student grade */
   grade: z.number().int().min(1).max(12),
-
+  
   /** Subject being diagnosed */
   subject: z.string(),
-
+  
   /** Board (for curriculum alignment) */
   board: z.string().optional(),
-
+  
   /** Questions asked */
   questions: z.array(DiagnosticQuestionSchema),
-
+  
   /** Responses received */
   responses: z.array(DiagnosticResponseSchema),
-
+  
   /** Session started at */
   startedAt: z.string().datetime(),
-
+  
   /** Session completed at */
   completedAt: z.string().datetime().optional(),
-
+  
   /** Was session terminated early? */
   terminatedEarly: z.boolean(),
-
+  
   /** Reason for early termination */
-  terminationReason: z
-    .enum(['CONFIDENCE_CLEAR', 'STUDENT_SKIPPED', 'TIME_LIMIT', 'STUDENT_EXIT'])
-    .optional(),
+  terminationReason: z.enum([
+    'CONFIDENCE_CLEAR',
+    'STUDENT_SKIPPED',
+    'TIME_LIMIT',
+    'STUDENT_EXIT',
+  ]).optional(),
 });
 
 export type DiagnosticSession = z.infer<typeof DiagnosticSessionSchema>;
@@ -208,16 +207,16 @@ export type DiagnosticSession = z.infer<typeof DiagnosticSessionSchema>;
 export const DiagnosticOutputSchema = z.object({
   /** Session ID */
   sessionId: z.string(),
-
+  
   /** Recommended starting difficulty */
   recommendedDifficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
-
+  
   /** Confidence in recommendation (0-1) */
   recommendationConfidence: z.number().min(0).max(1),
-
+  
   /** Student's baseline confidence score (0-1) */
   baselineConfidence: z.number().min(0).max(1),
-
+  
   /** Skill breakdown */
   skillBreakdown: z.object({
     recall: z.number().min(0).max(1),
@@ -225,25 +224,23 @@ export const DiagnosticOutputSchema = z.object({
     application: z.number().min(0).max(1),
     analysis: z.number().min(0).max(1),
   }),
-
+  
   /** Topic-specific scores */
-  topicScores: z.array(
-    z.object({
-      topic: z.string(),
-      score: z.number().min(0).max(1),
-      questionsAnswered: z.number().int(),
-    })
-  ),
-
+  topicScores: z.array(z.object({
+    topic: z.string(),
+    score: z.number().min(0).max(1),
+    questionsAnswered: z.number().int(),
+  })),
+  
   /** Identified knowledge gaps (if any) */
   knowledgeGaps: z.array(z.string()),
-
+  
   /** Identified strengths */
   strengths: z.array(z.string()),
-
+  
   /** Personalized message for student (encouraging!) */
   studentMessage: z.string().max(300),
-
+  
   /** Metadata */
   metadata: z.object({
     totalQuestions: z.number().int(),
@@ -301,8 +298,7 @@ export const DIAGNOSTIC_CONFIG: Record<string, DiagnosticConfig> = {
     timeLimitSeconds: 90,
     allowSkip: true,
     uiStyle: 'friendly',
-    framingText:
-      'Let me ask you a few quick questions to understand what you already know. This helps me teach you better!',
+    framingText: "Let me ask you a few quick questions to understand what you already know. This helps me teach you better!",
   },
   senior: {
     grades: [8, 9, 10, 11, 12],
@@ -312,8 +308,7 @@ export const DIAGNOSTIC_CONFIG: Record<string, DiagnosticConfig> = {
     timeLimitSeconds: 120,
     allowSkip: true,
     uiStyle: 'focused',
-    framingText:
-      "I'll ask a few questions to understand your current level. This helps personalize your learning experience.",
+    framingText: "I'll ask a few questions to understand your current level. This helps personalize your learning experience.",
   },
 };
 

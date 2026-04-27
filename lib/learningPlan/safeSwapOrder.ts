@@ -14,17 +14,17 @@
  * - 2026-04-15T00:00:00Z | copilot | add safeSwapOrderInWeek helper to perform atomic swap via single UPDATE ... CASE
  */
 
-import { Prisma } from '@prisma/client';
-import { logger } from '@/lib/logger';
+import { Prisma } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 export type SafeSwapParams = {
-  planId: string;
-  weekNumber: number;
-  srcId: string;
-  tgtId: string;
-  srcOrder: number;
-  tgtOrder: number;
-};
+  planId: string
+  weekNumber: number
+  srcId: string
+  tgtId: string
+  srcOrder: number
+  tgtOrder: number
+}
 
 /**
  * Performs an atomic swap of orderInWeek between two items within the same plan/week.
@@ -34,7 +34,7 @@ export type SafeSwapParams = {
  */
 export async function safeSwapOrderInWeek(
   tx: Prisma.TransactionClient,
-  params: SafeSwapParams
+  params: SafeSwapParams,
 ): Promise<void> {
   try {
     await tx.$executeRaw`
@@ -47,12 +47,12 @@ export async function safeSwapOrderInWeek(
       WHERE "planId" = ${params.planId}
         AND "weekNumber" = ${params.weekNumber}
         AND "id" IN (${params.srcId}, ${params.tgtId});
-    `;
+    `
   } catch (err) {
-    logger.error('safeSwapOrderInWeek failed', { error: err, params });
-    throw err;
+    logger.error('safeSwapOrderInWeek failed', { error: err, params })
+    throw err
   }
 }
 
-const SAFE_SWAP_ORDER = { safeSwapOrderInWeek };
-export default SAFE_SWAP_ORDER;
+const SAFE_SWAP_ORDER = { safeSwapOrderInWeek }
+export default SAFE_SWAP_ORDER

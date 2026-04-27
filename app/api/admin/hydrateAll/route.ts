@@ -26,7 +26,7 @@ import { nanoid } from 'nanoid';
 import { incrementCreated } from '@/lib/metrics/hydrateMetrics';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 // ============================================
 // Request/Response Types
@@ -385,8 +385,7 @@ export async function POST(request: NextRequest) {
 
     // Validation run is active when LLM_MODE=real (controlled validation) OR LLM_SAFE_MODE=true OR dev env
     const isDev = process.env.NODE_ENV !== 'production';
-    const isValidationRun =
-      process.env.LLM_MODE === 'real' || process.env.LLM_SAFE_MODE === 'true' || isDev;
+    const isValidationRun = (process.env.LLM_MODE === 'real') || (process.env.LLM_SAFE_MODE === 'true') || isDev;
     const isSafeMode = isValidationRun; // alias kept for compatibility
 
     // Determine generation limits (chapters, topics per chapter, questions per topic/difficulty)
@@ -414,20 +413,15 @@ export async function POST(request: NextRequest) {
       ? VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY * difficultiesLength
       : questionsPerTopicDefault;
 
-    const adjustedEstimatedNotes =
-      options?.generateNotes === false ? 0 : adjustedEstimatedTopics * NOTES_PER_TOPIC;
-    const adjustedEstimatedQuestions =
-      options?.generateQuestions === false ? 0 : adjustedEstimatedTopics * questionsPerTopicUsed;
+    const adjustedEstimatedNotes = options?.generateNotes === false ? 0 : adjustedEstimatedTopics * NOTES_PER_TOPIC;
+    const adjustedEstimatedQuestions = options?.generateQuestions === false
+      ? 0
+      : adjustedEstimatedTopics * questionsPerTopicUsed;
 
     if (isValidationRun) {
       logger.info('[VALIDATION_RUN] Applying generation caps', {
         traceId,
-        trigger:
-          process.env.LLM_MODE === 'real'
-            ? 'LLM_MODE=real'
-            : isDev
-              ? 'NODE_ENV!=production'
-              : 'LLM_SAFE_MODE=true',
+        trigger: process.env.LLM_MODE === 'real' ? 'LLM_MODE=real' : isDev ? 'NODE_ENV!=production' : 'LLM_SAFE_MODE=true',
         caps: {
           chaptersLimit,
           topicsPerChapterLimit: topicsPerChapterUsed,
@@ -440,10 +434,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Guard: warn if requested counts exceed caps
-    if (
-      isValidationRun &&
-      requestedQuestionsPerDifficulty > VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY
-    ) {
+    if (isValidationRun && requestedQuestionsPerDifficulty > VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY) {
       logger.warn('[VALIDATION_CAP] questionsPerDifficulty exceeds cap -- enforcing cap', {
         traceId,
         requested: requestedQuestionsPerDifficulty,
@@ -594,15 +585,13 @@ export async function POST(request: NextRequest) {
       traceId,
       rootJobId: result.id,
       validationRun: isValidationRun,
-      caps: isValidationRun
-        ? {
-            chaptersLimit,
-            topicsPerChapterLimit: topicsPerChapterUsed,
-            topicsTotal: adjustedEstimatedTopics,
-            questionsPerDifficulty: questionsPerDifficultyUsed,
-            maxTotalQuestions: adjustedEstimatedQuestions,
-          }
-        : null,
+      caps: isValidationRun ? {
+        chaptersLimit,
+        topicsPerChapterLimit: topicsPerChapterUsed,
+        topicsTotal: adjustedEstimatedTopics,
+        questionsPerDifficulty: questionsPerDifficultyUsed,
+        maxTotalQuestions: adjustedEstimatedQuestions,
+      } : null,
       estimates,
     });
 

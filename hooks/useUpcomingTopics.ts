@@ -23,7 +23,7 @@ export function useUpcomingTopics() {
   const { data, error, isLoading } = useSWR<{ topics: UpcomingTopic[] }>(
     '/api/home/upcoming-topics',
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 120_000 }
+    { revalidateOnFocus: false, dedupingInterval: 120_000 },
   );
 
   return {

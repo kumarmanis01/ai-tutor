@@ -1,1 +1,1 @@
-export * from '../../jobs/jobLock';
+export * from '../../jobs/jobLock'

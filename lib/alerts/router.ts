@@ -5,13 +5,12 @@ export class AlertRouter {
   private sinksByName: Map<string, AlertSink>;
 
   constructor(private opts: AlertRouterOptions) {
-    this.sinksByName = new Map(opts.sinks.map((s) => [s.name, s]));
+    this.sinksByName = new Map(opts.sinks.map(s => [s.name, s]));
   }
 
   private selectSinks(severity: import('./types').Severity) {
-    const names: string[] =
-      (this.opts.routing && this.opts.routing[severity]) ?? this.opts.sinks.map((s) => s.name);
-    return names.map((n) => this.sinksByName.get(n)).filter(Boolean) as AlertSink[];
+    const names: string[] = (this.opts.routing && this.opts.routing[severity]) ?? this.opts.sinks.map(s => s.name);
+    return names.map(n => this.sinksByName.get(n)).filter(Boolean) as AlertSink[];
   }
 
   private dedupeKey(alert: AlertPayload) {
@@ -48,7 +47,7 @@ export class AlertRouter {
     const sinks = this.selectSinks(alert.severity);
     const results: { sink: string; result: any }[] = [];
     await Promise.all(
-      sinks.map(async (s) => {
+      sinks.map(async s => {
         try {
           const res = await s.send(alert);
           results.push({ sink: s.name, result: res });

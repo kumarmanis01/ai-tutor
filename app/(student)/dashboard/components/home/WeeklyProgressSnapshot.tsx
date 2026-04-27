@@ -19,7 +19,7 @@ import { useStreaksAndGoals } from '@/hooks/useStreaksAndGoals';
 export function WeeklyProgressSnapshot() {
   const { streaks, progress, loading } = useStreaksAndGoals();
 
-  const dailyStreak = streaks?.find((s) => s.kind === 'daily' || s.kind === 'daily_study');
+  const dailyStreak = streaks?.find(s => s.kind === 'daily' || s.kind === 'daily_study');
   const streakDays = dailyStreak?.current ?? 0;
 
   if (loading) {
@@ -57,7 +57,9 @@ export function WeeklyProgressSnapshot() {
           />
         </div>
         {weeklyPercent >= 100 && (
-          <p className="text-xs text-primary font-medium mt-1">Weekly goal reached -- awesome!</p>
+          <p className="text-xs text-primary font-medium mt-1">
+            Weekly goal reached -- awesome!
+          </p>
         )}
       </div>
 

@@ -43,7 +43,9 @@ function spawnTsx(args: string[], name: string): Child {
   child.on('exit', (code, signal) => {
     // If a child exits unexpectedly, end the supervisor so it's obvious in dev.
     // (Keeping this strict prevents silent missing reconciler/worker issues.)
-    const msg = signal ? `${name} exited via signal ${signal}` : `${name} exited with code ${code}`;
+    const msg = signal
+      ? `${name} exited via signal ${signal}`
+      : `${name} exited with code ${code}`;
     // eslint-disable-next-line no-console
     console.error(`[dev-supervisor] ${msg}`);
     if (code && code !== 0) process.exitCode = code;
@@ -56,9 +58,7 @@ function spawnTsx(args: string[], name: string): Child {
 
 const children: Child[] = [];
 
-children.push(
-  spawnTsx(['worker/dev-entry.ts', '--type', CONTENT_HYDRATION_QUEUE], 'content-hydration-worker')
-);
+children.push(spawnTsx(['worker/dev-entry.ts', '--type', CONTENT_HYDRATION_QUEUE], 'content-hydration-worker'));
 children.push(spawnTsx(['worker/scheduler.ts'], 'scheduler'));
 
 function shutdown(signal: string) {
@@ -76,3 +76,4 @@ function shutdown(signal: string) {
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
+

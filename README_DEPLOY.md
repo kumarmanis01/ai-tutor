@@ -3,7 +3,6 @@
 This file contains concise, copy-pasteable steps to deploy the ai-tutor app and worker on an AlmaLinux VPS with PM2.
 
 Prerequisites
-
 - A non-root user with sudo privileges
 - Git access to the repository (or a tarball) checked out on the VPS
 - PostgreSQL and Redis endpoints accessible from the VPS
@@ -49,21 +48,17 @@ pm2 logs ai-tutor-web --lines 200
 ```
 
 Redis TLS note
-
 - If your Redis provider requires TLS, ensure `REDIS_URL` in `.env.production` uses the provider's TLS host:port with `rediss://`.
 - If TLS fails and you must temporarily use plaintext inside a trusted VPC, convert `rediss://` to `redis://` in the env. Restore TLS for production.
 
 Redis eviction policy
-
 - Set eviction policy to `noeviction` for job reliability.
 
 Rollback
-
 - To stop services: `pm2 stop ecosystem.pm2.production.cjs` or `pm2 stop content-engine-worker`.
 - To restart after code changes: `HUSKY=0 npm ci --omit=dev && npm run build && pm2 restart ecosystem.pm2.production.cjs --update-env`
 
 Security
-
 - Never commit `.env.production` to git.
 - Keep `.env.production` readable only by the runtime user.
 

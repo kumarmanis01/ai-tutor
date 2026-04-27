@@ -42,12 +42,12 @@ It exists to ensure:
 
 ### 1. Intent vs Execution
 
-| Layer     | Responsibility                     |
-| --------- | ---------------------------------- |
-| UI        | Collects user intent               |
-| API Route | Validates input and submits intent |
-| Pipeline  | Owns job lifecycle                 |
-| Worker    | Executes exactly one job           |
+| Layer      | Responsibility                |
+|------------|------------------------------|
+| UI         | Collects user intent         |
+| API Route  | Validates input and submits intent |
+| Pipeline   | Owns job lifecycle           |
+| Worker     | Executes exactly one job     |
 
 ### 2. Canonical Job Record
 
@@ -100,11 +100,11 @@ API routes must **not**:
 ```ts
 // POST /api/admin/content-engine/jobs
 await submitJob({
-  jobType: 'GENERATE_NOTES',
-  entityType: 'TOPIC',
+  jobType: "GENERATE_NOTES",
+  entityType: "TOPIC",
   entityId,
-  payload: { language },
-});
+  payload: { language }
+})
 ```
 
 ---
@@ -138,25 +138,25 @@ submitJob(input: {
 
 Each jobType is scoped to specific entityTypes. Invalid combinations are rejected at submission time with a clear error message.
 
-| jobType     | Valid entityTypes | Description                                                                       |
-| ----------- | ----------------- | --------------------------------------------------------------------------------- |
-| `syllabus`  | `SUBJECT`         | Creates chapters and topics for a subject (SUBJECT-scoped per Hydration_Rules.md) |
-| `notes`     | `TOPIC`           | Generates notes for a specific topic (TOPIC-scoped per Hydration_Rules.md)        |
-| `questions` | `TOPIC`           | Generates questions for a specific topic (TOPIC-scoped per Hydration_Rules.md)    |
-| `tests`     | `TOPIC`           | Generates test content for a specific topic                                       |
-| `assemble`  | `TOPIC`           | Assembles content for a specific topic                                            |
+| jobType    | Valid entityTypes | Description |
+|------------|------------------|-------------|
+| `syllabus` | `SUBJECT`        | Creates chapters and topics for a subject (SUBJECT-scoped per Hydration_Rules.md) |
+| `notes`    | `TOPIC`          | Generates notes for a specific topic (TOPIC-scoped per Hydration_Rules.md) |
+| `questions`| `TOPIC`          | Generates questions for a specific topic (TOPIC-scoped per Hydration_Rules.md) |
+| `tests`    | `TOPIC`          | Generates test content for a specific topic |
+| `assemble` | `TOPIC`          | Assembles content for a specific topic |
 
 ### Invalid Combination Examples
 
 These combinations will be rejected with descriptive errors:
 
-| jobType     | entityType | Result                                                                         |
-| ----------- | ---------- | ------------------------------------------------------------------------------ |
-| `syllabus`  | `CHAPTER`  | ❌ Rejected: "jobType 'syllabus' requires entityType [SUBJECT], got 'CHAPTER'" |
-| `syllabus`  | `TOPIC`    | ❌ Rejected: syllabus is SUBJECT-scoped only                                   |
-| `notes`     | `SUBJECT`  | ❌ Rejected: "jobType 'notes' requires entityType [TOPIC], got 'SUBJECT'"      |
-| `notes`     | `CHAPTER`  | ❌ Rejected: notes is TOPIC-scoped only                                        |
-| `questions` | `CHAPTER`  | ❌ Rejected: questions is TOPIC-scoped only                                    |
+| jobType    | entityType | Result |
+|------------|-----------|--------|
+| `syllabus` | `CHAPTER` | ❌ Rejected: "jobType 'syllabus' requires entityType [SUBJECT], got 'CHAPTER'" |
+| `syllabus` | `TOPIC`   | ❌ Rejected: syllabus is SUBJECT-scoped only |
+| `notes`    | `SUBJECT` | ❌ Rejected: "jobType 'notes' requires entityType [TOPIC], got 'SUBJECT'" |
+| `notes`    | `CHAPTER` | ❌ Rejected: notes is TOPIC-scoped only |
+| `questions`| `CHAPTER` | ❌ Rejected: questions is TOPIC-scoped only |
 
 ### Implementation Reference
 
@@ -180,13 +180,13 @@ Unit tests: `tests/lib/execution-pipeline/submitJob.test.ts`
 
 After validation, `submitJob()` routes each jobType to the appropriate hydrator enqueue function:
 
-| jobType     | Enqueue Function            | Worker Type     |
-| ----------- | --------------------------- | --------------- |
-| `syllabus`  | `enqueueSyllabusHydration`  | `SYLLABUS`      |
-| `notes`     | `enqueueNotesHydration`     | `NOTES`         |
-| `questions` | `enqueueQuestionsHydration` | `QUESTIONS`     |
-| `tests`     | `enqueueTestsHydration`     | `ASSEMBLE_TEST` |
-| `assemble`  | `enqueueAssembleHydration`  | `ASSEMBLE_TEST` |
+| jobType    | Enqueue Function            | Worker Type    |
+|------------|----------------------------|----------------|
+| `syllabus` | `enqueueSyllabusHydration` | `SYLLABUS`     |
+| `notes`    | `enqueueNotesHydration`    | `NOTES`        |
+| `questions`| `enqueueQuestionsHydration`| `QUESTIONS`    |
+| `tests`    | `enqueueTestsHydration`    | `ASSEMBLE_TEST`|
+| `assemble` | `enqueueAssembleHydration` | `ASSEMBLE_TEST`|
 
 ### Enqueue Function Contract
 
@@ -218,17 +218,16 @@ const WORKER_HANDLERS: Record<string, (jobId: string) => Promise<void>> = {
 
 ### Worker Service Handlers
 
-| Worker Type     | Handler File                         | Creates                 |
-| --------------- | ------------------------------------ | ----------------------- |
-| `SYLLABUS`      | `worker/services/syllabusWorker.ts`  | ChapterDef, TopicDef    |
-| `NOTES`         | `worker/services/notesWorker.ts`     | TopicNote               |
-| `QUESTIONS`     | `worker/services/questionsWorker.ts` | GeneratedTest           |
-| `ASSEMBLE_TEST` | `worker/services/assembleWorker.ts`  | Approves existing tests |
+| Worker Type    | Handler File                        | Creates                |
+|---------------|-------------------------------------|------------------------|
+| `SYLLABUS`    | `worker/services/syllabusWorker.ts` | ChapterDef, TopicDef   |
+| `NOTES`       | `worker/services/notesWorker.ts`    | TopicNote              |
+| `QUESTIONS`   | `worker/services/questionsWorker.ts`| GeneratedTest          |
+| `ASSEMBLE_TEST`| `worker/services/assembleWorker.ts`| Approves existing tests|
 
 ### Handler Contract
 
 Each handler follows the same pattern:
-
 1. Atomically claim the HydrationJob
 2. Check global pause (`HYDRATION_PAUSED`)
 3. Load entity with full academic context
@@ -258,13 +257,12 @@ COPILOT RULES — HYDRATOR:
 
 The following files have been refactored to compliance:
 
-| File                            | Before (Violation)          | After (Compliant)                          |
-| ------------------------------- | --------------------------- | ------------------------------------------ |
-| `hydrators/hydrateNotes.ts`     | Called `callLLM()` directly | Delegates to `enqueueNotesHydration()`     |
+| File | Before (Violation) | After (Compliant) |
+|------|-------------------|-------------------|
+| `hydrators/hydrateNotes.ts` | Called `callLLM()` directly | Delegates to `enqueueNotesHydration()` |
 | `hydrators/hydrateQuestions.ts` | Called `callLLM()` directly | Delegates to `enqueueQuestionsHydration()` |
 
 These are marked `@deprecated` and should be replaced with:
-
 - `submitJob({ jobType: 'notes', entityType: 'TOPIC', ... })`
 - `submitJob({ jobType: 'questions', entityType: 'TOPIC', ... })`
 
@@ -272,11 +270,11 @@ These are marked `@deprecated` and should be replaced with:
 
 LLM calls are **only** permitted in worker service handlers:
 
-| Worker Service                       | Has LLM Calls | Reason                               |
-| ------------------------------------ | ------------- | ------------------------------------ |
-| `worker/services/notesWorker.ts`     | ✅ Yes        | Generates topic notes                |
-| `worker/services/questionsWorker.ts` | ✅ Yes        | Generates questions                  |
-| `worker/services/assembleWorker.ts`  | ❌ No         | Assemble is non-AI (approves drafts) |
+| Worker Service | Has LLM Calls | Reason |
+|----------------|---------------|--------|
+| `worker/services/notesWorker.ts` | ✅ Yes | Generates topic notes |
+| `worker/services/questionsWorker.ts` | ✅ Yes | Generates questions |
+| `worker/services/assembleWorker.ts` | ❌ No | Assemble is non-AI (approves drafts) |
 
 ### Worker Bootstrap
 
@@ -284,10 +282,10 @@ LLM calls are **only** permitted in worker service handlers:
 
 ```ts
 switch (type) {
-  case 'NOTES':
-    return handleNotesJob(payload.jobId); // ✅ Correct
-  case 'QUESTIONS':
-    return handleQuestionsJob(payload.jobId); // ✅ Correct
+  case "NOTES":
+    return handleNotesJob(payload.jobId);      // ✅ Correct
+  case "QUESTIONS":
+    return handleQuestionsJob(payload.jobId);  // ✅ Correct
   // NOT: hydrateNotes(payload.topicId, ...)   // ❌ Deprecated
 }
 ```
@@ -319,10 +317,10 @@ Once leased:
 
 ```ts
 try {
-  await executeJob(job);
-  markCompleted(job);
+  await executeJob(job)
+  markCompleted(job)
 } catch (err) {
-  handleFailure(job, err);
+  handleFailure(job, err)
 }
 ```
 
@@ -334,21 +332,21 @@ try {
 
 ```ts
 if (job.attempts >= job.maxAttempts) {
-  markFailed(job, err);
+  markFailed(job, err)
 } else {
-  reschedule(job, exponentialBackoff(job.attempts));
+  reschedule(job, exponentialBackoff(job.attempts))
 }
 ```
 
 ### Backoff Strategy
 
-| Attempt | Delay |
-| ------- | ----- |
-| 1       | 30s   |
-| 2       | 2m    |
-| 3       | 10m   |
-| 4       | 1h    |
-| 5       | fail  |
+| Attempt | Delay  |
+|---------|--------|
+| 1       | 30s    |
+| 2       | 2m     |
+| 3       | 10m    |
+| 4       | 1h     |
+| 5       | fail   |
 
 ---
 
@@ -371,8 +369,8 @@ Workers must re-check status before executing.
 Execution may be paused system-wide.
 
 ```ts
-if (isSystemSettingEnabled('PIPELINE_PAUSED')) {
-  abortExecution();
+if (isSystemSettingEnabled("PIPELINE_PAUSED")) {
+  abortExecution()
 }
 ```
 
@@ -420,13 +418,13 @@ The pipeline supports dashboards out of the box.
 
 ### Key Metrics
 
-| Metric           | Source             |
-| ---------------- | ------------------ |
-| Job throughput   | ExecutionJob       |
+| Metric           | Source         |
+|------------------|---------------|
+| Job throughput   | ExecutionJob  |
 | Failure rate     | status + lastError |
-| Retry heatmap    | attempts           |
-| Downtime windows | nextRunAt gaps     |
-| AI cost per job  | AIContentLog       |
+| Retry heatmap    | attempts      |
+| Downtime windows | nextRunAt gaps|
+| AI cost per job  | AIContentLog  |
 
 ### Example Queries
 

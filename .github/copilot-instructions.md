@@ -21,10 +21,9 @@ EDIT LOG:
 ## Engineering Practices — Source of Truth
 
 Before generating or modifying ANY code, read:
-`/docs/ENGINEERING_PRACTICES.md`
+  `/docs/ENGINEERING_PRACTICES.md`
 
 This document is the canonical source of truth for:
-
 - TypeScript strictness, async patterns, module import rules
 - Prisma schema conventions (additive-only, query discipline, enum imports)
 - Try/catch guidance (tight scope, typed errors, no silent swallows)
@@ -174,8 +173,8 @@ These rules are added to reduce repeated lint failures and ensure consistent, pr
 - **No raw console:** Never use `console.log`, `console.error`, `console.warn`, or other console methods in production code. Use the project's structured logger instead:
 
   ```ts
-  import { logger } from '@/lib/logger';
-  logger.error('description', { error: err });
+  import { logger } from '@/lib/logger'
+  logger.error('description', { error: err })
   ```
 
 - **Use Next.js `Link` for internal navigation:** Do not use `<a href="/...">` for internal routes. Use `Link` from `next/link` for client-side navigation and accessibility.
@@ -187,8 +186,8 @@ These rules are added to reduce repeated lint failures and ensure consistent, pr
 - **Named default exports:** Assign objects to a `const` and export that const as default to avoid anonymous default exports. Example:
 
   ```ts
-  const MyModule = { fn1, fn2 };
-  export default MyModule;
+  const MyModule = { fn1, fn2 }
+  export default MyModule
   ```
 
 - **Handle unused vars deliberately:** Prefix intentionally-unused variables with `_` (e.g., `_unused`) or remove them. This satisfies `@typescript-eslint/no-unused-vars` and documents intent.
@@ -198,6 +197,7 @@ These rules are added to reduce repeated lint failures and ensure consistent, pr
 - **CI enforcement:** Ensure `npm run lint` and `npm run type-check` are run locally before committing. CI is configured to fail PRs with lint or type errors.
 
 These guardrails are minimal but critical to avoid cyclical lint fixes. Follow them for all edits and include the relevant rule references in the edit's header when applicable.
+
 
 ### Creating/ Updating code
 
@@ -685,16 +685,16 @@ Required guardrail stack for student-facing AI:
 
 ## AI Module Reference
 
-| Module                 | Path                                         | Purpose                        |
-| ---------------------- | -------------------------------------------- | ------------------------------ |
-| Prompt Schemas         | `lib/ai/prompts/schemas.ts`                  | Canonical types for AI prompts |
-| Intent Classifier      | `lib/ai/guardrails/intentClassifier.ts`      | Detect student intent          |
-| Prompt Rewriter        | `lib/ai/guardrails/promptRewriter.ts`        | Transform problematic prompts  |
-| Hallucination Detector | `lib/ai/guardrails/hallucinationDetector.ts` | Detect false content           |
-| Safe Responses         | `lib/ai/guardrails/safeResponses.ts`         | Grade-appropriate fallbacks    |
-| Difficulty Tuning      | `lib/personalization/difficultyTuning.ts`    | Deterministic difficulty       |
-| UI Variants            | `components/ui/variants/`                    | Age-based UI configuration     |
-| API Schemas            | `lib/api/student/schemas.ts`                 | Student dashboard APIs         |
+| Module | Path | Purpose |
+|--------|------|---------|
+| Prompt Schemas | `lib/ai/prompts/schemas.ts` | Canonical types for AI prompts |
+| Intent Classifier | `lib/ai/guardrails/intentClassifier.ts` | Detect student intent |
+| Prompt Rewriter | `lib/ai/guardrails/promptRewriter.ts` | Transform problematic prompts |
+| Hallucination Detector | `lib/ai/guardrails/hallucinationDetector.ts` | Detect false content |
+| Safe Responses | `lib/ai/guardrails/safeResponses.ts` | Grade-appropriate fallbacks |
+| Difficulty Tuning | `lib/personalization/difficultyTuning.ts` | Deterministic difficulty |
+| UI Variants | `components/ui/variants/` | Age-based UI configuration |
+| API Schemas | `lib/api/student/schemas.ts` | Student dashboard APIs |
 
 ---
 
@@ -716,27 +716,23 @@ Before committing any AI-related code, verify:
 ## SCHOOL & TEACHER AGNOSTICITY ENFORCEMENT
 
 You must assume:
-
 - No schools will integrate
 - No teachers will participate
 - No live classes will be run
 - No human intervention is available
 
 Every feature, API, flow, or UI must:
-
 - Work fully autonomously
 - Be usable by a student alone
 - Require zero scheduling or coordination
 - Function offline-first where possible
 
 When proposing solutions:
-
 - Prefer AI automation over human workflows
 - Prefer async over real-time
 - Prefer mastery-based progression over grade-based
 
 If a design introduces:
-
 - Teacher dashboards
 - School onboarding
 - Timetable syncing

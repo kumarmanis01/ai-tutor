@@ -23,23 +23,14 @@ const p = spawn(process.execPath, nodeArgs, { env });
 let out = '';
 let err = '';
 
-p.stdout.on('data', (d) => {
-  out += d.toString();
-});
-p.stderr.on('data', (d) => {
-  err += d.toString();
-});
+p.stdout.on('data', (d) => { out += d.toString(); });
+p.stderr.on('data', (d) => { err += d.toString(); });
 
 p.on('close', (code) => {
   logger.info('evaluator dry-run exited with', code);
   if (err) logger.error(err);
   // Ensure the dry-run emitted at least one expected event
-  if (
-    !out.includes('evaluator_starting') &&
-    !out.includes('alert_dry_run') &&
-    !out.includes('alert_router_initialized') &&
-    !out.includes('run_complete')
-  ) {
+  if (!out.includes('evaluator_starting') && !out.includes('alert_dry_run') && !out.includes('alert_router_initialized') && !out.includes('run_complete')) {
     logger.error('Evaluator dry-run did not emit expected logs:\n', out);
     process.exit(2);
   }

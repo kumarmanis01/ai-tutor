@@ -1,13 +1,13 @@
 /**
  * FILE OBJECTIVE:
  * - Test script to trigger syllabus hydration for validation purposes.
- *
+ * 
  * LINKED UNIT TEST:
  * - None (test script only)
- *
+ * 
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
- *
+ * 
  * EDIT LOG:
  * - 2026-01-23T04:30:00Z | copilot | Created for hydration pipeline validation
  */
@@ -54,9 +54,7 @@ async function main() {
   });
 
   if (existingChapters > 0) {
-    console.log(
-      `⚠️ Subject already has ${existingChapters} chapters. Checking for pending jobs...`
-    );
+    console.log(`⚠️ Subject already has ${existingChapters} chapters. Checking for pending jobs...`);
   }
 
   // Check for existing pending jobs
@@ -68,21 +66,18 @@ async function main() {
   });
 
   if (pendingJobs.length > 0) {
-    console.log(
-      `⏳ Found ${pendingJobs.length} pending/running jobs:`,
-      pendingJobs.map((j) => ({
-        id: j.id,
-        type: j.type,
-        status: j.status,
-      }))
-    );
+    console.log(`⏳ Found ${pendingJobs.length} pending/running jobs:`, pendingJobs.map(j => ({
+      id: j.id,
+      type: j.type,
+      status: j.status,
+    })));
     console.log('Worker should pick these up automatically.');
     process.exit(0);
   }
 
   // Submit new syllabus job
   console.log('\n🚀 Submitting syllabus job...');
-
+  
   try {
     const result = await submitJob({
       jobType: 'syllabus',
@@ -108,7 +103,7 @@ async function main() {
     const maxAttempts = 60; // 5 minutes max
 
     while (attempts < maxAttempts) {
-      await new Promise((r) => setTimeout(r, 5000));
+      await new Promise(r => setTimeout(r, 5000));
       attempts++;
 
       const job = await prisma.hydrationJob.findUnique({
@@ -120,13 +115,11 @@ async function main() {
         break;
       }
 
-      console.log(
-        `[${attempts * 5}s] Job status: ${job.status}${job.lastError ? ` (error: ${job.lastError})` : ''}`
-      );
+      console.log(`[${attempts * 5}s] Job status: ${job.status}${job.lastError ? ` (error: ${job.lastError})` : ''}`);
 
       if (job.status === 'completed') {
         console.log('\n🎉 Syllabus job completed!');
-
+        
         // Show created chapters and topics
         const chapters = await prisma.chapterDef.findMany({
           where: { subjectId: subject.id, lifecycle: 'active' },

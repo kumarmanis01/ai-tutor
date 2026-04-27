@@ -11,7 +11,7 @@
  * EDIT LOG:
  * - 2026-04-17T00:00:00Z | copilot | add referral-voided push templates
  */
-import type { PushPayload } from './send';
+import type { PushPayload } from './send'
 
 /**
  * All push notification copy lives here.
@@ -163,4 +163,4 @@ export const PUSH_NOTIFICATIONS = {
     url: '/student/doubts',
     tag: 'doubt-resolved',
   }),
-};
+}

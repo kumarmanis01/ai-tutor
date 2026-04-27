@@ -18,16 +18,20 @@
 'use client';
 
 import React from 'react';
-import { TodaysTaskScreenProps, TODAYS_TASK_COPY_HI, TODAYS_TASK_COPY_EN } from './types';
+import {
+  TodaysTaskScreenProps,
+  TODAYS_TASK_COPY_HI,
+  TODAYS_TASK_COPY_EN,
+} from './types';
 
 /**
  * Day-1 Today's Task Screen
- *
+ * 
  * UX Rules (FROZEN):
  * - ONE task only
  * - Estimated time visible
  * - No difficulty labels
- *
+ * 
  * Purpose: Answer "Aaj kya karna hai?" Nothing else.
  */
 export function TodaysTaskScreen({
@@ -38,7 +42,7 @@ export function TodaysTaskScreen({
   const copy = language === 'hi' ? TODAYS_TASK_COPY_HI : TODAYS_TASK_COPY_EN;
 
   return (
-    <div
+    <div 
       className="min-h-screen flex flex-col items-center justify-center p-6 bg-white"
       role="main"
       aria-label="Today's task"
@@ -49,26 +53,34 @@ export function TodaysTaskScreen({
       </h1>
 
       {/* Time indicator - Reduces anxiety */}
-      <p className="text-lg text-gray-500 mb-8">{copy.subtitle}</p>
+      <p className="text-lg text-gray-500 mb-8">
+        {copy.subtitle}
+      </p>
 
       {/* Task card - The heart of Day-1 */}
       <div className="w-full max-w-md bg-blue-50 rounded-2xl p-6 mb-8 shadow-sm">
         {/* Task description */}
-        <p className="text-lg text-gray-700 mb-4">{task.title}</p>
+        <p className="text-lg text-gray-700 mb-4">
+          {task.title}
+        </p>
 
         {/* Example preview - Critical for confidence */}
         <div className="bg-white rounded-xl p-4 mb-4">
           <p className="text-sm text-gray-500 mb-2">
             {language === 'hi' ? '📝 Pehle ek example dekhein:' : '📝 First, see an example:'}
           </p>
-          <p className="text-gray-700 font-medium">{task.example.problem}</p>
-          <p className="text-green-600 mt-2">→ {task.example.solution}</p>
+          <p className="text-gray-700 font-medium">
+            {task.example.problem}
+          </p>
+          <p className="text-green-600 mt-2">
+            → {task.example.solution}
+          </p>
         </div>
 
         {/* Question count - Transparent, not scary */}
         <p className="text-sm text-gray-500 text-center">
-          {language === 'hi'
-            ? `${task.questions.length} chhote questions`
+          {language === 'hi' 
+            ? `${task.questions.length} chhote questions` 
             : `${task.questions.length} small questions`}
         </p>
       </div>
@@ -84,8 +96,8 @@ export function TodaysTaskScreen({
 
       {/* Time reassurance */}
       <p className="mt-6 text-sm text-gray-400">
-        {language === 'hi'
-          ? `⏱️ Lagbhag ${task.estimatedMinutes} minute`
+        {language === 'hi' 
+          ? `⏱️ Lagbhag ${task.estimatedMinutes} minute` 
           : `⏱️ About ${task.estimatedMinutes} minutes`}
       </p>
     </div>

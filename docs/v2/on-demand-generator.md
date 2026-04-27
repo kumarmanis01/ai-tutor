@@ -1,5 +1,4 @@
 # On-Demand Diagnostic Question Generator
-
 ## Source of Truth
 
 Last updated: 2026-04-21
@@ -93,7 +92,6 @@ Auth-guarded. Lightweight readiness check for client polling.
 Query: `?subjectId={id}`
 
 Response:
-
 ```json
 { "ready": false, "phase": "topics" }
 { "ready": false, "phase": "questions" }
@@ -101,7 +99,6 @@ Response:
 ```
 
 Logic:
-
 1. Count active `TopicDef` rows for the subject.
 2. If 0 → `phase: "topics"` (syllabus pipeline not done).
 3. Count `Question` (status ACTIVE) + `GeneratedQuestion` rows for those topics.
@@ -117,7 +114,6 @@ Auth-guarded. Idempotent. Fires once on `DiagnosticWaitingScreen` mount.
 Body: `{ "subjectId": string }`
 
 Response:
-
 ```json
 { "triggered": true,  "phase": "topics",    "jobId": "..." }
 { "triggered": false, "phase": "topics",    "jobId": "..." }   // job already running
@@ -126,7 +122,6 @@ Response:
 ```
 
 Behaviour for `phase: "topics"`:
-
 - Looks up `SubjectDef` with `class.board` and `class.grade`.
 - Checks for existing `HydrationJob` (`subjectId`, status `pending` or `running`).
 - If none: creates `HydrationJob` + `Outbox` in one transaction. Sets
@@ -183,9 +178,9 @@ After:
 
 ## VPS Environment Flags
 
-| Flag                          | Current | Required | Action                                            |
-| ----------------------------- | ------- | -------- | ------------------------------------------------- |
-| `FEATURE_ONDEMAND_DIAGNOSTIC` | unset   | `true`   | Add to `ecosystem.config.cjs` + `pm2 restart all` |
+| Flag | Current | Required | Action |
+|------|---------|----------|--------|
+| `FEATURE_ONDEMAND_DIAGNOSTIC` | unset | `true` | Add to `ecosystem.config.cjs` + `pm2 restart all` |
 
 No other flags need to change. `LLM_MODE=real` is already set, which is required for
 `gpt-4o-mini` calls in `generateDiagnosticQuestionsOnDemand`.
@@ -252,19 +247,19 @@ students read from the bank instantly.
 
 ## Files Changed
 
-| File                                                         | Change                                                    |
-| ------------------------------------------------------------ | --------------------------------------------------------- |
-| `docs/v2/on-demand-generator.md`                             | This document                                             |
-| `lib/diagnostics/enqueueSubjectHydration.ts`                 | Shared idempotent helper (new)                            |
-| `app/api/student/diagnostic/check-ready/route.ts`            | Lightweight poll endpoint                                 |
-| `app/api/student/diagnostic/trigger-generation/route.ts`     | Delegates to shared helper                                |
-| `app/api/user/onboarding/route.ts`                           | Proactive seeding for all selected subjects               |
-| `lib/diagnostics/diagnosticQuestionService.ts`               | Concurrency lock in `generateDiagnosticQuestionsOnDemand` |
-| `components/student/diagnostic/DiagnosticWaitingScreen.tsx`  | Trigger on mount + 5s polling + auto-navigate             |
-| `worker/jobs/diagnosticReadinessCheck.ts`                    | Email-delete reliability fix                              |
-| `tests/unit/lib/diagnostics/enqueueSubjectHydration.spec.ts` | Helper unit tests (new)                                   |
-| `tests/unit/api/diagnostic_check_ready.spec.ts`              | Poll endpoint unit tests                                  |
-| `tests/unit/api/diagnostic_trigger_generation.spec.ts`       | Trigger endpoint unit tests                               |
+| File | Change |
+|------|--------|
+| `docs/v2/on-demand-generator.md` | This document |
+| `lib/diagnostics/enqueueSubjectHydration.ts` | Shared idempotent helper (new) |
+| `app/api/student/diagnostic/check-ready/route.ts` | Lightweight poll endpoint |
+| `app/api/student/diagnostic/trigger-generation/route.ts` | Delegates to shared helper |
+| `app/api/user/onboarding/route.ts` | Proactive seeding for all selected subjects |
+| `lib/diagnostics/diagnosticQuestionService.ts` | Concurrency lock in `generateDiagnosticQuestionsOnDemand` |
+| `components/student/diagnostic/DiagnosticWaitingScreen.tsx` | Trigger on mount + 5s polling + auto-navigate |
+| `worker/jobs/diagnosticReadinessCheck.ts` | Email-delete reliability fix |
+| `tests/unit/lib/diagnostics/enqueueSubjectHydration.spec.ts` | Helper unit tests (new) |
+| `tests/unit/api/diagnostic_check_ready.spec.ts` | Poll endpoint unit tests |
+| `tests/unit/api/diagnostic_trigger_generation.spec.ts` | Trigger endpoint unit tests |
 
 ---
 

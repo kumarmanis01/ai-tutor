@@ -24,7 +24,15 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { subject, grade, board, chapter, difficulty, type, count = 10 } = body ?? {};
+  const {
+    subject,
+    grade,
+    board,
+    chapter,
+    difficulty,
+    type,
+    count = 10,
+  } = body ?? {};
 
   try {
     // Chapter tests use the 40/30/30 type mix with a computed time limit (F-STU-020 AC-02/AC-03).
@@ -37,15 +45,12 @@ export async function POST(req: Request) {
       const mix = await selectQuestionsWithMix(
         { subject, grade, board, chapter, difficulty },
         count,
-        user.id
+        user.id,
       );
       questions = mix.questions;
       timeLimitSeconds = mix.timeLimitSeconds;
     } else {
-      questions = await selectQuestions(
-        { subject, grade, board, chapter, difficulty, type },
-        count
-      );
+      questions = await selectQuestions({ subject, grade, board, chapter, difficulty, type }, count);
     }
 
     if (!questions.length) {
@@ -73,8 +78,8 @@ export async function POST(req: Request) {
             questionId: q.id,
             order: idx + 1,
           },
-        })
-      )
+        }),
+      ),
     );
 
     const payload = questions.map((q) => ({
@@ -96,7 +101,7 @@ export async function POST(req: Request) {
     logger.error('TestsStartAPI POST error', { error: err?.message });
     res = NextResponse.json(
       { error: 'Failed to start test. Please try again later.' },
-      { status: 500 }
+      { status: 500 },
     );
     logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
     return res;

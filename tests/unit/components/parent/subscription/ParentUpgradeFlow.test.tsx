@@ -9,4 +9,4 @@
  * - 2026-04-13T05:30:00Z | copilot | add wrapper test to include UI spec in test run
  */
 
-import './ParentUpgradeFlow.spec.tsx';
+import './ParentUpgradeFlow.spec.tsx'

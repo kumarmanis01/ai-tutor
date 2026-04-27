@@ -66,20 +66,17 @@ export async function POST(req: NextRequest) {
 
     await sendSms(
       parentPhone,
-      `Spinzy parent verification code: ${otp}. It expires in ${Math.round(OTP_EXPIRY_SECONDS / 60)} minutes.`
+      `Spinzy parent verification code: ${otp}. It expires in ${Math.round(OTP_EXPIRY_SECONDS / 60)} minutes.`,
     );
 
     const res = NextResponse.json({ ok: true, expiresInSeconds: OTP_EXPIRY_SECONDS });
     logger.logAPI(req, res, { className: 'api.auth.parent.send-otp', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('parent send-otp error', {
-      className: 'api.auth.parent.send-otp',
-      methodName: 'POST',
-      error: err,
-    });
+    logger.error('parent send-otp error', { className: 'api.auth.parent.send-otp', methodName: 'POST', error: err });
     const res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     logger.logAPI(req, res, { className: 'api.auth.parent.send-otp', methodName: 'POST' }, start);
     return res;
   }
 }
+

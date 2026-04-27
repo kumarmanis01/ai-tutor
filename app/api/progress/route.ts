@@ -31,10 +31,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const start = Date.now();
   let res: Response;
-
+  
   const session = await getServerSessionForHandlers();
   const user = session?.user;
-
+  
   if (!user?.id) {
     res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     logger.logAPI(req, res, { className: 'ProgressAPI', methodName: 'GET' }, start);
@@ -82,10 +82,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const start = Date.now();
   let res: Response;
-
+  
   const session = await getServerSessionForHandlers();
   const user = session?.user;
-
+  
   if (!user?.id) {
     res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     logger.logAPI(req, res, { className: 'ProgressAPI', methodName: 'POST' }, start);
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
       isCompleted: mastery.accuracy >= LOW_ACCURACY_THRESHOLD,
     },
   });
-
+  
   logger.logAPI(req, res, { className: 'ProgressAPI', methodName: 'POST' }, start);
   return res;
 }

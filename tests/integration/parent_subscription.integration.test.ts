@@ -41,16 +41,11 @@ jest.mock('@/lib/sms', () => ({
 
 // Mock Razorpay client; fetchNotes can be set by the test before calling verify
 let fetchNotes: any = {};
-const mockOrdersCreate = jest.fn(async (opts) => ({
-  id: `order-parent-${Date.now()}`,
-  notes: opts?.notes || {},
-}));
+const mockOrdersCreate = jest.fn(async (opts) => ({ id: `order-parent-${Date.now()}`, notes: opts?.notes || {} }));
 const mockOrdersFetch = jest.fn(async (id: string) => ({ id, notes: fetchNotes }));
 
 jest.mock('razorpay', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => ({ orders: { create: mockOrdersCreate, fetch: mockOrdersFetch } }));
+  return jest.fn().mockImplementation(() => ({ orders: { create: mockOrdersCreate, fetch: mockOrdersFetch } }));
 });
 
 describe('Parent subscription: order → verify integration', () => {
@@ -70,31 +65,18 @@ describe('Parent subscription: order → verify integration', () => {
     process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';
 
     // Create parent and two child users
-    const parent = await prisma.user.create({
-      data: {
-        name: 'Parent Tester',
-        email: 'parent-tester@example.test',
-        role: 'parent',
-        language: 'en',
-      },
-    });
+    const parent = await prisma.user.create({ data: { name: 'Parent Tester', email: 'parent-tester@example.test', role: 'parent', language: 'en' } });
     parentId = parent.id;
 
-    const childA = await prisma.user.create({
-      data: { name: 'Child A', email: 'child-a@example.test', language: 'en' },
-    });
+    const childA = await prisma.user.create({ data: { name: 'Child A', email: 'child-a@example.test', language: 'en' } });
     childAId = childA.id;
-    const childB = await prisma.user.create({
-      data: { name: 'Child B', email: 'child-b@example.test', language: 'en' },
-    });
+    const childB = await prisma.user.create({ data: { name: 'Child B', email: 'child-b@example.test', language: 'en' } });
     childBId = childB.id;
 
     // Create ParentStudent links
     // Ensure ParentStudent table has the expected columns (some test DBs may be behind migrations)
     try {
-      await prisma.$executeRawUnsafe(
-        'ALTER TABLE "ParentStudent" ADD COLUMN IF NOT EXISTS "inactivityOptOut" BOOLEAN DEFAULT false'
-      );
+      await prisma.$executeRawUnsafe('ALTER TABLE "ParentStudent" ADD COLUMN IF NOT EXISTS "inactivityOptOut" BOOLEAN DEFAULT false');
     } catch (err) {
       // Non-fatal; we'll attempt to create rows and let Prisma surface any errors.
     }
@@ -145,16 +127,12 @@ describe('Parent subscription: order → verify integration', () => {
     await prisma.subscription.deleteMany({ where: { userId: parentId } }).catch(() => {});
     await prisma.paymentOrder.deleteMany({ where: { studentId: parentId } }).catch(() => {});
     await prisma.parentStudent.deleteMany({ where: { parentId } }).catch(() => {});
-    await prisma.user
-      .deleteMany({ where: { id: { in: [parentId, childAId, childBId] } } })
-      .catch(() => {});
+    await prisma.user.deleteMany({ where: { id: { in: [parentId, childAId, childBId] } } }).catch(() => {});
   });
 
   test('parent can create order and verify payment; children receive subscriptions and invoice sent', async () => {
     // Authorize as parent
-    (global as any).__TEST_SESSION__ = {
-      user: { id: parentId, role: 'parent', email: 'parent-tester@example.test' },
-    };
+    (global as any).__TEST_SESSION__ = { user: { id: parentId, role: 'parent', email: 'parent-tester@example.test' } };
 
     // Import route after mocks and session injected
     const orderRoute = await import('@/app/api/parent/subscription/order/route');
@@ -210,15 +188,12 @@ describe('Parent subscription: order → verify integration', () => {
     } catch (err) {
       // Prisma may throw P2022 if DB schema is behind; try raw SQL fallbacks.
       try {
-        const rows: any[] =
-          await prisma.$queryRaw`SELECT * FROM "Invoice" WHERE "paymentId" = ${payment!.id}`;
+        const rows: any[] = await prisma.$queryRaw`SELECT * FROM "Invoice" WHERE "paymentId" = ${payment!.id}`;
         invoice = rows && rows[0] ? rows[0] : null;
       } catch (e) {
         // Last resort: try quoted identifiers via unsafe raw SQL
         try {
-          const rows2: any[] = await prisma.$queryRawUnsafe(
-            `SELECT * FROM "Invoice" WHERE "paymentId" = '${payment!.id}'`
-          );
+          const rows2: any[] = await prisma.$queryRawUnsafe(`SELECT * FROM "Invoice" WHERE "paymentId" = '${payment!.id}'`);
           invoice = rows2 && rows2[0] ? rows2[0] : null;
         } catch (_e2) {
           invoice = null;
@@ -231,7 +206,7 @@ describe('Parent subscription: order → verify integration', () => {
     } else {
       // Invoice creation may fail in local test DBs that are missing migrations.
       // Continue with remaining assertions instead of failing the test.
-      console.warn('Invoice row not found; continuing remaining assertions');
+      console.warn('Invoice row not found; continuing remaining assertions')
     }
 
     // Parent subscription created

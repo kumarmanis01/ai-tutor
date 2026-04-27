@@ -24,7 +24,6 @@ Recommended patterns:
 - On graceful shutdown the worker SHOULD set status `DRAINING` then `STOPPED`.
 
 See also: `lib/execution-pipeline/submitjob.ts` (enforced behavior) and `workers/heartbeatWatchdog.ts` (example watchdog implementation).
-
 # Worker Lifecycle and Controller Model
 
 Overview

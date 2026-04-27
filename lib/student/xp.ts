@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { sendPushSafe } from '@/lib/push/send';
-import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications';
+import { prisma } from '@/lib/prisma'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 import {
   getLevelFromXP,
   getXPToNextLevel,
@@ -9,20 +9,16 @@ import {
   getTierColor,
   LEVEL_THRESHOLDS,
   MAX_LEVEL,
-} from '@/lib/student/xpLevels';
+} from '@/lib/student/xpLevels'
 
 // Re-export pure level functions and constants for existing callers.
-export {
-  getLevelFromXP,
-  getXPToNextLevel,
-  getProgressPercent,
-  getLevelTierName,
-  getTierColor,
-  LEVEL_THRESHOLDS,
-  MAX_LEVEL,
-};
+export { getLevelFromXP, getXPToNextLevel, getProgressPercent, getLevelTierName, getTierColor, LEVEL_THRESHOLDS, MAX_LEVEL }
 
-export type StudentXPSource = 'session_correct' | 'streak_bonus' | 'revision_complete' | 'badge';
+export type StudentXPSource =
+  | 'session_correct'
+  | 'streak_bonus'
+  | 'revision_complete'
+  | 'badge'
 
 /**
  * Award XP to a student.
@@ -33,34 +29,34 @@ export type StudentXPSource = 'session_correct' | 'streak_bonus' | 'revision_com
  * All in a Prisma transaction. Never throws -- returns null on error.
  */
 export async function awardXP(params: {
-  studentId: string;
-  amount: number;
-  source: StudentXPSource;
-  sessionId?: string;
+  studentId: string
+  amount: number
+  source: StudentXPSource
+  sessionId?: string
 }): Promise<{
-  xpAwarded: number;
-  totalXp: number;
-  level: number;
-  leveledUp: boolean;
-  newLevel: number | null;
+  xpAwarded: number
+  totalXp: number
+  level: number
+  leveledUp: boolean
+  newLevel: number | null
 } | null> {
-  const amount = Math.max(0, Math.floor(params.amount));
+  const amount = Math.max(0, Math.floor(params.amount))
   if (amount === 0) {
     try {
       const user = await prisma.user.findUnique({
         where: { id: params.studentId },
         select: { totalXp: true, level: true },
-      });
-      if (!user) return null;
+      })
+      if (!user) return null
       return {
         xpAwarded: 0,
         totalXp: user.totalXp,
         level: user.level,
         leveledUp: false,
         newLevel: null,
-      };
+      }
     } catch {
-      return null;
+      return null
     }
   }
 
@@ -69,8 +65,8 @@ export async function awardXP(params: {
       const user = await tx.user.findUnique({
         where: { id: params.studentId },
         select: { totalXp: true, level: true },
-      });
-      if (!user) return null;
+      })
+      if (!user) return null
 
       await tx.studentXP.create({
         data: {
@@ -79,11 +75,11 @@ export async function awardXP(params: {
           amount,
           sessionId: params.sessionId ?? null,
         },
-      });
+      })
 
-      const newTotalXp = user.totalXp + amount;
-      const newLevel = getLevelFromXP(newTotalXp);
-      const levelChanged = newLevel !== user.level;
+      const newTotalXp = user.totalXp + amount
+      const newLevel = getLevelFromXP(newTotalXp)
+      const levelChanged = newLevel !== user.level
 
       await tx.user.update({
         where: { id: params.studentId },
@@ -91,7 +87,7 @@ export async function awardXP(params: {
           totalXp: newTotalXp,
           ...(levelChanged ? { level: newLevel } : {}),
         },
-      });
+      })
 
       return {
         xpAwarded: amount,
@@ -99,14 +95,14 @@ export async function awardXP(params: {
         level: newLevel,
         leveledUp: levelChanged,
         newLevel: levelChanged ? newLevel : null,
-      };
-    });
+      }
+    })
     // Fire level-up push notification (best-effort, outside transaction)
     if (result?.leveledUp && result.newLevel !== null) {
-      void sendPushSafe(params.studentId, PUSH_NOTIFICATIONS.level_up(result.newLevel));
+      void sendPushSafe(params.studentId, PUSH_NOTIFICATIONS.level_up(result.newLevel))
     }
-    return result;
+    return result
   } catch {
-    return null;
+    return null
   }
 }

@@ -276,27 +276,22 @@ export const PARENT_MESSAGES: ParentMessage[] = [
   {
     day: 1,
     type: 'soft_start',
-    templateHi:
-      '🙏 Namaste! Aaj se {studentName} ki learning journey shuru hui hai. Hum unke saath hain.',
-    templateEn: "🙏 Hello! {studentName}'s learning journey has started today. We're here to help.",
+    templateHi: '🙏 Namaste! Aaj se {studentName} ki learning journey shuru hui hai. Hum unke saath hain.',
+    templateEn: '🙏 Hello! {studentName}\'s learning journey has started today. We\'re here to help.',
     mandatory: false,
   },
   {
     day: 4,
     type: 'progress_update',
-    templateHi:
-      '📚 {studentName} regular padh raha hai aur concepts samajh aa rahe hain. {completionRate}% tasks complete! 💪',
-    templateEn:
-      '📚 {studentName} is studying regularly and understanding concepts. {completionRate}% tasks complete! 💪',
+    templateHi: '📚 {studentName} regular padh raha hai aur concepts samajh aa rahe hain. {completionRate}% tasks complete! 💪',
+    templateEn: '📚 {studentName} is studying regularly and understanding concepts. {completionRate}% tasks complete! 💪',
     mandatory: true,
   },
   {
     day: 7,
     type: 'celebration',
-    templateHi:
-      '🎉 Badhai ho! {studentName} ne 7 din continuous padhai ki! 🌟 Streak: {streakDays} days. Improvement: {improvementPercent}%',
-    templateEn:
-      '🎉 Congratulations! {studentName} studied for 7 continuous days! 🌟 Streak: {streakDays} days. Improvement: {improvementPercent}%',
+    templateHi: '🎉 Badhai ho! {studentName} ne 7 din continuous padhai ki! 🌟 Streak: {streakDays} days. Improvement: {improvementPercent}%',
+    templateEn: '🎉 Congratulations! {studentName} studied for 7 continuous days! 🌟 Streak: {streakDays} days. Improvement: {improvementPercent}%',
     mandatory: true,
   },
 ];
@@ -324,7 +319,7 @@ export function createFirstWeekPlan(
   subject: string
 ): FirstWeekPlan {
   const dailyTasks: DailyTask[] = [];
-
+  
   for (let day = 1; day <= 7; day++) {
     const config = DAY_CONFIGS[day as FirstWeekDay];
     dailyTasks.push({
@@ -332,7 +327,7 @@ export function createFirstWeekPlan(
       ...config,
     });
   }
-
+  
   return {
     studentId,
     grade,
@@ -347,7 +342,7 @@ export function createFirstWeekPlan(
  * Get task for a specific day
  */
 export function getDailyTask(plan: FirstWeekPlan, day: FirstWeekDay): DailyTask {
-  const task = plan.dailyTasks.find((t) => t.day === day);
+  const task = plan.dailyTasks.find(t => t.day === day);
   if (!task) {
     throw new Error(`No task found for day ${day}`);
   }
@@ -358,7 +353,7 @@ export function getDailyTask(plan: FirstWeekPlan, day: FirstWeekDay): DailyTask 
  * Check if day should trigger parent message
  */
 export function shouldSendParentMessage(day: FirstWeekDay): ParentMessage | null {
-  return PARENT_MESSAGES.find((m) => m.day === day) || null;
+  return PARENT_MESSAGES.find(m => m.day === day) || null;
 }
 
 /**
@@ -375,7 +370,7 @@ export function formatParentMessage(
   language: 'hi' | 'en' = 'hi'
 ): string {
   const template = language === 'hi' ? message.templateHi : message.templateEn;
-
+  
   return template
     .replace('{studentName}', data.studentName)
     .replace('{completionRate}', String(data.completionRate || 0))
@@ -391,28 +386,28 @@ export function validateDaySuccess(
   progress: DailyProgress
 ): { success: boolean; reason: string } {
   const config = DAY_CONFIGS[day];
-
+  
   // Rule: Every day must end in success
   if (!progress.endedWithSuccess) {
     return { success: false, reason: 'Day did not end with success moment' };
   }
-
+  
   // Check time limit
   if (progress.timeSpent > config.maxTimeMinutes) {
     // This is a warning, not failure - we prioritize completion
     // But log it for monitoring
   }
-
+  
   // Check wrong answers within limit
   const wrongAnswers = progress.questionsAttempted - progress.questionsCorrect;
   if (wrongAnswers > config.maxWrongAllowed) {
     // AI should have intervened - log this as system issue
-    return {
+    return { 
       success: true, // Still count as success if completed
-      reason: 'Completed with extra mistakes - AI intervention needed',
+      reason: 'Completed with extra mistakes - AI intervention needed' 
     };
   }
-
+  
   return { success: true, reason: 'Day completed successfully' };
 }
 
@@ -426,30 +421,28 @@ export function calculateImprovement(
   // Compare accuracy
   const day2Accuracy = day2Progress.questionsCorrect / day2Progress.questionsAttempted;
   const day5Accuracy = day5Progress.questionsCorrect / day5Progress.questionsAttempted;
-
+  
   // Compare speed (questions per minute)
   const day2Speed = day2Progress.questionsAttempted / day2Progress.timeSpent;
   const day5Speed = day5Progress.questionsAttempted / day5Progress.timeSpent;
-
+  
   // Weighted improvement (accuracy 60%, speed 40%)
   const accuracyImprovement = (day5Accuracy - day2Accuracy) * 0.6;
   const speedImprovement = ((day5Speed - day2Speed) / day2Speed) * 0.4;
-
+  
   return Math.round((accuracyImprovement + speedImprovement) * 100);
 }
 
 /**
  * Check if student is ready for Day 7 celebration
  */
-export function isReadyForCelebration(progressHistory: DailyProgress[]): {
-  ready: boolean;
-  streakDays: number;
-  completionRate: number;
-} {
-  const completedDays = progressHistory.filter((p) => p.completed).length;
+export function isReadyForCelebration(
+  progressHistory: DailyProgress[]
+): { ready: boolean; streakDays: number; completionRate: number } {
+  const completedDays = progressHistory.filter(p => p.completed).length;
   const totalDays = progressHistory.length;
   const completionRate = Math.round((completedDays / totalDays) * 100);
-
+  
   // Calculate streak (consecutive completed days)
   let streakDays = 0;
   for (let i = progressHistory.length - 1; i >= 0; i--) {
@@ -459,10 +452,10 @@ export function isReadyForCelebration(progressHistory: DailyProgress[]): {
       break;
     }
   }
-
+  
   // Ready for celebration if completed at least 5 of 6 days
   const ready = completedDays >= 5;
-
+  
   return { ready, streakDays, completionRate };
 }
 
@@ -477,9 +470,9 @@ export function getAIRulesForDay(day: FirstWeekDay): string[] {
     'Session must end with success',
     `Maximum ${MAX_DAILY_MINUTES} minutes`,
   ];
-
+  
   const dayRules = DAY_CONFIGS[day].aiRules;
-
+  
   return [...baseRules, ...dayRules];
 }
 
@@ -499,7 +492,7 @@ export function shouldAIIntervene(
       action: 'reduce_difficulty',
     };
   }
-
+  
   // Rule: Taking too long (2x average time)
   if (timeOnCurrentQuestion > averageTimePerQuestion * 2) {
     return {
@@ -508,7 +501,7 @@ export function shouldAIIntervene(
       action: 'show_hint',
     };
   }
-
+  
   return {
     shouldIntervene: false,
     reason: 'none',

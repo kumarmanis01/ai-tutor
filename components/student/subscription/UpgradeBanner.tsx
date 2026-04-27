@@ -36,9 +36,7 @@ export function UpgradeBanner({ show }: UpgradeBannerProps) {
       aria-live="polite"
       className="mb-5 flex items-center gap-3 rounded-xl border border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-3"
     >
-      <span className="flex-shrink-0 text-base" aria-hidden>
-        ✨
-      </span>
+      <span className="flex-shrink-0 text-base" aria-hidden>✨</span>
       <a
         href="#upgrade"
         onClick={(e) => {

@@ -56,11 +56,7 @@ export async function resizeImageFile(file: File | Blob, opts: ResizeOptions = {
       return file;
     }
   } catch (err) {
-    logger.warn('Failed to read small-file quick path', {
-      module: 'resizeImage',
-      method: 'quickPath',
-      error: String(err),
-    });
+    logger.warn('Failed to read small-file quick path', { module: 'resizeImage', method: 'quickPath', error: String(err) });
   }
 
   // Create an image element to load the blob
@@ -134,11 +130,7 @@ export async function resizeImageFile(file: File | Blob, opts: ResizeOptions = {
   try {
     URL.revokeObjectURL(url);
   } catch (err) {
-    logger.warn('URL.revokeObjectURL failed', {
-      module: 'resizeImage',
-      method: 'cleanup',
-      error: String(err),
-    });
+    logger.warn('URL.revokeObjectURL failed', { module: 'resizeImage', method: 'cleanup', error: String(err) });
   }
 
   // Convert canvas to Blob
@@ -168,19 +160,12 @@ export async function resizeImageFile(file: File | Blob, opts: ResizeOptions = {
       return file;
     }
   } catch (err) {
-    logger.warn('Comparing resized blob with original failed', {
-      module: 'resizeImage',
-      method: 'sizeCompare',
-      error: String(err),
-    });
+    logger.warn('Comparing resized blob with original failed', { module: 'resizeImage', method: 'sizeCompare', error: String(err) });
   }
 
   // Create a File using the same base name but with an appropriate extension
   const ext = blob.type === 'image/webp' ? '.webp' : blob.type === 'image/jpeg' ? '.jpg' : '.bin';
-  const fileName =
-    file instanceof File && file.name
-      ? file.name.replace(/\.[^.]+$/, ext)
-      : `resized-${Date.now()}${ext}`;
+  const fileName = (file instanceof File && file.name) ? file.name.replace(/\.[^.]+$/, ext) : `resized-${Date.now()}${ext}`;
   const outFile = new File([blob], fileName, { type: blob.type, lastModified: Date.now() });
   return outFile;
 }

@@ -27,9 +27,7 @@ describe('FullScreenLoader', () => {
   });
 
   afterEach(() => {
-    act(() => {
-      jest.runOnlyPendingTimers();
-    });
+    act(() => { jest.runOnlyPendingTimers(); });
     jest.useRealTimers();
   });
 
@@ -78,9 +76,7 @@ describe('FullScreenLoader', () => {
   it('should be removed from DOM after minimum display time and fade-out', () => {
     const { rerender } = render(<FullScreenLoader visible minimumDisplayTime={300} />);
     rerender(<FullScreenLoader visible={false} minimumDisplayTime={300} />);
-    act(() => {
-      jest.advanceTimersByTime(300 + 260 + 10);
-    });
+    act(() => { jest.advanceTimersByTime(300 + 260 + 10); });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 

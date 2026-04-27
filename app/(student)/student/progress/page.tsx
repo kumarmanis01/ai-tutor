@@ -33,7 +33,9 @@ import ChapterMasteryBars, {
   type SubjectMasteryData,
   type ChapterRow,
 } from '@/components/student/progress/ChapterMasteryBars';
-import TestScoreHistory, { type SessionRow } from '@/components/student/progress/TestScoreHistory';
+import TestScoreHistory, {
+  type SessionRow,
+} from '@/components/student/progress/TestScoreHistory';
 import ProgressFilters from '@/components/student/progress/ProgressFilters';
 import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/ScoreTrendGraph';
 import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
@@ -64,8 +66,9 @@ export default async function ProgressPage({
   const activeSubject = searchParams?.subject ?? '';
 
   const cfg = barConfig(days);
-  const sinceDate =
-    cfg.fetchDays > 0 ? new Date(Date.now() - cfg.fetchDays * 24 * 60 * 60 * 1000) : null;
+  const sinceDate = cfg.fetchDays > 0
+    ? new Date(Date.now() - cfg.fetchDays * 24 * 60 * 60 * 1000)
+    : null;
 
   // ── Parallel: student profile + chart sessions + completed sessions + trend ──
   const sessionDateFilter = sinceDate ? { gte: sinceDate } : undefined;
@@ -139,12 +142,14 @@ export default async function ProgressPage({
 
   // Apply subject filter to the mastery query.
   const filteredSubjectDefs = activeSubject
-    ? subjectDefs.filter((s) => s.name.toLowerCase() === activeSubject.toLowerCase())
+    ? subjectDefs.filter(
+        (s) => s.name.toLowerCase() === activeSubject.toLowerCase(),
+      )
     : subjectDefs;
 
   // ── Readiness per subject (parallel, Redis-cached) ─────────────────────────
   const readinessResults = await Promise.all(
-    filteredSubjectDefs.map((subj) => computeReadinessScore(userId, subj.id))
+    filteredSubjectDefs.map((subj) => computeReadinessScore(userId, subj.id)),
   );
 
   // ── Weakest concept per chapter (for chapter row links) ────────────────────
@@ -167,11 +172,11 @@ export default async function ProgressPage({
     });
 
     const masteryByConceptId = new Map<string, number>(
-      conceptStates.map((s) => [s.conceptId, s.masteryScore])
+      conceptStates.map((s) => [s.conceptId, s.masteryScore]),
     );
 
     memoryStrengthByConceptId = new Map<string, number>(
-      conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0])
+      conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0]),
     );
 
     for (const c of concepts) {
@@ -181,11 +186,14 @@ export default async function ProgressPage({
       conceptsByChapter.get(chId)!.push(c.id);
     }
 
-    for (const [chapterId, conceptIds] of conceptsByChapter) {
+      for (const [chapterId, conceptIds] of conceptsByChapter) {
       if (conceptIds.length === 0) continue;
       const sorted = conceptIds
         .slice()
-        .sort((a, b) => (masteryByConceptId.get(a) ?? 0) - (masteryByConceptId.get(b) ?? 0));
+        .sort(
+          (a, b) =>
+            (masteryByConceptId.get(a) ?? 0) - (masteryByConceptId.get(b) ?? 0),
+        );
       chapterWeakestConceptMap.set(chapterId, sorted[0]);
       // compute average memoryStrength for the chapter
       const msVals = conceptIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
@@ -205,9 +213,9 @@ export default async function ProgressPage({
         boardWeightPct: ch.boardWeightPct,
         weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
         memoryStrength: (() => {
-          const cIds = conceptsByChapter.get(ch.chapterId) ?? ([] as string[]);
-          const vals = cIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
-          return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+          const cIds = (conceptsByChapter.get(ch.chapterId) ?? [] as string[])
+          const vals = cIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0)
+          return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
         })(),
       }))
       .sort((a, b) => a.masteryScore - b.masteryScore);
@@ -231,7 +239,7 @@ export default async function ProgressPage({
       score: typeof rawScore === 'number' ? Math.round(rawScore) : null,
       durationMin: Math.max(
         0,
-        Math.round((s.completedAt!.getTime() - s.startedAt.getTime()) / 60_000)
+        Math.round((s.completedAt!.getTime() - s.startedAt.getTime()) / 60_000),
       ),
     };
   });

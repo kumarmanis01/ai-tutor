@@ -19,10 +19,10 @@ import type { Grade, Language } from './schemas';
 
 /**
  * GLOBAL SYSTEM PROMPT
- *
+ * 
  * Injected as the first system message in every OpenAI request.
  * Establishes immutable rules that the model must follow.
- *
+ * 
  * Design principles:
  * - Child-safe: No harmful, scary, or inappropriate content
  * - Educational: Always prioritize understanding over answers
@@ -112,14 +112,14 @@ Respond entirely in Hindi (Devanagari script).
 Use simple, commonly spoken Hindi.
 Avoid English words except for technical terms that have no Hindi equivalent.
 For technical terms, write in Hindi followed by English in parentheses if needed.`;
-
+    
     case 'Hinglish':
       return `
 Respond in Hinglish (Hindi-English mix) as commonly spoken by Indian students.
 Use English for technical/academic terms.
 Use Hindi for connectors and everyday words.
 This should feel natural, like how students actually talk.`;
-
+    
     case 'English':
     default:
       return `

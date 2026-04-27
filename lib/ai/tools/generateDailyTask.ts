@@ -20,8 +20,7 @@ export const GENERATE_DAILY_TASK_SCHEMA = {
   type: 'function' as const,
   function: {
     name: 'generate_daily_task',
-    description:
-      'Generate a single daily learning task for a K-12 student. Output must be grade-appropriate and language-matched.',
+    description: 'Generate a single daily learning task for a K-12 student. Output must be grade-appropriate and language-matched.',
     parameters: {
       type: 'object',
       properties: {
@@ -30,16 +29,8 @@ export const GENERATE_DAILY_TASK_SCHEMA = {
           properties: {
             grade: { type: 'integer', description: 'Student grade (1-12)' },
             language: { type: 'string', description: 'Preferred language: en, hi, hinglish' },
-            strengths: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Topics/subjects student is strong in',
-            },
-            weaknesses: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Topics/subjects student struggles with',
-            },
+            strengths: { type: 'array', items: { type: 'string' }, description: 'Topics/subjects student is strong in' },
+            weaknesses: { type: 'array', items: { type: 'string' }, description: 'Topics/subjects student struggles with' },
             last_active_days_ago: { type: 'integer', description: 'Days since last activity' },
           },
           required: ['grade', 'language', 'last_active_days_ago'],
@@ -91,7 +82,7 @@ export interface LearningContext {
 
 export async function generateDailyTaskAI(
   profile: StudentProfile,
-  context: LearningContext
+  context: LearningContext,
 ): Promise<DailyTaskAIOutput> {
   // Enforce recovery if inactive >= 7 days
   const forceRecovery = profile.last_active_days_ago >= 7;
@@ -137,16 +128,14 @@ function buildPrompt(
   profile: StudentProfile,
   context: LearningContext,
   forceRecovery: boolean,
-  effectiveDifficulty: number
+  effectiveDifficulty: number,
 ): string {
-  const gradeLabel =
-    profile.grade <= 3 ? 'young learner' : profile.grade <= 7 ? 'middle schooler' : 'high schooler';
-  const langInstruction =
-    profile.language === 'hi'
-      ? 'Respond in simple Hindi.'
-      : profile.language === 'hinglish'
-        ? 'Respond in Hinglish (Hindi+English mix).'
-        : 'Respond in simple English.';
+  const gradeLabel = profile.grade <= 3 ? 'young learner' : profile.grade <= 7 ? 'middle schooler' : 'high schooler';
+  const langInstruction = profile.language === 'hi'
+    ? 'Respond in simple Hindi.'
+    : profile.language === 'hinglish'
+      ? 'Respond in Hinglish (Hindi+English mix).'
+      : 'Respond in simple English.';
 
   const taskTypeInstruction = forceRecovery
     ? 'Task type MUST be "recover". This student has been inactive -- make it very easy and encouraging.'
@@ -198,10 +187,7 @@ function parseOutput(content: string): DailyTaskAIOutput {
   // Strip markdown fences if present
   let cleaned = content.trim();
   if (cleaned.startsWith('```')) {
-    cleaned = cleaned
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/```\s*$/, '')
-      .trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   }
   return JSON.parse(cleaned);
 }
@@ -247,7 +233,7 @@ function validateOutput(output: DailyTaskAIOutput, forceRecovery: boolean): Dail
 function buildFallbackTask(
   profile: StudentProfile,
   context: LearningContext,
-  forceRecovery: boolean
+  forceRecovery: boolean,
 ): DailyTaskAIOutput {
   const topic = context.current_topic || 'your current topic';
 
@@ -261,14 +247,14 @@ function buildFallbackTask(
         { step_type: 'read', content: `Read through the summary of ${topic}` },
         { step_type: 'answer', content: 'Try 2 easy questions' },
       ],
-      motivation_message: "You showed up -- that's what matters!",
+      motivation_message: 'You showed up -- that\'s what matters!',
     };
   }
 
   return {
     task_type: 'learn',
     title: `Today: ${topic}`,
-    description: "Your daily dose of learning. Let's go!",
+    description: 'Your daily dose of learning. Let\'s go!',
     estimated_time_min: 15,
     steps: [
       { step_type: 'read', content: `Read the notes on ${topic}` },

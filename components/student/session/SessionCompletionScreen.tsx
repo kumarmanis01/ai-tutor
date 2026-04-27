@@ -34,12 +34,12 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { logger } from '@/lib/logger';
-import { getProgressPercent } from '@/lib/student/xpLevels';
+import { logger } from '@/lib/logger'
+import { getProgressPercent } from '@/lib/student/xpLevels'
 import { useRouter } from 'next/navigation';
-import { buildShareableSessionSummary } from '@/lib/student/sessionSummary';
-import styles from './SessionCompletionScreen.module.css';
-import { buildWhatsAppShareUrl } from '@/lib/student/sessionShare';
+import { buildShareableSessionSummary } from '@/lib/student/sessionSummary'
+import styles from './SessionCompletionScreen.module.css'
+import { buildWhatsAppShareUrl } from '@/lib/student/sessionShare'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -96,38 +96,34 @@ const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
 // ── Badge icon map (icon key → emoji) ─────────────────────────────────────────
 
 const BADGE_EMOJI: Record<string, string> = {
-  fire: '🔥',
-  trophy: '🏆',
-  diamond: '💎',
-  crown: '👑',
+  fire:      '🔥',
+  trophy:    '🏆',
+  diamond:   '💎',
+  crown:     '👑',
   lightning: '⚡',
-  muscle: '💪',
-  star: '⭐',
-};
+  muscle:    '💪',
+  star:      '⭐',
+}
 
 function badgeEmoji(icon?: string): string {
-  if (!icon) return '🏅';
-  return BADGE_EMOJI[icon] ?? '🏅';
+  if (!icon) return '🏅'
+  return BADGE_EMOJI[icon] ?? '🏅'
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function ConfettiHeader({
-  topicName,
-  durationMinutes,
-}: {
-  topicName: string;
-  durationMinutes: number;
-}) {
+function ConfettiHeader({ topicName, durationMinutes }: { topicName: string; durationMinutes: number }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#534AB7] to-[#6D63D4] px-5 pt-8 pb-6 text-center text-white">
       {/* Confetti pieces (styles moved to CSS module) */}
       {CONFETTI_PIECES.map((p) => (
-        <span key={p.id} className={`${styles.confettiPiece} ${styles['p' + p.id]}`} aria-hidden />
+        <span
+          key={p.id}
+          className={`${styles.confettiPiece} ${styles['p' + p.id]}`}
+          aria-hidden
+        />
       ))}
-      <div className="text-5xl mb-3" aria-hidden>
-        🎉
-      </div>
+      <div className="text-5xl mb-3" aria-hidden>🎉</div>
       <h1 className="text-xl font-bold leading-tight">Session complete!</h1>
       <p className="mt-1 text-sm text-indigo-200">
         {topicName} · {durationMinutes > 0 ? `${durationMinutes} min` : 'just now'}
@@ -136,7 +132,13 @@ function ConfettiHeader({
   );
 }
 
-function XpSection({ xpEarned, totalXp }: { xpEarned: number; totalXp: number }) {
+function XpSection({
+  xpEarned,
+  totalXp,
+}: {
+  xpEarned: number;
+  totalXp: number;
+}) {
   const [displayXp, setDisplayXp] = useState(totalXp - xpEarned);
   const [barWidth, setBarWidth] = useState(0);
   const rafRef = useRef<number | null>(null);
@@ -210,9 +212,7 @@ function BadgesEarnedSection({
             key={b.name}
             className="flex items-center gap-3 rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-4 py-3"
           >
-            <span className="text-2xl leading-none" aria-hidden>
-              {badgeEmoji(b.icon)}
-            </span>
+            <span className="text-2xl leading-none" aria-hidden>{badgeEmoji(b.icon)}</span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 leading-tight truncate">
                 {b.name}
@@ -228,7 +228,13 @@ function BadgesEarnedSection({
   );
 }
 
-function LevelUpOverlay({ newLevel, onDismiss }: { newLevel: number; onDismiss: () => void }) {
+function LevelUpOverlay({
+  newLevel,
+  onDismiss,
+}: {
+  newLevel: number;
+  onDismiss: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 cursor-pointer"
@@ -238,13 +244,13 @@ function LevelUpOverlay({ newLevel, onDismiss }: { newLevel: number; onDismiss: 
       aria-label="Level up celebration"
     >
       <div className={`${styles.levelupPop} text-center px-8`}>
-        <div className="text-6xl mb-4" aria-hidden>
-          ⭐
-        </div>
+        <div className="text-6xl mb-4" aria-hidden>⭐</div>
         <p className="text-xs font-semibold uppercase tracking-widest text-amber-300 mb-2">
           Level Up!
         </p>
-        <p className="text-6xl font-extrabold text-white mb-3">Level {newLevel}</p>
+        <p className="text-6xl font-extrabold text-white mb-3">
+          Level {newLevel}
+        </p>
         <p className="text-sm text-amber-100 max-w-[260px] mx-auto">
           Your consistent effort is opening new doors. Keep going!
         </p>
@@ -265,7 +271,8 @@ function StatsRow({
   sessionDurationMinutes: number;
   hintsUsed?: number;
 }) {
-  const pct = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+  const pct =
+    totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
   const chips = [
     { label: 'Attempted', value: String(totalQuestions) },
@@ -314,13 +321,16 @@ function MasteryDelta({
         <div className="flex items-center gap-2">
           <span
             className={`text-sm font-semibold ${
-              positive ? 'text-[#1D9E75] dark:text-green-400' : 'text-[#E24B4A] dark:text-red-400'
+              positive
+                ? 'text-[#1D9E75] dark:text-green-400'
+                : 'text-[#E24B4A] dark:text-red-400'
             }`}
           >
-            {positive ? '+' : ''}
-            {deltaPercent}%
+            {positive ? '+' : ''}{deltaPercent}%
           </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">→ {afterPercent}%</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            → {afterPercent}%
+          </span>
         </div>
       </div>
     </div>
@@ -336,16 +346,12 @@ function AiInsightCard({ insight }: { insight: string | null }) {
   }, []);
 
   const text =
-    insight && insight.trim()
-      ? insight
-      : 'Great work this session -- your consistency is building strong foundations!';
+    insight && insight.trim() ? insight : 'Great work this session -- your consistency is building strong foundations!';
 
   return (
     <div className="rounded-xl border border-[#EEEDFE] dark:border-[#534AB7]/30 bg-[#EEEDFE]/50 dark:bg-[#534AB7]/10 px-4 py-3">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm" aria-hidden>
-          💡
-        </span>
+        <span className="text-sm" aria-hidden>💡</span>
         <p className="text-xs font-semibold text-[#534AB7] dark:text-indigo-300 uppercase tracking-wide">
           Teacher Vidya's insight
         </p>
@@ -357,7 +363,9 @@ function AiInsightCard({ insight }: { insight: string | null }) {
           <div className="h-3 w-7/12 rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 animate-pulse" />
         </div>
       ) : (
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{text}</p>
+        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          {text}
+        </p>
       )}
     </div>
   );
@@ -383,7 +391,7 @@ function StarRating({ sessionId }: { sessionId: string }) {
         // best-effort; rating is non-critical
       }
     },
-    [sessionId, submitted]
+    [sessionId, submitted],
   );
 
   if (submitted) {
@@ -433,21 +441,24 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
   const [showLevelOverlay, setShowLevelOverlay] = useState(false);
   const [levelOverlayDone, setLevelOverlayDone] = useState(false);
   const [nextAction, setNextAction] = useState<NextAction | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [shareError, setShareError] = useState(false);
+  const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [shareError, setShareError] = useState(false)
 
   // Fetch completion data
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`/api/student/session/${encodeURIComponent(sessionId)}/complete`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId }),
-        });
+        const res = await fetch(
+          `/api/student/session/${encodeURIComponent(sessionId)}/complete`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId }),
+          },
+        );
         const json = (await res.json().catch(() => null)) as CompletionData | null;
         if (!cancelled && json) {
           setData(json);
@@ -521,37 +532,37 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
         aiInsight: data.aiInsight,
         badges: (data.badgesEarned || []).map((b) => ({ name: b.name })),
         hintsUsed: hintsUsed ?? null,
-      });
+      })
 
       if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(summary);
+        await navigator.clipboard.writeText(summary)
       } else {
-        const ta = document.createElement('textarea');
-        ta.value = summary;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
+        const ta = document.createElement('textarea')
+        ta.value = summary
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        ta.remove()
       }
       // Telemetry: record the copy action for analytics/debugging
       try {
-        logger.info('session_summary_copied', { sessionId, topicName });
+        logger.info('session_summary_copied', { sessionId, topicName })
       } catch {
         // non-blocking
       }
 
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     } catch {
-      setCopyError(true);
-      setTimeout(() => setCopyError(false), 2000);
+      setCopyError(true)
+      setTimeout(() => setCopyError(false), 2000)
     }
   }
 
   async function handleWhatsAppShare() {
-    if (!data) return;
-    setSharing(true);
-    setShareError(false);
+    if (!data) return
+    setSharing(true)
+    setShareError(false)
     try {
       const summary = buildShareableSessionSummary({
         topicName: topicName ?? null,
@@ -563,27 +574,27 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
         aiInsight: data.aiInsight,
         badges: (data.badgesEarned || []).map((b) => ({ name: b.name })),
         hintsUsed: hintsUsed ?? null,
-      });
+      })
 
       // Prefer the Web Share API when available (mobile native share sheets)
       if ((navigator as any)?.share) {
         try {
-          await (navigator as any).share({ title: 'Session summary', text: summary });
-          setSharing(false);
-          return;
+          await (navigator as any).share({ title: 'Session summary', text: summary })
+          setSharing(false)
+          return
         } catch (e) {
-          logger.debug('Web share failed, falling back to WhatsApp', { error: String(e) });
+          logger.debug('Web share failed, falling back to WhatsApp', { error: String(e) })
         }
       }
 
-      const url = buildWhatsAppShareUrl(summary);
-      window.open(url, '_blank');
-      setSharing(false);
+      const url = buildWhatsAppShareUrl(summary)
+      window.open(url, '_blank')
+      setSharing(false)
     } catch (err) {
-      logger.debug('WhatsApp share failed', { error: String(err) });
-      setSharing(false);
-      setShareError(true);
-      setTimeout(() => setShareError(false), 2000);
+      logger.debug('WhatsApp share failed', { error: String(err) })
+      setSharing(false)
+      setShareError(true)
+      setTimeout(() => setShareError(false), 2000)
     }
   }
 
@@ -627,14 +638,20 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
 
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex flex-col items-center px-4 py-8">
         <div className="w-full max-w-[480px] flex flex-col gap-5">
+
           {/* 1. Celebration header */}
-          <ConfettiHeader topicName={topicName} durationMinutes={d.sessionDurationMinutes} />
+          <ConfettiHeader
+            topicName={topicName}
+            durationMinutes={d.sessionDurationMinutes}
+          />
 
           {/* 2. XP section */}
           <XpSection xpEarned={d.xpEarned} totalXp={d.totalXp} />
 
           {/* 3. Badges earned this session */}
-          {d.badgesEarned.length > 0 && <BadgesEarnedSection badges={d.badgesEarned} />}
+          {d.badgesEarned.length > 0 && (
+            <BadgesEarnedSection badges={d.badgesEarned} />
+          )}
 
           {/* Divider */}
           <div className="h-px bg-gray-200 dark:bg-slate-800" />
@@ -683,11 +700,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
 
           {/* Accessibility: polite live region for copy/share status */}
           <div role="status" aria-live="polite" className="sr-only">
-            {copied
-              ? 'Session summary copied to clipboard'
-              : copyError
-                ? 'Failed to copy session summary'
-                : ''}
+            {copied ? 'Session summary copied to clipboard' : copyError ? 'Failed to copy session summary' : ''}
           </div>
 
           {/* 8. CTAs */}
@@ -698,7 +711,9 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
               disabled={!levelOverlayDone}
               className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-60 transition-all shadow-md shadow-[#534AB7]/25"
             >
-              {nextAction?.topicName ? `Start: ${nextAction.topicName} →` : 'Start next session →'}
+              {nextAction?.topicName
+                ? `Start: ${nextAction.topicName} →`
+                : 'Start next session →'}
             </button>
 
             <button
@@ -709,6 +724,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
               Back to dashboard
             </button>
           </div>
+
         </div>
       </div>
     </>

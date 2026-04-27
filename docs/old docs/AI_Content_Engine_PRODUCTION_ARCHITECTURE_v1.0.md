@@ -17,17 +17,15 @@ This system is designed for:
 - Enterprise-grade observability and governance
 
 ## 2. Core Principles (Non-Negotiable)
-
 ### 2.1 Separation of Concerns
-
-| Layer     | Responsibility                          |
-| --------- | --------------------------------------- |
-| UI        | Selection, submission, monitoring       |
-| API       | Validation, normalization, job creation |
-| Queue     | Best-effort delivery only               |
-| DB        | Single source of truth                  |
-| Worker    | All AI execution                        |
-| Moderator | Approval & publishing                   |
+Layer | Responsibility
+---|---
+UI | Selection, submission, monitoring
+API | Validation, normalization, job creation
+Queue | Best-effort delivery only
+DB | Single source of truth
+Worker | All AI execution
+Moderator | Approval & publishing
 
 ### 2.2 Source of Truth
 
@@ -48,31 +46,28 @@ No in-memory state is authoritative.
 ✅ Every LLM call must produce an `AIContentLog`
 
 ## 3. Academic Domain Model (Authoritative Definitions)
-
 ### 3.1 Hierarchy (Immutable Identity)
 
 Board
-└── ClassLevel (grade)
-└── SubjectDef
-└── ChapterDef (versioned, approved)
-└── TopicDef (approved)
-├── TopicNote (language + version)
-└── GeneratedTest (difficulty + version)
+ └── ClassLevel (grade)
+      └── SubjectDef
+           └── ChapterDef (versioned, approved)
+                └── TopicDef (approved)
+                     ├── TopicNote (language + version)
+                     └── GeneratedTest (difficulty + version)
 
 ### 3.2 Definitions
-
-| Entity        | Meaning                                  |
-| ------------- | ---------------------------------------- |
-| Board         | Curriculum authority (CBSE, ICSE, State) |
-| ClassLevel    | Grade under a board                      |
-| SubjectDef    | Subject under a class                    |
-| ChapterDef    | Syllabus unit (versioned)                |
-| TopicDef      | Atomic teaching unit                     |
-| TopicNote     | Language-specific explanation            |
-| GeneratedTest | Evaluative content                       |
+Entity | Meaning
+---|---
+Board | Curriculum authority (CBSE, ICSE, State)
+ClassLevel | Grade under a board
+SubjectDef | Subject under a class
+ChapterDef | Syllabus unit (versioned)
+TopicDef | Atomic teaching unit
+TopicNote | Language-specific explanation
+GeneratedTest | Evaluative content
 
 ## 4. Job System (AI Content Engine)
-
 ### 4.1 ExecutionJob (Canonical)
 
 ExecutionJob is the only execution contract.
@@ -84,7 +79,6 @@ Key rules:
 - Status transitions are one-way
 
 Job Lifecycle
-
 ```
 PENDING
   ↓ (atomic DB claim)
@@ -106,14 +100,13 @@ Example claim:
 ```js
 updateMany({
   where: { id, status: 'pending', lockedAt: null },
-  data: { status: 'running', lockedAt: now(), lockedBy },
-});
+  data: { status: 'running', lockedAt: now(), lockedBy }
+})
 ```
 
 If claim fails → worker must abort.
 
 ## 5. Worker Architecture
-
 ### 5.1 Worker Role
 
 Workers are capacity units, NOT job-scoped.
@@ -125,7 +118,6 @@ Workers are long-lived
 Workers are controlled explicitly
 
 ### 5.2 Worker Lifecycle
-
 STARTING
 RUNNING
 DRAINING
@@ -134,12 +126,11 @@ STOPPED | FAILED
 Tracked in `WorkerLifecycle` (persistent).
 
 ### 5.3 Worker Start Model
-
-| Environment | How Workers Start               |
-| ----------- | ------------------------------- |
-| Local Dev   | `node worker/bootstrap.ts`      |
-| Production  | Orchestrator or K8s Jobs        |
-| Autoscale   | Orchestrator decides, never API |
+Environment | How Workers Start
+---|---
+Local Dev | `node worker/bootstrap.ts`
+Production | Orchestrator or K8s Jobs
+Autoscale | Orchestrator decides, never API
 
 APIs may request capacity — never spawn workers directly.
 
@@ -155,14 +146,13 @@ Redis is:
 
 Failure Modes
 
-| Scenario           | Behavior                           |
-| ------------------ | ---------------------------------- |
-| Redis down         | Jobs remain PENDING                |
-| Duplicate messages | DB claim prevents double execution |
-| Worker crash       | Job unlocked after timeout         |
+Scenario | Behavior
+---|---
+Redis down | Jobs remain PENDING
+Duplicate messages | DB claim prevents double execution
+Worker crash | Job unlocked after timeout
 
 ## 7. Syllabus Generation Workflow (Production)
-
 ### 7.1 Trigger
 
 Admin UI → Submit SYLLABUS job (subjectId)
@@ -210,7 +200,6 @@ Rejection does NOT delete content
 Logs are immutable forever
 
 ## 10. Observability & Telemetry
-
 ### 10.1 Mandatory Metrics
 
 - Job counts (by type/status)
@@ -238,13 +227,12 @@ Admin dashboards MUST include:
 - Retry = new job
 
 ## 12. Failure Modes & Recovery
-
-| Failure           | Recovery            |
-| ----------------- | ------------------- |
-| Redis down        | Jobs stay pending   |
-| Worker crash      | Mark FAILED         |
-| Partial AI output | Log + manual review |
-| Bad content       | Reject, regenerate  |
+Failure | Recovery
+---|---
+Redis down | Jobs stay pending
+Worker crash | Mark FAILED
+Partial AI output | Log + manual review
+Bad content | Reject, regenerate
 
 ## 13. Schema Alignment (Reviewed)
 

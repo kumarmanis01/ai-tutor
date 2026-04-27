@@ -113,10 +113,8 @@ describe('generateSubjectDiagnosticTest', () => {
       async (filters: { topicId?: string; difficulty?: string }, count: number) => {
         const topicId = filters.topicId ?? 'subject';
         const diff = filters.difficulty ?? 'easy';
-        return Array.from({ length: count }, (_, i) =>
-          makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff)
-        );
-      }
+        return Array.from({ length: count }, (_, i) => makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff));
+      },
     );
 
     const result = await generateSubjectDiagnosticTest(BASE_PARAMS);
@@ -137,7 +135,7 @@ describe('generateSubjectDiagnosticTest', () => {
         }
         // Subject-level fallback: return one extra unique question
         return [makeQuestion(`fallback-${diff}`, 'subject', diff)];
-      }
+      },
     );
 
     const result = await generateSubjectDiagnosticTest(BASE_PARAMS);
@@ -164,10 +162,8 @@ describe('generateSubjectDiagnosticTest', () => {
       async (filters: { topicId?: string; difficulty?: string }, count: number) => {
         const topicId = filters.topicId ?? 'subject';
         const diff = filters.difficulty ?? 'easy';
-        return Array.from({ length: count }, (_, i) =>
-          makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff)
-        );
-      }
+        return Array.from({ length: count }, (_, i) => makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff));
+      },
     );
 
     const result = await generateSubjectDiagnosticTest(BASE_PARAMS);
@@ -197,10 +193,8 @@ describe('generateSubjectDiagnosticTest', () => {
       async (filters: { topicId?: string; difficulty?: string }, count: number) => {
         const topicId = filters.topicId ?? 'subject';
         const diff = filters.difficulty ?? 'easy';
-        return Array.from({ length: count }, (_, i) =>
-          makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff)
-        );
-      }
+        return Array.from({ length: count }, (_, i) => makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff));
+      },
     );
 
     await generateSubjectDiagnosticTest(BASE_PARAMS, excludeIds);
@@ -216,11 +210,7 @@ describe('generateSubjectDiagnosticTest', () => {
     const excludeIds = new Set([EXCLUDED_ID]);
 
     ensureQuestions.mockImplementation(
-      async (
-        filters: { topicId?: string; difficulty?: string },
-        count: number,
-        _excludes?: Set<string>
-      ) => {
+      async (filters: { topicId?: string; difficulty?: string }, count: number, _excludes?: Set<string>) => {
         const topicId = filters.topicId ?? 'subject';
         const diff = filters.difficulty ?? 'easy';
         // Simulate a bank that always tries to return the excluded question first,
@@ -228,8 +218,8 @@ describe('generateSubjectDiagnosticTest', () => {
         return Array.from({ length: count }, (_, i) => {
           const id = i === 0 ? EXCLUDED_ID : `${diff}-${topicId}-${i}`;
           return makeQuestion(id, topicId, diff);
-        }).filter((q) => !_excludes?.has(q.id));
-      }
+        }).filter((q) => !(_excludes?.has(q.id)));
+      },
     );
 
     const result = await generateSubjectDiagnosticTest(BASE_PARAMS, excludeIds);
@@ -243,10 +233,8 @@ describe('generateSubjectDiagnosticTest', () => {
       async (filters: { topicId?: string; difficulty?: string }, count: number) => {
         const topicId = filters.topicId ?? 'subject';
         const diff = filters.difficulty ?? 'easy';
-        return Array.from({ length: count }, (_, i) =>
-          makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff)
-        );
-      }
+        return Array.from({ length: count }, (_, i) => makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff));
+      },
     );
 
     // No exclusion set passed -- should behave identically to the original call

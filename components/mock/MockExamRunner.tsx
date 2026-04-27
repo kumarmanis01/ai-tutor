@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * MockExamRunner -- F-STU-021
@@ -78,15 +78,7 @@ interface QuestionCardProps {
   onFlag: (qid: string) => void;
 }
 
-function QuestionCard({
-  q,
-  globalIndex,
-  answer,
-  flagged,
-  locked,
-  onAnswerChange,
-  onFlag,
-}: QuestionCardProps) {
+function QuestionCard({ q, globalIndex, answer, flagged, locked, onAnswerChange, onFlag }: QuestionCardProps) {
   const choices = Array.isArray(q.choices) ? q.choices : [];
   const qtype = q.type.toLowerCase();
 
@@ -338,9 +330,7 @@ export default function MockExamRunner(props: MockExamRunnerProps) {
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs text-gray-500 dark:text-gray-400">{subjectName}</p>
-            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
-              {examTitle}
-            </h1>
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{examTitle}</h1>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
             <span className="text-[10px] text-gray-400">Total: {totalMarks} marks</span>
@@ -371,8 +361,8 @@ export default function MockExamRunner(props: MockExamRunnerProps) {
                   isActive && !isSubmitted
                     ? 'bg-[#534AB7] text-white'
                     : isSubmitted
-                      ? 'bg-[#EAF3DE] text-[#1D9E75] cursor-not-allowed'
-                      : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                    ? 'bg-[#EAF3DE] text-[#1D9E75] cursor-not-allowed'
+                    : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                 }`}
                 aria-current={isActive ? 'true' : undefined}
               >
@@ -423,7 +413,9 @@ export default function MockExamRunner(props: MockExamRunnerProps) {
             {/* Submit section button */}
             {!isActiveLocked && (
               <div className="mt-4 flex flex-col gap-3">
-                {error && <p className="text-sm text-[#E24B4A]">{error}</p>}
+                {error && (
+                  <p className="text-sm text-[#E24B4A]">{error}</p>
+                )}
                 <button
                   onClick={handleSubmitSection}
                   disabled={submittingSection}

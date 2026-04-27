@@ -1,29 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSessionForHandlers } from '@/lib/session';
-import { QualityFlag, AdminActionType } from '@prisma/client';
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { QualityFlag, AdminActionType } from '@prisma/client'
 
-const VALID_FLAGS = new Set<string>(Object.values(QualityFlag));
+const VALID_FLAGS = new Set<string>(Object.values(QualityFlag))
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ sessionId: string }> }
+  { params }: { params: Promise<{ sessionId: string }> },
 ) {
-  const session = await getServerSessionForHandlers();
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { sessionId } = await params;
-  const body = await req.json().catch(() => ({}));
-  const { turnId, flag, note } = body as { turnId?: string; flag?: string; note?: string };
+  const { sessionId } = await params
+  const body = await req.json().catch(() => ({}))
+  const { turnId, flag, note } = body as { turnId?: string; flag?: string; note?: string }
 
-  if (!turnId) return NextResponse.json({ error: 'turnId is required' }, { status: 400 });
+  if (!turnId) return NextResponse.json({ error: 'turnId is required' }, { status: 400 })
   if (!flag || !VALID_FLAGS.has(flag)) {
     return NextResponse.json(
       { error: `flag must be one of: ${[...VALID_FLAGS].join(', ')}` },
-      { status: 400 }
-    );
+      { status: 400 },
+    )
   }
 
   await prisma.$transaction([
@@ -40,7 +40,7 @@ export async function POST(
         newValue: { flag, note: note ?? null, sessionId },
       },
     }),
-  ]);
+  ])
 
-  return NextResponse.json({ flagged: true });
+  return NextResponse.json({ flagged: true })
 }

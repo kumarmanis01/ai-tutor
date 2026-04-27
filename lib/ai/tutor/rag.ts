@@ -1,20 +1,20 @@
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { getEmbedding } from '@/lib/ai/embeddings';
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { getEmbedding } from '@/lib/ai/embeddings'
 
 export interface RagChunk {
-  chunkId: string;
-  content: string;
-  conceptIds: string[];
-  similarityScore: number;
+  chunkId: string
+  content: string
+  conceptIds: string[]
+  similarityScore: number
 }
 
 export interface RagContext {
-  chunks: RagChunk[];
-  chunkIds: string[];
+  chunks: RagChunk[]
+  chunkIds: string[]
 }
 
-const DEFAULT_TOP_N = 4;
+const DEFAULT_TOP_N = 4
 
 /**
  * Retrieve top N curriculum chunks relevant to the query.
@@ -31,32 +31,32 @@ const DEFAULT_TOP_N = 4;
 export async function retrieveRelevantChunks(
   query: string,
   conceptIds: string[],
-  opts?: { topN?: number }
+  opts?: { topN?: number },
 ): Promise<RagContext> {
-  const topN = opts?.topN ?? DEFAULT_TOP_N;
+  const topN = opts?.topN ?? DEFAULT_TOP_N
 
   if (!query || !query.trim() || !Array.isArray(conceptIds) || conceptIds.length === 0) {
-    return { chunks: [], chunkIds: [] };
+    return { chunks: [], chunkIds: [] }
   }
 
   try {
-    const vector = await getEmbedding(query);
+    const vector = await getEmbedding(query)
     if (!vector) {
-      logger.warn('rag.retrieveRelevantChunks.emptyEmbedding');
-      return { chunks: [], chunkIds: [] };
+      logger.warn('rag.retrieveRelevantChunks.emptyEmbedding')
+      return { chunks: [], chunkIds: [] }
     }
 
     // 2. Vector similarity search via pgvector
     type RawRow = {
-      id: string;
-      content: string | null;
-      conceptIds: string[];
-      similarity: number;
-    };
+      id: string
+      content: string | null
+      conceptIds: string[]
+      similarity: number
+    }
 
-    let rows: RawRow[] = [];
+    let rows: RawRow[] = []
     try {
-      const embeddingLiteral = `[${vector.join(',')}]`;
+      const embeddingLiteral = `[${vector.join(',')}]`
       rows =
         ((await prisma.$queryRawUnsafe(
           `
@@ -71,22 +71,22 @@ export async function retrieveRelevantChunks(
           `,
           embeddingLiteral,
           conceptIds,
-          topN
-        )) as RawRow[]) ?? [];
+          topN,
+        )) as RawRow[]) ?? []
     } catch (err) {
       logger.warn('rag.retrieveRelevantChunks.vectorQueryFailed', {
         error: String((err as any)?.message ?? err),
-      });
-      return { chunks: [], chunkIds: [] };
+      })
+      return { chunks: [], chunkIds: [] }
     }
 
     if (!rows.length) {
-      return { chunks: [], chunkIds: [] };
+      return { chunks: [], chunkIds: [] }
     }
 
     // 3. Basic check -- rows already thresholded and ordered in SQL
     if (!rows.length) {
-      return { chunks: [], chunkIds: [] };
+      return { chunks: [], chunkIds: [] }
     }
 
     const chunks: RagChunk[] = rows.map((r) => ({
@@ -94,15 +94,16 @@ export async function retrieveRelevantChunks(
       content: r.content ?? '',
       conceptIds: r.conceptIds ?? [],
       similarityScore: r.similarity,
-    }));
+    }))
 
-    const chunkIds = chunks.map((c) => c.chunkId);
+    const chunkIds = chunks.map((c) => c.chunkId)
 
-    return { chunks, chunkIds };
+    return { chunks, chunkIds }
   } catch (err) {
     logger.warn('rag.retrieveRelevantChunks.failed', {
       error: String((err as any)?.message ?? err),
-    });
-    return { chunks: [], chunkIds: [] };
+    })
+    return { chunks: [], chunkIds: [] }
   }
 }
+

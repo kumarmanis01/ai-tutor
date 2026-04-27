@@ -8,7 +8,6 @@ LINKED TODO:
 EDIT LOG:
 - 2026-04-15T00:40:00Z | copilot | added Sprint A status summary for sharing
 -->
-
 Planned tasks
 Sprint A Tickets
 
@@ -158,7 +157,9 @@ Summary of tickets:
 - **OPS1 — Feature Flags & Env:** Not started
   - Pending: add env flags (`ENABLE_LITE_PLAN`, `WHATSAPP_PROVIDER`, `LAUNCH_COUPON_ENABLED`) and document them in README/deploy.
 
-## Why many items are marked "In-progress"
+
+Why many items are marked "In-progress"
+--------------------------------------
 
 Most items moved quickly from design → implementation (models, endpoints, UI skeletons). Several required follow-ups are environment-dependent or operational:
 
@@ -168,6 +169,7 @@ Most items moved quickly from design → implementation (models, endpoints, UI s
 
 Because these follow-ups rely on running commands, secrets, or external approvals, the tasks are functionally started but not fully verifiable — hence "In-progress" rather than "Done".
 
-## How to share / copy
 
+How to share / copy
+-------------------
 Copy this file or share the repo link and point other devs to this file: `docs/sprint-A-status.md`.

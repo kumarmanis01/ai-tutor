@@ -27,9 +27,7 @@ describe('WithSkeleton', () => {
   });
 
   afterEach(() => {
-    act(() => {
-      jest.runOnlyPendingTimers();
-    });
+    act(() => { jest.runOnlyPendingTimers(); });
     jest.useRealTimers();
   });
 
@@ -37,7 +35,7 @@ describe('WithSkeleton', () => {
     render(
       <WithSkeleton isLoading skeleton={<div>Loading skeleton</div>}>
         <div>Actual content</div>
-      </WithSkeleton>
+      </WithSkeleton>,
     );
     expect(screen.getByText('Loading skeleton')).toBeInTheDocument();
     expect(screen.queryByText('Actual content')).not.toBeInTheDocument();
@@ -47,12 +45,10 @@ describe('WithSkeleton', () => {
     render(
       <WithSkeleton isLoading={false} skeleton={<div>Loading skeleton</div>}>
         <div>Actual content</div>
-      </WithSkeleton>
+      </WithSkeleton>,
     );
     // isLoading=false from the start means showSkeleton starts false
-    act(() => {
-      jest.runAllTimers();
-    });
+    act(() => { jest.runAllTimers(); });
     expect(screen.getByText('Actual content')).toBeInTheDocument();
     expect(screen.queryByText('Loading skeleton')).not.toBeInTheDocument();
   });
@@ -61,21 +57,19 @@ describe('WithSkeleton', () => {
     const { rerender } = render(
       <WithSkeleton isLoading delay={200} skeleton={<div>Loading skeleton</div>}>
         <div>Actual content</div>
-      </WithSkeleton>
+      </WithSkeleton>,
     );
 
     rerender(
       <WithSkeleton isLoading={false} delay={200} skeleton={<div>Loading skeleton</div>}>
         <div>Actual content</div>
-      </WithSkeleton>
+      </WithSkeleton>,
     );
 
     // Skeleton still showing before delay
     expect(screen.getByText('Loading skeleton')).toBeInTheDocument();
 
-    act(() => {
-      jest.advanceTimersByTime(200);
-    });
+    act(() => { jest.advanceTimersByTime(200); });
 
     expect(screen.getByText('Actual content')).toBeInTheDocument();
     expect(screen.queryByText('Loading skeleton')).not.toBeInTheDocument();
@@ -85,25 +79,23 @@ describe('WithSkeleton', () => {
     const { rerender } = render(
       <WithSkeleton isLoading delay={200} skeleton={<div>Loading skeleton</div>}>
         <div>Actual content</div>
-      </WithSkeleton>
+      </WithSkeleton>,
     );
 
     rerender(
       <WithSkeleton isLoading={false} delay={200} skeleton={<div>Loading skeleton</div>}>
         <div>Actual content</div>
-      </WithSkeleton>
+      </WithSkeleton>,
     );
 
     // Before delay fires, flip back to loading
     rerender(
       <WithSkeleton isLoading delay={200} skeleton={<div>Loading skeleton</div>}>
         <div>Actual content</div>
-      </WithSkeleton>
+      </WithSkeleton>,
     );
 
-    act(() => {
-      jest.advanceTimersByTime(400);
-    });
+    act(() => { jest.advanceTimersByTime(400); });
 
     expect(screen.getByText('Loading skeleton')).toBeInTheDocument();
   });

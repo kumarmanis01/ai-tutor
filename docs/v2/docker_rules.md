@@ -21,16 +21,15 @@ Here is a complete, step-by-step guide for a junior developer to pick this up an
 
 ## Current State (as of April 20, 2026)
 
-| Container              | Image                           | Status                                      |
-| ---------------------- | ------------------------------- | ------------------------------------------- |
-| `ai-tutor-postgres-1`  | `ai-tutor-postgres:15-pgvector` | healthy                                     |
-| `ai-tutor-redis-1`     | `redis:7-alpine`                | healthy                                     |
-| `ai-tutor-web-1`       | `ai-tutor-web:prod`             | up (Next.js built and serving on port 3000) |
-| `ai-tutor-worker-1`    | `ai-tutor-worker:prod`          | up                                          |
-| `ai-tutor-scheduler-1` | `ai-tutor-scheduler:prod`       | up                                          |
+| Container | Image | Status |
+|-----------|-------|--------|
+| `ai-tutor-postgres-1` | `ai-tutor-postgres:15-pgvector` | healthy |
+| `ai-tutor-redis-1` | `redis:7-alpine` | healthy |
+| `ai-tutor-web-1` | `ai-tutor-web:prod` | up (Next.js built and serving on port 3000) |
+| `ai-tutor-worker-1` | `ai-tutor-worker:prod` | up |
+| `ai-tutor-scheduler-1` | `ai-tutor-scheduler:prod` | up |
 
 **Root cause fixed:** The `ParentStudent` table was missing the `inactivityOptOut` column. The migration `20260417123000_add_parent_notification_and_inactivity_optout` accidentally only added it to `ParentProfile`. We:
-
 1. Added the column directly to the running DB
 2. Created a new idempotent migration: migration.sql
 3. Registered it in `_prisma_migrations`
@@ -93,7 +92,6 @@ docker compose logs -f
 ```
 
 **Known harmless warnings to ignore:**
-
 - `version is obsolete` — already fixed in docker-compose.override.yml
 - `NOTICE: column already exists, skipping` — expected from idempotent migration
 - `Update available 6.19.1 -> 7.7.0` — do NOT upgrade Prisma; it's locked to v6.19.1 per project rules
@@ -173,8 +171,7 @@ docker compose logs -f web
    ```powershell
    docker compose restart web
    ```
-4. **For schema changes** — create a migration file, then run deploy:
-
+3. **For schema changes** — create a migration file, then run deploy:
    ```powershell
    # Recommended (production-like): author SQL migrations and deploy them
    # 1. Create: prisma/migrations/YYYYMMDDHHMMSS_description/migration.sql
@@ -184,7 +181,7 @@ docker compose logs -f web
 
    Guidance on `prisma migrate dev`:
    - Prefer `npx prisma migrate deploy` inside Docker/CI and production (it only applies committed migration SQL).
-   - If you need to _generate_ migration SQL locally, you may use `npx prisma migrate dev` _locally outside Docker_ to create the migration files, but you MUST review and edit the generated SQL before committing. Treat any migration file as immutable after it is committed — fixes must be shipped as a new migration.
+   - If you need to *generate* migration SQL locally, you may use `npx prisma migrate dev` *locally outside Docker* to create the migration files, but you MUST review and edit the generated SQL before committing. Treat any migration file as immutable after it is committed — fixes must be shipped as a new migration.
    - Never run `npx prisma migrate dev` inside CI, inside production containers, or on production databases.
 
 ---
@@ -193,11 +190,11 @@ docker compose logs -f web
 
 Files modified or created that need to be committed:
 
-| File                        | Change                                                                     |
-| --------------------------- | -------------------------------------------------------------------------- |
-| migration.sql               | **New** — adds missing `inactivityOptOut` column to `ParentStudent`        |
-| docker-compose.override.yml | Removed obsolete `version: '3.8'` attribute                                |
-| docker-compose.yml          | Fixed web healthcheck: uses `/api/health/redis`, added `start_period: 60m` |
+| File | Change |
+|------|--------|
+| migration.sql | **New** — adds missing `inactivityOptOut` column to `ParentStudent` |
+| docker-compose.override.yml | Removed obsolete `version: '3.8'` attribute |
+| docker-compose.yml | Fixed web healthcheck: uses `/api/health/redis`, added `start_period: 60m` |
 
 Commit command:
 

@@ -37,18 +37,18 @@ export async function markIgnoredRecommendations(): Promise<number> {
       data: {
         isIgnored: true,
         ignoredAt: new Date(),
-      },
+      }
     });
 
     logger.info('markIgnoredRecommendations.completed', {
       count: updated.count,
-      threshold: sevenDaysAgo.toISOString(),
+      threshold: sevenDaysAgo.toISOString()
     });
 
     return updated.count;
   } catch (error) {
     logger.error('markIgnoredRecommendations.error', {
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : String(error)
     });
     throw error;
   }
@@ -69,18 +69,18 @@ export async function cleanupOldIgnoredRecommendations(): Promise<number> {
         isIgnored: true,
         ignoredAt: { lt: ninetyDaysAgo },
         isCompleted: false, // Keep completed ones for analytics
-      },
+      }
     });
 
     logger.info('cleanupOldIgnoredRecommendations.completed', {
       count: deleted.count,
-      threshold: ninetyDaysAgo.toISOString(),
+      threshold: ninetyDaysAgo.toISOString()
     });
 
     return deleted.count;
   } catch (error) {
     logger.error('cleanupOldIgnoredRecommendations.error', {
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : String(error)
     });
     throw error;
   }

@@ -63,16 +63,8 @@ describe('PATCH /api/student/learning-plan/[itemId] (DEFERRED)', () => {
   it('updates status to DEFERRED and sets deferredAt', async () => {
     mockGetSession.mockResolvedValue({ user: { id: 'user-1' } });
 
-    mockPrisma.learningPlanItem.findFirst.mockResolvedValue({
-      id: 'item-1',
-      studentId: 'user-1',
-      planId: 'plan-1',
-    });
-    mockPrisma.learningPlanItem.update.mockResolvedValue({
-      id: 'item-1',
-      status: 'DEFERRED',
-      deferredAt: new Date().toISOString(),
-    });
+    mockPrisma.learningPlanItem.findFirst.mockResolvedValue({ id: 'item-1', studentId: 'user-1', planId: 'plan-1' });
+    mockPrisma.learningPlanItem.update.mockResolvedValue({ id: 'item-1', status: 'DEFERRED', deferredAt: new Date().toISOString() });
 
     const req = new Request('http://localhost/api/student/learning-plan/item-1', {
       method: 'PATCH',
@@ -84,11 +76,6 @@ describe('PATCH /api/student/learning-plan/[itemId] (DEFERRED)', () => {
 
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(mockPrisma.learningPlanItem.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'item-1' },
-        data: expect.objectContaining({ status: 'DEFERRED', deferredAt: expect.anything() }),
-      })
-    );
+    expect(mockPrisma.learningPlanItem.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'item-1' }, data: expect.objectContaining({ status: 'DEFERRED', deferredAt: expect.anything() }) }));
   });
 });

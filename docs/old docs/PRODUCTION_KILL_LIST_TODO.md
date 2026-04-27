@@ -19,11 +19,9 @@ This file records the authoritative kill list for production workers and actiona
 to ensure `dist/` never contains forbidden artifacts.
 
 Scope (Non-Negotiable)
-
 - Production workers may ONLY live under: `worker/**`
 
 Forbidden directories (must never appear in `dist`)
-
 - /workers
 - /scripts
 - /queues
@@ -40,51 +38,45 @@ Forbidden directories (must never appear in `dist`)
 - /prompts
 - /producers
 - /regeneration
-- /backup\*
+- /backup*
 
 Forbidden packages (must not appear in compiled JS)
-
 - dotenv
 - ts-node
 - tsconfig-paths
 - nodemon
 - concurrently
 - cross-env
-- eslint\*
-- jest\*
-- @types/\*
+- eslint*
+- jest*
+- @types/*
 
 Forbidden import patterns in `app/worker/**`
-
 - `import 'dotenv'` or `import 'dotenv/config'`
 - `import 'ts-node/register'`
 - `import 'tsconfig-paths/register'`
 - `import from 'worker/*'`, `import from 'workers/*'`, `import from 'scripts/*'`, `import from 'queues/*'`
 
 Forbidden file types in `dist`
-
-- _.ts, _.tsx
-- \*.map
-- \*.md
-- \*.sql
-- _.yaml, _.yml
-- _.env_
-- \*.tsbuildinfo
+- *.ts, *.tsx
+- *.map
+- *.md
+- *.sql
+- *.yaml, *.yml
+- *.env*
+- *.tsbuildinfo
 
 Forbidden side-effects at import time
-
 - Connecting to Redis/DB
 - Starting timers or workers
 - Reading env without validation
 
 Allowed exceptions
-
 - `lib/redis.ts` (must not connect on import)
 - `lib/logger.ts` (pure)
 - `lib/jobs/*` (called by worker)
 
 CI / Verify tasks (TODO list)
-
 1. Harden `scripts/verify-dist.cjs` to check:
    - Forbidden directory paths under `dist/`
    - Forbidden file extensions in `dist/`

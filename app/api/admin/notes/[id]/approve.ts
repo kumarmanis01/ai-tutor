@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 
@@ -26,16 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   await prisma.$transaction([
     prisma.topicNote.update({ where: { id }, data: { status: ApprovalStatus.Approved } }),
-    prisma.auditLog.create({
-      data: {
-        adminId,
-        targetEntity: 'TopicNote',
-        targetId: id,
-        action: 'CONTENT_APPROVE',
-        previousValue: { status: note.status },
-        newValue: { status: 'approved' },
-      },
-    }),
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'TopicNote', targetId: id, action: 'CONTENT_APPROVE', previousValue: { status: note.status }, newValue: { status: 'approved' } } })
   ]);
 
   return NextResponse.json({ approved: true });

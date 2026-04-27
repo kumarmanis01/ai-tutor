@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * MockExamReport -- F-STU-021 AC-04 + AC-05
@@ -176,11 +176,13 @@ export default function MockExamReport({ report }: ReportProps) {
             </div>
           ) : null}
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-            {report.percentile !== null && report.percentileReliable
-              ? `You scored better than ${Math.round(report.percentile)}% of students who attempted this paper.`
-              : report.cohortCount == null || report.cohortCount === 0
-                ? 'Be the first to attempt this paper!'
-                : `Not enough attempts to compute a reliable percentile (only ${report.cohortCount} attempts).`}
+            {report.percentile !== null && report.percentileReliable ? (
+              `You scored better than ${Math.round(report.percentile)}% of students who attempted this paper.`
+            ) : report.cohortCount == null || report.cohortCount === 0 ? (
+              'Be the first to attempt this paper!'
+            ) : (
+              `Not enough attempts to compute a reliable percentile (only ${report.cohortCount} attempts).`
+            )}
           </p>
         </article>
 

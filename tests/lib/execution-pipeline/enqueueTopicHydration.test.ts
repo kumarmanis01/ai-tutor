@@ -47,9 +47,7 @@ describe('enqueueTopicHydration file', () => {
     });
 
     it('should export enqueueAssembleHydration as alias for tests', () => {
-      expect(fileContent).toContain(
-        'export const enqueueAssembleHydration = enqueueTestsHydration'
-      );
+      expect(fileContent).toContain('export const enqueueAssembleHydration = enqueueTestsHydration');
     });
   });
 
@@ -163,7 +161,7 @@ describe('submitJob routing integration', () => {
 
   it('should NOT use getContentQueue for direct BullMQ enqueue', () => {
     // Phase 2 removed direct queue access - all routing goes through hydrators
-    expect(submitJobContent).not.toContain('getContentQueue()');
+    expect(submitJobContent).not.toContain("getContentQueue()");
   });
 
   it('should route notes jobs to enqueueNotesHydration', () => {

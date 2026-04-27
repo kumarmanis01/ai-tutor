@@ -37,13 +37,13 @@ By the end of Phase 8, you will have:
 
 🧱 Phase 8 Architecture Overview
 Approved Syllabus + Content
-↓
+        ↓
 CoursePackage (built in Phase 7.6)
-↓
+        ↓
 Persisted (Phase 8.1)
-↓
+        ↓
 Published (Phase 8.2)
-↓
+        ↓
 Read-only APIs + Admin UI
 
 🟦 Phase 8.1 — Persistence Layer
@@ -54,28 +54,27 @@ Persist CoursePackage safely and immutably.
 🧬 Prisma Schema (REQUIRED)
 📄 schema.prisma
 enum CoursePackageStatus {
-PUBLISHED
-ARCHIVED
+  PUBLISHED
+  ARCHIVED
 }
 
 model CoursePackage {
-id String @id @default(cuid())
-syllabusId String
-version Int
+  id            String   @id @default(cuid())
+  syllabusId    String
+  version       Int
 
-status CoursePackageStatus @default(PUBLISHED)
+  status        CoursePackageStatus @default(PUBLISHED)
 
-/// Frozen JSON blob (validated before insert)
-json Json
+  /// Frozen JSON blob (validated before insert)
+  json          Json
 
-createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 
-@@unique([syllabusId, version])
-@@index([syllabusId])
+  @@unique([syllabusId, version])
+  @@index([syllabusId])
 }
 
 🔒 Rules
-
 1. json is immutable
 2. No UPDATEs allowed (only INSERT)
 3. New version = new row
@@ -83,30 +82,29 @@ createdAt DateTime @default(now())
 🧠 Persistence Helper
 📁 lib/course/package/store.ts
 export async function saveCoursePackage(
-prisma,
-pkg: CoursePackage
+  prisma,
+  pkg: CoursePackage
 ) {
-return prisma.coursePackage.create({
-data: {
-syllabusId: pkg.syllabusId,
-version: pkg.version,
-json: pkg,
-}
-})
+  return prisma.coursePackage.create({
+    data: {
+      syllabusId: pkg.syllabusId,
+      version: pkg.version,
+      json: pkg,
+    }
+  })
 }
 
 export async function getCoursePackagesBySyllabus(
-prisma,
-syllabusId: string
+  prisma,
+  syllabusId: string
 ) {
-return prisma.coursePackage.findMany({
-where: { syllabusId },
-orderBy: { version: 'desc' }
-})
+  return prisma.coursePackage.findMany({
+    where: { syllabusId },
+    orderBy: { version: 'desc' }
+  })
 }
 
 🧪 Tests (Required)
-
 1. cannot insert duplicate version
 2. json matches schema
 3. version increments correctly
@@ -120,24 +118,26 @@ Expose published courses safely.
 📄 /api/courses/route.ts
 GET /api/courses
 
+
 Returns:
 
 [
-{
-"syllabusId": "abc",
-"latestVersion": 3,
-"title": "Intro to AI"
-}
+  {
+    "syllabusId": "abc",
+    "latestVersion": 3,
+    "title": "Intro to AI"
+  }
 ]
 
 📄 /api/courses/[syllabusId]/route.ts
 GET /api/courses/:syllabusId
 
+
 Returns:
 
 {
-"syllabusId": "abc",
-"versions": [3,2,1]
+  "syllabusId": "abc",
+  "versions": [3,2,1]
 }
 
 📄 /api/courses/[syllabusId]/[version]/route.ts
@@ -148,7 +148,6 @@ Returns:
 Allow admins to see what’s published.
 
 🖥️ UI Pages
-
 - /admin/courses
   - List syllabi
   - Show latest version
@@ -166,13 +165,13 @@ Allow admins to see what’s published.
 🟦 Phase 8.4 — Safety & Guarantees
 🔒 Hard Rules to Enforce
 
-Rule Where
-Approved-only content Builder (7.6)
-Insert-only persistence Store
-Immutable JSON DB + code
-Versioned publishing DB constraint
-No mutation APIs Routes
-Audit preserved Phase 7
+Rule	Where
+Approved-only content	Builder (7.6)
+Insert-only persistence	Store
+Immutable JSON	DB + code
+Versioned publishing	DB constraint
+No mutation APIs	Routes
+Audit preserved	Phase 7
 
 🧪 Final Validation Checklist
 
@@ -194,3 +193,4 @@ Phase 9 — Delivery
 - PDF / Markdown
 - Personalization
 - Monetization
+

@@ -99,46 +99,46 @@ export enum RecoveryAction {
 export const StudentStateSchema = z.object({
   /** Current session ID */
   sessionId: z.string(),
-
+  
   /** Student grade */
   grade: z.number().int().min(1).max(12),
-
+  
   /** Current topic */
   currentTopic: z.string(),
-
+  
   /** Current question/concept (if any) */
   currentItem: z.string().optional(),
-
+  
   /** Time on current item (seconds) */
   timeOnCurrentItem: z.number().min(0),
-
+  
   /** Expected time for this type of item (seconds) */
   expectedTime: z.number().min(0),
-
+  
   /** Retry count on current item */
   retryCount: z.number().int().min(0),
-
+  
   /** Hints used on current item */
   hintsUsed: z.number().int().min(0),
-
+  
   /** Recent answer confidence scores */
   recentConfidences: z.array(z.number().min(0).max(1)),
-
+  
   /** Recent answer correctness */
   recentCorrectness: z.array(z.boolean()),
-
+  
   /** Questions skipped in session */
   skippedCount: z.number().int().min(0),
-
+  
   /** Idle time (seconds since last interaction) */
   idleTime: z.number().min(0),
-
+  
   /** Has student explicitly asked for help? */
   helpRequested: z.boolean(),
-
+  
   /** Session duration so far (seconds) */
   sessionDuration: z.number().min(0),
-
+  
   /** Mood indicator (if captured) */
   mood: z.enum(['motivated', 'focused', 'uncertain', 'anxious', 'neutral']).optional(),
 });
@@ -155,19 +155,19 @@ export type StudentState = z.infer<typeof StudentStateSchema>;
 export const StuckDetectionResultSchema = z.object({
   /** Is student stuck? */
   isStuck: z.boolean(),
-
+  
   /** Detected indicators */
   indicators: z.array(z.nativeEnum(StuckIndicator)),
-
+  
   /** Overall severity */
   severity: z.nativeEnum(StuckSeverity).optional(),
-
+  
   /** Confidence in detection (0-1) */
   confidence: z.number().min(0).max(1),
-
+  
   /** Primary suspected cause */
   primaryCause: z.string().optional(),
-
+  
   /** Detection timestamp */
   detectedAt: z.string().datetime(),
 });
@@ -184,28 +184,28 @@ export type StuckDetectionResult = z.infer<typeof StuckDetectionResultSchema>;
 export const RecoveryPlanSchema = z.object({
   /** Detection that triggered this */
   detection: StuckDetectionResultSchema,
-
+  
   /** Recommended primary action */
   primaryAction: z.nativeEnum(RecoveryAction),
-
+  
   /** Alternative actions if primary doesn't help */
   alternativeActions: z.array(z.nativeEnum(RecoveryAction)),
-
+  
   /** Message to show student (grade-appropriate, encouraging!) */
   studentMessage: z.string().max(300),
-
+  
   /** Action button text */
   actionButtonText: z.string().max(50),
-
+  
   /** Secondary option text (optional) */
   secondaryOption: z.string().max(100).optional(),
-
+  
   /** Should show encouragement? */
   showEncouragement: z.boolean(),
-
+  
   /** Estimated recovery time (seconds) */
   estimatedRecoveryTime: z.number().int().optional(),
-
+  
   /** Track if student dismisses */
   trackDismissal: z.boolean(),
 });

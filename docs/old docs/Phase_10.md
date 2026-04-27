@@ -1,46 +1,38 @@
 # PHASE 10 — Analytics, Insights & Intelligence
 
 ## 🎯 Goal
-
 Turn learner activity into:
-
 - Actionable insights
 - Funnel metrics
 - Course quality signals
 - Monetization intelligence  
-  Do this WITHOUT touching content or generation logic.
+Do this WITHOUT touching content or generation logic.
 
 ## 🔒 Core Rule
-
 Phase 10 observes only. It must never modify:
-
 - CoursePackage
 - Lessons
 - Quizzes
 - Projects
 
 ## 🧩 Architecture
-
 Learner Events → Event Collector → Analytics Store → Dashboards / Reports
 
 ## 📊 What We Measure
 
 ### Learner Engagement
-
-- lesson_viewed
-- lesson_completed
-- quiz_attempted
+- lesson_viewed  
+- lesson_completed  
+- quiz_attempted  
 - quiz_passed
 
 ### Funnel Metrics
-
-- course_view → enroll → complete
+- course_view → enroll → complete  
 - purchase → enroll → completion
 
 ### Quality Signals
-
-- drop-off per lesson
-- quiz failure rate
+- drop-off per lesson  
+- quiz failure rate  
 - time spent per lesson
 
 ## 🧱 Data Model (NEW)
@@ -65,37 +57,31 @@ model AnalyticsEvent {
 ---
 
 ## Phase 10.1 — Event Ingestion
-
 Create a write-only, batched ingestion endpoint.
 
 - Add AnalyticsEvent Prisma model
 - POST /api/analytics/event
-  - Accept batched events
-  - Validate eventType against enum
-  - Fire-and-forget design (write-only)
+    - Accept batched events
+    - Validate eventType against enum
+    - Fire-and-forget design (write-only)
 - Rules: No reads, no business logic
 - Add unit tests
 
 ## Phase 10.2 — Client Event Emitters
-
 Client-side emitters for:
-
 - lesson_viewed
 - lesson_completed
 - quiz_attempted
 - quiz_passed
 
 Requirements:
-
 - Debounced
 - Non-blocking
 - POST → /api/analytics/event
 - No UI changes
 
 ## Phase 10.3 — Aggregation Jobs
-
 Nightly aggregation jobs to compute:
-
 - lesson completion rate
 - average time per lesson
 - course completion %
@@ -103,36 +89,28 @@ Nightly aggregation jobs to compute:
 Store results in an `AnalyticsDailyAggregate` model. Implement as idempotent, testable job (no UI).
 
 ## Phase 10.4 — Admin Analytics APIs
-
 Read-only admin endpoints (aggregated data only):
-
 - GET /api/admin/analytics/course/[courseId]
 - GET /api/admin/analytics/funnel/[courseId]
 
 Rules:
-
 - Return only aggregated data (no raw events)
 - Admin-only access
 - Add tests
 
 ## Phase 10.5 — Analytics Dashboard UI
-
 Admin dashboard pages (read-only):
-
 - Course analytics overview
 - Lesson drop-off chart
 - Funnel visualization
 
 Requirements:
-
 - Use Phase 10.4 APIs
 - Simple chart library
 - No write actions or exports yet
 
 ## Phase 10.6 — Intelligence Signals (Non-AI)
-
 Rule-based signals saved to `AnalyticsSignal`:
-
 - High drop-off lesson
 - Low quiz pass rate
 - High refund rate (approximate until explicit refunds available)
@@ -142,7 +120,6 @@ No AI suggestions yet. Add unit tests.
 ---
 
 ## ✅ Outcomes (Phase 10 Completed)
-
 - Full analytics pipeline (ingest → aggregate → surface)
 - Monetization insights decoupled from content
 - Course quality signals persisted
@@ -150,7 +127,6 @@ No AI suggestions yet. Add unit tests.
 - AI-ready intelligence layer (non-generative signals)
 
 ## 🚧 Pending / Recommended
-
 - Schedule nightly aggregator and signals worker (cron/orchestrator)
 - Add admin read API for AnalyticsSignal and surface alerts in dashboard
 - Replace purchase→enrollment refund heuristic with explicit refunds
@@ -161,27 +137,25 @@ No AI suggestions yet. Add unit tests.
 - Improve admin UX (time-range, course picker, pagination, drilldowns)
 
 ## Suggestions / Next Steps (prioritized)
-
-1. Add admin read API for AnalyticsSignal (high impact).
-2. Schedule nightly aggregator + signals worker + monitoring (operational critical).
-3. Implement retention policy and DB indexes for scaling.
-4. Replace refund heuristic and convert eventType to enum safely.
+1. Add admin read API for AnalyticsSignal (high impact).  
+2. Schedule nightly aggregator + signals worker + monitoring (operational critical).  
+3. Implement retention policy and DB indexes for scaling.  
+4. Replace refund heuristic and convert eventType to enum safely.  
 5. Iterate dashboard to use per-lesson aggregates.
 
 ---
 
 ## 🚦 What Comes After Phase 10 (Preview)
 
-| Phase | Focus                            |
-| ----- | -------------------------------- |
+| Phase | Focus                         |
+|-------|-------------------------------|
 | 11    | Personalization (non-generative) |
-| 12    | AI Tutor (safe, scoped)          |
-| 13    | Marketplace & creators           |
-| 14    | Adaptive learning                |
+| 12    | AI Tutor (safe, scoped)       |
+| 13    | Marketplace & creators        |
+| 14    | Adaptive learning             |
 
 ## 🔥 Final Advice
-
-- Content is immutable. Analytics is observational. Monetization is decoupled. AI is boxed and audited.
+- Content is immutable. Analytics is observational. Monetization is decoupled. AI is boxed and audited.  
 - Do not let shortcuts compromise the architecture.
 
 ---
@@ -191,7 +165,6 @@ No AI suggestions yet. Add unit tests.
 **Intention:** Build a read-only, observational analytics pipeline to collect learner events, aggregate metrics for admins, and produce rule-based intelligence signals — without modifying content or generation logic.
 
 **Achieved:**
-
 - Event ingestion endpoint (batched, validated, write-only) with tests.
 - Debounced, non-blocking client emitters.
 - Nightly-style aggregator that upserts into `AnalyticsDailyAggregate` with tests.
@@ -201,10 +174,10 @@ No AI suggestions yet. Add unit tests.
 - Tests updated to use test DB/session injection pattern for reliability.
 
 **Next operational tasks:**
-
 - Wire aggregator and signals into scheduler/cron.
 - Expose admin APIs for signals.
 - Implement retention, improve refund metric fidelity, and convert eventType to enum in a migration.
+
 
 ✅ Phase 10 Status — FINAL VERDICT
 ✔ What Phase 10 already achieved (this is important)
@@ -318,7 +291,6 @@ Create a new server-side job runner for analytics aggregation and signals.
 File: src/jobs/analyticsJobs.ts
 
 Responsibilities:
-
 - Export a single async function runAnalyticsJobs()
 - Inside it:
   1. Call analyticsAggregator.runForAllCourses()
@@ -331,27 +303,25 @@ Responsibilities:
   { success: boolean, durationMs: number, error?: string }
 
 Constraints:
-
 - No DB writes except those performed by the called functions
 - No content mutation
 - No direct Prisma import; use injected db or shared helper pattern
 
-  10.J2 — Non-overlapping Execution Guard
-  Prompt to Copilot
-  Add a non-overlapping execution guard for analytics jobs.
+10.J2 — Non-overlapping Execution Guard
+Prompt to Copilot
+Add a non-overlapping execution guard for analytics jobs.
 
 Approach:
-
 - Create src/jobs/jobLock.ts
 - Implement acquireJobLock(jobName: string, ttlMs: number)
 - Implement releaseJobLock(jobName: string)
 - Use Prisma with a JobLock table OR reuse an existing lock mechanism if present
 
 Rules:
-
 - If a lock exists and is not expired, abort execution gracefully
 - Do not throw; return { skipped: true, reason: "locked" }
 - Ensure lock auto-expires if process crashes
+
 
 (If no JobLock table exists, Copilot should add it via Prisma with minimal fields: jobName, lockedUntil.)
 
@@ -360,7 +330,6 @@ Prompt to Copilot
 Add audit logging for analytics job runs.
 
 For each run of runAnalyticsJobs():
-
 - Write a non-blocking audit entry with:
   action: "ANALYTICS_JOB_RUN"
   status: SUCCESS | FAILED | SKIPPED
@@ -369,29 +338,26 @@ For each run of runAnalyticsJobs():
 - Reuse existing audit log helper (do not invent new infra)
 - Audit failure must NEVER block job completion
 
-  10.J4 — Scheduler Hook
-  Prompt to Copilot
-  Wire analytics jobs into the existing scheduler / orchestrator.
+10.J4 — Scheduler Hook
+Prompt to Copilot
+Wire analytics jobs into the existing scheduler / orchestrator.
 
 Options (pick what exists):
-
 - If cron-based: add a nightly cron entry
 - If serverless scheduled job: add handler
 - If GitHub Actions (temporary): nightly workflow calling the job
 
 Rules:
-
 - Frequency: once per day (UTC or system timezone)
 - Ensure job lock is checked before execution
 - Ensure logs are emitted for start/end
 - No retries yet (fail fast, observable)
 
-  10.J5 — Minimal Monitoring Signal
-  Prompt to Copilot
-  Add minimal observability for analytics jobs.
+10.J5 — Minimal Monitoring Signal
+Prompt to Copilot
+Add minimal observability for analytics jobs.
 
 Requirements:
-
 - Log structured JSON:
   { job: "analytics", status, durationMs }
 - Increment a simple counter (if metrics infra exists)
@@ -410,8 +376,8 @@ No new write paths to content tables
 
 ➡️ Once done: Phase 10 is officially “LIVE”
 
-# Phase 10 — implementation Summary
 
+# Phase 10 — implementation Summary
 Intended
 Lock: Add non-overlapping job lock for analytics runs (DB-backed JobLock).
 Implementation: Create jobLock.ts and use in analyticsJobs.ts.
@@ -426,7 +392,7 @@ Job runner: Updated analyticsJobs.ts to use the lock, write non-blocking audit e
 Orchestrator: Scheduling hook added in orchestrator.ts (env-controlled).
 Metrics: Added analytics_job_runs_total counter and incAnalyticsJobRun() in metrics-server.ts.
 Tests: Added analyticsJobs.test.ts and fixed related tests; full test suite passed (32 suites, 82 tests).
-Lint/TS: Replaced problematic console.\* usages with project logger and fixed TS typing issues.
+Lint/TS: Replaced problematic console.* usages with project logger and fixed TS typing issues.
 Pending
 DB migration: Apply Prisma migration so JobLock exists in the running DB.
 Integration tests (optional): Run job runner end-to-end against a migrated test/staging DB.

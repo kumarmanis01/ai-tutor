@@ -22,7 +22,9 @@ import ChapterMasteryBars, {
   type SubjectMasteryData,
   type ChapterRow,
 } from '@/components/student/progress/ChapterMasteryBars';
-import TestScoreHistory, { type SessionRow } from '@/components/student/progress/TestScoreHistory';
+import TestScoreHistory, {
+  type SessionRow,
+} from '@/components/student/progress/TestScoreHistory';
 import Link from 'next/link';
 import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 
@@ -114,7 +116,7 @@ export default async function SubjectProgressPage({ params }: Props) {
     });
 
     const masteryByConceptId = new Map<string, number>(
-      conceptStates.map((s) => [s.conceptId, s.masteryScore])
+      conceptStates.map((s) => [s.conceptId, s.masteryScore]),
     );
 
     const conceptsByChapter = new Map<string, string[]>();
@@ -163,7 +165,7 @@ export default async function SubjectProgressPage({ params }: Props) {
       score: typeof rawScore === 'number' ? Math.round(rawScore) : null,
       durationMin: Math.max(
         0,
-        Math.round((s.completedAt!.getTime() - s.startedAt.getTime()) / 60_000)
+        Math.round((s.completedAt!.getTime() - s.startedAt.getTime()) / 60_000),
       ),
     };
   });

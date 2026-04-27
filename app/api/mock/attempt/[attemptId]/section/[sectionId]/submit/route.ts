@@ -20,7 +20,7 @@ type Answer = { questionId: string; answer: string; timeSpentSeconds?: number };
  */
 export async function POST(
   req: Request,
-  { params }: { params: { attemptId: string; sectionId: string } }
+  { params }: { params: { attemptId: string; sectionId: string } },
 ) {
   const start = Date.now();
   const session = await getServerSessionForHandlers();

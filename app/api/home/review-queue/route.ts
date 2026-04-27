@@ -79,7 +79,7 @@ export async function GET(req: Request) {
         chapter: p.topic.chapter.name,
         mastery: p.mastery,
         daysSinceStudied: Math.floor(
-          (now.getTime() - new Date(p.lastStudiedAt).getTime()) / (1000 * 60 * 60 * 24)
+          (now.getTime() - new Date(p.lastStudiedAt).getTime()) / (1000 * 60 * 60 * 24),
         ),
       }));
 

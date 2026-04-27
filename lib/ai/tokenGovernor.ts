@@ -29,18 +29,18 @@ export interface TokenBudget {
 }
 
 const GRADE_BUDGETS: Record<string, { min: number; max: number; model: string }> = {
-  junior: { min: 300, max: 500, model: 'gpt-4o-mini' }, // Grade 1-3
-  middle: { min: 600, max: 900, model: 'gpt-4o-mini' }, // Grade 4-6
-  upper: { min: 900, max: 1200, model: 'gpt-4o' }, // Grade 7-8
-  senior: { min: 1200, max: 1600, model: 'gpt-4o' }, // Grade 9-10
-  recovery: { min: 150, max: 300, model: 'gpt-4o-mini' }, // Recovery tasks
+  'junior':   { min: 300,  max: 500,  model: 'gpt-4o-mini' },   // Grade 1-3
+  'middle':   { min: 600,  max: 900,  model: 'gpt-4o-mini' },   // Grade 4-6
+  'upper':    { min: 900,  max: 1200, model: 'gpt-4o' },        // Grade 7-8
+  'senior':   { min: 1200, max: 1600, model: 'gpt-4o' },        // Grade 9-10
+  'recovery': { min: 150,  max: 300,  model: 'gpt-4o-mini' },   // Recovery tasks
 };
 
 // Feature-level overrides (daily_task, parent_report use smaller budgets)
 const FEATURE_BUDGET_OVERRIDES: Record<string, { maxMultiplier: number; forceModel?: string }> = {
-  daily_task: { maxMultiplier: 0.8 }, // 80% of grade budget
-  parent_report: { maxMultiplier: 0.6, forceModel: 'gpt-4o-mini' }, // Always cheap
-  recovery_task: { maxMultiplier: 0.5, forceModel: 'gpt-4o-mini' }, // Ultra cheap
+  'daily_task':     { maxMultiplier: 0.8 },             // 80% of grade budget
+  'parent_report':  { maxMultiplier: 0.6, forceModel: 'gpt-4o-mini' }, // Always cheap
+  'recovery_task':  { maxMultiplier: 0.5, forceModel: 'gpt-4o-mini' }, // Ultra cheap
 };
 
 // Monthly cost ceiling per student (₹40 ≈ $0.48 at ₹83/$)
@@ -77,7 +77,7 @@ export function resolveTokenBudget(grade: number, feature?: string): TokenBudget
 export function enforceTokenCeiling(
   prompt: string,
   grade: number,
-  feature?: string
+  feature?: string,
 ): { prompt: string; budget: TokenBudget; truncated: boolean } {
   const budget = resolveTokenBudget(grade, feature);
 
@@ -125,7 +125,9 @@ export function enforceTokenCeiling(
  * Check if a student has exceeded their monthly token cost ceiling.
  * Returns true if within budget, false if exceeded.
  */
-export function isWithinMonthlyCeiling(monthlySpendUsd: number): boolean {
+export function isWithinMonthlyCeiling(
+  monthlySpendUsd: number,
+): boolean {
   return monthlySpendUsd < MONTHLY_COST_CEILING_USD;
 }
 
@@ -135,7 +137,7 @@ export function isWithinMonthlyCeiling(monthlySpendUsd: number): boolean {
 export function selectCheapestModel(
   grade: number,
   monthlySpendUsd: number,
-  feature?: string
+  feature?: string,
 ): string {
   const budget = resolveTokenBudget(grade, feature);
 
@@ -156,8 +158,8 @@ export function estimateRequestCost(grade: number, feature?: string): number {
 
   // Pricing per 1M tokens
   const pricing: Record<string, { input: number; output: number }> = {
-    'gpt-4o-mini': { input: 0.15, output: 0.6 },
-    'gpt-4o': { input: 2.5, output: 10.0 },
+    'gpt-4o-mini': { input: 0.15, output: 0.60 },
+    'gpt-4o':      { input: 2.50, output: 10.00 },
   };
 
   const modelPrice = pricing[budget.model] || pricing['gpt-4o-mini'];
@@ -166,8 +168,8 @@ export function estimateRequestCost(grade: number, feature?: string): number {
   const inputTokens = Math.round(budget.maxTokens * 0.4);
   const outputTokens = Math.round(budget.maxTokens * 0.6);
 
-  const cost =
-    (inputTokens * modelPrice.input) / 1_000_000 + (outputTokens * modelPrice.output) / 1_000_000;
+  const cost = (inputTokens * modelPrice.input / 1_000_000) +
+               (outputTokens * modelPrice.output / 1_000_000);
 
   return cost;
 }

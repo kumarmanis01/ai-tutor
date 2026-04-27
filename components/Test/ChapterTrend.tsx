@@ -1,4 +1,4 @@
-'use client';
+"use client";
 /**
  * FILE OBJECTIVE:
  * - Client-side component that fetches per-chapter practice test score history
@@ -27,12 +27,7 @@ interface Props {
   showSkeleton?: boolean;
 }
 
-export default function ChapterTrend({
-  chapter,
-  subject,
-  className = '',
-  showSkeleton = false,
-}: Props) {
+export default function ChapterTrend({ chapter, subject, className = '', showSkeleton = false }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TrendPoint[]>([]);
@@ -52,10 +47,7 @@ export default function ChapterTrend({
         if (!res.ok) throw new Error(json?.error || 'Failed to load trend');
 
         const rows = Array.isArray(json?.data) ? json.data : [];
-        const points: TrendPoint[] = rows.map((r: any) => ({
-          date: r.date,
-          score: Math.round(r.score),
-        }));
+        const points: TrendPoint[] = rows.map((r: any) => ({ date: r.date, score: Math.round(r.score) }));
         if (mounted) setData(points);
       } catch (err: unknown) {
         if (!mounted) return;

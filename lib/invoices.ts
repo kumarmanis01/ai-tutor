@@ -38,9 +38,5 @@ export type InvoiceResult = { invoiceNumber: number; pdfBuffer: Buffer; fileUrl?
 // resolve './invoices' back to this file itself (circular self-reference).
 // Use `export type` for type-only re-exports to satisfy `isolatedModules`.
 export type { InvoiceCreateOpts } from './invoices/index';
-export {
-  generateInvoicePdf,
-  createInvoiceForPayment,
-  generateAnnualInvoicesPdf,
-} from './invoices/index';
+export { generateInvoicePdf, createInvoiceForPayment, generateAnnualInvoicesPdf } from './invoices/index';
 export { default } from './invoices/index';

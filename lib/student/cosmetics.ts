@@ -83,7 +83,7 @@ export function eligibleCosmetics(currentStreak: number): CosmeticItem[] {
  */
 export async function unlockCosmeticsForStreak(
   studentId: string,
-  currentStreak: number
+  currentStreak: number,
 ): Promise<string[]> {
   try {
     const eligible = eligibleCosmetics(currentStreak);

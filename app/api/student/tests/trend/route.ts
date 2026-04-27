@@ -54,10 +54,10 @@ export async function GET(req: Request) {
             },
           }
         : chapter
-          ? { question: { chapter: { equals: chapter, mode: 'insensitive' as const } } }
-          : subject
-            ? { question: { subject: { equals: subject, mode: 'insensitive' as const } } }
-            : { question: { chapter: { not: null } } };
+        ? { question: { chapter: { equals: chapter, mode: 'insensitive' as const } } }
+        : subject
+        ? { question: { subject: { equals: subject, mode: 'insensitive' as const } } }
+        : { question: { chapter: { not: null } } };
 
     const rows = await prisma.testResult.findMany({
       where: {
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
     logger.error('TestsTrendAPI GET error', { error: message });
     res = NextResponse.json(
       { error: 'Could not load trend data. Please try again.' },
-      { status: 500 }
+      { status: 500 },
     );
     logger.logAPI(req, res, { className: 'TestsTrendAPI', methodName: 'GET' }, start);
     return res;

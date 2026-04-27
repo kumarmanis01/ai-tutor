@@ -1,4 +1,4 @@
-'use client';
+"use client";
 /**
  * AI CONTENT ENGINE NOTICE:
  * - Job-based execution only
@@ -10,7 +10,7 @@
 
 import useSWR from 'swr';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function AuditLogsIndexPage() {
   const { data, error } = useSWR('/api/admin/content-engine/audit-logs', fetcher);
@@ -34,20 +34,13 @@ export default function AuditLogsIndexPage() {
           </thead>
           <tbody>
             {data.logs?.length === 0 && (
-              <tr>
-                <td colSpan={5} className="text-center p-4">
-                  No audit logs found.
-                </td>
-              </tr>
+              <tr><td colSpan={5} className="text-center p-4">No audit logs found.</td></tr>
             )}
             {data.logs?.map((log: any) => (
               <tr key={log.id} className="border-b">
                 <td className="px-3 py-2 border">{log.action}</td>
                 <td className="px-3 py-2 border">{log.adminEmail || log.adminId}</td>
-                <td className="px-3 py-2 border">
-                  {log.entityType}
-                  {log.entityId ? `: ${log.entityId}` : ''}
-                </td>
+                <td className="px-3 py-2 border">{log.entityType}{log.entityId ? `: ${log.entityId}` : ''}</td>
                 <td className="px-3 py-2 border">{log.comment || '-'}</td>
                 <td className="px-3 py-2 border">{new Date(log.createdAt).toLocaleString()}</td>
               </tr>

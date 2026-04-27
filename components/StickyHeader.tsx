@@ -1,20 +1,3 @@
-/**
- * FILE OBJECTIVE:
- * - Sticky top navigation bar for all public/marketing routes. Includes
- *   desktop nav links (How It Works, Pricing, FAQ, For Schools), mobile
- *   hamburger menu, and auth-aware CTA button.
- *
- * LINKED UNIT TEST:
- * - tests/unit/components/StickyHeader.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
- * EDIT LOG:
- * - 2026-04-24T00:00:00Z | copilot | LP-1.1: add For Schools link, mobile hamburger menu, fix CTA to Tangerine #FF6B35
- * - 2026-04-24T12:00:00Z | copilot | PR review: convert nav buttons to Links (href="/#section") so they work on non-landing pages
- */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -23,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import Logo from '@/components/Logo';
 import { normalizeToCode } from '@/components/LanguageSelector';
 import { logger } from '@/lib/logger';
+
 
 interface NavigationItem {
   id: string;
@@ -53,22 +37,11 @@ const navigationItems: NavigationItem[] = [
     description: 'Transparent pricing comparison',
   },
   {
-    id: 'faq',
-    labelEn: 'FAQ',
-    labelHi: 'सामान्य प्रश्न',
-    target: '#faq',
-    description: 'Frequently asked questions',
-  },
-];
-
-// Desktop-only nav link (not shown in mobile hamburger menu)
-const desktopOnlyNavItems: NavigationItem[] = [
-  {
-    id: 'for-schools',
-    labelEn: 'For Schools',
-    labelHi: 'स्कूलों के लिए',
-    target: '#schools',
-    description: 'Partner with us for school programmes',
+    id: 'success-stories',
+    labelEn: 'Success Stories',
+    labelHi: 'सफलता की कहानियां',
+    target: '#testimonials',
+    description: 'Real parent testimonials',
   },
 ];
 
@@ -82,13 +55,9 @@ const CODE_TO_PLAIN: Record<string, string> = {
   es: 'Spanish',
 };
 
-const StickyHeader = ({
-  activeSection = '',
-  onSectionChange: _onSectionChange,
-}: StickyHeaderProps) => {
+const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [_lang, setLang] = useState<string>('English');
   // TODO Phase 2: re-add language toggle when Hindi content is live
 
@@ -103,15 +72,14 @@ const StickyHeader = ({
 
   // Initialize language state from canonical code stored in localStorage.
   useEffect(() => {
-    try {
-      const stored =
-        typeof window !== 'undefined' ? localStorage.getItem('ai-tutor:preferredLang') : null;
+        try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('ai-tutor:preferredLang') : null;
       if (stored) {
         const s = String(stored).trim();
         const low = s.toLowerCase();
         // handle direct codes and 'auto'
         if (low === 'auto') {
-          const browser = typeof navigator !== 'undefined' ? navigator.language || 'en' : 'en';
+          const browser = typeof navigator !== 'undefined' ? (navigator.language || 'en') : 'en';
           const base = String(browser).split('-')[0].toLowerCase();
           setLang(CODE_TO_PLAIN[base] ?? 'English');
           return;
@@ -140,10 +108,18 @@ const StickyHeader = ({
         const t = (navigator.language || '').toLowerCase();
         if (t.startsWith('hi')) setLang('Hindi');
       }
-    } catch (err) {
+        } catch (err) {
       logger?.warn?.('StickyHeader: failed to read preferred language', { error: err });
     }
   }, []);
+
+  const handleSmoothScroll = (target: string, id: string) => {
+    const element = document.querySelector(target);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      onSectionChange?.(id);
+    }
+  };
 
   return (
     <>
@@ -162,21 +138,15 @@ const StickyHeader = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             >
-              <span className="hidden sm:flex">
-                <Logo variant="navbar" />
-              </span>
-              <span className="flex sm:hidden">
-                <Logo variant="navbar-mobile" />
-              </span>
+              <span className="hidden sm:flex"><Logo variant="navbar" /></span>
+              <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
             </Link>
 
-            {/* Desktop navigation */}
             <nav className="hidden lg:flex items-center gap-8">
               {navigationItems.map((item) => (
-                // Link to /#section so navigation works from any public route, not just the landing page
-                <Link
+                <button
                   key={item.id}
-                  href={`/${item.target}`}
+                  onClick={() => handleSmoothScroll(item.target, item.id)}
                   className={`font-body font-medium text-sm transition-colors hover:text-primary relative group ${
                     activeSection === item.id ? 'text-primary' : 'text-foreground'
                   }`}
@@ -186,18 +156,7 @@ const StickyHeader = ({
                   {activeSection === item.id && (
                     <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
                   )}
-                </Link>
-              ))}
-              {/* For Schools -- desktop only */}
-              {desktopOnlyNavItems.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/${item.target}`}
-                  className="font-body font-medium text-sm text-foreground transition-colors hover:text-primary"
-                  title={item.description}
-                >
-                  {item.labelEn}
-                </Link>
+                </button>
               ))}
             </nav>
 
@@ -212,74 +171,18 @@ const StickyHeader = ({
                 </Link>
               )}
 
-              {/* Start Free CTA -- Tangerine #FF6B35 per LP-1.1 spec */}
+              {/* Start Free -- navigates directly to /auth/signup */}
               <Link
                 href="/auth/signup"
-                className="px-4 py-2 md:px-6 md:py-2.5 min-h-[44px] flex items-center bg-[#FF6B35] hover:bg-[#e85f2a] text-white rounded-lg text-sm font-semibold transition-colors"
+                className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                Start Free
+                Get started
               </Link>
-
-              {/* Hamburger -- mobile only */}
-              <button
-                className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-md text-foreground hover:bg-muted transition-colors"
-                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={mobileMenuOpen}
-                onClick={() => setMobileMenuOpen((prev) => !prev)}
-              >
-                {mobileMenuOpen ? (
-                  /* X icon */
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  /* Hamburger icon */
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                )}
-              </button>
             </div>
           </div>
         </div>
-
-        {/* Mobile dropdown menu */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-background border-t border-border shadow-lg">
-            <nav className="mx-auto px-4 py-4 flex flex-col gap-1">
-              {navigationItems.map((item) => (
-                // Link to /#section so navigation works from any public route, not just the landing page
-                <Link
-                  key={item.id}
-                  href={`/${item.target}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-left w-full px-4 py-3 min-h-[44px] rounded-md font-body font-medium text-sm text-foreground hover:bg-muted hover:text-primary transition-colors block"
-                >
-                  {item.labelEn}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        )}
       </header>
+
     </>
   );
 };

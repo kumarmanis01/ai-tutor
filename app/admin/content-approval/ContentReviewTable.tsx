@@ -1,26 +1,26 @@
-'use client';
+'use client'
 
-import React, { useState, useTransition, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useTransition, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 
 // ---------------------------------------------------------------------------
 // Types (shared with page.tsx)
 // ---------------------------------------------------------------------------
 
-export type ReviewItemType = 'chapter' | 'topic' | 'note' | 'test';
+export type ReviewItemType = 'chapter' | 'topic' | 'note' | 'test'
 
 export interface ReviewItemData {
-  id: string;
-  type: ReviewItemType;
-  subjectName: string;
-  boardName: string;
-  grade: number;
-  chapterName: string | null;
-  topicName: string | null;
-  preview: string;
-  language: string | null;
-  difficulty: string | null;
-  createdAt: string;
+  id: string
+  type: ReviewItemType
+  subjectName: string
+  boardName: string
+  grade: number
+  chapterName: string | null
+  topicName: string | null
+  preview: string
+  language: string | null
+  difficulty: string | null
+  createdAt: string
 }
 
 // ---------------------------------------------------------------------------
@@ -31,34 +31,28 @@ type PreviewState =
   | { phase: 'idle' }
   | { phase: 'loading'; id: string; type: ReviewItemType }
   | { phase: 'loaded'; data: Record<string, unknown> }
-  | { phase: 'error'; message: string };
+  | { phase: 'error'; message: string }
 
 function NoteContentBlock({ contentJson }: { contentJson: unknown }) {
   if (!contentJson || typeof contentJson !== 'object') {
-    return <p className="text-[11px] text-gray-500 italic">No content</p>;
+    return <p className="text-[11px] text-gray-500 italic">No content</p>
   }
-  const obj = contentJson as Record<string, unknown>;
+  const obj = contentJson as Record<string, unknown>
   // Render top-level sections. Support both legacy shape (heading/body)
   // and VidyaNotesSchema shape (title/content/blackboardNotes).
-  const sections = obj.sections as Array<Record<string, unknown>> | undefined;
+  const sections = obj.sections as Array<Record<string, unknown>> | undefined
   if (sections && Array.isArray(sections)) {
     return (
       <div className="space-y-3">
         {sections.map((s, i) => {
-          const title = (s && (s.heading ?? s.title ?? s.type)) as string | undefined;
-          const body = (s && (s.body ?? s.content ?? s.text ?? s.explanation)) as
-            | string
-            | undefined;
-          const blackboard = (s && (s.blackboardNotes ?? s.blackboard ?? s.notes)) as
-            | string[]
-            | undefined;
+          const title = (s && (s.heading ?? s.title ?? s.type)) as string | undefined
+          const body = (s && (s.body ?? s.content ?? s.text ?? s.explanation)) as string | undefined
+          const blackboard = (s && (s.blackboardNotes ?? s.blackboard ?? s.notes)) as string[] | undefined
 
           return (
             <div key={i}>
               {title && <p className="text-[11px] font-semibold text-gray-700">{String(title)}</p>}
-              {body && (
-                <p className="text-[11px] text-gray-600 whitespace-pre-wrap">{String(body)}</p>
-              )}
+              {body && <p className="text-[11px] text-gray-600 whitespace-pre-wrap">{String(body)}</p>}
               {Array.isArray(blackboard) && blackboard.length > 0 && (
                 <ul className="mt-1 ml-3 list-disc list-inside text-[11px] text-gray-600">
                   {blackboard.map((b, bi) => (
@@ -67,37 +61,46 @@ function NoteContentBlock({ contentJson }: { contentJson: unknown }) {
                 </ul>
               )}
             </div>
-          );
+          )
         })}
       </div>
-    );
+    )
   }
   // Fallback: render raw JSON
   return (
     <pre className="text-[10px] text-gray-500 whitespace-pre-wrap bg-gray-50 rounded p-2 max-h-48 overflow-y-auto">
       {JSON.stringify(contentJson, null, 2)}
     </pre>
-  );
+  )
 }
 
-function PreviewModal({ state, onClose }: { state: PreviewState; onClose: () => void }) {
+function PreviewModal({
+  state,
+  onClose,
+}: {
+  state: PreviewState
+  onClose: () => void
+}) {
   // Close on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onClose()
     }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
-  if (state.phase === 'idle') return null;
+  if (state.phase === 'idle') return null
 
-  const data = state.phase === 'loaded' ? state.data : null;
+  const data = state.phase === 'loaded' ? state.data : null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40"
+        onClick={onClose}
+      />
       {/* Panel */}
       <div className="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Header */}
@@ -135,7 +138,9 @@ function PreviewModal({ state, onClose }: { state: PreviewState; onClose: () => 
               {/* Breadcrumb */}
               <div>
                 <p className="text-[10px] text-gray-400">
-                  {[data.subject, data.chapter, data.topic].filter(Boolean).join(' / ')}
+                  {[data.subject, data.chapter, data.topic]
+                    .filter(Boolean)
+                    .join(' / ')}
                 </p>
                 <p className="text-[10px] text-gray-400">
                   {String(data.board ?? '')} &middot; Grade {String(data.grade ?? '')}
@@ -172,22 +177,19 @@ function PreviewModal({ state, onClose }: { state: PreviewState; onClose: () => 
                   <p className="text-[11px] font-medium text-gray-600 mb-1.5">
                     Notes ({(data.notes as unknown[]).length})
                   </p>
-                  {(data.notes as Array<{ title: string; language: string; status: string }>)
-                    .length === 0 ? (
-                    <p className="text-[11px] text-gray-400 italic">No notes generated yet</p>
-                  ) : (
-                    <ul className="space-y-1">
-                      {(
-                        data.notes as Array<{ title: string; language: string; status: string }>
-                      ).map((n, i) => (
-                        <li key={i} className="flex items-center gap-2 text-[11px] text-gray-700">
-                          <span className="flex-1">{n.title}</span>
-                          <span className="text-[9px] text-gray-400 uppercase">{n.language}</span>
-                          <span className="text-[9px] text-gray-400 capitalize">{n.status}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  {(data.notes as Array<{ title: string; language: string; status: string }>).length === 0
+                    ? <p className="text-[11px] text-gray-400 italic">No notes generated yet</p>
+                    : (
+                      <ul className="space-y-1">
+                        {(data.notes as Array<{ title: string; language: string; status: string }>).map((n, i) => (
+                          <li key={i} className="flex items-center gap-2 text-[11px] text-gray-700">
+                            <span className="flex-1">{n.title}</span>
+                            <span className="text-[9px] text-gray-400 uppercase">{n.language}</span>
+                            <span className="text-[9px] text-gray-400 capitalize">{n.status}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                 </div>
               )}
 
@@ -206,15 +208,13 @@ function PreviewModal({ state, onClose }: { state: PreviewState; onClose: () => 
                     Questions ({(data.questions as unknown[]).length})
                   </p>
                   <ol className="space-y-4">
-                    {(
-                      data.questions as Array<{
-                        type: string;
-                        question: string;
-                        options: unknown;
-                        answer: string;
-                        explanation: string | null;
-                      }>
-                    ).map((q, i) => (
+                    {(data.questions as Array<{
+                      type: string
+                      question: string
+                      options: unknown
+                      answer: string
+                      explanation: string | null
+                    }>).map((q, i) => (
                       <li key={i} className="border border-gray-100 rounded-lg p-3 space-y-2">
                         <p className="text-[11px] font-medium text-gray-700">
                           {i + 1}. {q.question}
@@ -228,7 +228,9 @@ function PreviewModal({ state, onClose }: { state: PreviewState; onClose: () => 
                             ))}
                           </ul>
                         )}
-                        <p className="text-[10px] text-[#1D9E75] font-medium">Answer: {q.answer}</p>
+                        <p className="text-[10px] text-[#1D9E75] font-medium">
+                          Answer: {q.answer}
+                        </p>
                         {q.explanation && (
                           <p className="text-[10px] text-gray-500 italic">{q.explanation}</p>
                         )}
@@ -242,7 +244,7 @@ function PreviewModal({ state, onClose }: { state: PreviewState; onClose: () => 
         </div>
       </div>
     </div>
-  );
+  )
 }
 // ---------------------------------------------------------------------------
 // Helpers
@@ -253,14 +255,14 @@ const TYPE_LABELS: Record<ReviewItemType, string> = {
   topic: 'Topic',
   note: 'Note',
   test: 'Test',
-};
+}
 
 const TYPE_COLORS: Record<ReviewItemType, string> = {
   chapter: 'bg-[#E6F1FB] text-[#0C447C]',
-  topic: 'bg-[#FAEEDA] text-[#633806]',
-  note: 'bg-[#EAF3DE] text-[#27500A]',
-  test: 'bg-[#EEEDFE] text-[#3C3489]',
-};
+  topic:   'bg-[#FAEEDA] text-[#633806]',
+  note:    'bg-[#EAF3DE] text-[#27500A]',
+  test:    'bg-[#EEEDFE] text-[#3C3489]',
+}
 
 // ---------------------------------------------------------------------------
 // Action handler
@@ -271,10 +273,10 @@ async function approveItem(id: string, type: ReviewItemType, action: 'approve' |
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, type, action }),
-  });
+  })
   if (!r.ok) {
-    const data = await r.json().catch(() => ({}));
-    throw new Error(data.error ?? 'Request failed');
+    const data = await r.json().catch(() => ({}))
+    throw new Error(data.error ?? 'Request failed')
   }
 }
 
@@ -287,44 +289,39 @@ function ReviewRow({
   onRefresh,
   onPreview,
 }: {
-  item: ReviewItemData;
-  onRefresh: () => void;
-  onPreview: (id: string, type: ReviewItemType) => void;
+  item: ReviewItemData
+  onRefresh: () => void
+  onPreview: (id: string, type: ReviewItemType) => void
 }) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
   async function act(action: 'approve' | 'reject') {
-    setBusy(true);
-    setErr(null);
+    setBusy(true)
+    setErr(null)
     try {
-      await approveItem(item.id, item.type, action);
-      onRefresh();
+      await approveItem(item.id, item.type, action)
+      onRefresh()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Error');
+      setErr(e instanceof Error ? e.message : 'Error')
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
   const breadcrumb = [item.subjectName, item.chapterName, item.topicName]
     .filter(Boolean)
-    .join(' / ');
+    .join(' / ')
 
   return (
     <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 last:border-0">
       <td className="px-3 py-2.5">
-        <span
-          className={`inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${TYPE_COLORS[item.type]}`}
-        >
+        <span className={`inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${TYPE_COLORS[item.type]}`}>
           {TYPE_LABELS[item.type]}
         </span>
       </td>
       <td className="px-3 py-2.5">
-        <p
-          className="text-[11px] text-gray-700 dark:text-gray-300 max-w-[180px] truncate"
-          title={breadcrumb}
-        >
+        <p className="text-[11px] text-gray-700 dark:text-gray-300 max-w-[180px] truncate" title={breadcrumb}>
           {breadcrumb}
         </p>
         <p className="text-[10px] text-gray-400">
@@ -367,7 +364,7 @@ function ReviewRow({
         </div>
       </td>
     </tr>
-  );
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -375,133 +372,123 @@ function ReviewRow({
 // ---------------------------------------------------------------------------
 
 export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
-  const [typeFilter, setTypeFilter] = useState<ReviewItemType | 'all'>('all');
-  const [subjectFilter, setSubjectFilter] = useState('all');
-  const [bulkBusy, setBulkBusy] = useState(false);
-  const [previewState, setPreviewState] = useState<PreviewState>({ phase: 'idle' });
+  const router = useRouter()
+  const [, startTransition] = useTransition()
+  const [typeFilter, setTypeFilter] = useState<ReviewItemType | 'all'>('all')
+  const [subjectFilter, setSubjectFilter] = useState('all')
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [previewState, setPreviewState] = useState<PreviewState>({ phase: 'idle' })
 
   function refresh() {
-    startTransition(() => router.refresh());
+    startTransition(() => router.refresh())
   }
 
   const openPreview = useCallback(async (id: string, type: ReviewItemType) => {
-    setPreviewState({ phase: 'loading', id, type });
+    setPreviewState({ phase: 'loading', id, type })
     try {
-      const r = await fetch(`/api/admin/content-approval/preview?type=${type}&id=${id}`);
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? 'Failed');
-      setPreviewState({ phase: 'loaded', data });
+      const r = await fetch(`/api/admin/content-approval/preview?type=${type}&id=${id}`)
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.error ?? 'Failed')
+      setPreviewState({ phase: 'loaded', data })
     } catch (e) {
-      setPreviewState({ phase: 'error', message: e instanceof Error ? e.message : 'Error' });
+      setPreviewState({ phase: 'error', message: e instanceof Error ? e.message : 'Error' })
     }
-  }, []);
+  }, [])
 
-  const closePreview = useCallback(() => setPreviewState({ phase: 'idle' }), []);
+  const closePreview = useCallback(() => setPreviewState({ phase: 'idle' }), [])
 
-  const subjects = [...new Set(items.map((i) => i.subjectName))].sort();
+  const subjects = [...new Set(items.map(i => i.subjectName))].sort()
 
-  const visible = items.filter((i) => {
-    if (typeFilter !== 'all' && i.type !== typeFilter) return false;
-    if (subjectFilter !== 'all' && i.subjectName !== subjectFilter) return false;
-    return true;
-  });
+  const visible = items.filter(i => {
+    if (typeFilter !== 'all' && i.type !== typeFilter) return false
+    if (subjectFilter !== 'all' && i.subjectName !== subjectFilter) return false
+    return true
+  })
 
   async function bulkApprove() {
-    setBulkBusy(true);
+    setBulkBusy(true)
     try {
-      await Promise.all(visible.map((i) => approveItem(i.id, i.type, 'approve')));
-      refresh();
+      await Promise.all(visible.map(i => approveItem(i.id, i.type, 'approve')))
+      refresh()
     } catch {
       // individual row errors surface per-row on refresh
     } finally {
-      setBulkBusy(false);
+      setBulkBusy(false)
     }
   }
 
   return (
     <>
-      <PreviewModal state={previewState} onClose={closePreview} />
-      <div className="space-y-3">
-        {/* Filter bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as ReviewItemType | 'all')}
-            className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
-          >
-            <option value="all">All types</option>
-            <option value="chapter">Chapters</option>
-            <option value="topic">Topics</option>
-            <option value="note">Notes</option>
-            <option value="test">Tests</option>
-          </select>
+    <PreviewModal state={previewState} onClose={closePreview} />
+    <div className="space-y-3">
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={typeFilter}
+          onChange={e => setTypeFilter(e.target.value as ReviewItemType | 'all')}
+          className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+        >
+          <option value="all">All types</option>
+          <option value="chapter">Chapters</option>
+          <option value="topic">Topics</option>
+          <option value="note">Notes</option>
+          <option value="test">Tests</option>
+        </select>
 
-          <select
-            value={subjectFilter}
-            onChange={(e) => setSubjectFilter(e.target.value)}
-            className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
-          >
-            <option value="all">All subjects</option>
-            {subjects.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+        <select
+          value={subjectFilter}
+          onChange={e => setSubjectFilter(e.target.value)}
+          className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+        >
+          <option value="all">All subjects</option>
+          {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
 
-          <span className="text-[11px] text-gray-400 ml-1">
-            {visible.length} item{visible.length === 1 ? '' : 's'}
-          </span>
+        <span className="text-[11px] text-gray-400 ml-1">
+          {visible.length} item{visible.length === 1 ? '' : 's'}
+        </span>
 
-          <div className="ml-auto">
-            {visible.length > 0 && (
-              <button
-                onClick={bulkApprove}
-                disabled={bulkBusy}
-                className="text-[11px] px-3 py-1.5 rounded-lg bg-[#EAF3DE] text-[#27500A] border border-[#c8e6c9] hover:bg-[#d9edd9] disabled:opacity-50 min-h-[32px] transition-colors"
-              >
-                {bulkBusy ? 'Approving...' : `Approve all ${visible.length}`}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-          {visible.length === 0 ? (
-            <p className="text-[12px] text-gray-400 py-10 text-center">No items pending review</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-                    {['Type', 'Subject / Chapter', 'Preview', 'Created', 'Actions'].map((h) => (
-                      <th
-                        key={h}
-                        className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((item) => (
-                    <ReviewRow
-                      key={item.id}
-                      item={item}
-                      onRefresh={refresh}
-                      onPreview={openPreview}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        <div className="ml-auto">
+          {visible.length > 0 && (
+            <button
+              onClick={bulkApprove}
+              disabled={bulkBusy}
+              className="text-[11px] px-3 py-1.5 rounded-lg bg-[#EAF3DE] text-[#27500A] border border-[#c8e6c9] hover:bg-[#d9edd9] disabled:opacity-50 min-h-[32px] transition-colors"
+            >
+              {bulkBusy ? 'Approving...' : `Approve all ${visible.length}`}
+            </button>
           )}
         </div>
       </div>
+
+      {/* Table */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+        {visible.length === 0 ? (
+          <p className="text-[12px] text-gray-400 py-10 text-center">
+            No items pending review
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+                  {['Type', 'Subject / Chapter', 'Preview', 'Created', 'Actions'].map(h => (
+                    <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map(item => (
+                  <ReviewRow key={item.id} item={item} onRefresh={refresh} onPreview={openPreview} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
     </>
-  );
+  )
 }

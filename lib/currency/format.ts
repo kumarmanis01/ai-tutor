@@ -12,33 +12,29 @@
  */
 
 export function formatINR(paise: number | null | undefined) {
-  const rupees = (paise ?? 0) / 100;
+  const rupees = (paise ?? 0) / 100
   try {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 2,
-    }).format(rupees);
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(rupees)
   } catch {
-    return '₹' + rupees.toFixed(2);
+    return '₹' + (rupees.toFixed(2))
   }
 }
 
 export function statusLabel(s: unknown) {
-  const st = String(s ?? '').toUpperCase();
+  const st = String(s ?? '').toUpperCase()
   switch (st) {
     case 'PAID':
-      return 'Paid';
+      return 'Paid'
     case 'PENDING':
-      return 'Pending';
+      return 'Pending'
     case 'FAILED':
-      return 'Failed';
+      return 'Failed'
     case 'CANCELLED':
-      return 'Cancelled';
+      return 'Cancelled'
     default:
-      return st || '--';
+      return st || '--'
   }
 }
 
-const CurrencyFormat = { formatINR, statusLabel };
-export default CurrencyFormat;
+const CurrencyFormat = { formatINR, statusLabel }
+export default CurrencyFormat

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -23,11 +23,7 @@ export async function GET(req: Request) {
         include: { chapters: true },
         orderBy: { name: 'asc' },
       });
-      const subjects = subs.map((s) => ({
-        id: s.id,
-        name: s.name,
-        meta: `${(s.chapters || []).length} chapters`,
-      }));
+      const subjects = subs.map((s) => ({ id: s.id, name: s.name, meta: `${(s.chapters || []).length} chapters` }));
       return NextResponse.json({ subjects });
     }
 
@@ -63,16 +59,8 @@ export async function GET(req: Request) {
     }
 
     // Default: return lightweight active subject defs
-    const subs = await prisma.subjectDef.findMany({
-      where: { lifecycle: 'active' },
-      include: { chapters: true },
-      orderBy: { name: 'asc' },
-    });
-    const subjects = subs.map((s) => ({
-      id: s.id,
-      name: s.name,
-      meta: `${(s.chapters || []).length} chapters`,
-    }));
+    const subs = await prisma.subjectDef.findMany({ where: { lifecycle: 'active' }, include: { chapters: true }, orderBy: { name: 'asc' } });
+    const subjects = subs.map((s) => ({ id: s.id, name: s.name, meta: `${(s.chapters || []).length} chapters` }));
     return NextResponse.json({ subjects });
   } catch (err) {
     logger.error('/api/notes/subjects error', { error: err });

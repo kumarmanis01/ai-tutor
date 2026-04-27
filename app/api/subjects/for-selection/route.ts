@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 /**
  * FILE OBJECTIVE:
@@ -34,7 +34,10 @@ export async function GET(req: Request) {
     const gradeNum = searchParams.get('gradeNum');
 
     if (!boardSlug || !gradeNum) {
-      return NextResponse.json({ error: 'boardSlug and gradeNum are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'boardSlug and gradeNum are required' },
+        { status: 400 }
+      );
     }
 
     const grade = parseInt(gradeNum, 10);
@@ -70,7 +73,7 @@ export async function GET(req: Request) {
       orderBy: { name: 'asc' },
     });
 
-    const response = subjects.map((s) => ({
+    const response = subjects.map(s => ({
       id: s.id,
       name: s.name,
       slug: s.slug,

@@ -14,28 +14,15 @@ const p = prisma;
 const MOCK_CHAPTERS = [
   {
     title: 'Real Numbers',
-    topics: [
-      'Euclid Division Lemma',
-      'Fundamental Theorem of Arithmetic',
-      'Irrational Numbers',
-      'Decimal Expansions of Rationals',
-    ],
+    topics: ['Euclid Division Lemma', 'Fundamental Theorem of Arithmetic', 'Irrational Numbers', 'Decimal Expansions of Rationals'],
   },
   {
     title: 'Polynomials',
-    topics: [
-      'Zeroes of a Polynomial',
-      'Relationship Between Zeroes and Coefficients',
-      'Division Algorithm for Polynomials',
-    ],
+    topics: ['Zeroes of a Polynomial', 'Relationship Between Zeroes and Coefficients', 'Division Algorithm for Polynomials'],
   },
   {
     title: 'Pair of Linear Equations in Two Variables',
-    topics: [
-      'Graphical Method of Solution',
-      'Algebraic Methods of Solving',
-      'Cross-Multiplication Method',
-    ],
+    topics: ['Graphical Method of Solution', 'Algebraic Methods of Solving', 'Cross-Multiplication Method'],
   },
   {
     title: 'Quadratic Equations',
@@ -48,10 +35,7 @@ const MOCK_CHAPTERS = [
 ];
 
 function toSlug(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
 function log(msg) {
@@ -77,9 +61,7 @@ async function main() {
 
   const subjectId = rootJob.subjectId;
   log('Found root job: ' + rootJob.id);
-  log(
-    '  Subject: ' + rootJob.subject + ' | Board: ' + rootJob.board + ' | Grade: ' + rootJob.grade
-  );
+  log('  Subject: ' + rootJob.subject + ' | Board: ' + rootJob.board + ' | Grade: ' + rootJob.grade);
   log('  Language: ' + rootJob.language + ' | SubjectId: ' + subjectId + '\n');
 
   if (!subjectId) {
@@ -154,9 +136,7 @@ async function main() {
   log('  Syllabus complete: ' + totalChapters + ' chapters, ' + totalTopics + ' topics\n');
 
   // Create Level 1 sentinel job for reconciler
-  const existingL1 = await p.hydrationJob.count({
-    where: { rootJobId: rootJob.id, hierarchyLevel: 1 },
-  });
+  const existingL1 = await p.hydrationJob.count({ where: { rootJobId: rootJob.id, hierarchyLevel: 1 } });
   if (existingL1 === 0) {
     await p.hydrationJob.create({
       data: {
@@ -250,9 +230,7 @@ async function main() {
     if (job.topicId) {
       const topic = await p.topicDef.findUnique({ where: { id: job.topicId } });
       if (topic) {
-        const existing = await p.topicNote.findFirst({
-          where: { topicId: topic.id, language: job.language },
-        });
+        const existing = await p.topicNote.findFirst({ where: { topicId: topic.id, language: job.language } });
         if (!existing) {
           await p.topicNote.create({
             data: {
@@ -264,14 +242,8 @@ async function main() {
               contentJson: {
                 sections: [
                   { heading: 'Introduction', content: 'This topic covers ' + topic.name + '.' },
-                  {
-                    heading: 'Key Concepts',
-                    content: 'Understanding ' + topic.name + ' builds a strong foundation.',
-                  },
-                  {
-                    heading: 'Summary',
-                    content: 'Review the key points of ' + topic.name + ' regularly.',
-                  },
+                  { heading: 'Key Concepts', content: 'Understanding ' + topic.name + ' builds a strong foundation.' },
+                  { heading: 'Summary', content: 'Review the key points of ' + topic.name + ' regularly.' },
                 ],
               },
               source: 'ai-generated',
@@ -310,13 +282,7 @@ async function main() {
       });
     }
   }
-  log(
-    '  Created ' +
-      topics.length * 3 +
-      ' Level 4 jobs (' +
-      topics.length +
-      ' topics x 3 difficulties)\n'
-  );
+  log('  Created ' + (topics.length * 3) + ' Level 4 jobs (' + topics.length + ' topics x 3 difficulties)\n');
 
   // ========== LEVEL 4: Simulate Question Generation ==========
   log('--- LEVEL 4: Simulating question generation ---');
@@ -355,10 +321,7 @@ async function main() {
                 type: 'MCQ',
                 question: '[' + diff + '] Q' + q + ': What is a key concept in ' + topic.name + '?',
                 options: { A: 'Option A', B: 'Option B', C: 'Option C', D: 'Option D' },
-                answer: {
-                  correct: 'A',
-                  explanation: 'This tests understanding of ' + topic.name + '.',
-                },
+                answer: { correct: 'A', explanation: 'This tests understanding of ' + topic.name + '.' },
                 marks,
               },
             });
@@ -372,25 +335,15 @@ async function main() {
       data: { status: 'completed', completedAt: new Date() },
     });
   }
-  log(
-    '  Completed ' +
-      level4Jobs.length +
-      ' Level 4 jobs, created ' +
-      questionsCreated +
-      ' questions\n'
-  );
+  log('  Completed ' + level4Jobs.length + ' Level 4 jobs, created ' + questionsCreated + ' questions\n');
 
   // ========== FINALIZE ROOT JOB ==========
   log('--- FINALIZING: Updating root job progress ---');
 
   const finalChapters = await p.chapterDef.count({ where: { subjectId, lifecycle: 'active' } });
-  const finalTopics = await p.topicDef.count({
-    where: { chapter: { subjectId }, lifecycle: 'active' },
-  });
+  const finalTopics = await p.topicDef.count({ where: { chapter: { subjectId }, lifecycle: 'active' } });
   const finalNotes = await p.topicNote.count({ where: { topic: { chapter: { subjectId } } } });
-  const finalQuestions = await p.generatedQuestion.count({
-    where: { test: { topic: { chapter: { subjectId } } } },
-  });
+  const finalQuestions = await p.generatedQuestion.count({ where: { test: { topic: { chapter: { subjectId } } } } });
 
   await p.hydrationJob.update({
     where: { id: rootJob.id },

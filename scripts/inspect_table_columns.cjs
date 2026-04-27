@@ -19,13 +19,10 @@ function loadEnvFile(file) {
 loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 const { prisma } = require('../lib/prisma');
 
-(async () => {
+(async ()=>{
   try {
     const table = process.argv[2] || 'JobExecutionLog';
-    const cols = await prisma.$queryRawUnsafe(
-      "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name = $1 ORDER BY ordinal_position",
-      table
-    );
+    const cols = await prisma.$queryRawUnsafe("SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name = $1 ORDER BY ordinal_position", table);
     console.log(JSON.stringify(cols, null, 2));
   } catch (e) {
     console.error('ERROR', e && e.stack ? e.stack : e);

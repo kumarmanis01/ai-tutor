@@ -31,7 +31,6 @@ function autoRetryKey(hydrationJobId: string): string {
 export async function getAutoRetryCount(hydrationJobId: string): Promise<number> {
   try {
     const redis = getRedis();
-    if (!redis) return 0;
     const val = await redis.get(autoRetryKey(hydrationJobId));
     return val ? parseInt(val, 10) : 0;
   } catch {
@@ -54,10 +53,9 @@ export async function scheduleAutoRetry(
   bullJob: Job,
   subject: string,
   grade: number,
-  lastError: string
+  lastError: string,
 ): Promise<{ scheduled: boolean; retryNumber: number }> {
   const redis = getRedis();
-  if (!redis) return { scheduled: false, retryNumber: 0 };
   const key = autoRetryKey(hydrationJobId);
 
   let currentCount = 0;
@@ -101,9 +99,7 @@ export async function scheduleAutoRetry(
     // failure attempt can still try to schedule.
     try {
       await redis.set(key, String(currentCount), 'EX', AUTO_RETRY_KEY_TTL_S);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     throw err;
   }
 
@@ -125,8 +121,10 @@ export async function sendJobFailureAlert(opts: {
   board: string;
   willRetryAt?: Date;
 }): Promise<void> {
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL ?? 'oncall@spinzy.com';
-  const adminUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/admin/jobs`;
+  const adminEmail =
+    process.env.ADMIN_ALERT_EMAIL ?? 'oncall@spinzy.com';
+  const adminUrl =
+    `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/admin/jobs`;
 
   const html = contentJobFailureAlertHtml({
     hydrationJobId: opts.hydrationJobId,

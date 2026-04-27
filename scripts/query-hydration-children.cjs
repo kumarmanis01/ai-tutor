@@ -34,8 +34,6 @@ async function main() {
 
 main().catch(async (e) => {
   console.error('ERROR:', e && e.message ? e.message : e);
-  try {
-    await p.$disconnect();
-  } catch (_err) {}
+  try { await p.$disconnect(); } catch (_err) {}
   process.exit(1);
 });

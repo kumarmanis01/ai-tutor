@@ -53,12 +53,7 @@ async function sendParentWelcomeNotifications(parentId: string, studentId: strin
       });
     }
   } catch (e) {
-    logger.warn('Parent welcome notification failed', {
-      className: CLASS_NAME,
-      parentId,
-      studentId,
-      err: String(e),
-    });
+    logger.warn('Parent welcome notification failed', { className: CLASS_NAME, parentId, studentId, err: String(e) });
   }
 }
 
@@ -87,17 +82,10 @@ export async function POST(req: NextRequest) {
     } else if (action === 'link') {
       return handleLink(session.user.id, session.user.email ?? null, body, req, start);
     } else {
-      return NextResponse.json(
-        { error: 'Invalid action. Use "generate" or "link".' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid action. Use "generate" or "link".' }, { status: 400 });
     }
   } catch (error) {
-    logger.error('Parent link operation failed', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      error,
-    });
+    logger.error('Parent link operation failed', { className: CLASS_NAME, methodName: METHOD_NAME, error });
     return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
@@ -129,13 +117,7 @@ async function handleGenerateCode(studentId: string, req: NextRequest, start: nu
 /**
  * Parent links to a student via invite code or email
  */
-async function handleLink(
-  parentId: string,
-  parentEmail: string | null,
-  body: any,
-  req: NextRequest,
-  start: number
-) {
+async function handleLink(parentId: string, parentEmail: string | null, body: any, req: NextRequest, start: number) {
   const { inviteCode, studentEmail } = body;
 
   if (!inviteCode && !studentEmail) {
@@ -144,23 +126,14 @@ async function handleLink(
 
   if (inviteCode) {
     try {
-      const result = await redeemParentInviteAndLink({
-        prisma,
-        parentId,
-        parentEmail,
-        code: inviteCode,
-      });
+      const result = await redeemParentInviteAndLink({ prisma, parentId, parentEmail, code: inviteCode });
 
       // F-PAR-001 AC-07: send welcome email on new link only (not already_linked)
       if (result.status === 'linked') {
         await sendParentWelcomeNotifications(parentId, result.studentId);
       }
 
-      const response = NextResponse.json({
-        ok: true,
-        studentId: result.studentId,
-        status: result.status,
-      });
+      const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
     } catch (err) {
@@ -194,14 +167,8 @@ async function handleLink(
       });
 
       if (existing?.status === 'active') {
-        await prisma.parentStudent
-          .update({ where: { id: legacy.id }, data: { inviteCode: null, status: 'revoked' } })
-          .catch(() => {});
-        const response = NextResponse.json({
-          ok: true,
-          studentId: legacy.studentId,
-          status: 'already_linked',
-        });
+        await prisma.parentStudent.update({ where: { id: legacy.id }, data: { inviteCode: null, status: 'revoked' } }).catch(() => {});
+        const response = NextResponse.json({ ok: true, studentId: legacy.studentId, status: 'already_linked' });
         logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
         return response;
       }
@@ -212,7 +179,9 @@ async function handleLink(
           where: { id: legacy.id },
           data: { parentId, status: 'active', inviteCode: null },
         });
-        await prisma.parentStudent.delete({ where: { id: existing.id } }).catch(() => {});
+        await prisma.parentStudent
+          .delete({ where: { id: existing.id } })
+          .catch(() => {});
       } else if (!existing) {
         // No existing link yet -- convert the legacy placeholder into the real link.
         await prisma.parentStudent.update({
@@ -228,12 +197,7 @@ async function handleLink(
             targetEntity: 'User',
             targetId: legacy.studentId,
             action: null,
-            details: {
-              legacyAction: 'parent_link_student',
-              parentId,
-              method: 'invite_code_legacy',
-              status: 'linked',
-            },
+            details: { legacyAction: 'parent_link_student', parentId, method: 'invite_code_legacy', status: 'linked' },
           },
         })
         .catch(() => {});
@@ -241,33 +205,20 @@ async function handleLink(
       // F-PAR-001 AC-07: send welcome email on new link via legacy invite code path
       await sendParentWelcomeNotifications(parentId, legacy.studentId);
 
-      const response = NextResponse.json({
-        ok: true,
-        studentId: legacy.studentId,
-        status: 'linked',
-      });
+      const response = NextResponse.json({ ok: true, studentId: legacy.studentId, status: 'linked' });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
     }
   } else {
     try {
-      const result = await linkParentToStudentByEmail({
-        prisma,
-        parentId,
-        parentEmail,
-        studentEmail,
-      });
+      const result = await linkParentToStudentByEmail({ prisma, parentId, parentEmail, studentEmail });
 
       // F-PAR-001 AC-07: send welcome email on new link only
       if (result.status === 'linked') {
         await sendParentWelcomeNotifications(parentId, result.studentId);
       }
 
-      const response = NextResponse.json({
-        ok: true,
-        studentId: result.studentId,
-        status: result.status,
-      });
+      const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
     } catch (err) {
@@ -305,17 +256,15 @@ export async function DELETE(req: NextRequest) {
       data: { status: 'revoked' },
     });
 
-    await prisma.auditLog
-      .create({
-        data: {
-          adminId: parentId,
-          targetEntity: 'User',
-          targetId: studentId,
-          action: null,
-          details: { legacyAction: 'parent_unlink_student', parentId },
-        },
-      })
-      .catch((err) => logger.warn('audit log failed', { error: String(err) }));
+    await prisma.auditLog.create({
+      data: {
+        adminId: parentId,
+        targetEntity: 'User',
+        targetId: studentId,
+        action: null,
+        details: { legacyAction: 'parent_unlink_student', parentId },
+      },
+    }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
 
     logger.info('Parent-student link revoked', { className: CLASS_NAME, parentId, studentId });
 

@@ -4,29 +4,19 @@
 	 Use the `btn-shimmer` class in addition to Tailwind utilities.
 	 The animation is intentionally low-contrast and slow to avoid distraction. */
 @keyframes spinzy-shimmer {
-  0% {
-    background-position: -150% 0;
-  }
-  100% {
-    background-position: 150% 0;
-  }
+	0% { background-position: -150% 0; }
+	100% { background-position: 150% 0; }
 }
 
 .btn-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.02) 0%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
-  background-size: 300% 100%;
-  -webkit-background-clip: padding-box;
-  animation: spinzy-shimmer 3.2s linear infinite;
+	background-image: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 100%);
+	background-size: 300% 100%;
+	-webkit-background-clip: padding-box;
+	animation: spinzy-shimmer 3.2s linear infinite;
 }
 
 /* Reduce motion preference: disable shimmer for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .btn-shimmer {
-    animation: none;
-  }
+	.btn-shimmer { animation: none; }
 }
+

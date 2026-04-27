@@ -88,75 +88,58 @@ export async function POST(req: Request) {
   const purchaserIp = getClientIp(req);
 
   // If this user was referred and the referral is still available, apply 20% off first month
-  let finalAmount = amountPaise;
+  let finalAmount = amountPaise
   try {
-    const userRow = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { preferences: true },
-    });
-    const refCode =
-      userRow?.preferences && typeof userRow.preferences === 'object'
-        ? (userRow.preferences as any).referredBy
-        : undefined;
+    const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } })
+    const refCode = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
     if (typeof refCode === 'string' && refCode) {
       // Only apply discount for monthly-duration plans (first month)
       if ((plan.durationMonths || 0) === 1) {
         // Verify referral exists and is not already redeemed
-        const r = await prisma.referral.findUnique({
-          where: { code: refCode },
-          select: { redeemedBy: true },
-        });
+        const r = await prisma.referral.findUnique({ where: { code: refCode }, select: { redeemedBy: true } })
         if (r && !r.redeemedBy) {
-          const discount = Math.floor(amountPaise * 0.2);
-          finalAmount = Math.max(1, amountPaise - discount);
+          const discount = Math.floor(amountPaise * 0.2)
+          finalAmount = Math.max(1, amountPaise - discount)
         }
       }
     }
   } catch (err) {
     // Non-fatal; proceed with full amount
-    logger.warn('referral discount check failed', { err: String(err) });
+    logger.warn('referral discount check failed', { err: String(err) })
   }
 
   // Optional coupon code from client -- validate and apply discount (do not mark redeemed yet)
-  const couponCode = typeof b.couponCode === 'string' ? (b.couponCode as string).trim() : undefined;
+  const couponCode = typeof b.couponCode === 'string' ? (b.couponCode as string).trim() : undefined
   if (couponCode) {
     try {
-      const v = await validateCoupon(prisma as any, couponCode, userId);
+      const v = await validateCoupon(prisma as any, couponCode, userId)
       if (v.status !== 200 || !v.body.coupon) {
-        return NextResponse.json(
-          { error: 'invalid_coupon', detail: v.body.error },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'invalid_coupon', detail: v.body.error }, { status: 400 })
       }
-      const c: any = v.body.coupon;
+      const c: any = v.body.coupon
       if (c.type === 'FIXED') {
-        const discount = Number(c.amount) ?? 0;
-        finalAmount = Math.max(1, finalAmount - discount);
+        const discount = Number(c.amount) ?? 0
+        finalAmount = Math.max(1, finalAmount - discount)
       } else {
         // percent
-        const pct = Number(c.amount) ?? 0;
-        const discount = Math.floor(amountPaise * (pct / 100));
-        finalAmount = Math.max(1, finalAmount - discount);
+        const pct = Number(c.amount) ?? 0
+        const discount = Math.floor(amountPaise * (pct / 100))
+        finalAmount = Math.max(1, finalAmount - discount)
       }
     } catch (err) {
-      logger.warn('coupon validation failed', { err: String(err), userId, couponCode });
-      return NextResponse.json({ error: 'coupon_validation_error' }, { status: 400 });
+      logger.warn('coupon validation failed', { err: String(err), userId, couponCode })
+      return NextResponse.json({ error: 'coupon_validation_error' }, { status: 400 })
     }
   }
 
   const client = getRazorpayClient();
   if (!client) {
-    logger.error('Razorpay keys not configured', {
-      event: 'subscription.order.no_client',
-      context: { userId },
-    });
+    logger.error('Razorpay keys not configured', { event: 'subscription.order.no_client', context: { userId } });
     return NextResponse.json({ error: 'Payment not available' }, { status: 503 });
   }
 
   try {
-    const userPrefs =
-      (await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }))
-        ?.preferences ?? undefined;
+    const userPrefs = (await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }))?.preferences ?? undefined;
     const order = await client.orders.create({
       amount: finalAmount,
       currency: 'INR',
@@ -165,8 +148,7 @@ export async function POST(req: Request) {
         planId,
         durationMonths: String(plan.durationMonths),
         emiMonths: emiMonths ? String(emiMonths) : '',
-        referralCode:
-          userPrefs && typeof userPrefs === 'object' ? ((userPrefs as any).referredBy ?? '') : '',
+        referralCode: userPrefs && typeof userPrefs === 'object' ? (userPrefs as any).referredBy ?? '' : '',
         purchaserIp: purchaserIp ?? '',
         couponCode: couponCode ?? '',
       },
@@ -198,14 +180,10 @@ export async function POST(req: Request) {
         currency: 'INR',
         keyId: process.env.RAZORPAY_KEY_ID ?? '',
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err) {
-    logger.error('Failed to create Razorpay order', {
-      event: 'subscription.order.error',
-      context: { userId, planId },
-      err,
-    });
+    logger.error('Failed to create Razorpay order', { event: 'subscription.order.error', context: { userId, planId }, err });
     return NextResponse.json({ error: 'Could not create order' }, { status: 500 });
   }
 }

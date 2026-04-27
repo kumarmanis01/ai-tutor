@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 /**
  * ConsentGate -- DPDP consent overlay (T37)
@@ -11,42 +11,42 @@
  * reviewed and approved the final consent language.
  */
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 // Only rendered when NEXT_PUBLIC_CONSENT_LIVE === 'true'
-const CONSENT_LIVE = process.env.NEXT_PUBLIC_CONSENT_LIVE === 'true';
+const CONSENT_LIVE = process.env.NEXT_PUBLIC_CONSENT_LIVE === 'true'
 
 export default function ConsentGate() {
-  const router = useRouter();
-  const [dataProcessing, setDataProcessing] = useState(false);
-  const [aiInteraction, setAiInteraction] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const [dataProcessing, setDataProcessing] = useState(false)
+  const [aiInteraction, setAiInteraction] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Feature-gated -- renders nothing until lawyer approves copy
-  if (!CONSENT_LIVE) return null;
+  if (!CONSENT_LIVE) return null
 
-  const bothChecked = dataProcessing && aiInteraction;
+  const bothChecked = dataProcessing && aiInteraction
 
   async function handleAgree() {
-    if (!bothChecked || loading) return;
-    setLoading(true);
-    setError(null);
+    if (!bothChecked || loading) return
+    setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/api/consent/grant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scopes: ['DATA_PROCESSING', 'AI_INTERACTION'] }),
-      });
+      })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as any)?.error ?? 'Failed to save consent');
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as any)?.error ?? 'Failed to save consent')
       }
-      router.refresh();
+      router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setLoading(false)
     }
   }
 
@@ -74,7 +74,9 @@ export default function ConsentGate() {
           <li>
             Process your academic data (grades, answers, progress) to personalise your learning.
           </li>
-          <li>Use AI to generate tutoring responses during your sessions.</li>
+          <li>
+            Use AI to generate tutoring responses during your sessions.
+          </li>
         </ol>
         <p className="mb-5 text-xs text-gray-500 dark:text-gray-400">
           You can withdraw consent at any time from{' '}
@@ -112,7 +114,9 @@ export default function ConsentGate() {
         </div>
 
         {/* Error */}
-        {error && <p className="mb-3 text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {error && (
+          <p className="mb-3 text-xs text-red-600 dark:text-red-400">{error}</p>
+        )}
 
         {/* CTA */}
         <button
@@ -126,5 +130,5 @@ export default function ConsentGate() {
         </button>
       </div>
     </div>
-  );
+  )
 }

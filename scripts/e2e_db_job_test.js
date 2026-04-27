@@ -1,11 +1,9 @@
 (async () => {
   try {
-    const { prisma } = require('../lib/prisma');
+const { prisma } = require('../lib/prisma');
+    
 
-    const board = await prisma.board.findFirst({
-      where: { lifecycle: 'active' },
-      include: { classes: true },
-    });
+    const board = await prisma.board.findFirst({ where: { lifecycle: 'active' }, include: { classes: true } });
     if (!board) throw new Error('No active board found');
     console.log('Board:', board.name, board.id);
 
@@ -13,10 +11,7 @@
     if (!classObj) throw new Error('No class found on board');
     console.log('Class:', classObj.grade, classObj.id);
 
-    const subject = await prisma.subjectDef.findFirst({
-      where: { classId: classObj.id, lifecycle: 'active' },
-      include: { chapters: true },
-    });
+    const subject = await prisma.subjectDef.findFirst({ where: { classId: classObj.id, lifecycle: 'active' }, include: { chapters: true } });
     if (!subject) throw new Error('No subject found');
     console.log('Subject:', subject.name, subject.id);
 

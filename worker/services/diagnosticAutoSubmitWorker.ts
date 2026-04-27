@@ -21,7 +21,6 @@ import type { DiagnosticAutoSubmitJobData } from '@/jobs/diagnosticAutoSubmit.js
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | fix: base isPartialAbandon on gradeable answer count not raw Redis count;
  *   filter chapterDef query to lifecycle: 'active' only
- * - 2026-04-23T00:00:00Z | copilot | fix(strict): add local DB row types and cast partial answers to avoid implicit-any callbacks
  */
 
 /**
@@ -29,7 +28,7 @@ import type { DiagnosticAutoSubmitJobData } from '@/jobs/diagnosticAutoSubmit.js
  * Idempotent: if the diagnostic is already completed or no partial state exists, exits cleanly.
  */
 export async function processDiagnosticAutoSubmit(
-  job: Job<DiagnosticAutoSubmitJobData>
+  job: Job<DiagnosticAutoSubmitJobData>,
 ): Promise<void> {
   const { userId, subjectId, sessionId } = job.data;
 
@@ -52,54 +51,42 @@ export async function processDiagnosticAutoSubmit(
     // Read partial answers from Redis.
     const partial = await getPartialDiagnostic(userId, subjectId);
     if (!partial || partial.answers.length === 0) {
-      logger.info('[diagnostic-auto-submit] no partial state found, nothing to submit', {
-        userId,
-        subjectId,
-      });
+      logger.info('[diagnostic-auto-submit] no partial state found, nothing to submit', { userId, subjectId });
       return;
     }
 
-    // Cast partial.answers to a known local shape to avoid implicit-any in callbacks
-    type PartialAnswer = { questionId: string; selectedOption?: string | null };
-    const partialTyped = partial as { answers: PartialAnswer[] };
-    const questionIds = partialTyped.answers.map((a) => a.questionId).filter(Boolean);
+    const questionIds = partial.answers.map((a) => a.questionId).filter(Boolean);
 
     const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10);
 
     // Fetch questions for grading and concept resolution.
-    type QuestionRow = {
-      id: string;
-      correctAnswer?: string | null;
-      choices?: unknown;
-      topicId?: string | null;
-    };
-    const questions = (await prisma.question.findMany({
+    const questions = await prisma.question.findMany({
       where: { id: { in: questionIds } },
       select: { id: true, correctAnswer: true, choices: true, topicId: true },
-    })) as QuestionRow[];
-    const questionMap = new Map<string, QuestionRow>(questions.map((q) => [q.id, q]));
+    });
+    const questionMap = new Map<string, typeof questions[number]>(questions.map((q) => [q.id, q]));
 
     // Resolve topicId -> conceptId.
     const topicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
-    type ConceptRow = { id: string; topicId: string };
     const concepts =
       topicIds.length > 0
-        ? ((await prisma.concept.findMany({
+        ? await prisma.concept.findMany({
             where: { topicId: { in: topicIds } },
             select: { id: true, topicId: true },
             orderBy: { createdAt: 'asc' },
-          })) as ConceptRow[])
+          })
         : [];
     const topicToConceptId = new Map<string, string>();
     for (const c of concepts) {
       if (!topicToConceptId.has(c.topicId)) topicToConceptId.set(c.topicId, c.id);
     }
 
-    const diagnosticSessionId = sessionId ?? `diagnostic-auto:${userId}:${subjectId}:${Date.now()}`;
+    const diagnosticSessionId =
+      sessionId ?? `diagnostic-auto:${userId}:${subjectId}:${Date.now()}`;
 
     // Write AnswerEvents.
     const answerEventData: object[] = [];
-    for (const answer of partialTyped.answers) {
+    for (const answer of partial.answers) {
       const q = questionMap.get(answer.questionId);
       if (!q) continue;
       const conceptId = q.topicId ? topicToConceptId.get(q.topicId) : undefined;
@@ -137,11 +124,9 @@ export async function processDiagnosticAutoSubmit(
         where: { subjectId, lifecycle: 'active' },
         select: { id: true },
       });
-      chapterIds = allChapters.map((c: { id: string }) => c.id);
+      chapterIds = allChapters.map((c) => c.id);
     } else {
-      const questionTopicIds = [
-        ...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t)),
-      ];
+      const questionTopicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
       const topics: { id: string; chapterId: string }[] =
         questionTopicIds.length > 0
           ? await prisma.topicDef.findMany({
@@ -149,7 +134,7 @@ export async function processDiagnosticAutoSubmit(
               select: { id: true, chapterId: true },
             })
           : [];
-      chapterIds = [...new Set(topics.map((t: { chapterId: string }) => t.chapterId))];
+      chapterIds = [...new Set(topics.map((t) => t.chapterId))];
     }
 
     const user = await prisma.user.findUnique({

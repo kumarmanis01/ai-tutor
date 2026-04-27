@@ -45,10 +45,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(challenge, { status: 200, headers: { 'Content-Type': 'text/plain' } });
   }
 
-  logger.warn('whatsapp.webhook.verificationFailed', {
-    mode,
-    tokenMatch: token === WHATSAPP_VERIFY_TOKEN,
-  });
+  logger.warn('whatsapp.webhook.verificationFailed', { mode, tokenMatch: token === WHATSAPP_VERIFY_TOKEN });
   return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
 }
 

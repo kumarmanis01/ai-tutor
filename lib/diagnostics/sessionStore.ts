@@ -53,11 +53,7 @@ export async function updateSession(sessionId: string, patch: Partial<Diagnostic
     const redis = getRedis();
     if (!redis) return;
     const cur = await getSession(sessionId);
-    const updated = {
-      ...(cur ?? {}),
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    } as DiagnosticSessionPayload;
+    const updated = { ...(cur ?? {}), ...patch, updatedAt: new Date().toISOString() } as DiagnosticSessionPayload;
     await redis.set(key(sessionId), JSON.stringify(updated), 'EX', TTL_SECONDS);
     return updated;
   } catch {

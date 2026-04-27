@@ -135,17 +135,16 @@ describe('Parent auth gate — GET /api/parent/progress', () => {
     mockGetServerSession.mockResolvedValueOnce({
       user: { id: 'parent-1', role: 'parent' },
     });
-    prismaMock.parentStudent.findMany.mockResolvedValueOnce([{ studentId: 'student-linked' }]);
+    prismaMock.parentStudent.findMany.mockResolvedValueOnce([
+      { studentId: 'student-linked' },
+    ]);
     prismaMock.user.findUnique.mockResolvedValueOnce({
       name: 'Arjun',
       grade: '10',
       board: 'CBSE',
       subjects: ['Mathematics'],
     });
-    prismaMock.studentStreak.findFirst.mockResolvedValueOnce({
-      current: 3,
-      lastActive: new Date(),
-    });
+    prismaMock.studentStreak.findFirst.mockResolvedValueOnce({ current: 3, lastActive: new Date() });
     prismaMock.structuredSession.findMany.mockResolvedValueOnce([]);
     prismaMock.learningPlan.findMany.mockResolvedValueOnce([]);
     prismaMock.subjectDef.findMany.mockResolvedValueOnce([
@@ -226,10 +225,7 @@ describe('No transcript access', () => {
       board: 'CBSE',
       subjects: ['Physics'],
     });
-    prismaMock.studentStreak.findFirst.mockResolvedValueOnce({
-      current: 5,
-      lastActive: new Date(),
-    });
+    prismaMock.studentStreak.findFirst.mockResolvedValueOnce({ current: 5, lastActive: new Date() });
     prismaMock.structuredSession.findMany.mockResolvedValueOnce([]);
     prismaMock.learningPlan.findMany.mockResolvedValueOnce([]);
     prismaMock.subjectDef.findMany.mockResolvedValueOnce([{ id: 'subj-phys', name: 'Physics' }]);

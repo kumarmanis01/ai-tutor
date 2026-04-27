@@ -36,12 +36,12 @@ They answer four core admin questions:
 ## 2. Dashboard Modules (High-Level)
 
 - **Admin Console**
-  - Academic Explorer
-  - Content Moderation
-  - Job Monitor
-  - Execution Pipeline Health
-  - AI / LLM Telemetry
-  - System Events & Audit Logs
+    - Academic Explorer
+    - Content Moderation
+    - Job Monitor
+    - Execution Pipeline Health
+    - AI / LLM Telemetry
+    - System Events & Audit Logs
 
 Each module maps to specific API routes and DB tables.
 
@@ -53,7 +53,6 @@ Each module maps to specific API routes and DB tables.
 Canonical, read-only navigation of the entire academic hierarchy.
 
 **UI Wireframe**
-
 ```
 ┌────────────────────────────────────────────┐
 │ Academic Explorer                         │
@@ -74,9 +73,9 @@ Canonical, read-only navigation of the entire academic hierarchy.
 **API Contract**
 
 - `GET /api/hierarchy`  
-   Returns the full academic hierarchy tree.
+    Returns the full academic hierarchy tree.
 - `GET /api/admin/content-summary?topicId=`  
-   Returns content summary for a topic.
+    Returns content summary for a topic.
 
 **Guardrails**
 
@@ -91,7 +90,6 @@ Canonical, read-only navigation of the entire academic hierarchy.
 Human approval of AI-generated academic content.
 
 **UI Wireframe**
-
 ```
 ┌────────────────────────────────────────────┐
 │ Content Moderation                         │
@@ -116,13 +114,13 @@ Human approval of AI-generated academic content.
 **API Contracts**
 
 - Fetch pending content  
-   `GET /api/admin/moderation/notes?status=draft`  
-   `GET /api/admin/moderation/tests?status=draft`
+    `GET /api/admin/moderation/notes?status=draft`  
+    `GET /api/admin/moderation/tests?status=draft`
 - Approve  
-   `POST /api/admin/moderation/notes/{id}/approve`
+    `POST /api/admin/moderation/notes/{id}/approve`
 - Reject (with reason)  
-   `POST /api/admin/moderation/notes/{id}/reject`  
-   Payload: `{ "reason": "Incorrect example in paragraph 2" }`
+    `POST /api/admin/moderation/notes/{id}/reject`  
+    Payload: `{ "reason": "Incorrect example in paragraph 2" }`
 
 **DB Effects**
 
@@ -138,7 +136,6 @@ Human approval of AI-generated academic content.
 Answer: “Why is my job stuck / failed / retrying?”
 
 **UI Wireframe**
-
 ```
 ┌────────────────────────────────────────────┐
 │ Job Monitor                                │
@@ -164,13 +161,13 @@ Answer: “Why is my job stuck / failed / retrying?”
 **API Contracts**
 
 - List jobs  
-   `GET /api/admin/jobs?status=FAILED`
+    `GET /api/admin/jobs?status=FAILED`
 - Job details  
-   `GET /api/admin/jobs/{jobId}`
+    `GET /api/admin/jobs/{jobId}`
 - Retry  
-   `POST /api/admin/jobs/{jobId}/retry`
+    `POST /api/admin/jobs/{jobId}/retry`
 - Cancel  
-   `POST /api/admin/jobs/{jobId}/cancel`
+    `POST /api/admin/jobs/{jobId}/cancel`
 
 **Pipeline Interaction**
 
@@ -185,7 +182,6 @@ Answer: “Why is my job stuck / failed / retrying?”
 Detect systemic failures, not content issues.
 
 **UI Wireframe**
-
 ```
 ┌────────────────────────────────────────────┐
 │ Execution Pipeline Health                  │
@@ -204,16 +200,16 @@ Detect systemic failures, not content issues.
 **API Contracts**
 
 - Pipeline status  
-   `GET /api/admin/pipeline/status`  
-   Returns:
-  ```json
-  {
-    "queueConnected": true,
-    "activeWorkers": 3,
-    "pendingJobs": 12,
-    "oldestPendingMs": 480000
-  }
-  ```
+    `GET /api/admin/pipeline/status`  
+    Returns:
+    ```json
+    {
+        "queueConnected": true,
+        "activeWorkers": 3,
+        "pendingJobs": 12,
+        "oldestPendingMs": 480000
+    }
+    ```
 
 ---
 
@@ -223,7 +219,6 @@ Detect systemic failures, not content issues.
 Cost + reliability governance.
 
 **UI Wireframe**
-
 ```
 ┌────────────────────────────────────────────┐
 │ AI Telemetry                               │
@@ -251,7 +246,6 @@ Cost + reliability governance.
 Compliance, debugging, trust.
 
 **Captures:**
-
 - Job state transitions
 - Content approvals
 - Deletions (soft)
@@ -267,15 +261,15 @@ Compliance, debugging, trust.
 ## 9. How Dashboards Interact with Pipeline
 
 Dashboard Action  
- ↓  
+     ↓  
 Admin API  
- ↓  
+     ↓  
 Execution Pipeline  
- ↓  
+     ↓  
 Queue / Worker  
- ↓  
+     ↓  
 Telemetry Event  
- ↓  
+     ↓  
 Dashboard Refresh
 
 Dashboards never talk to workers directly.
@@ -318,51 +312,49 @@ These APIs are read-only by default, ID-driven, audited, and pipeline-aware.
 #### 1.1 Academic Hierarchy (Read-only, cached)
 
 - `GET /api/admin/hierarchy`  
-   Purpose: Single canonical source for UI navigation
+    Purpose: Single canonical source for UI navigation
 
 <details>
 <summary>Example (TypeScript)</summary>
 
 ```ts
 // /api/admin/hierarchy/route.ts
-import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server"
 
 export async function GET() {
-  const boards = await prisma.board.findMany({
-    where: { lifecycle: 'active' },
-    include: {
-      classes: {
-        where: { lifecycle: 'active' },
-        orderBy: { grade: 'asc' },
+    const boards = await prisma.board.findMany({
+        where: { lifecycle: "active" },
         include: {
-          subjects: {
-            include: {
-              chapters: {
-                where: { lifecycle: 'active' },
-                orderBy: { order: 'asc' },
+            classes: {
+                where: { lifecycle: "active" },
+                orderBy: { grade: "asc" },
                 include: {
-                  topics: {
-                    where: { lifecycle: 'active' },
-                    orderBy: { order: 'asc' },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+                    subjects: {
+                        include: {
+                            chapters: {
+                                where: { lifecycle: "active" },
+                                orderBy: { order: "asc" },
+                                include: {
+                                    topics: {
+                                        where: { lifecycle: "active" },
+                                        orderBy: { order: "asc" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    })
 
-  return NextResponse.json(boards);
+    return NextResponse.json(boards)
 }
 ```
-
 </details>
 
 **Guardrails**
-
 - No writes
 - No filtering by string
 - IDs only
@@ -371,53 +363,51 @@ export async function GET() {
 #### 1.2 Content Moderation APIs
 
 - Fetch draft content  
-   `GET /api/admin/moderation/notes?status=draft`  
-   `GET /api/admin/moderation/tests?status=draft`
+    `GET /api/admin/moderation/notes?status=draft`  
+    `GET /api/admin/moderation/tests?status=draft`
 
 <details>
 <summary>Example (TypeScript)</summary>
 
 ```ts
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status') ?? 'draft';
+    const { searchParams } = new URL(req.url)
+    const status = searchParams.get("status") ?? "draft"
 
-  const notes = await prisma.topicNote.findMany({
-    where: { status },
-    include: {
-      topic: {
+    const notes = await prisma.topicNote.findMany({
+        where: { status },
         include: {
-          chapter: { include: { subject: { include: { class: { include: { board: true } } } } } },
+            topic: {
+                include: {
+                    chapter: { include: { subject: { include: { class: { include: { board: true }}}}}}
+                }
+            }
         },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+        orderBy: { createdAt: "desc" }
+    })
 
-  return NextResponse.json(notes);
+    return NextResponse.json(notes)
 }
 ```
-
 </details>
 
 - Approve / Reject Content  
-   `POST /api/admin/moderation/notes/:id/approve`  
-   `POST /api/admin/moderation/notes/:id/reject`
+    `POST /api/admin/moderation/notes/:id/approve`  
+    `POST /api/admin/moderation/notes/:id/reject`
 
 <details>
 <summary>Example (TypeScript)</summary>
 
 ```ts
-export async function POST(_: Request, { params }: { params: { id: string } }) {
-  await prisma.topicNote.update({
-    where: { id: params.id },
-    data: { status: 'approved' },
-  });
+export async function POST(_: Request, { params }: { params: { id: string }}) {
+    await prisma.topicNote.update({
+        where: { id: params.id },
+        data: { status: "approved" }
+    })
 
-  return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true })
 }
 ```
-
 </details>
 
 Audit log must be written here.
@@ -425,48 +415,46 @@ Audit log must be written here.
 #### 1.3 Job Monitor APIs
 
 - List Jobs  
-   `GET /api/admin/jobs?status=FAILED`
+    `GET /api/admin/jobs?status=FAILED`
 
 <details>
 <summary>Example (TypeScript)</summary>
 
 ```ts
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status');
+    const { searchParams } = new URL(req.url)
+    const status = searchParams.get("status")
 
-  const jobs = await prisma.hydrationJob.findMany({
-    where: status ? { status } : {},
-    orderBy: { createdAt: 'desc' },
-  });
+    const jobs = await prisma.hydrationJob.findMany({
+        where: status ? { status } : {},
+        orderBy: { createdAt: "desc" }
+    })
 
-  return NextResponse.json(jobs);
+    return NextResponse.json(jobs)
 }
 ```
-
 </details>
 
 - Retry / Cancel  
-   `POST /api/admin/jobs/:id/retry`  
-   `POST /api/admin/jobs/:id/cancel`
+    `POST /api/admin/jobs/:id/retry`  
+    `POST /api/admin/jobs/:id/cancel`
 
 <details>
 <summary>Example (TypeScript)</summary>
 
 ```ts
 export async function POST(_: Request, { params }: any) {
-  await prisma.hydrationJob.update({
-    where: { id: params.id },
-    data: { status: 'pending', retries: { increment: 1 } },
-  });
+    await prisma.hydrationJob.update({
+        where: { id: params.id },
+        data: { status: "pending", retries: { increment: 1 } }
+    })
 
-  // enqueue via pipeline (lazy init queue)
-  await enqueueJob(params.id);
+    // enqueue via pipeline (lazy init queue)
+    await enqueueJob(params.id)
 
-  return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true })
 }
 ```
-
 </details>
 
 #### 1.4 Execution Pipeline Health
@@ -474,20 +462,19 @@ export async function POST(_: Request, { params }: any) {
 - `GET /api/admin/pipeline/status`
 
 Returns:
-
 ```json
 {
-  "queueConnected": true,
-  "activeWorkers": 2,
-  "pendingJobs": 14,
-  "oldestPendingMs": 420000
+    "queueConnected": true,
+    "activeWorkers": 2,
+    "pendingJobs": 14,
+    "oldestPendingMs": 420000
 }
 ```
 
 #### 1.5 AI Telemetry
 
 - `GET /api/admin/telemetry/llm`  
-   Returns aggregated metrics from telemetry table.
+    Returns aggregated metrics from telemetry table.
 
 ---
 
@@ -499,34 +486,33 @@ These are clean, composable dashboards.
 
 ```tsx
 export function AcademicExplorer() {
-  const { data } = useSWR('/api/admin/hierarchy', fetcher);
+    const { data } = useSWR("/api/admin/hierarchy", fetcher)
 
-  return (
-    <div>
-      <HierarchyTree data={data} />
-      <ContentSummaryPanel />
-    </div>
-  );
+    return (
+        <div>
+            <HierarchyTree data={data} />
+            <ContentSummaryPanel />
+        </div>
+    )
 }
 ```
-
 Hierarchy tree is read-only.
 
 #### 2.2 Content Moderation UI
 
 ```tsx
 export function ModerationQueue() {
-  const { data } = useSWR('/api/admin/moderation/notes?status=draft', fetcher);
+    const { data } = useSWR("/api/admin/moderation/notes?status=draft", fetcher)
 
-  return data.map((note) => (
-    <ModerationCard
-      key={note.id}
-      title={note.title}
-      content={note.contentJson}
-      onApprove={() => approve(note.id)}
-      onReject={() => reject(note.id)}
-    />
-  ));
+    return data.map(note => (
+        <ModerationCard
+            key={note.id}
+            title={note.title}
+            content={note.contentJson}
+            onApprove={() => approve(note.id)}
+            onReject={() => reject(note.id)}
+        />
+    ))
 }
 ```
 
@@ -534,15 +520,19 @@ export function ModerationQueue() {
 
 ```tsx
 export function JobMonitor() {
-  const { data } = useSWR('/api/admin/jobs', fetcher);
+    const { data } = useSWR("/api/admin/jobs", fetcher)
 
-  return (
-    <table>
-      {data.map((job) => (
-        <JobRow job={job} onRetry={() => retry(job.id)} onCancel={() => cancel(job.id)} />
-      ))}
-    </table>
-  );
+    return (
+        <table>
+            {data.map(job => (
+                <JobRow
+                    job={job}
+                    onRetry={() => retry(job.id)}
+                    onCancel={() => cancel(job.id)}
+                />
+            ))}
+        </table>
+    )
 }
 ```
 
@@ -550,18 +540,20 @@ export function JobMonitor() {
 
 ```tsx
 export function PipelineHealth() {
-  const { data } = useSWR('/api/admin/pipeline/status', fetcher, { refreshInterval: 5000 });
+    const { data } = useSWR("/api/admin/pipeline/status", fetcher, { refreshInterval: 5000 })
 
-  return <StatsGrid stats={data} />;
+    return (
+        <StatsGrid stats={data} />
+    )
 }
 ```
 
 #### 2.5 AI Telemetry Dashboard
 
-- Charts:
-  - Latency over time
-  - Failure rates
-  - Cost per job type
+- Charts:  
+    - Latency over time  
+    - Failure rates  
+    - Cost per job type
 
 ---
 
@@ -637,15 +629,15 @@ model AdminAuditLog {
 ## How All of This Interacts (Mental Model)
 
 Admin UI  
- ↓  
+    ↓  
 Admin API (ID-based)  
- ↓  
+    ↓  
 Execution Pipeline  
- ↓  
+    ↓  
 Queue / Worker  
- ↓  
+    ↓  
 Telemetry + Job Logs  
- ↓  
+    ↓  
 Admin Dashboards
 
 No shortcuts. No hidden state.
@@ -864,7 +856,6 @@ Board: CBSE ▼
 [Generate Syllabus]
 [Generate Content]
 ```
-
 Purpose: Read-only navigation, context provider for all actions
 
 ### 3. Job Monitor Dashboard

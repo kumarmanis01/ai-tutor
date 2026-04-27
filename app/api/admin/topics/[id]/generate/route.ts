@@ -1,7 +1,10 @@
 import { submitJob } from '@/lib/execution-pipeline/submitJob';
 import { prisma } from '@/lib/prisma';
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { id: topicId } = await params;
   if (!topicId) return Response.json({ error: 'missing id' }, { status: 400 });
 
@@ -11,36 +14,16 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
 
   // Create separate jobs via submitJob so we get audit logs and JobExecutionLog entries
   // Notes in English and Hindi
-  await submitJob({
-    jobType: 'notes',
-    entityType: 'TOPIC',
-    entityId: topicId,
-    payload: { language: 'en', topicId },
-  });
-  await submitJob({
-    jobType: 'notes',
-    entityType: 'TOPIC',
-    entityId: topicId,
-    payload: { language: 'hi', topicId },
-  });
+  await submitJob({ jobType: 'notes', entityType: 'TOPIC', entityId: topicId, payload: { language: 'en', topicId } });
+  await submitJob({ jobType: 'notes', entityType: 'TOPIC', entityId: topicId, payload: { language: 'hi', topicId } });
 
   // Questions at multiple difficulties
   for (const d of ['easy', 'medium', 'hard']) {
-    await submitJob({
-      jobType: 'questions',
-      entityType: 'TOPIC',
-      entityId: topicId,
-      payload: { difficulty: d, topicId },
-    });
+    await submitJob({ jobType: 'questions', entityType: 'TOPIC', entityId: topicId, payload: { difficulty: d, topicId } });
   }
 
   // Assemble test
-  await submitJob({
-    jobType: 'assemble',
-    entityType: 'TOPIC',
-    entityId: topicId,
-    payload: { topicId },
-  });
+  await submitJob({ jobType: 'assemble', entityType: 'TOPIC', entityId: topicId, payload: { topicId } });
 
   return Response.json({ queued: true });
 }

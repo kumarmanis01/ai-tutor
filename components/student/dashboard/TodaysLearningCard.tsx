@@ -78,8 +78,7 @@ export default function TodaysLearningCard({
 }: TodaysLearningCardProps) {
   if (type === 'resume' && session) return <ResumeState session={session} />;
   if (type === 'homework' && homework) return <HomeworkState homework={homework} />;
-  if (type === 'start' && recommendation)
-    return <StartState rec={recommendation} ctaLabel={ctaLabel} />;
+  if (type === 'start' && recommendation) return <StartState rec={recommendation} ctaLabel={ctaLabel} />;
   if (type === 'ahead') return <AheadState />;
   if (type === 'plan_loading') return <PlanLoadingState />;
   return <EmptyState diagnosticHref={diagnosticHref ?? '/dashboard'} />;
@@ -87,13 +86,7 @@ export default function TodaysLearningCard({
 
 // ── Start state ───────────────────────────────────────────────────────────────
 
-function StartState({
-  rec,
-  ctaLabel,
-}: {
-  rec: TodaysLearningCardRecommendation;
-  ctaLabel?: string;
-}) {
+function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; ctaLabel?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -129,14 +122,11 @@ function StartState({
                   if (moving) return;
                   setMoving(true);
                   try {
-                    const res = await fetch(
-                      `/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`,
-                      {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'move', direction: 'prev' }),
-                      }
-                    );
+                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'move', direction: 'prev' }),
+                    });
                     const json = await res.json();
                     if (!res.ok) throw new Error(json?.error || 'Move failed');
                     // refresh server props
@@ -159,14 +149,11 @@ function StartState({
                   if (moving) return;
                   setMoving(true);
                   try {
-                    const res = await fetch(
-                      `/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`,
-                      {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'move', direction: 'next' }),
-                      }
-                    );
+                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'move', direction: 'next' }),
+                    });
                     const json = await res.json();
                     if (!res.ok) throw new Error(json?.error || 'Move failed');
                     router.refresh();
@@ -200,14 +187,7 @@ function StartState({
         >
           {loading ? (
             <>
-              <svg
-                className="w-4 h-4 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden
-              >
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
               </svg>
               Starting...
@@ -216,11 +196,7 @@ function StartState({
             <>
               {ctaLabel ?? "Start today's session"}
               <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                <path
-                  fillRule="evenodd"
-                  d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </>
           )}
@@ -258,11 +234,7 @@ function ResumeState({ session }: { session: TodaysLearningCardSession }) {
         >
           Continue session
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-            <path
-              fillRule="evenodd"
-              d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-              clipRule="evenodd"
-            />
+            <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
       </div>
@@ -278,13 +250,10 @@ function HomeworkState({ homework }: { homework: TodaysLearningCardHomework }) {
   const due = new Date(homework.dueDate);
   const diffDays = Math.round((due.getTime() - Date.now()) / 86_400_000);
   const dueLabel =
-    isOverdue || diffDays < 0
-      ? 'Overdue'
-      : diffDays === 0
-        ? 'Due today'
-        : diffDays === 1
-          ? 'Due tomorrow'
-          : `Due in ${diffDays} days`;
+    isOverdue || diffDays < 0 ? 'Overdue'
+    : diffDays === 0 ? 'Due today'
+    : diffDays === 1 ? 'Due tomorrow'
+    : `Due in ${diffDays} days`;
 
   return (
     <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[#BA7517] overflow-hidden shadow-sm">
@@ -293,9 +262,7 @@ function HomeworkState({ homework }: { homework: TodaysLearningCardHomework }) {
           <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
             Homework pending
           </span>
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${isOverdue ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300'}`}
-          >
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${isOverdue ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300'}`}>
             {dueLabel}
           </span>
         </div>
@@ -314,11 +281,7 @@ function HomeworkState({ homework }: { homework: TodaysLearningCardHomework }) {
         >
           Complete homework
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-            <path
-              fillRule="evenodd"
-              d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-              clipRule="evenodd"
-            />
+            <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
       </div>
@@ -359,8 +322,7 @@ function PlanLoadingState() {
           Great work completing your diagnostic!
         </p>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Teacher Vidya is building your personalised learning plan. This usually takes a few
-          minutes -- refresh this page to check if your first session is ready.
+          Teacher Vidya is building your personalised learning plan. This usually takes a few minutes -- refresh this page to check if your first session is ready.
         </p>
         <Link
           href="/learn/learning-path"
@@ -395,27 +357,13 @@ function EmptyState({ diagnosticHref }: { diagnosticHref: string }) {
           ].map((step) => (
             <li key={step.label} className="flex items-center gap-2 text-sm">
               {step.done ? (
-                <span className="text-[#1D9E75]" aria-hidden>
-                  ✓
-                </span>
+                <span className="text-[#1D9E75]" aria-hidden>✓</span>
               ) : step.active ? (
-                <span className="text-[#534AB7]" aria-hidden>
-                  →
-                </span>
+                <span className="text-[#534AB7]" aria-hidden>→</span>
               ) : (
-                <span className="text-gray-300 dark:text-gray-600" aria-hidden>
-                  ○
-                </span>
+                <span className="text-gray-300 dark:text-gray-600" aria-hidden>○</span>
               )}
-              <span
-                className={
-                  step.active
-                    ? 'font-medium text-[#534AB7] dark:text-indigo-400'
-                    : step.done
-                      ? 'text-gray-500 dark:text-gray-400'
-                      : 'text-gray-300 dark:text-gray-600'
-                }
-              >
+              <span className={step.active ? 'font-medium text-[#534AB7] dark:text-indigo-400' : step.done ? 'text-gray-500 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'}>
                 {step.label}
               </span>
             </li>

@@ -41,6 +41,7 @@ loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 process.env.DEBUG = '';
 const { prisma } = require('../lib/prisma');
 
+
 (async () => {
   try {
     const argv = process.argv.slice(2);
@@ -62,10 +63,7 @@ const { prisma } = require('../lib/prisma');
     } catch {
       // fallback: try a generic findMany if the model supports it
       try {
-        executions = await prisma.executionJob.findMany({
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-        });
+        executions = await prisma.executionJob.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
       } catch {
         // give up
       }
@@ -75,15 +73,10 @@ const { prisma } = require('../lib/prisma');
 
     let workerLifecycle = [];
     try {
-      workerLifecycle = await prisma.$queryRawUnsafe(
-        `SELECT * FROM \"WorkerLifecycle\" ORDER BY \"lastHeartbeat\" DESC LIMIT 20`
-      );
+      workerLifecycle = await prisma.$queryRawUnsafe(`SELECT * FROM \"WorkerLifecycle\" ORDER BY \"lastHeartbeat\" DESC LIMIT 20`);
     } catch {
       try {
-        workerLifecycle = await prisma.workerLifecycle.findMany({
-          orderBy: { lastHeartbeat: 'desc' },
-          take: 20,
-        });
+        workerLifecycle = await prisma.workerLifecycle.findMany({ orderBy: { lastHeartbeat: 'desc' }, take: 20 });
       } catch {
         // ignore
       }
@@ -93,10 +86,7 @@ const { prisma } = require('../lib/prisma');
 
     // If there is an errors table or logs table, try to fetch rows that reference the hydration id
     try {
-      const attempts = await prisma.$queryRawUnsafe(
-        `SELECT * FROM \"HydrationJobAttempt\" WHERE \"hydrationJobId\" = $1 ORDER BY \"createdAt\" DESC LIMIT 10`,
-        hydrationId
-      );
+      const attempts = await prisma.$queryRawUnsafe(`SELECT * FROM \"HydrationJobAttempt\" WHERE \"hydrationJobId\" = $1 ORDER BY \"createdAt\" DESC LIMIT 10`, hydrationId);
       if (attempts && attempts.length) {
         console.log('\nHydrationJobAttempt(s):');
         console.log(JSON.stringify(attempts, null, 2));
@@ -107,14 +97,13 @@ const { prisma } = require('../lib/prisma');
 
     // Raw query for any table names that might contain job logs (best-effort)
     try {
-      const res = await prisma.$queryRawUnsafe(
-        `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name ILIKE '%log%' LIMIT 50`
-      );
+      const res = await prisma.$queryRawUnsafe(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name ILIKE '%log%' LIMIT 50`);
       console.log('\nLog-like tables (sample):');
       console.log(JSON.stringify(res, null, 2));
     } catch {
       // ignore
     }
+
   } catch (err) {
     console.error('ERROR:', err && err.stack ? err.stack : err);
     process.exitCode = 2;

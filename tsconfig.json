@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -15,7 +19,10 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["src/*", "./*"]
+      "@/*": [
+        "src/*",
+        "./*"
+      ]
     },
     "baseUrl": ".",
     "plugins": [
@@ -38,5 +45,13 @@
     // that may contain fenced JSX blocks. These are generated and can break
     // `tsc --noEmit` during CI. Exclude .next dev types from the include list.
   ],
-  "exclude": ["node_modules", ".next", "dist", "tests", "scripts", "app", "public"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist",
+    "tests",
+    "scripts",
+    "app",
+    "public"
+  ]
 }

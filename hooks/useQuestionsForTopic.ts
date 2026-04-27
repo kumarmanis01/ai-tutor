@@ -36,7 +36,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 export function useQuestionsForTopic(
   topicId: string | null | undefined,
   difficulty?: string | null | undefined,
-  language?: string | null | undefined
+  language?: string | null | undefined,
 ) {
   const shouldFetch = !!topicId;
 

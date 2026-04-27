@@ -1,17 +1,7 @@
 import React from 'react';
 
-export function TestsHeader({
-  subject: _subject,
-  grade: _grade,
-  board: _board,
-}: {
-  subject?: string;
-  grade?: string;
-  board?: string;
-}) {
-  void _subject;
-  void _grade;
-  void _board;
+export function TestsHeader({ subject: _subject, grade: _grade, board: _board }: { subject?: string; grade?: string; board?: string }) {
+  void _subject; void _grade; void _board;
   return (
     <div className="space-y-1">
       <div>

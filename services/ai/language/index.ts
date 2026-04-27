@@ -39,4 +39,8 @@ export {
 } from './promptRewriter';
 
 // Examples
-export { NOTES_EXAMPLES, PRACTICE_EXAMPLES, DOUBT_EXAMPLES } from './examples';
+export {
+  NOTES_EXAMPLES,
+  PRACTICE_EXAMPLES,
+  DOUBT_EXAMPLES,
+} from './examples';

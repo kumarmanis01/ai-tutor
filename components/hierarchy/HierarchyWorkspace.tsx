@@ -7,12 +7,12 @@
  * - Content requires admin approval
  */
 
-'use client';
-import React from 'react';
-import { HierarchyProvider } from './HierarchyContext';
-import HierarchySelector from './HierarchySelector';
-import HierarchyActions from './HierarchyActions';
-import HierarchySummary from './HierarchySummary';
+"use client";
+import React from "react";
+import { HierarchyProvider } from "./HierarchyContext";
+import HierarchySelector from "./HierarchySelector";
+import HierarchyActions from "./HierarchyActions";
+import HierarchySummary from "./HierarchySummary";
 
 // HierarchyWorkspace composes the selector, actions, and summary into the
 // two-column admin workspace described in the wireframe.

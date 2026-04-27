@@ -31,9 +31,7 @@ export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHe
     let mounted = true;
     (async () => {
       try {
-        const resp = await fetch(
-          `/api/tutor/session/style?sessionId=${encodeURIComponent(session.sessionId)}`
-        );
+        const resp = await fetch(`/api/tutor/session/style?sessionId=${encodeURIComponent(session.sessionId)}`);
         if (!resp.ok) return;
         const data = await resp.json();
         if (!mounted) return;
@@ -42,9 +40,7 @@ export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHe
         // best-effort: ignore failures
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false };
   }, [session.sessionId]);
 
   // Completed phases as a percentage (0-100) for the thin progress fill.
@@ -60,23 +56,13 @@ export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHe
           aria-label="Go back"
           className="flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground transition-colors"
         >
-          <svg
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate leading-tight">
-            {topicName}
-          </p>
-          <p className="text-xs text-muted-foreground truncate leading-tight">
-            {subject} / {chapter}
-          </p>
+          <p className="text-sm font-semibold text-foreground truncate leading-tight">{topicName}</p>
+          <p className="text-xs text-muted-foreground truncate leading-tight">{subject} / {chapter}</p>
         </div>
       </div>
 

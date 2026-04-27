@@ -1,6 +1,8 @@
+
 AI HOME TUTOR PLATFORM
 Admin Actor
 Approach Document — Platform Operations, Content & Quality Control
+
 
 Actor
 Document Version
@@ -11,13 +13,15 @@ Admin
 MVP Phase 1 — ~1K concurrent
 Node.js + TS + Prisma + Neon + React
 
+
 CONFIDENTIAL — FOR INTERNAL REVIEW ONLY
 
 1. Overview
-   The Admin is a trusted internal team member responsible for platform health, content quality, AI behaviour monitoring, and business operations. At MVP, the team is expected to be ≤ 5 people. There is no dedicated admin UI at MVP — operations are performed via Prisma Studio, Neon query console, direct CLI scripts, and application logs. The admin's primary obligation is to keep the AI operating accurately and safely, and to maintain curriculum content quality.
+The Admin is a trusted internal team member responsible for platform health, content quality, AI behaviour monitoring, and business operations. At MVP, the team is expected to be ≤ 5 people. There is no dedicated admin UI at MVP — operations are performed via Prisma Studio, Neon query console, direct CLI scripts, and application logs. The admin's primary obligation is to keep the AI operating accurately and safely, and to maintain curriculum content quality.
 
 MVP PRINCIPLE
 Zero admin UI at MVP. Every hour spent building internal tooling is an hour not spent on the student product. Revisit when operational volume exceeds what Prisma Studio + SQL queries can handle — target: > 10,000 active students or > 5 team members.
+
 
 1.1 Admin Roles (MVP)
 Role
@@ -33,10 +37,12 @@ AI Quality Analyst
 Session quality sampling, hallucination monitoring, escalation review, cost monitoring
 sessions + analytics schemas (read-only)
 
+
+
 2. Content Operations
-   F-ADM-001
-   Curriculum Ingestion Pipeline
-   MVP
+F-ADM-001
+Curriculum Ingestion Pipeline
+MVP
 
 CLI-driven pipeline to ingest board textbook content and build the RAG knowledge base.
 AC#
@@ -76,6 +82,8 @@ These enhancements are scoped for Phase 2 to increase reliability, observability
 - **Operational safety:** Require explicit audit/log entry and admin confirmation for any run targeting production datasets. Provide a `--dry` and `--preview` mode for all CLI commands.
 - **Performance tuning & resilience:** Add circuit-breakers, exponential backoff for embedding calls, and batch-size tuning tests to balance latency, cost, and reliability.
 
+
+
 F-ADM-002
 Concept Taxonomy Management
 MVP
@@ -99,6 +107,7 @@ MUST
 AC-05
 Subject availability is controlled by a feature flag per (board, subject, grade) combination. Admin enables availability when content readiness criteria are met.
 MUST
+
 
 F-ADM-003
 Question Bank Management
@@ -127,6 +136,7 @@ AC-06
 Question bank health report: weekly automated query — questions per concept (flagging concepts with < 5 active questions), validation rate, rejection rate by subject. Emailed to content admin.
 SHOULD
 
+
 F-ADM-004
 Misconception Library Management
 MVP
@@ -148,7 +158,8 @@ AC-04
 Misconception prevalence_rate is updated automatically by a monthly analytics job: count of detections / total relevant attempts. High-prevalence misconceptions (> 30%) reviewed for curriculum chunk improvement.
 SHOULD
 
-## Seeding Misconceptions
+Seeding Misconceptions
+---------------------
 
 The repository includes idempotent seed scripts for launch content: 20 misconceptions each for CBSE Grade 10 Mathematics and Science. Files:
 
@@ -166,9 +177,13 @@ node prisma/seeds/misconceptions_cbse_grade10_mathematics.ts
 
 The seed modules export both an array (for unit tests) and a `seedMisconceptions(prisma, {dryRun})` function. They perform idempotent upserts keyed by stable `id` values and write no audit logs; admin audit actions are created when using the admin UI to edit entries.
 
+
+
+
 3. AI Quality Monitoring
-   CRITICAL RESPONSIBILITY
-   AI quality monitoring is the admin's most important operational responsibility at MVP. The AI is the product. Hallucinations, incorrect explanations, or poor pedagogical decisions directly damage student learning and platform trust. Admin must review sampled sessions daily.
+CRITICAL RESPONSIBILITY
+AI quality monitoring is the admin's most important operational responsibility at MVP. The AI is the product. Hallucinations, incorrect explanations, or poor pedagogical decisions directly damage student learning and platform trust. Admin must review sampled sessions daily.
+
 
 F-ADM-010
 Session Quality Sampling
@@ -197,6 +212,7 @@ AC-06
 Student session rating data (1–5 stars from session summary screen) queried weekly: avg rating per subject, per concept, per day. Sustained ratings < 3 stars on a concept → content review triggered.
 MUST
 
+
 F-ADM-011
 Doubt Escalation Queue
 MVP
@@ -209,7 +225,7 @@ AC-01
 Doubts escalated after 3 AI resolution failures are written to a escalations table: doubt text, all 3 AI attempts, concept_id, student_id (anonymised for reviewer), escalated_at.
 MUST
 AC-02
-Admin queries escalations table weekly: SELECT \* FROM escalations WHERE resolved_at IS NULL ORDER BY escalated_at. Reviews AI responses, identifies root cause (wrong curriculum chunk? missing misconception? prompt failure?).
+Admin queries escalations table weekly: SELECT * FROM escalations WHERE resolved_at IS NULL ORDER BY escalated_at. Reviews AI responses, identifies root cause (wrong curriculum chunk? missing misconception? prompt failure?).
 MUST
 AC-03
 Admin resolution actions: update relevant curriculum chunk → re-ingest, add new misconception to library, flag prompt issue for next iteration cycle, write a direct resolution that is cached in doubt_kb.
@@ -220,6 +236,7 @@ SHOULD
 AC-05
 Trending topics in escalations (same concept escalated by > 5 different students in a week) trigger a content priority alert: that concept's curriculum chunk needs immediate review.
 MUST
+
 
 Phase 2 — Enhancements (Planned)
 
@@ -236,6 +253,7 @@ These improvements are planned for Phase 2 to increase reliability, traceability
 - Performance & Safety: batch processing tuning, concurrency limits, idempotency guarantees, and circuit-breakers around external providers.
 
 Priority: SHOULD for user-facing reliability; MUST for auditability and consent.
+
 
 F-ADM-012
 LLM Cost Monitoring
@@ -261,6 +279,7 @@ AC-05
 Cache hit rate monitored: (explanation_cache_hits / total_teach_calls) per day. Target > 55%. Cache hit rate drop → investigate cache invalidation issue.
 SHOULD
 
+
 F-ADM-013
 Hallucination & Safety Flag Review
 MVP
@@ -273,7 +292,7 @@ AC-01
 AI safety layer is injected into every session system prompt. When triggered, a safety_event is written to analytics.events with: trigger_type, session_id, offending_turn_id.
 MUST
 AC-02
-Admin queries safety events daily: SELECT \* FROM analytics.events WHERE event_type = safety_triggered ORDER BY occurred_at DESC. Reviews within 2 hours of trigger.
+Admin queries safety events daily: SELECT * FROM analytics.events WHERE event_type = safety_triggered ORDER BY occurred_at DESC. Reviews within 2 hours of trigger.
 MUST
 AC-03
 Hallucination detection: AI responses containing factual claims not grounded in RAG-retrieved chunks are flagged with a low_groundedness_score. Admin reviews weekly summary of low-groundedness responses.
@@ -285,10 +304,12 @@ AC-05
 Student account suspension: if a student is found attempting to jailbreak the AI (prompt injection, off-curriculum manipulation), admin can suspend the account. Suspension is reversible.
 MUST
 
+
+
 4. User & Subscription Management
-   F-ADM-020
-   User Account Operations
-   MVP
+F-ADM-020
+User Account Operations
+MVP
 
 Admin management of student and parent accounts.
 AC#
@@ -312,6 +333,7 @@ SHOULD
 AC-06
 Admin can merge two accounts (e.g., student accidentally created duplicate). Merge preserves: better subscription, higher mastery scores, complete session history. Irreversible — requires admin confirmation.
 SHOULD
+
 
 F-ADM-021
 Subscription & Payment Operations
@@ -337,9 +359,12 @@ AC-05
 Subscription analytics queryable: MRR, ARR, churn rate, trial-to-paid conversion, average subscription duration. Available via Neon console SQL queries.
 MUST
 
+
+
 5. Business & Platform Metrics
-   TOOLING
-   All metrics at MVP are queried directly from Neon PostgreSQL via the Neon console SQL editor. No dedicated analytics dashboard. Target: weekly metrics review by founder using a saved query library.
+TOOLING
+All metrics at MVP are queried directly from Neon PostgreSQL via the Neon console SQL editor. No dedicated analytics dashboard. Target: weekly metrics review by founder using a saved query library.
+
 
 F-ADM-030
 Core Growth Metrics
@@ -356,7 +381,7 @@ AC-02
 Weekly Active Students (WAS): COUNT DISTINCT student_id FROM sessions WHERE started_at >= NOW() - INTERVAL 7 DAYS.
 MUST
 AC-03
-North Star — Sessions per student per week: AVG(session_count) FROM (SELECT student_id, COUNT(\*) FROM sessions WHERE started_at >= NOW() - INTERVAL 7 DAYS GROUP BY student_id). Target > 5.
+North Star — Sessions per student per week: AVG(session_count) FROM (SELECT student_id, COUNT(*) FROM sessions WHERE started_at >= NOW() - INTERVAL 7 DAYS GROUP BY student_id). Target > 5.
 MUST
 AC-04
 Freemium → Paid conversion rate: COUNT(subscriptions created this month) / COUNT(users registered this month). Target > 8% by Month 3.
@@ -374,15 +399,14 @@ SHOULD
 Implementation Status — AC-07 (Automated LTV/CAC): COMPLETED
 
 - Summary: Implemented automation for LTV/CAC (F-ADM-030) to replace the previous manual process. Key deliverables:
-  - Prisma models: `MarketingSpend`, `LtvSnapshot` and SQL migrations under `prisma/migrations/20260417020000_add_marketing_spend` and `prisma/migrations/20260417030000_add_ltv_snapshot`.
-  - Scheduled snapshot job: `jobs/metricsSnapshot.ts` (exports `runSnapshot(createdBy?)`) and registration in `lib/jobs/registerJobs.ts` for daily snapshots.
-  - On-demand metrics API: `app/api/admin/metrics/ltv-cac/route.ts` (month-to-date by default) and history API at `app/api/admin/metrics/ltv-cac/history/route.ts`.
-  - Admin UI: minimal dashboard at `app/admin/metrics/ltv-cac/page.tsx` showing current metrics and recent snapshots.
-  - Admin CLI: `scripts/insert-marketing-spend.ts` to insert monthly marketing spend entries (paise-based amounts).
-  - Unit tests: basic test coverage for the metrics API at `tests/unit/app/api/admin/metrics_ltv_cac.spec.ts`.
+	- Prisma models: `MarketingSpend`, `LtvSnapshot` and SQL migrations under `prisma/migrations/20260417020000_add_marketing_spend` and `prisma/migrations/20260417030000_add_ltv_snapshot`.
+	- Scheduled snapshot job: `jobs/metricsSnapshot.ts` (exports `runSnapshot(createdBy?)`) and registration in `lib/jobs/registerJobs.ts` for daily snapshots.
+	- On-demand metrics API: `app/api/admin/metrics/ltv-cac/route.ts` (month-to-date by default) and history API at `app/api/admin/metrics/ltv-cac/history/route.ts`.
+	- Admin UI: minimal dashboard at `app/admin/metrics/ltv-cac/page.tsx` showing current metrics and recent snapshots.
+	- Admin CLI: `scripts/insert-marketing-spend.ts` to insert monthly marketing spend entries (paise-based amounts).
+	- Unit tests: basic test coverage for the metrics API at `tests/unit/app/api/admin/metrics_ltv_cac.spec.ts`.
 
 Notes / Outstanding dev tasks (pre-flight before production runs):
-
 - Apply database migrations and generate Prisma client: `npx prisma migrate dev --name add_marketing_and_ltv_snapshot` then `npx prisma generate`.
 - Resolve Prisma schema validation tooling warning: CI/type-check flagged `datasource.url` deprecation (may be a Prisma CLI/tooling mismatch vs project lockfile). Align local Prisma CLI version or adapt `prisma.config.ts` as required.
 - Add integration tests for `jobs/metricsSnapshot` persistence and for `scripts/insert-marketing-spend` CLI behavior.
@@ -400,6 +424,8 @@ These are recommended Phase 2 items to make the LTV/CAC pipeline production-read
 - Backfill tooling & idempotency: provide safe backfill scripts and idempotent snapshot runner to re-compute historical snapshots where marketing spend was entered retrospectively.
 - Observability & provenance: log inputs to snapshot runs (start/end dates, source of marketing spend) and persist `createdBy` and `notes` to `LtvSnapshot` for auditability.
 - CI gates & coverage: require unit + integration tests for job and CLI in CI; add a smoke job that runs snapshot in a staging DB during deploy pre-flight.
+
+
 
 F-ADM-031
 Learning Outcome Metrics
@@ -424,6 +450,7 @@ SHOULD
 AC-05
 Spaced repetition compliance: % of due revision cards completed on schedule. Target > 65%. Low compliance → investigate UX friction or notification timing.
 SHOULD
+
 
 F-ADM-032
 Platform Health Metrics
@@ -452,10 +479,12 @@ AC-06
 VPS CPU + memory: monitored via UptimeRobot (free tier) + PM2 memory logs. Alert if CPU > 80% sustained 5 minutes or any process hits max_memory_restart.
 MUST
 
+
+
 6. Compliance & Data Governance
-   F-ADM-040
-   DPDP Act Compliance (India)
-   MVP
+F-ADM-040
+DPDP Act Compliance (India)
+MVP
 
 India Digital Personal Data Protection Act 2023 compliance for student data.
 AC#
@@ -480,6 +509,7 @@ AC-06
 Data breach response: if breach detected, affected users notified within 72 hours per DPDP requirements. Breach response runbook maintained in internal docs.
 MUST
 
+
 F-ADM-041
 Audit Logging
 MVP
@@ -501,28 +531,32 @@ AC-04
 Audit log retained minimum 7 years (legal requirement). After 1 year: archived to Cloudflare R2 as compressed JSON. Queryable via admin CLI.
 MUST
 
+
+
 7. Phase 2 Admin Features (Scoped, Not Built at MVP)
-   Feature
-   Code
-   Description
-   Admin Dashboard UI
-   F-ADM-P2-001
-   Dedicated internal web UI replacing Prisma Studio + SQL queries. Triggered when team > 5 or operational volume > 10K students.
-   Content Management UI
-   F-ADM-P2-002
-   UI for curriculum ingestion, taxonomy management, question bank review, misconception library editing.
-   A/B Test Framework
-   F-ADM-P2-003
-   Test different explanation strategies, hint phrasings, and gamification mechanics across student cohorts.
-   Cohort Retention Analysis
-   F-ADM-P2-004
-   Day 1/7/14/30/90 retention curves by acquisition cohort. Churn prediction model.
-   Bulk Institutional Onboarding
-   F-ADM-P2-005
-   CSV import for school/institution student enrolment. B2B channel operations.
-   AI Fine-Tuning Pipeline
-   F-ADM-P2-006
-   Tooling to collect high-quality session data, label it, and submit for fine-tuning smaller models (cost optimisation).
-   Geographic Demand Heatmap
-   F-ADM-P2-007
-   Map showing student registrations + engagement by city/district. Drives regional marketing decisions.
+Feature
+Code
+Description
+Admin Dashboard UI
+F-ADM-P2-001
+Dedicated internal web UI replacing Prisma Studio + SQL queries. Triggered when team > 5 or operational volume > 10K students.
+Content Management UI
+F-ADM-P2-002
+UI for curriculum ingestion, taxonomy management, question bank review, misconception library editing.
+A/B Test Framework
+F-ADM-P2-003
+Test different explanation strategies, hint phrasings, and gamification mechanics across student cohorts.
+Cohort Retention Analysis
+F-ADM-P2-004
+Day 1/7/14/30/90 retention curves by acquisition cohort. Churn prediction model.
+Bulk Institutional Onboarding
+F-ADM-P2-005
+CSV import for school/institution student enrolment. B2B channel operations.
+AI Fine-Tuning Pipeline
+F-ADM-P2-006
+Tooling to collect high-quality session data, label it, and submit for fine-tuning smaller models (cost optimisation).
+Geographic Demand Heatmap
+F-ADM-P2-007
+Map showing student registrations + engagement by city/district. Drives regional marketing decisions.
+
+

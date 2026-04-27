@@ -1,16 +1,19 @@
 /**
- * FILE OBJECTIVE:
- * - ContentReadinessService: Determines if a topic has sufficient content for a session (notes, practice, test questions).
+ * ContentReadinessService (ABSTRACTION-01)
  *
- * LINKED UNIT TEST:
- * - tests/unit/lib/session/contentReadinessService.spec.ts
+ * Determines whether a topic has sufficient content for a structured learning session.
  *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
+ * Checks:
+ *   - TopicNote exists (lifecycle: active)
+ *   - Practice questions exist (Question with topicId)
+ *   - Test questions exist (GeneratedTest with topicId that has GeneratedQuestion children)
  *
- * EDIT LOG:
- * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, file header
+ * Return:
+ *   READY   -- all three content types exist
+ *   PARTIAL -- at least one exists but not all
+ *   MISSING -- none exist
+ *
+ * SessionEngine calls this before startSession() to gate session creation.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -32,17 +35,21 @@ export interface ContentReadinessResult {
  * @returns ContentReadinessResult with readiness level and per-content flags.
  */
 async function isTopicReady(topicId: string): Promise<ContentReadinessResult> {
-  // All Prisma .count() calls return number, so no local row types needed for those.
   const [hasNotes, hasPracticeQuestions, hasTestQuestions] = await Promise.all([
-    prisma.topicNote.count({ where: { topicId, lifecycle: 'active' } }).then((n: number) => n > 0),
-    prisma.question.count({ where: { topicId } }).then((n: number) => n > 0),
+    prisma.topicNote
+      .count({ where: { topicId, lifecycle: 'active' } })
+      .then((n) => n > 0),
+    prisma.question
+      .count({ where: { topicId } })
+      .then((n) => n > 0),
     prisma.generatedQuestion
       .count({ where: { test: { topicId, lifecycle: 'active' } } })
-      .then((n: number) => n > 0),
+      .then((n) => n > 0),
   ]);
 
   const count = [hasNotes, hasPracticeQuestions, hasTestQuestions].filter(Boolean).length;
-  const readiness: ContentReadiness = count === 3 ? 'READY' : count > 0 ? 'PARTIAL' : 'MISSING';
+  const readiness: ContentReadiness =
+    count === 3 ? 'READY' : count > 0 ? 'PARTIAL' : 'MISSING';
 
   return {
     status: readiness,

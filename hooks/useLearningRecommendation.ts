@@ -1,4 +1,4 @@
-'use client';
+"use client";
 /**
  * FILE OBJECTIVE:
  * - Fetch the student's current learning recommendation from the DB-backed engine.
@@ -69,19 +69,14 @@ export function useLearningRecommendation(): LearningRecommendation & { loading:
           items.find((i) => {
             const t = String(i.type ?? '').toLowerCase();
             return t === 'notes' || t === 'note' || t === 'lesson';
-          }) ??
-          items[0] ??
-          null;
+          }) ?? items[0] ?? null;
 
         if (!item || cancelled) {
           setResult({ currentTopic: null, progressPercent: 0 });
           return;
         }
 
-        const meta = (item.meta && typeof item.meta === 'object' ? item.meta : {}) as Record<
-          string,
-          unknown
-        >;
+        const meta = (item.meta && typeof item.meta === 'object' ? item.meta : {}) as Record<string, unknown>;
         const contentId = String(item.contentId ?? item.id ?? '');
         const topicId = String(meta.topicId ?? parseTopicId(contentId) ?? '');
         const chapterId = String(meta.chapterId ?? '');
@@ -94,8 +89,7 @@ export function useLearningRecommendation(): LearningRecommendation & { loading:
 
         const difficulty = normalizeDifficulty(String(item.difficulty ?? ''));
         const estimatedTime = estimatedTimeFor(difficulty);
-        const progressPercent =
-          typeof item.score === 'number' ? Math.min(100, Math.round(item.score * 100)) : 0;
+        const progressPercent = typeof item.score === 'number' ? Math.min(100, Math.round(item.score * 100)) : 0;
 
         if (!cancelled) {
           setResult({
@@ -111,9 +105,7 @@ export function useLearningRecommendation(): LearningRecommendation & { loading:
     }
 
     load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   return { ...result, loading };

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import useSWR from 'swr';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 interface Trace {
   id: string;
@@ -35,7 +35,7 @@ export default function RecommendationTracesPage() {
 
   const { data, error, isLoading } = useSWR<{ traces: Trace[]; count: number }>(
     `/api/admin/recommendations/traces?${params.toString()}`,
-    fetcher
+    fetcher,
   );
 
   const traces = data?.traces ?? [];
@@ -54,12 +54,7 @@ export default function RecommendationTracesPage() {
 
       {/* Filters */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <FilterInput
-          label="Student ID"
-          value={studentId}
-          onChange={setStudentId}
-          placeholder="cuid..."
-        />
+        <FilterInput label="Student ID" value={studentId} onChange={setStudentId} placeholder="cuid..." />
         <FilterInput label="Topic ID" value={topicId} onChange={setTopicId} placeholder="cuid..." />
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -67,7 +62,7 @@ export default function RecommendationTracesPage() {
           </label>
           <select
             value={entityType}
-            onChange={(e) => setEntityType(e.target.value)}
+            onChange={e => setEntityType(e.target.value)}
             title="Filter by entity type"
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
@@ -85,7 +80,7 @@ export default function RecommendationTracesPage() {
           <input
             type="date"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+            onChange={e => setDateFrom(e.target.value)}
             title="Filter traces from this date"
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
@@ -97,7 +92,7 @@ export default function RecommendationTracesPage() {
           <input
             type="date"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+            onChange={e => setDateTo(e.target.value)}
             title="Filter traces up to this date"
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
@@ -108,7 +103,7 @@ export default function RecommendationTracesPage() {
           </label>
           <select
             value={limit}
-            onChange={(e) => setLimit(Number(e.target.value))}
+            onChange={e => setLimit(Number(e.target.value))}
             title="Number of traces to show"
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
@@ -124,13 +119,7 @@ export default function RecommendationTracesPage() {
       {(studentId || topicId || entityType || dateFrom || dateTo) && (
         <button
           type="button"
-          onClick={() => {
-            setStudentId('');
-            setTopicId('');
-            setEntityType('');
-            setDateFrom('');
-            setDateTo('');
-          }}
+          onClick={() => { setStudentId(''); setTopicId(''); setEntityType(''); setDateFrom(''); setDateTo(''); }}
           className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"
         >
           Clear all filters
@@ -139,9 +128,7 @@ export default function RecommendationTracesPage() {
 
       {/* Status */}
       {isLoading && (
-        <div className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">
-          Loading traces...
-        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading traces...</div>
       )}
       {error && (
         <div className="text-sm text-red-600 dark:text-red-400">
@@ -154,10 +141,7 @@ export default function RecommendationTracesPage() {
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           <p className="text-lg font-medium">No traces found</p>
           <p className="text-sm mt-1">
-            Ensure{' '}
-            <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-              ENABLE_RECOMMENDATION_TRACE=true
-            </code>{' '}
+            Ensure <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">ENABLE_RECOMMENDATION_TRACE=true</code>{' '}
             is set and the recommendation engine has been called.
           </p>
         </div>
@@ -169,22 +153,20 @@ export default function RecommendationTracesPage() {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                {['Timestamp', 'Student', 'Type', 'Entity ID', 'Score', 'Signals', 'Version'].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
-                        h === 'Score' ? 'text-right' : 'text-left'
-                      }`}
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {['Timestamp', 'Student', 'Type', 'Entity ID', 'Score', 'Signals', 'Version'].map(h => (
+                  <th
+                    key={h}
+                    className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
+                      h === 'Score' ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              {traces.map((trace) => (
+              {traces.map(trace => (
                 <React.Fragment key={trace.id}>
                   <tr
                     className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
@@ -217,11 +199,7 @@ export default function RecommendationTracesPage() {
                   {expandedRow === trace.id && (
                     <tr>
                       <td colSpan={7} className="px-4 py-4 bg-gray-50 dark:bg-gray-800">
-                        <SignalsDetail
-                          signals={trace.signals}
-                          entityId={trace.entityId}
-                          studentId={trace.studentId}
-                        />
+                        <SignalsDetail signals={trace.signals} entityId={trace.entityId} studentId={trace.studentId} />
                       </td>
                     </tr>
                   )}
@@ -260,7 +238,7 @@ function FilterInput({
       <input
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
       />
@@ -276,9 +254,7 @@ function TypeBadge({ type }: { type: string }) {
     test: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   };
   return (
-    <span
-      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}
-    >
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
       {type}
     </span>
   );
@@ -297,7 +273,7 @@ function SignalsSummary({ signals }: { signals: Record<string, unknown> }) {
   if (Array.isArray(reasoning)) {
     return <span>{reasoning.join(' \u00B7 ')}</span>;
   }
-  const keys = Object.keys(signals).filter((k) => {
+  const keys = Object.keys(signals).filter(k => {
     const v = signals[k];
     return v != null && v !== false && v !== 0;
   });
@@ -329,24 +305,13 @@ function SignalsDetail({
       </div>
 
       <div>
-        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase mb-1">
-          Signal Breakdown
-        </h4>
+        <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase mb-1">Signal Breakdown</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {entries.map(([key, value]) => (
-            <div
-              key={key}
-              className="flex items-center justify-between bg-white dark:bg-gray-900 rounded px-3 py-1.5 border border-gray-100 dark:border-gray-700"
-            >
+            <div key={key} className="flex items-center justify-between bg-white dark:bg-gray-900 rounded px-3 py-1.5 border border-gray-100 dark:border-gray-700">
               <span className="text-xs text-gray-600 dark:text-gray-400">{key}</span>
               <span className="text-xs font-mono font-medium text-gray-800 dark:text-gray-200">
-                {typeof value === 'number'
-                  ? value
-                  : typeof value === 'boolean'
-                    ? value
-                      ? 'true'
-                      : 'false'
-                    : JSON.stringify(value)}
+                {typeof value === 'number' ? value : typeof value === 'boolean' ? (value ? 'true' : 'false') : JSON.stringify(value)}
               </span>
             </div>
           ))}
@@ -358,9 +323,6 @@ function SignalsDetail({
 
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
-  return (
-    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
-    ' ' +
-    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  );
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }

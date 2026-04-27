@@ -19,28 +19,19 @@
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson';
-import {
-  validateOrThrow,
-  SchemaInvalidError,
-  PlaceholderContentError,
-} from '@/lib/aiOutputValidator';
+import { validateOrThrow, SchemaInvalidError, PlaceholderContentError } from '@/lib/aiOutputValidator';
 import _fs from 'fs';
 import _path from 'path';
-import { renderTemplate } from '@/prompts/index';
+import { renderTemplate } from '@/prompts/index'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
 import { getNextVersion } from '@/lib/getNextVersion';
 
-// Local row types for strict-mode
-type SiblingRow = { name: string };
-type ChunkRow = { content?: string | null };
-
 // If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
 // the raw text to `AIContentLog.responseBody.raw`. This is useful for transient
 // debugging on VPS without storing potentially sensitive raw outputs.
-const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY =
-  String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
+const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
 
 function getResponseBodyForDb(parsed: any, llmResult: any) {
   if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
@@ -54,8 +45,7 @@ function logRawToConsole(jobId: string, llmResult: any) {
   try {
     const raw = llmResult?.content;
     if (!raw) return;
-    const snippet =
-      typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
+    const snippet = typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
     logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { jobId, snippet });
   } catch (e) {
     // Never crash the worker for logging
@@ -101,36 +91,25 @@ export { validateNotesShape, validateNotesShapeWithReport };
  */
 function validateNotesShapeWithReport(raw: any) {
   const report: any = { issues: [], details: {} };
-  if (!raw || typeof raw !== 'object') {
-    report.issues.push('response-not-object');
-    return { valid: false, report };
-  }
-  if (!raw.title || typeof raw.title !== 'string') {
-    report.issues.push('missing-title');
-  }
-  if (!raw.content || typeof raw.content !== 'object') {
-    report.issues.push('missing-content');
-  }
+  if (!raw || typeof raw !== 'object') { report.issues.push('response-not-object'); return { valid: false, report }; }
+  if (!raw.title || typeof raw.title !== 'string') { report.issues.push('missing-title'); }
+  if (!raw.content || typeof raw.content !== 'object') { report.issues.push('missing-content'); }
 
   if (raw.content) {
     const content = raw.content;
     if (Array.isArray(content.sections)) {
       if (content.sections.length === 0) report.issues.push('sections-empty');
       content.sections.forEach((s: any, idx: number) => {
-        if (!s.heading || typeof s.heading !== 'string')
-          report.issues.push(`section-${idx}-missing-heading`);
-        if (!s.body || typeof s.body !== 'string' || s.body.trim().length === 0)
-          report.issues.push(`section-${idx}-missing-body`);
+        if (!s.heading || typeof s.heading !== 'string') report.issues.push(`section-${idx}-missing-heading`);
+        if (!s.body || typeof s.body !== 'string' || s.body.trim().length === 0) report.issues.push(`section-${idx}-missing-body`);
       });
     } else if (Array.isArray(content.paragraphs)) {
       if (content.paragraphs.length === 0) report.issues.push('paragraphs-empty');
       content.paragraphs.forEach((p: any, idx: number) => {
-        if (typeof p !== 'string' || p.trim().length === 0)
-          report.issues.push(`paragraph-${idx}-empty`);
+        if (typeof p !== 'string' || p.trim().length === 0) report.issues.push(`paragraph-${idx}-empty`);
       });
     } else {
-      if (!content.explanation || typeof content.explanation !== 'string')
-        report.issues.push('missing-explanation');
+      if (!content.explanation || typeof content.explanation !== 'string') report.issues.push('missing-explanation');
     }
   }
 
@@ -144,22 +123,13 @@ function validateNotesShapeWithReport(raw: any) {
  * Call LLM and try to parse JSON with a small retry on parse failure.
  * Returns parsed object or throws after retries.
  */
-async function callAndParseJSON(
-  prompt: string,
-  meta: any,
-  attempts = 3
-): Promise<{ parsed: any; llmResult: any }> {
+async function callAndParseJSON(prompt: string, meta: any, attempts = 3): Promise<{ parsed: any; llmResult: any }> {
   let lastErr: any = null;
   let prevResponseText: string | null = null;
   for (let i = 0; i < attempts; i++) {
     // Ensure RAG-lite context is used for content generation and bind to hydrationJob when provided
     const timeoutMs = Number(process.env.NOTES_LLM_TIMEOUT_MS || 30_000);
-    const callMeta = {
-      ...(meta || {}),
-      useRag: true,
-      hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
-      suppressLog: true,
-    };
+    const callMeta = { ...(meta || {}), useRag: true, hydrationJobId: meta?.hydrationJobId || meta?.jobId || null, suppressLog: true };
     const llmResponse = await callLLM({ prompt, meta: callMeta, timeoutMs });
     const responseText = String(llmResponse.content ?? '');
     prevResponseText = responseText;
@@ -190,14 +160,14 @@ async function callAndParseJSON(
 /**
  * Worker handler for NOTES hydration jobs.
  * Called by contentWorker when job.data.type === 'NOTES'.
- *
+ * 
  * @param jobId - The HydrationJob ID to process
  */
 export async function handleNotesJob(jobId: string): Promise<void> {
   // Atomically claim the job
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },
-    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() },
+    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() }
   });
   if (claim.count === 0) {
     logger.info('handleNotesJob: job already claimed or not pending', { jobId });
@@ -213,10 +183,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   // Check global pause -- use Paused status so the resume route can find and re-enqueue this job
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
   if (isSystemSettingEnabled(paused?.value)) {
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Paused, lockedAt: null },
-    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Paused, lockedAt: null } });
     logger.info('handleNotesJob: hydration paused, setting job to paused', { jobId });
     return;
   }
@@ -225,37 +192,17 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   // null/undefined = unset (legacy or test stub) -- allowed. Any other level is a routing bug.
   if (job.hierarchyLevel != null && job.hierarchyLevel !== 0 && job.hierarchyLevel !== 2) {
     logger.error('handleNotesJob: wrong hierarchyLevel -- refusing to process', {
-      jobId,
-      hierarchyLevel: job.hierarchyLevel,
+      jobId, hierarchyLevel: job.hierarchyLevel,
     });
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: 'wrong_hierarchy_level' },
-    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'wrong_hierarchy_level' } });
     return;
   }
   const topicId = job.topicId;
   if (!topicId) {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'missing_topicId');
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
-    try {
-      await prisma.aIContentLog.create({
-        data: {
-          model: 'none',
-          promptType: 'notes',
-          language: job.language || 'en',
-          success: false,
-          status: 'failed',
-          error: le,
-          requestBody: { jobId },
-          responseBody: null,
-        },
-      });
-    } catch {}
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: null } }) } catch {};
     throw new Error('missing_topicId');
   }
 
@@ -267,61 +214,41 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         include: {
           subject: {
             include: {
-              class: { include: { board: true } },
-            },
-          },
-        },
-      },
-    },
+              class: { include: { board: true } }
+            }
+          }
+        }
+      }
+    }
   });
 
   if (!topic) {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'topic_not_found');
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
-    try {
-      await prisma.aIContentLog.create({
-        data: {
-          model: 'none',
-          promptType: 'notes',
-          language: job.language || 'en',
-          success: false,
-          status: 'failed',
-          error: le,
-          requestBody: { jobId },
-          responseBody: null,
-        },
-      });
-    } catch {}
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: null } }) } catch {};
     throw new Error('topic_not_found');
   }
 
   // Versioning: when approved notes already exist for this topic+language, we still generate and persist
   // as a new version (don't skip). getNextVersion() returns the next version number (1, 2, 3, ...).
   const existingApproved = await prisma.topicNote.findFirst({
-    where: { topicId, language: job.language, status: 'approved' },
+    where: { topicId, language: job.language, status: 'approved' }
   });
   if (existingApproved) {
-    logger.info('handleNotesJob: existing approved notes found -- generating new version', {
-      jobId,
-      topicId,
-    });
+    logger.info('handleNotesJob: existing approved notes found -- generating new version', { jobId, topicId });
   }
 
   const board = topic.chapter.subject.class.board.name;
   const grade = topic.chapter.subject.class.grade;
   const subjectName = topic.chapter.subject.name;
   const language = job.language || 'en';
-  const difficultyLevel: 'foundation' | 'standard' | 'advanced' =
-    grade <= 8 ? 'foundation' : grade <= 10 ? 'standard' : 'advanced';
+  const difficultyLevel: 'foundation' | 'standard' | 'advanced' = grade <= 8 ? 'foundation' : grade <= 10 ? 'standard' : 'advanced'
 
   // Query sibling topics with lower order to build priorTopics list
-  const priorTopics: string[] = [];
+  const priorTopics: string[] = []
   try {
-    const siblings = (await prisma.topicDef.findMany({
+    const siblings = await prisma.topicDef.findMany({
       where: {
         chapterId: topic.chapterId,
         order: { lt: topic.order ?? 0 },
@@ -329,22 +256,17 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       select: { name: true },
       orderBy: { order: 'asc' },
       take: 5,
-    })) as SiblingRow[];
-    priorTopics.push(...siblings.map((s: SiblingRow) => s.name));
-  } catch {
-    /* non-fatal -- priorTopics will be empty */
-  }
+    })
+    priorTopics.push(...siblings.map((s) => s.name))
+  } catch { /* non-fatal -- priorTopics will be empty */ }
 
   // ── Ground notes in NCERT CurriculumChunk content when available ─────────────
-  let ncertContext: string | undefined;
+  let ncertContext: string | undefined
   try {
-    const subjectSlug = subjectName
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-    const chapterOrder = topic.chapter.order ?? 0;
+    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const chapterOrder = topic.chapter.order ?? 0
     if (chapterOrder > 0) {
-      const chunks = (await prisma.curriculumChunk.findMany({
+      const chunks = await prisma.curriculumChunk.findMany({
         where: {
           subject: subjectSlug,
           grade: String(grade),
@@ -353,34 +275,25 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         select: { content: true },
         orderBy: { createdAt: 'asc' },
         take: 8,
-      })) as ChunkRow[];
+      })
       if (chunks.length > 0) {
-        ncertContext = chunks
-          .map((c: ChunkRow) => c.content ?? '')
-          .filter(Boolean)
-          .join('\n\n---\n\n');
+        ncertContext = chunks.map((c) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
         logger.info('[notesWorker] grounding notes with NCERT chunks', {
           event: 'ncert_grounding',
-          context: {
-            jobId: job.id,
-            chapterOrder,
-            subject: subjectSlug,
-            grade,
-            chunkCount: chunks.length,
-          },
-        });
+          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
+        })
       } else {
         logger.warn('[notesWorker] no NCERT chunks for chapter -- using GPT knowledge', {
           event: 'ncert_grounding_fallback',
           context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
-        });
+        })
       }
     }
   } catch (chunkErr) {
     logger.warn('[notesWorker] CurriculumChunk query failed -- using GPT knowledge', {
       event: 'ncert_grounding_error',
       context: { jobId: job.id, error: String(chunkErr) },
-    });
+    })
   }
 
   // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
@@ -395,47 +308,33 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     language: (language === 'hi' ? 'hi-en' : 'en') as any,
     ncertContext,
   });
-  const prompt = rendered.prompt;
+  const prompt = rendered.prompt
 
   // Always use next version number so new jobs create v1, v2, v3... (versioned content, never overwrite).
   const version = await getNextVersion({ topicId, language, type: 'note' });
 
   // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
   try {
-    await prisma.aIContentLog.create({
-      data: {
-        model: 'pending',
-        promptType: 'notes',
-        board,
-        grade,
-        subject: subjectName,
-        chapter: topic.chapter?.name || null,
-        topic: topic.name,
-        language,
-        success: false,
-        status: 'started',
-        requestBody: {
-          jobId: job.id,
-          renderer: { schemaHash: rendered.schemaHash, version: rendered.version },
-        },
-        responseBody: null,
-      },
-    });
+    await prisma.aIContentLog.create({ data: {
+      model: 'pending',
+      promptType: 'notes',
+      board,
+      grade,
+      subject: subjectName,
+      chapter: topic.chapter?.name || null,
+      topic: topic.name,
+      language,
+      success: false,
+      status: 'started',
+      requestBody: { jobId: job.id, renderer: { schemaHash: rendered.schemaHash, version: rendered.version } },
+      responseBody: null
+    } });
   } catch {}
 
   // Call LLM and attempt to parse JSON with retries/extraction heuristics
   let parsed: any;
   let llmResult: any = null;
-  const llmMeta = {
-    promptType: 'notes',
-    board,
-    grade,
-    subject: subjectName,
-    topic: topic.name,
-    language,
-    schemaHash: rendered.schemaHash,
-    promptVersion: rendered.version,
-  };
+  const llmMeta = { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version };
   try {
     const res = await callAndParseJSON(prompt, llmMeta, 2);
     parsed = res.parsed;
@@ -447,155 +346,62 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       const raw = String(err?.message ?? 'llm_failed');
       const code = inferFailureCodeFromMessage(raw);
       const le = formatLastError(code, raw);
-      await prisma.aIContentLog.create({
-        data: {
-          model: 'none',
-          promptType: 'notes',
-          language: job.language || 'en',
-          success: false,
-          status: 'failed',
-          error: le,
-          requestBody: { jobId: job.id },
-          responseBody: null,
-        },
-      });
-      try {
-        await prisma.hydrationJob.update({
-          where: { id: job.id },
-          data: { status: JobStatus.Failed, lastError: le },
-        });
-      } catch {}
+      await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null } });
+      try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
     } catch {
-      try {
-        await prisma.aIContentLog.create({
-          data: {
-            model: 'none',
-            promptType: 'notes',
-            language: job.language || 'en',
-            success: false,
-            status: 'failed',
-            error: String(err?.message ?? 'llm_failed'),
-            requestBody: { jobId: job.id },
-            responseBody: null,
-          },
-        });
-      } catch {}
-      try {
-        await prisma.hydrationJob.update({
-          where: { id: job.id },
-          data: { status: JobStatus.Failed, lastError: String(err?.message ?? 'llm_failed') },
-        });
-      } catch {}
+      try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err?.message ?? 'llm_failed'), requestBody: { jobId: job.id }, responseBody: null } }); } catch {}
+      try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? 'llm_failed') } }); } catch {}
     }
-    logger.error('handleNotesJob: LLM parse failed, marking job failed', {
-      jobId,
-      error: err?.message || String(err),
-    });
+    logger.error('handleNotesJob: LLM parse failed, marking job failed', { jobId, error: err?.message || String(err) });
     return;
   }
 
   // Log response received
   try {
     const linkedExec = await prisma.executionJob.findFirst({
-      where: { payload: { path: ['hydrationJobId'], equals: job.id } },
+      where: { payload: { path: ['hydrationJobId'], equals: job.id } }
     });
     if (linkedExec) {
-      await prisma.jobExecutionLog
-        .create({
-          data: {
-            jobId: linkedExec.id,
-            event: 'RESPONSE_RECEIVED',
-            prevStatus: linkedExec.status,
-            newStatus: linkedExec.status,
-            meta: { hydrationJobId: job.id },
-          },
-        })
-        .catch(() => {});
+      await prisma.jobExecutionLog.create({
+        data: { jobId: linkedExec.id, event: 'RESPONSE_RECEIVED', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id } }
+      }).catch(() => {});
     }
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 
   // Strict validation: may throw typed errors. On failure we must fail the HydrationJob and persist AIContentLog, then rethrow.
   try {
-    validateOrThrow(parsed, {
-      jobType: 'notes',
-      language,
-      subject: subjectName,
-      topic: topic.name,
-      grade,
-      difficulty: job.difficulty,
-      difficultyLevel,
-    });
+    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
     // Log a validation-passed event for observability
     try {
-      const linkedExec = await prisma.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: job.id } },
-      });
+      const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linkedExec) {
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: linkedExec.id,
-              event: 'VALIDATION_PASSED',
-              prevStatus: linkedExec.status,
-              newStatus: linkedExec.status,
-              meta: { hydrationJobId: job.id },
-            },
-          })
-          .catch(() => {});
+        await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_PASSED', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id } } }).catch(() => {});
       }
-    } catch {
-      /* non-fatal */
-    }
+    } catch { /* non-fatal */ }
   } catch (vErr: any) {
     // Decide whether this validation failure is a retryable semantic weakness.
     // Treat explicit semantic weakness types as-is, and map certain SchemaInvalid or Placeholder errors
     // into retryable weakness categories so we can attempt the one-time quality retry.
-    const SEMANTIC_WEAKNESS_TYPES = [
-      'notes_too_short',
-      'notes_missing_required_section',
-      'notes_too_few_examples',
-      'notes_missing_bridge',
-      'notes_too_few_sections',
-    ];
-    let isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(
-      (t) => vErr?.type === t || String(vErr?.message ?? '').includes(t)
-    );
-    let weaknessType: string | undefined = vErr?.type || undefined;
+    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge', 'notes_too_few_sections']
+    let isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(t => vErr?.type === t || String(vErr?.message ?? '').includes(t))
+    let weaknessType: string | undefined = vErr?.type || undefined
 
     // Map SchemaInvalid (Zod) details to semantic weakness where appropriate
     try {
-      if (
-        !isSemanticWeakness &&
-        (vErr instanceof SchemaInvalidError || String(vErr?.type) === 'SCHEMA_INVALID')
-      ) {
-        const details = vErr?.details;
+      if (!isSemanticWeakness && (vErr instanceof SchemaInvalidError || String(vErr?.type) === 'SCHEMA_INVALID')) {
+        const details = vErr?.details
         if (Array.isArray(details)) {
           for (const d of details) {
-            const pathArr = Array.isArray(d.path) ? d.path : [d.path];
-            const pathStr = pathArr.filter(Boolean).join('.');
-            const msg = String(d.message || '');
-            if (pathStr.includes('bridgeToNext') || /bridgeToNext/i.test(msg)) {
-              isSemanticWeakness = true;
-              weaknessType = 'notes_missing_bridge';
-              break;
-            }
-            if (pathStr.includes('sections') || /sections/i.test(pathStr) || /section/i.test(msg)) {
-              isSemanticWeakness = true;
-              weaknessType = 'notes_missing_required_section';
-              break;
-            }
-            if (/length|too short|min/i.test(msg) || pathStr.includes('content')) {
-              isSemanticWeakness = true;
-              weaknessType = 'notes_too_short';
-              break;
-            }
+            const pathArr = Array.isArray(d.path) ? d.path : [d.path]
+            const pathStr = pathArr.filter(Boolean).join('.')
+            const msg = String(d.message || '')
+            if (pathStr.includes('bridgeToNext') || /bridgeToNext/i.test(msg)) { isSemanticWeakness = true; weaknessType = 'notes_missing_bridge'; break }
+            if (pathStr.includes('sections') || /sections/i.test(pathStr) || /section/i.test(msg)) { isSemanticWeakness = true; weaknessType = 'notes_missing_required_section'; break }
+            if (/length|too short|min/i.test(msg) || pathStr.includes('content')) { isSemanticWeakness = true; weaknessType = 'notes_too_short'; break }
           }
         } else {
           // generic schema invalid -> treat as retryable once
-          isSemanticWeakness = true;
-          weaknessType = 'schema_invalid_generic';
+          isSemanticWeakness = true; weaknessType = 'schema_invalid_generic'
         }
       }
     } catch (mapErr) {
@@ -603,112 +409,54 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     }
 
     // Placeholder content should be retried once with a strict 'no placeholder' hint
-    if (
-      !isSemanticWeakness &&
-      (vErr instanceof PlaceholderContentError || String(vErr?.type) === 'PLACEHOLDER_CONTENT')
-    ) {
-      isSemanticWeakness = true;
-      weaknessType = 'placeholder_content';
+    if (!isSemanticWeakness && (vErr instanceof PlaceholderContentError || String(vErr?.type) === 'PLACEHOLDER_CONTENT')) {
+      isSemanticWeakness = true; weaknessType = 'placeholder_content'
     }
 
     if (isSemanticWeakness) {
-      const weaknessDetail = vErr?.details ? JSON.stringify(vErr.details) : '';
+      const weaknessDetail = vErr?.details ? JSON.stringify(vErr.details) : ''
       try {
-        logger.warn(
-          '[notesWorker] semantic weakness on first attempt -- retrying LLM with quality hint',
-          { jobId: job.id, weaknessType }
-        );
-        const minSectionsRequired = difficultyLevel === 'advanced' ? 9 : 7;
-        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum ${minSectionsRequired} sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required. Do NOT use placeholders such as 'TBD', 'placeholder', 'content coming soon', or [insert ...].`;
+        logger.warn('[notesWorker] semantic weakness on first attempt -- retrying LLM with quality hint', { jobId: job.id, weaknessType });
+        const minSectionsRequired = difficultyLevel === 'advanced' ? 9 : 7
+        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum ${minSectionsRequired} sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required. Do NOT use placeholders such as 'TBD', 'placeholder', 'content coming soon', or [insert ...].`
         const retryRes = await callAndParseJSON(retryPrompt, { ...llmMeta, retry: 1 }, 1);
-        validateOrThrow(retryRes.parsed, {
-          jobType: 'notes',
-          language,
-          subject: subjectName,
-          topic: topic.name,
-          grade,
-          difficulty: job.difficulty,
-          difficultyLevel,
-        });
+        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
         parsed = retryRes.parsed;
         llmResult = retryRes.llmResult;
         // Retry succeeded -- fall through to persist
       } catch (retryErr: any) {
         // Both attempts failed -- apply failure contract below
-        const retryReason = retryErr?.type || retryErr?.message || 'validation_failed';
+        const retryReason = retryErr?.type || retryErr?.message || 'validation_failed'
         const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
         const le = formatLastError(FailureCode.VALIDATION_FAILED, String(retryReason));
-        try {
-          await prisma.hydrationJob.update({
-            where: { id: job.id },
-            data: { status: JobStatus.Failed, lastError: le },
-          });
-        } catch {}
+        try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
         try {
           // Optionally log raw output to worker logs for debugging when flag enabled
           logRawToConsole(job.id, llmResult);
           const responseBody = getResponseBodyForDb(parsed, llmResult);
-          await prisma.aIContentLog.create({
-            data: {
-              model: 'llm',
-              promptType: 'notes',
-              language: job.language || 'en',
-              success: false,
-              status: 'failed',
-              error: le,
-              requestBody: { jobId: job.id },
-              responseBody,
-            },
-          });
+          await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody } });
         } catch {}
         throw retryErr;
       }
     } else {
       // Failure contract: mark HydrationJob failed, persist AIContentLog, emit jobExecutionLog, then rethrow
-      const reason = vErr?.type || vErr?.message || 'validation_failed';
+      const reason = vErr?.type || vErr?.message || 'validation_failed'
       const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
       const le = formatLastError(FailureCode.VALIDATION_FAILED, String(reason));
       try {
-        await prisma.hydrationJob.update({
-          where: { id: job.id },
-          data: { status: JobStatus.Failed, lastError: le },
-        });
+        await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
       } catch {}
       try {
-        const linkedExec = await prisma.executionJob.findFirst({
-          where: { payload: { path: ['hydrationJobId'], equals: job.id } },
-        });
+        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
         if (linkedExec) {
-          await prisma.jobExecutionLog
-            .create({
-              data: {
-                jobId: linkedExec.id,
-                event: 'VALIDATION_FAILED',
-                prevStatus: linkedExec.status,
-                newStatus: linkedExec.status,
-                message: le,
-                meta: { hydrationJobId: job.id, error: vErr?.details || null },
-              },
-            })
-            .catch(() => {});
+          await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: le, meta: { hydrationJobId: job.id, error: vErr?.details || null } } }).catch(() => {});
         }
       } catch {}
       try {
         // Optionally log raw output to worker logs for debugging when flag enabled
         logRawToConsole(job.id, llmResult);
         const responseBody = getResponseBodyForDb(parsed, llmResult);
-        await prisma.aIContentLog.create({
-          data: {
-            model: 'llm',
-            promptType: 'notes',
-            language: job.language || 'en',
-            success: false,
-            status: 'failed',
-            error: le,
-            requestBody: { jobId: job.id },
-            responseBody,
-          },
-        });
+        await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody } });
       } catch {}
       throw vErr;
     }
@@ -745,7 +493,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           title: (parsed.metadata?.topic ?? parsed.title) as string,
           contentJson,
           source: 'ai',
-          status: ApprovalStatus.Draft,
+          status: ApprovalStatus.Draft
         },
         create: {
           topicId,
@@ -754,8 +502,8 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           title: (parsed.metadata?.topic ?? parsed.title) as string,
           contentJson,
           source: 'ai',
-          status: ApprovalStatus.Draft,
-        },
+          status: ApprovalStatus.Draft
+        }
       });
 
       // Persist AIContentLog inside the transaction (success path)
@@ -763,27 +511,25 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         const successResponseBody = getResponseBodyForDb(parsed, llmResult);
         // Log raw if console-only mode enabled
         logRawToConsole(job.id, llmResult);
-        await tx.aIContentLog.create({
-          data: {
-            model: llmResult?.model || 'llm',
-            promptType: 'notes',
-            board,
-            grade,
-            subject: subjectName,
-            chapter: topic.chapter?.name || null,
-            topic: topic.name,
-            language: job.language || 'en',
-            ...(topicId ? { topicRef: { connect: { id: topicId } } } : {}),
-            tokensIn: llmResult?.usage?.prompt_tokens ?? null,
-            tokensOut: llmResult?.usage?.completion_tokens ?? null,
-            tokensUsed: llmResult?.usage?.total_tokens ?? null,
-            costUsd: llmResult?.costUsd ?? null,
-            success: true,
-            status: 'success',
-            requestBody: { prompt },
-            responseBody: successResponseBody,
-          },
-        });
+        await tx.aIContentLog.create({ data: {
+          model: llmResult?.model || 'llm',
+          promptType: 'notes',
+          board,
+          grade,
+          subject: subjectName,
+          chapter: topic.chapter?.name || null,
+          topic: topic.name,
+          language: job.language || 'en',
+          ...(topicId ? { topicRef: { connect: { id: topicId } } } : {}),
+          tokensIn: llmResult?.usage?.prompt_tokens ?? null,
+          tokensOut: llmResult?.usage?.completion_tokens ?? null,
+          tokensUsed: llmResult?.usage?.total_tokens ?? null,
+          costUsd: llmResult?.costUsd ?? null,
+          success: true,
+          status: 'success',
+          requestBody: { prompt },
+          responseBody: successResponseBody
+        } });
       } catch (e) {
         throw e;
       }
@@ -791,24 +537,14 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       // Mark hydration job completed (workers only update their own HydrationJob)
       await tx.hydrationJob.update({
         where: { id: job.id },
-        data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true },
+        data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true }
       });
 
       // Emit JobExecutionLog entries for observability but DO NOT mutate ExecutionJob
-      const linked = await tx.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: job.id } },
-      });
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
         const prevStatus = linked.status ?? null;
-        await tx.jobExecutionLog.create({
-          data: {
-            jobId: linked.id,
-            event: 'COMPLETED',
-            prevStatus,
-            newStatus: prevStatus,
-            meta: { hydrationJobId: job.id, sourceJobId: job.id },
-          },
-        });
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id, sourceJobId: job.id } } });
       }
     });
     logger.info('handleNotesJob: completed successfully', { jobId, topicId });
@@ -818,36 +554,15 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       // Optionally log raw output to worker logs for debugging when flag enabled
       logRawToConsole(job.id, llmResult);
       const responseBody = getResponseBodyForDb(parsed, llmResult);
-      await prisma.aIContentLog.create({
-        data: {
-          model: llmResult?.model || 'llm',
-          promptType: 'notes',
-          language: job.language || 'en',
-          success: false,
-          status: 'failed',
-          error: String(err.message || err),
-          requestBody: { prompt },
-          responseBody,
-        },
-      });
+      await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err.message || err), requestBody: { prompt }, responseBody } });
     } catch {}
     try {
       const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
       const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
       const le = formatLastError(code, String(err?.message ?? err));
-      await prisma.hydrationJob.update({
-        where: { id: job.id },
-        data: { status: JobStatus.Failed, lastError: le, attempts: { increment: 0 } },
-      });
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le, attempts: { increment: 0 } } });
     } catch {
-      await prisma.hydrationJob.update({
-        where: { id: job.id },
-        data: {
-          status: JobStatus.Failed,
-          lastError: String(err?.message ?? err),
-          attempts: { increment: 0 },
-        },
-      });
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? err), attempts: { increment: 0 } } });
     }
     throw err;
   }

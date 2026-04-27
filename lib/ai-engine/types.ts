@@ -20,7 +20,7 @@ export const JobStatus = {
   Cancelled: 'cancelled',
   Paused: 'paused',
 } as const;
-export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
+export type JobStatus = typeof JobStatus[keyof typeof JobStatus];
 export type JobType =
   | 'GENERATE_SYLLABUS'
   | 'GENERATE_NOTES'
@@ -37,4 +37,4 @@ export const ApprovalStatus = {
   Rejected: 'rejected',
   Archived: 'archived',
 } as const;
-export type ApprovalStatus = (typeof ApprovalStatus)[keyof typeof ApprovalStatus];
+export type ApprovalStatus = typeof ApprovalStatus[keyof typeof ApprovalStatus];

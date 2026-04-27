@@ -37,26 +37,26 @@ import {
 export function detectStuckState(state: StudentState): StuckDetectionResult {
   const config = getRecoveryConfig(state.grade);
   const thresholds = config.thresholds;
-
+  
   const indicators: StuckIndicator[] = [];
   let severityScore = 0;
-
+  
   // Check each indicator
   if (state.retryCount >= thresholds.retryThreshold) {
     indicators.push(StuckIndicator.MULTIPLE_RETRIES);
     severityScore += state.retryCount >= thresholds.retryThreshold * 2 ? 2 : 1;
   }
-
+  
   if (state.timeOnCurrentItem > state.expectedTime * thresholds.timeMultiplierThreshold) {
     indicators.push(StuckIndicator.LONG_TIME);
     severityScore += state.timeOnCurrentItem > state.expectedTime * 3 ? 2 : 1;
   }
-
+  
   if (state.hintsUsed >= thresholds.hintThreshold) {
     indicators.push(StuckIndicator.MANY_HINTS);
     severityScore += 1;
   }
-
+  
   // Check recent confidence
   if (state.recentConfidences.length >= 3) {
     const avgConfidence = state.recentConfidences.slice(-3).reduce((a, b) => a + b, 0) / 3;
@@ -65,39 +65,41 @@ export function detectStuckState(state: StudentState): StuckDetectionResult {
       severityScore += avgConfidence < 0.3 ? 2 : 1;
     }
   }
-
+  
   // Check recent correctness
   if (state.recentCorrectness.length >= 3) {
-    const recentWrong = state.recentCorrectness.slice(-3).filter((c) => !c).length;
+    const recentWrong = state.recentCorrectness.slice(-3).filter(c => !c).length;
     if (recentWrong >= thresholds.wrongAnswerThreshold) {
       indicators.push(StuckIndicator.REPEATED_WRONG);
       severityScore += 2;
     }
   }
-
+  
   if (state.skippedCount >= thresholds.skipThreshold) {
     indicators.push(StuckIndicator.SKIPPING);
     severityScore += 1;
   }
-
+  
   if (state.idleTime >= thresholds.idleThreshold) {
     indicators.push(StuckIndicator.IDLE);
     severityScore += state.idleTime >= thresholds.idleThreshold * 2 ? 2 : 1;
   }
-
+  
   if (state.helpRequested) {
     indicators.push(StuckIndicator.HELP_REQUESTED);
     severityScore += 2; // Explicit request is high priority
   }
-
+  
   // Consider mood if available
   if (state.mood === 'anxious') {
     severityScore += 1;
   }
-
+  
   // Determine if stuck
-  const isStuck = indicators.length >= 2 || severityScore >= 3 || state.helpRequested;
-
+  const isStuck = indicators.length >= 2 || 
+                  severityScore >= 3 || 
+                  state.helpRequested;
+  
   // Determine severity
   let severity: StuckSeverity | undefined;
   if (isStuck) {
@@ -111,13 +113,13 @@ export function detectStuckState(state: StudentState): StuckDetectionResult {
       severity = StuckSeverity.MILD;
     }
   }
-
+  
   // Determine primary cause
   const primaryCause = determinePrimaryCause(indicators, state);
-
+  
   // Calculate confidence
-  const confidence = Math.min(0.5 + indicators.length * 0.15, 0.95);
-
+  const confidence = Math.min(0.5 + (indicators.length * 0.15), 0.95);
+  
   return {
     isStuck,
     indicators,
@@ -139,35 +141,35 @@ function determinePrimaryCause(
   if (indicators.includes(StuckIndicator.HELP_REQUESTED)) {
     return 'Student explicitly requested help';
   }
-
+  
   if (indicators.includes(StuckIndicator.REPEATED_WRONG)) {
     return 'Concept not fully understood';
   }
-
+  
   if (indicators.includes(StuckIndicator.LOW_CONFIDENCE)) {
     return 'Lack of confidence in understanding';
   }
-
+  
   if (indicators.includes(StuckIndicator.LONG_TIME)) {
     return 'Difficulty processing the problem';
   }
-
+  
   if (indicators.includes(StuckIndicator.MULTIPLE_RETRIES)) {
     return 'Struggling with this specific question';
   }
-
+  
   if (indicators.includes(StuckIndicator.MANY_HINTS)) {
     return 'Need more foundational understanding';
   }
-
+  
   if (indicators.includes(StuckIndicator.IDLE)) {
     return 'May be distracted or unsure how to proceed';
   }
-
+  
   if (indicators.includes(StuckIndicator.SKIPPING)) {
     return 'Topic may be too difficult';
   }
-
+  
   return undefined;
 }
 
@@ -183,24 +185,28 @@ export function createRecoveryPlan(
   detection: StuckDetectionResult
 ): RecoveryPlan {
   const config = getRecoveryConfig(state.grade);
-
+  
   // Select recovery actions based on indicators and severity
   const actions = selectRecoveryActions(detection, config);
   const primaryAction = actions[0];
   const alternativeActions = actions.slice(1, 3);
-
+  
   // Generate message
-  const message = generateRecoveryMessage(primaryAction, state, detection, config);
-
+  const message = generateRecoveryMessage(
+    primaryAction,
+    state,
+    detection,
+    config
+  );
+  
   // Generate action button text
   const buttonText = getActionButtonText(primaryAction, config);
-
+  
   // Generate secondary option
-  const secondaryOption =
-    alternativeActions.length > 0
-      ? getSecondaryOptionText(alternativeActions[0], config)
-      : undefined;
-
+  const secondaryOption = alternativeActions.length > 0
+    ? getSecondaryOptionText(alternativeActions[0], config)
+    : undefined;
+  
   return {
     detection,
     primaryAction,
@@ -210,8 +216,8 @@ export function createRecoveryPlan(
     secondaryOption,
     showEncouragement: detection.severity !== StuckSeverity.MILD,
     estimatedRecoveryTime: estimateRecoveryTime(primaryAction),
-    trackDismissal:
-      detection.severity === StuckSeverity.HIGH || detection.severity === StuckSeverity.CRITICAL,
+    trackDismissal: detection.severity === StuckSeverity.HIGH || 
+                     detection.severity === StuckSeverity.CRITICAL,
   };
 }
 
@@ -224,60 +230,60 @@ function selectRecoveryActions(
 ): RecoveryAction[] {
   const actions: RecoveryAction[] = [];
   const { indicators, severity } = detection;
-
+  
   // Map indicators to appropriate actions
-  if (
-    indicators.includes(StuckIndicator.REPEATED_WRONG) ||
-    indicators.includes(StuckIndicator.LOW_CONFIDENCE)
-  ) {
+  if (indicators.includes(StuckIndicator.REPEATED_WRONG) || 
+      indicators.includes(StuckIndicator.LOW_CONFIDENCE)) {
     actions.push(RecoveryAction.SIMPLER_EXPLANATION);
     actions.push(RecoveryAction.ALTERNATE_EXAMPLE);
   }
-
+  
   if (indicators.includes(StuckIndicator.LONG_TIME)) {
     actions.push(RecoveryAction.BREAK_DOWN_STEPS);
   }
-
+  
   if (indicators.includes(StuckIndicator.MANY_HINTS)) {
     actions.push(RecoveryAction.SUGGEST_REVISION);
   }
-
+  
   if (indicators.includes(StuckIndicator.IDLE)) {
     actions.push(RecoveryAction.ENCOURAGE);
     actions.push(RecoveryAction.SUGGEST_BREAK);
   }
-
+  
   if (indicators.includes(StuckIndicator.SKIPPING)) {
     actions.push(RecoveryAction.EASIER_PRACTICE);
     actions.push(RecoveryAction.SWITCH_TOPIC);
   }
-
+  
   if (indicators.includes(StuckIndicator.HELP_REQUESTED)) {
     actions.push(RecoveryAction.BREAK_DOWN_STEPS);
     actions.push(RecoveryAction.SHOW_SOLUTION);
   }
-
+  
   // Critical severity may need human help
   if (severity === StuckSeverity.CRITICAL) {
     actions.push(RecoveryAction.HUMAN_HELP);
   }
-
+  
   // Prioritize based on grade preferences
   const prioritized = actions
-    .filter((a) => config.preferredActions.includes(a))
-    .sort((a, b) => config.preferredActions.indexOf(a) - config.preferredActions.indexOf(b));
-
+    .filter(a => config.preferredActions.includes(a))
+    .sort((a, b) => 
+      config.preferredActions.indexOf(a) - config.preferredActions.indexOf(b)
+    );
+  
   // Add non-preferred actions at the end
-  const nonPreferred = actions.filter((a) => !config.preferredActions.includes(a));
-
+  const nonPreferred = actions.filter(a => !config.preferredActions.includes(a));
+  
   // Combine and dedupe
   const combined = [...new Set([...prioritized, ...nonPreferred])];
-
+  
   // Ensure we have at least one action
   if (combined.length === 0) {
     combined.push(config.preferredActions[0] || RecoveryAction.ENCOURAGE);
   }
-
+  
   return combined;
 }
 
@@ -291,20 +297,20 @@ function generateRecoveryMessage(
   config: GradeRecoveryConfig
 ): string {
   const templates = getMessageTemplates(action, config.messageTone);
-
+  
   // Select appropriate template
   let message = templates[Math.floor(Math.random() * templates.length)];
-
+  
   // Add emoji for playful/supportive tones
   if (config.useEmojis) {
     message = addEmoji(message, action);
   }
-
+  
   // Ensure message fits length limit
   if (message.length > config.maxMessageLength) {
     message = message.substring(0, config.maxMessageLength - 3) + '...';
   }
-
+  
   return message;
 }
 
@@ -318,130 +324,160 @@ function getMessageTemplates(
   const templates: Record<RecoveryAction, Record<typeof tone, string[]>> = {
     [RecoveryAction.SIMPLER_EXPLANATION]: {
       playful: [
-        'Let me explain this in a different way!',
+        "Let me explain this in a different way!",
         "I've got another way to show you this!",
       ],
       supportive: [
-        'Let me try explaining this differently. Sometimes a fresh perspective helps!',
+        "Let me try explaining this differently. Sometimes a fresh perspective helps!",
         "Here's another way to think about this concept.",
       ],
       focused: [
-        'Let me provide an alternative explanation that may be clearer.',
+        "Let me provide an alternative explanation that may be clearer.",
         "Here's a different approach to understanding this concept.",
       ],
     },
     [RecoveryAction.ALTERNATE_EXAMPLE]: {
-      playful: ['Check out this cool example!', "Here's a fun example that might help!"],
+      playful: [
+        "Check out this cool example!",
+        "Here's a fun example that might help!",
+      ],
       supportive: [
         "Here's a different example that might make things clearer.",
-        'Let me show you another example to help.',
+        "Let me show you another example to help.",
       ],
       focused: [
-        'Consider this alternative example.',
-        'This additional example may clarify the concept.',
+        "Consider this alternative example.",
+        "This additional example may clarify the concept.",
       ],
     },
     [RecoveryAction.SUGGEST_REVISION]: {
-      playful: ["Let's do a quick review first!", 'Want to look at some basics real quick?'],
+      playful: [
+        "Let's do a quick review first!",
+        "Want to look at some basics real quick?",
+      ],
       supportive: [
-        'It might help to quickly review some related concepts. Want to try that?',
+        "It might help to quickly review some related concepts. Want to try that?",
         "Let's strengthen your foundation a bit. It'll make this easier!",
       ],
       focused: [
-        'Reviewing the prerequisites may help. Would you like to do that?',
-        'Consider revisiting the foundational concepts before continuing.',
+        "Reviewing the prerequisites may help. Would you like to do that?",
+        "Consider revisiting the foundational concepts before continuing.",
       ],
     },
     [RecoveryAction.BREAK_DOWN_STEPS]: {
-      playful: ["Let's break this into tiny pieces!", 'Let me show you step by step!'],
+      playful: [
+        "Let's break this into tiny pieces!",
+        "Let me show you step by step!",
+      ],
       supportive: [
         "Let's take this one step at a time. It's easier that way!",
         "I'll break this down into smaller steps for you.",
       ],
       focused: [
-        'Let me break this down into smaller, manageable steps.',
+        "Let me break this down into smaller, manageable steps.",
         "Here's a step-by-step approach to this problem.",
       ],
     },
     [RecoveryAction.EASIER_PRACTICE]: {
-      playful: ['Want to try some easier ones first?', "Let's warm up with something simpler!"],
+      playful: [
+        "Want to try some easier ones first?",
+        "Let's warm up with something simpler!",
+      ],
       supportive: [
-        'How about we try some easier questions first to build up?',
+        "How about we try some easier questions first to build up?",
         "Let's practice with something simpler to build your confidence.",
       ],
       focused: [
-        'Would you like to practice with some foundational questions first?',
-        'Consider starting with simpler problems to build understanding.',
+        "Would you like to practice with some foundational questions first?",
+        "Consider starting with simpler problems to build understanding.",
       ],
     },
     [RecoveryAction.VISUAL_AID]: {
-      playful: ["Look at this picture! It'll help!", "Here's a cool diagram for you!"],
-      supportive: [
-        'This visual might help you understand better.',
-        'Let me show you a diagram that explains this.',
+      playful: [
+        "Look at this picture! It'll help!",
+        "Here's a cool diagram for you!",
       ],
-      focused: ['This diagram illustrates the concept.', 'Consider this visual representation.'],
+      supportive: [
+        "This visual might help you understand better.",
+        "Let me show you a diagram that explains this.",
+      ],
+      focused: [
+        "This diagram illustrates the concept.",
+        "Consider this visual representation.",
+      ],
     },
     [RecoveryAction.SUGGEST_BREAK]: {
       playful: [
         "How about a quick break? You're doing great!",
-        'Time for a little rest! You deserve it!',
+        "Time for a little rest! You deserve it!",
       ],
       supportive: [
         "You've been working hard! A short break might help clear your mind.",
-        'Sometimes a quick break helps. Take your time!',
+        "Sometimes a quick break helps. Take your time!",
       ],
       focused: [
-        'Consider taking a short break. Fresh perspective often helps.',
-        'A brief break may help you approach this with renewed focus.',
+        "Consider taking a short break. Fresh perspective often helps.",
+        "A brief break may help you approach this with renewed focus.",
       ],
     },
     [RecoveryAction.SWITCH_TOPIC]: {
-      playful: ['Want to explore something else for now?', "Let's try something different!"],
+      playful: [
+        "Want to explore something else for now?",
+        "Let's try something different!",
+      ],
       supportive: [
-        'Would you like to switch to a different topic for now?',
-        'We can come back to this later. Want to try something else?',
+        "Would you like to switch to a different topic for now?",
+        "We can come back to this later. Want to try something else?",
       ],
       focused: [
-        'Consider moving to a different topic and returning to this later.',
-        'Would you prefer to work on a different area for now?',
+        "Consider moving to a different topic and returning to this later.",
+        "Would you prefer to work on a different area for now?",
       ],
     },
     [RecoveryAction.SHOW_SOLUTION]: {
-      playful: ["Want to see how it's done?", 'Let me show you the answer!'],
+      playful: [
+        "Want to see how it's done?",
+        "Let me show you the answer!",
+      ],
       supportive: [
-        'Would you like to see the solution? Sometimes that helps learning.',
-        'Let me show you the worked solution so you can learn from it.',
+        "Would you like to see the solution? Sometimes that helps learning.",
+        "Let me show you the worked solution so you can learn from it.",
       ],
       focused: [
         "Here's the complete solution for your reference.",
-        'Review this worked example to understand the approach.',
+        "Review this worked example to understand the approach.",
       ],
     },
     [RecoveryAction.HUMAN_HELP]: {
-      playful: ['Want to ask a teacher for help?', 'Should we ask a grown-up?'],
+      playful: [
+        "Want to ask a teacher for help?",
+        "Should we ask a grown-up?",
+      ],
       supportive: [
-        'Would you like to connect with a teacher or tutor for extra help?',
-        'Sometimes talking to a teacher helps. Want me to connect you?',
+        "Would you like to connect with a teacher or tutor for extra help?",
+        "Sometimes talking to a teacher helps. Want me to connect you?",
       ],
       focused: [
-        'Would you like to request assistance from a human tutor?',
-        'Consider reaching out to a teacher for additional guidance.',
+        "Would you like to request assistance from a human tutor?",
+        "Consider reaching out to a teacher for additional guidance.",
       ],
     },
     [RecoveryAction.ENCOURAGE]: {
-      playful: ["You're doing awesome! Keep trying!", "You've got this! I believe in you!"],
+      playful: [
+        "You're doing awesome! Keep trying!",
+        "You've got this! I believe in you!",
+      ],
       supportive: [
         "You're doing great! Keep going, you'll get it.",
         "Don't give up! Every mistake is a learning opportunity.",
       ],
       focused: [
-        'Persistence is key. Keep working through it.',
+        "Persistence is key. Keep working through it.",
         "You're making progress. Continue your efforts.",
       ],
     },
   };
-
+  
   return templates[action]?.[tone] || templates[RecoveryAction.ENCOURAGE][tone];
 }
 
@@ -462,14 +498,17 @@ function addEmoji(message: string, action: RecoveryAction): string {
     [RecoveryAction.HUMAN_HELP]: '🙋',
     [RecoveryAction.ENCOURAGE]: '💪',
   };
-
+  
   return `${emojis[action] || '💫'} ${message}`;
 }
 
 /**
  * Get button text for action.
  */
-function getActionButtonText(action: RecoveryAction, config: GradeRecoveryConfig): string {
+function getActionButtonText(
+  action: RecoveryAction,
+  config: GradeRecoveryConfig
+): string {
   const texts: Record<RecoveryAction, Record<typeof config.messageTone, string>> = {
     [RecoveryAction.SIMPLER_EXPLANATION]: {
       playful: 'Show me!',
@@ -527,14 +566,17 @@ function getActionButtonText(action: RecoveryAction, config: GradeRecoveryConfig
       focused: 'Continue',
     },
   };
-
+  
   return texts[action]?.[config.messageTone] || 'Continue';
 }
 
 /**
  * Get secondary option text.
  */
-function getSecondaryOptionText(action: RecoveryAction, config: GradeRecoveryConfig): string {
+function getSecondaryOptionText(
+  action: RecoveryAction,
+  config: GradeRecoveryConfig
+): string {
   const texts: Record<RecoveryAction, string> = {
     [RecoveryAction.SIMPLER_EXPLANATION]: 'Or try a different way',
     [RecoveryAction.ALTERNATE_EXAMPLE]: 'Or see another example',
@@ -548,7 +590,7 @@ function getSecondaryOptionText(action: RecoveryAction, config: GradeRecoveryCon
     [RecoveryAction.HUMAN_HELP]: 'Or try AI help again',
     [RecoveryAction.ENCOURAGE]: 'Or take a break',
   };
-
+  
   return texts[action] || 'Or continue';
 }
 
@@ -569,6 +611,6 @@ function estimateRecoveryTime(action: RecoveryAction): number {
     [RecoveryAction.HUMAN_HELP]: 600,
     [RecoveryAction.ENCOURAGE]: 30,
   };
-
+  
   return times[action] || 120;
 }

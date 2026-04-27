@@ -1,21 +1,12 @@
 # Spinzy — Aider Task Prompts
-
 # 20 self-contained prompts. Paste one at a time into Aider.
-
 # Aider finds its own files via /run commands. No manual /add needed.
-
 #
-
 # BETWEEN EVERY TASK:
-
-# npm run build:workers && npm run build && npm test
-
-# All green → git add -A && git commit -m "task N: description"
-
-# Red → paste the error back into Aider in the same session
-
+#   npm run build:workers && npm run build && npm test
+#   All green → git add -A && git commit -m "task N: description"
+#   Red → paste the error back into Aider in the same session
 #
-
 # DO NOT paste the next task until the current one is green and committed.
 
 ---
@@ -31,23 +22,23 @@ Read every file path that appears in that output and add them all to context. Th
 1. In `prisma/schema.prisma`, remove the line `dateOfBirth  DateTime?` from the User model entirely. Do not rename it, do not keep it nullable — delete it.
 
 2. Run the migration:
-
 ```
 /run npx prisma migrate dev --name drop_date_of_birth_use_age_integer
 ```
 
 3. In every file that references `dateOfBirth`, remove all references. Replace any logic of the form `isUnder18(user.dateOfBirth)` or `user.dateOfBirth !== null` with this exact check:
-
 ```typescript
-const requiredByAge = user.age !== null && user.age < 13;
+const requiredByAge = user.age !== null && user.age < 13
 ```
 
 4. In `lib/student/accountStatus.ts`, update `requiresParentOTPGate` so the final gate condition is:
-
 ```typescript
-return user.accountStatus === 'pending_parent_verification' && user.age !== null && user.age < 13;
+return (
+  user.accountStatus === 'pending_parent_verification' &&
+  user.age !== null &&
+  user.age < 13
+)
 ```
-
 If `user.age` is null → return `false`. If `accountStatus` is anything other than `pending_parent_verification` → return `false`. Never gate on missing data.
 
 5. Remove `dateOfBirth` from every Prisma `select: {}` clause across all files.
@@ -55,19 +46,16 @@ If `user.age` is null → return `false`. If `accountStatus` is anything other t
 6. Remove `dateOfBirth` from any NextAuth session type definitions, `lib/auth.ts` JWT/session callbacks, and any TypeScript interface or type that includes it.
 
 7. Run:
-
 ```
 /run npx prisma generate
 ```
 
 Verify the build compiles and the three gate behaviours are correct:
-
 - age=17, accountStatus=active → requiresParentOTPGate = false
-- age=null, accountStatus=pending_parent_verification → false
+- age=null, accountStatus=pending_parent_verification → false  
 - age=10, accountStatus=pending_parent_verification → true
 
 Report every file changed with the exact lines removed/added.
-
 ```
 
 ---
@@ -75,10 +63,8 @@ Report every file changed with the exact lines removed/added.
 ## TASK 2 — Fix B2: Convert /student/verify-parent to redirect
 
 ```
-
-/run find app -type f -name "_.tsx" -o -name "_.ts" | xargs grep -l "verify-parent" 2>/dev/null | grep -v node_modules
-
-````
+/run find app -type f -name "*.tsx" -o -name "*.ts" | xargs grep -l "verify-parent" 2>/dev/null | grep -v node_modules
+```
 
 Add all files found. Then:
 
@@ -91,14 +77,13 @@ import { redirect } from 'next/navigation'
 export default function VerifyParentPage() {
   redirect('/dashboard')
 }
-````
+```
 
 Nothing else in that file. No imports other than redirect. No layout. No client components.
 
 3. The `ParentOTPGate` overlay in `StudentLayoutShell` already handles verification over the dashboard — do not touch it.
 
 Verify: navigating to `/student/verify-parent` redirects to `/dashboard`. Build must pass.
-
 ```
 
 ---
@@ -106,12 +91,10 @@ Verify: navigating to `/student/verify-parent` redirects to `/dashboard`. Build 
 ## TASK 3 — T29: Wire ProfileCompletionGate into student layout
 
 ```
-
-/run find app components lib -type f \( -name "_.tsx" -o -name "_.ts" \) | xargs grep -l "ProfileCompletion\|profileGuard\|isProfileComplete" 2>/dev/null | grep -v node_modules | grep -v ".next"
-/run cat app/\(student\)/layout.tsx 2>/dev/null || find app -path "_/student_/layout.tsx" | head -3
+/run find app components lib -type f \( -name "*.tsx" -o -name "*.ts" \) | xargs grep -l "ProfileCompletion\|profileGuard\|isProfileComplete" 2>/dev/null | grep -v node_modules | grep -v ".next"
+/run cat app/\(student\)/layout.tsx 2>/dev/null || find app -path "*/student*/layout.tsx" | head -3
 /run cat lib/student/profileGuard.ts 2>/dev/null || find lib -name "profileGuard.ts" | head -3
-
-````
+```
 
 Add all files found by these commands. Then:
 
@@ -131,7 +114,7 @@ export function isProfileComplete(user: {
     (user.subjects as unknown[]).length > 0
   )
 }
-````
+```
 
 2. In `app/(student)/layout.tsx`:
    - Import `isProfileComplete` from `lib/student/profileGuard`
@@ -155,7 +138,6 @@ export function isProfileComplete(user: {
    - Must support `dark:` Tailwind variants
 
 Verify: a user with no board/grade/language/subjects hits the overlay on `/dashboard`. A complete user sees nothing.
-
 ```
 
 ---
@@ -163,12 +145,10 @@ Verify: a user with no board/grade/language/subjects hits the overlay on `/dashb
 ## TASK 4 — T31: Diagnostic hard gate on all session entrypoints
 
 ```
-
-/run find app -type f \( -name "_.tsx" -o -name "_.ts" \) | xargs grep -l "session\|diagnostic" 2>/dev/null | grep -v node_modules | grep -v ".next" | grep -v "api" | head -20
-/run find lib -type f -name "\*.ts" | xargs grep -l "diagnostic\|hasDiagnostic" 2>/dev/null | grep -v node_modules
+/run find app -type f \( -name "*.tsx" -o -name "*.ts" \) | xargs grep -l "session\|diagnostic" 2>/dev/null | grep -v node_modules | grep -v ".next" | grep -v "api" | head -20
+/run find lib -type f -name "*.ts" | xargs grep -l "diagnostic\|hasDiagnostic" 2>/dev/null | grep -v node_modules
 /run find app/api -type f -name "route.ts" | xargs grep -l "tutor\|session/start" 2>/dev/null | grep -v node_modules
-
-````
+```
 
 Add all files found. Then:
 
@@ -198,7 +178,7 @@ export async function hasDiagnosticForSubject(
     return false
   }
 }
-````
+```
 
 2. In every server component under `app/(student)/session/` that loads a topic or concept:
    - Add at the top: `const hasDiag = await hasDiagnosticForSubject(userId, subjectId)`
@@ -206,18 +186,19 @@ export async function hasDiagnosticForSubject(
 
 3. In `app/api/tutor/session/start/route.ts` (if it exists):
    - After auth check, before creating a session:
-
    ```typescript
-   const hasDiag = await hasDiagnosticForSubject(userId, subjectId);
+   const hasDiag = await hasDiagnosticForSubject(userId, subjectId)
    if (!hasDiag) {
-     return Response.json({ code: 'DIAGNOSTIC_REQUIRED', subjectId }, { status: 403 });
+     return Response.json(
+       { code: 'DIAGNOSTIC_REQUIRED', subjectId },
+       { status: 403 }
+     )
    }
    ```
 
 4. The diagnostic start/resume page itself must NOT call `hasDiagnosticForSubject` (would create a circular redirect). Add a comment on those routes: `// diagnostic gate does not apply here`
 
 Verify: attempting to start a session with no diagnostic → redirected or 403. Student with completed diagnostic → unaffected.
-
 ```
 
 ---
@@ -225,11 +206,9 @@ Verify: attempting to start a session with no diagnostic → redirected or 403. 
 ## TASK 5 — T32: Grade immutability — server-side strip
 
 ```
-
 /run find app/api -type f -name "route.ts" | xargs grep -l "grade\|onboarding\|profile" 2>/dev/null | grep -v node_modules
-/run grep -rn "grade" app/api/ --include="\*.ts" | grep -v node_modules | grep -v ".next"
-
-````
+/run grep -rn "grade" app/api/ --include="*.ts" | grep -v node_modules | grep -v ".next"
+```
 
 Add all files found. Then:
 
@@ -238,30 +217,26 @@ Add all files found. Then:
 // grade is immutable after first save — strip from all student-facing updates
 const { grade: _grade, dateOfBirth: _dob, ...safeUpdate } = parsedBody
 // use safeUpdate for the prisma.user.update call, never parsedBody directly
-````
-
+```
 Add this exact comment on the line above the strip.
 
 2. In `app/api/user/onboarding/route.ts` (or wherever onboarding data is saved) — only write grade if the user's current grade is null:
-
 ```typescript
 const existingUser = await prisma.user.findUnique({
   where: { id: userId },
-  select: { grade: true },
-});
+  select: { grade: true }
+})
 if (existingUser?.grade !== null) {
-  delete updateData.grade;
+  delete updateData.grade
 }
 ```
 
 3. Search for any other API routes that accept `grade` in the body and apply the same strip pattern. Add the same comment to each.
 
 Verify:
-
 - PATCH /api/student/profile with `{ grade: 9 }` → DB grade unchanged
 - First onboarding with grade=10 → grade=10 saved
 - Second onboarding call with grade=9 → grade still 10
-
 ```
 
 ---
@@ -269,12 +244,10 @@ Verify:
 ## TASK 6 — Fix new-user dashboard empty state and nudge bug
 
 ```
-
-/run find components/home app/\(student\) -type f \( -name "_.tsx" -o -name "_.ts" \) 2>/dev/null | grep -v node_modules | grep -v ".next"
+/run find components/home app/\(student\) -type f \( -name "*.tsx" -o -name "*.ts" \) 2>/dev/null | grep -v node_modules | grep -v ".next"
 /run find lib/dashboard lib/home -type f 2>/dev/null | grep -v node_modules
-/run grep -rn "nudge\|getNudge\|daysSince\|Ready to start\|picking your first" app/ components/ lib/ --include="_.ts" --include="_.tsx" 2>/dev/null | grep -v node_modules | grep -v ".next"
-
-````
+/run grep -rn "nudge\|getNudge\|daysSince\|Ready to start\|picking your first" app/ components/ lib/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v node_modules | grep -v ".next"
+```
 
 Add all files found. Then make two fixes:
 
@@ -320,7 +293,7 @@ When `recommendation === null` AND the action type is `'start'` (no session to r
     ~15 minutes · tells Vidya where to start
   </p>
 </div>
-````
+```
 
 The diagnostic link should point to whatever diagnostic start route exists. Use `/run find app -path "*diagnostic*" -name "page.tsx"` to confirm the correct path first.
 
@@ -331,18 +304,16 @@ Remove the "Ready to start? / Refresh in a moment" text entirely — it must not
 In whatever file contains `getNudgeMessage` or the nudge logic (found by the grep above):
 
 Add this guard at the very top of the nudge function, before any other logic:
-
 ```typescript
 // Never show nudge to users who have never had a session
 if (!lastSessionDate || daysSinceLastSession >= 90) {
-  return null;
+  return null
 }
 ```
 
 The "It's been a couple of days" message must only fire when `lastSessionDate` is a real date AND `daysSinceLastSession >= 2 && daysSinceLastSession < 90`.
 
 Verify: a brand-new user with no sessions sees the onboarding checklist, zero nudge banners.
-
 ```
 
 ---
@@ -350,13 +321,11 @@ Verify: a brand-new user with no sessions sees the onboarding checklist, zero nu
 ## TASK 7 — Dashboard: XP widget and subject readiness rings
 
 ```
-
 /run find components/student/dashboard components/home app/\(student\)/dashboard -type f 2>/dev/null | grep -v node_modules | grep -v ".next"
 /run cat app/\(student\)/dashboard/page.tsx 2>/dev/null | head -120
-/run grep -rn "totalXp\|xpThisWeek\|currentLevel\|level\b" prisma/schema.prisma lib/ --include="_.ts" --include="_.prisma" 2>/dev/null | grep -v node_modules | head -20
-/run grep -rn "StudentConceptState\|masteryScore\|readiness" lib/ --include="\*.ts" 2>/dev/null | grep -v node_modules | head -20
-
-````
+/run grep -rn "totalXp\|xpThisWeek\|currentLevel\|level\b" prisma/schema.prisma lib/ --include="*.ts" --include="*.prisma" 2>/dev/null | grep -v node_modules | head -20
+/run grep -rn "StudentConceptState\|masteryScore\|readiness" lib/ --include="*.ts" 2>/dev/null | grep -v node_modules | head -20
+```
 
 Add all files found. Then:
 
@@ -375,14 +344,13 @@ Create `components/student/dashboard/XPWidget.tsx`:
 // Loading skeleton: 2 grey bars matching the populated layout shape
 // Error state: "Couldn't load XP"
 // Mobile-first, dark: variants required
-````
+```
 
 **2. Subject Readiness Card**
 
 Create `components/student/dashboard/SubjectReadinessCard.tsx`:
-
 ```tsx
-'use client';
+'use client'
 // Props: subjectName, score (0-100 integer), subjectId
 // Score ring: circular div with border, colour-coded:
 //   score < 40  → border-[#E24B4A] text-[#E24B4A]  label: "Critical"
@@ -401,7 +369,6 @@ Create `components/student/dashboard/SubjectReadinessCard.tsx`:
 In `app/(student)/dashboard/page.tsx`:
 
 Add these to the parallel fetch array:
-
 ```typescript
 // XP data — read from User model fields totalXp, level (already selected or add to select)
 // Readiness per subject — compute inline:
@@ -417,20 +384,19 @@ prisma.studentConceptState.findMany({
             chapterDef: {
               select: {
                 boardChapterWeights: {
-                  select: { weightMarks: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-});
+                  select: { weightMarks: true }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+})
 ```
 
 Compute readiness score per subject:
-
 ```typescript
 // Group by subjectId, weighted average using boardChapterWeight.weightMarks
 // readinessScore = (sum of masteryScore × weightMarks) / totalWeightMarks × 100
@@ -440,7 +406,6 @@ Compute readiness score per subject:
 Add `<XPWidget>` and `<SubjectReadinessCard>` to the dashboard JSX between the week strip section and the weak topics section.
 
 Verify: dashboard shows XP progress bar and coloured readiness rings with real DB data.
-
 ```
 
 ---
@@ -448,12 +413,10 @@ Verify: dashboard shows XP progress bar and coloured readiness rings with real D
 ## TASK 8 — T33: LearningPlan + LearningPlanItem schema and generator
 
 ```
-
 /run cat prisma/schema.prisma | grep -A5 "model LearningPlan\|model Concept\|model User\b" | head -60
-/run find worker/services lib/ai -type f -name "\*.ts" | xargs grep -l "diagnostic\|bootstrap\|mastery" 2>/dev/null | grep -v node_modules
+/run find worker/services lib/ai -type f -name "*.ts" | xargs grep -l "diagnostic\|bootstrap\|mastery" 2>/dev/null | grep -v node_modules
 /run find app/api/student -type f -name "route.ts" 2>/dev/null | grep -v node_modules
-
-````
+```
 
 Add all files found. Then:
 
@@ -494,12 +457,11 @@ enum PlanItemStatus {
   COMPLETED
   DEFERRED
 }
-````
+```
 
 Also add `learningPlans LearningPlan[]` to the `User` model and `learningPlanItems LearningPlanItem[]` to the `Concept` model.
 
 Run the migration:
-
 ```
 /run npx prisma migrate dev --name add_learning_plan
 /run npx prisma generate
@@ -508,7 +470,6 @@ Run the migration:
 **2. Generator**
 
 Create `lib/ai/learningPlan.ts`:
-
 ```typescript
 // generateLearningPlan(studentId, subjectId, options?)
 // 1. Load all concepts for the subject ordered by chapter order, then topic order
@@ -524,23 +485,21 @@ export async function generateLearningPlan(
   studentId: string,
   subjectId: string,
   options?: { examDate?: Date; weeklyGoal?: number }
-): Promise<string | null>; // returns planId or null
+): Promise<string | null> // returns planId or null
 ```
 
 **3. Wire into diagnostic bootstrap**
 
 In `worker/services/diagnosticBootstrapWorker.ts`, after the mastery seeding loop completes, add:
-
 ```typescript
-import { generateLearningPlan } from '@/lib/ai/learningPlan';
+import { generateLearningPlan } from '@/lib/ai/learningPlan'
 // After mastery seeding:
-await generateLearningPlan(job.data.studentId, job.data.subjectId);
+await generateLearningPlan(job.data.studentId, job.data.subjectId)
 ```
 
 **4. API endpoint**
 
 Create `app/api/student/learning-plan/today/route.ts`:
-
 ```typescript
 // GET — auth-guarded
 // 1. Find LearningPlan for student + their first subject
@@ -552,7 +511,6 @@ Create `app/api/student/learning-plan/today/route.ts`:
 ```
 
 Verify: after diagnostic bootstrap runs for a student, LearningPlan and LearningPlanItem rows exist in DB with weak-first ordering.
-
 ```
 
 ---
@@ -560,11 +518,9 @@ Verify: after diagnostic bootstrap runs for a student, LearningPlan and Learning
 ## TASK 9 — T34: Wire TodaysLearningCard to LearningPlan
 
 ```
-
-/run grep -rn "getNextAction\|TodaysLearning\|PrimaryAction\|recommendation" app/\(student\)/dashboard/ components/home/ --include="_.ts" --include="_.tsx" 2>/dev/null | grep -v node_modules | grep -v ".next"
+/run grep -rn "getNextAction\|TodaysLearning\|PrimaryAction\|recommendation" app/\(student\)/dashboard/ components/home/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v node_modules | grep -v ".next"
 /run find app/api/student/learning-plan -type f 2>/dev/null
-
-````
+```
 
 Add all files found. Then:
 
@@ -581,20 +537,16 @@ const recommendation = planResult?.item
       weekNumber: planResult.item.weekNumber,
     }
   : legacyRecommendation // fallback from getNextAction
-````
+```
 
 In `PrimaryActionCard`, when `recommendation` comes from the plan (i.e. `weekNumber` is present), show a subtle context line under the topic name:
-
 ```tsx
-{
-  recommendation.weekNumber && (
-    <p className="text-xs text-gray-400">Week {recommendation.weekNumber} of your plan</p>
-  );
-}
+{recommendation.weekNumber && (
+  <p className="text-xs text-gray-400">Week {recommendation.weekNumber} of your plan</p>
+)}
 ```
 
 When the plan exists but returns `{ item: null, fallback: false }` (student is ahead of plan this week), show:
-
 ```tsx
 <div className="rounded-lg bg-green-50 dark:bg-green-950 px-4 py-3">
   <p className="text-sm font-medium text-green-800 dark:text-green-200">
@@ -607,7 +559,6 @@ When the plan exists but returns `{ item: null, fallback: false }` (student is a
 ```
 
 Verify: dashboard CTA reads from LearningPlanItem when plan exists, falls back gracefully when no plan.
-
 ```
 
 ---
@@ -615,12 +566,10 @@ Verify: dashboard CTA reads from LearningPlanItem when plan exists, falls back g
 ## TASK 10 — T35: ExamReadinessScore computation and API
 
 ```
-
-/run grep -rn "BoardChapterWeight\|weightMarks\|readiness\|examReadiness" lib/ prisma/schema.prisma --include="_.ts" --include="_.prisma" 2>/dev/null | grep -v node_modules | head -30
+/run grep -rn "BoardChapterWeight\|weightMarks\|readiness\|examReadiness" lib/ prisma/schema.prisma --include="*.ts" --include="*.prisma" 2>/dev/null | grep -v node_modules | head -30
 /run find app/api/student -type d 2>/dev/null
-/run find lib/student -type f -name "\*.ts" 2>/dev/null | grep -v node_modules
-
-````
+/run find lib/student -type f -name "*.ts" 2>/dev/null | grep -v node_modules
+```
 
 Add all files found. Then:
 
@@ -651,12 +600,11 @@ Create `lib/student/examReadiness.ts`:
 //   }>
 // }
 // Never throws — returns { score: 0, label: 'critical', chapters: [] } on error
-````
+```
 
 **2. API endpoint**
 
 Create `app/api/student/readiness/[subjectId]/route.ts`:
-
 ```typescript
 // GET — auth-guarded
 // 1. Calls computeReadinessScore(userId, subjectId)
@@ -672,7 +620,6 @@ Create `app/api/student/readiness/[subjectId]/route.ts`:
 **3. Wire into SubjectReadinessCard**
 
 In `components/student/dashboard/SubjectReadinessCard.tsx` (created in Task 7):
-
 - Change from inline prop `score` to fetching from this API on mount using `useEffect` + `fetch`
 - Or: fetch on the server in the dashboard page and pass as prop — server-side is preferred
 - Dashboard page: add `computeReadinessScore` calls (one per subject) to the parallel fetch array
@@ -680,7 +627,6 @@ In `components/student/dashboard/SubjectReadinessCard.tsx` (created in Task 7):
 **4. Nightly pre-compute job**
 
 In the scheduler, add a daily job at 3:00 AM IST:
-
 ```typescript
 // For each student who had a session in the last 7 days:
 // - computeReadinessScore for each of their subjects
@@ -689,7 +635,6 @@ In the scheduler, add a daily job at 3:00 AM IST:
 ```
 
 Verify: readiness score reflects actual weighted chapter mastery. Score 0 for no-data student.
-
 ```
 
 ---
@@ -697,13 +642,11 @@ Verify: readiness score reflects actual weighted chapter mastery. Score 0 for no
 ## TASK 11 — T37: DPDP Consent record
 
 ```
-
 /run cat prisma/schema.prisma | grep -A3 "model User\b" | head -20
 /run find app/api -type d | grep -v node_modules
 /run find lib -type f -name "*.ts" | xargs grep -l "consent\|Consent" 2>/dev/null | grep -v node_modules
-/run find app -path "*onboarding*" -o -path "*signup*" -o -path "*register\*" 2>/dev/null | grep -v node_modules | grep -v ".next"
-
-````
+/run find app -path "*onboarding*" -o -path "*signup*" -o -path "*register*" 2>/dev/null | grep -v node_modules | grep -v ".next"
+```
 
 Add all files found. Then:
 
@@ -732,12 +675,11 @@ enum ConsentScope {
   PARENT_NOTIFICATION
   MARKETING
 }
-````
+```
 
 Add `consents Consent[]` to the `User` model.
 
 Run:
-
 ```
 /run npx prisma migrate dev --name add_consent_record
 /run npx prisma generate
@@ -746,9 +688,8 @@ Run:
 **2. Service**
 
 Create `lib/consent/check.ts`:
-
 ```typescript
-export async function hasConsented(userId: string, scope: ConsentScope): Promise<boolean>;
+export async function hasConsented(userId: string, scope: ConsentScope): Promise<boolean>
 // Returns true if a non-withdrawn Consent row exists for user + scope
 // Never throws — returns false on any error
 
@@ -756,14 +697,13 @@ export async function grantConsent(
   userId: string,
   scopes: ConsentScope[],
   meta: { ipAddress?: string; userAgent?: string; version?: string }
-): Promise<void>;
+): Promise<void>
 // Creates Consent rows for each scope, idempotent (upsert by userId+scope)
 ```
 
 **3. API endpoints**
 
 Create `app/api/consent/grant/route.ts` (POST):
-
 ```typescript
 // Body: { scopes: ConsentScope[] }
 // Reads IP from x-forwarded-for or request.ip
@@ -772,7 +712,6 @@ Create `app/api/consent/grant/route.ts` (POST):
 ```
 
 Create `app/api/consent/withdraw/route.ts` (POST):
-
 ```typescript
 // Body: { scope: ConsentScope }
 // Sets withdrawnAt = now() on matching row
@@ -782,23 +721,17 @@ Create `app/api/consent/withdraw/route.ts` (POST):
 **4. Gate the tutor turn**
 
 In `app/api/tutor/turn/route.ts`, after auth check:
-
 ```typescript
-const canUseAI = await hasConsented(userId, 'AI_INTERACTION');
+const canUseAI = await hasConsented(userId, 'AI_INTERACTION')
 if (!canUseAI) {
   // Stream SSE error and return
-  return streamError({
-    code: 'CONSENT_REQUIRED',
-    message: 'AI interaction consent required',
-    retryable: false,
-  });
+  return streamError({ code: 'CONSENT_REQUIRED', message: 'AI interaction consent required', retryable: false })
 }
 ```
 
 **5. Consent UI** (gated behind CONSENT_LIVE env var — build it but do not show until lawyer approves)
 
 Create `components/student/ConsentGate.tsx`:
-
 - Full-screen overlay, renders only when `process.env.NEXT_PUBLIC_CONSENT_LIVE === 'true'`
 - Shows the consent copy (placeholder below — REPLACE WITH LAWYER-REVIEWED TEXT)
 - Two checkboxes, both required:
@@ -809,7 +742,6 @@ Create `components/student/ConsentGate.tsx`:
 - On agree: POST /api/consent/grant, then router.refresh()
 
 Placeholder consent copy (must be replaced before going live):
-
 ```
 Spinzy needs your consent to:
 1. Process your academic data (grades, answers, progress) to personalise your learning.
@@ -818,7 +750,6 @@ You can withdraw consent at any time from Profile → Privacy Settings.
 ```
 
 Verify: Consent model exists in DB. Grant endpoint creates rows. Tutor turn returns 403 when consent not given.
-
 ```
 
 ---
@@ -826,13 +757,11 @@ Verify: Consent model exists in DB. Grant endpoint creates rows. Tutor turn retu
 ## TASK 12 — T38: Parent as distinct actor
 
 ```
-
 /run cat prisma/schema.prisma | grep -A10 "model ParentStudent\|model ParentProfile\|parentId\|ParentLink" | head -40
-/run find app -path "_parent_" -type f 2>/dev/null | grep -v node_modules | grep -v ".next"
-/run find lib -path "_parent_" -type f 2>/dev/null | grep -v node_modules
-/run grep -rn "role.*parent\|parent.*role" prisma/schema.prisma lib/ --include="_.ts" --include="_.prisma" 2>/dev/null | grep -v node_modules | head -10
-
-````
+/run find app -path "*parent*" -type f 2>/dev/null | grep -v node_modules | grep -v ".next"
+/run find lib -path "*parent*" -type f 2>/dev/null | grep -v node_modules
+/run grep -rn "role.*parent\|parent.*role" prisma/schema.prisma lib/ --include="*.ts" --include="*.prisma" 2>/dev/null | grep -v node_modules | head -10
+```
 
 Add all files found. Then:
 
@@ -845,12 +774,11 @@ model ParentProfile {
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   children  ParentStudent[]
 }
-````
+```
 
 Add `parentProfile ParentProfile?` to the `User` model if not already there.
 
 Run:
-
 ```
 /run npx prisma migrate dev --name add_parent_profile
 /run npx prisma generate
@@ -859,7 +787,6 @@ Run:
 **2. Parent layout**
 
 Create `app/(parent)/layout.tsx`:
-
 ```typescript
 // Server component
 // 1. Get session — if no session → redirect('/login')
@@ -871,7 +798,6 @@ Create `app/(parent)/layout.tsx`:
 **3. Parent dashboard page**
 
 Create `app/(parent)/dashboard/page.tsx`:
-
 ```typescript
 // Server component
 // 1. Load all ParentStudent rows for this parent user
@@ -883,7 +809,6 @@ Create `app/(parent)/dashboard/page.tsx`:
 **4. ParentDashboard component**
 
 Create `components/parent/ParentDashboard.tsx`:
-
 ```tsx
 // One card per linked child showing:
 //   - Name, Grade, Board
@@ -901,7 +826,6 @@ Create `components/parent/ParentDashboard.tsx`:
 **5. Child linking**
 
 Create `app/api/parent/link-child/route.ts` (POST):
-
 ```typescript
 // Body: { inviteToken: string }
 // Validate token → find the student it belongs to
@@ -910,7 +834,6 @@ Create `app/api/parent/link-child/route.ts` (POST):
 ```
 
 Create `app/api/student/invite-parent/route.ts` (POST):
-
 ```typescript
 // Auth-guarded (student only)
 // Generates a short-lived invite token (store in Redis, 48h TTL)
@@ -919,7 +842,6 @@ Create `app/api/student/invite-parent/route.ts` (POST):
 ```
 
 Verify: parent with role='parent' lands on /parent/dashboard. Student routes inaccessible from parent layout.
-
 ```
 
 ---
@@ -927,13 +849,11 @@ Verify: parent with role='parent' lands on /parent/dashboard. Student routes ina
 ## TASK 13 — T39: Parent progress API and weekly digest
 
 ```
-
 /run find app/api/parent -type f 2>/dev/null | grep -v node_modules
-/run find worker/services -type f -name "_.ts" 2>/dev/null | grep -v node_modules
+/run find worker/services -type f -name "*.ts" 2>/dev/null | grep -v node_modules
 /run find lib/mailer.ts lib/mailer -type f 2>/dev/null | grep -v node_modules
-/run grep -rn "BullMQ\|Queue\|addJob\|scheduler" worker/ --include="_.ts" 2>/dev/null | grep -v node_modules | head -10
-
-````
+/run grep -rn "BullMQ\|Queue\|addJob\|scheduler" worker/ --include="*.ts" 2>/dev/null | grep -v node_modules | head -10
+```
 
 Add all files found. Then:
 
@@ -956,12 +876,11 @@ Create `app/api/parent/progress/route.ts`:
 // }
 // recentAlerts types: 'readiness_drop' (>10pt drop in 7 days), 'streak_break', 'milestone'
 // studyTimeThisWeekMinutes: sum of session durations for this week
-````
+```
 
 **2. Progress detail page**
 
 Create `app/(parent)/progress/[studentId]/page.tsx`:
-
 ```typescript
 // Server component — parent role required
 // Verify the requested studentId is actually linked to this parent
@@ -972,7 +891,6 @@ Create `app/(parent)/progress/[studentId]/page.tsx`:
 ```
 
 Create `components/parent/ParentProgressDetail.tsx`:
-
 ```tsx
 // Sessions list: date, topic, duration, % correct — no transcript content
 // Chapter mastery bars per subject (reuse SubjectReadinessCard)
@@ -982,7 +900,6 @@ Create `components/parent/ParentProgressDetail.tsx`:
 **3. Weekly digest worker**
 
 Create `worker/services/weeklyDigestWorker.ts`:
-
 ```typescript
 // BullMQ repeatable job
 // Schedule: every Sunday at 18:00 IST = cron '0 18 * * 0' with timezone 'Asia/Kolkata'
@@ -1000,7 +917,6 @@ Create `worker/services/weeklyDigestWorker.ts`:
 ```
 
 Verify: API returns correct shape for all linked children. Weekly job is registered in scheduler.
-
 ```
 
 ---
@@ -1008,11 +924,9 @@ Verify: API returns correct shape for all linked children. Weekly job is registe
 ## TASK 14 — T26: DoubtKb table and dedup write
 
 ```
-
-/run grep -rn "DoubtKb\|doubtKb\|doubt_kb" prisma/schema.prisma lib/ --include="_.ts" --include="_.prisma" 2>/dev/null | grep -v node_modules
-/run cat services/tutor/turn.ts 2>/dev/null | head -80 || find . -name "turn.ts" -path "_/tutor/_" | head -3
-
-````
+/run grep -rn "DoubtKb\|doubtKb\|doubt_kb" prisma/schema.prisma lib/ --include="*.ts" --include="*.prisma" 2>/dev/null | grep -v node_modules
+/run cat services/tutor/turn.ts 2>/dev/null | head -80 || find . -name "turn.ts" -path "*/tutor/*" | head -3
+```
 
 Add all files found. Then:
 
@@ -1031,10 +945,9 @@ model DoubtKb {
   updatedAt          DateTime @updatedAt
   @@index([subjectId])
 }
-````
+```
 
 Run:
-
 ```
 /run npx prisma migrate dev --name add_doubt_kb
 /run npx prisma generate
@@ -1043,7 +956,6 @@ Run:
 **2. DoubtKb service**
 
 Create `lib/ai/tutor/doubtKb.ts`:
-
 ```typescript
 // lookupDoubt(questionText, subjectId): Promise<string | null>
 //   - Embed questionText via getEmbedding() from lib/ai/embeddings.ts
@@ -1065,11 +977,10 @@ Create `lib/ai/tutor/doubtKb.ts`:
 In `services/tutor/turn.ts` (or wherever the tutor turn orchestrator lives):
 
 Before the LLM call, add doubt cache check (only for doubt/question turns — check the current stage/tag context):
-
 ```typescript
 // Only for turns where student is asking a clarification doubt
 // (detect: student message ends with '?' or contains doubt indicators)
-const cachedAnswer = await lookupDoubt(studentMessage, subjectId);
+const cachedAnswer = await lookupDoubt(studentMessage, subjectId)
 if (cachedAnswer) {
   // stream the cached answer, set AITutorTurnLog.cached = true
   // skip LLM call
@@ -1077,14 +988,12 @@ if (cachedAnswer) {
 ```
 
 After LLM call (when not cached and it was a doubt turn):
-
 ```typescript
 // Non-blocking — do not await
-recordDoubt(studentMessage, llmResponse, subjectId, conceptId).catch(() => {});
+recordDoubt(studentMessage, llmResponse, subjectId, conceptId).catch(() => {})
 ```
 
 Verify: repeated identical doubt returns cached answer. Novel doubts are stored.
-
 ```
 
 ---
@@ -1092,12 +1001,10 @@ Verify: repeated identical doubt returns cached answer. Novel doubts are stored.
 ## TASK 15 — T28: Explanation cache
 
 ```
-
-/run find lib/ai/tutor -type f -name "_.ts" 2>/dev/null | grep -v node_modules
-/run grep -rn "explanationCache\|cache:exp\|CORE_EXPLANATION\|WORKED_EXAMPLE" lib/ services/ --include="_.ts" 2>/dev/null | grep -v node_modules
+/run find lib/ai/tutor -type f -name "*.ts" 2>/dev/null | grep -v node_modules
+/run grep -rn "explanationCache\|cache:exp\|CORE_EXPLANATION\|WORKED_EXAMPLE" lib/ services/ --include="*.ts" 2>/dev/null | grep -v node_modules
 /run cat lib/redis.ts 2>/dev/null | head -30 || find lib -name "redis.ts" | head -3
-
-````
+```
 
 Add all files found. Then:
 
@@ -1121,37 +1028,34 @@ export async function invalidateExplanation(
   conceptId: string, lang?: string, modality?: string
 ): Promise<void>
 // Deletes the specific key or pattern. Never throws.
-````
+```
 
 **2. Wire into orchestrator**
 
 In the tutor turn orchestrator, for `CORE_EXPLANATION` and `WORKED_EXAMPLE` stages only:
 
 Before LLM call:
-
 ```typescript
-const modality = currentStage === 'CORE_EXPLANATION' ? 'text' : 'worked_example';
-const lang = redisSessionState.lang ?? 'en';
-const cached = await getCachedExplanation(conceptId, lang, modality);
+const modality = currentStage === 'CORE_EXPLANATION' ? 'text' : 'worked_example'
+const lang = redisSessionState.lang ?? 'en'
+const cached = await getCachedExplanation(conceptId, lang, modality)
 if (cached) {
   // stream cached content
   // set AITutorTurnLog.cached = true
   // skip LLM call entirely
-  return;
+  return
 }
 ```
 
 After LLM call (only if outputSafety did NOT replace the response):
-
 ```typescript
 if (!safetyTriggered) {
-  await setCachedExplanation(conceptId, lang, modality, llmResponse);
+  await setCachedExplanation(conceptId, lang, modality, llmResponse)
 }
 // set AITutorTurnLog.cached = false
 ```
 
 Verify: second explanation request for same concept/lang returns from cache. Safety replacements never cached.
-
 ```
 
 ---
@@ -1159,12 +1063,10 @@ Verify: second explanation request for same concept/lang returns from cache. Saf
 ## TASK 16 — T40: Redis-backed LLM circuit breaker
 
 ```
-
 /run cat lib/redis.ts 2>/dev/null | grep -A20 "circuit\|failureCount\|circuitOpen" | head -40
 /run cat lib/callLLM.ts 2>/dev/null | head -80 || find lib -name "callLLM.ts" | head -3
-/run grep -rn "ANTHROPIC_API_KEY\|anthropic\|failover" lib/ --include="\*.ts" 2>/dev/null | grep -v node_modules | head -10
-
-````
+/run grep -rn "ANTHROPIC_API_KEY\|anthropic\|failover" lib/ --include="*.ts" 2>/dev/null | grep -v node_modules | head -10
+```
 
 Add all files found. Then:
 
@@ -1187,34 +1089,32 @@ export async function recordFailure(): Promise<void>
 
 export async function recordSuccess(): Promise<void>
 // DEL cb:llm:failures, DEL cb:llm:open
-````
+```
 
 **2. Wire into callLLM.ts**
 
 In `lib/callLLM.ts`, wrap the OpenAI call:
-
 ```typescript
 // Before OpenAI call:
 if (await isCircuitOpen()) {
   // Try Anthropic failover if key is set
   if (process.env.ANTHROPIC_API_KEY) {
-    return await callAnthropic(messages, opts); // see below
+    return await callAnthropic(messages, opts) // see below
   }
-  throw new LLMError('AI_UNAVAILABLE', 'LLM circuit open');
+  throw new LLMError('AI_UNAVAILABLE', 'LLM circuit open')
 }
 
 // After successful OpenAI call:
-await recordSuccess();
+await recordSuccess()
 
 // In the catch block (OpenAI error):
-await recordFailure();
-throw err;
+await recordFailure()
+throw err
 ```
 
 **3. Anthropic failover function**
 
 Add `callAnthropic(messages, opts)` to `lib/callLLM.ts`:
-
 ```typescript
 // Uses @anthropic-ai/sdk if available, else throws AI_UNAVAILABLE
 // Maps OpenAI message format to Anthropic format
@@ -1231,7 +1131,6 @@ In `lib/redis.ts`, remove the in-memory `failureCount`, `circuitOpenUntil`,
 The Redis-backed breaker in `lib/ai/tutor/circuitBreaker.ts` replaces it.
 
 Verify: 3 simulated OpenAI failures → `isCircuitOpen()` returns true across multiple calls.
-
 ```
 
 ---
@@ -1239,11 +1138,9 @@ Verify: 3 simulated OpenAI failures → `isCircuitOpen()` returns true across mu
 ## TASK 17 — T41: Staged rollout via StudentFeatureFlag
 
 ```
-
-/run grep -rn "StudentFeatureFlag\|isAiTutorGlobal\|ENABLE_AI_TUTOR\|rollout" lib/ app/api/ --include="\*.ts" 2>/dev/null | grep -v node_modules | head -20
+/run grep -rn "StudentFeatureFlag\|isAiTutorGlobal\|ENABLE_AI_TUTOR\|rollout" lib/ app/api/ --include="*.ts" 2>/dev/null | grep -v node_modules | head -20
 /run find app/api/tutor -type f -name "route.ts" 2>/dev/null | grep -v node_modules
-
-````
+```
 
 Add all files found. Then:
 
@@ -1282,19 +1179,17 @@ function djb2Hash(str: string): number {
   }
   return Math.abs(hash)
 }
-````
+```
 
 **2. Replace isAiTutorGloballyEnabled**
 
 In every file that calls `isAiTutorGloballyEnabled()` or checks `ENABLE_AI_TUTOR` directly:
-
 - Replace with `await isInAITutorRollout(userId)`
 - When `isInAITutorRollout` returns false: render the existing v1 session UI silently — no error shown to student
 
 **3. Add ROLLOUT_PERCENTAGE to ecosystem.config.cjs**
 
 In all 3 PM2 app blocks, add:
-
 ```javascript
 ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
 ```
@@ -1302,7 +1197,6 @@ ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
 **4. Script for per-user overrides**
 
 Create `scripts/set-rollout.cjs`:
-
 ```javascript
 // Usage:
 //   node scripts/set-rollout.cjs --user userId --enabled true
@@ -1311,7 +1205,6 @@ Create `scripts/set-rollout.cjs`:
 ```
 
 Verify: at ROLLOUT_PERCENTAGE=5, ~5% of random user IDs get true. ENABLE_AI_TUTOR=false still blocks all.
-
 ```
 
 ---
@@ -1319,13 +1212,11 @@ Verify: at ROLLOUT_PERCENTAGE=5, ~5% of random user IDs get true. ENABLE_AI_TUTO
 ## TASK 18 — T42: Daily cost metric and alert
 
 ```
-
-/run find worker/services -type f -name "_.ts" 2>/dev/null | grep -v node_modules
-/run grep -rn "AITutorTurnLog\|costUsd\|reportingWorker" lib/ worker/ prisma/ --include="_.ts" --include="_.prisma" 2>/dev/null | grep -v node_modules | head -10
+/run find worker/services -type f -name "*.ts" 2>/dev/null | grep -v node_modules
+/run grep -rn "AITutorTurnLog\|costUsd\|reportingWorker" lib/ worker/ prisma/ --include="*.ts" --include="*.prisma" 2>/dev/null | grep -v node_modules | head -10
 /run cat lib/mailer.ts 2>/dev/null | head -30 || find lib -name "mailer.ts" | head -3
-/run grep -rn "scheduler\|addRepeat\|cron\|registerJob" worker/ --include="_.ts" 2>/dev/null | grep -v node_modules | head -10
-
-````
+/run grep -rn "scheduler\|addRepeat\|cron\|registerJob" worker/ --include="*.ts" 2>/dev/null | grep -v node_modules | head -10
+```
 
 Add all files found. Then:
 
@@ -1341,10 +1232,9 @@ model DailyCostMetric {
   costPerSession Float
   createdAt      DateTime @default(now())
 }
-````
+```
 
 Run:
-
 ```
 /run npx prisma migrate dev --name add_daily_cost_metric
 /run npx prisma generate
@@ -1353,10 +1243,9 @@ Run:
 **2. Reporting worker**
 
 Create `worker/services/costReportingWorker.ts`:
-
 ```typescript
 // BullMQ repeatable job — cron '0 6 * * *' timezone 'Asia/Kolkata' (6:00 AM IST daily)
-//
+// 
 // Query yesterday's AITutorTurnLog:
 //   SELECT DATE(createdAt), COUNT(DISTINCT sessionId), SUM(costUsd)
 //   WHERE createdAt >= yesterday 00:00 IST AND createdAt < today 00:00 IST
@@ -1378,7 +1267,6 @@ Create `worker/services/costReportingWorker.ts`:
 In the worker scheduler bootstrap file, register this job alongside existing scheduled jobs.
 
 Verify: DailyCostMetric model exists. Worker is registered. Alert fires when threshold exceeded.
-
 ```
 
 ---
@@ -1386,10 +1274,8 @@ Verify: DailyCostMetric model exists. Worker is registered. Alert fires when thr
 ## TASK 19 — B4: Fix PM2 env_production warning
 
 ```
-
 /run cat ecosystem.config.cjs
-
-````
+```
 
 Add the file. Then:
 
@@ -1402,10 +1288,9 @@ env_production: {
   NODE_ENV: 'production',
   // copy all keys from the env block exactly
 }
-````
+```
 
 Also in `scripts/deploy-and-run.sh`, find the `pm2 start ecosystem.config.cjs` command and change it to:
-
 ```bash
 pm2 start ecosystem.config.cjs --env production
 ```
@@ -1413,7 +1298,6 @@ pm2 start ecosystem.config.cjs --env production
 Do the same for any `pm2 reload` or `pm2 restart` commands that reference `ecosystem.config.cjs`.
 
 Verify: no `[PM2][WARN] Environment [production] is not defined` in deploy output.
-
 ```
 
 ---
@@ -1421,12 +1305,10 @@ Verify: no `[PM2][WARN] Environment [production] is not defined` in deploy outpu
 ## TASK 20 — T43 prep: Distress detection (code only, flag stays false)
 
 ```
-
-/run find lib/ai/tutor -type f -name "_.ts" 2>/dev/null | grep -v node_modules
-/run find worker/services -type f -name "_.ts" 2>/dev/null | grep -v node_modules
-/run grep -rn "ENABLE_DISTRESS\|distress\|SafetyEvent" lib/ app/api/ worker/ --include="\*.ts" 2>/dev/null | grep -v node_modules | head -20
-
-````
+/run find lib/ai/tutor -type f -name "*.ts" 2>/dev/null | grep -v node_modules
+/run find worker/services -type f -name "*.ts" 2>/dev/null | grep -v node_modules
+/run grep -rn "ENABLE_DISTRESS\|distress\|SafetyEvent" lib/ app/api/ worker/ --include="*.ts" 2>/dev/null | grep -v node_modules | head -20
+```
 
 Add all files found. Then:
 
@@ -1472,12 +1354,11 @@ export function detectDistress(studentMessage: string): DistressResult
 //   - case insensitive match
 //   - message with no keywords → detected=false
 //   - suggestedResponse present when detected=true
-````
+```
 
 **2. Notification worker**
 
 Create `worker/services/distressNotificationWorker.ts`:
-
 ```typescript
 // BullMQ job — queue name: 'distress-notification'
 // Job payload: { studentId, sessionId, severity, triggerPhrases, studentMessage }
@@ -1504,25 +1385,22 @@ Create `worker/services/distressNotificationWorker.ts`:
 **3. Wire into orchestrator** (behind flag check)
 
 In the tutor turn orchestrator, after `checkInputSafety` and before the LLM call:
-
 ```typescript
 if (process.env.ENABLE_DISTRESS_DETECTION === 'true') {
-  const distressResult = detectDistress(redactedMessage);
+  const distressResult = detectDistress(redactedMessage)
   if (distressResult.detected) {
     // Non-blocking enqueue
     enqueueDistressNotification({
-      studentId,
-      sessionId,
-      turnId,
+      studentId, sessionId, turnId,
       severity: distressResult.severity,
       triggerPhrases: distressResult.triggerPhrases,
       studentMessage: redactedMessage, // already PII-redacted
-    }).catch(() => {});
+    }).catch(() => {})
 
     // Override the AI response with the supportive message
     if (distressResult.severity === 'CRITICAL' || distressResult.severity === 'HIGH') {
       // Stream distressResult.suggestedResponse directly, skip LLM call
-      return streamSupportiveResponse(distressResult.suggestedResponse);
+      return streamSupportiveResponse(distressResult.suggestedResponse)
     }
     // For LOW/MEDIUM: let the normal LLM call proceed but inject context
   }
@@ -1530,13 +1408,11 @@ if (process.env.ENABLE_DISTRESS_DETECTION === 'true') {
 ```
 
 Run tests:
-
 ```
 /run npx jest tests/unit/lib/ai/tutor/distress.test.ts
 ```
 
 All 10 tests must pass. `ENABLE_DISTRESS_DETECTION` remains `false` in `.env.production`.
-
 ```
 
 ---
@@ -1544,14 +1420,12 @@ All 10 tests must pass. `ENABLE_DISTRESS_DETECTION` remains `false` in `.env.pro
 ## EXECUTION ORDER
 
 ```
-
 Phase 1 — Gates (Week 1): Tasks 1 → 2 → 3 → 4 → 5 → 6
 Phase 2 — Dashboard (Week 2–3): Tasks 7 → 8 → 9 → 10
 Phase 3 — Parent (Week 3–4): Tasks 11 → 12 → 13
 Phase 4 — Reliability (Week 4–5): Tasks 14 → 15 → 16 → 17 → 18 → 19 → 20
 Phase 5 — V2 UI Migration (Week 5–7): Tasks 21 → 22 → 23 → 24 → 25 → 26 → 27
-
-````
+```
 
 ## GATE BETWEEN EVERY TASK (non-negotiable)
 
@@ -1559,7 +1433,7 @@ Phase 5 — V2 UI Migration (Week 5–7): Tasks 21 → 22 → 23 → 24 → 25 �
 npm run build:workers && npm run build && npm test
 # All green → commit → next task
 # Any red → paste error into Aider, fix in same session, re-run gate
-````
+```
 
 ---
 
@@ -1569,7 +1443,6 @@ These tasks replace the existing v1 UI with the v2 wireframe design.
 Do these AFTER Phase 4 is complete — the backend data must be wired before the UI rebuild.
 
 Global rules for every task in this phase:
-
 - Mobile-first: default styles target 360px. sm: = 640px. md: = 768px. Never desktop-first.
 - Min touch target: 44×44px on all interactive elements (min-h-[44px] min-w-[44px])
 - All async widgets: loading skeleton + error state + empty state + populated state
@@ -2300,35 +2173,34 @@ Phase 6 — Missing V2 features:      Tasks 28–32
 ## WHAT IS COMPLETE AFTER ALL 32 TASKS
 
 Backend:
-✅ AI tutor engine (T4–T25) — state machine, IRT, SM-18, RAG, safety, pgvector
-✅ All gates — parent, profile, diagnostic, grade immutability
-✅ LearningPlan + ExamReadiness + XP
-✅ DPDP consent
-✅ Parent actor + weekly digest
-✅ Circuit breaker + staged rollout + cost monitoring
-✅ Distress detection (code ready, flag off until counsellor sign-off)
+  ✅ AI tutor engine (T4–T25) — state machine, IRT, SM-18, RAG, safety, pgvector
+  ✅ All gates — parent, profile, diagnostic, grade immutability
+  ✅ LearningPlan + ExamReadiness + XP
+  ✅ DPDP consent
+  ✅ Parent actor + weekly digest
+  ✅ Circuit breaker + staged rollout + cost monitoring
+  ✅ Distress detection (code ready, flag off until counsellor sign-off)
 
 Frontend:
-✅ Registration + onboarding funnel
-✅ Diagnostic flow + knowledge map
-✅ Dashboard V2 (plan card, XP, readiness rings, streak)
-✅ Pre-session screen
-✅ AI tutor chat (streaming, stage strip, hints)
-✅ Session completion (XP animation, insight, rating)
-✅ Revision cards (SM-18 flow)
-✅ Progress report
-✅ Subscription upgrade (UPI-first, GST, scroll-to-confirm)
-✅ Parent dashboard (read-only, weekly digest)
-✅ V1 code removed
+  ✅ Registration + onboarding funnel
+  ✅ Diagnostic flow + knowledge map
+  ✅ Dashboard V2 (plan card, XP, readiness rings, streak)
+  ✅ Pre-session screen
+  ✅ AI tutor chat (streaming, stage strip, hints)
+  ✅ Session completion (XP animation, insight, rating)
+  ✅ Revision cards (SM-18 flow)
+  ✅ Progress report
+  ✅ Subscription upgrade (UPI-first, GST, scroll-to-confirm)
+  ✅ Parent dashboard (read-only, weekly digest)
+  ✅ V1 code removed
 
 ## WHAT REMAINS POST-LAUNCH (in post_launch_backlog.md)
-
-Referral programme
-Badge system
-Exam crunch mode
-Concurrent session prevention
-90-minute session cap
-Real CBSE content (descriptions, irt_b) — content team
-Timed chapter tests
-4-gate question generation
-PDF export on progress report
+  Referral programme
+  Badge system
+  Exam crunch mode
+  Concurrent session prevention
+  90-minute session cap
+  Real CBSE content (descriptions, irt_b) — content team
+  Timed chapter tests
+  4-gate question generation
+  PDF export on progress report

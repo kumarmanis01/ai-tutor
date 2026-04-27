@@ -61,15 +61,13 @@ describe('TodaysLearningCard', () => {
   it('displays topic recommendation details', () => {
     mockUseRecommendations.mockReturnValue({
       data: {
-        items: [
-          {
-            id: 'topic-1',
-            title: 'Fractions',
-            subject: 'Math',
-            estimatedMinutes: 15,
-            type: 'topic',
-          },
-        ],
+        items: [{
+          id: 'topic-1',
+          title: 'Fractions',
+          subject: 'Math',
+          estimatedMinutes: 15,
+          type: 'topic',
+        }],
       },
       loading: false,
       error: null,
@@ -87,15 +85,13 @@ describe('TodaysLearningCard', () => {
     const mockOnStartLearning = jest.fn();
     mockUseRecommendations.mockReturnValue({
       data: {
-        items: [
-          {
-            id: 'topic-1',
-            title: 'Fractions',
-            subject: 'Math',
-            estimatedMinutes: 15,
-            type: 'topic',
-          },
-        ],
+        items: [{
+          id: 'topic-1',
+          title: 'Fractions',
+          subject: 'Math',
+          estimatedMinutes: 15,
+          type: 'topic',
+        }],
       },
       loading: false,
       error: null,
@@ -113,15 +109,13 @@ describe('TodaysLearningCard', () => {
   it('renders heading with correct text', () => {
     mockUseRecommendations.mockReturnValue({
       data: {
-        items: [
-          {
-            id: 'topic-1',
-            title: 'Test Topic',
-            subject: 'Test',
-            estimatedMinutes: 10,
-            type: 'topic',
-          },
-        ],
+        items: [{
+          id: 'topic-1',
+          title: 'Test Topic',
+          subject: 'Test',
+          estimatedMinutes: 10,
+          type: 'topic',
+        }],
       },
       loading: false,
       error: null,

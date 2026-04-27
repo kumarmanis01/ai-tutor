@@ -19,6 +19,7 @@ interface FormData {
 }
 
 const SignupFormWidget = () => {
+  
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     phone: '',
@@ -43,32 +44,18 @@ const SignupFormWidget = () => {
           setWidgetToken(String(json.token));
         } else {
           setWidgetError(json?.message || 'Widget token not available');
-          logger.warn('widget-token fetch returned unexpected payload', {
-            className: 'SignupFormWidget',
-            payload: json,
-          });
+          logger.warn('widget-token fetch returned unexpected payload', { className: 'SignupFormWidget', payload: json });
         }
       } catch (e) {
         setWidgetError(String(e));
-        logger.warn('Error fetching widget token', {
-          className: 'SignupFormWidget',
-          error: String(e),
-        });
+        logger.warn('Error fetching widget token', { className: 'SignupFormWidget', error: String(e) });
       }
     })();
   }, []);
 
   useEffect(() => {
-    if (widgetError)
-      logger.warn('[SignupFormWidget] Widget error', {
-        className: 'SignupFormWidget',
-        error: widgetError,
-      });
-    if (widgetToken)
-      logger.info('[SignupFormWidget] Found widget token', {
-        className: 'SignupFormWidget',
-        tokenSnippet: String(widgetToken).slice(-8),
-      });
+    if (widgetError) logger.warn('[SignupFormWidget] Widget error', { className: 'SignupFormWidget', error: widgetError });
+    if (widgetToken) logger.info('[SignupFormWidget] Found widget token', { className: 'SignupFormWidget', tokenSnippet: String(widgetToken).slice(-8) });
   }, [widgetError, widgetToken]);
 
   const subjects = [
@@ -115,11 +102,7 @@ const SignupFormWidget = () => {
       }
       router.push('/dashboard');
     } catch (err) {
-      logger.error('onboarding submit error', {
-        className: 'SignupFormWidget',
-        methodName: 'handleSubmit',
-        error: String(err),
-      });
+      logger.error('onboarding submit error', { className: 'SignupFormWidget', methodName: 'handleSubmit', error: String(err) });
       toast('Failed to complete signup');
     }
   };
@@ -177,81 +160,57 @@ const SignupFormWidget = () => {
 
           {step === 1 && (
             <div className="space-y-6">
-              <OtpProviderForm
-                widgetId="356b44674c70383033393134"
-                tokenAuth={widgetToken ?? '{token}'}
-                identifier={formData.phone}
-                onIdentifierChange={(id) => setFormData((p) => ({ ...p, phone: id }))}
-                autoVerify={false}
-                onSuccess={(result) => {
-                  // result may be the structured { raw, token, phone } we now return
-                  logger.info('[SignupFormWidget] otp onSuccess', {
-                    className: 'SignupFormWidget',
-                    result,
-                  });
-                  // extract token: widget sometimes nests it under raw.message
-                  let token = result?.token;
-                  if (!token && result?.raw) {
-                    const raw = result.raw;
-                    if (typeof raw === 'string') token = raw;
-                    else if (raw?.message && typeof raw.message === 'string') token = raw.message;
-                  }
-                  // Extract phone if provider returned it; otherwise rely on identifier callback
-                  const phone =
-                    result?.phone ??
-                    (result?.raw &&
-                      (result?.raw?.identifier || result?.raw?.mobile || result?.raw?.phone));
-                  if (phone) setFormData((p) => ({ ...p, phone }));
-                  if (token) setFormData((p) => ({ ...p, token }));
-                  // If token exists and autoVerify is false, we can call verify here and log response
-                  if (token) {
-                    (async () => {
-                      try {
-                        logger.info('[SignupFormWidget] verifying token from widget', {
-                          className: 'SignupFormWidget',
-                          tokenSnippet: String(token).slice(-8),
-                        });
-                        const r = await fetch('/api/msg91/verify-access-token', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ accessToken: token }),
-                        });
-                        const j = await r.json().catch(() => ({}));
-                        logger.info('[SignupFormWidget] verify response', {
-                          className: 'SignupFormWidget',
-                          status: r.status,
-                          ok: r.ok,
-                          body: j,
-                        });
-                        // If verify succeeded and returned phone or user info, update formData
-                        if (r.ok && j?.phone) setFormData((p) => ({ ...p, phone: j.phone }));
-                        if (r.ok && j?.token) setFormData((p) => ({ ...p, token: j.token }));
-                      } catch (e) {
-                        logger.warn('[SignupFormWidget] verify call failed', {
-                          className: 'SignupFormWidget',
-                          error: String(e),
-                        });
-                      }
-                    })();
-                  }
+                <OtpProviderForm
+                  widgetId="356b44674c70383033393134"
+                  tokenAuth={widgetToken ?? '{token}'}
+                  identifier={formData.phone}
+                  onIdentifierChange={(id) => setFormData((p) => ({ ...p, phone: id }))}
+                  autoVerify={false}
+                  onSuccess={(result) => {
+                    // result may be the structured { raw, token, phone } we now return
+                    logger.info('[SignupFormWidget] otp onSuccess', { className: 'SignupFormWidget', result });
+                    // extract token: widget sometimes nests it under raw.message
+                    let token = result?.token;
+                    if (!token && result?.raw) {
+                      const raw = result.raw;
+                      if (typeof raw === 'string') token = raw;
+                      else if (raw?.message && typeof raw.message === 'string') token = raw.message;
+                    }
+                    // Extract phone if provider returned it; otherwise rely on identifier callback
+                    const phone = result?.phone ?? (result?.raw && (result?.raw?.identifier || result?.raw?.mobile || result?.raw?.phone));
+                    if (phone) setFormData((p) => ({ ...p, phone }));
+                    if (token) setFormData((p) => ({ ...p, token }));
+                    // If token exists and autoVerify is false, we can call verify here and log response
+                    if (token) {
+                      (async () => {
+                        try {
+                          logger.info('[SignupFormWidget] verifying token from widget', { className: 'SignupFormWidget', tokenSnippet: String(token).slice(-8) });
+                          const r = await fetch('/api/msg91/verify-access-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: token }) });
+                          const j = await r.json().catch(() => ({}));
+                          logger.info('[SignupFormWidget] verify response', { className: 'SignupFormWidget', status: r.status, ok: r.ok, body: j });
+                          // If verify succeeded and returned phone or user info, update formData
+                          if (r.ok && j?.phone) setFormData((p) => ({ ...p, phone: j.phone }));
+                          if (r.ok && j?.token) setFormData((p) => ({ ...p, token: j.token }));
+                        } catch (e) {
+                          logger.warn('[SignupFormWidget] verify call failed', { className: 'SignupFormWidget', error: String(e) });
+                        }
+                      })();
+                    }
 
-                  setStep(2);
-                }}
-                onFailure={(err) => {
-                  logger.warn('[SignupFormWidget] otp widget failure', {
-                    className: 'SignupFormWidget',
-                    error: String(err),
-                  });
-                  toast('OTP widget failed: ' + String(err));
-                }}
-              />
-              {widgetError ? (
-                <div className="text-sm text-destructive">Widget error: {String(widgetError)}</div>
-              ) : widgetToken ? (
-                <div className="text-sm text-muted-foreground">Verification widget ready</div>
-              ) : (
-                <div className="text-sm text-muted-foreground">Loading verification widget...</div>
-              )}
+                    setStep(2);
+                  }}
+                  onFailure={(err) => {
+                    logger.warn('[SignupFormWidget] otp widget failure', { className: 'SignupFormWidget', error: String(err) });
+                    toast('OTP widget failed: ' + String(err));
+                  }}
+                />
+                {widgetError ? (
+                  <div className="text-sm text-destructive">Widget error: {String(widgetError)}</div>
+                ) : widgetToken ? (
+                  <div className="text-sm text-muted-foreground">Verification widget ready</div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Loading verification widget...</div>
+                )}
             </div>
           )}
 
@@ -269,9 +228,7 @@ const SignupFormWidget = () => {
                   className="w-full px-4 py-3 bg-background border-2 border-border rounded-lg focus:border-primary focus:outline-none font-body text-base"
                 />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                This helps us personalize your learning.
-              </p>
+              <p className="mt-2 text-xs text-muted-foreground">This helps us personalize your learning.</p>
               <div className="mt-4">
                 <div className="flex items-center justify-center gap-3">
                   <button
@@ -281,9 +238,7 @@ const SignupFormWidget = () => {
                   >
                     Continue
                   </button>
-                  <div className="text-sm text-muted-foreground">
-                    Phone: {formData.phone || 'not provided'}
-                  </div>
+                  <div className="text-sm text-muted-foreground">Phone: {formData.phone || 'not provided'}</div>
                 </div>
               </div>
             </div>
@@ -291,13 +246,9 @@ const SignupFormWidget = () => {
 
           {step === 3 && (
             <div className="space-y-6">
-              <div className="text-lg font-semibold">
-                📚 Hey {formData.name || ''}, tell us about your studies
-              </div>
+              <div className="text-lg font-semibold">📚 Hey {formData.name || ''}, tell us about your studies</div>
               <div>
-                <label className="block font-body font-medium text-sm text-foreground mb-2">
-                  Which class are you in?
-                </label>
+                <label className="block font-body font-medium text-sm text-foreground mb-2">Which class are you in?</label>
                 <div className="flex flex-wrap gap-2">
                   {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((num) => (
                     <button
@@ -312,9 +263,7 @@ const SignupFormWidget = () => {
               </div>
 
               <div>
-                <label className="block font-body font-medium text-sm text-foreground mb-2">
-                  Which board?
-                </label>
+                <label className="block font-body font-medium text-sm text-foreground mb-2">Which board?</label>
                 <div className="space-y-2">
                   {['CBSE', 'ICSE', 'State Board', 'Other'].map((b) => (
                     <label key={b} className="flex items-center gap-3">
@@ -331,14 +280,10 @@ const SignupFormWidget = () => {
               </div>
 
               <div>
-                <label className="block font-body font-medium text-sm text-foreground mb-2">
-                  Preferred language
-                </label>
+                <label className="block font-body font-medium text-sm text-foreground mb-2">Preferred language</label>
                 <select
                   value={formData.preferredLanguage ?? ''}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, preferredLanguage: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((p) => ({ ...p, preferredLanguage: e.target.value }))}
                   className="w-full px-3 py-2 border rounded-md"
                 >
                   <option value="">Select language</option>

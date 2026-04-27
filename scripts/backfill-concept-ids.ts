@@ -20,14 +20,14 @@
  * Env required: DATABASE_URL
  */
 
-import type { PrismaClient } from '@prisma/client';
-import { prisma } from '../lib/prisma';
+import type { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 
-const CUID_RE = /^c[a-z0-9]{24}$/i;
+const CUID_RE = /^c[a-z0-9]{24}$/i
 
 /** Returns true if every entry in the array looks like a real cuid (not a tag string). */
 function allConceptUuids(ids: string[]): boolean {
-  return ids.length > 0 && ids.every((id) => CUID_RE.test(id));
+  return ids.length > 0 && ids.every((id) => CUID_RE.test(id))
 }
 
 /**
@@ -37,10 +37,10 @@ function allConceptUuids(ids: string[]): boolean {
  */
 function extractChapterFromLegacyTags(conceptIds: string[]): number | null {
   for (const tag of conceptIds) {
-    const m = tag.match(/^chapter:(\d+)$/);
-    if (m) return parseInt(m[1], 10);
+    const m = tag.match(/^chapter:(\d+)$/)
+    if (m) return parseInt(m[1], 10)
   }
-  return null;
+  return null
 }
 
 /**
@@ -52,31 +52,31 @@ async function resolveConceptIds(
   board: string,
   subject: string,
   grade: number,
-  chapterOrder: number
+  chapterOrder: number,
 ): Promise<string[]> {
   const boardRow = await prismaClient.board.findFirst({
     where: { slug: board.toLowerCase() },
     select: { id: true },
-  });
-  if (!boardRow) return [];
+  })
+  if (!boardRow) return []
 
   const classLevel = await prismaClient.classLevel.findFirst({
     where: { boardId: boardRow.id, grade },
     select: { id: true },
-  });
-  if (!classLevel) return [];
+  })
+  if (!classLevel) return []
 
   const subjectDef = await prismaClient.subjectDef.findFirst({
     where: { classId: classLevel.id, slug: subject },
     select: { id: true },
-  });
-  if (!subjectDef) return [];
+  })
+  if (!subjectDef) return []
 
   const chapterDef = await prismaClient.chapterDef.findFirst({
     where: { subjectId: subjectDef.id, order: chapterOrder },
     select: { id: true },
-  });
-  if (!chapterDef) return [];
+  })
+  if (!chapterDef) return []
 
   const concepts = await prismaClient.concept.findMany({
     where: {
@@ -84,73 +84,58 @@ async function resolveConceptIds(
       isSuspended: false,
     },
     select: { id: true },
-  });
-  return concepts.map((c) => c.id);
+  })
+  return concepts.map((c) => c.id)
 }
 
 async function main() {
-  const dryRun = process.argv.includes('--dry-run');
-  if (dryRun) console.log('[backfill-concept-ids] DRY RUN -- no writes will be performed.');
+  const dryRun = process.argv.includes('--dry-run')
+  if (dryRun) console.log('[backfill-concept-ids] DRY RUN -- no writes will be performed.')
 
   // Use shared singleton Prisma client from lib/prisma
-  let updated = 0;
-  let skipped = 0;
-  let noConceptsFound = 0;
-  let errors = 0;
+  let updated = 0
+  let skipped = 0
+  let noConceptsFound = 0
+  let errors = 0
 
   try {
     // Fetch all chunks with at least one tag to inspect.
     // We only need to reprocess chunks where conceptIds contains legacy strings (not UUIDs).
     const chunks = await prisma.$queryRawUnsafe<
-      {
-        id: string;
-        board: string | null;
-        subject: string | null;
-        grade: string | null;
-        conceptIds: string[];
-      }[]
-    >(`SELECT id, board, subject, grade, "conceptIds" FROM "CurriculumChunk"`);
+      { id: string; board: string | null; subject: string | null; grade: string | null; conceptIds: string[] }[]
+    >(`SELECT id, board, subject, grade, "conceptIds" FROM "CurriculumChunk"`)
 
-    console.log(`[backfill-concept-ids] Processing ${chunks.length} total chunk(s) ...`);
+    console.log(`[backfill-concept-ids] Processing ${chunks.length} total chunk(s) ...`)
 
     for (const chunk of chunks) {
       // Skip chunks already tagged with real concept UUIDs
       if (allConceptUuids(chunk.conceptIds)) {
-        skipped++;
-        continue;
+        skipped++
+        continue
       }
 
       // Extract chapter number from stale positional tags
-      const chapterOrder = extractChapterFromLegacyTags(chunk.conceptIds);
+      const chapterOrder = extractChapterFromLegacyTags(chunk.conceptIds)
       if (chapterOrder === null || !chunk.board || !chunk.subject || !chunk.grade) {
-        skipped++;
-        continue;
+        skipped++
+        continue
       }
 
-      const grade = parseInt(chunk.grade, 10);
-      if (isNaN(grade)) {
-        skipped++;
-        continue;
-      }
+      const grade = parseInt(chunk.grade, 10)
+      if (isNaN(grade)) { skipped++; continue }
 
-      let conceptIds: string[];
+      let conceptIds: string[]
       try {
-        conceptIds = await resolveConceptIds(
-          prisma,
-          chunk.board,
-          chunk.subject,
-          grade,
-          chapterOrder
-        );
+        conceptIds = await resolveConceptIds(prisma, chunk.board, chunk.subject, grade, chapterOrder)
       } catch (err) {
-        console.error(`[backfill-concept-ids] resolveConceptIds error for chunk ${chunk.id}:`, err);
-        errors++;
-        continue;
+        console.error(`[backfill-concept-ids] resolveConceptIds error for chunk ${chunk.id}:`, err)
+        errors++
+        continue
       }
 
       if (conceptIds.length === 0) {
         // Concepts not yet seeded for this chapter -- store empty array (correct) rather than stale strings
-        noConceptsFound++;
+        noConceptsFound++
       }
 
       if (!dryRun) {
@@ -158,40 +143,40 @@ async function main() {
           await prisma.curriculumChunk.update({
             where: { id: chunk.id },
             data: { conceptIds },
-          });
-          updated++;
+          })
+          updated++
         } catch (err) {
-          console.error(`[backfill-concept-ids] Update failed for chunk ${chunk.id}:`, err);
-          errors++;
+          console.error(`[backfill-concept-ids] Update failed for chunk ${chunk.id}:`, err)
+          errors++
         }
       } else {
         console.log(
           `[backfill-concept-ids] (dry-run) Would update chunk ${chunk.id}: ` +
-            `chapter=${chapterOrder} -> ${conceptIds.length} concept UUID(s)`
-        );
-        updated++;
+          `chapter=${chapterOrder} -> ${conceptIds.length} concept UUID(s)`,
+        )
+        updated++
       }
     }
 
     console.log(
       `[backfill-concept-ids] Done. updated=${updated} skipped=${skipped} ` +
-        `noConceptsFound=${noConceptsFound} errors=${errors}`
-    );
+      `noConceptsFound=${noConceptsFound} errors=${errors}`,
+    )
     if (noConceptsFound > 0) {
       console.warn(
         `[backfill-concept-ids] ${noConceptsFound} chunk(s) have no concepts in taxonomy yet. ` +
-          `These chunks will remain untagged and won't be returned by RAG until concepts are seeded. ` +
-          `Re-run this script after seeding concept taxonomy.`
-      );
+        `These chunks will remain untagged and won't be returned by RAG until concepts are seeded. ` +
+        `Re-run this script after seeding concept taxonomy.`,
+      )
     }
   } finally {
-    await prisma.$disconnect();
+    await prisma.$disconnect()
   }
 
-  if (errors > 0) process.exit(1);
+  if (errors > 0) process.exit(1)
 }
 
 main().catch((err) => {
-  console.error('[backfill-concept-ids] Fatal:', err?.message ?? err);
-  process.exit(1);
-});
+  console.error('[backfill-concept-ids] Fatal:', err?.message ?? err)
+  process.exit(1)
+})

@@ -8,10 +8,12 @@
  */
 import { prisma } from '../lib/prisma';
 
+
+
 async function main() {
-  const cbse = await prisma.board.findFirst({ where: { slug: 'cbse' } });
+  const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
   if (!cbse) {
-    console.log('Board CBSE not found.');
+    console.log("Board CBSE not found.");
     return;
   }
   const class10 = await prisma.classLevel.findFirst({
@@ -19,13 +21,13 @@ async function main() {
     include: {
       subjects: {
         where: {
-          slug: { in: ['mathematics', 'physics', 'chemistry', 'biology', 'science'] },
+          slug: { in: ["mathematics", "physics", "chemistry", "biology", "science"] },
         },
       },
     },
   });
   if (!class10) {
-    console.log('CBSE Grade 10 not found.');
+    console.log("CBSE Grade 10 not found.");
     return;
   }
   const subjectIds = class10.subjects.map((s) => s.id);
@@ -38,9 +40,9 @@ async function main() {
   });
   if (nullDescCount > 0) {
     console.log(`❌ Concepts with NULL description (launch slice): ${nullDescCount}`);
-    console.log('   Fix: ensure every concept has description set (e.g. via seed or backfill).');
+    console.log("   Fix: ensure every concept has description set (e.g. via seed or backfill).");
   } else {
-    console.log('✅ All concepts in launch slice have non-null description.');
+    console.log("✅ All concepts in launch slice have non-null description.");
   }
 
   const chunkCount = await prisma.curriculumChunk.count();
@@ -54,14 +56,16 @@ async function main() {
       console.log(`✅ All ${chunkCount} curriculum chunks have conceptIds set.`);
     }
   } else {
-    console.log('ℹ️ No CurriculumChunk rows yet (ingestion not run).');
+    console.log("ℹ️ No CurriculumChunk rows yet (ingestion not run).");
   }
 
-  console.log('\nOptional SQL for manual verification:');
+  console.log("\nOptional SQL for manual verification:");
   console.log(
-    '  SELECT COUNT(*) FROM "Concept" WHERE "description" IS NULL AND "subjectId" IN (<subjectIds>);'
+    "  SELECT COUNT(*) FROM \"Concept\" WHERE \"description\" IS NULL AND \"subjectId\" IN (<subjectIds>);"
   );
-  console.log('  SELECT COUNT(*) FROM "CurriculumChunk" WHERE cardinality("conceptIds") = 0;');
+  console.log(
+    "  SELECT COUNT(*) FROM \"CurriculumChunk\" WHERE cardinality(\"conceptIds\") = 0;"
+  );
 }
 
 main()

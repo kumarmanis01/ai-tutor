@@ -20,22 +20,13 @@ export async function POST(req: Request) {
   }
 
   // Always log server-side for quick verification (avoid PII)
-  logger.info('[analytics] event', {
-    className: 'api.analytics.track',
-    methodName: 'POST',
-    event,
-    data: data ?? null,
-  });
+  logger.info('[analytics] event', { className: 'api.analytics.track', methodName: 'POST', event, data: data ?? null });
 
   try {
     await logEvent(event, data ?? {});
     return NextResponse.json({ ok: true });
   } catch (err) {
-    logger.error('[analytics] unexpected error', {
-      className: 'api.analytics.track',
-      methodName: 'POST',
-      error: err,
-    });
+    logger.error('[analytics] unexpected error', { className: 'api.analytics.track', methodName: 'POST', error: err });
   }
 
   return NextResponse.json({ ok: true });

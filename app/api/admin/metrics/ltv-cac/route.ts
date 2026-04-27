@@ -14,12 +14,12 @@
  * - 2026-04-17T00:00:00Z | senior-engineer | add LTV/CAC metrics endpoint
  */
 
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(req: Request) {
-  const start = Date.now();
+  const start = Date.now()
   try {
     // For MVP use month-to-date window. Future: accept start/end query params.
     const sql = `
@@ -78,18 +78,18 @@ SELECT
          (marketing.marketing_spend_paise::numeric / NULLIF(nc.new_customers,0))
   END AS ltv_cac_ratio
 FROM mrr CROSS JOIN active_counts ac CROSS JOIN churns ch CROSS JOIN marketing CROSS JOIN nc;
-    `;
+    `
 
     // Execute raw SQL. Tests mock prisma so this call is unit-test friendly.
-    const res: any = await (prisma as any).$queryRaw(sql);
-    const row = Array.isArray(res) ? (res[0] ?? {}) : res;
+    const res: any = await (prisma as any).$queryRaw(sql)
+    const row = Array.isArray(res) ? res[0] ?? {} : res
 
     const metrics = {
       mrr_paise: Number(row.mrr_paise ?? 0),
       mrr_inr: Number((Number(row.mrr_paise ?? 0) / 100).toFixed(2)),
       active_subscriptions: Number(row.active_subscriptions ?? 0),
       arpu_paise: Number(row.arpu_paise ?? 0),
-      arpu_inr: Number((Number(row.arpu_paise ?? 0) / 100 || 0).toFixed(2)),
+      arpu_inr: Number(((Number(row.arpu_paise ?? 0) / 100) || 0).toFixed(2)),
       active_start_count: Number(row.active_start_count ?? 0),
       cancelled_this_month: Number(row.cancelled_this_month ?? 0),
       churn_rate: Number(row.churn_rate ?? 0),
@@ -102,20 +102,15 @@ FROM mrr CROSS JOIN active_counts ac CROSS JOIN churns ch CROSS JOIN marketing C
       cac_paise: row.cac_paise == null ? null : Number(row.cac_paise),
       cac_inr: row.cac_paise == null ? null : Number((Number(row.cac_paise) / 100).toFixed(2)),
       ltv_cac_ratio: row.ltv_cac_ratio == null ? null : Number(Number(row.ltv_cac_ratio)),
-    };
+    }
 
-    const out = NextResponse.json({ ok: true, metrics }, { status: 200 });
-    logger.logAPI(req, out, { className: 'AdminMetrics', methodName: 'GET_ltv_cac' }, start);
-    return out;
+    const out = NextResponse.json({ ok: true, metrics }, { status: 200 })
+    logger.logAPI(req, out, { className: 'AdminMetrics', methodName: 'GET_ltv_cac' }, start)
+    return out
   } catch (err: any) {
-    const msg = (err && (err.message || String(err))) || 'metric query failed';
-    const res = NextResponse.json({ error: msg }, { status: 500 });
-    logger.logAPI(
-      req,
-      res,
-      { className: 'AdminMetrics', methodName: 'GET_ltv_cac', error: msg },
-      start
-    );
-    return res;
+    const msg = err && (err.message || String(err)) || 'metric query failed'
+    const res = NextResponse.json({ error: msg }, { status: 500 })
+    logger.logAPI(req, res, { className: 'AdminMetrics', methodName: 'GET_ltv_cac', error: msg }, start)
+    return res
   }
 }

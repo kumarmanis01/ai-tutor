@@ -12,11 +12,11 @@
  * - 2026-04-19T12:00:00Z | copilot | deduplicate test and keep single assertion block
  */
 
-import { VALID_LANGUAGES } from '@/app/api/student/subject-language/route';
+import { VALID_LANGUAGES } from '@/app/api/student/subject-language/route'
 
 describe('subject-language VALID_LANGUAGES', () => {
   it('does not include auto and contains en and hi', () => {
-    expect(VALID_LANGUAGES).not.toContain('auto');
-    expect(VALID_LANGUAGES).toEqual(expect.arrayContaining(['en', 'hi']));
-  });
-});
+    expect(VALID_LANGUAGES).not.toContain('auto')
+    expect(VALID_LANGUAGES).toEqual(expect.arrayContaining(['en', 'hi']))
+  })
+})

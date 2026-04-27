@@ -1,34 +1,26 @@
-import { NextResponse } from 'next/server';
-import { getServerSessionForHandlers } from '@/lib/session';
-import { getNextUpcomingReview } from '@/lib/student/revisions';
-import { logger } from '@/lib/logger';
+import { NextResponse } from 'next/server'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { getNextUpcomingReview } from '@/lib/student/revisions'
+import { logger } from '@/lib/logger'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/student/revisions/upcoming
  * Returns the next scheduled review (nextReviewAt > now) for "all caught up" empty state.
  */
 export async function GET(req: Request) {
-  const start = Date.now();
+  const start = Date.now()
   try {
-    const session = await getServerSessionForHandlers();
-    const userId = session?.user?.id;
+    const session = await getServerSessionForHandlers()
+    const userId = session?.user?.id
     if (!userId) {
-      const res = NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
-      logger.logAPI(
-        req,
-        res,
-        { className: 'StudentRevisionsUpcomingAPI', methodName: 'GET' },
-        start
-      );
-      return res;
+      const res = NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 })
+      logger.logAPI(req, res, { className: 'StudentRevisionsUpcomingAPI', methodName: 'GET' }, start)
+      return res
     }
 
-    const nextReview = await getNextUpcomingReview(userId);
+    const nextReview = await getNextUpcomingReview(userId)
     const payload = nextReview
       ? {
           nextReview: {
@@ -37,17 +29,17 @@ export async function GET(req: Request) {
             daysUntil: nextReview.daysUntil,
           },
         }
-      : { nextReview: null };
+      : { nextReview: null }
 
-    const res = NextResponse.json(payload, { status: 200 });
-    logger.logAPI(req, res, { className: 'StudentRevisionsUpcomingAPI', methodName: 'GET' }, start);
-    return res;
+    const res = NextResponse.json(payload, { status: 200 })
+    logger.logAPI(req, res, { className: 'StudentRevisionsUpcomingAPI', methodName: 'GET' }, start)
+    return res
   } catch (err) {
     const res = NextResponse.json(
       { error: err instanceof Error ? err.message : 'Internal error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
-    logger.logAPI(req, res, { className: 'StudentRevisionsUpcomingAPI', methodName: 'GET' }, start);
-    return res;
+      { status: 500 },
+    )
+    logger.logAPI(req, res, { className: 'StudentRevisionsUpcomingAPI', methodName: 'GET' }, start)
+    return res
   }
 }

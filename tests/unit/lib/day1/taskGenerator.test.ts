@@ -200,25 +200,33 @@ describe('Day-1 Task Generator', () => {
     });
 
     it('should fail message with "topper"', () => {
-      const result = validateParentMessage('Your child will become topper of the class!');
+      const result = validateParentMessage(
+        'Your child will become topper of the class!'
+      );
       expect(result.valid).toBe(false);
       expect(result.violations.some((v) => v.includes('topper'))).toBe(true);
     });
 
     it('should fail message with "best"', () => {
-      const result = validateParentMessage('Your child is the best in the class!');
+      const result = validateParentMessage(
+        'Your child is the best in the class!'
+      );
       expect(result.valid).toBe(false);
       expect(result.violations.some((v) => v.includes('best'))).toBe(true);
     });
 
     it('should fail message with "competition"', () => {
-      const result = validateParentMessage('Your child beat the competition today!');
+      const result = validateParentMessage(
+        'Your child beat the competition today!'
+      );
       expect(result.valid).toBe(false);
       expect(result.violations.some((v) => v.includes('competition'))).toBe(true);
     });
 
     it('should fail message with scores/marks', () => {
-      const result = validateParentMessage('Your child scored 100% today!');
+      const result = validateParentMessage(
+        'Your child scored 100% today!'
+      );
       expect(result.valid).toBe(false);
       expect(result.violations.some((v) => v.includes('100%'))).toBe(true);
     });
@@ -231,7 +239,9 @@ describe('Day-1 Task Generator', () => {
     });
 
     it('should fail message comparing to others', () => {
-      const result = validateParentMessage('Your child did better than other students!');
+      const result = validateParentMessage(
+        'Your child did better than other students!'
+      );
       expect(result.valid).toBe(false);
       expect(result.violations.some((v) => v.includes('other students'))).toBe(true);
     });

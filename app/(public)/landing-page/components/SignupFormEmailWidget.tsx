@@ -28,10 +28,7 @@ export default function SignupFormEmailWidget() {
 
   if (status === 'loading' || (status === 'authenticated' && session?.user)) {
     return (
-      <section
-        id="signup-form-widget"
-        className="py-16 md:py-24 bg-gradient-to-br from-primary/5 to-secondary/5"
-      >
+      <section id="signup-form-widget" className="py-16 md:py-24 bg-gradient-to-br from-primary/5 to-secondary/5">
         <div className="mx-auto px-4 max-w-2xl text-center text-muted-foreground">
           {status === 'authenticated' ? 'Taking you to your dashboard...' : 'Loading...'}
         </div>
@@ -57,11 +54,7 @@ export default function SignupFormEmailWidget() {
       return;
     }
     setLoading(true);
-    const res = await signIn('email', {
-      email: email.trim(),
-      redirect: false,
-      callbackUrl: '/dashboard',
-    });
+    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/dashboard' });
     if (res?.ok) {
       setEmailSent(true);
     } else {
@@ -126,11 +119,7 @@ export default function SignupFormEmailWidget() {
     }
 
     // Sign in with magic link
-    const res = await signIn('email', {
-      email: email.trim(),
-      redirect: false,
-      callbackUrl: '/dashboard',
-    });
+    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/dashboard' });
     if (res?.ok) setEmailSent(true);
     else setError('No account found or failed to send link.');
     setLoading(false);
@@ -165,8 +154,7 @@ export default function SignupFormEmailWidget() {
 
           {emailSent ? (
             <p className="text-center text-sm text-muted-foreground py-2">
-              Check your email -- we sent a link to{' '}
-              <strong className="text-foreground">{email}</strong>.
+              Check your email -- we sent a link to <strong className="text-foreground">{email}</strong>.
             </p>
           ) : (
             <>
@@ -179,22 +167,10 @@ export default function SignupFormEmailWidget() {
                   className="flex items-center justify-center gap-1.5 px-3 py-2.5 border border-border rounded-lg hover:bg-muted/40 text-foreground text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                    <path
-                      d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.41a4.63 4.63 0 01-2.01 3.04v2.52h3.24c1.9-1.75 2.96-4.33 2.96-7.35z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M10 20c2.7 0 4.97-.89 6.63-2.41l-3.24-2.52c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.13H1.08v2.59A10 10 0 0010 20z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M4.41 12.9A5.99 5.99 0 014.07 10c0-.99.18-1.95.34-2.9V4.51H1.08A10 10 0 000 10c0 1.64.4 3.19 1.08 4.51l3.33-2.61z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M10 3.96c1.47 0 2.78.51 3.81 1.51l2.85-2.85C14.97.89 12.7 0 10 0A10 10 0 001.08 4.51l3.33 2.59C5.2 5.72 7.4 3.96 10 3.96z"
-                      fill="#EA4335"
-                    />
+                    <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.41a4.63 4.63 0 01-2.01 3.04v2.52h3.24c1.9-1.75 2.96-4.33 2.96-7.35z" fill="#4285F4" />
+                    <path d="M10 20c2.7 0 4.97-.89 6.63-2.41l-3.24-2.52c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.13H1.08v2.59A10 10 0 0010 20z" fill="#34A853" />
+                    <path d="M4.41 12.9A5.99 5.99 0 014.07 10c0-.99.18-1.95.34-2.9V4.51H1.08A10 10 0 000 10c0 1.64.4 3.19 1.08 4.51l3.33-2.61z" fill="#FBBC05" />
+                    <path d="M10 3.96c1.47 0 2.78.51 3.81 1.51l2.85-2.85C14.97.89 12.7 0 10 0A10 10 0 001.08 4.51l3.33 2.59C5.2 5.72 7.4 3.96 10 3.96z" fill="#EA4335" />
                   </svg>
                   Google
                 </button>
@@ -205,10 +181,7 @@ export default function SignupFormEmailWidget() {
                   className="flex items-center justify-center gap-1.5 px-3 py-2.5 border border-border rounded-lg hover:bg-muted/40 text-foreground text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
-                      fill="#1877F2"
-                    />
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
                   </svg>
                   Facebook
                 </button>
@@ -279,27 +252,11 @@ export default function SignupFormEmailWidget() {
                 </button>
                 <span>·</span>
                 {mode === 'signup' ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('signin');
-                      setError('');
-                      setEmailSent(false);
-                    }}
-                    className="text-primary hover:underline"
-                  >
+                  <button type="button" onClick={() => { setMode('signin'); setError(''); setEmailSent(false); }} className="text-primary hover:underline">
                     Sign in
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('signup');
-                      setError('');
-                      setEmailSent(false);
-                    }}
-                    className="text-primary hover:underline"
-                  >
+                  <button type="button" onClick={() => { setMode('signup'); setError(''); setEmailSent(false); }} className="text-primary hover:underline">
                     Sign up
                   </button>
                 )}
@@ -316,13 +273,9 @@ export default function SignupFormEmailWidget() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           By signing up, you agree to our{' '}
-          <a href="#" className="text-primary hover:underline">
-            Terms of Service
-          </a>{' '}
-          and{' '}
-          <a href="#" className="text-primary hover:underline">
-            Privacy Policy
-          </a>
+          <a href="#" className="text-primary hover:underline">Terms of Service</a>
+          {' '}and{' '}
+          <a href="#" className="text-primary hover:underline">Privacy Policy</a>
         </p>
       </div>
     </section>

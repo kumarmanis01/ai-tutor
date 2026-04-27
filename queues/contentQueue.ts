@@ -5,9 +5,9 @@
  * - Always use getter functions to create queues on demand.
  * - Do not instantiate queues outside these functions.
  */
-import { Queue } from 'bullmq';
-import { getSharedConnection } from '@/lib/redis';
-import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
+import { Queue } from "bullmq";
+import { getSharedConnection } from "@/lib/redis";
+import { CONTENT_HYDRATION_QUEUE } from "@/lib/queues/constants";
 
 /**
  * Lazy-init factories for queues to avoid creating Redis/Queue instances at import time.
@@ -35,21 +35,21 @@ function getConnection() {
 
 export function getSyllabusQueue() {
   if (!queues.syllabus) {
-    queues.syllabus = new Queue('syllabus-queue', { connection: getConnection() });
+    queues.syllabus = new Queue("syllabus-queue", { connection: getConnection() });
   }
   return queues.syllabus;
 }
 
 export function getNotesQueue() {
   if (!queues.notes) {
-    queues.notes = new Queue('notes-queue', { connection: getConnection() });
+    queues.notes = new Queue("notes-queue", { connection: getConnection() });
   }
   return queues.notes;
 }
 
 export function getQuestionsQueue() {
   if (!queues.questions) {
-    queues.questions = new Queue('questions-queue', { connection: getConnection() });
+    queues.questions = new Queue("questions-queue", { connection: getConnection() });
   }
   return queues.questions;
 }
@@ -60,7 +60,7 @@ export function getContentQueue() {
       connection: getConnection(),
       defaultJobOptions: {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
+        backoff: { type: "exponential", delay: 5000 },
         removeOnComplete: true,
         removeOnFail: false,
       },

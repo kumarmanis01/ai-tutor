@@ -32,11 +32,7 @@ export async function GET() {
     const val = await redis.get(dismissKey(userId));
     return NextResponse.json({ dismissed: val === '1' }, { status: 200 });
   } catch (err) {
-    logger.error('Dismiss GET failed', {
-      event: 'subscription.dismiss.get_error',
-      context: { userId },
-      err,
-    });
+    logger.error('Dismiss GET failed', { event: 'subscription.dismiss.get_error', context: { userId }, err });
     return NextResponse.json({ dismissed: false }, { status: 200 });
   }
 }
@@ -55,11 +51,7 @@ export async function POST() {
     }
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
-    logger.error('Dismiss POST failed', {
-      event: 'subscription.dismiss.post_error',
-      context: { userId },
-      err,
-    });
+    logger.error('Dismiss POST failed', { event: 'subscription.dismiss.post_error', context: { userId }, err });
     // Gracefully succeed even if Redis is down -- dismiss is UX-only
     return NextResponse.json({ ok: true }, { status: 200 });
   }

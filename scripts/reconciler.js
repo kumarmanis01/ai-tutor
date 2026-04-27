@@ -5,42 +5,27 @@ import { prisma } from '../lib/prisma';
 // and mark ExecutionJob completed. Run periodically (cron/PM2) or manually.
 
 async function main() {
+  
   try {
-    const pending = await prisma.hydrationJob.findMany({ where: { contentReady: true } });
+    const pending = await prisma.hydrationJob.findMany({ where: { contentReady: true } })
     for (const h of pending) {
       try {
-        const linked = await prisma.executionJob.findFirst({
-          where: {
-            payload: { path: ['hydrationJobId'], equals: h.id },
-            status: { not: 'completed' },
-          },
-        });
+        const linked = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: h.id }, status: { not: 'completed' } } })
         if (linked) {
-          await prisma.executionJob.update({
-            where: { id: linked.id },
-            data: { status: 'completed' },
-          });
-          await prisma.jobExecutionLog.create({
-            data: {
-              jobId: linked.id,
-              event: 'COMPLETED',
-              prevStatus: linked.status ?? null,
-              newStatus: 'completed',
-              meta: { hydrationJobId: h.id, reconciler: true },
-            },
-          });
-          console.log(`Reconciled execution ${linked.id} for hydration ${h.id}`);
+          await prisma.executionJob.update({ where: { id: linked.id }, data: { status: 'completed' } })
+          await prisma.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus: linked.status ?? null, newStatus: 'completed', meta: { hydrationJobId: h.id, reconciler: true } } })
+          console.log(`Reconciled execution ${linked.id} for hydration ${h.id}`)
         }
       } catch (e) {
-        console.error('Error reconciling hydration', h.id, e);
+        console.error('Error reconciling hydration', h.id, e)
       }
     }
   } catch (e) {
-    console.error('reconciler failed', e);
-    process.exitCode = 1;
+    console.error('reconciler failed', e)
+    process.exitCode = 1
   } finally {
-    await prisma.$disconnect();
+    await prisma.$disconnect()
   }
 }
 
-main();
+main()

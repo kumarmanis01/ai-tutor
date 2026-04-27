@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { useEffect, useState } from 'react';
 
 export type ContinueActivity = {
@@ -42,27 +42,20 @@ export function useContinueLearning() {
     }
   }
 
-  async function updateProgress(
-    sessionId: string,
-    totalQuestions?: number,
-    answeredCount?: number,
-    currentQuestionIndex?: number
-  ) {
+  async function updateProgress(sessionId: string, totalQuestions?: number, answeredCount?: number, currentQuestionIndex?: number) {
     setUpdating(true);
     try {
       await fetch('/api/learning-sessions', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, totalQuestions, answeredCount, currentQuestionIndex }),
+        body: JSON.stringify({ sessionId, totalQuestions, answeredCount, currentQuestionIndex })
       });
     } finally {
       setUpdating(false);
     }
   }
 
-  useEffect(() => {
-    refresh();
-  }, []);
+  useEffect(() => { refresh(); }, []);
 
   return { activities, loading, updating, refresh, resumeActivity, updateProgress };
 }

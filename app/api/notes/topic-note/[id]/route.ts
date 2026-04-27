@@ -11,7 +11,10 @@ export const dynamic = 'force-dynamic';
  * Returns a single TopicNote by id (approved, active only).
  * Used when the Notes page loads note content for a selected topic.
  */
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

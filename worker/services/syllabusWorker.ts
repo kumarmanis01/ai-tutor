@@ -15,22 +15,21 @@
  * - 2026-01-22T07:45:00Z | copilot | Added cascadeAll support for full content hydration
  */
 
-import { prisma } from '@/lib/prisma.js';
-import { callLLM } from '@/lib/callLLM.js';
-import { parseLlmJson } from '@/lib/llm/sanitizeJson';
-import { renderTemplate } from '@/prompts/index';
-import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper';
-import { validateOrThrow } from '@/lib/aiOutputValidator';
-import { toSlug } from '@/lib/slug.js';
-import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
-import { logger } from '@/lib/logger.js';
-import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
+import { prisma } from '@/lib/prisma.js'
+import { callLLM } from '@/lib/callLLM.js'
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
+import { renderTemplate } from '@/prompts/index'
+import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper'
+import { validateOrThrow } from '@/lib/aiOutputValidator'
+import { toSlug } from '@/lib/slug.js'
+import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
+import { logger } from '@/lib/logger.js'
+import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
 // Per spec, workers must not enqueue child hydration jobs; orchestrator/reconciler handles downstream job creation.
 
 // If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
 // the raw text to `AIContentLog.responseBody.raw`.
-const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY =
-  String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
+const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
 
 function getResponseBodyForDb(parsed: any, llmResult: any) {
   if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
@@ -44,92 +43,77 @@ function logRawToConsole(jobId: string, llmResult: any) {
   try {
     const raw = llmResult?.content;
     if (!raw) return;
-    const snippet =
-      typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
+    const snippet = typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
     logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { jobId, snippet });
   } catch (_e) {}
 }
 
 function validateSyllabusShape(raw: any) {
-  if (!raw || typeof raw !== 'object') return false;
-  const { chapters } = raw;
-  if (!Array.isArray(chapters)) return false;
+  if (!raw || typeof raw !== 'object') return false
+  const { chapters } = raw
+  if (!Array.isArray(chapters)) return false
   for (const ch of chapters) {
-    if (!ch || typeof ch !== 'object') return false;
-    if (!ch.title || typeof ch.title !== 'string') return false;
-    if (ch.order !== undefined && typeof ch.order !== 'number') return false;
+    if (!ch || typeof ch !== 'object') return false
+    if (!ch.title || typeof ch.title !== 'string') return false
+    if (ch.order !== undefined && typeof ch.order !== 'number') return false
     if (ch.topics !== undefined) {
-      if (!Array.isArray(ch.topics)) return false;
+      if (!Array.isArray(ch.topics)) return false
       for (const t of ch.topics) {
-        if (!t || typeof t !== 'object') return false;
-        if (!t.title || typeof t.title !== 'string') return false;
-        if (t.order !== undefined && typeof t.order !== 'number') return false;
+        if (!t || typeof t !== 'object') return false
+        if (!t.title || typeof t.title !== 'string') return false
+        if (t.order !== undefined && typeof t.order !== 'number') return false
       }
     }
   }
-  return true;
+  return true
 }
 
 export async function handleSyllabusJob(jobId: string) {
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },
-    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() },
-  });
-  if (claim.count === 0) return;
+    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() }
+  })
+  if (claim.count === 0) return
 
-  const job = await prisma.hydrationJob.findUnique({ where: { id: jobId } });
-  if (!job) return;
+  const job = await prisma.hydrationJob.findUnique({ where: { id: jobId } })
+  if (!job) return
 
-  const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
+  const paused = await prisma.systemSetting.findUnique({ where: { key: "HYDRATION_PAUSED" } })
   if (isSystemSettingEnabled(paused?.value)) {
     // Use Paused status so the resume route can find and re-enqueue this job
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Paused, lockedAt: null },
-    });
-    logger.info('[syllabusWorker] hydration paused, setting job to paused', { jobId });
-    return;
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Paused, lockedAt: null } })
+    logger.info('[syllabusWorker] hydration paused, setting job to paused', { jobId })
+    return
   }
 
-  const subjectId = (job as any).subjectId || null;
+  const subjectId = (job as any).subjectId || null
   if (!subjectId) {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'missing_subjectId');
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
-    return;
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
+    return
   }
 
-  const existing = await prisma.chapterDef.findFirst({
-    where: { subjectId: subjectId as string, lifecycle: 'active' },
-  });
+  const existing = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
   if (existing) {
     // Chapters already exist -- skip LLM call but keep root as Running with contentReady
     // so the reconciler can still create child notes/questions jobs for existing topics.
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Running, contentReady: true, lastError: null },
-    });
-    return;
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Running, contentReady: true, lastError: null } })
+    return
   }
 
-  const subjectRow = await prisma.subjectDef.findUnique({ where: { id: subjectId as string } });
-  const board = job.board || '';
-  const grade = job.grade || 0;
-  const subjectName = subjectRow?.name || job.subject || '';
-  const language = job.language || 'en';
+  const subjectRow = await prisma.subjectDef.findUnique({ where: { id: subjectId as string } })
+  const board = job.board || ''
+  const grade = job.grade || 0
+  const subjectName = subjectRow?.name || job.subject || ''
+  const language = job.language || 'en'
 
   // ── Ground syllabus with NCERT content if available ──────────────────────
   // CurriculumChunk stores subject as a lowercase slug (e.g. 'science').
   // Normalise subjectName the same way the scraper does.
-  let ncertChapterHints: string[] | undefined;
+  let ncertChapterHints: string[] | undefined
   try {
-    const subjectSlug = subjectName
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
+    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
     const firstChunks = await prisma.curriculumChunk.findMany({
       where: {
         board: board.toUpperCase() || undefined,
@@ -140,58 +124,47 @@ export async function handleSyllabusJob(jobId: string) {
       select: { conceptIds: true, content: true },
       orderBy: { createdAt: 'asc' },
       take: 30,
-    });
+    })
     if (firstChunks.length > 0) {
       // Build ordered map: chapter number → opening text snippet (first 200 chars)
-      const chapterMap = new Map<number, string>();
+      const chapterMap = new Map<number, string>()
       for (const chunk of firstChunks) {
-        const chapterTag = chunk.conceptIds.find((t: string) => t.startsWith('chapter:'));
-        if (!chapterTag) continue;
-        const chNum = parseInt(chapterTag.split(':')[1], 10);
+        const chapterTag = chunk.conceptIds.find((t) => t.startsWith('chapter:'))
+        if (!chapterTag) continue
+        const chNum = parseInt(chapterTag.split(':')[1], 10)
         if (!chapterMap.has(chNum)) {
-          chapterMap.set(chNum, (chunk.content ?? '').slice(0, 200).trim());
+          chapterMap.set(chNum, (chunk.content ?? '').slice(0, 200).trim())
         }
       }
       if (chapterMap.size > 0) {
         ncertChapterHints = [...chapterMap.entries()]
           .sort(([a], [b]) => a - b)
-          .map(([, hint]) => hint);
+          .map(([, hint]) => hint)
         logger.info('[syllabusWorker] grounding prompt with NCERT chunks', {
           event: 'ncert_grounding',
-          context: {
-            jobId: job.id,
-            subject: subjectSlug,
-            grade,
-            chaptersFound: ncertChapterHints.length,
-          },
-        });
+          context: { jobId: job.id, subject: subjectSlug, grade, chaptersFound: ncertChapterHints.length },
+        })
       }
     } else {
       logger.warn('[syllabusWorker] no NCERT chunks found -- using GPT knowledge', {
         event: 'ncert_grounding_fallback',
         context: { jobId: job.id, subject: subjectSlug, grade },
-      });
+      })
     }
-  } catch (err: unknown) {
+  } catch (err) {
     // Non-fatal: fall back to GPT knowledge if chunk query fails
     logger.warn('[syllabusWorker] CurriculumChunk query error -- using GPT knowledge', {
       event: 'ncert_grounding_error',
       context: { jobId: job.id, error: String(err) },
-    });
+    })
   }
 
   // Use prompt renderer for deterministic prompt and schemaHash
-  const rendered = renderTemplate('syllabus', {
-    board,
-    grade,
-    subject: subjectName,
-    language,
-    ncertChapterHints,
-  });
-  const prompt = rendered.prompt;
+  const rendered = renderTemplate('syllabus', { board, grade, subject: subjectName, language, ncertChapterHints })
+  const prompt = rendered.prompt
   // Persist initial AIContentLog with schemaHash/version before LLM call
-  let aiLog: any = null;
-  let llmResult: any = null;
+  let aiLog: any = null
+  let llmResult: any = null
   try {
     aiLog = await createStartedAIContentLog(prisma, {
       model: 'pending',
@@ -201,104 +174,57 @@ export async function handleSyllabusJob(jobId: string) {
       subject: subjectName,
       language,
       requestBody: { jobId: job.id },
-      renderer: { schemaHash: rendered.schemaHash, version: rendered.version },
-    });
+      renderer: { schemaHash: rendered.schemaHash, version: rendered.version }
+    })
     // LLM call
     llmResult = await callLLM({
       prompt,
-      meta: {
-        promptType: 'syllabus',
-        board,
-        grade,
-        subject: subjectName,
-        language,
-        schemaHash: rendered.schemaHash,
-        promptVersion: rendered.version,
-        useRag: true,
-        hydrationJobId: job.id,
-        suppressLog: true,
-      },
-      timeoutMs: Number(process.env.SYLLABUS_LLM_TIMEOUT_MS || 20_000),
-    });
-  } catch (err: unknown) {
+      meta: { promptType: 'syllabus', board, grade, subject: subjectName, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version, useRag: true, hydrationJobId: job.id, suppressLog: true },
+      timeoutMs: Number(process.env.SYLLABUS_LLM_TIMEOUT_MS || 20_000)
+    })
+  } catch (err) {
     const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
-    const emsg = err instanceof Error ? err.message : String(err);
-    const code = inferFailureCodeFromMessage(emsg || '');
-    const le = formatLastError(code, String(emsg || 'llm_call_failed'));
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
-    throw err;
+    const code = inferFailureCodeFromMessage(err?.message || '');
+    const le = formatLastError(code, String(err?.message || 'llm_call_failed'));
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
+    throw err
   }
   // Record that a response was received -- attempt to attach to a linked ExecutionJob if present
-  let linkedExec: any = null;
+  let linkedExec: any = null
   try {
-    linkedExec = await prisma.executionJob.findFirst({
-      where: { payload: { path: ['hydrationJobId'], equals: job.id } },
-    });
+    linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } })
     if (linkedExec) {
-      await prisma.jobExecutionLog
-        .create({
-          data: {
-            jobId: String(linkedExec.id),
-            event: 'RESPONSE_RECEIVED',
-            prevStatus: linkedExec.status ?? null,
-            newStatus: linkedExec.status ?? null,
-            meta: { hydrationJobId: job.id },
-          },
-        })
-        .catch(() => {});
+      await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'RESPONSE_RECEIVED', prevStatus: linkedExec.status ?? null, newStatus: linkedExec.status ?? null, meta: { hydrationJobId: job.id } } }).catch(() => {})
     }
   } catch {
     // ignore
   }
 
-  let parsed: any;
+  let parsed: any
   try {
-    const raw = parseLlmJson(llmResult.content);
+    const raw = parseLlmJson(llmResult.content)
     // Strict Zod validation
-    validateOrThrow(raw, { jobType: 'syllabus', language, grade, subject: subjectName });
-    parsed = raw;
-  } catch (err: unknown) {
-    logger.error('Failed to parse LLM output in handleSyllabusJob', {
-      jobId: job.id,
-      error: String(err),
-    });
+    validateOrThrow(raw, { jobType: 'syllabus', language, grade, subject: subjectName })
+    parsed = raw
+  } catch (err) {
+    logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
     // mark hydration job failed with parse error
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.PARSE_FAILED, 'invalid_llm_output');
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
     // Persist failure AIContentLog
-    if (aiLog?.id) {
-      try {
-        logRawToConsole(job.id, llmResult);
-        const responseBody = getResponseBodyForDb(null, llmResult);
-        await prisma.aIContentLog.update({
-          where: { id: aiLog.id },
-          data: { success: false, status: 'failed', error: le, responseBody },
-        });
-      } catch {}
-    }
+      if (aiLog?.id) {
+        try {
+          logRawToConsole(job.id, llmResult);
+          const responseBody = getResponseBodyForDb(null, llmResult);
+          await prisma.aIContentLog.update({ where: { id: aiLog.id }, data: { success: false, status: 'failed', error: le, responseBody } })
+        } catch {}
+      }
     // if we discovered a linked ExecutionJob, mark it failed and write a PARSE_FAILED audit entry
     if (linkedExec) {
       try {
         // Do NOT mutate ExecutionJob state from workers. Emit an audit log only.
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: String(linkedExec.id),
-              event: 'PARSE_FAILED',
-              prevStatus: linkedExec.status ?? null,
-              newStatus: linkedExec.status ?? null,
-              message: le,
-              meta: { hydrationJobId: job.id },
-            },
-          })
-          .catch(() => {});
+        await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'PARSE_FAILED', prevStatus: linkedExec.status ?? null, newStatus: linkedExec.status ?? null, message: le, meta: { hydrationJobId: job.id } } }).catch(() => {});
       } catch {
         // ignore logging failures
       }
@@ -308,16 +234,16 @@ export async function handleSyllabusJob(jobId: string) {
     return;
   }
 
-  parsed.chapters.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+  parsed.chapters.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
   for (const ch of parsed.chapters) {
-    if (Array.isArray(ch.topics))
-      ch.topics.sort((x: any, y: any) => (x.order ?? 0) - (y.order ?? 0));
+    if (Array.isArray(ch.topics)) ch.topics.sort((x: any, y: any) => (x.order ?? 0) - (y.order ?? 0))
   }
 
   // ── Validation cap: limit chapters to avoid runaway generation ──
   // Priority: job inputParams > VALIDATION_CAP_CHAPTERS env > 0 (no cap)
   const jobCaps = (job.inputParams as any)?.generationLimits;
-  const capChapters = jobCaps?.chaptersLimit ?? Number(process.env.VALIDATION_CAP_CHAPTERS || 0);
+  const capChapters = jobCaps?.chaptersLimit
+    ?? Number(process.env.VALIDATION_CAP_CHAPTERS || 0);
   if (capChapters > 0 && parsed.chapters.length > capChapters) {
     logger.warn('[VALIDATION_CAP] syllabusWorker: capping chapters', {
       jobId: job.id,
@@ -363,53 +289,45 @@ export async function handleSyllabusJob(jobId: string) {
     // perform per-chapter transactions and a short final transaction for logging/completion.
     let failedChapterCount = 0;
     for (const ch of parsed.chapters) {
-      try {
-        await runTxWithRetry(async (tx) => {
-          const slug = toSlug(ch.title);
-          const exists = await tx.chapterDef.findFirst({
-            where: { subjectId: subjectId as string, slug },
-          });
-          if (exists) return;
+      try { await runTxWithRetry(async (tx) => {
+        const slug = toSlug(ch.title);
+        const exists = await tx.chapterDef.findFirst({ where: { subjectId: subjectId as string, slug } });
+        if (exists) return;
 
-          const chapter = await tx.chapterDef.create({
-            data: {
-              name: ch.title,
-              slug,
-              order: ch.order ?? 0,
-              subjectId: subjectId as string,
-              status: ApprovalStatus.Draft,
-              lifecycle: 'active',
-            },
-          });
-
-          if (Array.isArray(ch.topics)) {
-            for (const t of ch.topics) {
-              const tslug = toSlug(t.title);
-              const texists = await tx.topicDef.findFirst({
-                where: { chapterId: chapter.id, slug: tslug },
-              });
-              if (texists) continue;
-
-              const topic = await tx.topicDef.create({
-                data: {
-                  name: t.title,
-                  slug: tslug,
-                  order: t.order ?? 0,
-                  chapterId: chapter.id,
-                  status: ApprovalStatus.Draft,
-                  lifecycle: 'active',
-                },
-              });
-              createdTopicIds.push(topic.id);
-            }
-          }
+        const chapter = await tx.chapterDef.create({
+          data: {
+            name: ch.title,
+            slug,
+            order: ch.order ?? 0,
+            subjectId: subjectId as string,
+            status: ApprovalStatus.Draft,
+            lifecycle: 'active',
+          },
         });
-      } catch (chErr: any) {
+
+        if (Array.isArray(ch.topics)) {
+          for (const t of ch.topics) {
+            const tslug = toSlug(t.title);
+            const texists = await tx.topicDef.findFirst({ where: { chapterId: chapter.id, slug: tslug } });
+            if (texists) continue;
+
+            const topic = await tx.topicDef.create({
+              data: {
+                name: t.title,
+                slug: tslug,
+                order: t.order ?? 0,
+                chapterId: chapter.id,
+                status: ApprovalStatus.Draft,
+                lifecycle: 'active',
+              },
+            });
+            createdTopicIds.push(topic.id);
+          }
+        }
+      }); } catch (chErr: any) {
         failedChapterCount++;
         logger.warn('[syllabusWorker] chapter transaction failed, skipping chapter', {
-          jobId: job.id,
-          chapter: ch.title,
-          error: chErr?.message || String(chErr),
+          jobId: job.id, chapter: ch.title, error: chErr?.message || String(chErr),
         });
       }
     }
@@ -420,41 +338,25 @@ export async function handleSyllabusJob(jobId: string) {
       if (aiLog?.id) {
         const successResponseBody = getResponseBodyForDb(parsed, llmResult);
         logRawToConsole(job.id, llmResult);
-        await tx.aIContentLog.update({
-          where: { id: aiLog.id },
-          data: {
-            model: llmResult?.model || 'llm',
-            tokensIn: llmResult?.usage?.prompt_tokens ?? null,
-            tokensOut: llmResult?.usage?.completion_tokens ?? null,
-            tokensUsed: llmResult?.usage?.total_tokens ?? null,
-            costUsd: llmResult?.costUsd ?? null,
-            success: true,
-            status: 'success',
-            responseBody: successResponseBody,
-          },
-        });
+        await tx.aIContentLog.update({ where: { id: aiLog.id }, data: {
+          model: llmResult?.model || 'llm',
+          tokensIn: llmResult?.usage?.prompt_tokens ?? null,
+          tokensOut: llmResult?.usage?.completion_tokens ?? null,
+          tokensUsed: llmResult?.usage?.total_tokens ?? null,
+          costUsd: llmResult?.costUsd ?? null,
+          success: true,
+          status: 'success',
+          responseBody: successResponseBody
+        } })
       }
 
       // Keep root job as Running so the reconciler can drive child levels.
       // The reconciler's finalizeRootJob() will mark it Completed when all levels are done.
-      await tx.hydrationJob.update({
-        where: { id: job.id },
-        data: { status: JobStatus.Running, contentReady: true },
-      });
-      const linked = await tx.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: job.id } },
-      });
+      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Running, contentReady: true } });
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
         const prevStatus = linked.status ?? null;
-        await tx.jobExecutionLog.create({
-          data: {
-            jobId: linked.id,
-            event: 'SYLLABUS_READY',
-            prevStatus,
-            newStatus: prevStatus,
-            meta: { hydrationJobId: job.id },
-          },
-        });
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'SYLLABUS_READY', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id } } });
       }
     });
 
@@ -465,18 +367,12 @@ export async function handleSyllabusJob(jobId: string) {
       const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
       const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
       const le = formatLastError(code, String(err?.message ?? err));
-      await prisma.hydrationJob.update({
-        where: { id: job.id },
-        data: { status: JobStatus.Failed, lastError: le },
-      });
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
     } catch {
-      await prisma.hydrationJob.update({
-        where: { id: job.id },
-        data: { status: JobStatus.Failed, lastError: String(err?.message ?? err) },
-      });
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? err) } });
     }
     return;
   }
 }
 
-export default handleSyllabusJob;
+export default handleSyllabusJob

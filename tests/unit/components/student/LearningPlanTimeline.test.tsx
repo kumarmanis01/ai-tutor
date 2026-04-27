@@ -9,11 +9,11 @@
  * - 2026-04-16T00:00:00Z | copilot | add component unit tests for optimistic reorder
  */
 
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import React from 'react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import '@testing-library/jest-dom'
 
-import { LearningPlanTimeline } from '@/components/student/LearningPlanTimeline';
+import { LearningPlanTimeline } from '@/components/student/LearningPlanTimeline'
 
 describe('LearningPlanTimeline component', () => {
   const initialData = {
@@ -54,48 +54,48 @@ describe('LearningPlanTimeline component', () => {
         ],
       },
     ],
-  };
+  }
 
   beforeEach(() => {
     // Reset global.fetch mock
     // @ts-expect-error TODO: fix types
-    global.fetch = jest.fn();
-  });
+    global.fetch = jest.fn()
+  })
 
   it('optimistically swaps items when move succeeds', async () => {
     // Mock fetch to return OK
     // @ts-expect-error TODO: fix types
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })
 
-    render(<LearningPlanTimeline initialData={initialData as any} />);
+    render(<LearningPlanTimeline initialData={initialData as any} />)
 
     // initial order numbers: 1 and 2
-    expect(screen.getAllByText('1')[0]).toBeInTheDocument();
-    expect(screen.getAllByText('2')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('1')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('2')[0]).toBeInTheDocument()
 
     // click move down on first item's down button
-    const downButtons = screen.getAllByRole('button', { name: /Move .* down/i });
-    expect(downButtons.length).toBeGreaterThan(0);
+    const downButtons = screen.getAllByRole('button', { name: /Move .* down/i })
+    expect(downButtons.length).toBeGreaterThan(0)
 
-    fireEvent.click(downButtons[0]);
+    fireEvent.click(downButtons[0])
 
     // Wait for optimistic reorder to reflect: first item should now show order 2
     await waitFor(() => {
-      const orderBadges = screen.getAllByText(/^[12]$/);
+      const orderBadges = screen.getAllByText(/^[12]$/)
       // After swap, the first concept should now have badge '2'
-      expect(orderBadges.some((el) => el.textContent === '2')).toBe(true);
-    });
+      expect(orderBadges.some((el) => el.textContent === '2')).toBe(true)
+    })
 
     // Ensure fetch was called with PATCH and correct body
     // @ts-expect-error TODO: fix types
-    expect(global.fetch).toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalled()
     // Check last call payload
     // @ts-expect-error TODO: fix types
-    const lastCall = global.fetch.mock.calls[0];
-    expect(lastCall[0]).toMatch(/\/api\/student\/learning-plan\//);
-    const fetchOptions = lastCall[1];
-    expect(fetchOptions.method).toBe('PATCH');
-    const body = JSON.parse(fetchOptions.body);
-    expect(body.action).toBe('move');
-  });
-});
+    const lastCall = global.fetch.mock.calls[0]
+    expect(lastCall[0]).toMatch(/\/api\/student\/learning-plan\//)
+    const fetchOptions = lastCall[1]
+    expect(fetchOptions.method).toBe('PATCH')
+    const body = JSON.parse(fetchOptions.body)
+    expect(body.action).toBe('move')
+  })
+})

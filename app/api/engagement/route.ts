@@ -33,11 +33,14 @@ export async function GET() {
     const res = NextResponse.json(data);
     res.headers.set(
       'Cache-Control',
-      `private, max-age=${CACHE_MAX_AGE}, stale-while-revalidate=${CACHE_STALE}`
+      `private, max-age=${CACHE_MAX_AGE}, stale-while-revalidate=${CACHE_STALE}`,
     );
     return res;
   } catch (err) {
     logger.warn('engagement.combined.error', { userId, error: err });
-    return NextResponse.json({ error: 'Failed to load engagement' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to load engagement' },
+      { status: 500 },
+    );
   }
 }

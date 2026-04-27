@@ -1,80 +1,64 @@
-/**
- * FILE OBJECTIVE:
- * - Builds parent-facing student progress report with subject mastery and recent activity.
- *
- * LINKED UNIT TEST:
- * - tests/unit/lib/parent/progressReport.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
- * EDIT LOG:
- * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
- * - 2026-04-24T00:00:00Z | copilot | strict-mode: type subjects and widen parseGrade
- */
-
-import { prisma } from '@/lib/prisma';
-import { computeExamReadiness } from '@/lib/student/examReadiness';
+import { prisma } from '@/lib/prisma'
+import { computeExamReadiness } from '@/lib/student/examReadiness'
 
 export interface ParentProgressReport {
   student: {
-    name: string;
-    grade: number;
-    board: string;
-    currentStreak: number;
-    longestStreak: number;
-    level: number;
-    totalXp: number;
-  };
+    name: string
+    grade: number
+    board: string
+    currentStreak: number
+    longestStreak: number
+    level: number
+    totalXp: number
+  }
   weekSummary: {
-    sessionsThisWeek: number;
-    minutesThisWeek: number;
-    questionsAttempted: number;
-    correctAnswers: number;
-    accuracyPercent: number;
-  };
+    sessionsThisWeek: number
+    minutesThisWeek: number
+    questionsAttempted: number
+    correctAnswers: number
+    accuracyPercent: number
+  }
   masteryBySubject: Array<{
-    subjectName: string;
-    examReadinessScore: number;
-    readinessLabel: string;
+    subjectName: string
+    examReadinessScore: number
+    readinessLabel: string
     topWeakChapters: Array<{
-      chapterName: string;
-      avgMastery: number;
-    }>;
-  }>;
+      chapterName: string
+      avgMastery: number
+    }>
+  }>
   recentActivity: Array<{
-    date: string;
-    durationMinutes: number;
-    conceptsStudied: number;
-    xpEarned: number;
-  }>;
-  safetyFlags: number;
+    date: string
+    durationMinutes: number
+    conceptsStudied: number
+    xpEarned: number
+  }>
+  safetyFlags: number
 }
 
 function startOfUtcDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0))
 }
 
 function daysAgoUtcStart(daysAgo: number): Date {
-  const d = startOfUtcDay(new Date());
-  d.setUTCDate(d.getUTCDate() - daysAgo);
-  return d;
+  const d = startOfUtcDay(new Date())
+  d.setUTCDate(d.getUTCDate() - daysAgo)
+  return d
 }
 
 function formatDateShort(d: Date): string {
   // "12 Mar 2026"
-  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function parseGrade(grade: string | number | null | undefined): number {
-  const n = Number.parseInt(String(grade ?? ''), 10);
-  return Number.isFinite(n) ? n : 0;
+function parseGrade(grade: string | null | undefined): number {
+  const n = Number.parseInt(String(grade ?? ''), 10)
+  return Number.isFinite(n) ? n : 0
 }
 
 function minutesForSession(s: { duration: number | null; actualTimeSpent: number }): number {
-  const v = s.duration ?? s.actualTimeSpent ?? 0;
-  return Number.isFinite(v) && v > 0 ? Math.round(v) : 0;
+  const v = s.duration ?? s.actualTimeSpent ?? 0
+  return Number.isFinite(v) && v > 0 ? Math.round(v) : 0
 }
 
 /**
@@ -85,28 +69,14 @@ function minutesForSession(s: { duration: number | null; actualTimeSpent: number
  */
 export async function buildProgressReport(
   parentId: string,
-  studentId: string
+  studentId: string,
 ): Promise<ParentProgressReport | null> {
   try {
-    // Local row types for strict mode
-    type LinkRow = { id: string } | null;
-    type StudentRow = {
-      id: string;
-      name?: string | null;
-      grade?: string | number | null;
-      board?: string | null;
-      subjects?: Array<string | null> | null;
-      currentStreak?: number | null;
-      longestStreak?: number | null;
-      level?: number | null;
-      totalXp?: number | null;
-    } | null;
-
     const [link, student] = await Promise.all([
       prisma.parentStudent.findFirst({
         where: { parentId, studentId, status: 'active' },
         select: { id: true },
-      }) as Promise<LinkRow>,
+      }),
       prisma.user.findUnique({
         where: { id: studentId },
         select: {
@@ -120,14 +90,14 @@ export async function buildProgressReport(
           level: true,
           totalXp: true,
         },
-      }) as Promise<StudentRow>,
-    ]);
+      }),
+    ])
 
-    if (!student) return null;
-    if (!link) return null;
+    if (!student) return null
+    if (!link) return null
 
-    const weekStart = daysAgoUtcStart(6); // inclusive: today + previous 6 days
-    const safetyStart = daysAgoUtcStart(29); // inclusive last 30 calendar days
+    const weekStart = daysAgoUtcStart(6) // inclusive: today + previous 6 days
+    const safetyStart = daysAgoUtcStart(29) // inclusive last 30 calendar days
 
     const [sessionsThisWeek, questionsAttempted, correctAnswers, safetyFlags, recentSessions] =
       await Promise.all([
@@ -154,24 +124,19 @@ export async function buildProgressReport(
             actualTimeSpent: true,
           },
         }),
-      ]);
+      ])
 
-    // Local row type for learningSession
-    type SessionRow = { duration: number | null; actualTimeSpent: number };
-    const minutesThisWeekRows = (await prisma.learningSession.findMany({
+    const minutesThisWeekRows = await prisma.learningSession.findMany({
       where: { studentId, startedAt: { gte: weekStart } },
       select: { duration: true, actualTimeSpent: true },
-    })) as SessionRow[];
-    const minutesThisWeek = minutesThisWeekRows.reduce(
-      (sum: number, s: SessionRow) => sum + minutesForSession(s),
-      0
-    );
+    })
+    const minutesThisWeek = minutesThisWeekRows.reduce((sum, s) => sum + minutesForSession(s), 0)
 
     const accuracyPercent =
-      questionsAttempted > 0 ? Math.round((correctAnswers / questionsAttempted) * 100) : 0;
+      questionsAttempted > 0 ? Math.round((correctAnswers / questionsAttempted) * 100) : 0
 
     // Map subject names -> SubjectDef ids (best-effort, no throws)
-    const subjectNames = (student.subjects ?? []).map((s) => String(s)).filter(Boolean);
+    const subjectNames = (student.subjects ?? []).map((s) => String(s)).filter(Boolean)
     const subjectDefs = subjectNames.length
       ? await prisma.subjectDef.findMany({
           where: {
@@ -180,58 +145,45 @@ export async function buildProgressReport(
           },
           select: { id: true, name: true },
         })
-      : [];
+      : []
 
-    const masteryBySubject: ParentProgressReport['masteryBySubject'] = [];
-
-    // Local row type for subjectDef
-    type SubjectDefRow = { id: string; name: string };
-    for (const subj of subjectDefs as SubjectDefRow[]) {
-      const readiness = await computeExamReadiness(studentId, subj.id);
-      if (!readiness) continue;
+    const masteryBySubject: ParentProgressReport['masteryBySubject'] = []
+    for (const subj of subjectDefs) {
+      const readiness = await computeExamReadiness(studentId, subj.id)
+      if (!readiness) continue
       const weak = [...readiness.chapterBreakdown]
-        .sort((a: any, b: any) => a.masteryScore - b.masteryScore)
+        .sort((a, b) => a.masteryScore - b.masteryScore)
         .slice(0, 3)
-        .map((c: any) => ({ chapterName: c.chapterName, avgMastery: c.masteryScore }));
+        .map((c) => ({ chapterName: c.chapterName, avgMastery: c.masteryScore }))
 
       masteryBySubject.push({
         subjectName: subj.name,
         examReadinessScore: readiness.score,
         readinessLabel: readiness.readinessLabel,
         topWeakChapters: weak,
-      });
+      })
     }
 
-    const recentActivity: ParentProgressReport['recentActivity'] = [];
-
-    // Local row types for recentSessions, answerEvent, studentXP
-    type RecentSessionRow = {
-      id: string;
-      startedAt: Date;
-      duration: number | null;
-      actualTimeSpent: number;
-    };
-    type ConceptRow = { conceptId: string };
-    type XpAggRow = { _sum: { amount: number | null } };
-    for (const s of recentSessions as RecentSessionRow[]) {
+    const recentActivity: ParentProgressReport['recentActivity'] = []
+    for (const s of recentSessions) {
       const [conceptRows, xpAgg] = await Promise.all([
         prisma.answerEvent.findMany({
           where: { sessionId: s.id },
           select: { conceptId: true },
           distinct: ['conceptId'],
-        }) as Promise<ConceptRow[]>,
+        }),
         prisma.studentXP.aggregate({
           where: { sessionId: s.id, studentId },
           _sum: { amount: true },
-        }) as Promise<XpAggRow>,
-      ]);
+        }),
+      ])
 
       recentActivity.push({
         date: formatDateShort(s.startedAt),
         durationMinutes: minutesForSession(s),
         conceptsStudied: conceptRows.length,
         xpEarned: xpAgg._sum.amount ?? 0,
-      });
+      })
     }
 
     return {
@@ -254,8 +206,9 @@ export async function buildProgressReport(
       masteryBySubject,
       recentActivity,
       safetyFlags,
-    };
+    }
   } catch {
-    return null;
+    return null
   }
 }
+

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -11,14 +11,7 @@ interface Props {
   footer?: React.ReactNode;
 }
 
-export default function ContentModal({
-  open,
-  title = '',
-  onClose,
-  children,
-  className = '',
-  footer,
-}: Props) {
+export default function ContentModal({ open, title = '', onClose, children, className = '', footer }: Props) {
   const modalRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const prevActiveRef = useRef<HTMLElement | null>(null);
@@ -46,8 +39,8 @@ export default function ContentModal({
         if (!container) return;
         const focusable = Array.from(
           container.querySelectorAll<HTMLElement>(
-            'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-          )
+            'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+          ),
         );
         if (focusable.length === 0) return;
         const first = focusable[0];
@@ -93,15 +86,8 @@ export default function ContentModal({
         className={`relative z-10 w-full max-w-2xl md:rounded-lg rounded-t-lg bg-white dark:bg-slate-800 p-4 md:p-6 shadow-xl max-h-[80vh] overflow-auto ${className}`}
       >
         <div className="flex items-start justify-between">
-          <h3 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-            {title}
-          </h3>
-          <button
-            ref={closeRef}
-            aria-label="Close"
-            className="ml-4 rounded p-1 text-gray-600 hover:bg-gray-100"
-            onClick={onClose}
-          >
+          <h3 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-50">{title}</h3>
+          <button ref={closeRef} aria-label="Close" className="ml-4 rounded p-1 text-gray-600 hover:bg-gray-100" onClick={onClose}>
             ✕
           </button>
         </div>

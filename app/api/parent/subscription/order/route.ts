@@ -51,9 +51,7 @@ export async function POST(req: Request) {
 
   const b = body as Record<string, unknown>;
   const planId = typeof b.planId === 'string' ? b.planId : '';
-  const childIds = Array.isArray(b.childIds)
-    ? ((b.childIds as unknown[]).filter((x) => typeof x === 'string') as string[])
-    : [];
+  const childIds = Array.isArray(b.childIds) ? (b.childIds as unknown[]).filter((x) => typeof x === 'string') as string[] : [];
   const isFamily = Boolean(b.isFamily);
   const emiMonths = typeof b.emiMonths === 'number' ? b.emiMonths : undefined;
 
@@ -62,10 +60,7 @@ export async function POST(req: Request) {
   }
 
   if (!childIds || childIds.length === 0 || childIds.length > 3) {
-    return NextResponse.json(
-      { error: 'Invalid childIds (must select 1-3 children)' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Invalid childIds (must select 1-3 children)' }, { status: 400 });
   }
 
   // Family pricing allowed for up to 3 children
@@ -74,15 +69,9 @@ export async function POST(req: Request) {
   }
 
   // Verify parent-child links
-  const links = await prisma.parentStudent.findMany({
-    where: { parentId: user.id, studentId: { in: childIds }, status: 'active' },
-    select: { studentId: true },
-  });
+  const links = await prisma.parentStudent.findMany({ where: { parentId: user.id, studentId: { in: childIds }, status: 'active' }, select: { studentId: true } });
   if (links.length !== childIds.length) {
-    return NextResponse.json(
-      { error: 'One or more children are not linked to you' },
-      { status: 403 }
-    );
+    return NextResponse.json({ error: 'One or more children are not linked to you' }, { status: 403 });
   }
 
   const plan = PLANS[planId as PlanId];
@@ -99,10 +88,7 @@ export async function POST(req: Request) {
 
   const client = getRazorpayClient();
   if (!client) {
-    logger.error('Razorpay keys not configured', {
-      event: 'parent.subscription.order.no_client',
-      context: { parentId: user.id },
-    });
+    logger.error('Razorpay keys not configured', { event: 'parent.subscription.order.no_client', context: { parentId: user.id } });
     return NextResponse.json({ error: 'Payment not available' }, { status: 503 });
   }
 
@@ -134,21 +120,9 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(
-      {
-        orderId: order.id,
-        amount: amountPaise,
-        currency: 'INR',
-        keyId: process.env.RAZORPAY_KEY_ID ?? '',
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ orderId: order.id, amount: amountPaise, currency: 'INR', keyId: process.env.RAZORPAY_KEY_ID ?? '' }, { status: 200 });
   } catch (err) {
-    logger.error('Failed to create parent Razorpay order', {
-      event: 'parent.subscription.order.error',
-      context: { parentId: user.id, planId, childIds },
-      err,
-    });
+    logger.error('Failed to create parent Razorpay order', { event: 'parent.subscription.order.error', context: { parentId: user.id, planId, childIds }, err });
     return NextResponse.json({ error: 'Could not create order' }, { status: 500 });
   }
 }

@@ -66,14 +66,14 @@ interface RateLimitResult {
 function getClientIdentifier(req: NextRequest, identifier?: string): string {
   const forwarded = req.headers.get('x-forwarded-for');
   const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
-
+  
   // If we have a user identifier (email/phone), include it for per-user limiting
   if (identifier) {
     // Normalize email/phone to lowercase and remove special chars
     const normalized = identifier.toLowerCase().replace(/[^a-z0-9@.]/g, '');
     return `auth:${ip}:${normalized}`;
   }
-
+  
   return `auth:${ip}`;
 }
 
@@ -137,10 +137,10 @@ export async function checkAuthRateLimit(
     const pipeline = redis.pipeline();
     pipeline.incr(rateLimitKey);
     pipeline.ttl(rateLimitKey);
-
+    
     const results = await pipeline.exec();
-    const currentCount = (results?.[0]?.[1] as number) ?? 1;
-    let ttl = (results?.[1]?.[1] as number) ?? -1;
+    const currentCount = results?.[0]?.[1] as number ?? 1;
+    let ttl = results?.[1]?.[1] as number ?? -1;
 
     // Set expiry on first request
     if (ttl === -1) {
@@ -154,7 +154,7 @@ export async function checkAuthRateLimit(
     if (currentCount > config.maxRequests) {
       // Block the client for extended duration
       await redis.set(blockKey, '1', 'EX', config.blockDurationSeconds);
-
+      
       logger.warn('Auth rate limit exceeded, blocking client', {
         className: CLASS_NAME,
         methodName: 'checkAuthRateLimit',
@@ -210,10 +210,7 @@ export function createRateLimitResponse(result: RateLimitResult): NextResponse {
     { status: 429 }
   );
 
-  response.headers.set(
-    'Retry-After',
-    String(Math.ceil((result.resetAt.getTime() - Date.now()) / 1000))
-  );
+  response.headers.set('Retry-After', String(Math.ceil((result.resetAt.getTime() - Date.now()) / 1000)));
   response.headers.set('X-RateLimit-Remaining', String(result.remaining));
   response.headers.set('X-RateLimit-Reset', result.resetAt.toISOString());
 
@@ -223,11 +220,11 @@ export function createRateLimitResponse(result: RateLimitResult): NextResponse {
 /**
  * Middleware wrapper function to apply rate limiting to an auth route.
  * Use this to wrap your route handler.
- *
+ * 
  * @example
  * ```typescript
  * import { withAuthRateLimit } from '@/lib/middleware/authRateLimit';
- *
+ * 
  * export const POST = withAuthRateLimit('signin', async (req) => {
  *   // Your route logic here
  * });
@@ -241,7 +238,7 @@ export function withAuthRateLimit(
   return async (req: NextRequest): Promise<NextResponse> => {
     // Clone request to read body without consuming it for the handler
     let identifier: string | undefined;
-
+    
     if (getIdentifier) {
       try {
         const body = await req.clone().json();
@@ -259,7 +256,7 @@ export function withAuthRateLimit(
 
     // Add rate limit headers to successful responses
     const response = await handler(req);
-
+    
     response.headers.set('X-RateLimit-Remaining', String(rateLimitResult.remaining));
     response.headers.set('X-RateLimit-Reset', rateLimitResult.resetAt.toISOString());
 

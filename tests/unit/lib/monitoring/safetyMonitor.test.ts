@@ -112,13 +112,17 @@ describe('SafetyMonitor', () => {
     });
 
     it('should have threshold for token usage', () => {
-      const threshold = DEFAULT_THRESHOLDS.find((t) => t.metric === MetricType.TOKEN_USAGE);
+      const threshold = DEFAULT_THRESHOLDS.find(
+        (t) => t.metric === MetricType.TOKEN_USAGE
+      );
       expect(threshold).toBeDefined();
       expect(threshold?.warningThreshold).toBeGreaterThan(0);
     });
 
     it('should have threshold for parent complaints', () => {
-      const threshold = DEFAULT_THRESHOLDS.find((t) => t.metric === MetricType.PARENT_COMPLAINTS);
+      const threshold = DEFAULT_THRESHOLDS.find(
+        (t) => t.metric === MetricType.PARENT_COMPLAINTS
+      );
       expect(threshold).toBeDefined();
       expect(threshold?.action).toBe(KillSwitchType.PAUSE_WHATSAPP);
     });
@@ -172,19 +176,31 @@ describe('SafetyMonitor', () => {
   // ============================================================================
   describe('enableKillSwitch', () => {
     it('should enable a kill switch', () => {
-      enableKillSwitch(KillSwitchType.FORCE_EASY_MODE, 'high failure rate', 'system');
+      enableKillSwitch(
+        KillSwitchType.FORCE_EASY_MODE,
+        'high failure rate',
+        'system'
+      );
       expect(isKillSwitchEnabled(KillSwitchType.FORCE_EASY_MODE)).toBe(true);
     });
 
     it('should record who enabled the switch', () => {
-      enableKillSwitch(KillSwitchType.TEXT_ONLY_MODE, 'test reason', 'admin');
+      enableKillSwitch(
+        KillSwitchType.TEXT_ONLY_MODE,
+        'test reason',
+        'admin'
+      );
       const active = getActiveKillSwitches();
       const textOnly = active.find((s) => s.type === KillSwitchType.TEXT_ONLY_MODE);
       expect(textOnly?.enabledBy).toBe('admin');
     });
 
     it('should store the reason', () => {
-      enableKillSwitch(KillSwitchType.PAUSE_WHATSAPP, 'parent complaints', 'system');
+      enableKillSwitch(
+        KillSwitchType.PAUSE_WHATSAPP,
+        'parent complaints',
+        'system'
+      );
       const active = getActiveKillSwitches();
       const paused = active.find((s) => s.type === KillSwitchType.PAUSE_WHATSAPP);
       expect(paused?.reason).toBe('parent complaints');
@@ -193,7 +209,11 @@ describe('SafetyMonitor', () => {
 
   describe('disableKillSwitch', () => {
     it('should disable an active kill switch', () => {
-      enableKillSwitch(KillSwitchType.FORCE_EASY_MODE, 'test', 'system');
+      enableKillSwitch(
+        KillSwitchType.FORCE_EASY_MODE,
+        'test',
+        'system'
+      );
       expect(isKillSwitchEnabled(KillSwitchType.FORCE_EASY_MODE)).toBe(true);
 
       disableKillSwitch(KillSwitchType.FORCE_EASY_MODE);
@@ -236,7 +256,11 @@ describe('SafetyMonitor', () => {
     });
 
     it('should return true for active switch', () => {
-      enableKillSwitch(KillSwitchType.DISABLE_AI_GENERATION, 'test', 'system');
+      enableKillSwitch(
+        KillSwitchType.DISABLE_AI_GENERATION,
+        'test',
+        'system'
+      );
       expect(isKillSwitchEnabled(KillSwitchType.DISABLE_AI_GENERATION)).toBe(true);
     });
   });
@@ -389,10 +413,7 @@ describe('SafetyMonitor', () => {
         date: '2026-02-05',
         taskCompletionRate: 30,
         avgTimePerTask: 20,
-        questionFailureRates: new Map([
-          ['q1', 60],
-          ['q2', 70],
-        ]),
+        questionFailureRates: new Map([['q1', 60], ['q2', 70]]),
         dropoffRate: 50,
         avgResponseLength: 3000,
         totalTokensUsed: 100000,

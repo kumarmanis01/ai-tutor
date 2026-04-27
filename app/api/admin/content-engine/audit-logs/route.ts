@@ -40,10 +40,10 @@ export async function GET() {
           { action: { contains: 'cancel' } },
           { action: { contains: 'retry' } },
           { action: { contains: 'requeue' } },
-        ],
+        ]
       },
       include: {
-        user: { select: { email: true } },
+        user: { select: { email: true } }
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
@@ -55,8 +55,7 @@ export async function GET() {
       action: log.action,
       adminId: log.userId,
       adminEmail: log.user?.email || null,
-      entityType:
-        (log.details as Record<string, unknown>)?.entityType || extractEntityType(log.action),
+      entityType: (log.details as Record<string, unknown>)?.entityType || extractEntityType(log.action),
       entityId: extractEntityId(log.details as Record<string, unknown>),
       comment: (log.details as Record<string, unknown>)?.reason || null,
       createdAt: log.createdAt,
@@ -65,12 +64,8 @@ export async function GET() {
 
     return NextResponse.json({ logs: transformedLogs });
   } catch (error) {
-    logger.error('Failed to fetch audit logs', {
-      className: 'audit-logs',
-      methodName: 'GET',
-      error,
-    });
-    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
+      logger.error('Failed to fetch audit logs', { className: 'audit-logs', methodName: 'GET', error });
+      return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
 

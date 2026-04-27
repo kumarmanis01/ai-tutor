@@ -107,11 +107,11 @@ const HOMEWORK_REWRITE_TEMPLATES: Record<string, string[]> = {
   default: [
     'Let me focus on one question at a time. Can you help me understand how to approach the first concept?',
     'Instead of solving all at once, can you guide me through understanding the key concept here?',
-    "Help me learn the method so I can work through these myself. Let's start with the main idea.",
+    'Help me learn the method so I can work through these myself. Let\'s start with the main idea.',
   ],
   bulk_to_single: [
-    "Let's break this down. Can you help me understand the approach for one problem first?",
-    "I'd like to understand the concept first. Can you explain the underlying principle?",
+    'Let\'s break this down. Can you help me understand the approach for one problem first?',
+    'I\'d like to understand the concept first. Can you explain the underlying principle?',
   ],
 };
 
@@ -120,9 +120,17 @@ const HOMEWORK_REWRITE_TEMPLATES: Record<string, string[]> = {
  */
 const LEARNING_PREFIXES: Record<number, string[]> = {
   // Grades 1-3: Very simple, encouraging
-  1: ['Help me learn about', 'Can you teach me about', 'I want to understand'],
+  1: [
+    'Help me learn about',
+    'Can you teach me about',
+    'I want to understand',
+  ],
   // Grades 4-7: Slightly more complex
-  4: ['Can you explain the concept of', 'Help me understand how', 'Guide me through understanding'],
+  4: [
+    'Can you explain the concept of',
+    'Help me understand how',
+    'Guide me through understanding',
+  ],
   // Grades 8-12: Academic language
   8: [
     'Can you explain the underlying principle of',
@@ -140,7 +148,7 @@ const LEARNING_PREFIXES: Record<number, string[]> = {
  */
 function getLearningPrefix(grade: Grade): string {
   let prefixGroup: string[];
-
+  
   if (grade <= 3) {
     prefixGroup = LEARNING_PREFIXES[1];
   } else if (grade <= 7) {
@@ -148,7 +156,7 @@ function getLearningPrefix(grade: Grade): string {
   } else {
     prefixGroup = LEARNING_PREFIXES[8];
   }
-
+  
   return prefixGroup[Math.floor(Math.random() * prefixGroup.length)];
 }
 
@@ -158,26 +166,17 @@ function getLearningPrefix(grade: Grade): string {
 function getRewriteTemplate(subject: string, type: 'shortcut' | 'homework'): string {
   const templates = type === 'shortcut' ? SHORTCUT_REWRITE_TEMPLATES : HOMEWORK_REWRITE_TEMPLATES;
   const subjectLower = subject.toLowerCase();
-
+  
   let templateGroup: string[];
-
-  if (
-    subjectLower.includes('math') ||
-    subjectLower.includes('algebra') ||
-    subjectLower.includes('geometry')
-  ) {
+  
+  if (subjectLower.includes('math') || subjectLower.includes('algebra') || subjectLower.includes('geometry')) {
     templateGroup = templates.math || templates.default;
-  } else if (
-    subjectLower.includes('science') ||
-    subjectLower.includes('physics') ||
-    subjectLower.includes('chemistry') ||
-    subjectLower.includes('biology')
-  ) {
+  } else if (subjectLower.includes('science') || subjectLower.includes('physics') || subjectLower.includes('chemistry') || subjectLower.includes('biology')) {
     templateGroup = templates.science || templates.default;
   } else {
     templateGroup = templates.default;
   }
-
+  
   return templateGroup[Math.floor(Math.random() * templateGroup.length)];
 }
 
@@ -202,10 +201,10 @@ function extractCoreQuestion(input: string): string {
     .replace(/\bq\s*\d+\s*[-:.]?\s*/gi, '')
     .replace(/^\s*\d+[.)]\s*/gm, '') // Remove numbered list markers
     .trim();
-
+  
   // Clean up any leftover punctuation at start
   core = core.replace(/^[:\-.\s]+/, '').trim();
-
+  
   return core || input; // Return original if nothing left
 }
 
@@ -222,8 +221,8 @@ function hasMultipleQuestions(input: string): boolean {
     /\bfirst[\s,]+second/i,
     /\b(all|these)\s+(questions|problems)\b/i,
   ];
-
-  return questionIndicators.some((pattern) => pattern.test(input));
+  
+  return questionIndicators.some(pattern => pattern.test(input));
 }
 
 /**
@@ -234,10 +233,10 @@ function rewriteShortcutPrompt(context: RewriteContext): RewriteResult {
   const coreQuestion = extractCoreQuestion(originalInput);
   const prefix = getLearningPrefix(grade);
   const template = getRewriteTemplate(subject, 'shortcut');
-
+  
   // If we can identify the core question, use it
   let rewrittenPrompt: string;
-
+  
   if (coreQuestion.length > 10 && coreQuestion !== originalInput) {
     // We extracted a meaningful core question
     // Prefer a template that includes 'explain' so rewritten prompts encourage conceptual learning
@@ -253,7 +252,7 @@ function rewriteShortcutPrompt(context: RewriteContext): RewriteResult {
     // Ensure the template encourages explanation wording
     rewrittenPrompt = /explain/i.test(template) ? template : `Can you explain? ${template}`;
   }
-
+  
   return {
     wasRewritten: true,
     prompt: rewrittenPrompt,
@@ -273,24 +272,24 @@ function rewriteHomeworkPrompt(context: RewriteContext): RewriteResult {
   const hasMultiple = hasMultipleQuestions(originalInput);
   const coreQuestion = extractCoreQuestion(originalInput);
   const prefix = getLearningPrefix(grade);
-
+  
   let rewrittenPrompt: string;
-
+  
   if (hasMultiple) {
     // Multiple questions detected - focus on one
     const template = getRewriteTemplate(subject, 'homework');
-    rewrittenPrompt = topic ? `I'm studying ${topic}. ${template}` : template;
+    rewrittenPrompt = topic
+      ? `I'm studying ${topic}. ${template}`
+      : template;
   } else {
     // Single homework question - convert to learning request
     rewrittenPrompt = topic
       ? `${prefix} ${topic}. ${coreQuestion}`
       : `${prefix} this concept: ${coreQuestion}`;
   }
-
-  const strategyUsed = hasMultiple
-    ? RewriteStrategy.HOMEWORK_TO_CONCEPT
-    : RewriteStrategy.SOLVE_TO_TEACH;
-
+  
+  const strategyUsed = hasMultiple ? RewriteStrategy.HOMEWORK_TO_CONCEPT : RewriteStrategy.SOLVE_TO_TEACH;
+  
   return {
     wasRewritten: true,
     prompt: rewrittenPrompt,
@@ -298,7 +297,7 @@ function rewriteHomeworkPrompt(context: RewriteContext): RewriteResult {
     originalPrompt: originalInput,
     strategyApplied: strategyUsed,
     strategy: strategyUsed,
-    internalReason: hasMultiple
+    internalReason: hasMultiple 
       ? 'Bulk homework detected; converted to single-concept learning request'
       : 'Homework question detected; converted to learning request',
   };
@@ -310,7 +309,7 @@ function rewriteHomeworkPrompt(context: RewriteContext): RewriteResult {
  */
 function addLearningContext(context: RewriteContext): RewriteResult {
   const { originalInput, topic } = context;
-
+  
   // Only add context if we have topic info
   if (topic) {
     const contextualPrompt = `While studying ${topic}: ${originalInput}`;
@@ -324,7 +323,7 @@ function addLearningContext(context: RewriteContext): RewriteResult {
       internalReason: 'Added learning context to prompt',
     };
   }
-
+  
   // No context to add
   return {
     wasRewritten: false,
@@ -344,7 +343,7 @@ function addLearningContext(context: RewriteContext): RewriteResult {
 /**
  * Process and potentially rewrite a student prompt
  * This is the main entry point for the rewrite engine
- *
+ * 
  * @param input - Raw student input
  * @param grade - Student's grade level
  * @param subject - Subject being studied
@@ -359,7 +358,7 @@ export function processPrompt(
 ): RewriteResult {
   // First, classify the intent (pass grade and subject for better context)
   const classification = classifyIntent(input, grade, subject);
-
+  
   const context: RewriteContext = {
     originalInput: input,
     detectedIntent: classification.primaryIntent,
@@ -367,15 +366,15 @@ export function processPrompt(
     subject,
     topic,
   };
-
+  
   // Apply appropriate rewrite based on intent
   switch (classification.primaryIntent) {
     case StudentIntentCategory.SHORTCUT_SEEKING:
       return rewriteShortcutPrompt(context);
-
+    
     case StudentIntentCategory.HOMEWORK_DUMP:
       return rewriteHomeworkPrompt(context);
-
+    
     case StudentIntentCategory.CONCEPTUAL:
     case StudentIntentCategory.EXAMPLE_REQUEST:
     case StudentIntentCategory.CLARIFICATION:
@@ -390,7 +389,7 @@ export function processPrompt(
         strategy: null,
         internalReason: null,
       };
-
+    
     case StudentIntentCategory.OFF_TOPIC:
     case StudentIntentCategory.UNSAFE:
       // These should be blocked, not rewritten
@@ -404,7 +403,7 @@ export function processPrompt(
         strategy: null,
         internalReason: 'Intent requires blocking, not rewriting',
       };
-
+    
     default:
       // Unknown intent - optionally add context
       return addLearningContext(context);
@@ -417,11 +416,9 @@ export function processPrompt(
  */
 export function needsRewrite(input: string): boolean {
   const classification = classifyIntent(input);
-
-  return (
-    classification.primaryIntent === StudentIntentCategory.SHORTCUT_SEEKING ||
-    classification.primaryIntent === StudentIntentCategory.HOMEWORK_DUMP
-  );
+  
+  return classification.primaryIntent === StudentIntentCategory.SHORTCUT_SEEKING ||
+         classification.primaryIntent === StudentIntentCategory.HOMEWORK_DUMP;
 }
 
 /**
@@ -430,7 +427,7 @@ export function needsRewrite(input: string): boolean {
  */
 export function getRewriteStrategy(input: string): RewriteStrategy | null {
   const classification = classifyIntent(input);
-
+  
   switch (classification.primaryIntent) {
     case StudentIntentCategory.SHORTCUT_SEEKING:
       return RewriteStrategy.SHORTCUT_TO_LEARNING;

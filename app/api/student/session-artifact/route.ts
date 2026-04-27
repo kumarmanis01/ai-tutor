@@ -36,23 +36,20 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : null;
-  const type = typeof body.type === 'string' ? (body.type.trim() as ArtifactType) : null;
+  const type = typeof body.type === 'string' ? body.type.trim() as ArtifactType : null;
   const dataUrl = typeof body.dataUrl === 'string' ? body.dataUrl : null;
 
   if (!type || !ALLOWED_TYPES.includes(type)) {
     const res = NextResponse.json(
       { error: `type must be one of: ${ALLOWED_TYPES.join(', ')}` },
-      { status: 400 }
+      { status: 400 },
     );
     logger.logAPI(req, res, { className: 'SessionArtifactAPI', methodName: 'POST' }, start);
     return res;
   }
 
   if (!dataUrl || !dataUrl.startsWith('data:')) {
-    const res = NextResponse.json(
-      { error: 'dataUrl is required and must be a data URL' },
-      { status: 400 }
-    );
+    const res = NextResponse.json({ error: 'dataUrl is required and must be a data URL' }, { status: 400 });
     logger.logAPI(req, res, { className: 'SessionArtifactAPI', methodName: 'POST' }, start);
     return res;
   }

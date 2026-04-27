@@ -14,36 +14,34 @@
  * - 2026-04-04T00:00:00Z | copilot | created investigative reporting script
  */
 
-import { prisma } from '../lib/prisma';
+import { prisma } from '../lib/prisma'
 
 type Args = {
-  board?: string;
-  grade?: number;
-  subject?: string;
-};
+  board?: string
+  grade?: number
+  subject?: string
+}
 
 function parseArgs(): Args {
-  const out: Args = {};
-  const argv = process.argv.slice(2);
+  const out: Args = {}
+  const argv = process.argv.slice(2)
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
+    const a = argv[i]
     if (a === '--board' && argv[i + 1]) {
-      out.board = argv[++i];
+      out.board = argv[++i]
     } else if (a === '--grade' && argv[i + 1]) {
-      out.grade = Number(argv[++i]);
+      out.grade = Number(argv[++i])
     } else if (a === '--subject' && argv[i + 1]) {
-      out.subject = argv[++i];
+      out.subject = argv[++i]
     }
   }
-  return out;
+  return out
 }
 
 async function report(opts: Args) {
   if (!opts.board || !opts.grade) {
-    console.error(
-      'Usage: tsx scripts/report-generated-tests.ts --board <boardSlug> --grade <grade> [--subject <subjectSlug>]'
-    );
-    process.exit(1);
+    console.error('Usage: tsx scripts/report-generated-tests.ts --board <boardSlug> --grade <grade> [--subject <subjectSlug>]')
+    process.exit(1)
   }
 
   // Find subjects matching board+grade (or narrow to a single subject)
@@ -70,14 +68,14 @@ async function report(opts: Args) {
         },
       },
     },
-  });
+  })
 
-  const output: any[] = [];
+  const output: any[] = []
 
   for (const subj of subjects) {
-    const topicList: { id: string; name: string }[] = [];
+    const topicList: { id: string; name: string }[] = []
     for (const ch of subj.chapters) {
-      for (const t of ch.topics) topicList.push({ id: t.id, name: t.name });
+      for (const t of ch.topics) topicList.push({ id: t.id, name: t.name })
     }
 
     const subjectSummary: any = {
@@ -89,58 +87,44 @@ async function report(opts: Args) {
       chapters: subj.chapters.length,
       topics: topicList.length,
       topicsDetail: [] as any[],
-    };
+    }
 
     // aggregate totals
-    let totalGeneratedTests = 0;
-    let totalGeneratedQuestions = 0;
-    let totalQuestionBank = 0;
+    let totalGeneratedTests = 0
+    let totalGeneratedQuestions = 0
+    let totalQuestionBank = 0
 
     for (const topic of topicList) {
       const genTests = await prisma.generatedTest.findMany({
         where: { topicId: topic.id },
-        select: {
-          id: true,
-          difficulty: true,
-          language: true,
-          version: true,
-          status: true,
-          createdAt: true,
-          questions: { select: { id: true, type: true, question: true, options: true } },
-        },
-      });
+        select: { id: true, difficulty: true, language: true, version: true, status: true, createdAt: true, questions: { select: { id: true, type: true, question: true, options: true } } },
+      })
 
-      const genTestCount = genTests.length;
-      const genQuestionCount = genTests.reduce((s, t) => s + (t.questions?.length ?? 0), 0);
-      const questionBankCount = await prisma.question.count({ where: { topicId: topic.id } });
+      const genTestCount = genTests.length
+      const genQuestionCount = genTests.reduce((s, t) => s + (t.questions?.length ?? 0), 0)
+      const questionBankCount = await prisma.question.count({ where: { topicId: topic.id } })
 
-      totalGeneratedTests += genTestCount;
-      totalGeneratedQuestions += genQuestionCount;
-      totalQuestionBank += questionBankCount;
+      totalGeneratedTests += genTestCount
+      totalGeneratedQuestions += genQuestionCount
+      totalQuestionBank += questionBankCount
 
       // quick validation flags: tests with zero questions, questions with <2 options
-      const problematicTests: any[] = [];
+      const problematicTests: any[] = []
       for (const t of genTests) {
-        const qCount = t.questions?.length ?? 0;
+        const qCount = t.questions?.length ?? 0
         const badQSample = (t.questions ?? []).filter((q: any) => {
           try {
-            const opts = q.options;
-            if (!opts) return true;
-            if (Array.isArray(opts)) return opts.length < 2;
-            if (typeof opts === 'object') return Object.keys(opts).length < 2;
-            return true;
+            const opts = q.options
+            if (!opts) return true
+            if (Array.isArray(opts)) return opts.length < 2
+            if (typeof opts === 'object') return Object.keys(opts).length < 2
+            return true
           } catch {
-            return true;
+            return true
           }
-        });
+        })
         if (qCount === 0 || badQSample.length > 0) {
-          problematicTests.push({
-            testId: t.id,
-            qCount,
-            badQuestions: badQSample.length,
-            difficulty: t.difficulty,
-            language: t.language,
-          });
+          problematicTests.push({ testId: t.id, qCount, badQuestions: badQSample.length, difficulty: t.difficulty, language: t.language })
         }
       }
 
@@ -151,29 +135,29 @@ async function report(opts: Args) {
         generatedQuestionCount: genQuestionCount,
         questionBankCount,
         problematicTests,
-      });
+      })
     }
 
     subjectSummary.totals = {
       generatedTests: totalGeneratedTests,
       generatedQuestions: totalGeneratedQuestions,
       questionBank: totalQuestionBank,
-    };
+    }
 
-    output.push(subjectSummary);
+    output.push(subjectSummary)
   }
 
-  await prisma.$disconnect();
+  await prisma.$disconnect()
 
   // Print JSON for inspection; caller can pipe to file
-  console.log(JSON.stringify(output, null, 2));
+  console.log(JSON.stringify(output, null, 2))
 }
 
 if (require.main === module) {
-  const args = parseArgs();
+  const args = parseArgs()
   report(args).catch((err) => {
     // eslint-disable-next-line no-console
-    console.error('Report failed:', err);
-    prisma.$disconnect().finally(() => process.exit(1));
-  });
+    console.error('Report failed:', err)
+    prisma.$disconnect().finally(() => process.exit(1))
+  })
 }

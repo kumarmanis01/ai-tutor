@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -10,17 +10,17 @@ import {
   Tooltip,
   CartesianGrid,
   Legend,
-} from 'recharts';
+} from 'recharts'
 
 type WeeklyPoint = {
-  weekStart: string;
-  topicsCovered: number;
-  testsTaken: number;
-  averageScore: number;
-  totalMinutes: number;
-  sessionsCount: number;
-  subjectsActive: string[];
-};
+  weekStart: string
+  topicsCovered: number
+  testsTaken: number
+  averageScore: number
+  totalMinutes: number
+  sessionsCount: number
+  subjectsActive: string[]
+}
 
 export default function WeeklyTrendChart({ weekly }: { weekly: WeeklyPoint[] }) {
   const data = [...weekly]
@@ -31,10 +31,10 @@ export default function WeeklyTrendChart({ weekly }: { weekly: WeeklyPoint[] }) 
       topics: w.topicsCovered,
       tests: w.testsTaken,
       score: Math.max(0, Math.min(100, Math.round(w.averageScore ?? 0))),
-    }));
+    }))
 
   if (data.length === 0) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">No weekly data yet.</div>;
+    return <div className="text-sm text-gray-500 dark:text-gray-400">No weekly data yet.</div>
   }
 
   return (
@@ -47,33 +47,11 @@ export default function WeeklyTrendChart({ weekly }: { weekly: WeeklyPoint[] }) 
           <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 12 }} />
           <Tooltip />
           <Legend />
-          <Area
-            yAxisId="left"
-            type="monotone"
-            dataKey="minutes"
-            name="Study minutes"
-            stroke="#6366f1"
-            fill="#6366f1"
-            fillOpacity={0.18}
-          />
-          <Bar
-            yAxisId="left"
-            dataKey="topics"
-            name="Topics attempted"
-            fill="#a78bfa"
-            radius={[6, 6, 0, 0]}
-          />
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="score"
-            name="Avg score"
-            stroke="#10b981"
-            strokeWidth={2}
-            dot={false}
-          />
+          <Area yAxisId="left" type="monotone" dataKey="minutes" name="Study minutes" stroke="#6366f1" fill="#6366f1" fillOpacity={0.18} />
+          <Bar yAxisId="left" dataKey="topics" name="Topics attempted" fill="#a78bfa" radius={[6, 6, 0, 0]} />
+          <Line yAxisId="right" type="monotone" dataKey="score" name="Avg score" stroke="#10b981" strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
-  );
+  )
 }

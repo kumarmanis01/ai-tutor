@@ -62,17 +62,23 @@ describe('TopicCompletionIndicator', () => {
 
   describe('size variants', () => {
     it('renders small size', () => {
-      const { container } = render(<TopicCompletionIndicator status="completed" size="sm" />);
+      const { container } = render(
+        <TopicCompletionIndicator status="completed" size="sm" />
+      );
       expect(container.firstChild).toHaveClass('w-4', 'h-4');
     });
 
     it('renders medium size (default)', () => {
-      const { container } = render(<TopicCompletionIndicator status="completed" />);
+      const { container } = render(
+        <TopicCompletionIndicator status="completed" />
+      );
       expect(container.firstChild).toHaveClass('w-5', 'h-5');
     });
 
     it('renders large size', () => {
-      const { container } = render(<TopicCompletionIndicator status="completed" size="lg" />);
+      const { container } = render(
+        <TopicCompletionIndicator status="completed" size="lg" />
+      );
       expect(container.firstChild).toHaveClass('w-6', 'h-6');
     });
   });

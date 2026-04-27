@@ -1,3 +1,4 @@
+
 <!--
 FILE OBJECTIVE:
 - Parent actor approach document covering monitoring, trust and subscription management; includes Parent Dashboard (F-PAR-010) requirements.
@@ -20,6 +21,7 @@ AI HOME TUTOR PLATFORM
 Parent Actor
 Approach Document — Monitoring, Trust & Subscription Management
 
+
 Actor
 Document Version
 Scope
@@ -29,13 +31,15 @@ Parent
 MVP Phase 1 — ~1K concurrent
 Node.js + TS + Prisma + Neon + React
 
+
 CONFIDENTIAL — FOR INTERNAL REVIEW ONLY
 
 1. Overview
-   The parent is the decision-maker and payment authority. They do not interact with the AI tutor directly. Their primary concerns are trust ("Is my child actually learning?"), value ("Is my money well spent?"), and safety ("Is my child safe online?"). The parent experience is deliberately simplified — designed for low digital literacy with a mobile-first, WhatsApp-native philosophy.
+The parent is the decision-maker and payment authority. They do not interact with the AI tutor directly. Their primary concerns are trust ("Is my child actually learning?"), value ("Is my money well spent?"), and safety ("Is my child safe online?"). The parent experience is deliberately simplified — designed for low digital literacy with a mobile-first, WhatsApp-native philosophy.
 
 MVP CONSTRAINT
 Parent features at MVP are scoped to: account creation + child linking, read-only progress dashboard, subscription management, and email/SMS notifications. WhatsApp two-way interaction is Phase 2.
+
 
 1.1 Parent Persona
 Attribute
@@ -54,6 +58,7 @@ Payment Behaviour
 Pays by UPI (70%), debit card (20%), EMI (10%). Monthly payment preferred over annual.
 Communication Preference
 WhatsApp (primary), SMS (fallback for feature phones), Email (invoices only).
+
 
 1.2 Parent Journey Stages
 Stage
@@ -78,10 +83,12 @@ Intervention Control
 Schedule override, topic focus request, AI difficulty adjustment
 Phase 2
 
+
+
 2. Account Setup & Child Linking
-   F-PAR-001
-   Parent Account Registration
-   MVP
+F-PAR-001
+Parent Account Registration
+MVP
 
 Parent creates an account and links it to one or more child student profiles.
 AC#
@@ -109,6 +116,7 @@ AC-07
 Parent receives a verification SMS + welcome email on account activation with: what they can see, what their child can do, privacy policy summary.
 SHOULD
 
+
 F-PAR-002
 Child Profile Management
 MVP
@@ -133,6 +141,7 @@ AC-05
 Multiple children shown as tabs on the parent dashboard — quick switching between children without re-login.
 MUST
 
+
 F-PAR-003
 Consent & Safety Acknowledgement
 MVP
@@ -154,9 +163,12 @@ AC-04
 Privacy policy presented in plain language (not legal jargon). Available in Hindi and English at MVP.
 SHOULD
 
+
+
 3. Progress Monitoring Dashboard
-   DESIGN PRINCIPLE
-   The parent dashboard is NOT a copy of the student dashboard. It is simplified, narrative-first, and optimised for a parent who checks in once a week for 3 minutes — not a power user.
+DESIGN PRINCIPLE
+The parent dashboard is NOT a copy of the student dashboard. It is simplified, narrative-first, and optimised for a parent who checks in once a week for 3 minutes — not a power user.
+
 
 F-PAR-010
 Parent Dashboard — Overview
@@ -194,6 +206,8 @@ Phase 2 — Timezone & UX enhancements (planned)
 - P2-AC-05: Accessibility — ensure timezone labels have `aria-label` descriptions and are localised (Hindi + English) for parents with low digital literacy.
 - P2-AC-06: Telemetry & audit — log timezone mismatch events (parent != student) to help evaluate NRI/remote parent usage and prioritise perf/UI follow-ups.
 
+
+
 F-PAR-011
 Subject Mastery View
 MVP
@@ -217,6 +231,7 @@ SHOULD
 AC-05
 Exam readiness score shown per subject: 0–100 score + predicted mark range. E.g., "Predicted board score: 72–81 out of 100."
 MUST
+
 
 F-PAR-012
 Study Activity History
@@ -242,9 +257,12 @@ AC-05
 "Predicted study time to exam readiness 80%" shown: "At current pace, Riya will reach 80% readiness in Mathematics by [date]."
 SHOULD
 
+
+
 4. Notifications & Communication
-   PHASE SPLIT
-   MVP delivers notifications via Email + SMS only. WhatsApp Business API integration is Phase 2 — but the notification service is built Phase 1 to be channel-agnostic so WhatsApp can be added without refactoring.
+PHASE SPLIT
+MVP delivers notifications via Email + SMS only. WhatsApp Business API integration is Phase 2 — but the notification service is built Phase 1 to be channel-agnostic so WhatsApp can be added without refactoring.
+
 
 F-PAR-020
 Weekly Progress Digest
@@ -270,6 +288,7 @@ AC-05
 Digest email is mobile-optimised HTML. Single-column. Loads without images on slow connections. Dark mode safe.
 MUST
 
+
 Phase 2 — Digest Enhancements (Planned)
 
 - P2-AC-01: Per-parent frequency & channel preferences — allow parents to choose Weekly / Bi-weekly / Monthly and preferred channels (Email / SMS / WhatsApp). Default: Weekly (MVP).
@@ -282,7 +301,6 @@ Phase 2 — Digest Enhancements (Planned)
 - P2-AC-08: Low-bandwidth & accessibility mode — provide a text-only digest variant (SMS-friendly) and validate colour contrast / dark-mode for assistive-readers.
 
 Notes:
-
 - Implementation summary: Mobile-first, dark-mode-safe HTML template and parent opt-out configuration have been implemented and wired into the parent settings UI and API (covers AC-04 and AC-05). The worker-side digest builder (`sendParentDigests`) was updated to use the new responsive template; `buildDigestHtml()` was exported for testing. A focused unit test verifies viewport meta and dark-mode CSS. A Prisma migration adding `ParentNotification` and `ParentProfile.inactivityOptOut` was applied and the QA send was re-run to exercise the end-to-end delivery/audit path.
 - Tests / Next steps: Unit tests added for HTML output; full end-to-end worker integration tests and visual regression checks are still recommended.
 
@@ -295,6 +313,8 @@ Planned Next Steps (Phase 2 enhancements)
 - Channel & frequency preferences: expose per-parent frequency (weekly/bi-weekly/monthly) and channel selection (email/sms/whatsapp) with safe fallbacks and rate-limiting (P2-AC-01).
 - Low-bandwidth / accessibility variant: implement a text-only digest (SMS-friendly) and ensure colour contrast and screen-reader friendliness (P2-AC-08).
 - WhatsApp Business integration: implement templated WhatsApp messages + fallback to SMS for feature phones (P2-AC-03).
+
+
 
 F-PAR-021
 Inactivity Alert
@@ -337,9 +357,9 @@ Phase 2 — Inactivity Enhancements (Planned)
 - P2-AC-06: Test & QA — add end-to-end worker integration tests covering: tokenized mute links, suppression semantics, deep-link navigation, and multi-channel delivery. Add visual regression tests for email renderings (light/dark/text-only).
 
 Notes:
-
 - Implementation status: deep-link parameterization (`?focus=next&itemId=<id>`), tokenized mute GET link handling, per-child pause (`ParentStudent.isPaused` / `pausedUntil`), and suppression-clear on qualifying activity are implemented and unit-tested. The service worker now delegates to the canonical job (`runInactivityAlerts`) to avoid duplicated logic.
 - Next steps (Phase 2): implement per-parent preferences UI, WhatsApp channel templating + quick-replies, DLQ monitoring + operator dashboard, and run full integration tests before promoting to production.
+
 
 F-PAR-022
 Milestone & Achievement Notifications
@@ -374,9 +394,9 @@ Phase 2 — Milestone Enhancements (Planned)
 - P2-AC-08: Personalisation guardrails — ensure all milestone narratives remain age-appropriate, non-judgmental, and schema-validated before sending (reuse hallucination & safe response guardrails already in place).
 
 Notes:
-
 - Implementation: Weekly milestone cap (2/week) is enforced in `lib/notifications/policy.ts` and covered by unit tests at `tests/unit/lib/notifications/policy_milestone.test.ts`. Digests are explicitly exempt from the milestone cap to guarantee weekly delivery (F-PAR-020).
 - Phase 2 next steps: design the per-parent preferences UI; implement WhatsApp channel templating and quick-replies; add DLQ monitoring + observability dashboards; implement E2E worker integration tests covering multi-channel delivery and fatigue metrics.
+
 
 F-PAR-023
 Payment & Account Notifications
@@ -405,6 +425,7 @@ AC-06
 Account security: OTP for any login, child account change, or subscription change. Cannot be disabled.
 MUST
 
+
 F-PAR-024
 Exam Readiness Score Drop Alert
 MVP
@@ -429,7 +450,6 @@ SHOULD
 Phase 2 — F-PAR-024 Enhancements
 PHASE 2
 Planned enhancements to improve delivery, safety, observability and parent controls for the Exam Readiness Score Drop Alert:
-
 - P2-AC-01: Per-parent readiness alert preferences — channel selection (Email/SMS/WhatsApp), severity threshold override (e.g., 15-point vs 10-point), and quiet hours. Defaults: Email+SMS, 10-point threshold, no quiet hours.
 - P2-AC-02: Localised WhatsApp templates & quick-replies — add templated remediation summary with buttons: "View Plan", "Mute 7 days", "Help", and deep-links to dashboard.
 - P2-AC-03: LLM observability & safe-fallbacks — log LLM response usage, parsing failures, and fallback activations; add metrics for LLM success rate and average remediation length. Store anonymised diagnostics for audits.
@@ -440,20 +460,23 @@ Planned enhancements to improve delivery, safety, observability and parent contr
 - P2-AC-08: Accessibility & localisation — ensure remediation text is grade-appropriate, translated for regional languages, and respects the junior protection guardrails.
 
 Planned immediate Phase 2 work (prioritised):
-
 - Add unit tests asserting plain-text remediation presence in parent email and SMS (tests/unit/worker/services/readinessDropWorker.test.ts).
 - Add integration test harness for worker to exercise precompute + delivery pipelines with mocked channels.
 - Add config flagging so `ALLOW_LLM_CALLS=1` is present only for worker runtime (PM2/process env), not web processes.
 - Improve observability: add metrics for remediation-generated vs fallback responses and a small operator view to replay failed alerts.
 
-  4.1 Phase 2 — WhatsApp Integration
-  PHASE 2
-  All notifications above will be delivered to parent's WhatsApp via WhatsApp Business API in Phase 2. Additionally: parent can reply "Report" to get instant progress summary as a WhatsApp message. Two-way parent-AI chatbot: parent can ask "Is Arjun ready for his boards?" and get a data-backed answer. Parent-initiated AI tutor focus requests via WhatsApp.
+
+
+4.1 Phase 2 — WhatsApp Integration
+PHASE 2
+All notifications above will be delivered to parent's WhatsApp via WhatsApp Business API in Phase 2. Additionally: parent can reply "Report" to get instant progress summary as a WhatsApp message. Two-way parent-AI chatbot: parent can ask "Is Arjun ready for his boards?" and get a data-backed answer. Parent-initiated AI tutor focus requests via WhatsApp.
+
+
 
 5. Subscription & Payment Management
-   F-PAR-030
-   Subscription Purchase (Parent-Initiated)
-   MVP
+F-PAR-030
+Subscription Purchase (Parent-Initiated)
+MVP
 
 Parent purchases a plan for their child's account.
 AC#
@@ -487,14 +510,16 @@ Phase 2 — Subscription Purchase Enhancements (Planned)
 - P2-AC-05: Billing flexibility — allow mid-cycle child slot increases (upgrade proration) and scheduled decreases (downgrade on renewal) with clear UX and audit trail.
 
 - P2-AC-06: Promotions & Coupons — enhance coupon capabilities and operational tooling:
-  - Admin UI: coupon creation, batch import, scoped batch codes, per-student vs batch issuance, and audit trail for admin actions.
-  - Frontend: checkout coupon input, client-side validation, clear discount breakdown (fixed vs percent), and expiry display before confirmation.
-  - Integration tests: staging E2E flow exercising order creation with coupon, webhook reconciliation, `CouponRedemption` persistence, and `Subscription` activation.
-  - Accounting & reconciliation: reconciliation report for coupon redemptions, refunds, and applied credits; surface mismatches in admin dashboard.
-  - Lifecycle & enforcement: scheduled expiry job, enforcement of `maxUses` and `maxUsesPerUser`, and support for recurring (renewal) coupons.
-  - Observability & fraud detection: metrics for coupon usage by campaign, redemptions per IP/user, and alerts for anomalous redemption patterns.
-  - Backfill & migration: plan for migrating historical `PaymentOrder` rows with coupon metadata and reconciling prior promotions.
-  - Audit & receipts: include `couponCode` in invoice/receipt metadata and ensure all admin coupon changes are recorded in `AuditLog`.
+	- Admin UI: coupon creation, batch import, scoped batch codes, per-student vs batch issuance, and audit trail for admin actions.
+	- Frontend: checkout coupon input, client-side validation, clear discount breakdown (fixed vs percent), and expiry display before confirmation.
+	- Integration tests: staging E2E flow exercising order creation with coupon, webhook reconciliation, `CouponRedemption` persistence, and `Subscription` activation.
+	- Accounting & reconciliation: reconciliation report for coupon redemptions, refunds, and applied credits; surface mismatches in admin dashboard.
+	- Lifecycle & enforcement: scheduled expiry job, enforcement of `maxUses` and `maxUsesPerUser`, and support for recurring (renewal) coupons.
+	- Observability & fraud detection: metrics for coupon usage by campaign, redemptions per IP/user, and alerts for anomalous redemption patterns.
+	- Backfill & migration: plan for migrating historical `PaymentOrder` rows with coupon metadata and reconciling prior promotions.
+	- Audit & receipts: include `couponCode` in invoice/receipt metadata and ensure all admin coupon changes are recorded in `AuditLog`.
+
+
 
 F-PAR-031
 Subscription Management
@@ -523,6 +548,7 @@ AC-06
 Annual plan with EMI: parent can view EMI schedule. Individual EMI failures handled same as subscription payment failure (grace period per instalment).
 SHOULD
 
+
 Phase 2 — Subscription Management Enhancements (Planned)
 
 - P2-AC-01: Staging end-to-end retry validation — exercise targeted retry flow (enqueue -> worker -> charge attempt) using Razorpay test keys; verify webhook reconciliation, invoice generation, and subscription state transitions.
@@ -534,18 +560,18 @@ Phase 2 — Subscription Management Enhancements (Planned)
 - P2-AC-07: UX testing & coverage — add SSR unit tests for billing page, component tests for retry flows, and Playwright E2E tests for the overall parent billing + retry experience.
 
 Planned immediate Phase 2 work (prioritised):
-
 - Add worker integration tests to validate enqueue -> processing -> payment outcome flows.
 - Add Playwright E2E for the billing page and retry confirmation flow (including Hindi/English copy assertions).
 - Expose audit events for retry attempts and integrate with existing metrics dashboards.
 - Add operator DLQ view to the ops console for manual replays and failure analysis.
 
 Notes — recent implementation (summary):
-
 - EMI schedule UI: app/(parent)/parent/billing/page.tsx — shows per-installment amounts, due dates, and retry affordance.
 - Client retry surface: components/parent/subscription/RetryInstallmentButton.tsx — confirmation modal, i18n (EN/HI), POSTs to API, shows inline banner and calls `lib/toast.ts`.
 - Retry endpoint: app/api/parent/installment/retry/route.ts and helper lib/installment/retry.ts — enqueues targeted `installment-dunning` job.
 - Tests added: tests/unit/app/parent/billing/page.test.ts (SSR) and tests/unit/components/parent/subscription/RetryInstallmentButton.test.ts (client behavior).
+
+
 
 F-PAR-032
 Invoice & Tax Management
@@ -571,9 +597,12 @@ AC-05
 Annual invoice summary downloadable: single PDF with all invoices for a financial year. For parent's tax filings.
 SHOULD
 
+
+
 6. Phase 2 Parent Features (Scoped, Not Built at MVP)
-   ARCHITECTURE NOTE
-   The notification service is built channel-agnostic at MVP (Phase 1). The database schema and worker infrastructure accommodate WhatsApp and two-way chat without structural changes at Phase 2 — only the delivery channel integration needs to be added.
+ARCHITECTURE NOTE
+The notification service is built channel-agnostic at MVP (Phase 1). The database schema and worker infrastructure accommodate WhatsApp and two-way chat without structural changes at Phase 2 — only the delivery channel integration needs to be added.
+
 
 Feature
 Code
@@ -600,31 +629,35 @@ Teacher/Tutor Sharing
 F-PAR-P2-007
 Parent can share a read-only progress report link with a school teacher or existing human tutor for coordination.
 
+
+
 7. Non-Functional Requirements
-   Requirement
-   Target
-   Notes
-   Dashboard load time
-   < 2 seconds
-   Includes all child data from Neon
-   Notification delivery — SMS
-   < 60 seconds after event
-   Via MSG91 priority queue
-   Notification delivery — Email
-   < 5 minutes after event
-   Via transactional email provider
-   Mobile responsiveness
-   Android 8+ support, 2 GB RAM
-   Parent dashboard is mobile-first
-   Concurrent parent sessions
-   500 concurrent (Phase 1)
-   Lower than student due to read-only nature
-   Invoice availability
-   Permanent — never deleted
-   Stored in Cloudflare R2
-   Privacy — transcript access
-   Parent cannot access session transcripts
-   Student-AI conversation is private. Parent sees summary only.
-   Language support
-   English + Hindi at MVP
-   UI shell localisation — not AI tutoring language
+Requirement
+Target
+Notes
+Dashboard load time
+< 2 seconds
+Includes all child data from Neon
+Notification delivery — SMS
+< 60 seconds after event
+Via MSG91 priority queue
+Notification delivery — Email
+< 5 minutes after event
+Via transactional email provider
+Mobile responsiveness
+Android 8+ support, 2 GB RAM
+Parent dashboard is mobile-first
+Concurrent parent sessions
+500 concurrent (Phase 1)
+Lower than student due to read-only nature
+Invoice availability
+Permanent — never deleted
+Stored in Cloudflare R2
+Privacy — transcript access
+Parent cannot access session transcripts
+Student-AI conversation is private. Parent sees summary only.
+Language support
+English + Hindi at MVP
+UI shell localisation — not AI tutoring language
+
+

@@ -72,30 +72,18 @@ async function loadPrisma() {
     console.log('count=', outboxRows.length);
     outboxRows.forEach((r) => {
       console.log('id:', r.id, 'queue:', r.queue, 'attempts:', r.attempts, 'sentAt:', r.sentAt);
-      try {
-        console.log('meta:', JSON.stringify(r.meta));
-      } catch {
-        console.log('meta: <unserializable>');
-      }
-      try {
-        console.log('payload:', JSON.stringify(r.payload));
-      } catch {
-        console.log('payload: <unserializable>');
-      }
+      try { console.log('meta:', JSON.stringify(r.meta)); } catch { console.log('meta: <unserializable>'); }
+      try { console.log('payload:', JSON.stringify(r.payload)); } catch { console.log('payload: <unserializable>'); }
       console.log('---');
     });
 
     // Content counts by subjectId where available
     const subjectId = job.subjectId || job.inputParams?.subjectId || null;
     if (subjectId) {
-      const chapterCount = await prisma.chapterDef
-        .count({ where: { subjectId } })
-        .catch(() => null);
+      const chapterCount = await prisma.chapterDef.count({ where: { subjectId } }).catch(() => null);
       const topicCount = await prisma.topicDef.count({ where: { subjectId } }).catch(() => null);
       const notesCount = await prisma.note.count({ where: { subjectId } }).catch(() => null);
-      const questionsCount = await prisma.question
-        .count({ where: { subjectId } })
-        .catch(() => null);
+      const questionsCount = await prisma.question.count({ where: { subjectId } }).catch(() => null);
 
       console.log('\n--- CONTENT COUNTS (by subjectId=', subjectId, ') ---');
       console.log('chapters:', chapterCount);
@@ -108,11 +96,7 @@ async function loadPrisma() {
 
     // Check for execution logs / linked jobs if schema supports it
     try {
-      const executions = await prisma.jobExecutionLog.findMany({
-        where: { jobId: jobId },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      });
+      const executions = await prisma.jobExecutionLog.findMany({ where: { jobId: jobId }, orderBy: { createdAt: 'desc' }, take: 50 });
       console.log('\n--- EXECUTION LOGS --- count=', executions.length);
       executions.forEach((e) => console.log(JSON.stringify(e)));
     } catch (_) {

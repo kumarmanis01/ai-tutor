@@ -25,7 +25,7 @@ const FinalCTA = () => {
               className="inline-flex items-center gap-2 px-8 py-4 md:px-10 md:py-5 min-h-[44px] bg-white text-[#534AB7] font-cta font-bold rounded-lg hover:bg-white/90 transition-all text-lg md:text-xl shadow-xl"
             >
               <Icon name="SparklesIcon" size={24} variant="solid" />
-              Get started -- it takes 2 minutes
+                Get started -- it takes 2 minutes
             </Link>
           </div>
 

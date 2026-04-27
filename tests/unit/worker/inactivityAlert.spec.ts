@@ -22,9 +22,7 @@ describe('worker/jobs/inactivityAlert', () => {
 
   it('returns 0 when no redis configured', async () => {
     jest.doMock('@/lib/redis', () => ({ getRedis: () => null }));
-    jest.doMock('@/lib/logger', () => ({
-      logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
-    }));
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
     const { runInactivityAlerts } = await import('../../../worker/jobs/inactivityAlert');
     const sent = await runInactivityAlerts();
@@ -32,19 +30,12 @@ describe('worker/jobs/inactivityAlert', () => {
   });
 
   it('skips sending when parent has digestOptOut', async () => {
-    const redisMock = {
-      get: jest.fn().mockResolvedValue(null),
-      setex: jest.fn().mockResolvedValue('OK'),
-    };
+    const redisMock = { get: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK') };
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
-    jest.doMock('@/lib/logger', () => ({
-      logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
-    }));
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
     const sendMock = jest.fn().mockResolvedValue({ sent: true });
-    jest.doMock('@/lib/notifications/delivery', () => ({
-      sendParentMilestoneNotification: sendMock,
-    }));
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }));
 
     jest.doMock('@/lib/prisma', () => ({
       prisma: {
@@ -55,13 +46,7 @@ describe('worker/jobs/inactivityAlert', () => {
               studentId: 's1',
               excludeFromParentReport: false,
               isPaused: false,
-              parent: {
-                id: 'p1',
-                email: 'p@example.test',
-                phone: null,
-                name: 'Parent',
-                parentProfile: { digestOptOut: true },
-              },
+              parent: { id: 'p1', email: 'p@example.test', phone: null, name: 'Parent', parentProfile: { digestOptOut: true } },
             },
           ]),
         },
@@ -77,19 +62,12 @@ describe('worker/jobs/inactivityAlert', () => {
   });
 
   it('skips when suppression key exists', async () => {
-    const redisMock = {
-      get: jest.fn().mockResolvedValue('1'),
-      setex: jest.fn().mockResolvedValue('OK'),
-    };
+    const redisMock = { get: jest.fn().mockResolvedValue('1'), setex: jest.fn().mockResolvedValue('OK') };
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
-    jest.doMock('@/lib/logger', () => ({
-      logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
-    }));
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
     const sendMock = jest.fn().mockResolvedValue({ sent: true });
-    jest.doMock('@/lib/notifications/delivery', () => ({
-      sendParentMilestoneNotification: sendMock,
-    }));
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }));
 
     jest.doMock('@/lib/prisma', () => ({
       prisma: {
@@ -100,13 +78,7 @@ describe('worker/jobs/inactivityAlert', () => {
               studentId: 's2',
               excludeFromParentReport: false,
               isPaused: false,
-              parent: {
-                id: 'p2',
-                email: 'p2@example.test',
-                phone: null,
-                name: 'Parent2',
-                parentProfile: { digestOptOut: false },
-              },
+              parent: { id: 'p2', email: 'p2@example.test', phone: null, name: 'Parent2', parentProfile: { digestOptOut: false } },
             },
           ]),
         },

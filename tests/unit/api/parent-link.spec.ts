@@ -9,13 +9,7 @@ jest.mock('next-auth/next', () => ({ getServerSession: jest.fn() }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    logAPI: jest.fn(),
-  },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
 jest.mock('@/lib/parent/inviteService', () => ({
   createOrReuseParentInviteForStudent: jest.fn(),
@@ -24,9 +18,7 @@ jest.mock('@/lib/parent/inviteService', () => ({
   PARENT_INVITE_TTL_DAYS: 7,
 }));
 jest.mock('@/lib/mailer', () => ({ sendMailSafe: jest.fn().mockResolvedValue(undefined) }));
-jest.mock('@/lib/email/templates', () => ({
-  parentWelcomeHtml: jest.fn().mockReturnValue('<html>welcome</html>'),
-}));
+jest.mock('@/lib/email/templates', () => ({ parentWelcomeHtml: jest.fn().mockReturnValue('<html>welcome</html>') }));
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
@@ -94,18 +86,12 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       const data = await res.json();
       expect(data.status).toBe('linked');
       expect(sendMailSafe).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: 'parent@example.test',
-          subject: expect.stringContaining('Spinzy'),
-        })
+        expect.objectContaining({ to: 'parent@example.test', subject: expect.stringContaining('Spinzy') }),
       );
     });
 
     it('should NOT send welcome email when invite-code link returns already_linked', async () => {
-      redeemParentInviteAndLink.mockResolvedValue({
-        status: 'already_linked',
-        studentId: STUDENT_ID,
-      });
+      redeemParentInviteAndLink.mockResolvedValue({ status: 'already_linked', studentId: STUDENT_ID });
 
       const { POST } = await import('@/app/api/parent/link/route');
       const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
@@ -154,7 +140,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       const data = await res.json();
       expect(data.status).toBe('linked');
       expect(sendMailSafe).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'parent@example.test' })
+        expect.objectContaining({ to: 'parent@example.test' }),
       );
     });
 
@@ -188,28 +174,21 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(
-        makeRequest({ action: 'link', studentEmail: 'student@example.test' }) as any
-      );
+      const res = await POST(makeRequest({ action: 'link', studentEmail: 'student@example.test' }) as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.status).toBe('linked');
       expect(sendMailSafe).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'parent@example.test' })
+        expect.objectContaining({ to: 'parent@example.test' }),
       );
     });
 
     it('should NOT send welcome email when email-link returns already_linked', async () => {
-      linkParentToStudentByEmail.mockResolvedValue({
-        status: 'already_linked',
-        studentId: STUDENT_ID,
-      });
+      linkParentToStudentByEmail.mockResolvedValue({ status: 'already_linked', studentId: STUDENT_ID });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(
-        makeRequest({ action: 'link', studentEmail: 'student@example.test' }) as any
-      );
+      const res = await POST(makeRequest({ action: 'link', studentEmail: 'student@example.test' }) as any);
 
       const data = await res.json();
       expect(data.status).toBe('already_linked');

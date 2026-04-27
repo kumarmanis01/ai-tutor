@@ -1,12 +1,7 @@
-'use client';
+"use client";
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import {
-  HttpOnboardingService,
-  OnboardingProfile,
-  OnboardingService,
-  OnboardingValues,
-} from '@/lib/onboardingService';
+import { HttpOnboardingService, OnboardingProfile, OnboardingService, OnboardingValues } from '@/lib/onboardingService';
 import { logger } from '@/lib/logger';
 
 type State = {
@@ -22,11 +17,7 @@ type State = {
 
 type API = {
   isRequired: boolean;
-  open: (opts?: {
-    force?: boolean;
-    allowDismiss?: boolean;
-    afterSave?: 'dashboard' | 'stay';
-  }) => Promise<void> | void;
+  open: (opts?: { force?: boolean; allowDismiss?: boolean; afterSave?: 'dashboard' | 'stay' }) => Promise<void> | void;
   close: () => void;
   setValue: (field: keyof OnboardingValues, value: any) => void;
   save: () => Promise<void>;
@@ -46,13 +37,7 @@ const defaultValues: OnboardingValues = {
 
 const Ctx = createContext<API | null>(null);
 
-export function OnboardingProvider({
-  children,
-  service,
-}: {
-  children: React.ReactNode;
-  service?: OnboardingService;
-}) {
+export function OnboardingProvider({ children, service }: { children: React.ReactNode; service?: OnboardingService }) {
   const svc = useMemo(() => service ?? new HttpOnboardingService(), [service]);
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
@@ -107,17 +92,12 @@ export function OnboardingProvider({
           needsParentEmail;
         const isFirstLogin = profileWithFirstLogin.firstLogin === true;
 
-        const needsParentVerification =
-          (profile as any)?.accountStatus === 'pending_parent_verification';
+        const needsParentVerification = (profile as any)?.accountStatus === 'pending_parent_verification';
 
         if (needsProfile || isFirstLogin || needsParentVerification) {
           setIsOpen(true);
           logger.info('onboarding.open.auto', {
-            reason: needsParentVerification
-              ? 'parent-verification'
-              : needsProfile
-                ? 'incomplete-profile'
-                : 'first-login',
+            reason: needsParentVerification ? 'parent-verification' : needsProfile ? 'incomplete-profile' : 'first-login',
           });
         }
       }
@@ -140,11 +120,7 @@ export function OnboardingProvider({
   }, [session?.user?.email]);
 
   const open = useCallback(
-    async (opts?: {
-      force?: boolean;
-      allowDismiss?: boolean;
-      afterSave?: 'dashboard' | 'stay';
-    }) => {
+    async (opts?: { force?: boolean; allowDismiss?: boolean; afterSave?: 'dashboard' | 'stay' }) => {
       const force = opts?.force === true;
       const under18 = values.age != null && Number(values.age) >= 1 && Number(values.age) < 18;
       const needsParentEmail = under18 && !values.parent_email?.trim?.();
@@ -165,13 +141,9 @@ export function OnboardingProvider({
       setAllowDismiss(!!opts?.allowDismiss);
       setAfterSave(opts?.afterSave ?? 'dashboard');
       setIsOpen(true);
-      logger.info('onboarding.open.manual', {
-        force,
-        allowDismiss: !!opts?.allowDismiss,
-        afterSave: opts?.afterSave ?? 'dashboard',
-      });
+      logger.info('onboarding.open.manual', { force, allowDismiss: !!opts?.allowDismiss, afterSave: opts?.afterSave ?? 'dashboard' });
     },
-    [hydrate, values]
+    [hydrate, values],
   );
 
   // Profile is required (non-dismissable) when core fields are missing
@@ -186,9 +158,7 @@ export function OnboardingProvider({
     values.subjects.length === 0 ||
     needsParentEmail;
 
-  const isRequired =
-    !!session?.user &&
-    (needsProfileValues || (values.age != null && Number(values.age) < 13 && !parentVerified));
+  const isRequired = !!session?.user && (needsProfileValues || (values.age != null && Number(values.age) < 13 && !parentVerified));
 
   const close = useCallback(() => {
     if (isRequired && !allowDismiss) return; // Cannot dismiss when onboarding is required (unless explicitly allowed)
@@ -205,29 +175,19 @@ export function OnboardingProvider({
   function validate(v: OnboardingValues) {
     const errs: Record<string, string> = {};
     if (!v.name || !v.name.trim()) errs.name = 'Name is required';
-    if (v.age == null || !Number.isFinite(Number(v.age)) || Number(v.age) <= 0)
-      errs.age = 'Age is required';
-    if (!v.class_grade || String(v.class_grade).trim() === '')
-      errs.class_grade = 'Class is required';
+    if (v.age == null || !Number.isFinite(Number(v.age)) || Number(v.age) <= 0) errs.age = 'Age is required';
+    if (!v.class_grade || String(v.class_grade).trim() === '') errs.class_grade = 'Class is required';
     if (!v.board || String(v.board).trim() === '') errs.board = 'Board is required';
-    if (!v.preferred_language || String(v.preferred_language).trim() === '')
-      errs.preferred_language = 'Preferred language is required';
+    if (!v.preferred_language || String(v.preferred_language).trim() === '') errs.preferred_language = 'Preferred language is required';
     if (!v.subjects || v.subjects.length === 0) errs.subjects = 'Select at least 1 subject';
     if (v.subjects && v.subjects.length > 6) errs.subjects = 'You can select up to 6 subjects';
-    if (
-      v.age != null &&
-      Number(v.age) >= 1 &&
-      Number(v.age) < 18 &&
-      (!v.parent_email || !String(v.parent_email).trim() || !v.parent_email.includes('@'))
-    ) {
+    if (v.age != null && Number(v.age) >= 1 && Number(v.age) < 18 && (!v.parent_email || !String(v.parent_email).trim() || !v.parent_email.includes('@'))) {
       errs.parent_email = 'Parent or guardian email is required for students under 18.';
     }
     if (v.age != null && Number(v.age) < 13 && !parentVerified) {
-      if (!v.parent_phone || !String(v.parent_phone).trim())
-        errs.parent_phone = 'Parent phone is required for under-13';
+      if (!v.parent_phone || !String(v.parent_phone).trim()) errs.parent_phone = 'Parent phone is required for under-13';
       // OTP is verified via dedicated endpoint, but we validate presence here to block bypass.
-      if (!v.parent_otp || !String(v.parent_otp).trim())
-        errs.parent_otp = 'Enter OTP to verify parent phone';
+      if (!v.parent_otp || !String(v.parent_otp).trim()) errs.parent_otp = 'Enter OTP to verify parent phone';
     }
     return errs;
   }
@@ -277,11 +237,7 @@ export function OnboardingProvider({
       }
     } catch (e: any) {
       if (e && typeof e === 'object' && e.fieldErrors && typeof e.fieldErrors === 'object') {
-        setErrors((prev) => ({
-          ...prev,
-          ...e.fieldErrors,
-          _root: e?.message || 'Failed to save profile',
-        }));
+        setErrors((prev) => ({ ...prev, ...e.fieldErrors, _root: e?.message || 'Failed to save profile' }));
       } else {
         setErrors((prev) => ({ ...prev, _root: e?.message || 'Failed to save profile' }));
       }
@@ -312,7 +268,7 @@ export function OnboardingProvider({
 
 export function useOnboarding() {
   const ctx = useContext(Ctx);
-
+  
   // During SSG/SSR, context might be null - return safe defaults
   if (!ctx) {
     // Check if we're in a browser environment
@@ -332,6 +288,6 @@ export function useOnboarding() {
     }
     throw new Error('useOnboarding must be used within OnboardingProvider');
   }
-
+  
   return ctx;
 }

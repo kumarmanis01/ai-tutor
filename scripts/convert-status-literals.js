@@ -64,37 +64,37 @@ function transformFile(file) {
 
   // Replace patterns like status: 'pending' or status: "pending"
   Object.entries(JOB_MAP).forEach(([k, v]) => {
-    const re = new RegExp('(status\s*:\s*)' + k, 'g');
+    const re = new RegExp("(status\s*:\s*)" + k, 'g');
     if (re.test(content)) {
       content = content.replace(re, `$1${v}`);
       changed = true;
     }
-    const re2 = new RegExp('(where:\s*\{[^}]*status\s*:\s*)' + k, 'g');
+    const re2 = new RegExp("(where:\s*\{[^}]*status\s*:\s*)" + k, 'g');
     if (re2.test(content)) {
       content = content.replace(re2, `$1${v}`);
       changed = true;
     }
-    const re3 = new RegExp('(==|===|!=|!==|\bin\b|\bincludes\b)\\s*' + k, 'g');
+    const re3 = new RegExp("(==|===|!=|!==|\bin\b|\bincludes\b)\\s*" + k, 'g');
     if (re3.test(content)) {
-      content = content.replace(re3, (match) => match.replace(k, v));
+      content = content.replace(re3, match => match.replace(k, v));
       changed = true;
     }
   });
 
   Object.entries(APPROVAL_MAP).forEach(([k, v]) => {
-    const re = new RegExp('(status\s*:\s*)' + k, 'g');
+    const re = new RegExp("(status\s*:\s*)" + k, 'g');
     if (re.test(content)) {
       content = content.replace(re, `$1${v}`);
       changed = true;
     }
-    const re2 = new RegExp('(where:\s*\{[^}]*status\s*:\s*)' + k, 'g');
+    const re2 = new RegExp("(where:\s*\{[^}]*status\s*:\s*)" + k, 'g');
     if (re2.test(content)) {
       content = content.replace(re2, `$1${v}`);
       changed = true;
     }
-    const re3 = new RegExp('(==|===|!=|!==|\bin\b|\bincludes\b)\\s*' + k, 'g');
+    const re3 = new RegExp("(==|===|!=|!==|\bin\b|\bincludes\b)\\s*" + k, 'g');
     if (re3.test(content)) {
-      content = content.replace(re3, (match) => match.replace(k, v));
+      content = content.replace(re3, match => match.replace(k, v));
       changed = true;
     }
   });

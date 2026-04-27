@@ -1,15 +1,15 @@
-'use client';
-import React, { useEffect, useState } from 'react';
+"use client";
+import React, { useEffect, useState } from "react";
 
 type AlertDetail = {
   title?: string;
   message: string;
-  variant?: 'info' | 'success' | 'warning' | 'error';
+  variant?: "info" | "success" | "warning" | "error";
   confirmText?: string;
   onConfirm?: () => void;
 };
 
-const ALERT_EVENT = 'app-alert';
+const ALERT_EVENT = "app-alert";
 
 export function emitAlert(detail: AlertDetail) {
   window.dispatchEvent(new CustomEvent(ALERT_EVENT, { detail }));
@@ -31,20 +31,20 @@ export default function AlertModal() {
 
   if (!open || !detail) return null;
 
-  const { title = 'Alert', message, variant = 'info', confirmText = 'OK', onConfirm } = detail;
+  const { title = "Alert", message, variant = "info", confirmText = "OK", onConfirm } = detail;
 
   const headerClass: Record<Required<AlertDetail>['variant'], string> = {
-    info: 'border-blue-500',
-    success: 'border-green-500',
-    warning: 'border-yellow-500',
-    error: 'border-red-500',
+    info: "border-blue-500",
+    success: "border-green-500",
+    warning: "border-yellow-500",
+    error: "border-red-500",
   } as const;
 
   const buttonClass: Record<Required<AlertDetail>['variant'], string> = {
-    info: 'bg-blue-600 hover:bg-blue-700',
-    success: 'bg-green-600 hover:bg-green-700',
-    warning: 'bg-yellow-600 hover:bg-yellow-700',
-    error: 'bg-red-600 hover:bg-red-700',
+    info: "bg-blue-600 hover:bg-blue-700",
+    success: "bg-green-600 hover:bg-green-700",
+    warning: "bg-yellow-600 hover:bg-yellow-700",
+    error: "bg-red-600 hover:bg-red-700",
   } as const;
 
   return (

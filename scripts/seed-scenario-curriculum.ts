@@ -16,6 +16,8 @@
  */
 import { prisma } from '../lib/prisma';
 
+
+
 /** UTC midnight today for DailyTask date */
 function utcMidnightToday(): Date {
   const d = new Date();
@@ -312,7 +314,7 @@ async function main() {
       date: todayStart,
       taskType: 'practice',
       title: 'Practice Integers',
-      description: "Complete today's practice",
+      description: 'Complete today\'s practice',
       topicId: firstTopicId,
       subject: firstMeta.subject,
       chapter: firstMeta.chapter,
@@ -323,9 +325,7 @@ async function main() {
 
   console.log('Created', topicIds.length, 'topics with notes and questions.');
   console.log('Students:', students.map((s) => s.email).join(', '));
-  console.log(
-    'Scenario data: B=midsession(PRACTICE), C=weak(low accuracy+progress), D=spaced(7d ago), E=homework(PENDING), P2=daily(pending task).'
-  );
+  console.log('Scenario data: B=midsession(PRACTICE), C=weak(low accuracy+progress), D=spaced(7d ago), E=homework(PENDING), P2=daily(pending task).');
   console.log('First topicId:', firstTopicId);
 }
 

@@ -59,11 +59,7 @@ describe('buildPriorityPlan (AC-05)', () => {
     });
 
     const [prompt, meta] = mockCallLLM.mock.calls[0];
-    expect(meta).toMatchObject({
-      callType: 'tutor:eval',
-      studentId: 'stu-abc',
-      sessionId: 'att-xyz',
-    });
+    expect(meta).toMatchObject({ callType: 'tutor:eval', studentId: 'stu-abc', sessionId: 'att-xyz' });
     expect(prompt).toContain('Physics');
     expect(prompt).toContain('60%');
   });
@@ -163,7 +159,7 @@ describe('buildPriorityPlan (AC-05)', () => {
         subjectName: 'Mathematics',
         overallScore: 0,
         sectionScores: [],
-      })
+      }),
     ).resolves.toEqual(expect.any(String));
   });
 

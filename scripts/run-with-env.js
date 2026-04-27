@@ -4,14 +4,14 @@ const path = require('path');
 function loadEnv(envPath) {
   if (!fs.existsSync(envPath)) return;
   const raw = fs.readFileSync(envPath, 'utf8');
-  raw.split(/\r?\n/).forEach((line) => {
+  raw.split(/\r?\n/).forEach(line => {
     const l = line.trim();
     if (!l || l.startsWith('#')) return;
     const idx = l.indexOf('=');
     if (idx === -1) return;
     const key = l.substring(0, idx).trim();
     let val = l.substring(idx + 1).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    if ((val.startsWith("\"") && val.endsWith("\"")) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     process.env[key] = val;

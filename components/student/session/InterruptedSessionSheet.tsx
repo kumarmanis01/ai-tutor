@@ -113,6 +113,7 @@ export default function InterruptedSessionSheet({
       aria-labelledby="interrupted-title"
     >
       <div className="w-full max-h-[60vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-slate-900 shadow-2xl">
+
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-600" aria-hidden />
@@ -128,8 +129,10 @@ export default function InterruptedSessionSheet({
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
             You were in{' '}
-            <span className="font-medium text-gray-700 dark:text-gray-300">{phaseLabel}</span> --
-            stage {session.phaseNumber} of 7, about {session.minutesIn}{' '}
+            <span className="font-medium text-gray-700 dark:text-gray-300">
+              {phaseLabel}
+            </span>{' '}
+            -- stage {session.phaseNumber} of 7, about {session.minutesIn}{' '}
             {session.minutesIn === 1 ? 'minute' : 'minutes'} in.
           </p>
 

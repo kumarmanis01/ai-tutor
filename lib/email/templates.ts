@@ -7,9 +7,6 @@
  *  - Plain table layout -- works in Gmail, Outlook, Apple Mail
  *  - Brand colours: #534AB7 (primary), #1D9E75 (success), #E24B4A (danger)
  *  - Copy rules: no "failed", "missed", "broke"; forward-looking tone
- *
- * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | add B3.2 templates: OTP, consentRequest, weeklyReport, adminInvite, paymentInvoice
  */
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -196,7 +193,11 @@ export function weeklyDigestHtml(data: {
   dashboardUrl?: string;
 }): string {
   const readinessColour =
-    data.readinessScore >= 70 ? '#1D9E75' : data.readinessScore >= 40 ? '#BA7517' : '#E24B4A';
+    data.readinessScore >= 70
+      ? '#1D9E75'
+      : data.readinessScore >= 40
+      ? '#BA7517'
+      : '#E24B4A';
   const url = data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard';
   const heading = data.parentName
     ? `${data.studentName}'s weekly learning report`
@@ -340,19 +341,15 @@ export function contentJobFailureAlertHtml(data: {
           <td style="color:#666;">Error</td>
           <td style="font-family:monospace;font-size:12px;color:#DC2626;">${data.lastError}</td>
         </tr>
-        ${
-          isRetrying
-            ? `
+        ${isRetrying ? `
         <tr>
           <td style="color:#666;">Auto-retry at</td>
           <td style="font-weight:600;color:#B45309;">${retryLabel}</td>
-        </tr>`
-            : `
+        </tr>` : `
         <tr>
           <td style="color:#666;">Status</td>
           <td style="font-weight:600;color:#DC2626;">Auto-retries exhausted -- manual review needed</td>
-        </tr>`
-        }
+        </tr>`}
       </table>
       <div style="margin-top:24px;">
         <a href="${data.adminUrl}" style="${BTN}">
@@ -472,13 +469,9 @@ export function milestoneEmailHtml(data: {
         <p style="margin:0;color:#166534;font-weight:700;font-size:17px;">
           ${data.milestoneLabel}
         </p>
-        ${
-          data.milestoneDetail
-            ? `
+        ${data.milestoneDetail ? `
         <p style="margin:8px 0 0;color:#4B7A45;font-size:13px;">${data.milestoneDetail}</p>
-        `
-            : ''
-        }
+        ` : ''}
       </div>
 
       <p>Every milestone is a step closer to exam confidence. Keep encouraging
@@ -501,13 +494,11 @@ export function adminBroadcastEmailHtml(data: {
   ctaLabel?: string;
   ctaUrl?: string;
 }): string {
-  const cta = data.ctaUrl
-    ? `
+  const cta = data.ctaUrl ? `
     <div style="margin:24px 0;">
       <a href="${data.ctaUrl}" style="${BTN}">${data.ctaLabel ?? 'Open Spinzy'}</a>
     </div>
-  `
-    : '';
+  ` : '';
   return `
     <div style="${BASE}">
       ${LOGO}
@@ -552,208 +543,6 @@ export function trialEndingHtml(data: {
 
       <p style="color:#888;font-size:13px;margin-top:16px;">
         No hidden charges. Cancel any time.
-      </p>
-      ${FOOTER}
-    </div>
-  `;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// B3.2 -- New transactional email templates
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * OTP email -- sends a one-time verification code.
- * @param otp            6-digit code
- * @param expiryMinutes  how long the code is valid
- */
-export function otpEmailHtml(otp: string, expiryMinutes = 10): string {
-  return `
-    <div style="${BASE}">
-      ${LOGO}
-      <h2 style="color:#534AB7;">Your one-time verification code</h2>
-      <p style="color:#374151;">Use the code below to verify your identity.
-         It is valid for ${expiryMinutes} minutes.</p>
-      <div style="background:#EEEDFE;border-radius:12px;padding:24px;
-                  text-align:center;margin:20px 0;">
-        <span style="font-size:40px;font-weight:700;letter-spacing:12px;
-                     color:#534AB7;">${otp}</span>
-      </div>
-      <p style="color:#888;font-size:13px;">
-        If you did not request this code, you can safely ignore this email.
-      </p>
-      ${FOOTER}
-    </div>
-  `;
-}
-
-/**
- * Consent request email -- sent to parent asking them to approve their child.
- */
-/**
- * P1.2-R: Enriched consent request email with board, controls list, deny link,
- * and DPDP footer as required by P1.2-R acceptance criteria.
- * - EDIT LOG: 2026-04-24T00:00:00Z | staff-engineer | add board, controls list, deny link per P1.2-R AC
- */
-export function consentRequestEmailHtml(
-  parentName: string,
-  childName: string,
-  grade: string,
-  consentLink: string,
-  opts?: { board?: string; denyLink?: string }
-): string {
-  const boardLabel = opts?.board ? ` (${opts.board})` : '';
-  const denySection = opts?.denyLink
-    ? `<p style="text-align:center;margin-top:12px;">
-         <a href="${opts.denyLink}" style="color:#888;font-size:13px;">Deny Access</a>
-       </p>`
-    : '';
-  return `
-    <div style="${BASE}">
-      ${LOGO}
-      <h2 style="color:#534AB7;">${childName} wants to learn with Spinzy Academy</h2>
-      <p>Hi ${parentName},</p>
-      <p><strong>${childName}</strong> (Grade ${grade}${boardLabel}) has signed up for
-         Spinzy Academy, India's AI home tutor. Your approval is needed to activate
-         their account.</p>
-      <div style="background:#F5F4FF;border-radius:12px;padding:16px;margin:20px 0;">
-        <p style="margin:0 0 10px;font-weight:600;color:#374151;">As a parent you can:</p>
-        <ul style="margin:0;padding-left:18px;color:#374151;line-height:1.9;">
-          <li>&#x2705; View ${childName}'s progress and topics covered</li>
-          <li>&#x2705; Set weekly session limits and study time</li>
-          <li>&#x2705; Receive a weekly email summary every Sunday</li>
-          <li>&#x2705; Withdraw consent at any time from Parent Settings</li>
-          <li>&#x274C; ${childName} will NOT have social features (no chat, no friend requests)</li>
-          <li>&#x274C; ${childName}'s data will NOT be shared with third parties or advertisers</li>
-        </ul>
-      </div>
-      <a href="${consentLink}" style="${BTN}">Approve &amp; Set Limits</a>
-      ${denySection}
-      <p style="color:#888;font-size:13px;margin-top:16px;">
-        This link expires in 48 hours.
-        If you do not recognise this request, ignore this email safely.
-      </p>
-      <div style="border-top:1px solid #eee;margin-top:24px;padding-top:16px;">
-        <p style="color:#aaa;font-size:11px;line-height:1.6;margin:0;">
-          This message is sent in compliance with India's Digital Personal Data Protection Act (DPDP) 2023.
-          Spinzy Academy processes your child's learning data only for educational purposes.
-          Contact: <a href="mailto:hello@spinzyacademy.com" style="color:#534AB7;">hello@spinzyacademy.com</a>
-          &nbsp;|&nbsp;
-          <a href="https://spinzyacademy.com/privacy" style="color:#534AB7;">Privacy Policy</a>
-        </p>
-      </div>
-      ${FOOTER}
-    </div>
-  `;
-}
-
-/**
- * Weekly report email -- sent to parent summarising the student's week.
- */
-export function weeklyReportEmailHtml(data: {
-  parentName: string;
-  studentName: string;
-  sessionsThisWeek: number;
-  weeklyGoal: number;
-  streakDays: number;
-  topSubject: string;
-  dashboardUrl?: string;
-}): string {
-  const url = data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard';
-  return `
-    <div style="${BASE}">
-      ${LOGO}
-      <h2 style="color:#534AB7;">${data.studentName}'s weekly learning summary</h2>
-      <p>Hi ${data.parentName},</p>
-      <p>Here is how ${data.studentName} did this week:</p>
-      <div style="background:#F5F4FF;border-radius:12px;padding:20px;margin:20px 0;">
-        <table width="100%" cellpadding="8" style="font-size:14px;">
-          <tr>
-            <td style="color:#374151;">Sessions completed</td>
-            <td style="text-align:right;font-weight:600;">
-              ${data.sessionsThisWeek} / ${data.weeklyGoal}
-            </td>
-          </tr>
-          <tr>
-            <td style="color:#374151;">Learning streak</td>
-            <td style="text-align:right;font-weight:600;">
-              ${data.streakDays} day${data.streakDays !== 1 ? 's' : ''}
-            </td>
-          </tr>
-          <tr>
-            <td style="color:#374151;">Top subject</td>
-            <td style="text-align:right;font-weight:600;">${data.topSubject}</td>
-          </tr>
-        </table>
-      </div>
-      <a href="${url}" style="${BTN}">View full report</a>
-      ${FOOTER}
-    </div>
-  `;
-}
-
-/**
- * Admin invite email -- sent when a new admin is invited to the platform.
- */
-export function adminInviteEmailHtml(setupLink: string, role: string): string {
-  const roleLabel = role
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-  return `
-    <div style="${BASE}">
-      ${LOGO}
-      <h2 style="color:#534AB7;">You have been invited to Spinzy Admin</h2>
-      <p>You have been granted <strong>${roleLabel}</strong> access to the
-         Spinzy Academy admin panel.</p>
-      <p>Click below to set up your account. This link expires in 24 hours.</p>
-      <a href="${setupLink}" style="${BTN}">Set up admin account</a>
-      <p style="color:#888;font-size:13px;margin-top:16px;">
-        If you were not expecting this invitation, ignore this email safely.
-      </p>
-      ${FOOTER}
-    </div>
-  `;
-}
-
-/**
- * Payment invoice email -- sent after a successful payment.
- */
-export function paymentInvoiceEmailHtml(data: {
-  studentName: string;
-  invoiceNumber: string;
-  plan: string;
-  amountRupees: number;
-  billingCycle: string;
-  invoiceUrl: string;
-}): string {
-  return `
-    <div style="${BASE}">
-      ${LOGO}
-      <h2 style="color:#534AB7;">Payment confirmed</h2>
-      <div style="background:#EAF3DE;border:1px solid #86EFAC;border-radius:8px;
-                  padding:16px;margin:20px 0;">
-        <p style="margin:0;color:#166534;font-weight:600;">
-          Invoice #${data.invoiceNumber} -- payment received
-        </p>
-      </div>
-      <table width="100%" cellpadding="8" style="border-top:1px solid #eee;font-size:14px;">
-        <tr>
-          <td style="color:#666;">Student</td>
-          <td style="text-align:right;">${data.studentName}</td>
-        </tr>
-        <tr>
-          <td style="color:#666;">Plan</td>
-          <td style="text-align:right;">${data.plan} (${data.billingCycle})</td>
-        </tr>
-        <tr>
-          <td style="color:#666;">Amount paid</td>
-          <td style="text-align:right;font-weight:600;">&#8377;${data.amountRupees}</td>
-        </tr>
-      </table>
-      <a href="${data.invoiceUrl}" style="${BTN}">Download invoice</a>
-      <p style="color:#888;font-size:13px;margin-top:16px;">
-        For queries: support@spinzy.in
       </p>
       ${FOOTER}
     </div>

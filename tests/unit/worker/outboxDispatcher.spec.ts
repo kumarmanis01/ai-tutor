@@ -130,9 +130,7 @@ describe('outboxDispatcher', () => {
       (prisma.outboxDeadLetter.create as jest.Mock).mockResolvedValue({});
       (prisma.outbox.delete as jest.Mock).mockResolvedValue({});
       (prisma.$transaction as jest.Mock).mockImplementation((arg: unknown) =>
-        Array.isArray(arg)
-          ? Promise.all(arg as Promise<unknown>[])
-          : (arg as () => Promise<unknown>)()
+        Array.isArray(arg) ? Promise.all(arg as Promise<unknown>[]) : (arg as () => Promise<unknown>)()
       );
 
       const count = await dispatchBatch();
@@ -156,9 +154,7 @@ describe('outboxDispatcher', () => {
       (prisma.outboxDeadLetter.create as jest.Mock).mockResolvedValue({});
       (prisma.outbox.delete as jest.Mock).mockResolvedValue({});
       (prisma.$transaction as jest.Mock).mockImplementation((arg: unknown) =>
-        Array.isArray(arg)
-          ? Promise.all(arg as Promise<unknown>[])
-          : (arg as () => Promise<unknown>)()
+        Array.isArray(arg) ? Promise.all(arg as Promise<unknown>[]) : (arg as () => Promise<unknown>)()
       );
 
       const count = await dispatchBatch();

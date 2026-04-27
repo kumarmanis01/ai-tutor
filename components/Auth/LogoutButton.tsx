@@ -1,7 +1,7 @@
 // components/Auth/LogoutButton.tsx
-'use client';
-import { signOut } from 'next-auth/react';
-import React, { useState } from 'react';
+"use client";
+import { signOut } from "next-auth/react";
+import React, { useState } from "react";
 
 export default function LogoutButton() {
   const [open, setOpen] = useState(false);
@@ -37,12 +37,8 @@ export default function LogoutButton() {
               <p className="text-sm text-muted-foreground">Are you sure you want to log out?</p>
             </div>
             <div className="px-5 py-3 flex justify-end gap-3">
-              <button className="px-3 py-2 border rounded" onClick={() => setOpen(false)}>
-                Cancel
-              </button>
-              <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={handleConfirm}>
-                Log out
-              </button>
+              <button className="px-3 py-2 border rounded" onClick={() => setOpen(false)}>Cancel</button>
+              <button className="px-3 py-2 bg-red-600 text-white rounded" onClick={handleConfirm}>Log out</button>
             </div>
           </div>
         </div>

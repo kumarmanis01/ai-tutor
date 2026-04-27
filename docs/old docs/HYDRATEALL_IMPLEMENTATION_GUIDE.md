@@ -23,20 +23,18 @@
 ## 🔄 ARCHITECTURE COMPARISON
 
 ### Original Approach (hydrateAll-architecture.md)
-
 **Focus**: Job orchestration patterns and execution flow
 
-| Aspect                   | Design                                                      |
-| ------------------------ | ----------------------------------------------------------- |
-| **Job States**           | Pending → Claimed → Running → Completed/Failed              |
-| **Claim Pattern**        | Atomic UPDATE with FOR UPDATE SKIP LOCKED                   |
-| **Transaction Strategy** | Short transactions, off-TX AI calls                         |
-| **Orchestration**        | Reconciler polls and aggregates child status                |
-| **Monitoring**           | Prometheus metrics, structured logs                         |
-| **Data Model**           | Generic HydrationJob, Outbox, JobExecutionLog, AIContentLog |
+| Aspect | Design |
+|--------|--------|
+| **Job States** | Pending → Claimed → Running → Completed/Failed |
+| **Claim Pattern** | Atomic UPDATE with FOR UPDATE SKIP LOCKED |
+| **Transaction Strategy** | Short transactions, off-TX AI calls |
+| **Orchestration** | Reconciler polls and aggregates child status |
+| **Monitoring** | Prometheus metrics, structured logs |
+| **Data Model** | Generic HydrationJob, Outbox, JobExecutionLog, AIContentLog |
 
 **Key Patterns**:
-
 ```typescript
 // 1. Submit & Enqueue
 BEGIN TX
@@ -65,22 +63,20 @@ FOR root IN stuck_jobs:
 ---
 
 ### Final Approach (HYDRATEALL_FINAL_ARCHITECTURE.md)
-
 **Focus**: Complete production implementation with domain models
 
-| Aspect                   | Enhancement                                                                |
-| ------------------------ | -------------------------------------------------------------------------- |
-| **Curriculum Hierarchy** | Board → ClassLevel → SubjectDef → ChapterDef → TopicDef                    |
-| **Content Models**       | TopicNote (with validationStatus, qualityScore)                            |
-|                          | TopicQuestion (with correctAnswer validation, BloomLevel)                  |
-| **Job Hierarchy**        | Level 0 (Root) → L1 (Chapters) → L2 (Topics) → L3 (Notes) → L4 (Questions) |
-| **Progress Tracking**    | chaptersCompleted/Expected, topicsCompleted/Expected, etc.                 |
-| **Cost Tracking**        | estimatedCostUsd, actualCostUsd per job                                    |
-| **Validation Pipeline**  | Quantity, Quality, Answer Completeness validators                          |
-| **API Endpoints**        | POST /api/hydrateAll, GET /api/hydrateAll/:jobId                           |
+| Aspect | Enhancement |
+|--------|-------------|
+| **Curriculum Hierarchy** | Board → ClassLevel → SubjectDef → ChapterDef → TopicDef |
+| **Content Models** | TopicNote (with validationStatus, qualityScore) |
+| | TopicQuestion (with correctAnswer validation, BloomLevel) |
+| **Job Hierarchy** | Level 0 (Root) → L1 (Chapters) → L2 (Topics) → L3 (Notes) → L4 (Questions) |
+| **Progress Tracking** | chaptersCompleted/Expected, topicsCompleted/Expected, etc. |
+| **Cost Tracking** | estimatedCostUsd, actualCostUsd per job |
+| **Validation Pipeline** | Quantity, Quality, Answer Completeness validators |
+| **API Endpoints** | POST /api/hydrateAll, GET /api/hydrateAll/:jobId |
 
 **Enhanced Models**:
-
 ```prisma
 HydrationJob {
   hierarchyLevel: 0-4
@@ -108,61 +104,57 @@ Based on codebase analysis:
 
 ### **Already Implemented** ✅
 
-| Component            | File                                                                     | Status                                                 |
-| -------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------ |
-| Curriculum Hierarchy | [prisma/schema.prisma](prisma/schema.prisma)                             | ✅ Board, ClassLevel, SubjectDef, ChapterDef, TopicDef |
-| Content Models       | [prisma/schema.prisma](prisma/schema.prisma)                             | ✅ TopicNote, GeneratedTest, GeneratedQuestion         |
-| HydrationJob Table   | [prisma/schema.prisma](prisma/schema.prisma)                             | ✅ With hierarchyLevel, progress tracking              |
-| ExecutionJob System  | [prisma/schema.prisma](prisma/schema.prisma)                             | ✅ ExecutionJob + JobExecutionLog                      |
-| Outbox Pattern       | [prisma/schema.prisma](prisma/schema.prisma)                             | ✅ Outbox table                                        |
-| Syllabus Worker      | [worker/services/syllabusWorker.ts](worker/services/syllabusWorker.ts)   | ✅ Atomic claim, short TX                              |
-| Notes Worker         | [worker/services/notesWorker.ts](worker/services/notesWorker.ts)         | ✅ Implemented                                         |
-| Questions Worker     | [worker/services/questionsWorker.ts](worker/services/questionsWorker.ts) | ✅ Implemented                                         |
-| Assemble Worker      | [worker/services/assembleWorker.ts](worker/services/assembleWorker.ts)   | ✅ Packaging logic                                     |
-| Outbox Dispatcher    | [worker/outboxDispatcher.ts](worker/outboxDispatcher.ts)                 | ✅ Polling dispatcher                                  |
-| Metrics              | [lib/metrics/hydrateMetrics.ts](lib/metrics/hydrateMetrics.ts)           | ✅ Prometheus metrics                                  |
+| Component | File | Status |
+|-----------|------|--------|
+| Curriculum Hierarchy | [prisma/schema.prisma](prisma/schema.prisma) | ✅ Board, ClassLevel, SubjectDef, ChapterDef, TopicDef |
+| Content Models | [prisma/schema.prisma](prisma/schema.prisma) | ✅ TopicNote, GeneratedTest, GeneratedQuestion |
+| HydrationJob Table | [prisma/schema.prisma](prisma/schema.prisma) | ✅ With hierarchyLevel, progress tracking |
+| ExecutionJob System | [prisma/schema.prisma](prisma/schema.prisma) | ✅ ExecutionJob + JobExecutionLog |
+| Outbox Pattern | [prisma/schema.prisma](prisma/schema.prisma) | ✅ Outbox table |
+| Syllabus Worker | [worker/services/syllabusWorker.ts](worker/services/syllabusWorker.ts) | ✅ Atomic claim, short TX |
+| Notes Worker | [worker/services/notesWorker.ts](worker/services/notesWorker.ts) | ✅ Implemented |
+| Questions Worker | [worker/services/questionsWorker.ts](worker/services/questionsWorker.ts) | ✅ Implemented |
+| Assemble Worker | [worker/services/assembleWorker.ts](worker/services/assembleWorker.ts) | ✅ Packaging logic |
+| Outbox Dispatcher | [worker/outboxDispatcher.ts](worker/outboxDispatcher.ts) | ✅ Polling dispatcher |
+| Metrics | [lib/metrics/hydrateMetrics.ts](lib/metrics/hydrateMetrics.ts) | ✅ Prometheus metrics |
 
 ### **Missing Components** ❌
 
-| Component                              | Priority | Estimated Effort |
-| -------------------------------------- | -------- | ---------------- |
-| Admin UI - HydrateAll Trigger Form     | HIGH     | 2 days           |
-| Admin UI - Progress Dashboard          | HIGH     | 3 days           |
-| API - POST /api/admin/hydrateAll       | HIGH     | 1 day            |
-| API - GET /api/admin/hydrateAll/:jobId | MEDIUM   | 0.5 day          |
-| Reconciler Implementation              | HIGH     | 2 days           |
-| Validation Pipeline                    | HIGH     | 3 days           |
-| Unit Tests - Workers                   | HIGH     | 2 days           |
-| Integration Tests - E2E Flow           | HIGH     | 2 days           |
-| Answer Completeness Validator          | MEDIUM   | 1 day            |
+| Component | Priority | Estimated Effort |
+|-----------|----------|------------------|
+| Admin UI - HydrateAll Trigger Form | HIGH | 2 days |
+| Admin UI - Progress Dashboard | HIGH | 3 days |
+| API - POST /api/admin/hydrateAll | HIGH | 1 day |
+| API - GET /api/admin/hydrateAll/:jobId | MEDIUM | 0.5 day |
+| Reconciler Implementation | HIGH | 2 days |
+| Validation Pipeline | HIGH | 3 days |
+| Unit Tests - Workers | HIGH | 2 days |
+| Integration Tests - E2E Flow | HIGH | 2 days |
+| Answer Completeness Validator | MEDIUM | 1 day |
 
 ---
 
 ## 🎯 COMPLETE IMPLEMENTATION PLAN
 
 ### Phase 1: Backend API & Orchestration (Week 1)
-
 1. Implement POST /api/admin/hydrateAll endpoint
 2. Implement GET /api/admin/hydrateAll/:jobId endpoint
 3. Build Reconciler service (create child jobs)
 4. Add validation pipeline framework
 
 ### Phase 2: Admin UI (Week 2)
-
 1. HydrateAll trigger form component
 2. Job progress dashboard with real-time updates
 3. Job timeline view with logs
 4. Cost estimation calculator
 
 ### Phase 3: Testing & Validation (Week 2)
-
 1. Unit tests for all workers
 2. Integration tests for full cascade
 3. Answer completeness validator
 4. Load testing with multiple concurrent jobs
 
 ### Phase 4: Production Hardening (Week 3)
-
 1. Monitoring dashboards (Grafana)
 2. Alert rules (PagerDuty/Slack)
 3. Runbook documentation
@@ -173,7 +165,6 @@ Based on codebase analysis:
 ## 🎨 ADMIN UI COMPONENTS
 
 ### Component Tree
-
 ```
 AdminDashboard
 ├── HydrateAllPage
@@ -195,7 +186,6 @@ AdminDashboard
 ```
 
 ### File Structure
-
 ```
 app/admin/content-engine/
 ├── hydrateAll/
@@ -219,11 +209,9 @@ app/admin/content-engine/
 ### Endpoint Specifications
 
 #### 1. POST /api/admin/hydrateAll
-
 **Purpose**: Submit new HydrateAll job
 
 **Request**:
-
 ```typescript
 {
   language: LanguageCode,           // 'en' | 'hi'
@@ -242,7 +230,6 @@ app/admin/content-engine/
 ```
 
 **Response** (202 Accepted):
-
 ```typescript
 {
   rootJobId: string,
@@ -263,11 +250,9 @@ app/admin/content-engine/
 ---
 
 #### 2. GET /api/admin/hydrateAll/:jobId
-
 **Purpose**: Get job progress and status
 
 **Response** (200 OK):
-
 ```typescript
 {
   jobId: string,
@@ -306,11 +291,9 @@ app/admin/content-engine/
 ---
 
 #### 3. POST /api/admin/hydrateAll/:jobId/cancel
-
 **Purpose**: Cancel running job
 
 **Response** (200 OK):
-
 ```typescript
 {
   jobId: string,
@@ -323,15 +306,12 @@ app/admin/content-engine/
 ---
 
 #### 4. GET /api/admin/hydrateAll/estimate
-
 **Purpose**: Estimate cost/time before submission
 
 **Query Params**:
-
 - `boardCode`, `grade`, `subjectCode`
 
 **Response**:
-
 ```typescript
 {
   estimatedChapters: number,
@@ -401,7 +381,6 @@ CREATE INDEX IF NOT EXISTS "idx_outbox_unsent" ON "Outbox"("queue", "sentAt") WH
 **File**: `worker/services/hydrationReconciler.ts`
 
 **Responsibilities**:
-
 1. Poll root HydrationJobs with incomplete children
 2. For each level, check if parent level is complete
 3. Create child jobs when parent level completes
@@ -409,7 +388,6 @@ CREATE INDEX IF NOT EXISTS "idx_outbox_unsent" ON "Outbox"("queue", "sentAt") WH
 5. Mark root job as completed when all levels done
 
 **Key Logic**:
-
 ```typescript
 // Pseudocode for reconciler
 async reconcile() {
@@ -454,7 +432,6 @@ async reconcileRootJob(rootJob: HydrationJob) {
 ### Unit Tests
 
 **File Structure**:
-
 ```
 tests/unit/
 ├── worker/
@@ -471,7 +448,6 @@ tests/unit/
 ```
 
 **Test Coverage Requirements**:
-
 - Worker claim logic (atomic updates)
 - Short transaction patterns
 - Validation pipeline
@@ -486,7 +462,6 @@ tests/unit/
 **File**: `tests/integration/hydrateAll-e2e.test.ts`
 
 **Test Scenarios**:
-
 1. **Full Cascade Success**
    - Submit job → Wait for completion → Verify all content created
 
@@ -587,7 +562,6 @@ hydrate_cost_usd_total{target}
 **Decision**: Use reconciler to create child jobs, not workers.
 
 **Rationale**:
-
 - Workers stay simple (single responsibility)
 - Reconciler can retry failed child creation
 - Easier to debug (centralized orchestration logic)
@@ -598,7 +572,6 @@ hydrate_cost_usd_total{target}
 **Decision**: Never hold DB locks during AI calls.
 
 **Rationale**:
-
 - AI calls can take 30-120 seconds
 - Long transactions block other workers
 - Postgres connection pool would exhaust quickly
@@ -609,7 +582,6 @@ hydrate_cost_usd_total{target}
 **Decision**: Write to Outbox table, not directly to queue.
 
 **Rationale**:
-
 - Transactional guarantee (job + outbox in same TX)
 - Survives Redis failures
 - Can replay from DB if queue lost
@@ -620,7 +592,6 @@ hydrate_cost_usd_total{target}
 **Decision**: Explicit level 0-4 hierarchy.
 
 **Rationale**:
-
 - Clear progress tracking
 - Easy to query "all level 2 jobs for root X"
 - Reconciler logic is straightforward
@@ -632,17 +603,17 @@ hydrate_cost_usd_total{target}
 
 ### Key Files to Create/Modify
 
-| File                                                                   | Action  | Priority |
-| ---------------------------------------------------------------------- | ------- | -------- |
-| `app/api/admin/hydrateAll/route.ts`                                    | CREATE  | P0       |
-| `app/api/admin/hydrateAll/[jobId]/route.ts`                            | CREATE  | P0       |
-| `worker/services/hydrationReconciler.ts`                               | CREATE  | P0       |
-| `app/admin/content-engine/hydrateAll/page.tsx`                         | CREATE  | P1       |
-| `app/admin/content-engine/hydrateAll/components/TriggerForm.tsx`       | CREATE  | P1       |
-| `app/admin/content-engine/hydrateAll/components/ProgressDashboard.tsx` | CREATE  | P1       |
-| `tests/unit/worker/services/syllabusWorker.test.ts`                    | ENHANCE | P1       |
-| `tests/integration/hydrateAll-e2e.test.ts`                             | CREATE  | P1       |
-| `lib/validation/answerCompletenessValidator.ts`                        | CREATE  | P2       |
+| File | Action | Priority |
+|------|--------|----------|
+| `app/api/admin/hydrateAll/route.ts` | CREATE | P0 |
+| `app/api/admin/hydrateAll/[jobId]/route.ts` | CREATE | P0 |
+| `worker/services/hydrationReconciler.ts` | CREATE | P0 |
+| `app/admin/content-engine/hydrateAll/page.tsx` | CREATE | P1 |
+| `app/admin/content-engine/hydrateAll/components/TriggerForm.tsx` | CREATE | P1 |
+| `app/admin/content-engine/hydrateAll/components/ProgressDashboard.tsx` | CREATE | P1 |
+| `tests/unit/worker/services/syllabusWorker.test.ts` | ENHANCE | P1 |
+| `tests/integration/hydrateAll-e2e.test.ts` | CREATE | P1 |
+| `lib/validation/answerCompletenessValidator.ts` | CREATE | P2 |
 
 ---
 

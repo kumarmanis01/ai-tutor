@@ -5,9 +5,9 @@
 
 describe('GET /api/user/profile', () => {
   beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
-  });
+    jest.resetModules()
+    jest.clearAllMocks()
+  })
 
   it('returns schoolName when present on user row', async () => {
     const savedUser = {
@@ -27,22 +27,18 @@ describe('GET /api/user/profile', () => {
       language: 'en',
       createdAt: null,
       role: 'student',
-    };
+    }
 
-    jest.doMock('@/lib/session', () => ({
-      getServerSessionForHandlers: async () => ({ user: { email: 'u@example.com' } }),
-    }));
-    jest.doMock('@/lib/prisma', () => ({
-      prisma: { user: { findUnique: async () => savedUser } },
-    }));
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { email: 'u@example.com' } }) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: { user: { findUnique: async () => savedUser } } }))
 
-    const { GET } = await import('@/app/api/user/profile/route');
-    const req = new Request('http://localhost', { method: 'GET' });
-    const res: any = await GET(req as any);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.schoolName).toBe('Test School');
-  });
+    const { GET } = await import('@/app/api/user/profile/route')
+    const req = new Request('http://localhost', { method: 'GET' })
+    const res: any = await GET(req as any)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.schoolName).toBe('Test School')
+  })
 
   it('returns null schoolName when missing on user row', async () => {
     const savedUser = {
@@ -62,22 +58,18 @@ describe('GET /api/user/profile', () => {
       language: 'en',
       createdAt: null,
       role: 'student',
-    };
+    }
 
-    jest.doMock('@/lib/session', () => ({
-      getServerSessionForHandlers: async () => ({ user: { email: 'no-school@example.com' } }),
-    }));
-    jest.doMock('@/lib/prisma', () => ({
-      prisma: { user: { findUnique: async () => savedUser } },
-    }));
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { email: 'no-school@example.com' } }) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: { user: { findUnique: async () => savedUser } } }))
 
-    const { GET } = await import('@/app/api/user/profile/route');
-    const req = new Request('http://localhost', { method: 'GET' });
-    const res: any = await GET(req as any);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.schoolName).toBeNull();
-  });
+    const { GET } = await import('@/app/api/user/profile/route')
+    const req = new Request('http://localhost', { method: 'GET' })
+    const res: any = await GET(req as any)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.schoolName).toBeNull()
+  })
 
   it('should return currentStreak and longestStreak when present on user row', async () => {
     const savedUser = {
@@ -100,24 +92,20 @@ describe('GET /api/user/profile', () => {
       currentStreak: 7,
       longestStreak: 14,
       cosmeticUnlocks: ['frame_flame'],
-    };
+    }
 
-    jest.doMock('@/lib/session', () => ({
-      getServerSessionForHandlers: async () => ({ user: { email: 'streak@example.com' } }),
-    }));
-    jest.doMock('@/lib/prisma', () => ({
-      prisma: { user: { findUnique: async () => savedUser } },
-    }));
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { email: 'streak@example.com' } }) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: { user: { findUnique: async () => savedUser } } }))
 
-    const { GET } = await import('@/app/api/user/profile/route');
-    const req = new Request('http://localhost', { method: 'GET' });
-    const res: any = await GET(req as any);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.currentStreak).toBe(7);
-    expect(body.longestStreak).toBe(14);
-    expect(body.cosmeticUnlocks).toEqual(['frame_flame']);
-  });
+    const { GET } = await import('@/app/api/user/profile/route')
+    const req = new Request('http://localhost', { method: 'GET' })
+    const res: any = await GET(req as any)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.currentStreak).toBe(7)
+    expect(body.longestStreak).toBe(14)
+    expect(body.cosmeticUnlocks).toEqual(['frame_flame'])
+  })
 
   it('should return currentStreak=0 and longestStreak=0 when streak fields absent from user row', async () => {
     const savedUser = {
@@ -137,22 +125,18 @@ describe('GET /api/user/profile', () => {
       language: 'en',
       createdAt: null,
       role: 'user',
-    };
+    }
 
-    jest.doMock('@/lib/session', () => ({
-      getServerSessionForHandlers: async () => ({ user: { email: 'nostreak@example.com' } }),
-    }));
-    jest.doMock('@/lib/prisma', () => ({
-      prisma: { user: { findUnique: async () => savedUser } },
-    }));
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { email: 'nostreak@example.com' } }) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: { user: { findUnique: async () => savedUser } } }))
 
-    const { GET } = await import('@/app/api/user/profile/route');
-    const req = new Request('http://localhost', { method: 'GET' });
-    const res: any = await GET(req as any);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.currentStreak).toBe(0);
-    expect(body.longestStreak).toBe(0);
-    expect(body.cosmeticUnlocks).toEqual([]);
-  });
-});
+    const { GET } = await import('@/app/api/user/profile/route')
+    const req = new Request('http://localhost', { method: 'GET' })
+    const res: any = await GET(req as any)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.currentStreak).toBe(0)
+    expect(body.longestStreak).toBe(0)
+    expect(body.cosmeticUnlocks).toEqual([])
+  })
+})

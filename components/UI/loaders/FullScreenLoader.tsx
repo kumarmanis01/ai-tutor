@@ -2,13 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { FullScreenLoaderProps } from './types';
-import {
-  DotPulseLoader,
-  SpinnerLoader,
-  BookLoader,
-  ProgressLoader,
-  MascotLoader,
-} from './LoaderVariants';
+import { DotPulseLoader, SpinnerLoader, BookLoader, ProgressLoader, MascotLoader } from './LoaderVariants';
 
 export function FullScreenLoader({
   visible,
@@ -37,8 +31,7 @@ export function FullScreenLoader({
       setRendered(true);
       showTimeRef.current = Date.now();
     } else if (rendered) {
-      const elapsed =
-        showTimeRef.current !== null ? Date.now() - showTimeRef.current : minimumDisplayTime;
+      const elapsed = showTimeRef.current !== null ? Date.now() - showTimeRef.current : minimumDisplayTime;
       const remaining = Math.max(0, minimumDisplayTime - elapsed);
       timerRef.current = setTimeout(() => {
         setAnimatingOut(true);
@@ -58,16 +51,11 @@ export function FullScreenLoader({
 
   const loaderContent = (() => {
     switch (variant) {
-      case 'spinner':
-        return <SpinnerLoader size="large" />;
-      case 'book':
-        return <BookLoader />;
-      case 'progress':
-        return <ProgressLoader progress={progress} showProgress={showProgress} className="w-64" />;
-      case 'mascot':
-        return <MascotLoader />;
-      default:
-        return <DotPulseLoader size="large" />;
+      case 'spinner':  return <SpinnerLoader size="large" />;
+      case 'book':     return <BookLoader />;
+      case 'progress': return <ProgressLoader progress={progress} showProgress={showProgress} className="w-64" />;
+      case 'mascot':   return <MascotLoader />;
+      default:         return <DotPulseLoader size="large" />;
     }
   })();
 

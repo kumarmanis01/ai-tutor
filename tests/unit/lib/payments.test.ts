@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Mock Razorpay SDK and test createRazorpayTokenCharge helper
 
-jest.resetModules();
+jest.resetModules()
 
 describe('createRazorpayTokenCharge', () => {
   beforeEach(() => {
-    jest.resetModules();
-  });
+    jest.resetModules()
+  })
 
   it('returns payment object when SDK payments.create succeeds', async () => {
     // Ensure env present for getRazorpay
@@ -22,11 +22,7 @@ describe('createRazorpayTokenCharge', () => {
 
     const { createRazorpayTokenCharge } = await import('@/lib/payments.js');
 
-    const resp = await createRazorpayTokenCharge({
-      amountPaise: 9900,
-      customerId: 'rcust_1',
-      token: 'pm_1',
-    });
+    const resp = await createRazorpayTokenCharge({ amountPaise: 9900, customerId: 'rcust_1', token: 'pm_1' });
     expect(resp).toBeTruthy();
     expect(resp.id || resp.razorpay_payment_id || resp.payment_id).toBe('pay_123');
   });
@@ -42,11 +38,7 @@ describe('createRazorpayTokenCharge', () => {
     });
 
     const { createRazorpayTokenCharge } = await import('@/lib/payments.js');
-    const resp = await createRazorpayTokenCharge({
-      amountPaise: 9900,
-      customerId: 'rcust_1',
-      token: 'pm_1',
-    });
+    const resp = await createRazorpayTokenCharge({ amountPaise: 9900, customerId: 'rcust_1', token: 'pm_1' });
     expect(resp).toBeNull();
   });
 });

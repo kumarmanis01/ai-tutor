@@ -24,19 +24,19 @@ async function main() {
   const topicsWithoutNotes = await prisma.topicDef.findMany({
     where: {
       lifecycle: 'active',
-      notes: { none: {} },
+      notes: { none: {} }
     },
     include: {
       chapter: {
         include: {
           subject: {
             include: {
-              class: { include: { board: true } },
-            },
-          },
-        },
-      },
-    },
+              class: { include: { board: true } }
+            }
+          }
+        }
+      }
+    }
   });
 
   console.log(`📊 Found ${topicsWithoutNotes.length} topics without notes\n`);
@@ -47,16 +47,13 @@ async function main() {
   }
 
   // Group by subject for better logging
-  type TopicWithContext = (typeof topicsWithoutNotes)[number];
-  const bySubject = topicsWithoutNotes.reduce(
-    (acc, topic) => {
-      const subjectName = topic.chapter?.subject?.name || 'Unknown';
-      if (!acc[subjectName]) acc[subjectName] = [];
-      acc[subjectName].push(topic);
-      return acc;
-    },
-    {} as Record<string, TopicWithContext[]>
-  );
+  type TopicWithContext = typeof topicsWithoutNotes[number];
+  const bySubject = topicsWithoutNotes.reduce((acc, topic) => {
+    const subjectName = topic.chapter?.subject?.name || 'Unknown';
+    if (!acc[subjectName]) acc[subjectName] = [];
+    acc[subjectName].push(topic);
+    return acc;
+  }, {} as Record<string, TopicWithContext[]>);
 
   console.log('📚 Topics by subject:');
   for (const [subject, subjectTopics] of Object.entries(bySubject)) {
@@ -73,7 +70,7 @@ async function main() {
     try {
       const result = await enqueueNotesHydration({
         topicId: topic.id,
-        language: 'en',
+        language: 'en'
       });
 
       if (result.created) {
@@ -92,7 +89,7 @@ async function main() {
     }
 
     // Small delay to avoid overwhelming the queue
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   console.log('\n📊 Summary:');

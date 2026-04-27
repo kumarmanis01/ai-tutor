@@ -51,9 +51,9 @@ export const PRACTICE_OUTPUT_SCHEMA = `{
  * calibrate question framing to the student's actual level, not just an abstract label.
  */
 const UNDERSTANDING_DESCRIPTIONS: Record<Difficulty, string> = {
-  easy: 'basic understanding',
+  easy:   'basic understanding',
   medium: 'moderate understanding',
-  hard: 'strong understanding',
+  hard:   'strong understanding',
 };
 
 /**
@@ -133,22 +133,21 @@ FILL IN THE BLANK GUIDELINES:
 
 /**
  * Build the complete practice questions prompt
- *
+ * 
  * @param input - Practice input contract from backend
  * @returns Formatted prompt string for LLM
  */
 export function buildPracticePrompt(input: PracticeInputContract): string {
   const difficultyDesc = DIFFICULTY_DESCRIPTIONS[input.difficulty];
-
+  
   // Default to MCQ and short_answer if not specified
   const questionTypes = input.questionTypes ?? ['mcq', 'short_answer'];
   const typeGuidelines = getQuestionTypeGuidelines(questionTypes);
 
   // Calculate question distribution
-  const typeDistribution =
-    questionTypes.length > 1
-      ? `Mix question types: approximately ${Math.ceil(input.questionCount / questionTypes.length)} of each type.`
-      : `All questions should be of type: ${questionTypes[0]}.`;
+  const typeDistribution = questionTypes.length > 1
+    ? `Mix question types: approximately ${Math.ceil(input.questionCount / questionTypes.length)} of each type.`
+    : `All questions should be of type: ${questionTypes[0]}.`;
 
   return `Create practice questions for a K-12 student preparing for their exams.
 
@@ -224,16 +223,16 @@ Ensure all ${input.questionCount} questions are included.`;
  */
 export function isValidPracticeResponse(data: unknown): data is PracticeOutputSchema {
   if (!data || typeof data !== 'object') return false;
-
+  
   const obj = data as Record<string, unknown>;
-
+  
   if (!Array.isArray(obj.questions)) return false;
-
+  
   // Validate each question has required fields
   return obj.questions.every((q: unknown) => {
     if (!q || typeof q !== 'object') return false;
     const question = q as Record<string, unknown>;
-
+    
     return (
       typeof question.id === 'string' &&
       typeof question.type === 'string' &&
@@ -273,10 +272,9 @@ export function buildQuickTestPrompt(input: PracticeInputContract): string {
   const difficultyDesc = DIFFICULTY_DESCRIPTIONS[input.difficulty];
   const questionTypes = input.questionTypes ?? ['mcq', 'short_answer'];
   const typeGuidelines = getQuestionTypeGuidelines(questionTypes);
-  const typeDistribution =
-    questionTypes.length > 1
-      ? `Mix question types: approximately ${Math.ceil(input.questionCount / questionTypes.length)} of each type.`
-      : `All questions should be of type: ${questionTypes[0]}.`;
+  const typeDistribution = questionTypes.length > 1
+    ? `Mix question types: approximately ${Math.ceil(input.questionCount / questionTypes.length)} of each type.`
+    : `All questions should be of type: ${questionTypes[0]}.`;
 
   return `Create a quick assessment test for a K-12 student.
 

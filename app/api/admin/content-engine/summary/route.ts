@@ -17,13 +17,12 @@ export async function GET() {
   ]);
 
   // HydrationJob counts (root jobs only)
-  const [hydrationPending, hydrationRunning, hydrationCompleted, hydrationFailed] =
-    await Promise.all([
-      prisma.hydrationJob.count({ where: { rootJobId: null, status: 'pending' } }),
-      prisma.hydrationJob.count({ where: { rootJobId: null, status: 'running' } }),
-      prisma.hydrationJob.count({ where: { rootJobId: null, status: 'completed' } }),
-      prisma.hydrationJob.count({ where: { rootJobId: null, status: 'failed' } }),
-    ]);
+  const [hydrationPending, hydrationRunning, hydrationCompleted, hydrationFailed] = await Promise.all([
+    prisma.hydrationJob.count({ where: { rootJobId: null, status: 'pending' } }),
+    prisma.hydrationJob.count({ where: { rootJobId: null, status: 'running' } }),
+    prisma.hydrationJob.count({ where: { rootJobId: null, status: 'completed' } }),
+    prisma.hydrationJob.count({ where: { rootJobId: null, status: 'failed' } }),
+  ]);
 
   // Content counts
   const [chapters, topics, notes, questions] = await Promise.all([

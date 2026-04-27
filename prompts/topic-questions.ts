@@ -14,38 +14,38 @@
  */
 
 export type TopicQuestionsParams = {
-  topicName: string;
-  grade: number; // 6-12
-  count: number; // exact number of questions required
-  language?: 'en' | 'hi';
+  topicName: string
+  grade: number // 6-12
+  count: number // exact number of questions required
+  language?: 'en' | 'hi'
   /** Board (e.g. CBSE). Optional context. */
-  board?: string;
+  board?: string
   /** Subject name. Optional context. */
-  subject?: string;
+  subject?: string
   /** Difficulty level for this batch. When set, all questions must be this level. */
-  difficulty?: 'easy' | 'medium' | 'hard';
+  difficulty?: 'easy' | 'medium' | 'hard'
   /** Human-readable description of the difficulty level. */
-  difficultyDescription?: string;
+  difficultyDescription?: string
   /** Official NCERT chapter text from CurriculumChunk. When present questions must
    *  test ONLY concepts explicitly stated in this content. */
-  ncertContext?: string;
-};
+  ncertContext?: string
+}
 
 export function topicQuestionsPrompt(params: TopicQuestionsParams): string {
-  const lang = params.language === 'hi' ? 'Hindi' : 'English';
-  const contextParts: string[] = [];
-  if (params.board) contextParts.push(`Board: ${params.board}`);
-  if (params.subject) contextParts.push(`Subject: ${params.subject}`);
-  const contextLine = contextParts.length > 0 ? `\n${contextParts.join('\n')}` : '';
+  const lang = params.language === 'hi' ? 'Hindi' : 'English'
+  const contextParts: string[] = []
+  if (params.board) contextParts.push(`Board: ${params.board}`)
+  if (params.subject) contextParts.push(`Subject: ${params.subject}`)
+  const contextLine = contextParts.length > 0 ? `\n${contextParts.join('\n')}` : ''
 
   const difficultyLine =
     params.difficulty && params.difficultyDescription
       ? `\nDifficulty: ${params.difficulty} — ${params.difficultyDescription}. All ${params.count} questions MUST be ${params.difficulty} level.`
-      : '';
+      : ''
 
   const ncertSection = params.ncertContext
     ? `Official NCERT Textbook Content (generate questions based ONLY on concepts explicitly stated here):\n---\n${params.ncertContext}\n---\n\n`
-    : '';
+    : ''
 
   return `${ncertSection}Role: educational question writer for grade ${params.grade}.
 
@@ -86,5 +86,5 @@ Example (grade 8 Science):
   ]
 }
 
-Return ONLY the JSON object above with exactly ${params.count} questions. No other text.`;
+Return ONLY the JSON object above with exactly ${params.count} questions. No other text.`
 }

@@ -1,5 +1,5 @@
 image:
-  tag: 'staging'
+  tag: "staging"
 
 replicaCount: 2
 
@@ -12,10 +12,10 @@ resources:
     memory: 768Mi
 
 postgres:
-  externalUrl: 'postgres://user:pass@staging-postgres:5432/db'
+  externalUrl: "postgres://user:pass@staging-postgres:5432/db"
 
 redis:
-  externalUrl: 'redis://staging-redis:6379'
+  externalUrl: "redis://staging-redis:6379"
 
 metrics:
-  pushgatewayUrl: 'https://pushgateway.staging.example'
+  pushgatewayUrl: "https://pushgateway.staging.example"

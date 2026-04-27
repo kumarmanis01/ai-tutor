@@ -30,8 +30,8 @@ export const MASTERY_LEVELS = {
  * Bands are contiguous and cover the full [0.40, 1.00] range.
  */
 export const SPACED_REVISION_INTERVALS = [
-  { min: 0.4, max: 0.6, intervalDays: 3 },
-  { min: 0.6, max: 0.75, intervalDays: 7 },
-  { min: 0.75, max: 0.9, intervalDays: 14 },
-  { min: 0.9, max: 1.0, intervalDays: 30 },
+  { min: 0.40, max: 0.60, intervalDays: 3  },
+  { min: 0.60, max: 0.75, intervalDays: 7  },
+  { min: 0.75, max: 0.90, intervalDays: 14 },
+  { min: 0.90, max: 1.00, intervalDays: 30 },
 ] as const;

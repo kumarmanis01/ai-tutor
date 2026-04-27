@@ -78,46 +78,10 @@ describe('PilotAnalyzer', () => {
   describe('calculateRetentionCurve', () => {
     it('should calculate retention for each day', () => {
       const activities: DailyActivity[] = [
-        {
-          studentId: 's1',
-          date: '2026-01-01',
-          dayNumber: 1,
-          completed: true,
-          timeSpentMinutes: 10,
-          questionsAttempted: 5,
-          questionsCorrect: 4,
-          droppedMidTask: false,
-        },
-        {
-          studentId: 's2',
-          date: '2026-01-01',
-          dayNumber: 1,
-          completed: true,
-          timeSpentMinutes: 12,
-          questionsAttempted: 5,
-          questionsCorrect: 5,
-          droppedMidTask: false,
-        },
-        {
-          studentId: 's1',
-          date: '2026-01-02',
-          dayNumber: 2,
-          completed: true,
-          timeSpentMinutes: 8,
-          questionsAttempted: 5,
-          questionsCorrect: 3,
-          droppedMidTask: false,
-        },
-        {
-          studentId: 's2',
-          date: '2026-01-02',
-          dayNumber: 2,
-          completed: false,
-          timeSpentMinutes: 3,
-          questionsAttempted: 2,
-          questionsCorrect: 1,
-          droppedMidTask: true,
-        },
+        { studentId: 's1', date: '2026-01-01', dayNumber: 1, completed: true, timeSpentMinutes: 10, questionsAttempted: 5, questionsCorrect: 4, droppedMidTask: false },
+        { studentId: 's2', date: '2026-01-01', dayNumber: 1, completed: true, timeSpentMinutes: 12, questionsAttempted: 5, questionsCorrect: 5, droppedMidTask: false },
+        { studentId: 's1', date: '2026-01-02', dayNumber: 2, completed: true, timeSpentMinutes: 8, questionsAttempted: 5, questionsCorrect: 3, droppedMidTask: false },
+        { studentId: 's2', date: '2026-01-02', dayNumber: 2, completed: false, timeSpentMinutes: 3, questionsAttempted: 2, questionsCorrect: 1, droppedMidTask: true },
       ];
 
       const curve = calculateRetentionCurve(activities, 2, 3);
@@ -161,7 +125,9 @@ describe('PilotAnalyzer', () => {
     });
 
     it('should return 0 for missing day', () => {
-      const curve = [{ day: 1, totalStudents: 100, activeStudents: 100, retentionRate: 100 }];
+      const curve = [
+        { day: 1, totalStudents: 100, activeStudents: 100, retentionRate: 100 },
+      ];
 
       expect(getDayRetention(curve, 5)).toBe(0);
     });
@@ -217,33 +183,9 @@ describe('PilotAnalyzer', () => {
   describe('calculateParentEngagement', () => {
     it('should calculate open rate correctly', () => {
       const interactions: ParentInteraction[] = [
-        {
-          parentId: 'p1',
-          studentId: 's1',
-          date: '2026-01-01',
-          messageType: 'day1_soft',
-          opened: true,
-          replied: false,
-          sentiment: 'positive',
-        },
-        {
-          parentId: 'p2',
-          studentId: 's2',
-          date: '2026-01-01',
-          messageType: 'day1_soft',
-          opened: true,
-          replied: true,
-          sentiment: 'neutral',
-        },
-        {
-          parentId: 'p3',
-          studentId: 's3',
-          date: '2026-01-01',
-          messageType: 'day1_soft',
-          opened: false,
-          replied: false,
-          sentiment: 'unknown',
-        },
+        { parentId: 'p1', studentId: 's1', date: '2026-01-01', messageType: 'day1_soft', opened: true, replied: false, sentiment: 'positive' },
+        { parentId: 'p2', studentId: 's2', date: '2026-01-01', messageType: 'day1_soft', opened: true, replied: true, sentiment: 'neutral' },
+        { parentId: 'p3', studentId: 's3', date: '2026-01-01', messageType: 'day1_soft', opened: false, replied: false, sentiment: 'unknown' },
       ];
 
       const engagement = calculateParentEngagement(interactions);
@@ -263,33 +205,9 @@ describe('PilotAnalyzer', () => {
 
     it('should calculate sentiment breakdown', () => {
       const interactions: ParentInteraction[] = [
-        {
-          parentId: 'p1',
-          studentId: 's1',
-          date: '2026-01-01',
-          messageType: 'day1_soft',
-          opened: true,
-          replied: false,
-          sentiment: 'positive',
-        },
-        {
-          parentId: 'p2',
-          studentId: 's2',
-          date: '2026-01-01',
-          messageType: 'day1_soft',
-          opened: true,
-          replied: true,
-          sentiment: 'positive',
-        },
-        {
-          parentId: 'p3',
-          studentId: 's3',
-          date: '2026-01-01',
-          messageType: 'day1_soft',
-          opened: true,
-          replied: false,
-          sentiment: 'negative',
-        },
+        { parentId: 'p1', studentId: 's1', date: '2026-01-01', messageType: 'day1_soft', opened: true, replied: false, sentiment: 'positive' },
+        { parentId: 'p2', studentId: 's2', date: '2026-01-01', messageType: 'day1_soft', opened: true, replied: true, sentiment: 'positive' },
+        { parentId: 'p3', studentId: 's3', date: '2026-01-01', messageType: 'day1_soft', opened: true, replied: false, sentiment: 'negative' },
       ];
 
       const engagement = calculateParentEngagement(interactions);
@@ -308,8 +226,8 @@ describe('PilotAnalyzer', () => {
         65, // day7Retention > 60
         75, // taskCompletion > 70
         55, // parentOpenRate > 50
-        5, // confusionReports < 10
-        5 // negativeSentiment < 10
+        5,  // confusionReports < 10
+        5   // negativeSentiment < 10
       );
 
       expect(result.recommendation).toBe(PilotRecommendation.GO);
@@ -322,7 +240,7 @@ describe('PilotAnalyzer', () => {
         50, // taskCompletion < 70
         30, // parentOpenRate < 50
         20, // confusionReports > 10
-        20 // negativeSentiment > 10
+        20  // negativeSentiment > 10
       );
 
       expect(result.recommendation).toBe(PilotRecommendation.NO_GO);
@@ -334,8 +252,8 @@ describe('PilotAnalyzer', () => {
         58, // day7Retention slightly below
         72, // taskCompletion good
         52, // parentOpenRate good
-        8, // confusionReports ok
-        8 // negativeSentiment ok
+        8,  // confusionReports ok
+        8   // negativeSentiment ok
       );
 
       // Borderline results should not be GO
@@ -349,7 +267,7 @@ describe('PilotAnalyzer', () => {
         65, // below threshold
         45, // below threshold
         15, // above threshold
-        15 // above threshold
+        15  // above threshold
       );
 
       expect(result.criticalIssues.length).toBeGreaterThan(3);
@@ -374,16 +292,16 @@ describe('PilotAnalyzer', () => {
 
     it('should generate improvements for hotspots', () => {
       const hotspots = [
-        {
-          questionId: 'q1',
-          failureCount: 50,
-          attemptCount: 100,
-          failureRate: 50,
-          commonError: 'Error',
-        },
+        { questionId: 'q1', failureCount: 50, attemptCount: 100, failureRate: 50, commonError: 'Error' },
       ];
 
-      const improvements = generateImprovements(65, 75, 55, hotspots, 5);
+      const improvements = generateImprovements(
+        65,
+        75,
+        55,
+        hotspots,
+        5
+      );
 
       expect(improvements.length).toBeGreaterThan(0);
     });
@@ -418,44 +336,18 @@ describe('PilotAnalyzer', () => {
       };
 
       const activities: DailyActivity[] = [
-        {
-          studentId: 's1',
-          date: '2026-01-01',
-          dayNumber: 1,
-          completed: true,
-          timeSpentMinutes: 10,
-          questionsAttempted: 5,
-          questionsCorrect: 4,
-          droppedMidTask: false,
-        },
+        { studentId: 's1', date: '2026-01-01', dayNumber: 1, completed: true, timeSpentMinutes: 10, questionsAttempted: 5, questionsCorrect: 4, droppedMidTask: false },
       ];
 
       const parentInteractions: ParentInteraction[] = [
-        {
-          parentId: 'p1',
-          studentId: 's1',
-          date: '2026-01-01',
-          messageType: 'day1_soft',
-          opened: true,
-          replied: false,
-          sentiment: 'positive',
-        },
+        { parentId: 'p1', studentId: 's1', date: '2026-01-01', messageType: 'day1_soft', opened: true, replied: false, sentiment: 'positive' },
       ];
 
       const confusionReports: ConfusionReport[] = [];
+      
+      const questionFailures = new Map<string, { failures: number; attempts: number; commonError: string }>();
 
-      const questionFailures = new Map<
-        string,
-        { failures: number; attempts: number; commonError: string }
-      >();
-
-      const analysis = analyzePilot(
-        cohort,
-        activities,
-        parentInteractions,
-        confusionReports,
-        questionFailures
-      );
+      const analysis = analyzePilot(cohort, activities, parentInteractions, confusionReports, questionFailures);
 
       expect(analysis.cohortId).toBe('test-cohort');
       expect(analysis.recommendation).toBeDefined();

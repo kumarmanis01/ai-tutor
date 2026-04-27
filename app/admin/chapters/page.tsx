@@ -1,5 +1,7 @@
-import ChaptersClient from '../components/ChaptersClient';
+
+import ChaptersClient from "../components/ChaptersClient";
 
 export default function ChaptersPage() {
   return <ChaptersClient />;
 }
+

@@ -5,7 +5,6 @@ This file collects the primary prompt templates used to generate AI content in t
 ---
 
 ## 1) lib/content/lesson/prompt.ts
-
 Path: lib/content/lesson/prompt.ts
 
 ```text
@@ -26,7 +25,6 @@ Return an array of Lesson objects.
 ---
 
 ## 2) prompts/syllabus_worker_prompt.md
-
 Path: prompts/syllabus_worker_prompt.md
 
 ```text
@@ -67,7 +65,6 @@ Version: 1.0
 ---
 
 ## 3) worker/services/syllabusWorker.ts
-
 Path: worker/services/syllabusWorker.ts
 
 ```text
@@ -106,7 +103,6 @@ JSON Schema:
 ---
 
 ## 4) worker/services/notesWorker.ts
-
 Path: worker/services/notesWorker.ts
 
 ```text
@@ -144,7 +140,6 @@ QUALITY GUIDELINES:
 ---
 
 ## 5) worker/services/questionsWorker.ts
-
 Path: worker/services/questionsWorker.ts
 
 Representative per-difficulty prompt (constructed inside `generateQuestionsForDifficulty`):
@@ -186,15 +181,13 @@ JSON Schema:
 ---
 
 ## Notes & Next Steps
-
-- Extract exact prompt strings into separate numbered files for editing.
-- Create a PR that centralizes and documents each prompt with versioning and test cases.
-- Run a quick lint to identify any dynamic values not safely escaped.
+  - Extract exact prompt strings into separate numbered files for editing.
+  - Create a PR that centralizes and documents each prompt with versioning and test cases.
+  - Run a quick lint to identify any dynamic values not safely escaped.
 
 This repository centralizes prompt templates under the `prompts/` folder.
 
 New files (created):
-
 - `prompts/base_context.md` - canonical base context template
 - `prompts/chapters.md` - chapter generation prompt (JSON output)
 - `prompts/topics.md` - topic generation prompt (JSON output)
@@ -207,6 +200,5 @@ New files (created):
 - `prompts/prompt_config.json` - recommended temps and max tokens
 
 Next steps:
-
 - Update generation code to read these files and substitute placeholders.
 - Run a smoke generation for one topic to validate outputs.

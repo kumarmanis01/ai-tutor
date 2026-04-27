@@ -16,7 +16,6 @@ EDIT LOG:
 # Annual Invoice Summary — Phase 2 (Planned Enhancements)
 
 Summary:
-
 - This document lists planned improvements for the annual invoice summary feature beyond the initial implementation that returns merged PDFs for a financial year.
 
 Planned Phase 2 items:
@@ -46,12 +45,10 @@ Planned Phase 2 items:
   - Add unit/integration tests for streaming and caching flows.
 
 Implementation notes:
-
 - Prefer `pdf-lib` for deterministic server-side merging and to keep tests Playwright-free.
 - Keep all changes audit-friendly and logged (follow existing logging conventions).
 
 Work items (short):
-
 - [ ] Streaming response + worker job
 - [ ] Signed download support for private R2
 - [ ] Cache merged PDFs to R2 with TTL and invalidation

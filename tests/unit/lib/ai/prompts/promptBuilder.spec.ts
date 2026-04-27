@@ -82,7 +82,10 @@ describe('PromptBuilder', () => {
 
     const validResponse: NotesOutputSchema = {
       title: 'Solving Quadratic Equations by Factoring',
-      learningObjectives: ['Understand what factoring means', 'Apply factoring to solve equations'],
+      learningObjectives: [
+        'Understand what factoring means',
+        'Apply factoring to solve equations',
+      ],
       coreExplanation: [
         {
           heading: 'What is Factoring?',
@@ -347,7 +350,7 @@ describe('PromptBuilder', () => {
       const result = await generateDoubtResponse(offTopicInput, 'user123hash', 'session456');
 
       expect(result.success).toBe(true);
-      expect(result.data?.explanation).toContain('focus on');
+      expect(result.data?.explanation).toContain("focus on");
       expect(mockCallLLM).not.toHaveBeenCalled();
     });
 

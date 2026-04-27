@@ -23,7 +23,7 @@ import { getJitterProvider } from './jitterProvider';
 
 /**
  * Categories of AI failures that trigger fallbacks.
- *
+ * 
  * REASONING:
  * - CONFIDENCE: AI is unsure about factual accuracy
  * - SCHEMA: Response doesn't match expected structure
@@ -62,13 +62,13 @@ export enum FailureReason {
   CONFIDENCE_BELOW_THRESHOLD = 'CONFIDENCE_BELOW_THRESHOLD',
   UNCERTAIN_FACTS = 'UNCERTAIN_FACTS',
   OFF_SYLLABUS_QUERY = 'OFF_SYLLABUS_QUERY',
-
+  
   // Schema issues
   MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
   INVALID_FIELD_TYPE = 'INVALID_FIELD_TYPE',
   MALFORMED_JSON = 'MALFORMED_JSON',
   EMPTY_RESPONSE = 'EMPTY_RESPONSE',
-
+  
   // Content issues
   HALLUCINATED_FACTS = 'HALLUCINATED_FACTS',
   SAFETY_VIOLATION = 'SAFETY_VIOLATION',
@@ -76,13 +76,13 @@ export enum FailureReason {
   GRADE_MISMATCH = 'GRADE_MISMATCH',
   TOO_COMPLEX = 'TOO_COMPLEX',
   TOO_SIMPLE = 'TOO_SIMPLE',
-
+  
   // Infrastructure issues
   API_TIMEOUT = 'API_TIMEOUT',
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
   CONNECTION_FAILED = 'CONNECTION_FAILED',
   SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
-
+  
   // Validation issues
   HOMEWORK_DUMP_DETECTED = 'HOMEWORK_DUMP_DETECTED',
   ABUSE_DETECTED = 'ABUSE_DETECTED',
@@ -167,7 +167,7 @@ export interface RetryDecision {
 
 /**
  * Map failure reasons to fallback strategies.
- *
+ * 
  * EDUCATION REASONING:
  * - Never expose technical errors to students
  * - Always provide learning-focused alternatives
@@ -187,7 +187,7 @@ export const FAILURE_STRATEGY_BY_REASON: Partial<Record<FailureReason, FallbackS
     FallbackStrategy.CONTENT_REDIRECT,
     FallbackStrategy.SAFE_RESPONSE,
   ],
-
+  
   // Schema issues → Retry with adjusted parameters
   [FailureReason.MISSING_REQUIRED_FIELD]: [
     FallbackStrategy.ADJUST_PARAMETERS,
@@ -205,7 +205,7 @@ export const FAILURE_STRATEGY_BY_REASON: Partial<Record<FailureReason, FallbackS
     FallbackStrategy.SIMPLIFY_AND_RETRY,
     FallbackStrategy.SAFE_RESPONSE,
   ],
-
+  
   // Content issues → Safe responses
   [FailureReason.HALLUCINATED_FACTS]: [
     FallbackStrategy.SAFE_RESPONSE,
@@ -219,12 +219,21 @@ export const FAILURE_STRATEGY_BY_REASON: Partial<Record<FailureReason, FallbackS
     FallbackStrategy.SIMPLIFY_AND_RETRY,
     FallbackStrategy.ADJUST_PARAMETERS,
   ],
-  [FailureReason.TOO_COMPLEX]: [FallbackStrategy.SIMPLIFY_AND_RETRY],
-  [FailureReason.TOO_SIMPLE]: [FallbackStrategy.ADJUST_PARAMETERS],
-
+  [FailureReason.TOO_COMPLEX]: [
+    FallbackStrategy.SIMPLIFY_AND_RETRY,
+  ],
+  [FailureReason.TOO_SIMPLE]: [
+    FallbackStrategy.ADJUST_PARAMETERS,
+  ],
+  
   // Infrastructure issues → Delayed retry
-  [FailureReason.API_TIMEOUT]: [FallbackStrategy.DELAYED_RETRY, FallbackStrategy.GRACEFUL_ERROR],
-  [FailureReason.RATE_LIMIT_EXCEEDED]: [FallbackStrategy.DELAYED_RETRY],
+  [FailureReason.API_TIMEOUT]: [
+    FallbackStrategy.DELAYED_RETRY,
+    FallbackStrategy.GRACEFUL_ERROR,
+  ],
+  [FailureReason.RATE_LIMIT_EXCEEDED]: [
+    FallbackStrategy.DELAYED_RETRY,
+  ],
   [FailureReason.CONNECTION_FAILED]: [
     FallbackStrategy.DELAYED_RETRY,
     FallbackStrategy.GRACEFUL_ERROR,
@@ -233,7 +242,7 @@ export const FAILURE_STRATEGY_BY_REASON: Partial<Record<FailureReason, FallbackS
     FallbackStrategy.DELAYED_RETRY,
     FallbackStrategy.GRACEFUL_ERROR,
   ],
-
+  
   // Validation issues → Safe responses (never retry abuse)
   [FailureReason.HOMEWORK_DUMP_DETECTED]: [
     FallbackStrategy.CONTENT_REDIRECT,
@@ -250,37 +259,16 @@ export const FAILURE_STRATEGY_BY_REASON: Partial<Record<FailureReason, FallbackS
 };
 
 // Backwards-compatible map expected by tests: map FailureCategory -> metadata
-export const FAILURE_STRATEGY_MAP: Record<
-  FailureCategory,
-  { retryable: boolean; strategies: FallbackStrategy[] }
-> = {
-  [FailureCategory.LOW_CONFIDENCE]: {
-    retryable: true,
-    strategies: [FallbackStrategy.SIMPLIFY_AND_RETRY],
-  },
-  [FailureCategory.SCHEMA_VIOLATION]: {
-    retryable: true,
-    strategies: [FallbackStrategy.ADJUST_PARAMETERS],
-  },
-  [FailureCategory.CONTENT_ISSUE]: {
-    retryable: false,
-    strategies: [FallbackStrategy.SAFE_RESPONSE],
-  },
+export const FAILURE_STRATEGY_MAP: Record<FailureCategory, { retryable: boolean; strategies: FallbackStrategy[] }> = {
+  [FailureCategory.LOW_CONFIDENCE]: { retryable: true, strategies: [FallbackStrategy.SIMPLIFY_AND_RETRY] },
+  [FailureCategory.SCHEMA_VIOLATION]: { retryable: true, strategies: [FallbackStrategy.ADJUST_PARAMETERS] },
+  [FailureCategory.CONTENT_ISSUE]: { retryable: false, strategies: [FallbackStrategy.SAFE_RESPONSE] },
   [FailureCategory.TIMEOUT]: { retryable: true, strategies: [FallbackStrategy.DELAYED_RETRY] },
   [FailureCategory.RATE_LIMIT]: { retryable: true, strategies: [FallbackStrategy.DELAYED_RETRY] },
-  [FailureCategory.NETWORK_ERROR]: {
-    retryable: true,
-    strategies: [FallbackStrategy.DELAYED_RETRY],
-  },
-  [FailureCategory.VALIDATION_FAILED]: {
-    retryable: false,
-    strategies: [FallbackStrategy.SAFE_RESPONSE],
-  },
+  [FailureCategory.NETWORK_ERROR]: { retryable: true, strategies: [FallbackStrategy.DELAYED_RETRY] },
+  [FailureCategory.VALIDATION_FAILED]: { retryable: false, strategies: [FallbackStrategy.SAFE_RESPONSE] },
   [FailureCategory.UNKNOWN]: { retryable: true, strategies: [FallbackStrategy.GRACEFUL_ERROR] },
-  [FailureCategory.CONTENT_BLOCKED]: {
-    retryable: false,
-    strategies: [FallbackStrategy.SAFE_RESPONSE, FallbackStrategy.HUMAN_ESCALATION],
-  },
+  [FailureCategory.CONTENT_BLOCKED]: { retryable: false, strategies: [FallbackStrategy.SAFE_RESPONSE, FallbackStrategy.HUMAN_ESCALATION] },
 };
 
 // ============================================================================
@@ -333,17 +321,10 @@ export const BASE_RETRY_DELAY: number = BASE_RETRY_DELAY_BY_CATEGORY[FailureCate
 export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDecision {
   // Accept both canonical FailureDetails and legacy compact input used by tests
   let failure: FailureDetails;
-  if (
-    failureOrInput &&
-    typeof failureOrInput.category !== 'undefined' &&
-    typeof failureOrInput.retryCount === 'undefined'
-  ) {
+  if (failureOrInput && typeof failureOrInput.category !== 'undefined' && typeof failureOrInput.retryCount === 'undefined') {
     // Legacy input shape: { category, attemptNumber, elapsedTime, grade, reason?, validationErrors?, retryAfter? }
     const input = failureOrInput;
-    const retryCount =
-      typeof input.attemptNumber === 'number'
-        ? Math.max(0, input.attemptNumber - 1)
-        : input.retryCount || 0;
+    const retryCount = typeof input.attemptNumber === 'number' ? Math.max(0, input.attemptNumber - 1) : (input.retryCount || 0);
     const defaultReasonByCategory: Partial<Record<FailureCategory, FailureReason>> = {
       [FailureCategory.LOW_CONFIDENCE]: FailureReason.CONFIDENCE_BELOW_THRESHOLD,
       [FailureCategory.SCHEMA_VIOLATION]: FailureReason.MISSING_REQUIRED_FIELD,
@@ -355,10 +336,7 @@ export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDe
       [FailureCategory.CONTENT_BLOCKED]: FailureReason.SAFETY_VIOLATION,
     };
 
-    const inferredReason =
-      input.reason ??
-      defaultReasonByCategory[input.category as FailureCategory] ??
-      FailureReason.CONFIDENCE_BELOW_THRESHOLD;
+    const inferredReason = input.reason ?? defaultReasonByCategory[input.category as FailureCategory] ?? FailureReason.CONFIDENCE_BELOW_THRESHOLD;
 
     failure = {
       category: input.category,
@@ -366,9 +344,7 @@ export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDe
       description: input.description ?? '',
       originalError: input.error instanceof Error ? input.error : undefined,
       confidenceScore: input.aiConfidence ?? input.confidenceScore,
-      details: input.validationErrors
-        ? { validationErrors: input.validationErrors, retryAfter: input.retryAfter }
-        : undefined,
+      details: input.validationErrors ? { validationErrors: input.validationErrors, retryAfter: input.retryAfter } : undefined,
       retryCount,
       timestamp: new Date(),
       requestId: input.requestId,
@@ -381,44 +357,21 @@ export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDe
   const baseDelay = BASE_RETRY_DELAY_BY_CATEGORY[failure.category] ?? 500;
 
   // Get strategies for this failure reason (use reason-keyed map)
-  const strategies = FAILURE_STRATEGY_BY_REASON[failure.reason] || [
-    FallbackStrategy.GRACEFUL_ERROR,
-  ];
+  const strategies = FAILURE_STRATEGY_BY_REASON[failure.reason] || [FallbackStrategy.GRACEFUL_ERROR];
   const primaryStrategy = strategies[0];
 
   // Special-case: record base-attempts so we can preserve exact doubling
-  if (
-    failure.retryCount === 0 &&
-    (primaryStrategy === FallbackStrategy.DELAYED_RETRY ||
-      failure.category === FailureCategory.RATE_LIMIT)
-  ) {
+  if (failure.retryCount === 0 && (primaryStrategy === FallbackStrategy.DELAYED_RETRY || failure.category === FailureCategory.RATE_LIMIT)) {
     // mark that a base attempt occurred for this category
     (makeRetryDecision as any)._lastWasBase = true;
     (makeRetryDecision as any)._lastWasBaseCategory = failure.category;
   }
 
   // Honor elapsed time / grade budgets when legacy input provides them
-  const inputGrade =
-    failureOrInput && (failureOrInput.grade || failureOrInput.grade === 0)
-      ? failureOrInput.grade
-      : undefined;
-  const elapsedTime =
-    failureOrInput && typeof failureOrInput.elapsedTime === 'number'
-      ? failureOrInput.elapsedTime
-      : undefined;
+  const inputGrade = (failureOrInput && (failureOrInput.grade || failureOrInput.grade === 0)) ? failureOrInput.grade : undefined;
+  const elapsedTime = failureOrInput && typeof failureOrInput.elapsedTime === 'number' ? failureOrInput.elapsedTime : undefined;
   const MAX_RETRY_TIME_BY_GRADE_LOCAL: Record<number, number> = {
-    1: 5000,
-    2: 5000,
-    3: 5000,
-    4: 8000,
-    5: 8000,
-    6: 8000,
-    7: 8000,
-    8: 12000,
-    9: 12000,
-    10: 15000,
-    11: 15000,
-    12: 15000,
+    1: 5000,2:5000,3:5000,4:8000,5:8000,6:8000,7:8000,8:12000,9:12000,10:15000,11:15000,12:15000
   };
   if (typeof inputGrade === 'number' && typeof elapsedTime === 'number') {
     const maxTime = MAX_RETRY_TIME_BY_GRADE_LOCAL[inputGrade] ?? 10000;
@@ -457,6 +410,7 @@ export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDe
     };
   }
 
+
   // Determine if we should retry
   const retryableStrategies: FallbackStrategy[] = [
     FallbackStrategy.SIMPLIFY_AND_RETRY,
@@ -467,27 +421,18 @@ export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDe
   const shouldRetry = retryableStrategies.includes(primaryStrategy);
 
   // Calculate delay with exponential backoff, cap to 30s
-  const rawDelay = shouldRetry ? baseDelay * Math.pow(2, failure.retryCount) : 0;
+  const rawDelay = shouldRetry ? (baseDelay * Math.pow(2, failure.retryCount)) : 0;
   // Add small jitter for network/rate-limit/delayed retries to avoid thundering herd
   let jitter = 0;
-  type JitterMeta = {
-    category: FailureCategory;
-    grade?: number;
-    retryCount: number;
-    ts: number;
-    factor: number;
-  };
+  type JitterMeta = { category: FailureCategory; grade?: number; retryCount: number; ts: number; factor: number };
   (makeRetryDecision as any)._lastJitter = (makeRetryDecision as any)._lastJitter || null;
 
-  if (
-    failure.category === FailureCategory.RATE_LIMIT ||
-    primaryStrategy === FallbackStrategy.DELAYED_RETRY
-  ) {
+  if (failure.category === FailureCategory.RATE_LIMIT || primaryStrategy === FallbackStrategy.DELAYED_RETRY) {
     const maxJitter = Math.max(1, Math.floor(rawDelay * 0.2));
 
     // Seed a module-level factor if absent or stale
     const seeded: JitterMeta | null = (makeRetryDecision as any)._lastJitter;
-    if (!seeded || seeded.category !== failure.category || Date.now() - seeded.ts >= 200) {
+    if (!seeded || seeded.category !== failure.category || (Date.now() - seeded.ts) >= 200) {
       (makeRetryDecision as any)._lastJitter = {
         category: failure.category,
         grade: inputGrade,
@@ -503,12 +448,7 @@ export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDe
 
       // If this call immediately follows the previous retry in the same sequence,
       // reuse the factor so exponential doubling remains exact for the first retry.
-      if (
-        meta &&
-        meta.category === failure.category &&
-        meta.retryCount === failure.retryCount - 1 &&
-        Date.now() - meta.ts < 500
-      ) {
+      if (meta && meta.category === failure.category && meta.retryCount === failure.retryCount - 1 && (Date.now() - meta.ts) < 500) {
         // preserve exact doubling when previous attempt was base (retryCount 0)
         if (meta.retryCount === 0) {
           jitter = 0;
@@ -516,22 +456,12 @@ export function makeRetryDecision(failureOrInput: FailureDetails | any): RetryDe
           jitter = Math.floor(meta.factor * maxJitter);
         }
         // update meta timestamp to mark continuation
-        (makeRetryDecision as any)._lastJitter = {
-          ...meta,
-          retryCount: failure.retryCount,
-          ts: Date.now(),
-        };
+        (makeRetryDecision as any)._lastJitter = { ...meta, retryCount: failure.retryCount, ts: Date.now() };
       } else {
         // independent call or new sequence — generate fresh jitter
         const factor = getJitterProvider().random();
         jitter = Math.max(1, Math.floor(factor * maxJitter));
-        (makeRetryDecision as any)._lastJitter = {
-          category: failure.category,
-          grade: inputGrade,
-          retryCount: failure.retryCount,
-          ts: Date.now(),
-          factor,
-        };
+        (makeRetryDecision as any)._lastJitter = { category: failure.category, grade: inputGrade, retryCount: failure.retryCount, ts: Date.now(), factor };
       }
     }
   }
@@ -565,13 +495,13 @@ function getModifiedParams(
         max_tokens_multiplier: 0.8, // Shorter response
         simplify_prompt: true,
       };
-
+    
     case FallbackStrategy.ADJUST_PARAMETERS:
       return {
         temperature: failure.confidenceScore && failure.confidenceScore < 0.3 ? 0.1 : 0.3,
         retry_with_examples: true,
       };
-
+    
     default:
       return undefined;
   }
@@ -586,7 +516,7 @@ export function classifyFailure(
   retryCount: number = 0
 ): FailureDetails {
   const timestamp = new Date();
-
+  
   // If caller passed a structured failure object (not an Error), handle common test shapes
   if (error && typeof error === 'object' && !(error instanceof Error)) {
     const obj: any = error;
@@ -624,40 +554,22 @@ export function classifyFailure(
 
     // Hallucination or content issues
     if (obj.hallucinationDetected || obj.contentSafe === false || obj.safetyViolation) {
-      const reason = obj.hallucinationDetected
-        ? FailureReason.HALLUCINATED_FACTS
-        : FailureReason.INAPPROPRIATE_CONTENT;
+      const reason = obj.hallucinationDetected ? FailureReason.HALLUCINATED_FACTS : FailureReason.INAPPROPRIATE_CONTENT;
       return {
         category: FailureCategory.CONTENT_ISSUE,
         reason,
-        description: obj.hallucinationDetails
-          ? String(obj.hallucinationDetails)
-          : 'Content safety failure',
+        description: obj.hallucinationDetails ? String(obj.hallucinationDetails) : 'Content safety failure',
         originalError: obj.error instanceof Error ? obj.error : undefined,
         retryCount: obj.retryCount || 0,
         timestamp,
         requestId: obj.requestId,
-        details: obj.hallucinationDetails
-          ? { hallucinationDetails: obj.hallucinationDetails }
-          : undefined,
+        details: obj.hallucinationDetails ? { hallucinationDetails: obj.hallucinationDetails } : undefined,
       } as FailureDetails;
     }
 
     // Rate limit / retry-after
-    if (
-      obj.error &&
-      (obj.error.status === 429 ||
-        obj.status === 429 ||
-        /rate limit/i.test(String(obj.error?.message || obj.message || '')))
-    ) {
-      const retryAfter =
-        parseInt(
-          obj.error?.headers?.['retry-after'] ||
-            obj.error?.headers?.['Retry-After'] ||
-            obj.retryAfter ||
-            '0',
-          10
-        ) || undefined;
+    if (obj.error && (obj.error.status === 429 || obj.status === 429 || /rate limit/i.test(String(obj.error?.message || obj.message || '')))) {
+      const retryAfter = parseInt(obj.error?.headers?.['retry-after'] || obj.error?.headers?.['Retry-After'] || obj.retryAfter || '0', 10) || undefined;
       return {
         category: FailureCategory.RATE_LIMIT,
         reason: FailureReason.RATE_LIMIT_EXCEEDED,
@@ -671,11 +583,7 @@ export function classifyFailure(
     }
 
     // Timeout-like objects
-    if (
-      obj.errorCode === 'ETIMEDOUT' ||
-      obj.error?.message?.match(/timeout|Request timeout|ETIMEDOUT/i) ||
-      obj.status === 408
-    ) {
+    if (obj.errorCode === 'ETIMEDOUT' || obj.error?.message?.match(/timeout|Request timeout|ETIMEDOUT/i) || obj.status === 408) {
       return {
         category: FailureCategory.TIMEOUT,
         reason: FailureReason.API_TIMEOUT,
@@ -719,11 +627,7 @@ export function classifyFailure(
     }
 
     // Network errors
-    if (
-      msg.match(
-        /network|ECONNREFUSED|ENOTFOUND|ECONNRESET|EAI_AGAIN|connection failed|service unavailable/i
-      )
-    ) {
+    if (msg.match(/network|ECONNREFUSED|ENOTFOUND|ECONNRESET|EAI_AGAIN|connection failed|service unavailable/i)) {
       return {
         category: FailureCategory.NETWORK_ERROR,
         reason: FailureReason.CONNECTION_FAILED,
@@ -736,11 +640,7 @@ export function classifyFailure(
     }
 
     // Schema/JSON errors
-    if (
-      msg.match(
-        /JSON|parse|schema|field|type|Malformed|Missing required field|invalid|empty response/i
-      )
-    ) {
+    if (msg.match(/JSON|parse|schema|field|type|Malformed|Missing required field|invalid|empty response/i)) {
       // Further refine reason
       let reason = FailureReason.MALFORMED_JSON;
       if (msg.match(/Missing required field/i)) reason = FailureReason.MISSING_REQUIRED_FIELD;
@@ -758,11 +658,7 @@ export function classifyFailure(
     }
 
     // Content issues
-    if (
-      msg.match(
-        /hallucinat|inappropriate|grade mismatch|too complex|too simple|age-inappropriate|content issue/i
-      )
-    ) {
+    if (msg.match(/hallucinat|inappropriate|grade mismatch|too complex|too simple|age-inappropriate|content issue/i)) {
       let reason = FailureReason.HALLUCINATED_FACTS;
       if (msg.match(/inappropriate/i)) reason = FailureReason.INAPPROPRIATE_CONTENT;
       else if (msg.match(/grade mismatch/i)) reason = FailureReason.GRADE_MISMATCH;

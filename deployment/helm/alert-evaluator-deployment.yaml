@@ -14,11 +14,11 @@ spec:
     spec:
       containers:
         - name: evaluator
-          image: 'REPLACE_WITH_IMAGE:TAG'
+          image: "REPLACE_WITH_IMAGE:TAG"
           imagePullPolicy: IfNotPresent
           env:
             - name: NODE_ENV
-              value: 'production'
+              value: "production"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

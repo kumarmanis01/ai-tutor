@@ -14,8 +14,15 @@
  * - 2026-02-04 | claude | created motivation examples
  */
 
-import { generateMotivationMessage, detectMotivationSignals } from './generator';
-import { MotivationTrigger, type LearningAnalytics, type MotivationMessage } from './schemas';
+import {
+  generateMotivationMessage,
+  detectMotivationSignals,
+} from './generator';
+import {
+  MotivationTrigger,
+  type LearningAnalytics,
+  type MotivationMessage,
+} from './schemas';
 
 // ============================================================================
 // GRADE 2 EXAMPLE (Junior - Playful Tone)
@@ -54,9 +61,9 @@ export function exampleGrade2Student(): {
       trend: 0.05,
     },
   };
-
+  
   const message = generateMotivationMessage(analytics, MotivationTrigger.SESSION_END);
-
+  
   return {
     analytics,
     message,
@@ -120,13 +127,13 @@ export function exampleGrade6Student(): {
     },
     confidence: {
       current: 0.75,
-      trend: 0.1,
+      trend: 0.10,
     },
   };
-
+  
   const message = generateMotivationMessage(analytics, MotivationTrigger.SESSION_END);
   const signals = detectMotivationSignals(analytics);
-
+  
   return {
     analytics,
     message,
@@ -196,10 +203,10 @@ export function exampleGrade9Student(): {
       trend: -0.02, // Slight dip (hard topic)
     },
   };
-
+  
   const message = generateMotivationMessage(analytics, MotivationTrigger.SESSION_END);
   const signals = detectMotivationSignals(analytics);
-
+  
   return {
     analytics,
     message,
@@ -267,13 +274,13 @@ export function exampleStrugglingStudent(): {
       daysSinceLastSession: 1,
     },
     confidence: {
-      current: 0.4,
-      trend: -0.1, // Confidence dropping
+      current: 0.40,
+      trend: -0.10, // Confidence dropping
     },
   };
-
+  
   const message = generateMotivationMessage(analytics, MotivationTrigger.STRUGGLE_SUPPORT);
-
+  
   return {
     analytics,
     message,
@@ -315,7 +322,7 @@ export function runAllMotivationExamples(): string {
   const grade6 = exampleGrade6Student();
   const grade9 = exampleGrade9Student();
   const struggling = exampleStrugglingStudent();
-
+  
   return `
 ${'='.repeat(60)}
 MOTIVATION SIGNAL ENGINE - EXAMPLE OUTPUT

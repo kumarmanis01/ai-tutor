@@ -1,6 +1,8 @@
 import { prisma } from '../lib/prisma';
 import { logger } from '@/lib/logger';
 
+
+
 async function main() {
   const confirm = process.env.CONFIRM === 'true';
   if (!confirm) {

@@ -15,13 +15,13 @@
  * - 2026-01-22 | copilot | fixed server-side fetch with headers() for base URL
  * - 2026-02-04 | claude | integrated LessonListClient for progress tracking, auth required
  */
-import Link from 'next/link';
-import { headers } from 'next/headers';
-import LessonListClient, { Lesson } from '@/components/Learn/LessonListClient';
+import Link from 'next/link'
+import { headers } from 'next/headers'
+import LessonListClient, { Lesson } from '@/components/Learn/LessonListClient'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
-type Props = { params: Promise<{ courseId: string }> };
+type Props = { params: Promise<{ courseId: string }> }
 
 interface CourseData {
   type?: 'subject' | 'course';
@@ -36,48 +36,39 @@ interface CourseData {
 }
 
 function flattenLessons(pkg: CourseData | null): Lesson[] {
-  const lessons: Lesson[] = [];
-  if (!pkg || !Array.isArray(pkg.modules)) return lessons;
+  const lessons: Lesson[] = []
+  if (!pkg || !Array.isArray(pkg.modules)) return lessons
   for (const m of pkg.modules) {
     if (Array.isArray(m.lessons)) {
-      for (const l of m.lessons) lessons.push(l);
+      for (const l of m.lessons) lessons.push(l)
     }
   }
-  return lessons;
+  return lessons
 }
 
 export default async function Page({ params }: Props) {
-  const { courseId } = await params;
+  const { courseId } = await params
 
   // Use relative URL with proper host header for server-side fetch
-  const headersList = await headers();
-  const host = headersList.get('host') || 'localhost:3000';
-  const protocol = headersList.get('x-forwarded-proto') || 'http';
-  const baseUrl = `${protocol}://${host}`;
-
-  let pkg: CourseData | null = null;
+  const headersList = await headers()
+  const host = headersList.get('host') || 'localhost:3000'
+  const protocol = headersList.get('x-forwarded-proto') || 'http'
+  const baseUrl = `${protocol}://${host}`
+  
+  let pkg: CourseData | null = null
   try {
-    const res = await fetch(`${baseUrl}/api/learn/courses/${courseId}`, { cache: 'no-store' });
+    const res = await fetch(`${baseUrl}/api/learn/courses/${courseId}`, { cache: 'no-store' })
     if (res.ok) {
-      pkg = await res.json();
+      pkg = await res.json()
     }
   } catch {
     // Silently fail
   }
-
+  
   if (!pkg) {
     return (
       <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-        <Link
-          href="/learn"
-          style={{
-            fontSize: 14,
-            color: '#0070f3',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
+        <Link href="/learn" style={{ fontSize: 14, color: '#0070f3', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           ← Back to courses
         </Link>
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
@@ -86,11 +77,11 @@ export default async function Page({ params }: Props) {
           <p style={{ color: '#666' }}>This course may not be available yet.</p>
         </div>
       </div>
-    );
+    )
   }
-
-  const lessons = flattenLessons(pkg);
-  const isSubject = pkg.type === 'subject';
+  
+  const lessons = flattenLessons(pkg)
+  const isSubject = pkg.type === 'subject'
 
   return (
     <LessonListClient
@@ -100,5 +91,5 @@ export default async function Page({ params }: Props) {
       lessons={lessons}
       isSubject={isSubject}
     />
-  );
+  )
 }

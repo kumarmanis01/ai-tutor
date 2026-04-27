@@ -32,15 +32,12 @@ export async function aggregateWeeklySummaries(): Promise<number> {
   });
 
   // Include studentId if at least one non-paused link exists
-  const studentIdSet = new Set<string>();
+  const studentIdSet = new Set<string>()
   for (const l of rawLinks) {
-    const paused =
-      (l as any).isPaused &&
-      (l as any).pausedUntil &&
-      new Date((l as any).pausedUntil) > new Date();
-    if (!paused) studentIdSet.add(l.studentId);
+    const paused = (l as any).isPaused && (l as any).pausedUntil && new Date((l as any).pausedUntil) > new Date()
+    if (!paused) studentIdSet.add(l.studentId)
   }
-  const studentIds = Array.from(studentIdSet);
+  const studentIds = Array.from(studentIdSet)
   if (!studentIds.length) {
     logger.info('weeklyParentSummary: no linked students, skipping');
     return 0;
@@ -103,7 +100,7 @@ export async function aggregateWeeklySummaries(): Promise<number> {
         monday,
         sessionsByStudent.get(studentId) ?? [],
         testsByStudent.get(studentId) ?? [],
-        masteryByStudent.get(studentId) ?? []
+        masteryByStudent.get(studentId) ?? [],
       );
       count++;
     } catch (err) {
@@ -123,17 +120,16 @@ async function aggregateForStudent(
   weekStart: Date,
   sessions: { duration: number | null; activityType: string }[],
   testResults: { score: number | null }[],
-  masteryData: { subject: string }[]
+  masteryData: { subject: string }[],
 ) {
   // Data is pre-fetched by the caller -- no per-student reads needed here
 
   const subjectsActive = [...new Set(masteryData.map((m) => m.subject))];
   const topicsCovered = masteryData.length;
   const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
-  const avgScore =
-    testResults.length > 0
-      ? testResults.reduce((sum, t) => sum + (t.score || 0), 0) / testResults.length
-      : 0;
+  const avgScore = testResults.length > 0
+    ? testResults.reduce((sum, t) => sum + (t.score || 0), 0) / testResults.length
+    : 0;
 
   // Upsert weekly summary
   await prisma.weeklyStudentSummary.upsert({
@@ -179,26 +175,17 @@ async function refreshSubjectProgress(studentId: string) {
   });
 
   // Group by subject
-  const groups: Record<
-    string,
-    {
-      totalMastery: number;
-      count: number;
-      strong: number;
-      weak: number;
-      board: string;
-    }
-  > = {};
+  const groups: Record<string, {
+    totalMastery: number;
+    count: number;
+    strong: number;
+    weak: number;
+    board: string;
+  }> = {};
 
   for (const m of mastery) {
     if (!groups[m.subject]) {
-      groups[m.subject] = {
-        totalMastery: 0,
-        count: 0,
-        strong: 0,
-        weak: 0,
-        board: student?.board || '',
-      };
+      groups[m.subject] = { totalMastery: 0, count: 0, strong: 0, weak: 0, board: student?.board || '' };
     }
     const g = groups[m.subject];
     g.count++;
@@ -346,15 +333,10 @@ async function refreshReadinessStatus(studentId: string) {
 
 function masteryToNum(level: string): number {
   switch (level) {
-    case 'expert':
-      return 4;
-    case 'advanced':
-      return 3;
-    case 'intermediate':
-      return 2;
-    case 'beginner':
-      return 1;
-    default:
-      return 0;
+    case 'expert': return 4;
+    case 'advanced': return 3;
+    case 'intermediate': return 2;
+    case 'beginner': return 1;
+    default: return 0;
   }
 }

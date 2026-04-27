@@ -3,7 +3,6 @@ Phase 5(E) — Evaluator: Metrics, Dry-run CI, Deploy
 This PR collects Phase 5(E) work for the Alert Evaluator integration, observability and deployment.
 
 Summary of changes:
-
 - CI: `ci-evaluator-build-test.yml` — bundle + run dry-run integration on PRs, upload bundle artifact
 - CI: `ci-push-metrics.yml` — run on successful build workflow to push metrics to staging Pushgateway when `STAGING_PUSHGATEWAY_URL` secret exists
 - CI: `ci-evaluator-image.yml` — build bundle and publish Docker image to GHCR
@@ -15,7 +14,6 @@ Summary of changes:
 - Added cross-platform `scripts/git-commit-wrapper.js` to avoid PowerShell `true` errors
 
 Phase 5(E) checklist — done vs pending
-
 - [x] Dry-run wiring: evaluator supports `EVALUATOR_DRY_RUN` + `RUN_ONCE`
 - [x] Dry-run integration test (skips when no `DATABASE_URL`)
 - [x] Bundle evaluator with `esbuild` and add CI bundling
@@ -27,7 +25,6 @@ Phase 5(E) checklist — done vs pending
 - [x] Add developer commands and secrets runbook
 
 Pending (requires infra / repo ops):
-
 - [ ] Add repo secrets: `STAGING_PUSHGATEWAY_URL`, `PUSHGATEWAY_URL`, `REDIS_URL`, `OPS_EMAIL`, `SLACK_WEBHOOK`, `PAGER_WEBHOOK` (and optional `DATABASE_URL` for staging)
 - [ ] Provision staging Pushgateway and Redis (or provide endpoints)
 - [ ] Add CI job to publish Docker image tag on merge to `master` and image promotion workflow
@@ -59,12 +56,11 @@ gh run view <run-id> --log
 The workflow supports both `pull_request` runs (defaults to dry-run) and manual `workflow_dispatch` runs (use the inputs to override). If SMTP/OPS_EMAIL are missing the evaluator will log sink errors but will not spam recipients.
 
 Notes:
-
 - CI workflows default to an isolated Postgres service for PR validation; secrets enable staging integration.
 - The approach favors build artifacts (bundle + container image) for reproducible deploys and avoids runtime ts-node/ESM loader fragility.
 
 Merge checklist for reviewers:
-
 - Confirm CI workflows run and pass on PR
 - Confirm no secrets are leaked in changes
 - Approve or request changes
+

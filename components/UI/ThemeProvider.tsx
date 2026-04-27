@@ -32,23 +32,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       localStorage.setItem('ai-tutor:theme', theme);
     } catch (e) {
-      logger.warn('localStorage.setItem failed in ThemeProvider', {
-        component: 'ThemeProvider',
-        error: e,
-      });
+      logger.warn('localStorage.setItem failed in ThemeProvider', { component: 'ThemeProvider', error: e });
     }
   }, [theme]);
 
   const toggle = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggle }}>{children}</ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, setTheme, toggle }}>{children}</ThemeContext.Provider>;
 };
 
 export const useTheme = () => {
   const ctx = useContext(ThemeContext);
-
+  
   // During SSG/SSR, context might be null - return safe defaults
   if (!ctx) {
     // Check if we're in a browser environment
@@ -61,7 +56,7 @@ export const useTheme = () => {
     }
     throw new Error('useTheme must be used within ThemeProvider');
   }
-
+  
   return ctx;
 };
 

@@ -5,7 +5,6 @@ Topic: {topic_title}
 Task: Review the following generated content and suggest improvements.
 
 Checklist:
-
 1. Example Quality:
    - Are there 3-5 examples where required?
    - Are examples age-appropriate?
@@ -24,7 +23,6 @@ Checklist:
    - Check for cultural bias and insensitivity
 
 Output:
-
 - `issues_found`: list of short issues
 - `suggested_improvements`: brief actionable items
 - `enhanced_content` (optional): improved content when major fixes are needed

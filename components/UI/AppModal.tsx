@@ -1,11 +1,7 @@
-'use client';
+"use client";
 import { useEffect, useState } from 'react';
 
-type ModalPayload = {
-  title?: string;
-  message?: string;
-  actions?: Array<{ label: string; onClick?: () => void }>;
-};
+type ModalPayload = { title?: string; message?: string; actions?: Array<{ label: string; onClick?: () => void }> };
 
 export default function AppModal() {
   const [open, setOpen] = useState(false);
@@ -41,10 +37,7 @@ export default function AppModal() {
               {a.label}
             </button>
           ))}
-          <button
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
-            onClick={() => setOpen(false)}
-          >
+          <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700" onClick={() => setOpen(false)}>
             OK
           </button>
         </div>

@@ -19,17 +19,10 @@ const AuditTrailViewer = () => {
           const data: AuditLog[] = await response.json();
           setAuditLogs(data);
         } else {
-          logger.error('Failed to fetch audit logs', {
-            className: 'AuditTrailViewer',
-            methodName: 'loadLogs',
-          });
+          logger.error('Failed to fetch audit logs', { className: 'AuditTrailViewer', methodName: 'loadLogs' });
         }
       } catch (error) {
-        logger.error('Error fetching audit logs', {
-          className: 'AuditTrailViewer',
-          methodName: 'loadLogs',
-          error: String(error),
-        });
+        logger.error('Error fetching audit logs', { className: 'AuditTrailViewer', methodName: 'loadLogs', error: String(error) });
       }
     };
 

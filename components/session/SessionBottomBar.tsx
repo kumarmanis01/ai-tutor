@@ -67,9 +67,7 @@ export function SessionBottomBar({ onAskVidya, sessionId, currentPhase }: Sessio
             />
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground leading-tight">Ask Vidya</p>
-              <p className="text-xs text-muted-foreground leading-tight truncate">
-                Get help with this topic
-              </p>
+              <p className="text-xs text-muted-foreground leading-tight truncate">Get help with this topic</p>
             </div>
           </button>
 
@@ -84,9 +82,7 @@ export function SessionBottomBar({ onAskVidya, sessionId, currentPhase }: Sessio
             </span>
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground leading-tight">Feedback</p>
-              <p className="text-xs text-muted-foreground leading-tight truncate">
-                Rate this lesson
-              </p>
+              <p className="text-xs text-muted-foreground leading-tight truncate">Rate this lesson</p>
             </div>
           </button>
         </div>

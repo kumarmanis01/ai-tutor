@@ -1,6 +1,7 @@
 const { prisma } = require('../lib/prisma');
 
 async function main() {
+  
   try {
     const email = process.argv[2] || 'dev.student@example.com';
     const user = await prisma.user.upsert({
@@ -22,3 +23,4 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+

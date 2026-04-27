@@ -21,13 +21,8 @@ export async function logApiUsage(endpoint: string, method: string, userId?: str
     // Ensure the user exists before writing a FK'd row.
     const userExists = await prisma.user.findUnique({ where: { id: userId } });
     if (!userExists) {
-      logger.warn(
-        `[logApiUsage] userId=${userId} not found; logging as anonymous ${endpoint} ${method}`,
-        { className: 'logApiUsage' }
-      );
-      await prisma.apiUsage.create({
-        data: { userId: null, endpoint, method, count: 1, lastUsed: new Date() },
-      });
+      logger.warn(`[logApiUsage] userId=${userId} not found; logging as anonymous ${endpoint} ${method}`, { className: 'logApiUsage' });
+      await prisma.apiUsage.create({ data: { userId: null, endpoint, method, count: 1, lastUsed: new Date() } });
       return;
     }
 
@@ -36,13 +31,8 @@ export async function logApiUsage(endpoint: string, method: string, userId?: str
       update: { count: { increment: 1 }, lastUsed: new Date() },
       create: { userId, endpoint, method, count: 1, lastUsed: new Date() },
     });
-    logger.debug(`[logApiUsage] userId=${userId} ${endpoint} ${method}`, {
-      className: 'logApiUsage',
-    });
+    logger.debug(`[logApiUsage] userId=${userId} ${endpoint} ${method}`, { className: 'logApiUsage' });
   } catch (error) {
-    logger.error(
-      `Failed to log API usage for endpoint: ${endpoint}, method: ${method} - ${String(error)}`,
-      { className: 'logApiUsage' }
-    );
+    logger.error(`Failed to log API usage for endpoint: ${endpoint}, method: ${method} - ${String(error)}`, { className: 'logApiUsage' });
   }
 }

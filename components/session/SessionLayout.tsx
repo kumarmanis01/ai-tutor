@@ -43,13 +43,7 @@ interface SessionLayoutProps {
   onStepClick?: (phase: string) => void;
 }
 
-export function SessionLayout({
-  session,
-  phase,
-  children,
-  footer,
-  onStepClick,
-}: SessionLayoutProps) {
+export function SessionLayout({ session, phase, children, footer, onStepClick }: SessionLayoutProps) {
   const activePhase = session.currentPhase !== 'COMPLETE' && session.currentPhase !== 'EXPIRED';
   const [isDoubtOpen, setIsDoubtOpen] = useState(false);
 

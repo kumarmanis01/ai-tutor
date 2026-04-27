@@ -1,19 +1,19 @@
-import { callTutorLLM } from '@/lib/callLLM';
-import { stripTag } from '@/lib/ai/tutor/tagParser';
+import { callTutorLLM } from '@/lib/callLLM'
+import { stripTag } from '@/lib/ai/tutor/tagParser'
 
-const INSIGHT_TIMEOUT_MS = 5_000;
+const INSIGHT_TIMEOUT_MS = 5_000
 
 const FALLBACK_INSIGHT =
-  "Great effort this session -- keep going and you'll see steady improvement!";
+  "Great effort this session -- keep going and you'll see steady improvement!"
 
 export interface SessionInsightParams {
-  correctAnswers: number;
-  totalQuestions: number;
-  conceptName: string | null;
-  hintsUsed: number;
-  masteryDelta: number;
-  studentId: string;
-  sessionId: string;
+  correctAnswers: number
+  totalQuestions: number
+  conceptName: string | null
+  hintsUsed: number
+  masteryDelta: number
+  studentId: string
+  sessionId: string
 }
 
 /**
@@ -29,7 +29,9 @@ export interface SessionInsightParams {
  * Falls back to a static motivational message if the LLM call fails or
  * returns empty content. Never throws.
  */
-export async function buildSessionInsight(params: SessionInsightParams): Promise<string> {
+export async function buildSessionInsight(
+  params: SessionInsightParams,
+): Promise<string> {
   const {
     correctAnswers,
     totalQuestions,
@@ -38,13 +40,13 @@ export async function buildSessionInsight(params: SessionInsightParams): Promise
     masteryDelta,
     studentId,
     sessionId,
-  } = params;
+  } = params
 
-  if (!totalQuestions) return FALLBACK_INSIGHT;
+  if (!totalQuestions) return FALLBACK_INSIGHT
 
-  const name = conceptName ?? 'this concept';
-  const pct = Math.round((correctAnswers / totalQuestions) * 100);
-  const masterySign = masteryDelta >= 0 ? '+' : '';
+  const name = conceptName ?? 'this concept'
+  const pct = Math.round((correctAnswers / totalQuestions) * 100)
+  const masterySign = masteryDelta >= 0 ? '+' : ''
 
   const prompt = [
     'Generate a single closing insight sentence for an Indian school student who just finished a tutoring session.',
@@ -64,17 +66,17 @@ export async function buildSessionInsight(params: SessionInsightParams): Promise
     `Mastery change: ${masterySign}${Math.round(masteryDelta * 100)}%`,
     '',
     'Output ONLY the single sentence. No tags, no quotation marks, no preamble.',
-  ].join('\n');
+  ].join('\n')
 
   try {
     const result = await callTutorLLM(
       prompt,
       { callType: 'tutor:eval', studentId, sessionId },
-      INSIGHT_TIMEOUT_MS
-    );
-    const text = stripTag(result?.content ?? '').trim();
-    return text || FALLBACK_INSIGHT;
+      INSIGHT_TIMEOUT_MS,
+    )
+    const text = stripTag(result?.content ?? '').trim()
+    return text || FALLBACK_INSIGHT
   } catch {
-    return FALLBACK_INSIGHT;
+    return FALLBACK_INSIGHT
   }
 }

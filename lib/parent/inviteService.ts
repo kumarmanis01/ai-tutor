@@ -52,10 +52,7 @@ export async function createOrReuseParentInviteForStudent(params: {
   const expiresAt = addDays(now, PARENT_INVITE_TTL_DAYS);
   let code = generateCode();
   for (let attempt = 0; attempt < 5; attempt++) {
-    const conflict = await prisma.parentInvite.findUnique({
-      where: { code },
-      select: { id: true },
-    });
+    const conflict = await prisma.parentInvite.findUnique({ where: { code }, select: { id: true } });
     if (!conflict) break;
     code = generateCode();
   }
@@ -97,12 +94,10 @@ export async function redeemParentInviteAndLink(params: {
     if (!invite || invite.status !== 'pending' || invite.expiresAt <= now) {
       // Best-effort: if it exists but expired, mark it.
       if (invite && invite.status === 'pending' && invite.expiresAt <= now) {
-        await tx.parentInvite
-          .update({
-            where: { id: invite.id },
-            data: { status: 'expired' },
-          })
-          .catch(() => {});
+        await tx.parentInvite.update({
+          where: { id: invite.id },
+          data: { status: 'expired' },
+        }).catch(() => {});
       }
       throw new Error('Invalid or expired invite code');
     }
@@ -122,25 +117,20 @@ export async function redeemParentInviteAndLink(params: {
         data: { status: 'consumed', consumedAt: now, consumedByParentId: parentId },
       });
 
-      await ensureParentRole(tx, parentId);
-      try {
-        await tx.auditLog.create({
-          data: {
-            adminId: parentId,
-            targetEntity: 'User',
-            targetId: invite.studentId,
-            action: null,
-            details: {
-              legacyAction: 'parent_link_student',
-              parentId,
-              method: 'invite_code',
-              status: 'already_linked',
-            },
-          },
-        });
-      } catch {
-        // Non-fatal: audit log failure should not break linking
-      }
+    await ensureParentRole(tx, parentId);
+    try {
+      await tx.auditLog.create({
+        data: {
+          adminId: parentId,
+          targetEntity: 'User',
+          targetId: invite.studentId,
+          action: null,
+          details: { legacyAction: 'parent_link_student', parentId, method: 'invite_code', status: 'already_linked' },
+        },
+      });
+    } catch {
+      // Non-fatal: audit log failure should not break linking
+    }
 
       return { studentId: invite.studentId, status: 'already_linked' };
     }
@@ -170,12 +160,7 @@ export async function redeemParentInviteAndLink(params: {
           targetEntity: 'User',
           targetId: invite.studentId,
           action: null,
-          details: {
-            legacyAction: 'parent_link_student',
-            parentId,
-            method: 'invite_code',
-            status: 'linked',
-          },
+          details: { legacyAction: 'parent_link_student', parentId, method: 'invite_code', status: 'linked' },
         },
       });
     } catch {
@@ -227,12 +212,7 @@ export async function linkParentToStudentByEmail(params: {
           targetEntity: 'User',
           targetId: student.id,
           action: null,
-          details: {
-            legacyAction: 'parent_link_student',
-            parentId,
-            method: 'email',
-            status: 'already_linked',
-          },
+          details: { legacyAction: 'parent_link_student', parentId, method: 'email', status: 'already_linked' },
         },
       })
       .catch(() => {});
@@ -242,9 +222,7 @@ export async function linkParentToStudentByEmail(params: {
   if (existing?.status === 'revoked') {
     await prisma.parentStudent.update({ where: { id: existing.id }, data: { status: 'active' } });
   } else if (!existing) {
-    await prisma.parentStudent.create({
-      data: { parentId, studentId: student.id, status: 'active' },
-    });
+    await prisma.parentStudent.create({ data: { parentId, studentId: student.id, status: 'active' } });
   }
 
   await ensureParentRole(prisma, parentId);
@@ -256,12 +234,7 @@ export async function linkParentToStudentByEmail(params: {
         targetEntity: 'User',
         targetId: student.id,
         action: null,
-        details: {
-          legacyAction: 'parent_link_student',
-          parentId,
-          method: 'email',
-          status: 'linked',
-        },
+        details: { legacyAction: 'parent_link_student', parentId, method: 'email', status: 'linked' },
       },
     });
   } catch {
@@ -273,10 +246,7 @@ export async function linkParentToStudentByEmail(params: {
 
 async function ensureParentRole(prisma: Prisma.TransactionClient, parentId: string) {
   try {
-    const parent = await prisma.user.findUnique({
-      where: { id: parentId },
-      select: { role: true },
-    });
+    const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true } });
     if (parent?.role === 'user') {
       await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } });
     }
@@ -284,3 +254,4 @@ async function ensureParentRole(prisma: Prisma.TransactionClient, parentId: stri
     logger.warn('ensureParentRole failed', { parentId, error: String(err) });
   }
 }
+

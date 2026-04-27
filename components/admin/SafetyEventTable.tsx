@@ -68,7 +68,8 @@ export function SafetyEventTable() {
     category: category || undefined,
     severity: severity || undefined,
     studentId: studentId.trim() ? studentId.trim() : undefined,
-    resolved: resolvedFilter === 'true' ? true : resolvedFilter === 'false' ? false : undefined,
+    resolved:
+      resolvedFilter === 'true' ? true : resolvedFilter === 'false' ? false : undefined,
     from: from ? new Date(from).toISOString() : undefined,
     to: to ? new Date(to).toISOString() : undefined,
   });
@@ -112,15 +113,10 @@ export function SafetyEventTable() {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Category
-            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category</label>
             <select
               value={category}
-              onChange={(e) => {
-                setPage(1);
-                setCategory(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setCategory(e.target.value); }}
               aria-label="Category filter"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
             >
@@ -133,15 +129,10 @@ export function SafetyEventTable() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Severity
-            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Severity</label>
             <select
               value={severity}
-              onChange={(e) => {
-                setPage(1);
-                setSeverity(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setSeverity(e.target.value); }}
               aria-label="Severity filter"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
             >
@@ -154,16 +145,11 @@ export function SafetyEventTable() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Student
-            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Student</label>
             <input
               type="text"
               value={studentId}
-              onChange={(e) => {
-                setPage(1);
-                setStudentId(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setStudentId(e.target.value); }}
               placeholder="studentId..."
               aria-label="StudentId filter"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
@@ -171,15 +157,10 @@ export function SafetyEventTable() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Resolved
-            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Resolved</label>
             <select
               value={resolvedFilter}
-              onChange={(e) => {
-                setPage(1);
-                setResolvedFilter(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setResolvedFilter(e.target.value); }}
               aria-label="Resolved filter"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
             >
@@ -190,47 +171,32 @@ export function SafetyEventTable() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              From
-            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">From</label>
             <input
               type="datetime-local"
               value={from}
-              onChange={(e) => {
-                setPage(1);
-                setFrom(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setFrom(e.target.value); }}
               aria-label="From date"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              To
-            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">To</label>
             <input
               type="datetime-local"
               value={to}
-              onChange={(e) => {
-                setPage(1);
-                setTo(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setTo(e.target.value); }}
               aria-label="To date"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Rows
-            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Rows</label>
             <select
               value={limit}
-              onChange={(e) => {
-                setPage(1);
-                setLimit(Number(e.target.value));
-              }}
+              onChange={(e) => { setPage(1); setLimit(Number(e.target.value)); }}
               aria-label="Rows per page"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
             >
@@ -242,7 +208,9 @@ export function SafetyEventTable() {
         </div>
 
         {filterSummary && (
-          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{filterSummary}</p>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            {filterSummary}
+          </p>
         )}
       </div>
 
@@ -304,9 +272,7 @@ export function SafetyEventTable() {
                         {truncateMiddle(e.studentId, 8)}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${categoryStyle(e.triggerType)}`}
-                        >
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${categoryStyle(e.triggerType)}`}>
                           {categoryLabel(e.triggerType)}
                         </span>
                       </td>
@@ -314,9 +280,7 @@ export function SafetyEventTable() {
                         <span className="font-mono text-xs break-words">{safeInputPreview(e)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${severityStyle(e.severity)}`}
-                        >
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${severityStyle(e.severity)}`}>
                           {String(e.severity || '').toUpperCase()}
                         </span>
                       </td>
@@ -336,10 +300,7 @@ export function SafetyEventTable() {
 
                     {isExpanded && (
                       <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
-                        <td
-                          colSpan={6}
-                          className="px-4 py-4 text-xs text-gray-700 dark:text-gray-200"
-                        >
+                        <td colSpan={6} className="px-4 py-4 text-xs text-gray-700 dark:text-gray-200">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <div className="font-semibold mb-1">Event</div>
@@ -393,3 +354,4 @@ export function SafetyEventTable() {
 }
 
 export default SafetyEventTable;
+

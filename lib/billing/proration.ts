@@ -50,7 +50,7 @@ export function computeProratedCredit(
   startIso: string | Date,
   endIso: string | Date,
   paidAmountPaise: number,
-  nowDate?: Date
+  nowDate?: Date,
 ): number {
   const start = typeof startIso === 'string' ? new Date(startIso) : startIso;
   const end = typeof endIso === 'string' ? new Date(endIso) : endIso;

@@ -157,18 +157,8 @@ function QuestionCard({
                 </span>
                 <span className="text-sm text-foreground">{choice}</span>
                 {isCorrectChoice && (
-                  <svg
-                    className="ml-auto w-4 h-4 text-[#1D9E75] flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M5 13l4 4L19 7"
-                    />
+                  <svg className="ml-auto w-4 h-4 text-[#1D9E75] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
               </label>
@@ -194,15 +184,9 @@ function QuestionCard({
 
       {/* Result feedback */}
       {showResult && gradedAnswer && (
-        <div
-          className={`rounded-xl p-3 text-sm ${gradedAnswer.isCorrect ? 'bg-[#EAF3DE]' : 'bg-[#FCEBEB]'}`}
-        >
-          <p
-            className={`font-semibold mb-1 ${gradedAnswer.isCorrect ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}`}
-          >
-            {gradedAnswer.isCorrect
-              ? 'Correct!'
-              : `Incorrect -- you answered: ${gradedAnswer.studentAnswer}`}
+        <div className={`rounded-xl p-3 text-sm ${gradedAnswer.isCorrect ? 'bg-[#EAF3DE]' : 'bg-[#FCEBEB]'}`}>
+          <p className={`font-semibold mb-1 ${gradedAnswer.isCorrect ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}`}>
+            {gradedAnswer.isCorrect ? 'Correct!' : `Incorrect -- you answered: ${gradedAnswer.studentAnswer}`}
           </p>
           {!gradedAnswer.isCorrect && question.correctAnswer && (
             <p className="text-foreground/80 text-xs">
@@ -210,9 +194,7 @@ function QuestionCard({
             </p>
           )}
           {question.explanation && (
-            <p className="text-foreground/70 text-xs mt-1 leading-relaxed">
-              {question.explanation}
-            </p>
+            <p className="text-foreground/70 text-xs mt-1 leading-relaxed">{question.explanation}</p>
           )}
         </div>
       )}
@@ -285,9 +267,7 @@ export function HomeworkTest({
   const allAnswered = answeredCount === questions.length;
 
   const dueLabel = new Date(dueDate).toLocaleDateString('en-IN', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
+    weekday: 'short', day: 'numeric', month: 'short',
   });
 
   const onAnswer = useCallback((qId: string, val: string) => {
@@ -317,7 +297,7 @@ export function HomeworkTest({
         throw new Error((err as { error?: string }).error ?? 'Submission failed');
       }
 
-      const data = (await res.json()) as SubmitResult;
+      const data = await res.json() as SubmitResult;
       setGradedResults(data);
 
       // Reload page questions from API to get correctAnswers + explanations
@@ -328,18 +308,15 @@ export function HomeworkTest({
         window.location.reload();
       }
     } catch (err: unknown) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-      );
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
   }, [allAnswered, submitting, assignmentId, studentAnswers]);
 
-  const displayScore =
-    isAlreadyGraded && score !== null
-      ? Math.round(score * 100)
-      : (gradedResults?.percentage ?? null);
+  const displayScore = isAlreadyGraded && score !== null
+    ? Math.round(score * 100)
+    : gradedResults?.percentage ?? null;
 
   return (
     <div className="min-h-screen bg-background pb-32">
@@ -347,9 +324,7 @@ export function HomeworkTest({
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/50 px-4 py-3">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <Link href="/dashboard" className="hover:text-foreground transition-colors">
-              Home
-            </Link>
+            <Link href="/dashboard" className="hover:text-foreground transition-colors">Home</Link>
             <span>/</span>
             <span>{subject}</span>
             <span>/</span>
@@ -363,9 +338,7 @@ export function HomeworkTest({
               </span>
             )}
             {showResult && displayScore !== null && (
-              <span
-                className={`text-sm font-bold ${displayScore >= 80 ? 'text-[#1D9E75]' : displayScore >= 50 ? 'text-[#BA7517]' : 'text-[#E24B4A]'}`}
-              >
+              <span className={`text-sm font-bold ${displayScore >= 80 ? 'text-[#1D9E75]' : displayScore >= 50 ? 'text-[#BA7517]' : 'text-[#E24B4A]'}`}>
                 {displayScore}%
               </span>
             )}
@@ -374,9 +347,7 @@ export function HomeworkTest({
             <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full bg-[#534AB7] rounded-full transition-all duration-300"
-                style={{
-                  width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%`,
-                }}
+                style={{ width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` }}
               />
             </div>
           )}
@@ -391,7 +362,9 @@ export function HomeworkTest({
         </div>
 
         {/* Score banner (post-submit) */}
-        {showResult && displayScore !== null && <ScoreBanner percentage={displayScore} />}
+        {showResult && displayScore !== null && (
+          <ScoreBanner percentage={displayScore} />
+        )}
 
         {/* Questions */}
         {questions.length === 0 ? (
@@ -418,7 +391,9 @@ export function HomeworkTest({
                 answer={studentAnswers[q.id] ?? ''}
                 onAnswer={onAnswer}
                 gradedAnswer={
-                  showResult ? (isAlreadyGraded ? initialAnswers[q.id] : undefined) : undefined
+                  showResult
+                    ? (isAlreadyGraded ? initialAnswers[q.id] : undefined)
+                    : undefined
                 }
                 showResult={showResult}
               />

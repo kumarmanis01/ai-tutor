@@ -18,8 +18,8 @@
  * which works on mobile and desktop (redirects to web.whatsapp.com on desktop).
  */
 export function buildWhatsAppShareUrl(message: string): string {
-  const encoded = encodeURIComponent(String(message ?? ''));
-  return `https://wa.me/?text=${encoded}`;
+  const encoded = encodeURIComponent(String(message ?? ''))
+  return `https://wa.me/?text=${encoded}`
 }
 
-export default buildWhatsAppShareUrl;
+export default buildWhatsAppShareUrl

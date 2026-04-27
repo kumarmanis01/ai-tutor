@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * WhiteboardPanel -- F-STU-014
@@ -85,15 +85,7 @@ interface ToolbarProps {
   canUndo: boolean;
 }
 
-function Toolbar({
-  tool,
-  color,
-  onToolChange,
-  onColorChange,
-  onUndo,
-  onClear,
-  canUndo,
-}: ToolbarProps) {
+function Toolbar({ tool, color, onToolChange, onColorChange, onUndo, onClear, canUndo }: ToolbarProps) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-slate-700 flex-wrap">
       {/* Pencil */}
@@ -251,7 +243,7 @@ export default function WhiteboardPanel({
       ctx.lineJoin = 'round';
       setIsDrawing(true);
     },
-    [tool, color]
+    [tool, color],
   );
 
   const continueDraw = useCallback(
@@ -262,7 +254,7 @@ export default function WhiteboardPanel({
       r.ctx.lineTo(x, y);
       r.ctx.stroke();
     },
-    [isDrawing]
+    [isDrawing],
   );
 
   const endDraw = useCallback(() => {
@@ -361,7 +353,7 @@ export default function WhiteboardPanel({
       });
       clearTimeout(timer);
       const json = await res.json();
-      setFeedback(json.feedback ?? 'Keep going -- your working looks like a great start!');
+      setFeedback(json.feedback ?? "Keep going -- your working looks like a great start!");
     } catch {
       setFeedback("Keep working through it -- you're on the right track!");
     } finally {
@@ -374,21 +366,8 @@ export default function WhiteboardPanel({
   type DPoint = { x: number; y: number };
   type StrokeCommand = { type: 'stroke'; color?: string; width?: number; points: DPoint[] };
   type LineCommand = { type: 'line'; from: DPoint; to: DPoint; color?: string; width?: number };
-  type CircleCommand = {
-    type: 'circle';
-    center: DPoint;
-    r: number;
-    color?: string;
-    width?: number;
-  };
-  type TextCommand = {
-    type: 'text';
-    x: number;
-    y: number;
-    text: string;
-    color?: string;
-    size?: number;
-  };
+  type CircleCommand = { type: 'circle'; center: DPoint; r: number; color?: string; width?: number };
+  type TextCommand = { type: 'text'; x: number; y: number; text: string; color?: string; size?: number };
   type DrawingCommand = StrokeCommand | LineCommand | CircleCommand | TextCommand;
 
   const replayTimers = useRef<number[]>([]);
@@ -415,7 +394,7 @@ export default function WhiteboardPanel({
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       try {
         const parsed = JSON.parse(trimmed);
-        const arr = Array.isArray(parsed) ? parsed : (parsed.commands ?? parsed.strokes ?? null);
+        const arr = Array.isArray(parsed) ? parsed : parsed.commands ?? parsed.strokes ?? null;
         if (!Array.isArray(arr)) return null;
         // Map into normalized shape (points left as-is; normalization applied during drawing)
         return arr as DrawingCommand[];
@@ -451,23 +430,20 @@ export default function WhiteboardPanel({
         const interval = 20; // ms per point
         for (let i = 0; i < pts.length; i++) {
           const pt = pts[i];
-          const t = window.setTimeout(
-            () => {
-              if (i === 0) {
-                aiCtx.beginPath();
-                aiCtx.moveTo(pt.x, pt.y);
-                aiCtx.globalCompositeOperation = 'source-over';
-                aiCtx.strokeStyle = stroke.color ?? '#1a1a1a';
-                aiCtx.lineWidth = stroke.width ?? 2.5;
-                aiCtx.lineCap = 'round';
-                aiCtx.lineJoin = 'round';
-              } else {
-                aiCtx.lineTo(pt.x, pt.y);
-                aiCtx.stroke();
-              }
-            },
-            delay + i * interval
-          );
+          const t = window.setTimeout(() => {
+            if (i === 0) {
+              aiCtx.beginPath();
+              aiCtx.moveTo(pt.x, pt.y);
+              aiCtx.globalCompositeOperation = 'source-over';
+              aiCtx.strokeStyle = stroke.color ?? '#1a1a1a';
+              aiCtx.lineWidth = stroke.width ?? 2.5;
+              aiCtx.lineCap = 'round';
+              aiCtx.lineJoin = 'round';
+            } else {
+              aiCtx.lineTo(pt.x, pt.y);
+              aiCtx.stroke();
+            }
+          }, delay + i * interval);
           replayTimers.current.push(t);
         }
         delay += Math.max(pts.length * 20, 120);

@@ -47,28 +47,10 @@ export default function QuestionFeedback({
 }: QuestionFeedbackProps) {
   // Determine the status color and icon
   const statusConfig = isCorrect
-    ? {
-        bg: 'bg-green-50 dark:bg-green-900/20',
-        border: 'border-green-200 dark:border-green-800',
-        icon: '✓',
-        color: 'text-green-600 dark:text-green-400',
-        label: 'Correct!',
-      }
+    ? { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', icon: '✓', color: 'text-green-600 dark:text-green-400', label: 'Correct!' }
     : isPartial
-      ? {
-          bg: 'bg-yellow-50 dark:bg-yellow-900/20',
-          border: 'border-yellow-200 dark:border-yellow-800',
-          icon: '◐',
-          color: 'text-yellow-600 dark:text-yellow-400',
-          label: 'Partial',
-        }
-      : {
-          bg: 'bg-red-50 dark:bg-red-900/20',
-          border: 'border-red-200 dark:border-red-800',
-          icon: '✗',
-          color: 'text-red-600 dark:text-red-400',
-          label: 'Incorrect',
-        };
+    ? { bg: 'bg-yellow-50 dark:bg-yellow-900/20', border: 'border-yellow-200 dark:border-yellow-800', icon: '◐', color: 'text-yellow-600 dark:text-yellow-400', label: 'Partial' }
+    : { bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-800', icon: '✗', color: 'text-red-600 dark:text-red-400', label: 'Incorrect' };
 
   // Format the correct answer for display
   const formatAnswer = (answer: string) => {
@@ -80,9 +62,7 @@ export default function QuestionFeedback({
   };
 
   return (
-    <div
-      className={`rounded-lg border ${statusConfig.border} ${statusConfig.bg} p-4 transition-all`}
-    >
+    <div className={`rounded-lg border ${statusConfig.border} ${statusConfig.bg} p-4 transition-all`}>
       {/* Header with question number and status */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-baseline gap-2 flex-1">
@@ -91,9 +71,7 @@ export default function QuestionFeedback({
           </span>
           <p className="text-foreground">{questionText}</p>
         </div>
-        <div
-          className={`flex items-center gap-1.5 ${statusConfig.color} font-semibold text-sm flex-shrink-0`}
-        >
+        <div className={`flex items-center gap-1.5 ${statusConfig.color} font-semibold text-sm flex-shrink-0`}>
           <span className="text-lg">{statusConfig.icon}</span>
           <span>{statusConfig.label}</span>
         </div>
@@ -104,11 +82,7 @@ export default function QuestionFeedback({
         {/* User's answer */}
         <div className="flex items-start gap-2 text-sm">
           <span className="text-muted-foreground font-medium min-w-[90px]">Your answer:</span>
-          <span
-            className={
-              isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-            }
-          >
+          <span className={isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}>
             {userAnswer || '(no answer)'}
           </span>
         </div>

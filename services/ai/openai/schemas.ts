@@ -58,7 +58,7 @@ export interface OpenAIToolDefinition {
 
 /**
  * Schema for generating educational notes.
- *
+ * 
  * SAFETY REASONING:
  * - Structured output prevents hallucinated facts
  * - Grade-appropriate vocabulary is enforced
@@ -69,8 +69,7 @@ export const NOTES_OUTPUT_SCHEMA: OpenAIToolDefinition = {
   type: 'function',
   function: {
     name: 'generate_educational_notes',
-    description:
-      'Generate structured educational notes for a specific topic. Output must be factually accurate and grade-appropriate.',
+    description: 'Generate structured educational notes for a specific topic. Output must be factually accurate and grade-appropriate.',
     parameters: {
       type: 'object',
       properties: {
@@ -112,10 +111,7 @@ export const NOTES_OUTPUT_SCHEMA: OpenAIToolDefinition = {
               maxItems: 6,
               description: 'Supporting details and explanations',
             },
-            analogy: {
-              type: 'string',
-              description: 'Age-appropriate analogy to aid understanding',
-            },
+            analogy: { type: 'string', description: 'Age-appropriate analogy to aid understanding' },
           },
           required: ['main_idea', 'details'],
           additionalProperties: false,
@@ -197,7 +193,7 @@ export const NOTES_OUTPUT_SCHEMA: OpenAIToolDefinition = {
 
 /**
  * Schema for generating practice questions.
- *
+ * 
  * SAFETY REASONING:
  * - Correct answer is explicitly marked
  * - Explanation is mandatory for learning
@@ -208,8 +204,7 @@ export const PRACTICE_QUESTION_SCHEMA: OpenAIToolDefinition = {
   type: 'function',
   function: {
     name: 'generate_practice_question',
-    description:
-      'Generate a curriculum-aligned practice question with solution. Must be factually accurate and appropriately challenging.',
+    description: 'Generate a curriculum-aligned practice question with solution. Must be factually accurate and appropriately challenging.',
     parameters: {
       type: 'object',
       properties: {
@@ -256,10 +251,7 @@ export const PRACTICE_QUESTION_SCHEMA: OpenAIToolDefinition = {
               description: 'Why each distractor is wrong (for MCQ)',
             },
             concept_connection: { type: 'string', description: 'How this connects to the topic' },
-            hint_if_stuck: {
-              type: 'string',
-              description: 'A gentle hint without giving away answer',
-            },
+            hint_if_stuck: { type: 'string', description: 'A gentle hint without giving away answer' },
           },
           required: ['why_correct', 'concept_connection'],
           additionalProperties: false,
@@ -313,7 +305,7 @@ export const PRACTICE_QUESTION_SCHEMA: OpenAIToolDefinition = {
 
 /**
  * Schema for resolving student doubts.
- *
+ * 
  * SAFETY REASONING:
  * - Must detect if doubt is actually homework-seeking
  * - Explanation must be pedagogical, not just answer-giving
@@ -324,8 +316,7 @@ export const DOUBT_RESOLUTION_SCHEMA: OpenAIToolDefinition = {
   type: 'function',
   function: {
     name: 'resolve_student_doubt',
-    description:
-      'Help a student understand a concept they are struggling with. Focus on teaching, not just answering.',
+    description: 'Help a student understand a concept they are struggling with. Focus on teaching, not just answering.',
     parameters: {
       type: 'object',
       properties: {
@@ -431,7 +422,7 @@ export const DOUBT_RESOLUTION_SCHEMA: OpenAIToolDefinition = {
 
 /**
  * Schema for generating a complete quiz.
- *
+ * 
  * SAFETY REASONING:
  * - Ensures balanced difficulty distribution
  * - Covers multiple sub-topics
@@ -485,15 +476,7 @@ export const QUIZ_GENERATION_SCHEMA: OpenAIToolDefinition = {
               marks: { type: 'integer' },
               difficulty: { type: 'string', enum: ['EASY', 'MEDIUM', 'HARD'] },
             },
-            required: [
-              'question_number',
-              'question_type',
-              'question_text',
-              'correct_answer',
-              'explanation',
-              'marks',
-              'difficulty',
-            ],
+            required: ['question_number', 'question_type', 'question_text', 'correct_answer', 'explanation', 'marks', 'difficulty'],
             additionalProperties: false,
           },
           minItems: 5,

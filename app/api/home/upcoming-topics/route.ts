@@ -39,7 +39,7 @@ export async function GET(req: Request) {
           where: { studentId: user.id },
           select: { topicId: true },
         })
-      ).map((p) => p.topicId)
+      ).map((p) => p.topicId),
     );
 
     const upcoming = orderedTopics

@@ -16,35 +16,34 @@
  */
 
 export type LoadedMisconception = {
-  id: string;
-  name: string;
-  triggerPatterns: string[];
-  correction: string;
-  description?: string;
-};
+  id: string
+  name: string
+  triggerPatterns: string[]
+  correction: string
+  description?: string
+}
 
 export type ContrastiveArtifact = {
-  misconceptionId: string;
-  name: string;
-  description?: string;
-  correction: string;
-  whyWrong: string;
-  whyCorrect: string;
-  applyTip: string;
-  suggestedPractice: string;
-};
+  misconceptionId: string
+  name: string
+  description?: string
+  correction: string
+  whyWrong: string
+  whyCorrect: string
+  applyTip: string
+  suggestedPractice: string
+}
 
 /**
  * Build a deterministic contrastive explanation artifact from a library entry.
  * Avoids LLMs -- uses only stored fields so output is auditable.
  */
 export function generateContrastiveExplanation(m: LoadedMisconception): ContrastiveArtifact {
-  const safeName = String(m.name ?? '').trim();
-  const safeDescription = String(m.description ?? '').trim();
-  const safeCorrection = String(m.correction ?? '').trim();
+  const safeName = String(m.name ?? '').trim()
+  const safeDescription = String(m.description ?? '').trim()
+  const safeCorrection = String(m.correction ?? '').trim()
 
-  const whyWrong =
-    safeDescription || `This is a common incorrect mental model related to ${safeName}.`;
+  const whyWrong = safeDescription || `This is a common incorrect mental model related to ${safeName}.`;
   const whyCorrect = safeCorrection || `Use the correct principle related to ${safeName}.`;
 
   // applyTip: short actionable step a student can follow
@@ -61,7 +60,7 @@ export function generateContrastiveExplanation(m: LoadedMisconception): Contrast
     whyCorrect,
     applyTip,
     suggestedPractice,
-  };
+  }
 }
 
-export default generateContrastiveExplanation;
+export default generateContrastiveExplanation

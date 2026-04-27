@@ -22,16 +22,30 @@
  * Detects only REAL sensitive leaks.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, "..");
 
-const SCAN_DIRS = ['app', 'lib', 'worker', 'components', 'context', 'middleware.ts'];
+const SCAN_DIRS = [
+  "app",
+  "lib",
+  "worker",
+  "components",
+  "context",
+  "middleware.ts"
+];
 
-const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'scripts', 'prisma']);
+const IGNORE_DIRS = new Set([
+  "node_modules",
+  ".next",
+  "dist",
+  "scripts",
+  "prisma"
+]);
 
-const JWT_REGEX = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/;
+const JWT_REGEX =
+  /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/;
 
 const violations = [];
 
@@ -53,34 +67,43 @@ function walk(targetPath) {
 }
 
 function scanFile(filePath) {
-  const content = fs.readFileSync(filePath, 'utf8');
-  const lines = content.split('\n');
+  const content = fs.readFileSync(filePath, "utf8");
+  const lines = content.split("\n");
 
   lines.forEach((line, idx) => {
     const l = line.trim();
 
-    // Block console usage ONLY in runtime code
-    if (l.startsWith('console.') && !filePath.endsWith(path.join('lib', 'logger.ts'))) {
-      violations.push(`${filePath}:${idx + 1} -- console.* detected`);
+      // Block console usage ONLY in runtime code
+      if (
+        l.startsWith("console.") &&
+        !filePath.endsWith(path.join("lib", "logger.ts"))
+      ) {
+        violations.push(`${filePath}:${idx + 1} -- console.* detected`);
     }
 
     // Block raw body logging
     if (
-      l.includes('req.body') ||
-      l.includes('request.body') ||
-      l.includes('JSON.stringify(req') ||
-      l.includes('JSON.stringify(request')
+      l.includes("req.body") ||
+      l.includes("request.body") ||
+      l.includes("JSON.stringify(req") ||
+      l.includes("JSON.stringify(request")
     ) {
       violations.push(`${filePath}:${idx + 1} -- raw request body logged`);
     }
 
     // Block auth header logging
-    if (l.includes('authorization') && l.includes('logger')) {
+    if (
+      l.includes("authorization") &&
+      l.includes("logger")
+    ) {
       violations.push(`${filePath}:${idx + 1} -- authorization header logged`);
     }
 
     // Block cookies logging
-    if (l.includes('cookies(') && l.includes('logger')) {
+    if (
+      l.includes("cookies(") &&
+      l.includes("logger")
+    ) {
       violations.push(`${filePath}:${idx + 1} -- cookies logged`);
     }
 
@@ -92,15 +115,15 @@ function scanFile(filePath) {
 }
 
 // Only scan allowed directories
-SCAN_DIRS.forEach((dir) => {
+SCAN_DIRS.forEach(dir => {
   walk(path.join(root, dir));
 });
 
 if (violations.length > 0) {
-  console.error('\nLOGGING SAFETY VIOLATIONS FOUND:\n');
-  violations.forEach((v) => console.error('-', v));
+  console.error("\nLOGGING SAFETY VIOLATIONS FOUND:\n");
+  violations.forEach(v => console.error("-", v));
   process.exit(1);
 }
 
-console.log('LOGGING SAFE FOR PRODUCTION.');
+console.log("LOGGING SAFE FOR PRODUCTION.");
 process.exit(0);

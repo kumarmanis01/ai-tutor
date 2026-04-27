@@ -5,16 +5,16 @@
  * Builds on systemHealth() lib which already checks DB + Redis + workers + jobs.
  * Adds: pending migrations, WorkerLifecycle RUNNING entries, Redis memory.
  */
-import React from 'react';
-import { systemHealth, type HealthStatus } from '@/lib/systemHealth';
-import { prisma } from '@/lib/prisma';
-import { getRedis } from '@/lib/redis';
-import { AdminTopbar } from '../../../../components/admin/AdminTopbar';
-import { RefreshButton } from './RefreshButton';
-import { UnstickAllButton } from './UnstickAllButton';
-import { RestartWorkerButton } from './RestartWorkerButton';
+import React from 'react'
+import { systemHealth, type HealthStatus } from '@/lib/systemHealth'
+import { prisma } from '@/lib/prisma'
+import { getRedis } from '@/lib/redis'
+import { AdminTopbar } from '../../../../components/admin/AdminTopbar'
+import { RefreshButton } from './RefreshButton'
+import { UnstickAllButton } from './UnstickAllButton'
+import { RestartWorkerButton } from './RestartWorkerButton'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------
 // Extra data helpers
@@ -22,12 +22,12 @@ export const dynamic = 'force-dynamic';
 
 async function fetchRedisMemoryMb(): Promise<number | null> {
   try {
-    const redis = getRedis();
-    const info = await redis.info('memory');
-    const match = info.match(/used_memory:(\d+)/);
-    return match ? Math.round(parseInt(match[1], 10) / 1024 / 1024) : null;
+    const redis = getRedis()
+    const info = await redis.info('memory')
+    const match = info.match(/used_memory:(\d+)/)
+    return match ? Math.round(parseInt(match[1], 10) / 1024 / 1024) : null
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -39,10 +39,10 @@ async function fetchPendingMigrations(): Promise<{ count: number; names: string[
         AND rolled_back_at IS NULL
         AND finished_at IS NULL
       ORDER BY started_at
-    `;
-    return { count: rows.length, names: rows.map((r) => r.migration_name) };
+    `
+    return { count: rows.length, names: rows.map(r => r.migration_name) }
   } catch {
-    return { count: 0, names: [] };
+    return { count: 0, names: [] }
   }
 }
 
@@ -51,10 +51,10 @@ async function fetchTotalMigrations(): Promise<number> {
     const rows = await prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM "_prisma_migrations"
       WHERE applied_steps_count > 0
-    `;
-    return Number(rows[0]?.count ?? 0);
+    `
+    return Number(rows[0]?.count ?? 0)
   } catch {
-    return 0;
+    return 0
   }
 }
 
@@ -62,52 +62,49 @@ async function fetchDbConnections(): Promise<number | null> {
   try {
     const rows = await prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM pg_stat_activity WHERE state = 'active'
-    `;
-    return Number(rows[0]?.count ?? 0);
+    `
+    return Number(rows[0]?.count ?? 0)
   } catch {
-    return null;
+    return null
   }
 }
 
 async function fetchWorkerRow(role: 'web' | 'worker' | 'scheduler') {
   if (role === 'web') {
     // Web process registers with a type containing 'web'
-    return prisma.workerLifecycle
-      .findFirst({
-        where: { type: { contains: 'web' } },
-        orderBy: { lastHeartbeatAt: 'desc' },
-        select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
-      })
-      .catch(() => null);
+    return prisma.workerLifecycle.findFirst({
+      where: { type: { contains: 'web' } },
+      orderBy: { lastHeartbeatAt: 'desc' },
+      select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
+    }).catch(() => null)
   }
   if (role === 'scheduler') {
     // Scheduler registers with type containing 'scheduler'
-    const cutoff = new Date(Date.now() - 120_000);
-    return prisma.workerLifecycle
-      .findFirst({
-        where: {
-          type: { contains: 'scheduler' },
-          lastHeartbeatAt: { gte: cutoff },
-        },
-        orderBy: { lastHeartbeatAt: 'desc' },
-        select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
-      })
-      .catch(() => null);
+    const cutoff = new Date(Date.now() - 120_000)
+    return prisma.workerLifecycle.findFirst({
+      where: {
+        type: { contains: 'scheduler' },
+        lastHeartbeatAt: { gte: cutoff },
+      },
+      orderBy: { lastHeartbeatAt: 'desc' },
+      select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
+    }).catch(() => null)
   }
   // Task worker registers with type='content-hydration' (the BullMQ queue name),
   // NOT a string containing 'worker'. Use heartbeat-based detection instead:
   // find any non-web, non-scheduler row that heartbeated within 60s.
-  const cutoff = new Date(Date.now() - 60_000);
-  return prisma.workerLifecycle
-    .findFirst({
-      where: {
-        lastHeartbeatAt: { gte: cutoff },
-        NOT: [{ type: { contains: 'web' } }, { type: { contains: 'scheduler' } }],
-      },
-      orderBy: { lastHeartbeatAt: 'desc' },
-      select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
-    })
-    .catch(() => null);
+  const cutoff = new Date(Date.now() - 60_000)
+  return prisma.workerLifecycle.findFirst({
+    where: {
+      lastHeartbeatAt: { gte: cutoff },
+      NOT: [
+        { type: { contains: 'web' } },
+        { type: { contains: 'scheduler' } },
+      ],
+    },
+    orderBy: { lastHeartbeatAt: 'desc' },
+    select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
+  }).catch(() => null)
 }
 
 // ---------------------------------------------------------------------------
@@ -115,35 +112,33 @@ async function fetchWorkerRow(role: 'web' | 'worker' | 'scheduler') {
 // ---------------------------------------------------------------------------
 
 const STATUS_COLOUR: Record<HealthStatus, string> = {
-  healthy: 'bg-[#1D9E75]',
-  degraded: 'bg-[#BA7517]',
+  healthy:   'bg-[#1D9E75]',
+  degraded:  'bg-[#BA7517]',
   unhealthy: 'bg-[#E24B4A]',
-};
+}
 
 const STATUS_TEXT: Record<HealthStatus, string> = {
-  healthy: 'text-[#27500A]',
-  degraded: 'text-[#633806]',
+  healthy:   'text-[#27500A]',
+  degraded:  'text-[#633806]',
   unhealthy: 'text-[#791F1F]',
-};
+}
 
 function ServiceRow({
   label,
   status,
   detail,
 }: {
-  label: string;
-  status: HealthStatus;
-  detail: string;
+  label: string
+  status: HealthStatus
+  detail: string
 }) {
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_COLOUR[status]}`} />
-      <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300 w-28 shrink-0">
-        {label}
-      </span>
+      <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300 w-28 shrink-0">{label}</span>
       <span className={`text-[11px] ${STATUS_TEXT[status]}`}>{detail}</span>
     </div>
-  );
+  )
 }
 
 function UsageBar({
@@ -152,30 +147,26 @@ function UsageBar({
   max,
   unit,
 }: {
-  label: string;
-  used: number | null;
-  max: number;
-  unit: string;
+  label: string
+  used: number | null
+  max: number
+  unit: string
 }) {
-  if (used === null) return null;
-  const pct = Math.min(100, Math.round((used / max) * 100));
-  const color = pct < 60 ? 'bg-[#1D9E75]' : pct < 80 ? 'bg-[#BA7517]' : 'bg-[#E24B4A]';
+  if (used === null) return null
+  const pct = Math.min(100, Math.round((used / max) * 100))
+  const color =
+    pct < 60 ? 'bg-[#1D9E75]' : pct < 80 ? 'bg-[#BA7517]' : 'bg-[#E24B4A]'
   return (
     <div>
       <div className="flex justify-between text-[11px] mb-1">
         <span className="text-gray-600 dark:text-gray-400">{label}</span>
-        <span className="text-gray-500">
-          {used} / {max} {unit}
-        </span>
+        <span className="text-gray-500">{used} / {max} {unit}</span>
       </div>
       <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-        <div
-          className={`h-full rounded-full ${color} transition-all`}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
-  );
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -193,52 +184,43 @@ export default async function SystemHealthPage() {
       fetchWorkerRow('web'),
       fetchWorkerRow('worker'),
       fetchWorkerRow('scheduler'),
-    ]);
-  const pendingMig = migResult.count;
-  const pendingMigNames = migResult.names;
+    ])
+  const pendingMig = migResult.count
+  const pendingMigNames = migResult.names
 
-  const dbStatus: HealthStatus = health?.dependencies.database.status ?? 'unhealthy';
-  const redisStatus: HealthStatus = health?.dependencies.redis.status ?? 'unhealthy';
+  const dbStatus: HealthStatus = health?.dependencies.database.status ?? 'unhealthy'
+  const redisStatus: HealthStatus = health?.dependencies.redis.status ?? 'unhealthy'
   const _workerStatus: HealthStatus =
-    (health?.workers.stale ?? 0) > 0
-      ? 'degraded'
-      : (health?.workers.running ?? 0) > 0
-        ? 'healthy'
-        : 'unhealthy';
+    (health?.workers.stale ?? 0) > 0 ? 'degraded' :
+    (health?.workers.running ?? 0) > 0 ? 'healthy' : 'unhealthy'
   const queueStatus: HealthStatus =
-    (health?.jobs.stuckRunning ?? 0) > 0
-      ? 'degraded'
-      : (health?.queue.depth ?? 0) > 100
-        ? 'degraded'
-        : 'healthy';
+    (health?.jobs.stuckRunning ?? 0) > 0 ? 'degraded' :
+    (health?.queue.depth ?? 0) > 100 ? 'degraded' : 'healthy'
 
-  const dbDetail =
-    health?.dependencies.database.latencyMs !== undefined
-      ? `Connected -- ${health.dependencies.database.latencyMs}ms`
-      : 'Unreachable';
+  const dbDetail = health?.dependencies.database.latencyMs !== undefined
+    ? `Connected -- ${health.dependencies.database.latencyMs}ms`
+    : 'Unreachable'
 
-  const redisDetail =
-    health?.dependencies.redis.latencyMs !== undefined
-      ? `Connected -- ${health.dependencies.redis.latencyMs}ms${redisMemMb !== null ? ` -- ${redisMemMb} MB` : ''}${health?.dependencies.redis.endpoint ? ` -- ${health.dependencies.redis.endpoint}` : ''}`
-      : 'Unreachable';
+  const redisDetail = health?.dependencies.redis.latencyMs !== undefined
+    ? `Connected -- ${health.dependencies.redis.latencyMs}ms${redisMemMb !== null ? ` -- ${redisMemMb} MB` : ''}${health?.dependencies.redis.endpoint ? ` -- ${health.dependencies.redis.endpoint}` : ''}`
+    : 'Unreachable'
 
   // This page rendered, so the web process is obviously up -- always healthy
   const webDetail = webWorker
     ? `${webWorker.type} pid ${webWorker.pid ?? '?'} on ${webWorker.host ?? '?'}`
-    : 'Responding (not registered in WorkerLifecycle)';
+    : 'Responding (not registered in WorkerLifecycle)'
   const workerDetail = taskWorker
     ? `${taskWorker.type} pid ${taskWorker.pid ?? '?'} on ${taskWorker.host ?? '?'}`
-    : 'No RUNNING task worker';
+    : 'No RUNNING task worker'
 
-  const schedulerStatus: HealthStatus = schedulerWorker ? 'healthy' : 'unhealthy';
+  const schedulerStatus: HealthStatus = schedulerWorker ? 'healthy' : 'unhealthy'
   const schedulerDetail = schedulerWorker
     ? `${schedulerWorker.type} pid ${schedulerWorker.pid ?? '?'} on ${schedulerWorker.host ?? '?'}`
-    : 'No heartbeat within 2 min';
+    : 'No heartbeat within 2 min'
 
-  const migDetail =
-    pendingMig > 0
-      ? `${pendingMig} migration${pendingMig === 1 ? '' : 's'} pending: ${pendingMigNames.join(', ')}`
-      : `All ${totalMig} migrations applied`;
+  const migDetail = pendingMig > 0
+    ? `${pendingMig} migration${pendingMig === 1 ? '' : 's'} pending: ${pendingMigNames.join(', ')}`
+    : `All ${totalMig} migrations applied`
 
   return (
     <>
@@ -257,13 +239,21 @@ export default async function SystemHealthPage() {
           </h2>
           <ServiceRow label="Database" status={dbStatus} detail={dbDetail} />
           <ServiceRow label="Redis" status={redisStatus} detail={redisDetail} />
-          <ServiceRow label="Web process" status="healthy" detail={webDetail} />
+          <ServiceRow
+            label="Web process"
+            status="healthy"
+            detail={webDetail}
+          />
           <ServiceRow
             label="Task worker"
             status={taskWorker ? 'healthy' : 'unhealthy'}
             detail={workerDetail}
           />
-          <ServiceRow label="Scheduler" status={schedulerStatus} detail={schedulerDetail} />
+          <ServiceRow
+            label="Scheduler"
+            status={schedulerStatus}
+            detail={schedulerDetail}
+          />
           <ServiceRow
             label="BullMQ queue"
             status={queueStatus}
@@ -280,20 +270,14 @@ export default async function SystemHealthPage() {
         {!taskWorker && (
           <div className="bg-[#FAEEDA] border border-[#EF9F27] rounded-xl px-4 py-3 text-[12px] text-[#633806] space-y-1">
             <p className="font-semibold">Task worker is not running</p>
-            <p>
-              BullMQ jobs will not be processed and no new content will be generated until it is
-              restarted.
-            </p>
+            <p>BullMQ jobs will not be processed and no new content will be generated until it is restarted.</p>
             <p className="mt-1 font-medium">To restart on the VPS:</p>
             <pre className="mt-1 bg-[#f5d193] rounded px-3 py-2 text-[11px] font-mono whitespace-pre-wrap">
-              {`ssh your-vps
+{`ssh your-vps
 pm2 status          # find the worker process name
 pm2 restart <name>  # e.g. pm2 restart ai-tutor-worker`}
             </pre>
-            <p className="mt-1">
-              If a job is stuck in RUNNING state after restart, use the{' '}
-              <strong>Unstick all stuck jobs</strong> button above to reset it to pending.
-            </p>
+            <p className="mt-1">If a job is stuck in RUNNING state after restart, use the <strong>Unstick all stuck jobs</strong> button above to reset it to pending.</p>
             <RestartWorkerButton />
           </div>
         )}
@@ -311,16 +295,12 @@ pm2 restart <name>  # e.g. pm2 restart ai-tutor-worker`}
         </div>
 
         {/* Migration status */}
-        <div
-          className={`flex items-center gap-2 rounded-xl px-4 py-3 text-[12px] ${
-            pendingMig > 0
-              ? 'bg-[#FCEBEB] border border-[#f9d7d7] text-[#791F1F]'
-              : 'bg-[#EAF3DE] border border-[#c8e6c9] text-[#27500A]'
-          }`}
-        >
-          <span
-            className={`w-2.5 h-2.5 rounded-full shrink-0 ${pendingMig > 0 ? 'bg-[#E24B4A]' : 'bg-[#1D9E75]'}`}
-          />
+        <div className={`flex items-center gap-2 rounded-xl px-4 py-3 text-[12px] ${
+          pendingMig > 0
+            ? 'bg-[#FCEBEB] border border-[#f9d7d7] text-[#791F1F]'
+            : 'bg-[#EAF3DE] border border-[#c8e6c9] text-[#27500A]'
+        }`}>
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${pendingMig > 0 ? 'bg-[#E24B4A]' : 'bg-[#1D9E75]'}`} />
           <span className="font-medium">{migDetail}</span>
         </div>
 
@@ -328,22 +308,16 @@ pm2 restart <name>  # e.g. pm2 restart ai-tutor-worker`}
         {(health?.jobs.failedLast5m ?? 0) > 0 && (
           <div className="flex items-start gap-2 bg-[#FCEBEB] border border-[#f9d7d7] rounded-xl px-4 py-3 text-[12px] text-[#791F1F]">
             <span className="font-semibold shrink-0">Job failures:</span>
-            <span>
-              {health?.jobs.failedLast5m} job(s) failed in last 5 min. Check /admin/jobs for
-              details.
-            </span>
+            <span>{health?.jobs.failedLast5m} job(s) failed in last 5 min. Check /admin/jobs for details.</span>
           </div>
         )}
         {(health?.jobs.stuckRunning ?? 0) > 0 && (
           <div className="flex items-start gap-2 bg-[#FAEEDA] border border-[#EF9F27] rounded-xl px-4 py-3 text-[12px] text-[#633806]">
             <span className="font-semibold shrink-0">Stuck jobs:</span>
-            <span>
-              {health?.jobs.stuckRunning} job(s) running beyond max runtime. Check /admin/jobs for
-              details.
-            </span>
+            <span>{health?.jobs.stuckRunning} job(s) running beyond max runtime. Check /admin/jobs for details.</span>
           </div>
         )}
       </div>
     </>
-  );
+  )
 }

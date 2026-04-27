@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 /**
  * FILE OBJECTIVE:
@@ -15,23 +15,23 @@
  * - 2026-04-09T00:00:00Z | copilot | added "What this means" tooltip and accessibility fixes
  */
 
-import Link from 'next/link';
+import Link from 'next/link'
 
 export interface SubjectReadinessCardProps {
-  subjectName: string;
-  score: number;
-  subjectId: string;
-  loading?: boolean;
-  error?: boolean;
+  subjectName: string
+  score: number
+  subjectId: string
+  loading?: boolean
+  error?: boolean
   /** True when the diagnostic has been submitted but readiness is not yet computed. */
-  diagnosticDone?: boolean;
-  predictedRange?: { low: number; high: number; confidenceLevel: number; daysUsed?: number | null };
+  diagnosticDone?: boolean
+  predictedRange?: { low: number; high: number; confidenceLevel: number; daysUsed?: number | null }
   /**
    * ISO timestamp of when the diagnostic retake becomes available (30-day cooldown).
    * Non-null only during the cooldown window -- shows a "Retake opens on [date]" badge
    * so students know without navigating to the diagnostic page.
    */
-  retakeEligibleAt?: string | null;
+  retakeEligibleAt?: string | null
 }
 
 function ReadinessCardSkeleton() {
@@ -47,10 +47,10 @@ function ReadinessCardSkeleton() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-type ColorConfig = { border: string; text: string; bar: string; label: string };
+type ColorConfig = { border: string; text: string; bar: string; label: string }
 
 function getColorConfig(score: number): ColorConfig {
   if (score < 40) {
@@ -59,7 +59,7 @@ function getColorConfig(score: number): ColorConfig {
       text: 'text-[#E24B4A]',
       bar: 'bg-[#E24B4A]',
       label: 'Critical',
-    };
+    }
   }
   if (score <= 70) {
     return {
@@ -67,14 +67,14 @@ function getColorConfig(score: number): ColorConfig {
       text: 'text-[#BA7517]',
       bar: 'bg-[#BA7517]',
       label: 'Needs work',
-    };
+    }
   }
   return {
     border: 'border-[#1D9E75]',
     text: 'text-[#1D9E75]',
     bar: 'bg-[#1D9E75]',
     label: 'On track',
-  };
+  }
 }
 
 export function SubjectReadinessCard({
@@ -87,14 +87,14 @@ export function SubjectReadinessCard({
   predictedRange,
   retakeEligibleAt,
 }: SubjectReadinessCardProps) {
-  if (loading) return <ReadinessCardSkeleton />;
+  if (loading) return <ReadinessCardSkeleton />
 
   if (error) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-4">
         <p className="text-sm text-gray-500 dark:text-gray-400">Couldn&apos;t load readiness</p>
       </div>
-    );
+    )
   }
 
   // Empty state: score 0 = no data yet.
@@ -113,7 +113,7 @@ export function SubjectReadinessCard({
             Readiness score is being calculated -- check back shortly.
           </p>
         </div>
-      );
+      )
     }
     return (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-4">
@@ -128,10 +128,10 @@ export function SubjectReadinessCard({
           Start Diagnostic →
         </Link>
       </div>
-    );
+    )
   }
 
-  const { border, text, bar, label } = getColorConfig(score);
+  const { border, text, bar, label } = getColorConfig(score)
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-4">
@@ -153,8 +153,7 @@ export function SubjectReadinessCard({
             </p>
             {predictedRange && (
               <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-                Likely: {predictedRange.low}-{predictedRange.high} ({predictedRange.confidenceLevel}
-                % CI)
+                Likely: {predictedRange.low}-{predictedRange.high} ({predictedRange.confidenceLevel}% CI)
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -175,11 +174,7 @@ export function SubjectReadinessCard({
           </div>
 
           {/* Progress bar */}
-          <div
-            className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden"
-            role="progressbar"
-            aria-label={`${subjectName} readiness progress`}
-          >
+          <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden" role="progressbar" aria-label={`${subjectName} readiness progress`}>
             <div
               className={`h-full rounded-full ${bar} transition-all duration-300 ${
                 score < 25 ? 'w-1/4' : score < 50 ? 'w-1/2' : score < 75 ? 'w-3/4' : 'w-full'
@@ -200,7 +195,7 @@ export function SubjectReadinessCard({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default SubjectReadinessCard;
+export default SubjectReadinessCard

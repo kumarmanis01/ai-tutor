@@ -22,9 +22,7 @@ beforeEach(() => {
 });
 
 test('non-admin access is rejected', async () => {
-  mockedRequireAdmin.mockImplementationOnce(() => {
-    throw new Error('Unauthorized');
-  });
+  mockedRequireAdmin.mockImplementationOnce(() => { throw new Error('Unauthorized'); });
 
   const res = await GET({} as Request);
   expect(res.status).toBe(403);
@@ -65,12 +63,10 @@ test('returns job metadata sorted by createdAt DESC', async () => {
   mockedFindMany.mockResolvedValue([row2, row1]);
 
   const res = await GET({} as Request);
-  expect(mockedFindMany).toHaveBeenCalledWith(
-    expect.objectContaining({
-      select: expect.any(Object),
-      orderBy: { createdAt: 'desc' },
-    })
-  );
+  expect(mockedFindMany).toHaveBeenCalledWith(expect.objectContaining({
+    select: expect.any(Object),
+    orderBy: { createdAt: 'desc' },
+  }));
 
   expect(res.status).toBe(200);
   const body = JSON.parse(await res.text());

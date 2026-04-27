@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function PracticeSessionPage({ params }: { params: { sessionId: string } }) {
-  const router = useRouter();
+  const router    = useRouter();
   const sessionId = params.sessionId;
 
   useEffect(() => {

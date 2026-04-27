@@ -28,9 +28,7 @@ export function emitSessionCompleted(payload: SessionCompletedPayload): void {
 /**
  * Subscribe to SESSION_COMPLETED. Handler receives { studentId }.
  */
-export function onSessionCompleted(
-  handler: (payload: SessionCompletedPayload) => void | Promise<void>
-): void {
+export function onSessionCompleted(handler: (payload: SessionCompletedPayload) => void | Promise<void>): void {
   bus.on(SESSION_COMPLETED, (payload: SessionCompletedPayload) => {
     Promise.resolve(handler(payload)).catch((err) => {
       logger.warn('[DOMAIN_EVENT] SESSION_COMPLETED handler error', { payload, error: err });

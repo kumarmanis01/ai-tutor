@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { assertNoStringFilters } from '@/lib/guards/noStringFilters';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { assertNoStringFilters } from "@/lib/guards/noStringFilters";
+import { logger } from "@/lib/logger";
 import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function GET(req: Request) {
@@ -13,16 +13,16 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const classId = searchParams.get('classId');
+    const classId = searchParams.get("classId");
 
     if (!classId) {
-      return NextResponse.json({ error: 'classId required' }, { status: 400 });
+      return NextResponse.json({ error: "classId required" }, { status: 400 });
     }
 
     const subjects = await prisma.subjectDef.findMany({
-      where: { classId, lifecycle: 'active' },
+      where: { classId, lifecycle: "active" },
       include: { chapters: true },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     return NextResponse.json(subjects);

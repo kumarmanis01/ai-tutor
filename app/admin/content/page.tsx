@@ -9,9 +9,9 @@
  * Server component -- all DB reads happen here. Interactive actions are
  * handled by CoverageTable (client component) via fetch + router.refresh().
  */
-import React from 'react';
-import { prisma } from '@/lib/prisma';
-import { AdminTopbar } from '../../../components/admin/AdminTopbar';
+import React from 'react'
+import { prisma } from '@/lib/prisma'
+import { AdminTopbar } from '../../../components/admin/AdminTopbar'
 import {
   CoverageTable,
   PipelineSection,
@@ -20,25 +20,25 @@ import {
   type ContentStatus,
   type PipelineJobData,
   type IngestRunData,
-} from './CoverageTable';
+} from './CoverageTable'
 
 // ---------------------------------------------------------------------------
 // Status derivation
 // ---------------------------------------------------------------------------
 
 function deriveStatus(params: {
-  chapterCount: number;
-  questionCount: number;
-  ragChunks: number;
-  jobStatus: string | null;
+  chapterCount: number
+  questionCount: number
+  ragChunks: number
+  jobStatus: string | null
 }): ContentStatus {
-  const { chapterCount, questionCount, ragChunks, jobStatus } = params;
-  if (jobStatus === 'running' || jobStatus === 'pending') return 'generating';
-  if (jobStatus === 'failed') return 'failed';
-  if (chapterCount > 0 && questionCount > 0) return 'ready';
-  if (chapterCount > 0) return 'syllabus_only';
-  if (ragChunks > 0) return 'ncert_only';
-  return 'not_started';
+  const { chapterCount, questionCount, ragChunks, jobStatus } = params
+  if (jobStatus === 'running' || jobStatus === 'pending') return 'generating'
+  if (jobStatus === 'failed') return 'failed'
+  if (chapterCount > 0 && questionCount > 0) return 'ready'
+  if (chapterCount > 0) return 'syllabus_only'
+  if (ragChunks > 0) return 'ncert_only'
+  return 'not_started'
 }
 
 // ---------------------------------------------------------------------------
@@ -57,151 +57,147 @@ export default async function ContentPage() {
       },
     },
     orderBy: [{ class: { grade: 'asc' } }, { name: 'asc' }],
-  });
+  })
 
-  const subjectIds = subjects.map((s) => s.id);
-  const allTopicIds = subjects.flatMap((s) =>
-    s.chapters.flatMap((ch) => ch.topics.map((t) => t.id))
-  );
+  const subjectIds = subjects.map(s => s.id)
+  const allTopicIds = subjects.flatMap(s =>
+    s.chapters.flatMap(ch => ch.topics.map(t => t.id)),
+  )
 
   // ── 2. Batch lookups ────────────────────────────────────────────────────
-  const [generatedTestGroups, noteGroups, ragGroups, activeJobs, pipelineJobs, recentRuns] =
-    await Promise.all([
-      // GeneratedTests per topic (any approval status, active lifecycle).
-      // The QUESTIONS hydration job produces GeneratedTest rows -- not the legacy
-      // Question model. Counting GeneratedTest gives an accurate "questions generated"
-      // signal that matches what complete-pipeline considers done.
-      allTopicIds.length
-        ? prisma.generatedTest.groupBy({
-            by: ['topicId'],
-            where: { lifecycle: 'active', topicId: { in: allTopicIds } },
-            _count: { id: true },
-          })
-        : Promise.resolve([]),
+  const [generatedTestGroups, noteGroups, ragGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
+    // GeneratedTests per topic (any approval status, active lifecycle).
+    // The QUESTIONS hydration job produces GeneratedTest rows -- not the legacy
+    // Question model. Counting GeneratedTest gives an accurate "questions generated"
+    // signal that matches what complete-pipeline considers done.
+    allTopicIds.length
+      ? prisma.generatedTest.groupBy({
+          by: ['topicId'],
+          where: { lifecycle: 'active', topicId: { in: allTopicIds } },
+          _count: { id: true },
+        })
+      : Promise.resolve([]),
 
-      // Notes per topic (ACTIVE lifecycle)
-      allTopicIds.length
-        ? prisma.topicNote.groupBy({
-            by: ['topicId'],
-            where: { lifecycle: 'active', topicId: { in: allTopicIds } },
-            _count: { id: true },
-          })
-        : Promise.resolve([]),
+    // Notes per topic (ACTIVE lifecycle)
+    allTopicIds.length
+      ? prisma.topicNote.groupBy({
+          by: ['topicId'],
+          where: { lifecycle: 'active', topicId: { in: allTopicIds } },
+          _count: { id: true },
+        })
+      : Promise.resolve([]),
 
-      // RAG chunks grouped by subject name (best-effort, no FK to SubjectDef)
-      prisma.curriculumChunk.groupBy({
-        by: ['subject'],
-        _count: { id: true },
-      }),
+    // RAG chunks grouped by subject name (best-effort, no FK to SubjectDef)
+    prisma.curriculumChunk.groupBy({
+      by: ['subject'],
+      _count: { id: true },
+    }),
 
-      // Latest root-level HydrationJob per subject (pending/running/failed)
-      subjectIds.length
-        ? prisma.hydrationJob.findMany({
-            where: {
-              subjectId: { in: subjectIds },
-              hierarchyLevel: 0,
-              status: { in: ['pending', 'running', 'failed'] },
-            },
-            select: {
-              id: true,
-              subjectId: true,
-              status: true,
-              lastError: true,
-              chaptersExpected: true,
-              chaptersCompleted: true,
-              topicsExpected: true,
-              topicsCompleted: true,
-              notesExpected: true,
-              notesCompleted: true,
-              questionsExpected: true,
-              questionsCompleted: true,
-            },
-            orderBy: { createdAt: 'desc' },
-          })
-        : Promise.resolve([]),
+    // Latest root-level HydrationJob per subject (pending/running/failed)
+    subjectIds.length
+      ? prisma.hydrationJob.findMany({
+          where: {
+            subjectId: { in: subjectIds },
+            hierarchyLevel: 0,
+            status: { in: ['pending', 'running', 'failed'] },
+          },
+          select: {
+            id: true,
+            subjectId: true,
+            status: true,
+            lastError: true,
+            chaptersExpected: true,
+            chaptersCompleted: true,
+            topicsExpected: true,
+            topicsCompleted: true,
+            notesExpected: true,
+            notesCompleted: true,
+            questionsExpected: true,
+            questionsCompleted: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      : Promise.resolve([]),
 
-      // Running jobs for pipeline view
-      prisma.hydrationJob.findMany({
-        where: { hierarchyLevel: 0, status: 'running' },
-        select: {
-          id: true,
-          subjectId: true,
-          subject: true,
-          board: true,
-          grade: true,
-          status: true,
-          chaptersExpected: true,
-          chaptersCompleted: true,
-          topicsExpected: true,
-          topicsCompleted: true,
-          notesExpected: true,
-          notesCompleted: true,
-          questionsExpected: true,
-          questionsCompleted: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      }),
+    // Running jobs for pipeline view
+    prisma.hydrationJob.findMany({
+      where: { hierarchyLevel: 0, status: 'running' },
+      select: {
+        id: true,
+        subjectId: true,
+        subject: true,
+        board: true,
+        grade: true,
+        status: true,
+        chaptersExpected: true,
+        chaptersCompleted: true,
+        topicsExpected: true,
+        topicsCompleted: true,
+        notesExpected: true,
+        notesCompleted: true,
+        questionsExpected: true,
+        questionsCompleted: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    }),
 
-      // Recent ingest runs
-      prisma.ingestRunLog.findMany({
-        orderBy: { runAt: 'desc' },
-        take: 10,
-      }),
-    ]);
+    // Recent ingest runs
+    prisma.ingestRunLog.findMany({
+      orderBy: { runAt: 'desc' },
+      take: 10,
+    }),
+  ])
 
   // ── 3. Build lookup maps ────────────────────────────────────────────────
 
   // Topic ID → generated test count
   const generatedTestByTopic = new Map<string, number>(
-    generatedTestGroups.map((g) => [g.topicId as string, g._count.id])
-  );
+    generatedTestGroups.map(g => [g.topicId as string, g._count.id]),
+  )
 
   // Topic ID → note count
   const noteByTopic = new Map<string, number>(
-    noteGroups.map((g) => [g.topicId as string, g._count.id])
-  );
+    noteGroups.map(g => [g.topicId as string, g._count.id]),
+  )
 
   // SubjectId → generated test count (via topics)
-  const generatedTestBySubject = new Map<string, number>();
+  const generatedTestBySubject = new Map<string, number>()
   // SubjectId → note count (via topics)
-  const noteBySubject = new Map<string, number>();
+  const noteBySubject = new Map<string, number>()
   for (const s of subjects) {
-    let gtCount = 0;
-    let nCount = 0;
+    let gtCount = 0
+    let nCount = 0
     for (const ch of s.chapters) {
       for (const t of ch.topics) {
-        gtCount += generatedTestByTopic.get(t.id) ?? 0;
-        nCount += noteByTopic.get(t.id) ?? 0;
+        gtCount += generatedTestByTopic.get(t.id) ?? 0
+        nCount += noteByTopic.get(t.id) ?? 0
       }
     }
-    generatedTestBySubject.set(s.id, gtCount);
-    noteBySubject.set(s.id, nCount);
+    generatedTestBySubject.set(s.id, gtCount)
+    noteBySubject.set(s.id, nCount)
   }
 
   // Subject name (lowercase) → RAG chunk count
   const ragBySubjectName = new Map<string, number>(
-    ragGroups.map((g) => [(g.subject ?? '').toLowerCase(), g._count.id])
-  );
+    ragGroups.map(g => [(g.subject ?? '').toLowerCase(), g._count.id]),
+  )
 
   // SubjectId → latest active job
-  const jobBySubject = new Map(activeJobs.map((j) => [j.subjectId ?? '', j]));
+  const jobBySubject = new Map(activeJobs.map(j => [j.subjectId ?? '', j]))
 
   // ── 4. Build coverage rows ───────────────────────────────────────────────
-  const coverageRows: CoverageRowData[] = subjects.map((s) => {
-    const topicCount = s.chapters.reduce((n, ch) => n + ch.topics.length, 0);
-    const chapterCount = s.chapters.length;
-    const questionCount = generatedTestBySubject.get(s.id) ?? 0;
-    const noteCount = noteBySubject.get(s.id) ?? 0;
-    const ragChunks = ragBySubjectName.get(s.name.toLowerCase()) ?? 0;
-    const job = jobBySubject.get(s.id) ?? null;
+  const coverageRows: CoverageRowData[] = subjects.map(s => {
+    const topicCount = s.chapters.reduce((n, ch) => n + ch.topics.length, 0)
+    const chapterCount = s.chapters.length
+    const questionCount = generatedTestBySubject.get(s.id) ?? 0
+    const noteCount = noteBySubject.get(s.id) ?? 0
+    const ragChunks = ragBySubjectName.get(s.name.toLowerCase()) ?? 0
+    const job = jobBySubject.get(s.id) ?? null
     const status = deriveStatus({
-      chapterCount,
-      questionCount,
-      ragChunks,
-      jobStatus: job?.status ?? null,
-    });
+      chapterCount, questionCount, ragChunks, jobStatus: job?.status ?? null,
+    })
 
     return {
       subjectId: s.id,
@@ -228,21 +224,19 @@ export default async function ContentPage() {
       notesCompleted: job?.notesCompleted ?? 0,
       questionsExpected: job?.questionsExpected ?? 0,
       questionsCompleted: job?.questionsCompleted ?? 0,
-    };
-  });
+    }
+  })
 
   // ── 5. Build pipeline rows ───────────────────────────────────────────────
   // Resolve subjectName for pipeline jobs (may differ from SubjectDef.name)
-  const pipelineSubjectIds = pipelineJobs.map((j) => j.subjectId).filter(Boolean) as string[];
+  const pipelineSubjectIds = pipelineJobs.map(j => j.subjectId).filter(Boolean) as string[]
   const pipelineSubjectMap = new Map(
-    subjects.filter((s) => pipelineSubjectIds.includes(s.id)).map((s) => [s.id, s.name])
-  );
+    subjects.filter(s => pipelineSubjectIds.includes(s.id)).map(s => [s.id, s.name]),
+  )
 
-  const pipelineRows: PipelineJobData[] = pipelineJobs.map((j) => ({
+  const pipelineRows: PipelineJobData[] = pipelineJobs.map(j => ({
     id: j.id,
-    subjectName: j.subjectId
-      ? (pipelineSubjectMap.get(j.subjectId) ?? j.subject ?? 'Unknown')
-      : (j.subject ?? 'Unknown'),
+    subjectName: j.subjectId ? (pipelineSubjectMap.get(j.subjectId) ?? j.subject ?? 'Unknown') : (j.subject ?? 'Unknown'),
     boardSlug: j.board ?? 'cbse',
     grade: j.grade ?? 0,
     status: j.status,
@@ -255,18 +249,16 @@ export default async function ContentPage() {
     questionsExpected: j.questionsExpected,
     questionsCompleted: j.questionsCompleted,
     createdAt: j.createdAt.toISOString(),
-  }));
+  }))
 
   // ── 6. Build ingest run rows ─────────────────────────────────────────────
-  const runSubjectIds = recentRuns.map((r) => r.subjectId).filter(Boolean) as string[];
+  const runSubjectIds = recentRuns.map(r => r.subjectId).filter(Boolean) as string[]
   const runSubjectMap = new Map(
-    subjects
-      .filter((s) => runSubjectIds.includes(s.id))
-      .map((s) => [s.id, { name: s.name, grade: s.class.grade }])
-  );
+    subjects.filter(s => runSubjectIds.includes(s.id)).map(s => [s.id, { name: s.name, grade: s.class.grade }]),
+  )
 
-  const ingestRows: IngestRunData[] = recentRuns.map((r) => {
-    const sub = r.subjectId ? runSubjectMap.get(r.subjectId) : null;
+  const ingestRows: IngestRunData[] = recentRuns.map(r => {
+    const sub = r.subjectId ? runSubjectMap.get(r.subjectId) : null
     return {
       id: r.id,
       runAt: r.runAt.toISOString(),
@@ -278,10 +270,10 @@ export default async function ContentPage() {
       embeddingsGenerated: r.embeddingsGenerated,
       errors: r.errors,
       durationMs: r.durationMs ?? null,
-    };
-  });
+    }
+  })
 
-  const runningCount = pipelineJobs.length;
+  const runningCount = pipelineJobs.length
 
   return (
     <>
@@ -320,5 +312,5 @@ export default async function ContentPage() {
         </div>
       </div>
     </>
-  );
+  )
 }

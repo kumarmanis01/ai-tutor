@@ -60,7 +60,7 @@ export async function getServerSessionForHandlers() {
   // an unauthenticated request without calling the real NextAuth helper.
   const g: any = globalThis as any;
   if (Object.prototype.hasOwnProperty.call(g, '__TEST_SESSION__')) {
-    return g.__TEST_SESSION__;
+    return g.__TEST_SESSION__
   }
   return getServerSession(authOptions);
 }

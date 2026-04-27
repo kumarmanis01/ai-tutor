@@ -38,11 +38,7 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({ caption: null });
       } catch (e) {
-        logger.error('image-caption external call failed', {
-          className: 'api.image-caption',
-          methodName: 'POST',
-          error: e,
-        });
+        logger.error('image-caption external call failed', { className: 'api.image-caption', methodName: 'POST', error: e });
         return NextResponse.json({ caption: null });
       }
     }
@@ -57,11 +53,7 @@ export async function POST(req: Request) {
     // captioning when available.
     return NextResponse.json({ caption: null });
   } catch (e) {
-    logger.error('/api/image-caption error', {
-      className: 'api.image-caption',
-      methodName: 'POST',
-      error: e,
-    });
+    logger.error('/api/image-caption error', { className: 'api.image-caption', methodName: 'POST', error: e });
     return NextResponse.json({ caption: null }, { status: 500 });
   }
 }

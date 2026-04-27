@@ -4,10 +4,10 @@
  * Server component. Fetches all draft content (chapters, topics, notes, tests)
  * and passes to ContentReviewTable for interactive approve/reject.
  */
-import React from 'react';
-import { prisma } from '@/lib/prisma';
-import { AdminTopbar } from '../../../components/admin/AdminTopbar';
-import { ContentReviewTable, type ReviewItemData } from './ContentReviewTable';
+import React from 'react'
+import { prisma } from '@/lib/prisma'
+import { AdminTopbar } from '../../../components/admin/AdminTopbar'
+import { ContentReviewTable, type ReviewItemData } from './ContentReviewTable'
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -21,7 +21,7 @@ async function fetchDraftChapters() {
     },
     orderBy: { createdAt: 'desc' },
     take: 50,
-  });
+  })
 }
 
 async function fetchDraftTopics() {
@@ -34,7 +34,7 @@ async function fetchDraftTopics() {
     },
     orderBy: { createdAt: 'desc' },
     take: 50,
-  });
+  })
 }
 
 async function fetchDraftNotes() {
@@ -51,12 +51,7 @@ async function fetchDraftNotes() {
           chapter: {
             select: {
               name: true,
-              subject: {
-                select: {
-                  name: true,
-                  class: { select: { grade: true, board: { select: { name: true } } } },
-                },
-              },
+              subject: { select: { name: true, class: { select: { grade: true, board: { select: { name: true } } } } } },
             },
           },
         },
@@ -64,7 +59,7 @@ async function fetchDraftNotes() {
     },
     orderBy: { createdAt: 'desc' },
     take: 50,
-  });
+  })
 }
 
 async function fetchDraftTests() {
@@ -82,12 +77,7 @@ async function fetchDraftTests() {
           chapter: {
             select: {
               name: true,
-              subject: {
-                select: {
-                  name: true,
-                  class: { select: { grade: true, board: { select: { name: true } } } },
-                },
-              },
+              subject: { select: { name: true, class: { select: { grade: true, board: { select: { name: true } } } } } },
             },
           },
         },
@@ -95,7 +85,7 @@ async function fetchDraftTests() {
     },
     orderBy: { createdAt: 'desc' },
     take: 50,
-  });
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -103,26 +93,22 @@ async function fetchDraftTests() {
 // ---------------------------------------------------------------------------
 
 export default async function ContentApprovalPage() {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
   const [chapters, topics, notes, tests, approvedToday, qualityFlags] = await Promise.all([
     fetchDraftChapters().catch(() => []),
     fetchDraftTopics().catch(() => []),
     fetchDraftNotes().catch(() => []),
     fetchDraftTests().catch(() => []),
-    prisma.topicNote
-      .count({ where: { status: 'approved', createdAt: { gte: startOfToday } } })
-      .catch(() => 0),
-    prisma.aITutorTurnLog
-      .count({ where: { qualityFlag: { not: null }, createdAt: { gte: since7d } } })
-      .catch(() => 0),
-  ]);
+    prisma.topicNote.count({ where: { status: 'approved', createdAt: { gte: startOfToday } } }).catch(() => 0),
+    prisma.aITutorTurnLog.count({ where: { qualityFlag: { not: null }, createdAt: { gte: since7d } } }).catch(() => 0),
+  ])
 
   // Normalise into ReviewItemData[]
   const items: ReviewItemData[] = [
-    ...chapters.map((c) => ({
+    ...chapters.map(c => ({
       id: c.id,
       type: 'chapter' as const,
       subjectName: c.subject.name,
@@ -135,7 +121,7 @@ export default async function ContentApprovalPage() {
       difficulty: null,
       createdAt: c.createdAt.toISOString(),
     })),
-    ...topics.map((t) => ({
+    ...topics.map(t => ({
       id: t.id,
       type: 'topic' as const,
       subjectName: t.chapter.subject.name,
@@ -148,7 +134,7 @@ export default async function ContentApprovalPage() {
       difficulty: null,
       createdAt: t.createdAt.toISOString(),
     })),
-    ...notes.map((n) => ({
+    ...notes.map(n => ({
       id: n.id,
       type: 'note' as const,
       subjectName: n.topic.chapter.subject.name,
@@ -161,7 +147,7 @@ export default async function ContentApprovalPage() {
       difficulty: null,
       createdAt: n.createdAt.toISOString(),
     })),
-    ...tests.map((t) => ({
+    ...tests.map(t => ({
       id: t.id,
       type: 'test' as const,
       subjectName: t.topic.chapter.subject.name,
@@ -174,12 +160,12 @@ export default async function ContentApprovalPage() {
       difficulty: t.difficulty,
       createdAt: t.createdAt.toISOString(),
     })),
-  ];
+  ]
 
   // Sort all by createdAt desc
-  items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-  const totalPending = items.length;
+  const totalPending = items.length
 
   return (
     <>
@@ -211,20 +197,24 @@ export default async function ContentApprovalPage() {
         <ContentReviewTable items={items} />
       </div>
     </>
-  );
+  )
 }
 
-function StatCard({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
+function StatCard({
+  label,
+  value,
+  warn,
+}: {
+  label: string
+  value: number
+  warn?: boolean
+}) {
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
-      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-        {label}
-      </p>
-      <p
-        className={`text-2xl font-semibold mt-1 ${warn ? 'text-[#BA7517]' : 'text-gray-900 dark:text-white'}`}
-      >
+      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className={`text-2xl font-semibold mt-1 ${warn ? 'text-[#BA7517]' : 'text-gray-900 dark:text-white'}`}>
         {value}
       </p>
     </div>
-  );
+  )
 }

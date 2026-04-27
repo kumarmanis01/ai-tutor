@@ -5,15 +5,14 @@
  */
 module.exports = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description:
-        'Disallow creating Redis or Queue instances at module import time; use lazy-init factories',
+      description: "Disallow creating Redis or Queue instances at module import time; use lazy-init factories",
       recommended: false,
     },
     schema: [],
     messages: {
-      topLevel: 'Redis/Queue clients must be lazy-initialized. Do not create them at module scope.',
+      topLevel: "Redis/Queue clients must be lazy-initialized. Do not create them at module scope.",
     },
   },
   create(context) {
@@ -22,13 +21,7 @@ module.exports = {
       while (p) {
         if (p.type === 'Program') return true;
         // If any function/block/etc found, it's not module-top-level
-        if (
-          p.type === 'FunctionDeclaration' ||
-          p.type === 'FunctionExpression' ||
-          p.type === 'ArrowFunctionExpression' ||
-          p.type === 'ClassDeclaration'
-        )
-          return false;
+        if (p.type === 'FunctionDeclaration' || p.type === 'FunctionExpression' || p.type === 'ArrowFunctionExpression' || p.type === 'ClassDeclaration') return false;
         p = p.parent;
       }
       return false;
@@ -50,11 +43,11 @@ module.exports = {
           const callee = node.callee;
           const name = callee && callee.name;
           // Some code may call Queue(...) without `new` — catch that too
-          if (name === 'Queue' && isTopLevel(node)) {
+          if ((name === 'Queue') && isTopLevel(node)) {
             context.report({ node, messageId: 'topLevel' });
           }
         } catch (_) {}
-      },
+      }
     };
   },
 };

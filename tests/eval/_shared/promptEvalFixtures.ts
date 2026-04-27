@@ -1,15 +1,15 @@
-import { assembleSystemPrompt, type PromptContext } from '@/lib/ai/tutor/promptAssembly';
-import { checkInputSafety } from '@/lib/ai/tutor/inputSafety';
+import { assembleSystemPrompt, type PromptContext } from '@/lib/ai/tutor/promptAssembly'
+import { checkInputSafety } from '@/lib/ai/tutor/inputSafety'
 
 export interface PromptEvalFixture {
-  name: string;
-  input: PromptContext;
-  assertions: PromptAssertion[];
+  name: string
+  input: PromptContext
+  assertions: PromptAssertion[]
 }
 
 export interface PromptAssertion {
-  description: string;
-  assert: (prompt: string) => boolean;
+  description: string
+  assert: (prompt: string) => boolean
 }
 
 function makeCtx(overrides: Partial<PromptContext> = {}): PromptContext {
@@ -37,7 +37,7 @@ function makeCtx(overrides: Partial<PromptContext> = {}): PromptContext {
     conceptName: 'Similar Triangles',
     subjectName: 'Mathematics',
     ...overrides,
-  };
+  }
 }
 
 export const PROMPT_EVAL_FIXTURES: PromptEvalFixture[] = [
@@ -104,15 +104,15 @@ export const PROMPT_EVAL_FIXTURES: PromptEvalFixture[] = [
   {
     name: 'no-pii-in-prompt',
     input: (() => {
-      const raw = 'My phone is 9876543210 please call me.';
-      const safety = checkInputSafety(raw, { studentId: 's1', sessionId: 'sess1', turnId: 't1' });
+      const raw = 'My phone is 9876543210 please call me.'
+      const safety = checkInputSafety(raw, { studentId: 's1', sessionId: 'sess1', turnId: 't1' })
       return makeCtx({
         studentName: 'Riya Sharma',
         recentTurns: [
           { role: 'student', content: safety.redacted },
           { role: 'ai', content: 'Okay, let us focus on the concept.' },
         ],
-      });
+      })
     })(),
     assertions: [
       {
@@ -125,8 +125,9 @@ export const PROMPT_EVAL_FIXTURES: PromptEvalFixture[] = [
       },
     ],
   },
-];
+]
 
 export function assembleFixturePrompt(f: PromptEvalFixture): string {
-  return assembleSystemPrompt(f.input).system;
+  return assembleSystemPrompt(f.input).system
 }
+

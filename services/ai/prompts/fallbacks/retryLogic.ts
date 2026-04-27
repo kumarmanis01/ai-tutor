@@ -104,20 +104,20 @@ export interface RetryAuditEntry {
 
 /**
  * Maximum retry time by grade band.
- *
+ * 
  * REASONING:
  * - Junior students have less patience
  * - Senior students can wait longer for complex queries
  */
 export const MAX_RETRY_TIME_BY_GRADE: Record<number, number> = {
-  1: 5000, // 5 seconds max for Grade 1
+  1: 5000,   // 5 seconds max for Grade 1
   2: 5000,
   3: 5000,
-  4: 8000, // 8 seconds for middle school
+  4: 8000,   // 8 seconds for middle school
   5: 8000,
   6: 8000,
   7: 8000,
-  8: 12000, // 12 seconds for senior
+  8: 12000,  // 12 seconds for senior
   9: 12000,
   10: 15000, // 15 seconds for Grade 10 (board exam prep)
   11: 15000,
@@ -129,10 +129,10 @@ export const MAX_RETRY_TIME_BY_GRADE: Record<number, number> = {
  * Higher priority = more retries allowed.
  */
 export const CONTENT_TYPE_PRIORITY: Record<ContentType, number> = {
-  DOUBT: 3, // Highest - student actively asking
+  DOUBT: 3,    // Highest - student actively asking
   PRACTICE: 2, // Medium - can show different question
-  QUIZ: 1, // Low - can regenerate
-  NOTES: 1, // Low - can show cached/simpler version
+  QUIZ: 1,     // Low - can regenerate
+  NOTES: 1,    // Low - can show cached/simpler version
 };
 
 // ============================================================================
@@ -141,15 +141,14 @@ export const CONTENT_TYPE_PRIORITY: Record<ContentType, number> = {
 
 /**
  * Process a failure and determine retry/fallback action.
- *
+ * 
  * @param error - The error or failure that occurred
  * @param context - Complete retry context
  * @returns Complete retry result with decision and messages
  */
 export function handleFailure(input: any, ...rest: any[]): RetryResult {
   // Support two call styles: tests provide a single object { requestId, feature, grade, failure, context }
-  const isRequestShape =
-    input && typeof input === 'object' && (input.failure || input.context || input.feature);
+  const isRequestShape = input && typeof input === 'object' && (input.failure || input.context || input.feature);
 
   let failureArg: any;
   let ctxArg: any;
@@ -162,9 +161,7 @@ export function handleFailure(input: any, ...rest: any[]): RetryResult {
     ctxArg = input.context;
     requestId = input.requestId || ctxArg?.requestId;
     grade = input.grade ?? ctxArg?.grade;
-    contentType = (input.feature || ctxArg?.contentType || 'NOTES')
-      .toString()
-      .toUpperCase() as ContentType;
+    contentType = (input.feature || ctxArg?.contentType || 'NOTES').toString().toUpperCase() as ContentType;
   } else {
     // legacy signature: handleFailure(error, context?)
     failureArg = input;
@@ -198,27 +195,13 @@ export function handleFailure(input: any, ...rest: any[]): RetryResult {
   if (failureArg && typeof failureArg === 'object' && typeof failureArg.category !== 'undefined') {
     failure = {
       category: failureArg.category,
-      reason:
-        failureArg.reason ??
-        (failureArg.aiConfidence
-          ? FailureReason.CONFIDENCE_BELOW_THRESHOLD
-          : FailureReason.API_TIMEOUT),
+      reason: failureArg.reason ?? (failureArg.aiConfidence ? FailureReason.CONFIDENCE_BELOW_THRESHOLD : FailureReason.API_TIMEOUT),
       description: failureArg.description ?? '',
-      originalError:
-        failureArg.originalError ??
-        (failureArg.error instanceof Error ? failureArg.error : undefined),
+      originalError: failureArg.originalError ?? (failureArg.error instanceof Error ? failureArg.error : undefined),
       confidenceScore: failureArg.aiConfidence ?? failureArg.confidenceScore,
-      details:
-        (failureArg.details ?? failureArg.validationErrors)
-          ? { validationErrors: failureArg.validationErrors }
-          : undefined,
+      details: failureArg.details ?? failureArg.validationErrors ? { validationErrors: failureArg.validationErrors } : undefined,
       // Use explicit attemptNumber when provided by context so exhausted attempts are recognized
-      retryCount:
-        typeof failureArg.retryCount === 'number'
-          ? failureArg.retryCount
-          : typeof failureArg.attemptNumber === 'number'
-            ? failureArg.attemptNumber
-            : attemptNumber,
+      retryCount: typeof failureArg.retryCount === 'number' ? failureArg.retryCount : (typeof failureArg.attemptNumber === 'number' ? failureArg.attemptNumber : attemptNumber),
       timestamp: failureArg.timestamp ? new Date(failureArg.timestamp) : new Date(),
       requestId: failureArg.requestId ?? normalizedContext.requestId,
     } as FailureDetails;
@@ -241,12 +224,7 @@ export function handleFailure(input: any, ...rest: any[]): RetryResult {
   let fallbackTemplate: FallbackTemplate | undefined;
   if (!finalDecision.shouldRetry) {
     const strategy = finalDecision.strategy;
-    fallbackTemplate = getFallbackTemplate(
-      normalizedGrade,
-      strategy,
-      normalizedContentType,
-      failure.reason
-    );
+    fallbackTemplate = getFallbackTemplate(normalizedGrade, strategy, normalizedContentType, failure.reason);
     fallbackMessage = formatFallbackMessage(fallbackTemplate);
   }
 
@@ -269,11 +247,7 @@ export function handleFailure(input: any, ...rest: any[]): RetryResult {
     failureCategory: failure.category,
     failureReason: failure.reason,
     strategy: finalDecision.strategy,
-    decision: finalDecision.shouldRetry
-      ? 'RETRY'
-      : finalDecision.strategy === FallbackStrategy.HUMAN_ESCALATION
-        ? 'ESCALATE'
-        : 'FALLBACK',
+    decision: finalDecision.shouldRetry ? 'RETRY' : finalDecision.strategy === FallbackStrategy.HUMAN_ESCALATION ? 'ESCALATE' : 'FALLBACK',
     attemptNumber: normalizedContext.attemptNumber + 1,
     reasoning: finalDecision.reasoning,
   };
@@ -314,7 +288,7 @@ function applyGradeAdjustments(
         reasoning: `${decision.reasoning} [Adjusted: Junior grade max 1 retry]`,
       };
     }
-
+    
     // Always use safe response for content issues (never show confusing content)
     if (failure.category === FailureCategory.CONTENT_ISSUE) {
       return {
@@ -325,7 +299,7 @@ function applyGradeAdjustments(
       };
     }
   }
-
+  
   // Senior grades (8+): Allow more retries for exam prep
   if (context.grade >= 8 && context.contentType === 'PRACTICE') {
     // Double max retries for practice questions
@@ -335,17 +309,20 @@ function applyGradeAdjustments(
       reasoning: `${decision.reasoning} [Adjusted: Senior grade practice priority]`,
     };
   }
-
+  
   return decision;
 }
 
 /**
  * Apply time budget constraints to retry decision.
  */
-function applyTimeBudget(decision: RetryDecision, context: RetryContext): RetryDecision {
+function applyTimeBudget(
+  decision: RetryDecision,
+  context: RetryContext
+): RetryDecision {
   const maxTime = MAX_RETRY_TIME_BY_GRADE[context.grade] ?? 10000;
   const remainingTime = maxTime - context.totalRetryTimeMs;
-
+  
   // Not enough time for retry
   if (decision.shouldRetry && decision.delayMs > remainingTime) {
     return {
@@ -355,7 +332,7 @@ function applyTimeBudget(decision: RetryDecision, context: RetryContext): RetryD
       reasoning: `${decision.reasoning} [Adjusted: Time budget exceeded (${context.totalRetryTimeMs}ms/${maxTime}ms)]`,
     };
   }
-
+  
   // Total time would exceed budget
   if (decision.shouldRetry && context.totalRetryTimeMs + decision.delayMs > maxTime) {
     return {
@@ -365,7 +342,7 @@ function applyTimeBudget(decision: RetryDecision, context: RetryContext): RetryD
       reasoning: `${decision.reasoning} [Adjusted: Would exceed time budget]`,
     };
   }
-
+  
   return decision;
 }
 
@@ -376,12 +353,7 @@ function applyTimeBudget(decision: RetryDecision, context: RetryContext): RetryD
 /**
  * Create initial retry context
  */
-export function createRetryContext(opts: {
-  requestId: string;
-  feature: string;
-  grade: Grade;
-  originalRequest?: Record<string, unknown>;
-}): RetryContext {
+export function createRetryContext(opts: { requestId: string; feature: string; grade: Grade; originalRequest?: Record<string, unknown> }): RetryContext {
   const contentType = (opts.feature || 'notes').toString().toUpperCase() as ContentType;
   const grade = opts.grade;
   return {
@@ -401,7 +373,10 @@ export function createRetryContext(opts: {
 /**
  * Update retry context after an attempt
  */
-export function updateRetryContext(context: RetryContext, failure: FailureDetails): RetryContext {
+export function updateRetryContext(
+  context: RetryContext,
+  failure: FailureDetails
+): RetryContext {
   const nextFailures = (context.failures || []).concat(failure);
   return {
     ...context,
@@ -422,7 +397,10 @@ export function canRetry(context: RetryContext): boolean {
 /**
  * Get simplified prompt for retry
  */
-export function getSimplifiedPrompt(originalPrompt: string, grade: Grade): string {
+export function getSimplifiedPrompt(
+  originalPrompt: string,
+  grade: Grade
+): string {
   // Remove complex instructions for junior grades
   if (grade <= 3) {
     return originalPrompt
@@ -430,12 +408,14 @@ export function getSimplifiedPrompt(originalPrompt: string, grade: Grade): strin
       .replace(/analyze|evaluate|synthesize/gi, 'explain')
       .substring(0, 500); // Limit length
   }
-
+  
   // Moderate simplification for middle grades
   if (grade <= 7) {
-    return originalPrompt.replace(/comprehensive/gi, 'clear').substring(0, 800);
+    return originalPrompt
+      .replace(/comprehensive/gi, 'clear')
+      .substring(0, 800);
   }
-
+  
   // Minimal simplification for senior grades
   return originalPrompt.substring(0, 1200);
 }

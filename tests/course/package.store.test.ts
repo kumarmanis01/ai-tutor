@@ -1,4 +1,4 @@
-import { saveCoursePackage } from '@/lib/course/package/store';
+import { saveCoursePackage } from '@/lib/course/package/store'
 import { prisma } from '../../lib/prisma';
 
 const makePkg = () => ({
@@ -20,63 +20,42 @@ const makePkg = () => ({
           title: 'Lesson One',
           durationMinutes: 10,
           objectives: ['o'],
-          explanation: {
-            overview: 'overview'.repeat(10),
-            concepts: [
-              {
-                title: 'c1',
-                explanation:
-                  'This concept explanation is long enough to satisfy the schema minimum length requirement.',
-              },
-            ],
-          },
-          keyTakeaways: ['t1', 't2'],
+          explanation: { overview: 'overview'.repeat(10), concepts: [{ title: 'c1', explanation: 'This concept explanation is long enough to satisfy the schema minimum length requirement.' }] },
+          keyTakeaways: ['t1','t2'],
           practice: { prompt: 'p'.repeat(30), expectedOutcome: 'o'.repeat(30) },
-          metadata: { level: 'beginner' },
-        },
+          metadata: { level: 'beginner' }
+        }
       ],
       quizzes: [
-        {
-          lessonId: 'l1',
-          questions: [
-            {
-              question: 'What is X?',
-              options: ['A', 'B', 'C', 'D'],
-              correctIndex: 0,
-              explanation: 'This explanation is sufficiently long.',
-            },
-          ],
-        },
-      ],
-    },
+        { lessonId: 'l1', questions: [{ question: 'What is X?', options: ['A','B','C','D'], correctIndex: 0, explanation: 'This explanation is sufficiently long.' }] }
+      ]
+    }
   ],
   createdAt: new Date().toISOString(),
-  frozen: true,
-});
+  frozen: true
+})
 
 test('saveCoursePackage succeeds on valid insert', async () => {
   const mockPrisma: any = {
     coursePackage: {
-      create: jest.fn().mockResolvedValueOnce({ ok: true }),
-    },
-  };
+      create: jest.fn().mockResolvedValueOnce({ ok: true })
+    }
+  }
 
-  const pkg = makePkg() as any;
-  const res = await saveCoursePackage(mockPrisma as PrismaClient, pkg);
-  expect(mockPrisma.coursePackage.create).toHaveBeenCalled();
-  expect(res).toEqual({ ok: true });
-});
+  const pkg = makePkg() as any
+  const res = await saveCoursePackage(mockPrisma as PrismaClient, pkg)
+  expect(mockPrisma.coursePackage.create).toHaveBeenCalled()
+  expect(res).toEqual({ ok: true })
+})
 
 test('saveCoursePackage bubbles unique-constraint errors (duplicate version)', async () => {
   const mockPrisma: any = {
     coursePackage: {
-      create: jest
-        .fn()
-        .mockRejectedValueOnce(Object.assign(new Error('Unique'), { code: 'P2002' })),
-    },
-  };
+      create: jest.fn().mockRejectedValueOnce(Object.assign(new Error('Unique'), { code: 'P2002' }))
+    }
+  }
 
-  const pkg = makePkg() as any;
-  await expect(saveCoursePackage(mockPrisma as PrismaClient, pkg)).rejects.toThrow();
-  expect(mockPrisma.coursePackage.create).toHaveBeenCalled();
-});
+  const pkg = makePkg() as any
+  await expect(saveCoursePackage(mockPrisma as PrismaClient, pkg)).rejects.toThrow()
+  expect(mockPrisma.coursePackage.create).toHaveBeenCalled()
+})

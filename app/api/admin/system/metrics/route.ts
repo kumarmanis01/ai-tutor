@@ -29,16 +29,10 @@ export async function GET(req: Request) {
     if (!samples || samples.length === 0) {
       // fallback to live snapshot
       const h = await systemHealth();
-      return NextResponse.json({
-        range: { from: from.toISOString(), to: to.toISOString(), intervalSec: interval },
-        samples: [h],
-      });
+      return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), intervalSec: interval }, samples: [h] });
     }
 
-    return NextResponse.json({
-      range: { from: from.toISOString(), to: to.toISOString(), intervalSec: interval },
-      samples,
-    });
+    return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), intervalSec: interval }, samples });
   } catch (err: any) {
     return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }

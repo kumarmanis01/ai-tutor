@@ -35,13 +35,11 @@ export default function TestsPageClient() {
   // Initialize filters from user profile when loaded
   useEffect(() => {
     if (profile && !filters.boardSlug) {
-      setFilters(
-        createFilterStateFromProfile({
-          language: profile.language,
-          board: profile.board,
-          grade: profile.grade,
-        })
-      );
+      setFilters(createFilterStateFromProfile({
+        language: profile.language,
+        board: profile.board,
+        grade: profile.grade,
+      }));
     }
   }, [profile, filters.boardSlug]);
 
@@ -130,12 +128,11 @@ export default function TestsPageClient() {
         subject={filters.subjectSlug || undefined}
         grade={filters.gradeNum ? String(filters.gradeNum) : undefined}
         board={filters.boardSlug ?? undefined}
-        chapters={helpers
-          .getChaptersForSubject(filters.subjectId)
-          .map((c) => ({ id: c.id, name: c.name }))}
+        chapters={helpers.getChaptersForSubject(filters.subjectId).map(c => ({ id: c.id, name: c.name }))}
       />
       <TestHistory />
       <WeeklyChallenge />
     </div>
   );
 }
+

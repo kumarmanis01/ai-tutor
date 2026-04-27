@@ -24,7 +24,7 @@ export class SinkWrapper implements AlertSink {
   }
 
   private sleep(ms: number) {
-    return new Promise((res) => setTimeout(res, ms));
+    return new Promise(res => setTimeout(res, ms));
   }
 
   async send(a: AlertPayload): Promise<SinkResult> {

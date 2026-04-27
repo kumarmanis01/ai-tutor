@@ -290,15 +290,18 @@ export function getEndpoint(name: keyof typeof ENDPOINTS): EndpointDefinition {
 /**
  * Build URL with parameters
  */
-export function buildUrl(endpoint: EndpointDefinition, params?: Record<string, string>): string {
+export function buildUrl(
+  endpoint: EndpointDefinition,
+  params?: Record<string, string>
+): string {
   let url = endpoint.path;
-
+  
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       url = url.replace(`:${key}`, encodeURIComponent(value));
     });
   }
-
+  
   return url;
 }
 
@@ -306,7 +309,7 @@ export function buildUrl(endpoint: EndpointDefinition, params?: Record<string, s
  * Get all endpoints by tag
  */
 export function getEndpointsByTag(tag: string): EndpointDefinition[] {
-  return Object.values(ENDPOINTS).filter((e) => e.tags.includes(tag));
+  return Object.values(ENDPOINTS).filter(e => e.tags.includes(tag));
 }
 
 /**
@@ -314,8 +317,8 @@ export function getEndpointsByTag(tag: string): EndpointDefinition[] {
  */
 export function getAllTags(): string[] {
   const tags = new Set<string>();
-  Object.values(ENDPOINTS).forEach((e) => {
-    e.tags.forEach((t) => tags.add(t));
+  Object.values(ENDPOINTS).forEach(e => {
+    e.tags.forEach(t => tags.add(t));
   });
   return Array.from(tags);
 }

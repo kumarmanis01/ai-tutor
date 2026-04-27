@@ -6,13 +6,7 @@
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
 jest.mock('@/lib/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    logAPI: jest.fn(),
-  },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
@@ -60,10 +54,7 @@ function makeSubscription(overrides: any = {}) {
     paymentId: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
-    installments: [
-      makeInstallment({ number: 1 }),
-      makeInstallment({ number: 2, dueAt: new Date('2026-03-01') }),
-    ],
+    installments: [makeInstallment({ number: 1 }), makeInstallment({ number: 2, dueAt: new Date('2026-03-01') })],
     ...overrides,
   };
 }
@@ -111,9 +102,7 @@ describe('GET /api/parent/subscription/schedule', () => {
     const paidAt = new Date('2026-02-05');
     prismaMock.subscription.findFirst.mockResolvedValue(
       makeSubscription({
-        installments: [
-          makeInstallment({ number: 1, status: 'PAID', paidAt, providerPaymentId: 'pay_abc' }),
-        ],
+        installments: [makeInstallment({ number: 1, status: 'PAID', paidAt, providerPaymentId: 'pay_abc' })],
       }) as any
     );
     const { GET } = await import('@/app/api/parent/subscription/schedule/route');

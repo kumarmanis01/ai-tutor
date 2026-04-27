@@ -1,44 +1,45 @@
-'use client';
+'use client'
 
-import React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useRevisionsDueToday, type RevisionDueItem } from '@/hooks/useRevisionsDueToday';
-import { useRevisionsUpcoming } from '@/hooks/useRevisionsUpcoming';
+import React from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useRevisionsDueToday, type RevisionDueItem } from '@/hooks/useRevisionsDueToday'
+import { useRevisionsUpcoming } from '@/hooks/useRevisionsUpcoming'
 
 function OverdueBadge({ overdueByDays }: { overdueByDays: number }) {
-  const days = Math.floor(overdueByDays);
+  const days = Math.floor(overdueByDays)
   if (days === 0) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
         <span aria-hidden>🟡</span> Due today
       </span>
-    );
+    )
   }
   if (days === 1) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded">
         <span aria-hidden>🔴</span> Overdue 1d
       </span>
-    );
+    )
   }
   return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded">
       <span aria-hidden>🔴</span> Overdue {days}d
     </span>
-  );
+  )
 }
 
 /** AC-05 (F-STU-022): Memory strength bar replacing the plain percentage badge. */
 function MemoryStrengthBar({ retention }: { retention: number }) {
-  const pct = Math.round(Math.max(0, Math.min(1, retention)) * 100);
-  const barColour = pct < 50 ? 'bg-[#E24B4A]' : pct <= 80 ? 'bg-[#BA7517]' : 'bg-[#1D9E75]';
+  const pct = Math.round(Math.max(0, Math.min(1, retention)) * 100)
+  const barColour =
+    pct < 50 ? 'bg-[#E24B4A]' : pct <= 80 ? 'bg-[#BA7517]' : 'bg-[#1D9E75]'
   const labelColour =
     pct < 50
       ? 'text-[#E24B4A] dark:text-red-400'
       : pct <= 80
         ? 'text-[#BA7517] dark:text-amber-400'
-        : 'text-[#1D9E75] dark:text-green-400';
+        : 'text-[#1D9E75] dark:text-green-400'
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
       <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
@@ -50,16 +51,22 @@ function MemoryStrengthBar({ retention }: { retention: number }) {
       </div>
       <span className={`text-xs font-medium tabular-nums ${labelColour}`}>{pct}%</span>
     </div>
-  );
+  )
 }
 
 function formatNextReview(daysUntil: number): string {
-  if (daysUntil <= 0) return 'Today';
-  if (daysUntil === 1) return 'Tomorrow';
-  return `In ${daysUntil} days`;
+  if (daysUntil <= 0) return 'Today'
+  if (daysUntil === 1) return 'Tomorrow'
+  return `In ${daysUntil} days`
 }
 
-function RevisionRow({ item, onStart }: { item: RevisionDueItem; onStart: () => void }) {
+function RevisionRow({
+  item,
+  onStart,
+}: {
+  item: RevisionDueItem
+  onStart: () => void
+}) {
   return (
     <div className="flex flex-wrap items-center gap-2 py-3 border-b border-gray-100 last:border-b-0 min-w-0">
       <div className="flex-1 min-w-0">
@@ -78,7 +85,7 @@ function RevisionRow({ item, onStart }: { item: RevisionDueItem; onStart: () => 
         Start →
       </button>
     </div>
-  );
+  )
 }
 
 function SkeletonCard() {
@@ -95,28 +102,20 @@ function SkeletonCard() {
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 export function RevisionWidget() {
-  const router = useRouter();
-  const {
-    revisions,
-    totalDue,
-    capReached,
-    minutesUsedToday: _minutesUsedToday,
-    loading,
-    error,
-    retry,
-  } = useRevisionsDueToday();
-  const { nextReview, loading: upcomingLoading } = useRevisionsUpcoming();
+  const router = useRouter()
+  const { revisions, totalDue, capReached, minutesUsedToday: _minutesUsedToday, loading, error, retry } = useRevisionsDueToday()
+  const { nextReview, loading: upcomingLoading } = useRevisionsUpcoming()
 
   if (loading) {
     return (
       <section aria-label="Revisions due today" className="w-full max-w-full">
         <SkeletonCard />
       </section>
-    );
+    )
   }
 
   if (error) {
@@ -133,33 +132,36 @@ export function RevisionWidget() {
           </button>
         </div>
       </section>
-    );
+    )
   }
 
   if (revisions.length === 0) {
     const nextLabel =
-      !upcomingLoading && nextReview ? formatNextReview(nextReview.daysUntil) : null;
+      !upcomingLoading && nextReview
+        ? formatNextReview(nextReview.daysUntil)
+        : null
     return (
       <section aria-label="Revisions due today" className="w-full max-w-full">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-sm font-medium text-gray-900 mb-1">✅ You&apos;re all caught up!</p>
-          {nextLabel !== null && <p className="text-xs text-gray-500">Next review: {nextLabel}</p>}
+          {nextLabel !== null && (
+            <p className="text-xs text-gray-500">
+              Next review: {nextLabel}
+            </p>
+          )}
         </div>
       </section>
-    );
+    )
   }
 
-  const displayItems = revisions.slice(0, 3);
-  const showViewAll = totalDue > 3;
+  const displayItems = revisions.slice(0, 3)
+  const showViewAll = totalDue > 3
 
   return (
     <section aria-label="Revisions due today" className="w-full max-w-full">
       <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between mb-3">
-          <Link
-            href="/student/revisions"
-            className="text-base font-semibold text-gray-900 dark:text-gray-100 hover:underline"
-          >
+          <Link href="/student/revisions" className="text-base font-semibold text-gray-900 dark:text-gray-100 hover:underline">
             📚 {totalDue} cards due today
           </Link>
         </div>
@@ -168,8 +170,7 @@ export function RevisionWidget() {
         {capReached && (
           <div className="mb-3 rounded-lg bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-3 py-2">
             <p className="text-xs font-medium text-[#1D9E75] dark:text-green-400">
-              You have reached your 20-minute daily revision limit. Come back tomorrow to keep your
-              streak going.
+              You have reached your 20-minute daily revision limit. Come back tomorrow to keep your streak going.
             </p>
           </div>
         )}
@@ -195,7 +196,7 @@ export function RevisionWidget() {
         )}
       </div>
     </section>
-  );
+  )
 }
 
-export default RevisionWidget;
+export default RevisionWidget

@@ -16,14 +16,7 @@ export default function InviteButton() {
     setLoading(true);
     try {
       const res = await fetch('/api/referral/create', { method: 'POST' });
-      const raw = await res.json().catch((e) => {
-        logger.warn('referral/create response.json() failed', {
-          className: 'InviteButton',
-          methodName: 'createReferral',
-          error: e,
-        });
-        return {} as unknown;
-      });
+      const raw = await res.json().catch((e) => { logger.warn('referral/create response.json() failed', { className: 'InviteButton', methodName: 'createReferral', error: e }); return {} as unknown });
       const data = raw as CreateResponse;
 
       if (data?.url) {
@@ -31,18 +24,10 @@ export default function InviteButton() {
         try {
           await navigator.clipboard.writeText(data.url);
         } catch (e) {
-          logger.warn('navigator.clipboard.writeText failed', {
-            className: 'InviteButton',
-            methodName: 'createReferral',
-            error: e,
-          });
+          logger.warn('navigator.clipboard.writeText failed', { className: 'InviteButton', methodName: 'createReferral', error: e });
         }
       } else {
-        logger.warn('Unexpected response from /api/referral/create', {
-          className: 'InviteButton',
-          methodName: 'createReferral',
-          data,
-        });
+        logger.warn('Unexpected response from /api/referral/create', { className: 'InviteButton', methodName: 'createReferral', data });
       }
     } finally {
       setLoading(false);
@@ -62,11 +47,7 @@ export default function InviteButton() {
         await navigator.share({ title: 'Join Spinzy Academy', text, url: link });
         return;
       } catch (e) {
-        logger.warn('navigator.share failed', {
-          className: 'InviteButton',
-          methodName: 'share',
-          error: e,
-        });
+        logger.warn('navigator.share failed', { className: 'InviteButton', methodName: 'share', error: e });
         // user cancelled or share failed -- fall back to web share links
       }
     }

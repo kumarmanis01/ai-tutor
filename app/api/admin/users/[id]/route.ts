@@ -31,13 +31,13 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       prisma.user.update({ where: { id }, data: { grade: body.grade } }),
       prisma.auditLog.create({
         data: {
-          adminId: session.user.id,
-          targetEntity: 'User',
-          targetId: id,
-          action: AdminActionType.GRADE_CHANGE,
+          adminId:       session.user.id,
+          targetEntity:  'User',
+          targetId:      id,
+          action:        AdminActionType.GRADE_CHANGE,
           previousValue: { grade: current.grade },
-          newValue: { grade: body.grade },
-          reason: String(body.reason).trim(),
+          newValue:      { grade: body.grade },
+          reason:        String(body.reason).trim(),
         },
       }),
       // Grade change invalidates all mastery data and learning plans
@@ -69,10 +69,10 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
       prisma.user.update({ where: { id }, data: { status: 'suspended' } }),
       prisma.auditLog.create({
         data: {
-          adminId: session.user.id,
+          adminId:      session.user.id,
           targetEntity: 'User',
-          targetId: id,
-          action: AdminActionType.ACCOUNT_SUSPEND,
+          targetId:     id,
+          action:       AdminActionType.ACCOUNT_SUSPEND,
         },
       }),
     ]);

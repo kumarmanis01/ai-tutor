@@ -14,13 +14,13 @@
  * - 2026-01-22T06:55:00Z | copilot | Added support for all hydrated content types: syllabus, chapters, topics
  */
 
-import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
-import { getServerSessionForHandlers } from '@/lib/session';
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
+import { getServerSessionForHandlers } from "@/lib/session";
 
 const SUPPORTED_TYPES = ['syllabus', 'chapter', 'topic', 'note', 'test'] as const;
-type ContentType = (typeof SUPPORTED_TYPES)[number];
+type ContentType = typeof SUPPORTED_TYPES[number];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -30,24 +30,18 @@ export async function POST(req: Request) {
 
   try {
     // Allow tests to inject a mock prisma via global.__TEST_PRISMA__
-    const db = (global as any).__TEST_PRISMA__ ?? prisma;
+    const db = (global as any).__TEST_PRISMA__ ?? prisma
     const { type, id, action = 'approve', reason } = await req.json();
-
+    
     if (!type || !id) {
-      return NextResponse.json(
-        { success: false, error: 'Type and ID are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Type and ID are required" }, { status: 400 });
     }
 
     if (!SUPPORTED_TYPES.includes(type as ContentType)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Unsupported type. Allowed: ${SUPPORTED_TYPES.join(', ')}`,
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ 
+        success: false, 
+        error: `Unsupported type. Allowed: ${SUPPORTED_TYPES.join(', ')}` 
+      }, { status: 400 });
     }
 
     // Determine new status based on type and action
@@ -55,12 +49,8 @@ export async function POST(req: Request) {
     // Others use ApprovalStatus (draft, approved, rejected)
     const isSyllabus = type === 'syllabus';
     const newStatus = isSyllabus
-      ? action === 'reject'
-        ? 'DRAFT'
-        : 'APPROVED' // Syllabus: DRAFT or APPROVED (no rejected state)
-      : action === 'reject'
-        ? 'rejected'
-        : 'approved'; // Others: draft, approved, rejected
+      ? (action === 'reject' ? 'DRAFT' : 'APPROVED') // Syllabus: DRAFT or APPROVED (no rejected state)
+      : (action === 'reject' ? 'rejected' : 'approved'); // Others: draft, approved, rejected
 
     // Update the content status
     switch (type) {
@@ -118,16 +108,7 @@ export async function POST(req: Request) {
     await db.auditLog.create({
       data: {
         adminId: auditUserId,
-        targetEntity:
-          type === 'chapter'
-            ? 'ChapterDef'
-            : type === 'topic'
-              ? 'TopicDef'
-              : type === 'note'
-                ? 'TopicNote'
-                : type === 'test'
-                  ? 'GeneratedTest'
-                  : 'Syllabus',
+        targetEntity: type === 'chapter' ? 'ChapterDef' : type === 'topic' ? 'TopicDef' : type === 'note' ? 'TopicNote' : type === 'test' ? 'GeneratedTest' : 'Syllabus',
         targetId: id,
         action: action === 'approve' ? 'CONTENT_APPROVE' : 'CONTENT_REJECT',
         newValue: { status: newStatus },
@@ -139,7 +120,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, status: newStatus });
   } catch (error) {
-    logger.error('Content approval failed', { error });
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    logger.error("Content approval failed", { error });
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

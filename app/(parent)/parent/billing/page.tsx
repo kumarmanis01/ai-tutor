@@ -37,37 +37,23 @@ export default async function ParentBillingPage() {
 
   const parentId = session.user.id;
 
-  const links = await prisma.parentStudent.findMany({
-    where: { parentId, status: 'active' },
-    select: { studentId: true },
-  });
+  const links = await prisma.parentStudent.findMany({ where: { parentId, status: 'active' }, select: { studentId: true } });
 
-  const children: Array<{ studentId: string; name: string; grade: string; board: string } | null> =
-    [];
+  const children: Array<{ studentId: string; name: string; grade: string; board: string } | null> = []
   for (const { studentId } of links) {
-    const student = await prisma.user.findUnique({
-      where: { id: studentId },
-      select: { id: true, name: true, grade: true, board: true },
-    });
+    const student = await prisma.user.findUnique({ where: { id: studentId }, select: { id: true, name: true, grade: true, board: true } });
     if (!student) {
-      children.push(null);
-      continue;
+      children.push(null)
+      continue
     }
-    children.push({
-      studentId: student.id,
-      name: student.name ?? 'Student',
-      grade: student.grade ?? '',
-      board: student.board ?? '',
-    });
+    children.push({ studentId: student.id, name: student.name ?? 'Student', grade: student.grade ?? '', board: student.board ?? '' })
   }
 
   const validChildren = children.filter((c): c is NonNullable<typeof c> => c !== null);
 
   // Load active parent subscription and installments to surface EMI schedule
-  const activeSubscription = await prisma.subscription.findFirst({
-    where: { userId: parentId, active: true },
-    include: { installments: { orderBy: { number: 'asc' } } },
-  });
+  const activeSubscription = await prisma.subscription.findFirst({ where: { userId: parentId, active: true }, include: { installments: { orderBy: { number: 'asc' } } } });
+  
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
@@ -76,56 +62,38 @@ export default async function ParentBillingPage() {
       {activeSubscription && (
         <section className="mb-6 rounded-xl border bg-white p-4">
           <h2 className="text-sm font-semibold">Active subscription</h2>
-          <div className="text-xs text-gray-600">
-            Plan: {activeSubscription.plan} · {activeSubscription.billingCycle}
-          </div>
-          <div className="mt-2 text-sm">
-            Expires: {activeSubscription.endDate?.toLocaleDateString('en-IN') ?? '--'}
-          </div>
+          <div className="text-xs text-gray-600">Plan: {activeSubscription.plan} · {activeSubscription.billingCycle}</div>
+          <div className="mt-2 text-sm">Expires: {activeSubscription.endDate?.toLocaleDateString('en-IN') ?? '--'}</div>
           {activeSubscription.installments && activeSubscription.installments.length > 0 && (
             <div className="mt-3 text-sm">
               <div className="text-xs text-gray-500">EMI schedule</div>
               <ul className="mt-2 space-y-2">
                 {activeSubscription.installments.map((it) => {
-                  const due = new Date(it.dueAt);
-                  const now = new Date();
-                  const overdue =
-                    (it.status ?? '').toString().toUpperCase() !== 'PAID' &&
-                    due.getTime() < now.getTime();
-                  const daysOverdue = overdue
-                    ? Math.floor((now.getTime() - due.getTime()) / (24 * 60 * 60 * 1000))
-                    : 0;
+                  const due = new Date(it.dueAt)
+                  const now = new Date()
+                  const overdue = (it.status ?? '').toString().toUpperCase() !== 'PAID' && due.getTime() < now.getTime()
+                  const daysOverdue = overdue ? Math.floor((now.getTime() - due.getTime()) / (24 * 60 * 60 * 1000)) : 0
                   return (
                     <li key={it.id} className="flex items-center justify-between text-sm">
                       <div>
                         <div className="font-medium">Installment {it.number}</div>
-                        <div className="text-xs text-gray-600">
-                          Due: {due.toLocaleDateString('en-IN')}
-                        </div>
-                        {overdue && (
-                          <div className="text-xs text-red-600">
-                            Overdue by {daysOverdue} day{daysOverdue === 1 ? '' : 's'}
-                          </div>
-                        )}
+                        <div className="text-xs text-gray-600">Due: {due.toLocaleDateString('en-IN')}</div>
+                        {overdue && <div className="text-xs text-red-600">Overdue by {daysOverdue} day{daysOverdue === 1 ? '' : 's'}</div>}
                       </div>
                       <div className="text-right">
                         <div className="font-medium">{formatINR(it.amount)}</div>
                         <div className="text-xs text-gray-500">{statusLabel(it.status)}</div>
-                        {activeSubscription.graceUntil &&
-                          new Date(activeSubscription.graceUntil).getTime() > Date.now() && (
-                            <div className="text-xs text-gray-600">
-                              Grace until{' '}
-                              {new Date(activeSubscription.graceUntil).toLocaleDateString('en-IN')}
-                            </div>
-                          )}
-                        {String(it.status).toUpperCase() !== 'PAID' && (
+                        {activeSubscription.graceUntil && new Date(activeSubscription.graceUntil).getTime() > Date.now() && (
+                          <div className="text-xs text-gray-600">Grace until {new Date(activeSubscription.graceUntil).toLocaleDateString('en-IN')}</div>
+                        )}
+                        {(String(it.status).toUpperCase() !== 'PAID') && (
                           <div className="mt-2">
                             <RetryInstallmentButton installmentId={it.id} />
                           </div>
                         )}
                       </div>
                     </li>
-                  );
+                  )
                 })}
               </ul>
             </div>

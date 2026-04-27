@@ -10,41 +10,38 @@ export const dynamic = 'force-dynamic';
 const EVAL_TIMEOUT_MS = 8_000;
 
 const FALLBACK_FEEDBACK =
-  'Great effort putting your working down! Keep exploring this approach -- you are on the right track.';
+  "Great effort putting your working down! Keep exploring this approach -- you are on the right track.";
 
 async function uploadDataUrlToS3(dataUrl: string, keyPrefix: string): Promise<string | null> {
   try {
-    const bucket = process.env.S3_BUCKET ?? process.env.NEXT_PUBLIC_S3_BUCKET ?? 'test-bucket';
-    if (!bucket) return null;
-    const match = String(dataUrl || '').match(/^data:(.+);base64,(.*)$/);
-    if (!match) return null;
-    const mime = match[1] || 'image/png';
-    const base64 = match[2] || '';
-    const buf = Buffer.from(base64, 'base64');
-    const region = process.env.AWS_REGION ?? 'us-east-1';
+    const bucket = process.env.S3_BUCKET ?? process.env.NEXT_PUBLIC_S3_BUCKET ?? 'test-bucket'
+    if (!bucket) return null
+    const match = String(dataUrl || '').match(/^data:(.+);base64,(.*)$/)
+    if (!match) return null
+    const mime = match[1] || 'image/png'
+    const base64 = match[2] || ''
+    const buf = Buffer.from(base64, 'base64')
+    const region = process.env.AWS_REGION ?? 'us-east-1'
 
     const client = new S3Client({
       region,
       credentials:
         process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-          ? {
-              accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-              secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-            }
+          ? { accessKeyId: process.env.AWS_ACCESS_KEY_ID!, secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY! }
           : undefined,
-    });
+    })
 
-    const key = `${keyPrefix}/${Date.now()}.png`;
-    const cmd = new PutObjectCommand({ Bucket: bucket, Key: key, Body: buf, ContentType: mime });
-    await client.send(cmd);
+    const key = `${keyPrefix}/${Date.now()}.png`
+    const cmd = new PutObjectCommand({ Bucket: bucket, Key: key, Body: buf, ContentType: mime })
+    await client.send(cmd)
 
     // Best-effort public URL (may vary by bucket policy / region)
-    return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    return `https://${bucket}.s3.${region}.amazonaws.com/${key}`
   } catch (err) {
     try {
-      logger.warn('whiteboard.upload.failed', { error: String(err) });
+      logger.warn('whiteboard.upload.failed', { error: String(err) })
     } catch {}
-    return null;
+    return null
   }
 }
 
@@ -71,8 +68,7 @@ export async function POST(req: Request) {
   const { sessionId, conceptName } = body ?? {};
 
   // Optional canvas data URL (base64 PNG) that can be persisted for session replay.
-  const canvasDataUrl =
-    typeof (body as any)?.canvasDataUrl === 'string' ? (body as any).canvasDataUrl : undefined;
+  const canvasDataUrl = typeof (body as any)?.canvasDataUrl === 'string' ? (body as any).canvasDataUrl : undefined;
 
   if (!sessionId || typeof sessionId !== 'string') {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -91,30 +87,19 @@ export async function POST(req: Request) {
   try {
     // Run evaluation LLM and attempt artifact persistence in parallel. Persistence
     // is best-effort and must not block returning feedback to the client.
-    const llmPromise = callTutorLLM(
-      prompt,
-      { callType: 'tutor:eval', studentId: user.id, sessionId },
-      EVAL_TIMEOUT_MS
-    );
+    const llmPromise = callTutorLLM(prompt, { callType: 'tutor:eval', studentId: user.id, sessionId }, EVAL_TIMEOUT_MS)
 
-    let artifactUrl: string | null = null;
-    let artifactRecordId: string | null = null;
+    let artifactUrl: string | null = null
+    let artifactRecordId: string | null = null
     if (canvasDataUrl) {
       // fire-and-forget but await to include artifact URL when available
       try {
-        artifactUrl = await uploadDataUrlToS3(
-          canvasDataUrl,
-          `whiteboards/${user.id}/${String(sessionId)}`
-        );
+        artifactUrl = await uploadDataUrlToS3(canvasDataUrl, `whiteboards/${user.id}/${String(sessionId)}`)
       } catch (e) {
         try {
-          logger.warn('whiteboard.artifact.upload_error', {
-            studentId: user.id,
-            sessionId,
-            error: String(e),
-          });
+          logger.warn('whiteboard.artifact.upload_error', { studentId: user.id, sessionId, error: String(e) })
         } catch {}
-        artifactUrl = null;
+        artifactUrl = null
       }
     }
 
@@ -131,25 +116,19 @@ export async function POST(req: Request) {
             meta: { source: 'whiteboard.evaluate' },
             uploadedBy: user.id,
           },
-        });
-        if (rec && rec.id) artifactRecordId = String(rec.id);
+        })
+        if (rec && rec.id) artifactRecordId = String(rec.id)
       } catch (e) {
-        try {
-          logger.warn('whiteboard.artifact.persist_error', {
-            studentId: user.id,
-            sessionId,
-            error: String(e),
-          });
-        } catch {}
+        try { logger.warn('whiteboard.artifact.persist_error', { studentId: user.id, sessionId, error: String(e) }) } catch {}
       }
     }
 
-    const result = await llmPromise;
+    const result = await llmPromise
     const feedback = (result?.content ?? '').trim() || FALLBACK_FEEDBACK;
     logger.info('whiteboard.evaluated', { studentId: user.id, sessionId });
-    const payload: any = { feedback };
-    if (artifactUrl) payload.artifactUrl = artifactUrl;
-    if (artifactRecordId) payload.artifactId = artifactRecordId;
+    const payload: any = { feedback }
+    if (artifactUrl) payload.artifactUrl = artifactUrl
+    if (artifactRecordId) payload.artifactId = artifactRecordId
     const res = NextResponse.json(payload);
     logger.logAPI(req, res, { className: 'WhiteboardEvaluateAPI', methodName: 'POST' }, start);
     return res;

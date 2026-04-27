@@ -19,44 +19,44 @@ export type PlanId =
   | 'family_monthly'
   | 'family_annual'
   | 'lite_monthly'
-  | 'test_weekly';
+  | 'test_weekly'
 
 export interface SubscriptionPlan {
-  id: PlanId;
-  label: string;
-  perMonthDisplay: string;
+  id: PlanId
+  label: string
+  perMonthDisplay: string
   /** Total billed (inclusive of GST) in rupees */
-  billedRupees: number;
+  billedRupees: number
   /** Computed base price before GST (rupees, two decimals) */
-  baseRupees: number;
+  baseRupees: number
   /** Computed GST portion (rupees, two decimals) */
-  gstRupees: number;
+  gstRupees: number
   /** Duration in months -- used for endDate calculation on monthly/annual plans */
-  durationMonths: number;
+  durationMonths: number
   /**
    * Override: exact duration in days.
    * When set, takes precedence over durationMonths for endDate calculation.
    * Used for test_weekly (7 days).
    */
-  durationDays?: number;
-  billedDisplay?: string;
-  saveLabel?: string;
-  featured?: boolean;
-  childSlots?: number;
+  durationDays?: number
+  billedDisplay?: string
+  saveLabel?: string
+  featured?: boolean
+  childSlots?: number
   /** True for internal/test plans that must not appear on the public pricing page */
-  internal?: boolean;
+  internal?: boolean
 }
 
-const GST_RATE = 0.18;
+const GST_RATE = 0.18
 
 function round2(n: number) {
-  return Math.round(n * 100) / 100;
+  return Math.round(n * 100) / 100
 }
 
 function splitInclusive(totalRupees: number) {
-  const base = round2(totalRupees / (1 + GST_RATE));
-  const gst = round2(totalRupees - base);
-  return { base, gst };
+  const base = round2(totalRupees / (1 + GST_RATE))
+  const gst = round2(totalRupees - base)
+  return { base, gst }
 }
 
 function mkPlan(
@@ -65,9 +65,9 @@ function mkPlan(
   durationMonths: number,
   label: string,
   perMonthDisplay: string,
-  opts?: Partial<SubscriptionPlan>
+  opts?: Partial<SubscriptionPlan>,
 ): SubscriptionPlan {
-  const { base, gst } = splitInclusive(billedRupees);
+  const { base, gst } = splitInclusive(billedRupees)
   return {
     id,
     label,
@@ -82,69 +82,54 @@ function mkPlan(
     featured: opts?.featured,
     childSlots: opts?.childSlots ?? 1,
     internal: opts?.internal,
-  };
+  }
 }
 
 export const PLANS: Record<PlanId, SubscriptionPlan> = {
-  standard_monthly: mkPlan('standard_monthly', 399, 1, 'Standard', '₹399/month', {
-    featured: true,
-  }),
-  standard_annual: mkPlan('standard_annual', 3990, 12, 'Annual (Standard)', '₹332.50/month', {
-    billedDisplay: 'billed ₹3,990',
-    saveLabel: '2 months free',
-  }),
-  family_monthly: mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
-  family_annual: mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', {
-    billedDisplay: 'billed ₹5,990',
-    saveLabel: '2 months free',
-    childSlots: 2,
-  }),
-  lite_monthly: mkPlan('lite_monthly', 249, 1, 'Lite', '₹249/month'),
+  standard_monthly: mkPlan('standard_monthly', 399, 1, 'Standard', '₹399/month', { featured: true }),
+  standard_annual:  mkPlan('standard_annual', 3990, 12, 'Annual (Standard)', '₹332.50/month', { billedDisplay: 'billed ₹3,990', saveLabel: '2 months free' }),
+  family_monthly:   mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
+  family_annual:    mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', { billedDisplay: 'billed ₹5,990', saveLabel: '2 months free', childSlots: 2 }),
+  lite_monthly:     mkPlan('lite_monthly', 249, 1, 'Lite', '₹249/month'),
   // Internal test plan: ₹1/week, visible only to whitelisted accounts.
-  test_weekly: mkPlan('test_weekly', 1, 0, 'Test (Weekly)', '₹1/week', {
-    durationDays: 7,
-    internal: true,
-  }),
-};
+  test_weekly:      mkPlan('test_weekly', 1, 0, 'Test (Weekly)', '₹1/week', { durationDays: 7, internal: true }),
+}
 
 export function rupeesToPaise(rupees: number): number {
-  return Math.round(rupees * 100);
+  return Math.round(rupees * 100)
 }
 
 /** Compute the subscription end date from a plan, starting from a given date. */
 export function planEndDate(plan: SubscriptionPlan, from: Date = new Date()): Date {
   if (plan.durationDays) {
-    return new Date(from.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
+    return new Date(from.getTime() + plan.durationDays * 24 * 60 * 60 * 1000)
   }
-  const d = new Date(from);
-  d.setMonth(d.getMonth() + plan.durationMonths);
-  return d;
+  const d = new Date(from)
+  d.setMonth(d.getMonth() + plan.durationMonths)
+  return d
 }
 
 export function renewalDateStr(plan: SubscriptionPlan): string {
-  const d = planEndDate(plan);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const d = planEndDate(plan)
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const Billing = { PLANS, rupeesToPaise, planEndDate, renewalDateStr };
+const Billing = { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
 
-export default Billing;
+export default Billing
 
 /**
  * Resolve a short plan id (e.g. 'monthly', 'annual') to a concrete SubscriptionPlan
  * in `PLANS`. If `isFamily` is true, prefer the family variant when available.
  */
-export function resolvePlanByShortId(
-  shortId: string,
-  isFamily = false
-): SubscriptionPlan | undefined {
+export function resolvePlanByShortId(shortId: string, isFamily = false): SubscriptionPlan | undefined {
   if (!shortId || typeof shortId !== 'string') return undefined;
   // Exact match (allows callers to pass full keys like 'standard_annual')
   if ((PLANS as any)[shortId]) return (PLANS as any)[shortId] as SubscriptionPlan;
 
   // Try family/standard variants
-  const familyKey = `family_${shortId}` as PlanId;
-  const standardKey = `standard_${shortId}` as PlanId;
+  const familyKey = (`family_${shortId}`) as PlanId;
+  const standardKey = (`standard_${shortId}`) as PlanId;
   if (isFamily && (PLANS as any)[familyKey]) return (PLANS as any)[familyKey] as SubscriptionPlan;
   if ((PLANS as any)[standardKey]) return (PLANS as any)[standardKey] as SubscriptionPlan;
 

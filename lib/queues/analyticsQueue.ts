@@ -8,14 +8,14 @@
  * - 2026-04-21 | staff-engineer | Task D: non-blocking analytics ingestion
  */
 
-import { Queue } from 'bullmq';
-import { getSharedConnection } from '../redis';
-import { ANALYTICS_INGEST_QUEUE } from './constants';
+import { Queue } from 'bullmq'
+import { getSharedConnection } from '../redis'
+import { ANALYTICS_INGEST_QUEUE } from './constants'
 
-let _queue: Queue | null = null;
+let _queue: Queue | null = null
 
 export function getAnalyticsQueue(): Queue | null {
-  if (!process.env.REDIS_URL) return null;
+  if (!process.env.REDIS_URL) return null
   if (!_queue) {
     _queue = new Queue(ANALYTICS_INGEST_QUEUE, {
       connection: getSharedConnection(),
@@ -25,7 +25,7 @@ export function getAnalyticsQueue(): Queue | null {
         removeOnComplete: 200,
         removeOnFail: 50,
       },
-    });
+    })
   }
-  return _queue;
+  return _queue
 }

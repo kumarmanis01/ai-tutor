@@ -42,23 +42,22 @@ export default async function MockExamPage() {
     redirect('/onboarding');
   }
 
-  const mocks =
-    grade && board
-      ? await prisma.mockExam.findMany({
-          where: { grade, board: { equals: board, mode: 'insensitive' }, status: 'active' },
-          select: {
-            id: true,
-            title: true,
-            totalMarks: true,
-            durationMin: true,
-            version: true,
-            subject: { select: { name: true } },
-            _count: { select: { attempts: { where: { studentId: userId } } } },
-          },
-          orderBy: [{ subject: { name: 'asc' } }, { version: 'asc' }],
-          take: 50,
-        })
-      : [];
+  const mocks = grade && board
+    ? await prisma.mockExam.findMany({
+        where: { grade, board: { equals: board, mode: 'insensitive' }, status: 'active' },
+        select: {
+          id: true,
+          title: true,
+          totalMarks: true,
+          durationMin: true,
+          version: true,
+          subject: { select: { name: true } },
+          _count: { select: { attempts: { where: { studentId: userId } } } },
+        },
+        orderBy: [{ subject: { name: 'asc' } }, { version: 'asc' }],
+        take: 50,
+      })
+    : [];
 
   const mockList = mocks.map((m) => ({
     id: m.id,

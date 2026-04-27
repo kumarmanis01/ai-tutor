@@ -356,7 +356,7 @@ const REVISION_PATTERNS: PatternRule[] = [
  * All pattern rules organized by category
  */
 const ALL_PATTERN_RULES: PatternRule[] = [
-  ...UNSAFE_PATTERNS, // Check unsafe first (highest priority)
+  ...UNSAFE_PATTERNS,      // Check unsafe first (highest priority)
   ...OFF_TOPIC_PATTERNS,
   ...SHORTCUT_PATTERNS,
   ...HOMEWORK_DUMP_PATTERNS,
@@ -368,7 +368,7 @@ const ALL_PATTERN_RULES: PatternRule[] = [
 
 /**
  * Classify student input intent
- *
+ * 
  * @param input - Raw student input text
  * @param context - Optional context (previous messages, subject, etc.)
  * @returns IntentClassification result
@@ -382,9 +382,9 @@ export function classifyIntent(
   const normalizedInput = input.toLowerCase().trim();
   const matchedPatterns: string[] = [];
   const intentScores: Map<StudentIntentCategory, number> = new Map();
-
+  
   // Initialize all intents with base score
-  Object.values(StudentIntentCategory).forEach((intent) => {
+  Object.values(StudentIntentCategory).forEach(intent => {
     intentScores.set(intent, 0);
   });
 
@@ -403,7 +403,7 @@ export function classifyIntent(
   // Find primary intent (highest score)
   let primaryIntent = StudentIntentCategory.CONCEPTUAL; // Default
   let maxScore = 0;
-
+  
   intentScores.forEach((score, intent) => {
     if (score > maxScore) {
       maxScore = score;
@@ -412,21 +412,21 @@ export function classifyIntent(
   });
 
   // Heuristic overrides: give precedence to high-confidence patterns
-  const homeworkPatternNames = new Set(HOMEWORK_DUMP_PATTERNS.map((r) => r.name));
-  const offTopicPatternNames = new Set(OFF_TOPIC_PATTERNS.map((r) => r.name));
-  const unsafePatternNames = new Set(UNSAFE_PATTERNS.map((r) => r.name));
+  const homeworkPatternNames = new Set(HOMEWORK_DUMP_PATTERNS.map(r => r.name));
+  const offTopicPatternNames = new Set(OFF_TOPIC_PATTERNS.map(r => r.name));
+  const unsafePatternNames = new Set(UNSAFE_PATTERNS.map(r => r.name));
 
-  if (matchedPatterns.some((n) => homeworkPatternNames.has(n))) {
+  if (matchedPatterns.some(n => homeworkPatternNames.has(n))) {
     primaryIntent = StudentIntentCategory.HOMEWORK_DUMP;
     maxScore = Math.max(maxScore, 10);
   }
 
-  if (matchedPatterns.some((n) => offTopicPatternNames.has(n))) {
+  if (matchedPatterns.some(n => offTopicPatternNames.has(n))) {
     primaryIntent = StudentIntentCategory.OFF_TOPIC;
     maxScore = Math.max(maxScore, 10);
   }
 
-  if (matchedPatterns.some((n) => unsafePatternNames.has(n))) {
+  if (matchedPatterns.some(n => unsafePatternNames.has(n))) {
     primaryIntent = StudentIntentCategory.UNSAFE;
     maxScore = Math.max(maxScore, 10);
   }
@@ -434,7 +434,7 @@ export function classifyIntent(
   // Find secondary intents (any with significant score)
   const secondaryIntents: StudentIntentCategory[] = [];
   const secondaryThreshold = 0.4;
-
+  
   intentScores.forEach((score, intent) => {
     if (intent !== primaryIntent && score >= secondaryThreshold) {
       secondaryIntents.push(intent);
@@ -472,11 +472,7 @@ function determineIntervention(
   primaryIntent: StudentIntentCategory,
   secondaryIntents: StudentIntentCategory[],
   _confidence: number
-): {
-  requiresIntervention: boolean;
-  interventionType: InterventionType | null;
-  riskLevel: 'low' | 'medium' | 'high';
-} {
+): { requiresIntervention: boolean; interventionType: InterventionType | null; riskLevel: 'low' | 'medium' | 'high' } {
   // Unsafe content always requires blocking
   if (primaryIntent === StudentIntentCategory.UNSAFE) {
     return {
@@ -536,7 +532,7 @@ function determineIntervention(
  */
 export function isSafeInput(input: string): boolean {
   const normalizedInput = input.toLowerCase();
-
+  
   for (const rule of UNSAFE_PATTERNS) {
     for (const pattern of rule.patterns) {
       if (pattern.test(normalizedInput)) {
@@ -544,7 +540,7 @@ export function isSafeInput(input: string): boolean {
       }
     }
   }
-
+  
   return true;
 }
 
@@ -558,10 +554,10 @@ export function getMatchedPatternsForIntent(
 ): string[] {
   const normalizedInput = input.toLowerCase();
   const matchedPatterns: string[] = [];
-
+  
   for (const rule of ALL_PATTERN_RULES) {
     if (rule.intent !== intent) continue;
-
+    
     for (const pattern of rule.patterns) {
       if (pattern.test(normalizedInput)) {
         matchedPatterns.push(rule.name);
@@ -569,6 +565,6 @@ export function getMatchedPatternsForIntent(
       }
     }
   }
-
+  
   return matchedPatterns;
 }

@@ -62,8 +62,8 @@ export default function SessionPhaseStepper({
                 isDone
                   ? 'bg-[#534AB7] cursor-pointer hover:bg-[#3C3489]'
                   : isActive
-                    ? 'bg-indigo-400 cursor-default'
-                    : 'bg-gray-200 cursor-default'
+                  ? 'bg-indigo-400 cursor-default'
+                  : 'bg-gray-200 cursor-default'
               }`}
             />
             {/* Label */}
@@ -76,7 +76,8 @@ export default function SessionPhaseStepper({
                   : 'text-gray-400'
               }`}
             >
-              <span aria-hidden>{icon}</span> <span className="hidden sm:inline">{label}</span>
+              <span aria-hidden>{icon}</span>{' '}
+              <span className="hidden sm:inline">{label}</span>
             </span>
           </div>
         );

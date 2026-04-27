@@ -40,11 +40,7 @@ interface EndOfSessionCardProps {
   performance?: SessionPerformanceSummary;
 }
 
-export function EndOfSessionCard({
-  topicName,
-  subject: _subject,
-  performance,
-}: EndOfSessionCardProps) {
+export function EndOfSessionCard({ topicName, subject: _subject, performance }: EndOfSessionCardProps) {
   const [nextAction, setNextAction] = useState<NextActionHint | null>(null);
   const [copied, setCopied] = useState(false);
   const [freeTier, setFreeTier] = useState<FreeTierState | null>(null);
@@ -93,7 +89,9 @@ export function EndOfSessionCard({
 
   /** AC-06: build plain-text summary and copy to clipboard. */
   function handleCopyShare() {
-    const lines: string[] = [`I just completed "${topicName}" on Spinzy AI Tutor!`];
+    const lines: string[] = [
+      `I just completed "${topicName}" on Spinzy AI Tutor!`,
+    ];
     if (performance?.accuracyPercent != null) {
       lines.push(`Accuracy: ${performance.accuracyPercent}%`);
     }
@@ -107,13 +105,10 @@ export function EndOfSessionCard({
     const text = lines.join('\n');
 
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2500);
-        })
-        .catch(() => {});
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }).catch(() => {});
     }
   }
 
@@ -191,13 +186,7 @@ export function EndOfSessionCard({
             className="inline-flex items-center gap-2 px-5 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-colors shadow-md shadow-primary/20"
           >
             Start Next Topic
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
@@ -206,33 +195,27 @@ export function EndOfSessionCard({
 
       {/* AC-03 (F-STU-040): Upgrade nudge shown at session end when cap is hit.
           Never interrupts an in-progress session -- only shown here in COMPLETE state. */}
-      {freeTier !== null &&
-        freeTier.sessionsRemaining === 0 &&
-        (() => {
-          const resetDate = new Date(freeTier.periodStart);
-          resetDate.setMonth(resetDate.getMonth() + 1);
-          const resetLabel = resetDate.toLocaleDateString('en-IN', {
-            month: 'short',
-            day: 'numeric',
-          });
-          return (
-            <div className="rounded-xl border border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-4">
-              <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 mb-1">
-                You&apos;ve used all {freeTier.sessionsUsed} free sessions this month
-              </p>
+      {freeTier !== null && freeTier.sessionsRemaining === 0 && (() => {
+        const resetDate = new Date(freeTier.periodStart);
+        resetDate.setMonth(resetDate.getMonth() + 1);
+        const resetLabel = resetDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        return (
+          <div className="rounded-xl border border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-4">
+            <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 mb-1">
+              You&apos;ve used all {freeTier.sessionsUsed} free sessions this month
+            </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                Sessions reset on {resetLabel}. Upgrade for unlimited access to Teacher Vidya --{' '}
-                {standardMonthlyDisplay}.
-              </p>
-              <Link
-                href="/dashboard#upgrade-section"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] px-5 text-sm font-semibold text-white hover:bg-[#4338a3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
-              >
-                View plans -- {standardMonthlyDisplay}
-              </Link>
-            </div>
-          );
-        })()}
+              Sessions reset on {resetLabel}. Upgrade for unlimited access to Teacher Vidya -- {standardMonthlyDisplay}.
+            </p>
+            <Link
+              href="/dashboard#upgrade-section"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] px-5 text-sm font-semibold text-white hover:bg-[#4338a3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
+            >
+              View plans -- {standardMonthlyDisplay}
+            </Link>
+          </div>
+        );
+      })()}
 
       {/* 5 & 6. CTAs */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -240,14 +223,7 @@ export function EndOfSessionCard({
           href="/dashboard"
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 border border-border bg-background hover:bg-muted/50 text-foreground font-medium rounded-xl transition-colors text-sm min-h-[44px]"
         >
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
@@ -262,28 +238,14 @@ export function EndOfSessionCard({
         >
           {copied ? (
             <>
-              <svg
-                className="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               Copied!
             </>
           ) : (
             <>
-              <svg
-                className="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>

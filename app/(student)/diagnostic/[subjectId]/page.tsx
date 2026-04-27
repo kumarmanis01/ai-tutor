@@ -66,14 +66,7 @@ export default async function DiagnosticPage({
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 px-4">
           <div className="max-w-sm w-full text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#FAEEDA] dark:bg-[#BA7517]/20 flex items-center justify-center mx-auto mb-5">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#BA7517"
-                strokeWidth="2"
-                className="w-8 h-8"
-                aria-hidden
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="2" className="w-8 h-8" aria-hidden>
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
@@ -218,19 +211,18 @@ export default async function DiagnosticPage({
   ]);
   const pendingDiagnosticSubjectNames = pendingSubjectRows.map((s) => s.name);
   const initialAnswers = partial?.answers ?? [];
-  const initialIndex = Math.min(partial?.currentIndex ?? 0, Math.max(0, questions.length - 1));
+  const initialIndex = Math.min(
+    partial?.currentIndex ?? 0,
+    Math.max(0, questions.length - 1),
+  );
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              {subjectDef.name}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Diagnostic assessment for {subjectDef.name}
-            </p>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{subjectDef.name}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Diagnostic assessment for {subjectDef.name}</p>
           </div>
           <div>
             <SubjectLanguageControl subjectId={subjectId} />

@@ -1,25 +1,14 @@
 # Spinzy AI Tutor — Claude Code Implementation Tasks
-
 # v2 Launch Sprint — 20 tasks in execution order
-
 #
-
 # HOW TO USE:
-
 # 1. Open Claude Code in your repo root
-
 # 2. Paste one task at a time — do NOT combine tasks
-
 # 3. After each task: npm run build && npm test — must be green before next task
-
 # 4. Commit after each passing task: git add -A && git commit -m "..."
-
 # 5. Push to master when all tasks in a phase are green
-
 #
-
 # NEVER skip the build+test gate between tasks.
-
 # If a task fails, paste the error back to Claude Code in the same session.
 
 ---
@@ -37,9 +26,7 @@ gate for every single user regardless of their actual age. This is a showstopper
 blocking 100% of signups.
 
 **What to do:**
-
 1. Run this grep first and show me all results before changing anything:
-
    ```
    grep -rn "dateOfBirth\|isUnder18\|requiresParentVerification" \
      lib/ app/ components/ prisma/schema.prisma \
@@ -53,9 +40,8 @@ blocking 100% of signups.
    - Run: `npx prisma migrate dev --name drop_date_of_birth_use_age_integer`
 
 3. Replace every `isUnder18(user.dateOfBirth)` call with:
-
    ```typescript
-   const requiredByAge = user.age !== null && user.age < 13;
+   const requiredByAge = user.age !== null && user.age < 13
    ```
 
 4. In `lib/student/accountStatus.ts`, update `requiresParentOTPGate`:
@@ -69,7 +55,6 @@ blocking 100% of signups.
    and any API response shapes that include it.
 
 **Acceptance criteria:**
-
 - `npx prisma migrate status` shows migration applied
 - `npm run build` passes with 0 errors
 - `npm test` passes — no regressions
@@ -89,15 +74,13 @@ bottom-sheet/overlay architecture. The `ParentOTPGate` overlay (already built in
 `requiresParentOTPGate = true`. The full page is redundant and causes UX loops.
 
 **What to do:**
-
 1. Open `app/(student)/verify-parent/page.tsx` (or wherever this route lives — find it first)
 
 2. Replace the entire page content with a simple server redirect:
-
    ```typescript
-   import { redirect } from 'next/navigation';
+   import { redirect } from 'next/navigation'
    export default function VerifyParentPage() {
-     redirect('/dashboard');
+     redirect('/dashboard')
    }
    ```
 
@@ -105,7 +88,6 @@ bottom-sheet/overlay architecture. The `ParentOTPGate` overlay (already built in
    verification flow over the dashboard. No other changes needed.
 
 **Acceptance criteria:**
-
 - Navigating to `/student/verify-parent` redirects to `/dashboard`
 - The `ParentOTPGate` overlay still appears on dashboard when `requiresParentOTPGate = true`
 - `npm run build` passes
@@ -120,7 +102,6 @@ into `app/(student)/layout.tsx`. A student with no board/grade/subjects can
 reach session routes. This must be blocked.
 
 **What to do:**
-
 1. First read these files completely:
    - `app/(student)/layout.tsx`
    - `lib/student/profileGuard.ts`
@@ -135,11 +116,9 @@ reach session routes. This must be blocked.
 
 3. In `app/(student)/layout.tsx`:
    - After the existing `requiresParentOTPGate` check, add:
-
    ```typescript
-   const profileComplete = isProfileComplete(studentProfile);
+   const profileComplete = isProfileComplete(studentProfile)
    ```
-
    - Pass `showProfileGate={!profileComplete}` to `StudentLayoutShell`
 
 4. In `components/student/StudentLayoutShell.tsx`:
@@ -158,7 +137,6 @@ reach session routes. This must be blocked.
 6. Skip this gate on: `/student/api/**`, `/student/verify-parent`, `/student/onboarding`
 
 **Acceptance criteria:**
-
 - Student with no board/grade hits overlay immediately on any `/dashboard` visit
 - Student with complete profile sees no overlay
 - Overlay has no dismiss mechanism
@@ -174,16 +152,13 @@ This means the IRT bootstrap never fires, Vidya has no baseline mastery data,
 and the first session is pedagogically meaningless.
 
 **What to do:**
-
 1. Create or update `lib/student/diagnosticGuard.ts`:
-
    ```typescript
    export async function hasDiagnosticForSubject(
      studentId: string,
      subjectId: string
-   ): Promise<boolean>;
+   ): Promise<boolean>
    ```
-
    - Query: check if a `StructuredSession` or `DiagnosticResult` exists for this
      student + subject with status `COMPLETE`
    - If no diagnostic model exists yet, check `StudentConceptState` count for
@@ -201,7 +176,6 @@ and the first session is pedagogically meaningless.
    confirm it does NOT require a completed diagnostic to load (circular dependency check)
 
 **Acceptance criteria:**
-
 - Attempting to start a session for a subject with no diagnostic → redirects to diagnostic
 - Student with completed diagnostic → session starts normally
 - `npm run build && npm test` green
@@ -215,36 +189,30 @@ Grade must be immutable after first save. Currently a student can change their
 grade via `PATCH /api/student/profile` or `POST /api/user/onboarding`.
 
 **What to do:**
-
 1. Find all API routes that accept grade in the request body:
-
    ```
    grep -rn "grade" app/api/ --include="*.ts" | grep -i "body\|input\|data\|update"
    ```
 
 2. In `app/api/student/profile/route.ts` (PATCH handler):
    - After parsing the request body, unconditionally delete `grade` before any DB write:
-
    ```typescript
-   const { grade: _stripped, ...safeUpdate } = parsedBody;
+   const { grade: _stripped, ...safeUpdate } = parsedBody
    ```
-
    - Never write `grade` from this endpoint regardless of what the client sends
 
 3. In `app/api/user/onboarding/route.ts` (POST handler):
    - Only write `grade` if the user's current `grade` is `null` (first-time setup)
    - If `grade` is already set, strip it from the update:
-
    ```typescript
    if (existingUser.grade !== null) {
-     delete updateData.grade;
+     delete updateData.grade
    }
    ```
 
 4. Add a comment on both routes: `// grade is immutable after first save — never accept from client`
 
 **Acceptance criteria:**
-
 - PATCH /api/student/profile with `{ grade: 9 }` does not change grade in DB
 - First-time onboarding with grade → sets grade correctly
 - Second onboarding call with different grade → grade unchanged
@@ -260,7 +228,6 @@ in a moment." — a loading fallback that is wrong and confusing. The v2 spec
 requires an onboarding checklist card showing progress toward first session.
 
 **What to do:**
-
 1. Read `components/home/PrimaryActionCard.tsx` fully
 
 2. The component currently shows a loading/pending state when `recommendation` is null.
@@ -286,7 +253,6 @@ requires an onboarding checklist card showing progress toward first session.
    - The "It's been a couple of days" nudge must only fire if at least 1 session exists
 
 **Acceptance criteria:**
-
 - New user with profile but no diagnostic sees onboarding checklist card
 - CTA says "Take diagnostic — Mathematics" (or relevant subject)
 - No "Refresh in a moment" text anywhere
@@ -307,33 +273,28 @@ The v2 dashboard spec requires: (1) XP this week with level progress bar, and
 absent. The data already exists in the DB — just not surfaced.
 
 **What to do:**
-
 1. In `app/(student)/dashboard/page.tsx`, add two new parallel fetches:
 
    **XP fetch:**
-
    ```typescript
    prisma.studentXP.findFirst({
      where: { studentId: userId },
-     select: { totalXp: true, level: true, xpThisWeek: true },
-   });
+     select: { totalXp: true, level: true, xpThisWeek: true }
+   })
    // fallback: { totalXp: 0, level: 1, xpThisWeek: 0 }
    ```
-
    If `StudentXP` model doesn't exist yet, use `user.totalXp` and `user.level`
    from the existing `User` select (these fields should already be in the schema).
 
    **Readiness fetch per subject:**
-
    ```typescript
    // For each subject in studentProfile.subjects:
    // Compute weighted mastery average from StudentConceptState
    prisma.studentConceptState.findMany({
      where: { studentId: userId, concept: { subjectId: subjectId } },
-     select: { masteryScore: true, concept: { select: { subjectId: true } } },
-   });
+     select: { masteryScore: true, concept: { select: { subjectId: true } } }
+   })
    ```
-
    Readiness score = average of masteryScore × 100, rounded to integer.
    Fallback = 0 if no states exist.
 
@@ -359,7 +320,6 @@ absent. The data already exists in the DB — just not surfaced.
 4. Wire both components into the dashboard page between the week strip and weak topics.
 
 **Acceptance criteria:**
-
 - XP widget renders with real data from DB
 - Readiness rings show correct colour for score ranges
 - Both handle loading/error/empty states independently
@@ -376,7 +336,6 @@ the dashboard CTA is driven by `getNextAction` which has no exam-date awareness,
 no weak-first ordering, and no weekly structure.
 
 **What to do:**
-
 1. Add to `prisma/schema.prisma`:
 
 ```prisma
@@ -440,7 +399,6 @@ enum PlanItemStatus {
    ```
 
 **Acceptance criteria:**
-
 - Migration applied cleanly
 - After diagnostic bootstrap runs, `LearningPlan` and `LearningPlanItem` rows exist
 - Items are ordered weakest concept first
@@ -457,15 +415,13 @@ It must read from `GET /api/student/learning-plan/today` as the primary source,
 with `getNextAction` as fallback only when no plan exists.
 
 **What to do:**
-
 1. In `app/(student)/dashboard/page.tsx`, replace the `getNextAction` call with
    `GET /api/student/learning-plan/today`:
-
    ```typescript
    // Replace:
-   getNextAction(userId);
+   getNextAction(userId)
    // With:
-   fetch('/api/student/learning-plan/today'); // or direct service call
+   fetch('/api/student/learning-plan/today') // or direct service call
    ```
 
 2. Update `PrimaryActionCard` props to accept the new shape from the plan API
@@ -479,7 +435,6 @@ with `getNextAction` as fallback only when no plan exists.
    - Secondary CTA: "Study an extra topic" → navigates to subject browse
 
 **Acceptance criteria:**
-
 - Dashboard CTA reads from LearningPlanItem when plan exists
 - Fallback to getNextAction when no plan
 - Plan-driven topic shown with week context
@@ -495,9 +450,7 @@ is a simplified proxy: weighted average of chapter mastery scores using
 `BoardChapterWeight.weightMarks`.
 
 **What to do:**
-
 1. Create `lib/student/examReadiness.ts` — `computeReadinessScore(studentId, subjectId)`:
-
    ```typescript
    // 1. Load all chapters for subject with their BoardChapterWeight
    // 2. Load StudentConceptState for all concepts in each chapter
@@ -522,7 +475,6 @@ is a simplified proxy: weighted average of chapter mastery scores using
    active students — add to scheduler, run at 3:00 AM IST
 
 **Acceptance criteria:**
-
 - Readiness score reflects actual chapter mastery with board weights
 - Score 0 for student with no study data
 - API responds in < 500ms (Redis cache hit after first call)
@@ -548,9 +500,7 @@ flipping this live. The code can be shipped but the consent flow must not be
 shown to real users until the copy is legally approved.
 
 **What to do:**
-
 1. Add to `prisma/schema.prisma`:
-
 ```prisma
 model Consent {
   id          String   @id @default(cuid())
@@ -600,7 +550,6 @@ enum ConsentScope {
    → return 403 `{ code: 'CONSENT_REQUIRED' }`
 
 **Consent copy placeholder (replace with lawyer-reviewed text):**
-
 ```
 By clicking "I agree", you consent to:
 1. Spinzy processing your academic data (grades, answers, progress) to personalise
@@ -610,7 +559,6 @@ You can withdraw consent at any time from your Profile settings.
 ```
 
 **Acceptance criteria:**
-
 - Consent rows created on signup with IP captured
 - Tutor turn blocked if AI_INTERACTION consent not given
 - Withdraw endpoint sets withdrawnAt correctly
@@ -627,9 +575,7 @@ students need to link their children, and parents of older students need to be
 invited.
 
 **What to do:**
-
 1. Add to `prisma/schema.prisma`:
-
 ```prisma
 model ParentProfile {
   id        String         @id @default(cuid())
@@ -639,8 +585,7 @@ model ParentProfile {
   children  ParentStudent[]
 }
 ```
-
-Note: `ParentStudent` model likely already exists — verify before adding.
+   Note: `ParentStudent` model likely already exists — verify before adding.
 
 2. Run: `npx prisma migrate dev --name add_parent_profile`
 
@@ -671,7 +616,6 @@ Note: `ParentStudent` model likely already exists — verify before adding.
    - `POST /api/student/invite-parent` — student generates invite link (for age ≥13)
 
 **Acceptance criteria:**
-
 - Parent with role='parent' sees their dashboard at `/parent/dashboard`
 - Student routes inaccessible from parent layout
 - Child cards show real data
@@ -686,9 +630,7 @@ Parents need a detailed child progress view and a weekly email digest.
 The `GET /api/parent/progress` endpoint is defined in Domain 7 §7.10 but not built.
 
 **What to do:**
-
 1. Create `GET /api/parent/progress` per Domain 7 §7.10 contract exactly:
-
    ```typescript
    // Returns all linked children with:
    // - streakDays, sessionsThisWeek, studyTimeThisWeekMinutes
@@ -716,7 +658,6 @@ The `GET /api/parent/progress` endpoint is defined in Domain 7 §7.10 but not bu
    - CTA: "View full report" → deep link to `/parent/dashboard`
 
 **Acceptance criteria:**
-
 - API returns correct shape for all linked children
 - Progress detail page loads and is read-only
 - Weekly digest job registered and would fire on Sunday
@@ -736,10 +677,8 @@ never run. Doubt deduplication is not wired. Every repeated doubt triggers a
 fresh LLM call — wasting tokens.
 
 **What to do:**
-
 1. Check if `DoubtKb` model exists in schema. If yes: run the migration.
    If not: add it first:
-
 ```prisma
 model DoubtKb {
   id                String   @id @default(cuid())
@@ -754,8 +693,7 @@ model DoubtKb {
   updatedAt         DateTime @updatedAt
 }
 ```
-
-Migration name: `add_doubt_kb`
+   Migration name: `add_doubt_kb`
 
 2. Create `lib/ai/tutor/doubtKb.ts`:
    - `lookupDoubt(questionText, subjectId)`:
@@ -773,7 +711,6 @@ Migration name: `add_doubt_kb`
    - After LLM call on miss: call `recordDoubt` async (non-blocking)
 
 **Acceptance criteria:**
-
 - Migration applied
 - Repeated identical doubt returns cached answer
 - Near-duplicate doubt (same question different wording) updates `timesServed`
@@ -790,25 +727,18 @@ concept. With 243 concepts, the same explanations are regenerated repeatedly.
 A 7-day Redis cache eliminates most of this cost.
 
 **What to do:**
-
 1. Check if `lib/ai/tutor/explanationCache.ts` exists. If yes: verify it's wired.
    If not: create it:
-
    ```typescript
    // Key: cache:exp:{conceptId}:{lang}:{modality}
    // TTL: 604800 seconds (7 days)
    export async function getCachedExplanation(
-     conceptId: string,
-     lang: string,
-     modality: string
-   ): Promise<string | null>; // null on miss or error, never throws
+     conceptId: string, lang: string, modality: string
+   ): Promise<string | null>  // null on miss or error, never throws
 
    export async function setCachedExplanation(
-     conceptId: string,
-     lang: string,
-     modality: string,
-     content: string
-   ): Promise<void>; // silently no-ops on Redis error, never throws
+     conceptId: string, lang: string, modality: string, content: string
+   ): Promise<void>  // silently no-ops on Redis error, never throws
    ```
 
 2. Wire into orchestrator in `services/tutor/turn.ts`:
@@ -822,7 +752,6 @@ A 7-day Redis cache eliminates most of this cost.
 3. Add `invalidateExplanation(conceptId)` — called when concept content is updated
 
 **Acceptance criteria:**
-
 - Second call for same concept/lang/modality returns cached response
 - Safety replacements never cached
 - Cache miss → LLM call proceeds normally
@@ -838,9 +767,7 @@ multiple processes, each process has its own state — the breaker never actuall
 trips across the whole app. It must be Redis-backed.
 
 **What to do:**
-
 1. Create `lib/ai/tutor/circuitBreaker.ts`:
-
    ```typescript
    // Redis keys:
    //   cb:llm:failures   → integer count, TTL 30s
@@ -869,7 +796,6 @@ trips across the whole app. It must be Redis-backed.
    `getRedis()` pattern but remove the in-memory breaker state)
 
 **Acceptance criteria:**
-
 - 3 OpenAI failures within 30s → circuit opens across all PM2 processes
 - Circuit auto-closes after 60s
 - Anthropic failover fires when circuit is open and ANTHROPIC_API_KEY is set
@@ -885,9 +811,7 @@ But there's no cohort-based staged rollout — it's all-or-nothing. For launch,
 we need to roll out to 5% first to catch issues before full rollout.
 
 **What to do:**
-
 1. Create `lib/features/rollout.ts`:
-
    ```typescript
    export async function isInAITutorRollout(userId: string): Promise<boolean> {
      // 1. If ENABLE_AI_TUTOR=false globally → return false
@@ -898,11 +822,9 @@ we need to roll out to 5% first to catch issues before full rollout.
      // ROLLOUT_PERCENTAGE read from env var, default 5
    }
    ```
-
    Use a stable hash: `crc32(userId) % 100` (install `crc-32` or use a simple djb2)
 
 2. Create `scripts/set-rollout.ts`:
-
    ```typescript
    // Usage: npx tsx scripts/set-rollout.ts --percentage 5
    // Sets ROLLOUT_PERCENTAGE in a DB config table or updates an env var
@@ -914,12 +836,11 @@ we need to roll out to 5% first to catch issues before full rollout.
    - `app/api/tutor/turn/route.ts`
    - `app/api/tutor/session/start/route.ts`
    - Student layout / dashboard
-     With: `isInAITutorRollout(userId)` — falls back correctly for users not in rollout
+   With: `isInAITutorRollout(userId)` — falls back correctly for users not in rollout
 
 4. When `isInAITutorRollout = false`: render the existing v1 session UI (no change for student, no error)
 
 **Acceptance criteria:**
-
 - At 5% rollout: approximately 5 out of 100 new user IDs get AI tutor
 - ENABLE_AI_TUTOR=false still kills everything regardless of rollout %
 - Per-user override via StudentFeatureFlag still works
@@ -934,9 +855,7 @@ We need to know daily cost per session. The threshold is ₹0.25/session (~$0.00
 `AITutorTurnLog.costUsd` is populated per turn. We need a daily aggregate and alert.
 
 **What to do:**
-
 1. Create `worker/services/costReportingWorker.ts`:
-
    ```typescript
    // Runs daily at 6:00 AM IST (cron: 0 6 * * *)
    // Query:
@@ -953,7 +872,6 @@ We need to know daily cost per session. The threshold is ₹0.25/session (~$0.00
    ```
 
 2. Add `DailyCostMetric` model to schema (simple):
-
 ```prisma
 model DailyCostMetric {
   id              String   @id @default(cuid())
@@ -964,8 +882,7 @@ model DailyCostMetric {
   createdAt       DateTime @default(now())
 }
 ```
-
-Migration name: `add_daily_cost_metric`
+   Migration name: `add_daily_cost_metric`
 
 3. Alert: if `costPerSession > 0.003` → send email via `lib/mailer.ts` to the
    on-call alias defined in `ONCALL_EMAIL` env var
@@ -973,7 +890,6 @@ Migration name: `add_daily_cost_metric`
 4. Register in scheduler
 
 **Acceptance criteria:**
-
 - Daily job runs and inserts `DailyCostMetric` row
 - Alert email fires when threshold exceeded
 - `npm run build && npm test` green
@@ -987,7 +903,6 @@ PM2 warns `Environment [production] is not defined in process file` on every
 deploy. Cosmetic but noisy in logs.
 
 **What to do:**
-
 1. Open `ecosystem.config.cjs`
 2. For each app (`ai-tutor-web`, `content-engine-worker`, `ai-tutor-scheduler`),
    add an empty `env_production` block that mirrors the `env` block:
@@ -1001,7 +916,6 @@ deploy. Cosmetic but noisy in logs.
    Change `pm2 start ecosystem.config.cjs` to `pm2 start ecosystem.config.cjs --env production`
 
 **Acceptance criteria:**
-
 - No `[PM2][WARN] Environment [production] is not defined` on deploy
 - All 3 processes still start correctly
 - `npm run build` green
@@ -1016,25 +930,22 @@ T15 (distress detection) is gated on counsellor sign-off (T43). The flag
 human. This task prepares the code so flipping the flag is a one-line change.
 
 **NOTE FOR MANISH:** After this task, you must:
-
 1. Define who receives distress alerts (you, a counsellor, a support email)
 2. Set `ONCALL_EMAIL` in `.env.production`
 3. Test the distress flow end-to-end on staging
 4. Only then set `ENABLE_DISTRESS_DETECTION=true` in PM2
 
 **What to do:**
-
 1. Create `lib/ai/tutor/distress.ts` (if not exists):
-
    ```typescript
    export interface DistressResult {
-     detected: boolean;
-     severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-     triggerPhrases: string[];
-     suggestedResponse: string;
+     detected: boolean
+     severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+     triggerPhrases: string[]
+     suggestedResponse: string
    }
 
-   export function detectDistress(studentMessage: string): DistressResult;
+   export function detectDistress(studentMessage: string): DistressResult
    // Pure function, no I/O
    // Keywords: self-harm, worthless, hopeless, can't do anything right,
    //           nobody cares, want to disappear, hate myself, give up on life
@@ -1055,12 +966,11 @@ human. This task prepares the code so flipping the flag is a one-line change.
      - Always: create `SafetyEvent` row
 
 3. Wire into orchestrator (only fires when flag is true):
-
    ```typescript
    if (process.env.ENABLE_DISTRESS_DETECTION === 'true') {
-     const distressResult = detectDistress(studentMessage);
+     const distressResult = detectDistress(studentMessage)
      if (distressResult.detected) {
-       enqueueDistressNotification({ studentId, sessionId, ...distressResult });
+       enqueueDistressNotification({ studentId, sessionId, ...distressResult })
      }
    }
    ```
@@ -1071,7 +981,6 @@ human. This task prepares the code so flipping the flag is a one-line change.
    - Never throws on empty string
 
 **Acceptance criteria:**
-
 - `detectDistress` returns correct severity for each keyword category
 - Worker no-ops when flag is false
 - All 10 tests pass
@@ -1113,7 +1022,6 @@ Phase 4 (Week 4–5) — Deploy as a batch:
 ```
 
 ## GATE BETWEEN EVERY TASK
-
 ```bash
 npm run build:workers && npm run build && npm test
 # All must pass before committing
@@ -1121,7 +1029,6 @@ npm run build:workers && npm run build && npm test
 ```
 
 ## DEPLOY AFTER EACH PHASE
-
 ```bash
 git add -A && git commit -m "phase N: [description]"
 git push origin master

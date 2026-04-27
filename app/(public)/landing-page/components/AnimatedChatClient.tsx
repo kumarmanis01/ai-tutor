@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -85,18 +85,9 @@ export default function AnimatedChatClient() {
             }}
           >
             <div className="bg-[#EEEDFE] rounded-[4px_12px_12px_12px] px-4 py-3 flex gap-1 items-center">
-              <span
-                className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot"
-                style={{ animationDelay: '0s' }}
-              />
-              <span
-                className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot"
-                style={{ animationDelay: '0.2s' }}
-              />
-              <span
-                className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot"
-                style={{ animationDelay: '0.4s' }}
-              />
+              <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0s' }} />
+              <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0.2s' }} />
+              <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0.4s' }} />
             </div>
           </div>
         </div>

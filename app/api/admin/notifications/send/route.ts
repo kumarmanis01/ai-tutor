@@ -17,18 +17,13 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const session = await getServerSessionForHandlers();
-  if (!session)
-    return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'admin')
-    return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
+  if (!session) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'admin') return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { code: 'VALIDATION_ERROR', message: 'Invalid request body' },
-      { status: 400 }
-    );
+    return NextResponse.json({ code: 'VALIDATION_ERROR', message: 'Invalid request body' }, { status: 400 });
   }
 
   const { userId, type, title, body: msgBody } = parsed.data;
@@ -38,17 +33,13 @@ export async function POST(req: NextRequest) {
       where: { id: userId },
       select: { id: true, email: true, whatsappPhone: true },
     });
-    if (!user)
-      return NextResponse.json({ code: 'NOT_FOUND', message: 'User not found' }, { status: 404 });
+    if (!user) return NextResponse.json({ code: 'NOT_FOUND', message: 'User not found' }, { status: 404 });
 
     if (type === 'push') {
       await sendPushSafe(userId, { title, body: msgBody });
     } else if (type === 'email') {
       if (!user.email) {
-        return NextResponse.json(
-          { code: 'NO_EMAIL', message: 'User has no email address' },
-          { status: 400 }
-        );
+        return NextResponse.json({ code: 'NO_EMAIL', message: 'User has no email address' }, { status: 400 });
       }
       await sendMailSafe({
         to: user.email,
@@ -58,10 +49,7 @@ export async function POST(req: NextRequest) {
     } else {
       // whatsapp
       if (!user.whatsappPhone) {
-        return NextResponse.json(
-          { code: 'NO_WHATSAPP', message: 'User has no WhatsApp number on file' },
-          { status: 400 }
-        );
+        return NextResponse.json({ code: 'NO_WHATSAPP', message: 'User has no WhatsApp number on file' }, { status: 400 });
       }
       await sendWhatsAppSafe(user.whatsappPhone, `${title}\n\n${msgBody}`);
     }
@@ -87,9 +75,6 @@ export async function POST(req: NextRequest) {
       event: 'admin_notification_error',
       context: { userId, type, error: String(err) },
     });
-    return NextResponse.json(
-      { code: 'INTERNAL_ERROR', message: 'Failed to send notification' },
-      { status: 500 }
-    );
+    return NextResponse.json({ code: 'INTERNAL_ERROR', message: 'Failed to send notification' }, { status: 500 });
   }
 }

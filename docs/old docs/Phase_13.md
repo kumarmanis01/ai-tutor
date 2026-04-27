@@ -32,14 +32,15 @@ Execution Rules
 
 Status State Machine (Authoritative)
 PENDING
-↓ (worker lock)
+  ↓ (worker lock)
 RUNNING
-↓ success
+  ↓ success
 COMPLETED
 
 RUNNING
-↓ failure
+  ↓ failure
 FAILED
+
 
 ❌ No transitions backward
 ❌ No re-run of COMPLETED or FAILED jobs
@@ -47,25 +48,25 @@ FAILED
 
 13.2 System Architecture
 ┌────────────────────────┐
-│ Admin UI (Phase 12) │
-│ - Trigger only │
-│ - Read-only │
+│ Admin UI (Phase 12)    │
+│ - Trigger only         │
+│ - Read-only            │
 └──────────┬─────────────┘
-│
-▼
+           │
+           ▼
 ┌────────────────────────┐
-│ RegenerationJob (DB) │
-│ status=PENDING │
+│ RegenerationJob (DB)   │
+│ status=PENDING         │
 └──────────┬─────────────┘
-│
-▼
+           │
+           ▼
 ┌──────────────────────────────┐
 │ Regeneration Worker (Phase13)│
-│ - Polls DB │
-│ - Locks job │
-│ - Executes generator │
-│ - Writes output │
-│ - Audits lifecycle │
+│ - Polls DB                   │
+│ - Locks job                  │
+│ - Executes generator         │
+│ - Writes output              │
+│ - Audits lifecycle           │
 └──────────────────────────────┘
 
 13.3 Prisma Changes (If Needed)
@@ -74,15 +75,16 @@ FAILED
 Ensure fields exist:
 
 model RegenerationJob {
-id String @id @default(cuid())
-status RegenerationJobStatus
-instructionJson Json
-outputRef String?
-errorJson Json?
-lockedAt DateTime?
-completedAt DateTime?
-createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  status         RegenerationJobStatus
+  instructionJson Json
+  outputRef      String?
+  errorJson      Json?
+  lockedAt       DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
 }
+
 
 No new mutable fields beyond status + refs.
 
@@ -119,8 +121,8 @@ Re-runs must be no-ops
 13.6 Generator Interface (Strict)
 All generators must conform to:
 export interface RegenerationExecutor {
-type: RegenerationJobType
-run(input: InstructionJson): Promise<ExecutionResult>
+  type: RegenerationJobType
+  run(input: InstructionJson): Promise<ExecutionResult>
 }
 No generator registry exposed to UI or APIs.
 
@@ -160,7 +162,6 @@ Do NOT retry
 Do NOT rollback previous outputs
 
 13.10 Testing Strategy
-
 - Required Tests
 - 1Worker claims PENDING job
 - Completed job not re-run
@@ -171,49 +172,41 @@ Do NOT rollback previous outputs
 Crash recovery (lock prevents double run)
 
 ## 🧠 COPILOT PROMPTS (BROKEN DOWN, SAFE)
-
 🔹 Copilot Prompt 13.A — Worker Skeleton
 Create a new regeneration worker module that runs independently
 from API routes and UI.
 
 Requirements:
-
 - Location: /workers/regenerationWorker.ts
 - No HTTP imports
 - No Next.js imports
 - No session/auth imports
 
 Behavior:
-
 - Poll RegenerationJob where status = 'PENDING'
 - Process jobs sequentially (no concurrency yet)
 - Do not implement generator logic yet
 
 Include:
-
 - startWorker()
 - processNextJob()
 - claimJob(jobId)
 
 Do NOT:
-
 - Call any generator
 - Modify schemas
 - Import admin/UI code
 
 ## 🔹 Copilot Prompt 13.B — Job Locking Logic
-
 Implement atomic job locking for RegenerationJob.
 
 Task:
-
 - Update claimJob(jobId) to:
   - Transition status PENDING → RUNNING
   - Set lockedAt = now()
   - Return null if already locked
 
 Rules:
-
 - Use Prisma updateMany or equivalent
 - Ensure exactly-once semantics
 - Add unit tests for:
@@ -221,11 +214,9 @@ Rules:
   - Double-claim prevention
 
 ## 🔹 Copilot Prompt 13.C — Generator Interface
-
 Define a strict RegenerationExecutor interface.
 
 Requirements:
-
 - Interface only, no implementations
 - Located in /regeneration/executor.ts
 - run(input) returns ExecutionResult
@@ -233,17 +224,14 @@ Requirements:
 - No DB access inside interface
 
 Do NOT:
-
 - Implement generators
 - Import worker code
 
 ## 🔹 Copilot Prompt 13.D — Execution + Output Write
-
 Extend regenerationWorker to execute a generator
 after locking a job.
 
 Tasks:
-
 1. Read instructionJson
 2. Select generator by type
 3. Run generator
@@ -252,36 +240,30 @@ Tasks:
 6. Mark COMPLETED
 
 Rules:
-
 - OutputRef written exactly once
 - No overwrite allowed
 - Catch errors and mark FAILED
 - Write errorJson on failure
 
 ## 🔹 Copilot Prompt 13.E — Audit Wiring
-
 Add non-blocking audit logging to the regeneration worker.
 
 Events:
-
 - REGEN_JOB_LOCKED
 - REGEN_JOB_STARTED
 - REGEN_JOB_COMPLETED
 - REGEN_JOB_FAILED
 
 Rules:
-
 - Fire-and-forget logging
 - Never throw from audit
 - Include jobId and status
 - Reuse existing logAuditEvent helper
 
 ## 🔹 Copilot Prompt 13.F — Worker Tests
-
 Add unit tests for regenerationWorker.
 
 Test cases:
-
 1. PENDING job is claimed and completed
 2. COMPLETED job is skipped
 3. FAILED job is skipped
@@ -290,7 +272,6 @@ Test cases:
 6. Audit events emitted
 
 Rules:
-
 - Use test DB
 - No real generators (mock executor)
 - No filesystem writes (mock storage)
@@ -306,7 +287,6 @@ You may declare Phase 13 complete only when:
 ✅ Tests enforce invariants
 
 # Detailed summary of Phase 13 implementation
-
 ## What was intended
 
 Introduce an isolated, headless execution plane (worker-only) that materializes RegenerationJob → immutable RegenerationOutput.
@@ -316,7 +296,6 @@ Emit non-blocking audit events at lifecycle points: REGEN_JOB_LOCKED, REGEN_JOB_
 Provide a strict RegenerationExecutor interface for generators, and comprehensive unit + DB-backed tests enforcing invariants.
 
 ## What was completed
-
 executor.ts: added strict RegenerationExecutor interface and ExecutionResult types (generator contract).
 regenerationWorker.ts: implemented worker with:
 processNextJob() and claimJob() using transactional/atomic semantics (PENDING → RUNNING, set lockedAt).
@@ -327,7 +306,6 @@ Safe error handling: write errorJson and mark FAILED; no retries, no partial str
 regenerationJobRunner.ts: aligned runner semantics with worker (advisory lock-style, guarded updates).
 
 ## Tests added/updated:
-
 Unit tests for claim semantics, process flow, execution success/failure behavior, audit emission (mocks).
 DB-backed integration tests with quick DB-reachability checks (fail-fast if DATABASE_URL unreachable).
 Adjusted Phase 11/12 tests to avoid schema-coupling (explicit select) and to increase reliability/timeouts.
@@ -337,7 +315,6 @@ Fixed TypeScript/lint issues (removed debug console statements, corrected mock s
 Full verification completed: ESLint, tsc and Jest passed (final run reported green).
 
 ## What is pending
-
 Production object storage integration (S3 / blob) for outputs — current implementation supports deterministic local storage options; S3 integration is optional/left to be chosen.
 Formal PR/merge step and review (branching/commit polish, changelog/PR description).
 Optional: broaden E2E tests that exercise real generators + real object storage to validate full production flow (currently generator implementations are mocked in tests).
@@ -345,7 +322,6 @@ Optional hardening: operational telemetry for worker (metrics, backoff behavior,
 If your production DB schema differs (e.g., fields like lockedAt missing), ensure migrations are applied in target environments — some tests were made resilient, but production migration must be validated.
 
 ## Suggestions
-
 Integrate production object storage (S3/Blob) for outputs now — implement a deterministic path strategy and a small adapter behind an interface used by the worker; add integration tests that point at a test bucket.
 Open a focused PR containing:
 Summary of invariants (link Phase_13.md), changed files, tests added, and verification results.

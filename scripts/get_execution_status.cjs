@@ -20,14 +20,10 @@ loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 process.env.DEBUG = '';
 const { prisma } = require('../lib/prisma');
 
-(async () => {
-  try {
-    const id = process.argv[2] || 'cmkldminn000e4acsktlqwkl1';
-    const ex = await prisma.executionJob.findUnique({ where: { id } });
-    console.log(JSON.stringify(ex, null, 2));
-  } catch (e) {
-    console.error(e);
-  } finally {
-    await prisma.$disconnect();
-  }
+(async ()=>{
+  try{
+    const id = process.argv[2] || 'cmkldminn000e4acsktlqwkl1'
+    const ex = await prisma.executionJob.findUnique({ where: { id } })
+    console.log(JSON.stringify(ex, null, 2))
+  }catch(e){ console.error(e) } finally { await prisma.$disconnect() }
 })();

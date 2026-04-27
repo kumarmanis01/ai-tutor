@@ -6,15 +6,15 @@ This document provides a **very detailed deployment checklist tailored for Hosti
 
 The goal is to deploy Spinzy with:
 
-- AlmaLinux VPS
-- Nginx reverse proxy
-- Node.js runtime
-- PM2 process manager
-- Redis queue engine
-- PostgreSQL database
-- BullMQ workers
-- Next.js web application
-- AI content generation pipeline
+* AlmaLinux VPS
+* Nginx reverse proxy
+* Node.js runtime
+* PM2 process manager
+* Redis queue engine
+* PostgreSQL database
+* BullMQ workers
+* Next.js web application
+* AI content generation pipeline
 
 This architecture supports the Spinzy platform consisting of:
 
@@ -393,36 +393,38 @@ Example:
 ```javascript
 module.exports = {
   apps: [
+
     {
-      name: 'spinzy-web',
-      script: 'npm',
-      args: 'start',
-      cwd: '/opt/spinzy/app',
+      name: "spinzy-web",
+      script: "npm",
+      args: "start",
+      cwd: "/opt/spinzy/app",
       instances: 1,
-      exec_mode: 'fork',
+      exec_mode: "fork",
       env: {
-        NODE_ENV: 'production',
-      },
+        NODE_ENV: "production"
+      }
     },
 
     {
-      name: 'spinzy-worker-content',
-      script: 'dist/workers/contentWorker.js',
-      cwd: '/opt/spinzy/app',
+      name: "spinzy-worker-content",
+      script: "dist/workers/contentWorker.js",
+      cwd: "/opt/spinzy/app"
     },
 
     {
-      name: 'spinzy-worker-questions',
-      script: 'dist/workers/questionWorker.js',
-      cwd: '/opt/spinzy/app',
+      name: "spinzy-worker-questions",
+      script: "dist/workers/questionWorker.js",
+      cwd: "/opt/spinzy/app"
     },
 
     {
-      name: 'spinzy-worker-analytics',
-      script: 'dist/workers/analyticsWorker.js',
-      cwd: '/opt/spinzy/app',
-    },
-  ],
+      name: "spinzy-worker-analytics",
+      script: "dist/workers/analyticsWorker.js",
+      cwd: "/opt/spinzy/app"
+    }
+
+  ]
 };
 ```
 
@@ -622,4 +624,4 @@ This supports **100k+ students** without major architectural changes.
 
 ---
 
-_End of Deployment Guide_
+*End of Deployment Guide*

@@ -16,7 +16,7 @@
  */
 
 // src/lib/redis.ts
-import IORedis from 'ioredis';
+import IORedis from "ioredis";
 import type { ConnectionOptions } from 'bullmq';
 
 // Use InstanceType to capture the runtime Redis client type without relying
@@ -24,23 +24,23 @@ import type { ConnectionOptions } from 'bullmq';
 let _redis: InstanceType<typeof IORedis> | null = null;
 
 // Build a connection object for BullMQ; include TLS options when requested.
-const _url = process.env.REDIS_URL || undefined;
-const _tlsOpts: any = {};
+const _url = process.env.REDIS_URL || undefined
+const _tlsOpts: any = {}
 if (_url && (_url.startsWith('rediss://') || process.env.REDIS_USE_TLS === '1')) {
-  if (process.env.REDIS_TLS_SERVERNAME) _tlsOpts.servername = process.env.REDIS_TLS_SERVERNAME;
-  if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') _tlsOpts.rejectUnauthorized = false;
+  if (process.env.REDIS_TLS_SERVERNAME) _tlsOpts.servername = process.env.REDIS_TLS_SERVERNAME
+  if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') _tlsOpts.rejectUnauthorized = false
 }
 
 export const redisConnection: ConnectionOptions = _url
   ? ({ url: _url, tls: Object.keys(_tlsOpts).length ? _tlsOpts : undefined } as any)
-  : ({} as any);
+  : ({} as any)
 
 export function getRedis() {
   if (_redis) return _redis;
   if (!process.env.REDIS_URL) {
     return null;
   }
-  const url = process.env.REDIS_URL!;
+  const url = process.env.REDIS_URL!
   // Single, shared client with conservative retry/reconnect settings so that
   // transient Memurai/Redis issues do not crash workers or web handlers.
   const opts: any = {
@@ -57,13 +57,13 @@ export function getRedis() {
       if (/ECONNRESET|EPIPE|ETIMEDOUT|connection.*closed/i.test(msg)) return true;
       return false;
     },
-  };
+  }
   // Enable TLS options when using rediss:// or explicit env toggle
   if (url.startsWith('rediss://') || process.env.REDIS_USE_TLS === '1') {
-    const tls: any = {};
-    if (process.env.REDIS_TLS_SERVERNAME) tls.servername = process.env.REDIS_TLS_SERVERNAME;
-    if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') tls.rejectUnauthorized = false;
-    if (Object.keys(tls).length) opts.tls = tls;
+    const tls: any = {}
+    if (process.env.REDIS_TLS_SERVERNAME) tls.servername = process.env.REDIS_TLS_SERVERNAME
+    if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') tls.rejectUnauthorized = false
+    if (Object.keys(tls).length) opts.tls = tls
   }
   const client = new IORedis(url, opts);
 
@@ -95,11 +95,9 @@ export function getRedis() {
     // Increment redis error metric (best-effort; avoid direct import cycles)
     import('../lib/metrics')
       .then(({ incRedisError }) => {
-        try {
-          incRedisError();
-        } catch {}
+        try { incRedisError() } catch {}
       })
-      .catch(() => {});
+      .catch(() => {})
   });
 
   // Log successful connects so we can correlate which resolved endpoint the
@@ -108,10 +106,7 @@ export function getRedis() {
     import('../lib/logger')
       .then(({ info }) => {
         try {
-          info('redis.connected', {
-            host: (client as any)?.options?.host,
-            port: (client as any)?.options?.port,
-          });
+          info('redis.connected', { host: (client as any)?.options?.host, port: (client as any)?.options?.port });
         } catch {
           // ignore
         }
@@ -174,8 +169,8 @@ export function _resetRedisForTests() {
       _redis.disconnect();
     } catch (e) {
       // Use the project's logger utility instead of console methods
-      import('../lib/logger').then(({ logger }) => {
-        logger.error('Failed to disconnect Redis client during test reset', { error: e });
+      import("../lib/logger").then(({ logger }) => {
+        logger.error("Failed to disconnect Redis client during test reset", { error: e });
       });
     }
     _redis = null;

@@ -20,8 +20,7 @@ export const GENERATE_PARENT_REPORT_SCHEMA = {
   type: 'function' as const,
   function: {
     name: 'generate_parent_weekly_report',
-    description:
-      "Summarize a student's weekly learning in parent-friendly language. Under 120 words. No grades or ranks.",
+    description: 'Summarize a student\'s weekly learning in parent-friendly language. Under 120 words. No grades or ranks.',
     parameters: {
       type: 'object',
       properties: {
@@ -30,21 +29,10 @@ export const GENERATE_PARENT_REPORT_SCHEMA = {
         week_summary: {
           type: 'object',
           properties: {
-            days_active: {
-              type: 'integer',
-              description: 'Days the student was active this week (0-7)',
-            },
+            days_active: { type: 'integer', description: 'Days the student was active this week (0-7)' },
             time_spent_min: { type: 'integer', description: 'Total minutes spent learning' },
-            improved_topics: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Topics where performance improved',
-            },
-            struggling_topics: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Topics needing more practice',
-            },
+            improved_topics: { type: 'array', items: { type: 'string' }, description: 'Topics where performance improved' },
+            struggling_topics: { type: 'array', items: { type: 'string' }, description: 'Topics needing more practice' },
             streak_days: { type: 'integer', description: 'Current daily streak' },
             tests_taken: { type: 'integer', description: 'Number of tests completed' },
           },
@@ -63,10 +51,10 @@ export const GENERATE_PARENT_REPORT_SCHEMA = {
 // ── Output Contract ────────────────────────────────────────────────
 
 export interface ParentReportOutput {
-  summary: string; // The full message (under 120 words)
-  improvement: string; // Single improvement highlight
-  encouragement: string; // Single encouraging statement
-  parent_action: string; // Suggested parent action
+  summary: string;        // The full message (under 120 words)
+  improvement: string;    // Single improvement highlight
+  encouragement: string;  // Single encouraging statement
+  parent_action: string;  // Suggested parent action
 }
 
 // ── Input types ────────────────────────────────────────────────────
@@ -85,7 +73,7 @@ export interface WeekSummaryInput {
 export async function generateParentReportAI(
   studentName: string,
   summary: WeekSummaryInput,
-  language: string = 'en'
+  language: string = 'en',
 ): Promise<ParentReportOutput> {
   const budget = resolveTokenBudget(5, 'parent_report'); // Always use cheap model
 
@@ -115,13 +103,16 @@ export async function generateParentReportAI(
 
 // ── Prompt builder ─────────────────────────────────────────────────
 
-function buildPrompt(studentName: string, summary: WeekSummaryInput, language: string): string {
-  const langInstruction =
-    language === 'hi'
-      ? 'Respond entirely in simple Hindi. Use Devanagari script.'
-      : language === 'hinglish'
-        ? 'Respond in Hinglish (Hindi+English mix, Roman script).'
-        : 'Respond in simple English.';
+function buildPrompt(
+  studentName: string,
+  summary: WeekSummaryInput,
+  language: string,
+): string {
+  const langInstruction = language === 'hi'
+    ? 'Respond entirely in simple Hindi. Use Devanagari script.'
+    : language === 'hinglish'
+      ? 'Respond in Hinglish (Hindi+English mix, Roman script).'
+      : 'Respond in simple English.';
 
   const improved = summary.improved_topics?.length
     ? `Improved topics: ${summary.improved_topics.join(', ')}`
@@ -169,10 +160,7 @@ Respond ONLY with valid JSON:
 function parseOutput(content: string): ParentReportOutput {
   let cleaned = content.trim();
   if (cleaned.startsWith('```')) {
-    cleaned = cleaned
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/```\s*$/, '')
-      .trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   }
   return JSON.parse(cleaned);
 }
@@ -180,8 +168,7 @@ function parseOutput(content: string): ParentReportOutput {
 function validateOutput(output: ParentReportOutput): ParentReportOutput {
   // Word count check -- truncate if over 120 words
   const words = output.summary.split(/\s+/);
-  if (words.length > 130) {
-    // Small buffer
+  if (words.length > 130) { // Small buffer
     output.summary = words.slice(0, 120).join(' ') + '...';
   }
 
@@ -198,7 +185,7 @@ function validateOutput(output: ParentReportOutput): ParentReportOutput {
 function buildFallbackReport(
   studentName: string,
   summary: WeekSummaryInput,
-  language: string
+  language: string,
 ): ParentReportOutput {
   if (language === 'hi') {
     const improved = summary.improved_topics?.[0] || 'अध्ययन';
@@ -222,10 +209,9 @@ function buildFallbackReport(
 
   // English fallback
   const improved = summary.improved_topics?.[0] || 'their studies';
-  const timeStr =
-    summary.time_spent_min >= 60
-      ? `${Math.round(summary.time_spent_min / 60)} hours`
-      : `${summary.time_spent_min} minutes`;
+  const timeStr = summary.time_spent_min >= 60
+    ? `${Math.round(summary.time_spent_min / 60)} hours`
+    : `${summary.time_spent_min} minutes`;
 
   return {
     summary: `This week, ${studentName} studied on ${summary.days_active} days for a total of ${timeStr}. ${studentName} showed progress in ${improved}. Keep encouraging regular practice -- every small step adds up.`,

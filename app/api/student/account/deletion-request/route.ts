@@ -1,42 +1,40 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSessionForHandlers } from '@/lib/session';
-import { sendEmail } from '@/lib/mailer';
-import { deletionConfirmHtml } from '@/lib/email/templates';
-import { AdminActionType } from '@prisma/client';
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { sendEmail } from '@/lib/mailer'
+import { deletionConfirmHtml } from '@/lib/email/templates'
+import { AdminActionType } from '@prisma/client'
 
-const DAYS_TO_PSEUDONYMISE = 7;
-const DAYS_TO_PURGE = 30;
+const DAYS_TO_PSEUDONYMISE = 7
+const DAYS_TO_PURGE = 30
 
 export async function POST() {
-  const session = await getServerSessionForHandlers();
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getServerSessionForHandlers()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userId = session.user.id;
-  const userEmail = session.user.email ?? '';
+  const userId = session.user.id
+  const userEmail = session.user.email ?? ''
 
   // Idempotent: return existing request if already submitted
-  const existing = await prisma.deletionRequest.findUnique({ where: { userId } });
+  const existing = await prisma.deletionRequest.findUnique({ where: { userId } })
   if (existing) {
     const scheduledPseudonymiseDate = new Date(
-      existing.requestedAt.getTime() + DAYS_TO_PSEUDONYMISE * 24 * 60 * 60 * 1000
-    );
+      existing.requestedAt.getTime() + DAYS_TO_PSEUDONYMISE * 24 * 60 * 60 * 1000,
+    )
     const scheduledPurgeDate = new Date(
-      existing.requestedAt.getTime() + DAYS_TO_PURGE * 24 * 60 * 60 * 1000
-    );
+      existing.requestedAt.getTime() + DAYS_TO_PURGE * 24 * 60 * 60 * 1000,
+    )
     return NextResponse.json({
       requested: true,
       scheduledPseudonymiseDate: scheduledPseudonymiseDate.toISOString(),
       scheduledPurgeDate: scheduledPurgeDate.toISOString(),
       alreadyRequested: true,
-    });
+    })
   }
 
-  const now = new Date();
-  const scheduledPseudonymiseDate = new Date(
-    now.getTime() + DAYS_TO_PSEUDONYMISE * 24 * 60 * 60 * 1000
-  );
-  const scheduledPurgeDate = new Date(now.getTime() + DAYS_TO_PURGE * 24 * 60 * 60 * 1000);
+  const now = new Date()
+  const scheduledPseudonymiseDate = new Date(now.getTime() + DAYS_TO_PSEUDONYMISE * 24 * 60 * 60 * 1000)
+  const scheduledPurgeDate = new Date(now.getTime() + DAYS_TO_PURGE * 24 * 60 * 60 * 1000)
 
   await prisma.$transaction([
     prisma.deletionRequest.create({ data: { userId } }),
@@ -48,7 +46,7 @@ export async function POST() {
         action: AdminActionType.ERASURE_REQUEST,
       },
     }),
-  ]);
+  ])
 
   // Send confirmation email (non-fatal)
   if (userEmail) {
@@ -56,12 +54,12 @@ export async function POST() {
       to: userEmail,
       subject: 'Account deletion request received -- Spinzy Academy',
       html: deletionConfirmHtml(),
-    }).catch(() => undefined);
+    }).catch(() => undefined)
   }
 
   return NextResponse.json({
     requested: true,
     scheduledPseudonymiseDate: scheduledPseudonymiseDate.toISOString(),
     scheduledPurgeDate: scheduledPurgeDate.toISOString(),
-  });
+  })
 }

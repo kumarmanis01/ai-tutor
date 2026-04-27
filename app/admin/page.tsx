@@ -32,7 +32,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 function buildSparkline(
   sessions: { startedAt: Date }[],
-  startOfToday: Date
+  startOfToday: Date,
 ): { day: string; count: number }[] {
   const buckets = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(startOfToday);
@@ -43,7 +43,7 @@ function buildSparkline(
   for (const s of sessions) {
     const sd = new Date(s.startedAt);
     sd.setHours(0, 0, 0, 0);
-    const bucket = buckets.find((b) => b.ms === sd.getTime());
+    const bucket = buckets.find(b => b.ms === sd.getTime());
     if (bucket) bucket.count++;
   }
 
@@ -54,37 +54,31 @@ function buildActivityFeed(
   jobs: { id: string; status: string; jobType: string; subject: string | null; updatedAt: Date }[],
   signups: { id: string; createdAt: Date }[],
   safetyEvents: { id: string; triggerType: string; severity: string; createdAt: Date }[],
-  ingests: {
-    id: string;
-    fileSource: string | null;
-    chunksCreated: number;
-    errors: number;
-    runAt: Date;
-  }[]
+  ingests: { id: string; fileSource: string | null; chunksCreated: number; errors: number; runAt: Date }[],
 ): ActivityItem[] {
   const items: ActivityItem[] = [
-    ...jobs.map((j) => ({
+    ...jobs.map(j => ({
       id: j.id,
       label: `Hydration ${j.jobType}`,
       detail: j.subject ?? 'system',
       timestamp: j.updatedAt,
       status: (j.status === 'completed' ? 'done' : 'failed') as ActivityStatus,
     })),
-    ...signups.map((u) => ({
+    ...signups.map(u => ({
       id: u.id,
       label: 'New student registered',
       detail: 'User account created',
       timestamp: u.createdAt,
       status: 'done' as ActivityStatus,
     })),
-    ...safetyEvents.map((e) => ({
+    ...safetyEvents.map(e => ({
       id: e.id,
       label: `Safety: ${e.triggerType}`,
       detail: e.severity,
       timestamp: e.createdAt,
       status: 'failed' as ActivityStatus,
     })),
-    ...ingests.map((r) => ({
+    ...ingests.map(r => ({
       id: r.id,
       label: 'Content ingest',
       detail: r.fileSource ? (r.fileSource.split('/').pop() ?? 'file') : 'unknown source',
@@ -122,7 +116,9 @@ function KpiCard({
       <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1 leading-none">
         {value}
       </p>
-      {sub && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">{sub}</p>}
+      {sub && (
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">{sub}</p>
+      )}
       {progressPct !== undefined && (
         <div className="mt-2 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
           <div
@@ -146,23 +142,21 @@ function KpiCard({
 
 function StatusBadge({ status }: { status: ActivityStatus }) {
   const cfg: Record<ActivityStatus, { bg: string; text: string; label: string }> = {
-    done: { bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', label: 'Done' },
+    done:    { bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', label: 'Done' },
     running: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', label: 'Running' },
-    failed: { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', label: 'Failed' },
+    failed:  { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', label: 'Failed' },
     pending: { bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', label: 'Pending' },
   };
   const { bg, text, label } = cfg[status];
   return (
-    <span
-      className={`inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${bg} ${text}`}
-    >
+    <span className={`inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${bg} ${text}`}>
       {label}
     </span>
   );
 }
 
 function SessionSparkline({ data }: { data: { day: string; count: number }[] }) {
-  const max = Math.max(...data.map((d) => d.count), 1);
+  const max = Math.max(...data.map(d => d.count), 1);
   const BAR_AREA_H = 36;
 
   return (
@@ -174,10 +168,7 @@ function SessionSparkline({ data }: { data: { day: string; count: number }[] }) 
         return (
           <g key={i}>
             <rect
-              x={x}
-              y={y}
-              width={28}
-              height={barH}
+              x={x} y={y} width={28} height={barH}
               rx="3"
               fill="#534AB7"
               opacity={d.count > 0 ? 0.85 : 0.12}
@@ -256,7 +247,9 @@ export default async function AdminDashboardPage() {
       .count({ where: { role: 'user', lastSessionDate: { gte: startOfToday } } })
       .catch(() => 0),
 
-    prisma.structuredSession.count({ where: { startedAt: { gte: startOfToday } } }).catch(() => 0),
+    prisma.structuredSession
+      .count({ where: { startedAt: { gte: startOfToday } } })
+      .catch(() => 0),
 
     prisma.dailyCostMetric
       .findFirst({ where: { date: { gte: startOfToday } }, select: { totalCostUsd: true } })
@@ -271,7 +264,9 @@ export default async function AdminDashboardPage() {
           },
         })
         .catch(() => 0),
-      prisma.subjectDef.count({ where: { lifecycle: 'active' } }).catch(() => 0),
+      prisma.subjectDef
+        .count({ where: { lifecycle: 'active' } })
+        .catch(() => 0),
     ]),
 
     prisma.structuredSession
@@ -318,11 +313,17 @@ export default async function AdminDashboardPage() {
       })
       .catch(() => []),
 
-    prisma.topicDef.count({ where: { status: 'draft', lifecycle: 'active' } }).catch(() => 0),
+    prisma.topicDef
+      .count({ where: { status: 'draft', lifecycle: 'active' } })
+      .catch(() => 0),
 
-    prisma.safetyEvent.count({ where: { resolvedAt: null } }).catch(() => 0),
+    prisma.safetyEvent
+      .count({ where: { resolvedAt: null } })
+      .catch(() => 0),
 
-    prisma.hydrationJob.count({ where: { status: 'running', hierarchyLevel: 0 } }).catch(() => 0),
+    prisma.hydrationJob
+      .count({ where: { status: 'running', hierarchyLevel: 0 } })
+      .catch(() => 0),
   ]);
 
   const [hydratedSubjects, totalSubjects] = subjectCounts;
@@ -342,7 +343,11 @@ export default async function AdminDashboardPage() {
             value={activeStudentsToday}
             sub="With a session today"
           />
-          <KpiCard label="Sessions today" value={sessionsToday} sub="Structured sessions started" />
+          <KpiCard
+            label="Sessions today"
+            value={sessionsToday}
+            sub="Structured sessions started"
+          />
           <KpiCard
             label="AI cost today"
             value={formatCostUsd(costToday)}
@@ -353,9 +358,7 @@ export default async function AdminDashboardPage() {
             value={`${hydratedSubjects} / ${totalSubjects}`}
             sub="Subjects with approved chapters"
             href="/admin/content"
-            progressPct={
-              totalSubjects > 0 ? Math.round((hydratedSubjects / totalSubjects) * 100) : 0
-            }
+            progressPct={totalSubjects > 0 ? Math.round((hydratedSubjects / totalSubjects) * 100) : 0}
           />
         </div>
 
@@ -384,9 +387,7 @@ export default async function AdminDashboardPage() {
               <QuickActionBtn href="/admin/content" label="Trigger content hydration" />
               <QuickActionBtn
                 href="/admin/content-approval"
-                label={
-                  pendingReview > 0 ? `Review ${pendingReview} pending items` : 'Review content'
-                }
+                label={pendingReview > 0 ? `Review ${pendingReview} pending items` : 'Review content'}
               />
               <QuickActionBtn
                 href="/admin/safety"
@@ -417,8 +418,11 @@ export default async function AdminDashboardPage() {
             </p>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {activity.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+              {activity.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                >
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">
                       {item.label}

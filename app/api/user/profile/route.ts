@@ -133,7 +133,7 @@ export async function PATCH(req: Request) {
     if (!VALID_LEARNING_STYLES.includes(rawStyle as (typeof VALID_LEARNING_STYLES)[number])) {
       res = NextResponse.json(
         { error: `learningStyle must be one of: ${VALID_LEARNING_STYLES.join(', ')}` },
-        { status: 400 }
+        { status: 400 },
       );
       logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
       return res;
@@ -149,10 +149,7 @@ export async function PATCH(req: Request) {
 
     if (typeof body.preferences.crunchMode === 'string') {
       if (!allowedCrunch.includes(body.preferences.crunchMode)) {
-        res = NextResponse.json(
-          { error: `crunchMode must be one of: ${allowedCrunch.join(', ')}` },
-          { status: 400 }
-        );
+        res = NextResponse.json({ error: `crunchMode must be one of: ${allowedCrunch.join(', ')}` }, { status: 400 });
         logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
         return res;
       }
@@ -161,10 +158,7 @@ export async function PATCH(req: Request) {
 
     if (typeof body.preferences.fontSize === 'string') {
       if (!allowedFont.includes(body.preferences.fontSize)) {
-        res = NextResponse.json(
-          { error: `fontSize must be one of: ${allowedFont.join(', ')}` },
-          { status: 400 }
-        );
+        res = NextResponse.json({ error: `fontSize must be one of: ${allowedFont.join(', ')}` }, { status: 400 });
         logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
         return res;
       }
@@ -180,18 +174,12 @@ export async function PATCH(req: Request) {
       }
       const arr = body.preferences.badgeShowcase as any[];
       if (arr.length > 5) {
-        res = NextResponse.json(
-          { error: 'badgeShowcase may contain at most 5 items' },
-          { status: 400 }
-        );
+        res = NextResponse.json({ error: 'badgeShowcase may contain at most 5 items' }, { status: 400 });
         logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
         return res;
       }
       if (!arr.every((v) => typeof v === 'string')) {
-        res = NextResponse.json(
-          { error: 'badgeShowcase must be an array of strings' },
-          { status: 400 }
-        );
+        res = NextResponse.json({ error: 'badgeShowcase must be an array of strings' }, { status: 400 });
         logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
         return res;
       }
@@ -201,34 +189,29 @@ export async function PATCH(req: Request) {
 
     if (Object.keys(prefsToMerge).length > 0) {
       // Merge with existing preferences atomically
-      const existing = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { preferences: true },
-      });
-      const merged = { ...((existing?.preferences as any) || {}), ...prefsToMerge };
+      const existing = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });
+      const merged = { ...(existing?.preferences as any || {}), ...prefsToMerge };
       updates.preferences = merged;
     }
   }
 
   // Support updating examDate (optional). Accepts an ISO string or null to clear.
   if (Object.prototype.hasOwnProperty.call(body, 'examDate')) {
-    const raw = (body as any).examDate;
+    const raw = (body as any).examDate
     if (raw === null) {
-      updates.examDate = null;
+      updates.examDate = null
     } else if (typeof raw === 'string' && raw.trim() !== '') {
-      const parsed = new Date(raw);
+      const parsed = new Date(raw)
       if (Number.isNaN(parsed.getTime())) {
-        res = NextResponse.json({ error: 'Invalid examDate' }, { status: 400 });
-        if (typeof logger.logAPI === 'function')
-          logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
-        return res;
+        res = NextResponse.json({ error: 'Invalid examDate' }, { status: 400 })
+        if (typeof logger.logAPI === 'function') logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start)
+        return res
       }
-      updates.examDate = parsed;
+      updates.examDate = parsed
     } else {
-      res = NextResponse.json({ error: 'Invalid examDate' }, { status: 400 });
-      if (typeof logger.logAPI === 'function')
-        logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
-      return res;
+      res = NextResponse.json({ error: 'Invalid examDate' }, { status: 400 })
+      if (typeof logger.logAPI === 'function') logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start)
+      return res
     }
   }
 
@@ -238,78 +221,46 @@ export async function PATCH(req: Request) {
     return res;
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: updates,
-    select: { id: true, learningStyle: true, preferences: true, examDate: true },
-  });
+  const updated = await prisma.user.update({ where: { id: userId }, data: updates, select: { id: true, learningStyle: true, preferences: true, examDate: true } });
 
-  res = NextResponse.json({
-    ok: true,
-    learningStyle: updated.learningStyle ?? null,
-    preferences: updated.preferences ?? null,
-  });
+  res = NextResponse.json({ ok: true, learningStyle: updated.learningStyle ?? null, preferences: updated.preferences ?? null });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
 
   // If examDate was updated, regenerate any existing learning plans for the student (non-blocking).
   if (Object.prototype.hasOwnProperty.call(updates, 'examDate')) {
-    const lpModel = (prisma as any).learningPlan;
+    const lpModel = (prisma as any).learningPlan
     if (lpModel && typeof lpModel.findMany === 'function') {
-      const studentId = updated.id;
-      const exam = updates.examDate instanceof Date ? updates.examDate : null;
+      const studentId = updated.id
+      const exam = updates.examDate instanceof Date ? updates.examDate : null
       // Lightweight audit/event for observability (fire-and-forget). Attach to student record.
-      const eventModel = (prisma as any).event;
+      const eventModel = (prisma as any).event
       if (eventModel && typeof eventModel.create === 'function') {
-        eventModel
-          .create({
-            data: {
-              userId: studentId,
-              type: 'examDate.regen.triggered',
-              metadata: {
-                triggeredBy: userId ?? null,
-                trigger: 'profile',
-                examDate: exam instanceof Date ? exam.toISOString() : null,
-              },
-              timestamp: new Date(),
-            },
-          })
-          .catch((evErr: any) => {
-            logger.warn('UserProfileAPI: failed to persist regen event', {
-              className: 'UserProfileAPI',
-              methodName: 'PATCH',
-              error: String(evErr),
-            });
-          });
+        eventModel.create({
+          data: {
+            userId: studentId,
+            type: 'examDate.regen.triggered',
+            metadata: { triggeredBy: userId ?? null, trigger: 'profile', examDate: exam instanceof Date ? exam.toISOString() : null },
+            timestamp: new Date(),
+          },
+        }).catch((evErr: any) => {
+          logger.warn('UserProfileAPI: failed to persist regen event', { className: 'UserProfileAPI', methodName: 'PATCH', error: String(evErr) })
+        })
       }
       lpModel
         .findMany({ where: { studentId }, select: { subjectId: true, weeklyGoal: true } })
         .then(async (plans: Array<{ subjectId: string; weeklyGoal: number }>) => {
-          if (!plans || plans.length === 0) return;
+          if (!plans || plans.length === 0) return
           for (const p of plans) {
             try {
-              await generateLearningPlan(studentId, p.subjectId, {
-                examDate: exam ?? undefined,
-                weeklyGoal: p.weeklyGoal,
-              });
+              await generateLearningPlan(studentId, p.subjectId, { examDate: exam ?? undefined, weeklyGoal: p.weeklyGoal })
             } catch (err) {
-              logger.warn('UserProfileAPI: regenerate learning plan failed', {
-                className: 'UserProfileAPI',
-                methodName: 'PATCH',
-                studentId,
-                subjectId: p.subjectId,
-                error: String(err),
-              });
+              logger.warn('UserProfileAPI: regenerate learning plan failed', { className: 'UserProfileAPI', methodName: 'PATCH', studentId, subjectId: p.subjectId, error: String(err) })
             }
           }
         })
         .catch((err: any) => {
-          logger.warn('UserProfileAPI: failed to fetch learning plans for regen', {
-            className: 'UserProfileAPI',
-            methodName: 'PATCH',
-            studentId: updated.id,
-            error: String(err),
-          });
-        });
+          logger.warn('UserProfileAPI: failed to fetch learning plans for regen', { className: 'UserProfileAPI', methodName: 'PATCH', studentId: updated.id, error: String(err) })
+        })
     }
   }
 

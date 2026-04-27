@@ -23,12 +23,8 @@ const p = spawn(process.execPath, nodeArgs, { env });
 let out = '';
 let err = '';
 
-p.stdout.on('data', (d) => {
-  out += d.toString();
-});
-p.stderr.on('data', (d) => {
-  err += d.toString();
-});
+p.stdout.on('data', (d) => { out += d.toString(); });
+p.stderr.on('data', (d) => { err += d.toString(); });
 
 p.on('close', (code) => {
   logger.info('evaluator dry-run exited with', code);

@@ -1,10 +1,10 @@
-export type ApprovalStatus = 'DRAFT' | 'APPROVED' | 'ARCHIVED';
+export type ApprovalStatus = 'DRAFT' | 'APPROVED' | 'ARCHIVED'
 
 export interface ApprovalMetadata {
-  status: ApprovalStatus;
-  approvedBy?: string;
-  approvedAt?: string;
-  approvalNote?: string;
+  status: ApprovalStatus
+  approvedBy?: string
+  approvedAt?: string
+  approvalNote?: string
 }
 
-export default ApprovalMetadata;
+export default ApprovalMetadata

@@ -24,30 +24,28 @@
  * marking-scheme figures via direct DB update or --force after editing this script.
  */
 
-import { prisma } from '../lib/prisma';
+import { prisma } from '../lib/prisma'
 
-const THEORY_MARKS_PER_SUBJECT = 80;
-const MIN_MARKS_PER_CHAPTER = 1;
+const THEORY_MARKS_PER_SUBJECT = 80
+const MIN_MARKS_PER_CHAPTER = 1
 
-const isDryRun = process.argv.includes('--dry-run');
-const isForce = process.argv.includes('--force');
+const isDryRun = process.argv.includes('--dry-run')
+const isForce = process.argv.includes('--force')
 
 interface SubjectSummary {
-  board: string;
-  grade: number;
-  subject: string;
-  chapters: number;
-  marksEach: number;
-  created: number;
-  skipped: number;
-  updated: number;
+  board: string
+  grade: number
+  subject: string
+  chapters: number
+  marksEach: number
+  created: number
+  skipped: number
+  updated: number
 }
 
 async function seedBoardChapterWeights(): Promise<void> {
-  console.log(
-    `\nBoardChapterWeight seed -- ${isDryRun ? 'DRY RUN (no writes)' : isForce ? 'FORCE (overwrite existing)' : 'CREATE only (skip existing)'}`
-  );
-  console.log('Fetching chapters from all active boards, grades 6-12...\n');
+  console.log(`\nBoardChapterWeight seed -- ${isDryRun ? 'DRY RUN (no writes)' : isForce ? 'FORCE (overwrite existing)' : 'CREATE only (skip existing)'}`)
+  console.log('Fetching chapters from all active boards, grades 6-12...\n')
 
   const boards = await prisma.board.findMany({
     where: { slug: { in: ['cbse', 'icse'] }, lifecycle: 'active' },
@@ -72,42 +70,42 @@ async function seedBoardChapterWeights(): Promise<void> {
         },
       },
     },
-  });
+  })
 
   if (!boards.length) {
-    throw new Error('No active CBSE/ICSE boards found. Run seed-taxonomy.cjs first.');
+    throw new Error('No active CBSE/ICSE boards found. Run seed-taxonomy.cjs first.')
   }
 
   // Collect all existing chapterId rows to avoid unnecessary upserts
-  const existingRows = await prisma.boardChapterWeight.findMany({ select: { chapterId: true } });
-  const existingSet = new Set(existingRows.map((r) => r.chapterId));
+  const existingRows = await prisma.boardChapterWeight.findMany({ select: { chapterId: true } })
+  const existingSet = new Set(existingRows.map((r) => r.chapterId))
 
-  const summaries: SubjectSummary[] = [];
-  let totalCreated = 0;
-  let totalSkipped = 0;
-  let totalUpdated = 0;
+  const summaries: SubjectSummary[] = []
+  let totalCreated = 0
+  let totalSkipped = 0
+  let totalUpdated = 0
 
   for (const board of boards) {
     for (const cls of board.classes) {
       for (const subj of cls.subjects) {
-        const chapters = subj.chapters;
-        if (!chapters.length) continue;
+        const chapters = subj.chapters
+        if (!chapters.length) continue
 
         const marksEach = Math.max(
           MIN_MARKS_PER_CHAPTER,
-          Math.round(THEORY_MARKS_PER_SUBJECT / chapters.length)
-        );
+          Math.round(THEORY_MARKS_PER_SUBJECT / chapters.length),
+        )
 
-        let created = 0;
-        let skipped = 0;
-        let updated = 0;
+        let created = 0
+        let skipped = 0
+        let updated = 0
 
         for (const ch of chapters) {
-          const alreadyExists = existingSet.has(ch.id);
+          const alreadyExists = existingSet.has(ch.id)
 
           if (alreadyExists && !isForce) {
-            skipped++;
-            continue;
+            skipped++
+            continue
           }
 
           if (!isDryRun) {
@@ -115,20 +113,20 @@ async function seedBoardChapterWeights(): Promise<void> {
               where: { chapterId: ch.id },
               update: isForce ? { weightMarks: marksEach } : {},
               create: { chapterId: ch.id, weightMarks: marksEach },
-            });
+            })
           }
 
           if (alreadyExists) {
-            updated++;
+            updated++
           } else {
-            created++;
-            existingSet.add(ch.id);
+            created++
+            existingSet.add(ch.id)
           }
         }
 
-        totalCreated += created;
-        totalSkipped += skipped;
-        totalUpdated += updated;
+        totalCreated += created
+        totalSkipped += skipped
+        totalUpdated += updated
 
         summaries.push({
           board: board.slug.toUpperCase(),
@@ -139,7 +137,7 @@ async function seedBoardChapterWeights(): Promise<void> {
           created,
           skipped,
           updated,
-        });
+        })
       }
     }
   }
@@ -147,44 +145,44 @@ async function seedBoardChapterWeights(): Promise<void> {
   // Print summary table
   console.log(
     'Board'.padEnd(6) +
-      'Grade'.padEnd(7) +
-      'Subject'.padEnd(24) +
-      'Chapters'.padEnd(10) +
-      'Marks ea.'.padEnd(11) +
-      'Created'.padEnd(9) +
-      'Updated'.padEnd(9) +
-      'Skipped'
-  );
-  console.log('-'.repeat(80));
+    'Grade'.padEnd(7) +
+    'Subject'.padEnd(24) +
+    'Chapters'.padEnd(10) +
+    'Marks ea.'.padEnd(11) +
+    'Created'.padEnd(9) +
+    'Updated'.padEnd(9) +
+    'Skipped',
+  )
+  console.log('-'.repeat(80))
   for (const s of summaries) {
     console.log(
       s.board.padEnd(6) +
-        String(s.grade).padEnd(7) +
-        s.subject.slice(0, 22).padEnd(24) +
-        String(s.chapters).padEnd(10) +
-        String(s.marksEach).padEnd(11) +
-        String(s.created).padEnd(9) +
-        String(s.updated).padEnd(9) +
-        String(s.skipped)
-    );
+      String(s.grade).padEnd(7) +
+      s.subject.slice(0, 22).padEnd(24) +
+      String(s.chapters).padEnd(10) +
+      String(s.marksEach).padEnd(11) +
+      String(s.created).padEnd(9) +
+      String(s.updated).padEnd(9) +
+      String(s.skipped),
+    )
   }
-  console.log('-'.repeat(80));
-  console.log(`Total: ${totalCreated} created, ${totalUpdated} updated, ${totalSkipped} skipped`);
+  console.log('-'.repeat(80))
+  console.log(`Total: ${totalCreated} created, ${totalUpdated} updated, ${totalSkipped} skipped`)
 
   if (isDryRun) {
-    console.log('\nDry-run complete -- no rows written.');
+    console.log('\nDry-run complete -- no rows written.')
   } else {
-    console.log('\nDone. BoardChapterWeight rows are live.');
-    console.log('Note: marks are equally distributed defaults (80 / chapter count).');
-    console.log('Replace individual rows with official marking-scheme figures when available.');
+    console.log('\nDone. BoardChapterWeight rows are live.')
+    console.log('Note: marks are equally distributed defaults (80 / chapter count).')
+    console.log('Replace individual rows with official marking-scheme figures when available.')
   }
 }
 
 seedBoardChapterWeights()
   .catch((err) => {
-    console.error('Seed failed:', err);
-    process.exitCode = 1;
+    console.error('Seed failed:', err)
+    process.exitCode = 1
   })
   .finally(async () => {
-    await prisma.$disconnect();
-  });
+    await prisma.$disconnect()
+  })

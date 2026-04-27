@@ -16,53 +16,53 @@
  * - 2026-04-16T00:00:00Z | copilot | created -- AC-04 + AC-06 (F-STU-003) timeline + reorder UI
  * - 2026-04-18T00:00:00Z | copilot | import timeline types from shared lib
  */
-'use client';
+'use client'
 
-import React, { useState, useCallback } from 'react';
-import type { TimelineResponse, TimelineItem } from '@/lib/student/learningPlanTimeline';
-import { logger } from '@/lib/logger';
+import React, { useState, useCallback } from 'react'
+import type { TimelineResponse, TimelineItem } from '@/lib/student/learningPlanTimeline'
+import { logger } from '@/lib/logger'
 
 const STATUS_STYLES: Record<TimelineItem['status'], string> = {
   COMPLETED: 'bg-[#EAF3DE] text-[#1D9E75] border-[#1D9E75]',
   IN_PROGRESS: 'bg-[#EEEDFE] text-[#534AB7] border-[#534AB7]',
   UPCOMING: 'bg-muted text-muted-foreground border-border',
   DEFERRED: 'bg-[#FCEBEB] text-[#E24B4A] border-[#E24B4A]',
-};
+}
 
 const STATUS_LABELS: Record<TimelineItem['status'], string> = {
   COMPLETED: 'Done',
   IN_PROGRESS: 'In progress',
   UPCOMING: 'Upcoming',
   DEFERRED: 'Deferred',
-};
+}
 
 function formatWeekDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
 interface WeekCardProps {
-  week: TimelineResponse['weeks'][number];
-  onMoveItem: (itemId: string, direction: 'prev' | 'next') => Promise<void>;
-  isCurrentWeek: boolean;
+  week: TimelineResponse['weeks'][number]
+  onMoveItem: (itemId: string, direction: 'prev' | 'next') => Promise<void>
+  isCurrentWeek: boolean
 }
 
 function WeekCard({ week, onMoveItem, isCurrentWeek }: WeekCardProps) {
-  const [movingId, setMovingId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null)
 
   const handleMove = useCallback(
     async (item: TimelineItem, direction: 'prev' | 'next') => {
-      setMovingId(item.id);
+      setMovingId(item.id)
       try {
-        await onMoveItem(item.id, direction);
+        await onMoveItem(item.id, direction)
       } finally {
-        setMovingId(null);
+        setMovingId(null)
       }
     },
-    [onMoveItem]
-  );
+    [onMoveItem],
+  )
 
-  const upcomingItems = week.items.filter((i) => i.status === 'UPCOMING');
+  const upcomingItems = week.items.filter((i) => i.status === 'UPCOMING')
 
   return (
     <div
@@ -82,7 +82,9 @@ function WeekCard({ week, onMoveItem, isCurrentWeek }: WeekCardProps) {
           >
             {isCurrentWeek ? 'Current week' : `Week ${week.weekNumber}`}
           </span>
-          <p className="text-sm text-muted-foreground">From {formatWeekDate(week.startDate)}</p>
+          <p className="text-sm text-muted-foreground">
+            From {formatWeekDate(week.startDate)}
+          </p>
         </div>
         {/* Chapter summary badges */}
         <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
@@ -101,16 +103,19 @@ function WeekCard({ week, onMoveItem, isCurrentWeek }: WeekCardProps) {
       {/* Item list */}
       <ol className="space-y-2">
         {week.items.map((item, idx) => {
-          const isFirst = idx === 0;
-          const isLast = idx === week.items.length - 1;
-          const canReorder = item.status === 'UPCOMING' && !item.isMandatory;
-          const prevItem = week.items[idx - 1];
-          const nextItem = week.items[idx + 1];
-          const canMoveUp = canReorder && !isFirst && prevItem?.status === 'UPCOMING';
-          const canMoveDown = canReorder && !isLast && nextItem?.status === 'UPCOMING';
+          const isFirst = idx === 0
+          const isLast = idx === week.items.length - 1
+          const canReorder = item.status === 'UPCOMING' && !item.isMandatory
+          const prevItem = week.items[idx - 1]
+          const nextItem = week.items[idx + 1]
+          const canMoveUp = canReorder && !isFirst && prevItem?.status === 'UPCOMING'
+          const canMoveDown = canReorder && !isLast && nextItem?.status === 'UPCOMING'
 
           return (
-            <li key={item.id} className="flex items-center gap-2 group">
+            <li
+              key={item.id}
+              className="flex items-center gap-2 group"
+            >
               {/* Order number */}
               <span className="shrink-0 w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center font-medium">
                 {item.orderInWeek + 1}
@@ -153,7 +158,7 @@ function WeekCard({ week, onMoveItem, isCurrentWeek }: WeekCardProps) {
                 </div>
               )}
             </li>
-          );
+          )
         })}
       </ol>
 
@@ -164,13 +169,13 @@ function WeekCard({ week, onMoveItem, isCurrentWeek }: WeekCardProps) {
         </p>
       )}
     </div>
-  );
+  )
 }
 
 // ─── Progress bar ────────────────────────────────────────────────────────────
 
 function ProgressBar({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
     <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
       <div
@@ -182,66 +187,64 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
         aria-valuemax={100}
       />
     </div>
-  );
+  )
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
 interface LearningPlanTimelineProps {
-  initialData: TimelineResponse;
+  initialData: TimelineResponse
 }
 
 export function LearningPlanTimeline({ initialData }: LearningPlanTimelineProps) {
-  const [data, setData] = useState<TimelineResponse>(initialData);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<TimelineResponse>(initialData)
+  const [error, setError] = useState<string | null>(null)
 
   // Determine which week number is "current" (first week with any UPCOMING item)
   const currentWeekNumber =
-    data.weeks.find((w) =>
-      w.items.some((i) => i.status === 'UPCOMING' || i.status === 'IN_PROGRESS')
-    )?.weekNumber ?? null;
+    data.weeks.find((w) => w.items.some((i) => i.status === 'UPCOMING' || i.status === 'IN_PROGRESS'))
+      ?.weekNumber ?? null
 
-  const handleMoveItem = useCallback(async (itemId: string, direction: 'prev' | 'next') => {
-    setError(null);
-    try {
-      const resp = await fetch(`/api/student/learning-plan/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'move', direction }),
-      });
-      if (!resp.ok) {
-        const json = await resp.json().catch(() => ({}));
-        setError((json as { error?: string }).error ?? 'Could not reorder -- please try again.');
-        return;
+  const handleMoveItem = useCallback(
+    async (itemId: string, direction: 'prev' | 'next') => {
+      setError(null)
+      try {
+        const resp = await fetch(`/api/student/learning-plan/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'move', direction }),
+        })
+        if (!resp.ok) {
+          const json = await resp.json().catch(() => ({}))
+          setError((json as { error?: string }).error ?? 'Could not reorder -- please try again.')
+          return
+        }
+        // Optimistically swap the items in local state
+        setData((prev) => {
+          const weeks = prev.weeks.map((w) => {
+            const srcIdx = w.items.findIndex((i) => i.id === itemId)
+            if (srcIdx === -1) return w
+            const tgtIdx = direction === 'next' ? srcIdx + 1 : srcIdx - 1
+            if (tgtIdx < 0 || tgtIdx >= w.items.length) return w
+            const items = [...w.items]
+            ;[items[srcIdx], items[tgtIdx]] = [items[tgtIdx], items[srcIdx]]
+            // Reassign orderInWeek to match new positions
+            const reindexed = items.map((item, i) => ({ ...item, orderInWeek: i }))
+            return { ...w, items: reindexed }
+          })
+          return { ...prev, weeks }
+        })
+      } catch (err) {
+        logger.warn('Could not reorder item', { event: 'learningPlan.move.failed', error: String(err), itemId });
+        setError('Could not reorder -- tap to retry.')
       }
-      // Optimistically swap the items in local state
-      setData((prev) => {
-        const weeks = prev.weeks.map((w) => {
-          const srcIdx = w.items.findIndex((i) => i.id === itemId);
-          if (srcIdx === -1) return w;
-          const tgtIdx = direction === 'next' ? srcIdx + 1 : srcIdx - 1;
-          if (tgtIdx < 0 || tgtIdx >= w.items.length) return w;
-          const items = [...w.items];
-          [items[srcIdx], items[tgtIdx]] = [items[tgtIdx], items[srcIdx]];
-          // Reassign orderInWeek to match new positions
-          const reindexed = items.map((item, i) => ({ ...item, orderInWeek: i }));
-          return { ...w, items: reindexed };
-        });
-        return { ...prev, weeks };
-      });
-    } catch (err) {
-      logger.warn('Could not reorder item', {
-        event: 'learningPlan.move.failed',
-        error: String(err),
-        itemId,
-      });
-      setError('Could not reorder -- tap to retry.');
-    }
-  }, []);
+    },
+    [],
+  )
 
   const daysToExam = data.examDate
     ? Math.ceil((new Date(data.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : null;
+    : null
 
   return (
     <div className="space-y-6">
@@ -296,7 +299,7 @@ export function LearningPlanTimeline({ initialData }: LearningPlanTimelineProps)
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default LearningPlanTimeline;
+export default LearningPlanTimeline

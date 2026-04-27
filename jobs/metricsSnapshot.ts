@@ -13,8 +13,8 @@
  * - 2026-04-17T00:00:00Z | senior-engineer | add metrics snapshot job
  */
 
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function runSnapshot(createdBy?: string) {
   const sql = `
@@ -73,34 +73,32 @@ SELECT
          (marketing.marketing_spend_paise::numeric / NULLIF(nc.new_customers,0))
   END AS ltv_cac_ratio
 FROM mrr CROSS JOIN active_counts ac CROSS JOIN churns ch CROSS JOIN marketing CROSS JOIN nc;
-  `;
+  `
 
   try {
-    const res: any = await (prisma as any).$queryRaw(sql);
-    const row = Array.isArray(res) ? (res[0] ?? {}) : res;
+    const res: any = await (prisma as any).$queryRaw(sql)
+    const row = Array.isArray(res) ? res[0] ?? {} : res
 
-    const snapshot = await prisma.ltvSnapshot.create({
-      data: {
-        snapshotAt: new Date(),
-        windowStart: null,
-        windowEnd: null,
-        mrr_paise: Number(row.mrr_paise ?? 0),
-        active_subscriptions: Number(row.active_subscriptions ?? 0),
-        arpu_paise: Number(row.arpu_paise ?? 0),
-        ltv_paise: Number(row.ltv_paise ?? 0),
-        marketing_spend_paise: Number(row.marketing_spend_paise ?? 0),
-        new_customers: Number(row.new_customers ?? 0),
-        cac_paise: row.cac_paise == null ? null : Number(row.cac_paise),
-        ltv_cac_ratio: row.ltv_cac_ratio == null ? null : Number(row.ltv_cac_ratio),
-        createdBy: createdBy ?? null,
-      },
-    });
+    const snapshot = await prisma.ltvSnapshot.create({ data: {
+      snapshotAt: new Date(),
+      windowStart: null,
+      windowEnd: null,
+      mrr_paise: Number(row.mrr_paise ?? 0),
+      active_subscriptions: Number(row.active_subscriptions ?? 0),
+      arpu_paise: Number(row.arpu_paise ?? 0),
+      ltv_paise: Number(row.ltv_paise ?? 0),
+      marketing_spend_paise: Number(row.marketing_spend_paise ?? 0),
+      new_customers: Number(row.new_customers ?? 0),
+      cac_paise: row.cac_paise == null ? null : Number(row.cac_paise),
+      ltv_cac_ratio: row.ltv_cac_ratio == null ? null : Number(row.ltv_cac_ratio),
+      createdBy: createdBy ?? null,
+    } })
 
-    return snapshot;
+    return snapshot
   } catch (err: any) {
-    logger.error('metricsSnapshot: failed', { err: (err && err.message) || err });
-    throw err;
+    logger.error('metricsSnapshot: failed', { err: (err && err.message) || err })
+    throw err
   }
 }
 
-export default { runSnapshot };
+export default { runSnapshot }
