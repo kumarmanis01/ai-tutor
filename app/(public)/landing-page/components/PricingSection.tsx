@@ -15,12 +15,14 @@
  * - 2026-04-26T00:00:00Z | copilot | LP-6.2: add annual savings and tuition comparison
  * - 2026-04-27T00:00:00Z | copilot | v3: replace plan tiers with monthly/quarterly/annual, add billing toggle
  * - 2026-04-27T10:45:00Z | copilot | align linked unit test path with added pricing component test file
+ * - 2026-04-27T14:30:00Z | copilot | LP-6.2: render savings comparison block below annual plan card only
  */
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
+import SavingsComparison from './SavingsComparison';
 
 type BillingCycle = 'monthly' | 'quarterly' | 'annual';
 
@@ -164,6 +166,8 @@ const PricingSection = () => {
             </Link>
           </div>
         </div>
+
+        {selected === 'annual' && <SavingsComparison />}
 
         {/* Free tier callout */}
         <div className="max-w-lg mx-auto text-center mb-10 p-4 rounded-xl bg-muted/50 border border-border">
