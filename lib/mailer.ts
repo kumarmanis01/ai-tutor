@@ -113,10 +113,17 @@ export async function sendConsentRequest(
   childName: string,
   grade: string,
   consentLink: string,
-  _opts?: { board?: string; denyLink?: string }
+  opts?: { board?: string; denyLink?: string }
 ): Promise<void> {
   const { html, text } = await renderHtml(
-    React.createElement(ConsentRequestEmail, { parentName, childName, grade, consentLink })
+    React.createElement(ConsentRequestEmail, {
+      parentName,
+      childName,
+      grade,
+      consentLink,
+      board: opts?.board,
+      denyLink: opts?.denyLink,
+    })
   );
   await sendMailSafe({
     to,
@@ -139,16 +146,21 @@ export async function sendWeeklyReport(
     streakDays: number;
     topSubject: string;
     dashboardUrl?: string;
+    daysActive?: number;
+    topicsStudied?: number;
+    focusSubject?: string;
   }
 ): Promise<void> {
   const reportData: WeeklyReportData = {
     parentName: data.parentName,
     studentName: data.studentName,
-    daysActive: Math.min(data.sessionsThisWeek, 7),
+    daysActive: data.daysActive ?? Math.min(data.sessionsThisWeek, 7),
     totalSessions: data.sessionsThisWeek,
-    topicsStudied: 0,
+    topicsStudied: data.topicsStudied ?? 0,
     currentStreak: data.streakDays,
+    weeklyGoal: data.weeklyGoal,
     strongSubject: data.topSubject,
+    focusSubject: data.focusSubject,
     dashboardUrl: data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard',
   };
   const { html, text } = await renderHtml(React.createElement(WeeklyReportEmail, reportData));

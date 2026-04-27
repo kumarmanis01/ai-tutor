@@ -42,6 +42,7 @@ export interface WeeklyReportData {
   totalSessions: number;
   topicsStudied: number;
   currentStreak: number;
+  weeklyGoal?: number;
   strongSubject?: string;
   focusSubject?: string;
   dashboardUrl: string;
@@ -56,6 +57,7 @@ export function WeeklyReportEmail({
   totalSessions,
   topicsStudied,
   currentStreak,
+  weeklyGoal,
   strongSubject,
   focusSubject,
   dashboardUrl,
@@ -100,6 +102,14 @@ export function WeeklyReportEmail({
               </Column>
             </Row>
           </Section>
+
+          {/* Weekly goal progress */}
+          {weeklyGoal !== undefined && weeklyGoal > 0 && (
+            <Text style={goalText}>
+              Goal this week: <strong>{String(totalSessions)}/{String(weeklyGoal)}</strong> sessions
+              {totalSessions >= weeklyGoal ? ' -- goal reached!' : ''}
+            </Text>
+          )}
 
           {/* Subject highlights */}
           {strongSubject && (
@@ -183,6 +193,8 @@ const highlight: React.CSSProperties = {
 };
 
 const highlightText: React.CSSProperties = { fontSize: '14px', margin: 0 };
+
+const goalText: React.CSSProperties = { fontSize: '13px', color: '#555', margin: '0 0 12px' };
 
 const btn: React.CSSProperties = {
   display: 'inline-block',
