@@ -12,13 +12,17 @@
  *
  * EDIT LOG:
  * - 2026-04-27T14:30:00Z | copilot | created LP-6.2 savings comparison card and responsive bar chart
+ * - 2026-04-27T15:00:00Z | copilot | fix(review): derive SPINZY_MONTHLY_EQUIVALENT from SPINZY_ANNUAL; compute bar width from constants
  */
 
 const TUTORING_MONTHLY = 2500;
 const SPINZY_ANNUAL = 8999;
 const TUTORING_ANNUAL = TUTORING_MONTHLY * 12;
 const SAVINGS_ANNUAL = TUTORING_ANNUAL - SPINZY_ANNUAL;
-const SPINZY_MONTHLY_EQUIVALENT = 750;
+// Derive monthly equivalent from annual price so it stays in sync if SPINZY_ANNUAL changes
+const SPINZY_MONTHLY_EQUIVALENT = Math.round(SPINZY_ANNUAL / 12);
+// Bar width as percentage relative to TUTORING_MONTHLY, clamped to [5, 100]
+const SPINZY_BAR_WIDTH_PCT = Math.min(100, Math.max(5, Math.round((SPINZY_MONTHLY_EQUIVALENT / TUTORING_MONTHLY) * 100)));
 
 const SavingsComparison = () => {
   return (
@@ -72,7 +76,7 @@ const SavingsComparison = () => {
               </span>
             </div>
             <div className="h-3 rounded-full bg-[#EAF3DE] overflow-hidden">
-              <div className="h-full w-[30%] bg-[#1D9E75]" />
+              <div className="h-full bg-[#1D9E75]" style={{ width: `${SPINZY_BAR_WIDTH_PCT}%` }} />
             </div>
           </div>
         </div>

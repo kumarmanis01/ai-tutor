@@ -3,7 +3,7 @@
  * - Render FAQ section (accordion UI) on the public landing page.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/(public)/landing-page/components/faq-section.spec.tsx
+ * - tests/unit/app/(public)/landing-page/components/FAQSection.spec.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
@@ -15,6 +15,7 @@
  * - 2026-04-26T00:00:00Z | copilot | fix(security): remove JSON-LD from client component, move to server; extract FAQ data as constant
  * - 2026-04-26T11:20:00Z | copilot | remove unused PLANS import to keep lint clean
  * - 2026-04-27T14:30:00Z | copilot | LP-7.1: switch to reusable FAQAccordion with all-collapsed default state
+ * - 2026-04-27T15:00:00Z | copilot | fix(review): correct LINKED UNIT TEST header path to PascalCase filename
  */
 
 'use client';

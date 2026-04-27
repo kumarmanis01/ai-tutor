@@ -16,6 +16,7 @@
  * - 2026-04-24T12:00:00Z | copilot | mark as client component so it can safely import AppIcon (client component)
  * - 2026-04-27T00:00:00Z | copilot | v3: 5-column layout, add WhatsApp/Instagram/YouTube social links
  * - 2026-04-27T14:30:00Z | copilot | LP-9.1: replace footer information architecture and add demo modal action
+ * - 2026-04-27T15:00:00Z | copilot | fix(review): replace invalid WhatsApp channel href; pass explicit embedUrl to VideoModal
  */
 'use client';
 
@@ -25,6 +26,8 @@ import VideoModal from './VideoModal';
 
 const Footer = () => {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  // TODO(media): replace with real Spinzy demo video URL once produced
+  const DEMO_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1';
 
   const productLinks = [
     { label: 'How It Works', href: '#how-it-works' },
@@ -106,8 +109,8 @@ const Footer = () => {
 
               <div className="flex items-center gap-2 flex-wrap mb-4">
                 <a
-                  href="https://wa.me/channel"
-                  aria-label="Open Spinzy Academy WhatsApp channel"
+                  href="https://wa.me/918920754675"
+                  aria-label="Chat with Spinzy Academy on WhatsApp"
                   className="inline-flex items-center justify-center w-9 h-9 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
@@ -259,7 +262,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <VideoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
+          <VideoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} embedUrl={DEMO_VIDEO_URL} />
         </div>
       </footer>
     </>

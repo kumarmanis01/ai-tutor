@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T14:30:00Z | copilot | created reusable FAQ accordion for LP-7.1 with all-collapsed default
+ * - 2026-04-27T15:00:00Z | copilot | fix(a11y): boolean aria-expanded, aria-controls/id pairing, aria-hidden on collapsed panels
  */
 'use client';
 
@@ -39,7 +40,8 @@ const FAQAccordion = ({ items }: FAQAccordionProps) => {
             <button
               type="button"
               onClick={() => setOpenId(isOpen ? null : faq.id)}
-              aria-expanded={isOpen ? 'true' : 'false'}
+              aria-expanded={isOpen}
+              aria-controls={`faq-panel-${faq.id}`}
               className="w-full flex items-center justify-between p-6 text-left"
             >
               <div className="flex-1 pr-4">
@@ -63,6 +65,8 @@ const FAQAccordion = ({ items }: FAQAccordionProps) => {
             </button>
 
             <div
+              id={`faq-panel-${faq.id}`}
+              aria-hidden={!isOpen}
               className={`grid transition-all duration-300 ease-in-out ${
                 isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
               }`}
