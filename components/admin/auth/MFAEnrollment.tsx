@@ -11,11 +11,13 @@
  *
  * EDIT LOG:
  * - 2026-04-27T19:11:00Z | copilot | created MFA enrollment component for admin setup flow
+ * - 2026-04-27T20:20:00Z | copilot | replace img with next/image to satisfy Next.js lint guardrail
  */
 
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 interface MFAEnrollmentProps {
   qrCodeUrl: string;
@@ -33,7 +35,7 @@ export function MFAEnrollment({
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-700">Scan this QR with your authenticator app.</p>
-      <img
+      <Image
         src={qrCodeUrl}
         alt="MFA enrollment QR code"
         width={220}
