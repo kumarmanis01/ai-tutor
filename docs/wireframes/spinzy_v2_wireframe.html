@@ -1,596 +1,108 @@
+
 <style>
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  .wf {
-    font-family: var(--font-sans);
-    padding: 0.5rem 0;
-  }
-  .tabs {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-    padding-bottom: 10px;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
-  }
-  .tab {
-    padding: 5px 11px;
-    border-radius: var(--border-radius-md);
-    font-size: 11px;
-    font-weight: 500;
-    cursor: pointer;
-    border: 0.5px solid var(--color-border-tertiary);
-    background: var(--color-background-secondary);
-    color: var(--color-text-secondary);
-  }
-  .tab.on {
-    background: var(--color-background-primary);
-    color: var(--color-text-primary);
-    border-color: var(--color-border-primary);
-  }
-  .sw {
-    display: none;
-  }
-  .sw.on {
-    display: flex;
-    gap: 18px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-  .ph {
-    width: 340px;
-    flex-shrink: 0;
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: 16px;
-    overflow: hidden;
-  }
-  .sb {
-    background: var(--color-background-secondary);
-    padding: 6px 13px 4px;
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: var(--color-text-tertiary);
-  }
-  .tb {
-    padding: 10px 13px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
-  }
-  .tt {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-  }
-  .av {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: #eeedfe;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 500;
-    color: #3c3489;
-    flex-shrink: 0;
-  }
-  .bd {
-    padding: 12px;
-  }
-  .cd {
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: var(--border-radius-lg);
-    padding: 11px;
-    margin-bottom: 9px;
-  }
-  .cs {
-    background: var(--color-background-secondary);
-    border-radius: var(--border-radius-md);
-    padding: 8px 10px;
-    margin-bottom: 6px;
-  }
-  .lb {
-    font-size: 9px;
-    color: var(--color-text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    margin-bottom: 2px;
-  }
-  .h1 {
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    margin-bottom: 2px;
-  }
-  .h2 {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    margin-bottom: 2px;
-  }
-  .su {
-    font-size: 11px;
-    color: var(--color-text-secondary);
-    line-height: 1.5;
-  }
-  .bp {
-    display: block;
-    width: 100%;
-    padding: 11px;
-    border-radius: var(--border-radius-md);
-    font-size: 13px;
-    font-weight: 500;
-    text-align: center;
-    cursor: pointer;
-    border: none;
-    margin-bottom: 6px;
-    background: #534ab7;
-    color: #eeedfe;
-  }
-  .bs {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    border-radius: var(--border-radius-md);
-    font-size: 13px;
-    text-align: center;
-    cursor: pointer;
-    border: 0.5px solid var(--color-border-tertiary);
-    background: transparent;
-    color: var(--color-text-secondary);
-    margin-bottom: 6px;
-  }
-  .bx {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: var(--border-radius-md);
-    font-size: 9px;
-    font-weight: 500;
-  }
-  .pu {
-    background: #eeedfe;
-    color: #3c3489;
-  }
-  .gn {
-    background: #eaf3de;
-    color: #27500a;
-  }
-  .am {
-    background: #faeeda;
-    color: #633806;
-  }
-  .rd {
-    background: #fcebeb;
-    color: #791f1f;
-  }
-  .gy {
-    background: var(--color-background-secondary);
-    color: var(--color-text-secondary);
-  }
-  .pb {
-    height: 5px;
-    background: var(--color-background-secondary);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 3px;
-  }
-  .pf {
-    height: 100%;
-    border-radius: 3px;
-  }
-  .dv {
-    height: 0.5px;
-    background: var(--color-border-tertiary);
-    margin: 9px 0;
-  }
-  .wk {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    text-align: center;
-    margin-bottom: 7px;
-  }
-  .wkl {
-    font-size: 8px;
-    color: var(--color-text-tertiary);
-    margin-bottom: 2px;
-  }
-  .dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8px;
-    font-weight: 500;
-  }
-  .df {
-    background: #534ab7;
-    color: #eeedfe;
-  }
-  .dt {
-    background: #e1f5ee;
-    border: 2px solid #1d9e75;
-    color: #085041;
-  }
-  .de {
-    background: var(--color-background-secondary);
-    color: var(--color-text-tertiary);
-  }
-  .ch {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    margin-bottom: 9px;
-    min-height: 160px;
-  }
-  .bai {
-    align-self: flex-start;
-    background: var(--color-background-secondary);
-    border-radius: 3px 9px 9px 9px;
-    padding: 7px 9px;
-    font-size: 11px;
-    color: var(--color-text-primary);
-    max-width: 84%;
-    line-height: 1.5;
-  }
-  .bst {
-    align-self: flex-end;
-    background: #534ab7;
-    border-radius: 9px 3px 9px 9px;
-    padding: 7px 9px;
-    font-size: 11px;
-    color: #eeedfe;
-    max-width: 74%;
-    line-height: 1.5;
-  }
-  .ib {
-    border-top: 0.5px solid var(--color-border-tertiary);
-    padding: 7px 10px;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-  .ci {
-    flex: 1;
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: var(--border-radius-md);
-    padding: 6px 8px;
-    font-size: 11px;
-    background: var(--color-background-secondary);
-    color: var(--color-text-primary);
-  }
-  .sn {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #534ab7;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .hb {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px 10px;
-    background: var(--color-background-secondary);
-    border-top: 0.5px solid var(--color-border-tertiary);
-    font-size: 10px;
-    color: var(--color-text-secondary);
-  }
-  .sg {
-    display: flex;
-    gap: 3px;
-    padding: 5px 10px;
-    overflow-x: auto;
-  }
-  .sc {
-    padding: 3px 6px;
-    border-radius: 9px;
-    font-size: 8px;
-    font-weight: 500;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .sd {
-    background: #eaf3de;
-    color: #27500a;
-  }
-  .sa {
-    background: #534ab7;
-    color: #eeedfe;
-  }
-  .sp {
-    background: var(--color-background-secondary);
-    color: var(--color-text-tertiary);
-  }
-  .nb {
-    display: flex;
-    justify-content: space-around;
-    padding: 7px;
-    border-top: 0.5px solid var(--color-border-tertiary);
-  }
-  .ni {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    font-size: 8px;
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-  }
-  .ni.on {
-    color: #534ab7;
-  }
-  .nc {
-    width: 18px;
-    height: 18px;
-    border-radius: 3px;
-    background: var(--color-background-secondary);
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .ob {
-    min-height: 320px;
-    background: rgba(0, 0, 0, 0.45);
-    display: flex;
-    align-items: flex-end;
-  }
-  .oc {
-    min-height: 400px;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .sh {
-    background: var(--color-background-primary);
-    border-radius: 16px 16px 0 0;
-    padding: 16px 13px 18px;
-    width: 100%;
-  }
-  .shh {
-    width: 30px;
-    height: 3px;
-    background: var(--color-border-secondary);
-    border-radius: 2px;
-    margin: 0 auto 13px;
-  }
-  .mc {
-    background: var(--color-background-primary);
-    border-radius: var(--border-radius-lg);
-    padding: 16px;
-    width: 87%;
-  }
-  .r3 {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
-  }
-  .s4 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 5px;
-    margin-bottom: 9px;
-  }
-  .sb2 {
-    text-align: center;
-    padding: 6px 2px;
-    background: var(--color-background-secondary);
-    border-radius: var(--border-radius-md);
-  }
-  .sn2 {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-  }
-  .sl2 {
-    font-size: 8px;
-    color: var(--color-text-tertiary);
-  }
-  .xc {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: 3px solid #534ab7;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  .xn {
-    font-size: 14px;
-    font-weight: 500;
-    color: #534ab7;
-  }
-  .xs {
-    font-size: 7px;
-    color: var(--color-text-secondary);
-  }
-  .op {
-    padding: 9px 10px;
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: var(--border-radius-md);
-    margin-bottom: 5px;
-    font-size: 11px;
-    cursor: pointer;
-    color: var(--color-text-primary);
-  }
-  .os {
-    border-color: #534ab7;
-    background: #eeedfe;
-    color: #3c3489;
-  }
-  .no {
-    font-size: 10px;
-    color: var(--color-text-secondary);
-    padding: 5px 8px;
-    background: var(--color-background-secondary);
-    border-radius: var(--border-radius-md);
-    margin-bottom: 6px;
-    line-height: 1.5;
-  }
-  .pr {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    margin-bottom: 7px;
-  }
-  .pq {
-    padding: 2px 8px;
-    border-radius: 9px;
-    font-size: 9px;
-    font-weight: 500;
-  }
-  .pg {
-    background: #eaf3de;
-    color: #27500a;
-  }
-  .pa {
-    background: #faeeda;
-    color: #633806;
-  }
-  .pr2 {
-    background: #fcebeb;
-    color: #791f1f;
-  }
-  .pl {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px;
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: var(--border-radius-md);
-    margin-bottom: 6px;
-    cursor: pointer;
-  }
-  .pf2 {
-    border: 2px solid #534ab7;
-  }
-  .ck {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 0;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
-    font-size: 12px;
-  }
-  .cy {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #eaf3de;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    flex-shrink: 0;
-  }
-  .cn {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 0.5px solid var(--color-border-tertiary);
-    flex-shrink: 0;
-  }
-  .rn {
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    flex-shrink: 0;
-  }
-  .ae {
-    margin-top: 9px;
-    background: var(--color-background-secondary);
-    border-radius: var(--border-radius-md);
-    padding: 9px 11px;
-    font-size: 11px;
-    color: var(--color-text-secondary);
-    line-height: 1.6;
-    max-width: 500px;
-  }
-  .ae b {
-    font-weight: 500;
-    color: var(--color-text-primary);
-  }
-  .ae-e {
-    border-left: 3px solid #e24b4a;
-    border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
-    background: #fcebeb;
-    color: #791f1f;
-  }
-  .ae-o {
-    border-left: 3px solid #1d9e75;
-    border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
-    background: #eaf3de;
-    color: #085041;
-  }
-  .td2 {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--color-text-tertiary);
-  }
-  .cr {
-    background: #fcebeb;
-    border-radius: var(--border-radius-md);
-    padding: 9px 11px;
-    margin-bottom: 9px;
-    border: 0.5px solid #f7c1c1;
-  }
+*{box-sizing:border-box;margin:0;padding:0}
+.wf{font-family:var(--font-sans);padding:.5rem 0}
+.tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1rem;padding-bottom:10px;border-bottom:.5px solid var(--color-border-tertiary)}
+.tab{padding:5px 11px;border-radius:var(--border-radius-md);font-size:11px;font-weight:500;cursor:pointer;border:.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.tab.on{background:var(--color-background-primary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+.sw{display:none}.sw.on{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.ph{width:340px;flex-shrink:0;background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:16px;overflow:hidden}
+.sb{background:var(--color-background-secondary);padding:6px 13px 4px;display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary)}
+.tb{padding:10px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid var(--color-border-tertiary)}
+.tt{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.av{width:26px;height:26px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#3C3489;flex-shrink:0}
+.bd{padding:12px}
+.cd{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:11px;margin-bottom:9px}
+.cs{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 10px;margin-bottom:6px}
+.lb{font-size:9px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.h1{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.h2{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.su{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.bp{display:block;width:100%;padding:11px;border-radius:var(--border-radius-md);font-size:13px;font-weight:500;text-align:center;cursor:pointer;border:none;margin-bottom:6px;background:#534AB7;color:#EEEDFE}
+.bs{display:block;width:100%;padding:10px;border-radius:var(--border-radius-md);font-size:13px;text-align:center;cursor:pointer;border:.5px solid var(--color-border-tertiary);background:transparent;color:var(--color-text-secondary);margin-bottom:6px}
+.bx{display:inline-block;padding:2px 6px;border-radius:var(--border-radius-md);font-size:9px;font-weight:500}
+.pu{background:#EEEDFE;color:#3C3489}.gn{background:#EAF3DE;color:#27500A}.am{background:#FAEEDA;color:#633806}.rd{background:#FCEBEB;color:#791F1F}.gy{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.pb{height:5px;background:var(--color-background-secondary);border-radius:3px;overflow:hidden;margin-bottom:3px}
+.pf{height:100%;border-radius:3px}
+.dv{height:.5px;background:var(--color-border-tertiary);margin:9px 0}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:7px}
+.wkl{font-size:8px;color:var(--color-text-tertiary);margin-bottom:2px}
+.dot{width:24px;height:24px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:500}
+.df{background:#534AB7;color:#EEEDFE}.dt{background:#E1F5EE;border:2px solid #1D9E75;color:#085041}.de{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
+.ch{display:flex;flex-direction:column;gap:7px;margin-bottom:9px;min-height:160px}
+.bai{align-self:flex-start;background:var(--color-background-secondary);border-radius:3px 9px 9px 9px;padding:7px 9px;font-size:11px;color:var(--color-text-primary);max-width:84%;line-height:1.5}
+.bst{align-self:flex-end;background:#534AB7;border-radius:9px 3px 9px 9px;padding:7px 9px;font-size:11px;color:#EEEDFE;max-width:74%;line-height:1.5}
+.ib{border-top:.5px solid var(--color-border-tertiary);padding:7px 10px;display:flex;gap:6px;align-items:center}
+.ci{flex:1;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 8px;font-size:11px;background:var(--color-background-secondary);color:var(--color-text-primary)}
+.sn{width:28px;height:28px;border-radius:50%;background:#534AB7;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hb{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:var(--color-background-secondary);border-top:.5px solid var(--color-border-tertiary);font-size:10px;color:var(--color-text-secondary)}
+.sg{display:flex;gap:3px;padding:5px 10px;overflow-x:auto}
+.sc{padding:3px 6px;border-radius:9px;font-size:8px;font-weight:500;white-space:nowrap;flex-shrink:0}
+.sd{background:#EAF3DE;color:#27500A}.sa{background:#534AB7;color:#EEEDFE}.sp{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
+.nb{display:flex;justify-content:space-around;padding:7px;border-top:.5px solid var(--color-border-tertiary)}
+.ni{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:8px;color:var(--color-text-tertiary);cursor:pointer}
+.ni.on{color:#534AB7}
+.nc{width:18px;height:18px;border-radius:3px;background:var(--color-background-secondary);font-size:11px;display:flex;align-items:center;justify-content:center}
+.ob{min-height:320px;background:rgba(0,0,0,.45);display:flex;align-items:flex-end}
+.oc{min-height:400px;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
+.sh{background:var(--color-background-primary);border-radius:16px 16px 0 0;padding:16px 13px 18px;width:100%}
+.shh{width:30px;height:3px;background:var(--color-border-secondary);border-radius:2px;margin:0 auto 13px}
+.mc{background:var(--color-background-primary);border-radius:var(--border-radius-lg);padding:16px;width:87%}
+.r3{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.s4{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:9px}
+.sb2{text-align:center;padding:6px 2px;background:var(--color-background-secondary);border-radius:var(--border-radius-md)}
+.sn2{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.sl2{font-size:8px;color:var(--color-text-tertiary)}
+.xc{width:48px;height:48px;border-radius:50%;border:3px solid #534AB7;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.xn{font-size:14px;font-weight:500;color:#534AB7}.xs{font-size:7px;color:var(--color-text-secondary)}
+.op{padding:9px 10px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin-bottom:5px;font-size:11px;cursor:pointer;color:var(--color-text-primary)}
+.os{border-color:#534AB7;background:#EEEDFE;color:#3C3489}
+.no{font-size:10px;color:var(--color-text-secondary);padding:5px 8px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:6px;line-height:1.5}
+.pr{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px}
+.pq{padding:2px 8px;border-radius:9px;font-size:9px;font-weight:500}
+.pg{background:#EAF3DE;color:#27500A}.pa{background:#FAEEDA;color:#633806}.pr2{background:#FCEBEB;color:#791F1F}
+.pl{display:flex;align-items:center;justify-content:space-between;padding:10px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin-bottom:6px;cursor:pointer}
+.pf2{border:2px solid #534AB7}
+.ck{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:.5px solid var(--color-border-tertiary);font-size:12px}
+.cy{width:16px;height:16px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+.cn{width:16px;height:16px;border-radius:50%;border:.5px solid var(--color-border-tertiary);flex-shrink:0}
+.rn{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;flex-shrink:0}
+.ae{margin-top:9px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 11px;font-size:11px;color:var(--color-text-secondary);line-height:1.6;max-width:500px}
+.ae b{font-weight:500;color:var(--color-text-primary)}
+.ae-e{border-left:3px solid #E24B4A;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;background:#FCEBEB;color:#791F1F}
+.ae-o{border-left:3px solid #1D9E75;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;background:#EAF3DE;color:#085041}
+.td2{width:5px;height:5px;border-radius:50%;background:var(--color-text-tertiary)}
+.cr{background:#FCEBEB;border-radius:var(--border-radius-md);padding:9px 11px;margin-bottom:9px;border:.5px solid #F7C1C1}
 </style>
 
 <div class="wf">
-  <div class="tabs" id="nav">
-    <div class="tab on" onclick="go(0)">1·Register</div>
-    <div class="tab" onclick="go(1)">2·Parent gate</div>
-    <div class="tab" onclick="go(2)">3·Profile setup</div>
-    <div class="tab" onclick="go(3)">4·Exam date</div>
-    <div class="tab" onclick="go(4)">5·Diagnostic</div>
-    <div class="tab" onclick="go(5)">6·Knowledge map</div>
-    <div class="tab" onclick="go(6)">7·Dashboard</div>
-    <div class="tab" onclick="go(7)">8·Dashboard·crunch</div>
-    <div class="tab" onclick="go(8)">9·Dashboard·new user</div>
-    <div class="tab" onclick="go(9)">10·Pre-session</div>
-    <div class="tab" onclick="go(10)">11·AI tutor</div>
-    <div class="tab" onclick="go(11)">12·Session end</div>
-    <div class="tab" onclick="go(12)">13·Revision</div>
-    <div class="tab" onclick="go(13)">14·Freemium gate</div>
-    <div class="tab" onclick="go(14)">15·Upgrade</div>
-    <div class="tab" onclick="go(15)">16·Interrupted</div>
-    <div class="tab" onclick="go(16)">17·Progress</div>
-    <div class="tab" onclick="go(17)">18·Parent view</div>
-  </div>
+<div class="tabs" id="nav">
+  <div class="tab on" onclick="go(0)">1·Register</div>
+  <div class="tab" onclick="go(1)">2·Parent gate</div>
+  <div class="tab" onclick="go(2)">3·Profile setup</div>
+  <div class="tab" onclick="go(3)">4·Exam date</div>
+  <div class="tab" onclick="go(4)">5·Diagnostic</div>
+  <div class="tab" onclick="go(5)">6·Knowledge map</div>
+  <div class="tab" onclick="go(6)">7·Dashboard</div>
+  <div class="tab" onclick="go(7)">8·Dashboard·crunch</div>
+  <div class="tab" onclick="go(8)">9·Dashboard·new user</div>
+  <div class="tab" onclick="go(9)">10·Pre-session</div>
+  <div class="tab" onclick="go(10)">11·AI tutor</div>
+  <div class="tab" onclick="go(11)">12·Session end</div>
+  <div class="tab" onclick="go(12)">13·Revision</div>
+  <div class="tab" onclick="go(13)">14·Freemium gate</div>
+  <div class="tab" onclick="go(14)">15·Upgrade</div>
+  <div class="tab" onclick="go(15)">16·Interrupted</div>
+  <div class="tab" onclick="go(16)">17·Progress</div>
+  <div class="tab" onclick="go(17)">18·Parent view</div>
+</div>
 
-  <div id="screens"></div>
+<div id="screens"></div>
 </div>
 
 <script>
-  const screens = [
-    {
-      id: 'r',
-      title: 'Register',
-      ann: '<b>v2 spec:</b> Age collected at registration — drives parent gate. Google OAuth + mobile OTP. Terms visible inline. Age field triggers numeric keyboard. If age &lt; 13 → parent gate fires immediately after OTP verify. Age integer only — no dateOfBirth field.',
-      html: `
+const screens=[
+{id:'r',title:'Register',ann:'<b>v2 spec:</b> Age collected at registration — drives parent gate. Google OAuth + mobile OTP. Terms visible inline. Age field triggers numeric keyboard. If age &lt; 13 → parent gate fires immediately after OTP verify. Age integer only — no dateOfBirth field.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Spinzy</div></div><div class="bd">
 <div style="text-align:center;padding:14px 0 12px"><div style="width:40px;height:40px;border-radius:50%;background:#EEEDFE;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#534AB7">S</div><div class="h1">Welcome to Spinzy</div><div class="su" style="margin-top:2px">AI home tutor · CBSE Grades 6–12</div></div>
 <button class="bp" style="background:#fff;color:#534AB7;border:.5px solid #534AB7">Continue with Google</button>
@@ -599,14 +111,9 @@
 <input type="text" placeholder="Your age" style="width:100%;padding:9px 10px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);font-size:12px;background:var(--color-background-secondary);color:var(--color-text-primary);margin-bottom:6px">
 <button class="bp">Send OTP</button>
 <div class="no" style="text-align:center;margin-top:5px">By continuing you agree to our Terms &amp; Privacy Policy</div>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'pg',
-      title: 'Parent gate',
-      ann: '<b>v2 spec:</b> Full-screen overlay — no close, no tap-outside dismiss. Priority over ProfileCompletionGate. On success: router.refresh() — overlay gone without reload. Gate fires ONLY for explicit age &lt; 13. <span style="color:#791F1F">Bug B1 fix: null age must NOT trigger this.</span>',
-      html: `
+{id:'pg',title:'Parent gate',ann:'<b>v2 spec:</b> Full-screen overlay — no close, no tap-outside dismiss. Priority over ProfileCompletionGate. On success: router.refresh() — overlay gone without reload. Gate fires ONLY for explicit age &lt; 13. <span style="color:#791F1F">Bug B1 fix: null age must NOT trigger this.</span>',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Spinzy</div></div>
 <div class="oc"><div class="mc">
 <div class="lb" style="margin-bottom:5px">One more step</div>
@@ -620,14 +127,9 @@
 <div style="display:flex;gap:4px;margin-bottom:7px">${Array(6).fill('<input type="text" maxlength="1" style="width:30px;height:34px;text-align:center;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);font-size:14px;font-weight:500;background:var(--color-background-secondary);color:var(--color-text-primary)">').join('')}</div>
 <button class="bp">Verify</button>
 <div style="text-align:center;font-size:10px;color:var(--color-text-tertiary);margin-top:5px">Resend in 30s · Max 3 attempts · Contact support</div>
-</div></div></div>`,
-    },
+</div></div></div>`},
 
-    {
-      id: 'ps',
-      title: 'Profile setup',
-      ann: '<b>v2 spec:</b> Checklist progress visible throughout. Grade locked after first save — server-side strip on all future PATCH. No X/close/back. Locked core subjects pre-checked and non-deselectable. BoardSubjectConfig must be seeded or picker renders empty.',
-      html: `
+{id:'ps',title:'Profile setup',ann:'<b>v2 spec:</b> Checklist progress visible throughout. Grade locked after first save — server-side strip on all future PATCH. No X/close/back. Locked core subjects pre-checked and non-deselectable. BoardSubjectConfig must be seeded or picker renders empty.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Set up your profile</div><div style="font-size:10px;color:var(--color-text-tertiary)">2 of 4</div></div><div class="bd">
 <div class="pb"><div class="pf" style="width:50%;background:#534AB7"></div></div>
 <div style="font-size:9px;color:var(--color-text-tertiary);margin-bottom:10px">2 of 4 complete</div>
@@ -650,14 +152,9 @@
 </div>
 <div class="no">Maths &amp; Science are mandatory for CBSE Grade 10.</div>
 <button class="bp">Continue</button>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'xd',
-      title: 'Exam date',
-      ann: '<b>v2 spec:</b> Exam date + study days/week drives LearningPlan horizon and urgency. Can be skipped — defaults to 6-month plan. Exam date enables crunch mode (auto-activates ≤14 days before exam). Live coverage estimate shown as user adjusts days/week.',
-      html: `
+{id:'xd',title:'Exam date',ann:'<b>v2 spec:</b> Exam date + study days/week drives LearningPlan horizon and urgency. Can be skipped — defaults to 6-month plan. Exam date enables crunch mode (auto-activates ≤14 days before exam). Live coverage estimate shown as user adjusts days/week.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Exam &amp; study plan</div></div><div class="bd">
 <div class="h1" style="margin-bottom:3px">When is your board exam?</div>
 <div class="su" style="margin-bottom:12px">We'll build your weekly plan around your exam date.</div>
@@ -665,21 +162,16 @@
 <input type="text" placeholder="e.g. 15 March 2027" style="width:100%;padding:9px 10px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);font-size:12px;background:var(--color-background-secondary);color:var(--color-text-primary);margin-bottom:9px">
 <div class="lb">Study days per week</div>
 <div style="display:flex;gap:5px;margin-bottom:12px">
-${['3', '4', '5', '6', '7'].map((d, i) => (i === 2 ? `<div style="padding:7px 10px;border:2px solid #534AB7;border-radius:var(--border-radius-md);font-size:11px;font-weight:500;background:#EEEDFE;color:#3C3489;cursor:pointer">${d}</div>` : `<div style="padding:7px 10px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);font-size:11px;color:var(--color-text-secondary);cursor:pointer">${d}</div>`)).join('')}
+${['3','4','5','6','7'].map((d,i)=>i===2?`<div style="padding:7px 10px;border:2px solid #534AB7;border-radius:var(--border-radius-md);font-size:11px;font-weight:500;background:#EEEDFE;color:#3C3489;cursor:pointer">${d}</div>`:`<div style="padding:7px 10px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);font-size:11px;color:var(--color-text-secondary);cursor:pointer">${d}</div>`).join('')}
 </div>
 <div class="cd" style="background:#EAF3DE;border-color:#C0DD97">
 <div style="font-size:11px;color:#27500A;line-height:1.5">With 5 days/week and 52 weeks to exam — we'll cover all 14 Maths chapters with time for 2 revision rounds.</div>
 </div>
 <button class="bp">Build my learning plan</button>
 <button class="bs">No upcoming exam — 6-month plan</button>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'dg',
-      title: 'Diagnostic',
-      ann: '<b>v2 spec:</b> Forward-only — no back button. Timer visible, amber at ≤2 min. "Save and continue later" persists to Redis 24h. MCQ options min 52px height. Abandoning mid-way requires confirmation sheet. No nav bar during active diagnostic.',
-      html: `
+{id:'dg',title:'Diagnostic',ann:'<b>v2 spec:</b> Forward-only — no back button. Timer visible, amber at ≤2 min. "Save and continue later" persists to Redis 24h. MCQ options min 52px height. Abandoning mid-way requires confirmation sheet. No nav bar during active diagnostic.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div style="padding:8px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid var(--color-border-tertiary)">
 <div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">Mathematics diagnostic</div>
@@ -697,14 +189,9 @@ ${['3', '4', '5', '6', '7'].map((d, i) => (i === 2 ? `<div style="padding:7px 10
 <div class="op">D.&nbsp; x = 2</div>
 <button class="bp" style="margin-top:3px">Next question</button>
 <div style="text-align:center;margin-top:6px;font-size:11px;color:var(--color-text-tertiary);cursor:pointer">Save and continue later</div>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'km',
-      title: 'Knowledge map',
-      ann: '<b>v2 spec:</b> Visual only — no numeric score ever shown. Chapters ranked by (board weight × mastery gap). Green/amber/red. "Start here" highlights highest-priority chapter. Single CTA → dashboard. Shown once after each subject diagnostic.',
-      html: `
+{id:'km',title:'Knowledge map',ann:'<b>v2 spec:</b> Visual only — no numeric score ever shown. Chapters ranked by (board weight × mastery gap). Green/amber/red. "Start here" highlights highest-priority chapter. Single CTA → dashboard. Shown once after each subject diagnostic.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Your knowledge map</div></div><div class="bd">
 <div class="su" style="margin-bottom:12px">Here's where you stand in Mathematics — no score, just your starting point.</div>
 <div class="cd" style="border-left:3px solid #534AB7;border-radius:0 var(--border-radius-lg) var(--border-radius-lg) 0">
@@ -714,28 +201,12 @@ ${['3', '4', '5', '6', '7'].map((d, i) => (i === 2 ? `<div style="padding:7px 10
 <div style="display:flex;gap:4px"><span class="bx rd">Needs work</span><span class="bx pu">8 marks</span></div>
 </div>
 <div class="lb" style="margin-bottom:6px">All chapters</div>
-${[
-  ['Real Numbers', '6 marks', 'gn', 'Strong'],
-  ['Polynomials', '5 marks', 'am', 'Partial'],
-  ['Triangles', '7 marks', 'rd', 'Needs work'],
-  ['Coord. Geometry', '6 marks', 'am', 'Partial'],
-  ['Probability', '5 marks', 'gn', 'Strong'],
-]
-  .map(
-    ([n, m, c, l]) =>
-      `<div class="cs" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">${n}</div><div style="font-size:9px;color:var(--color-text-tertiary)">${m}</div></div><span class="bx ${c}">${l}</span></div>`
-  )
-  .join('')}
+${[['Real Numbers','6 marks','gn','Strong'],['Polynomials','5 marks','am','Partial'],['Triangles','7 marks','rd','Needs work'],['Coord. Geometry','6 marks','am','Partial'],['Probability','5 marks','gn','Strong']].map(([n,m,c,l])=>`<div class="cs" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">${n}</div><div style="font-size:9px;color:var(--color-text-tertiary)">${m}</div></div><span class="bx ${c}">${l}</span></div>`).join('')}
 <div style="height:7px"></div>
 <button class="bp">Start learning</button>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'db',
-      title: 'Dashboard',
-      ann: "<b>v2 spec — gaps vs current:</b> (1) Streak in topbar with fire + count. (2) XP this week widget with level progress bar — currently missing. (3) Subject readiness rings (red &lt;40, amber 40–70, green &gt;70) — currently missing. (4) Today's plan from LearningPlanItem not getNextAction. (5) Each widget must fail independently.",
-      html: `
+{id:'db',title:'Dashboard',ann:'<b>v2 spec — gaps vs current:</b> (1) Streak in topbar with fire + count. (2) XP this week widget with level progress bar — currently missing. (3) Subject readiness rings (red &lt;40, amber 40–70, green &gt;70) — currently missing. (4) Today\'s plan from LearningPlanItem not getNextAction. (5) Each widget must fail independently.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div class="tb">
 <div class="tt">Spinzy</div>
@@ -760,7 +231,7 @@ ${[
 <div class="cd">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">This week</div><div style="font-size:10px;color:var(--color-text-tertiary)">goal: 5 sessions</div></div>
 <div class="wk">
-${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => `<div><div class="wkl">${d.slice(0, 1)}</div><div class="dot ${i < 3 ? 'df' : i === 5 ? 'dt' : 'de'}">${d.slice(0, 1)}</div></div>`).join('')}
+${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i)=>`<div><div class="wkl">${d.slice(0,1)}</div><div class="dot ${i<3?'df':i===5?'dt':'de'}">${d.slice(0,1)}</div></div>`).join('')}
 </div>
 <div style="font-size:10px;color:var(--color-text-secondary)">3 of 5 done · 2 days left</div>
 </div>
@@ -769,15 +240,7 @@ ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => `<div><div cla
 </div>
 <div class="cd">
 <div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Subject readiness</div>
-${[
-  ['Mathematics', 62, '#BA7517', 'Needs work'],
-  ['Science', 38, '#E24B4A', 'Critical'],
-]
-  .map(
-    ([n, s, c, l]) =>
-      `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="rn" style="border:2.5px solid ${c}"><div style="font-size:12px;font-weight:500;color:${c}">${s}</div><div style="font-size:7px;color:var(--color-text-tertiary)">/100</div></div><div style="flex:1"><div style="font-size:11px;margin-bottom:2px">${n}</div><div class="pb"><div class="pf" style="width:${s}%;background:${c}"></div></div><div style="font-size:9px;color:var(--color-text-tertiary)">${l}</div></div></div>`
-  )
-  .join('')}
+${[['Mathematics',62,'#BA7517','Needs work'],['Science',38,'#E24B4A','Critical']].map(([n,s,c,l])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="rn" style="border:2.5px solid ${c}"><div style="font-size:12px;font-weight:500;color:${c}">${s}</div><div style="font-size:7px;color:var(--color-text-tertiary)">/100</div></div><div style="flex:1"><div style="font-size:11px;margin-bottom:2px">${n}</div><div class="pb"><div class="pf" style="width:${s}%;background:${c}"></div></div><div style="font-size:9px;color:var(--color-text-tertiary)">${l}</div></div></div>`).join('')}
 </div>
 <div class="cd">
 <div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:7px">Focus areas</div>
@@ -791,14 +254,9 @@ ${[
 <div class="ni"><div class="nc">❓</div>Doubts</div>
 <div class="ni"><div class="nc">👤</div>Profile</div>
 </div>
-</div>`,
-    },
+</div>`},
 
-    {
-      id: 'db2',
-      title: 'Dashboard·crunch',
-      ann: '<b>v2 spec:</b> Auto-activates when daysToExam ≤ 14. Countdown banner top. Non-essential widgets hidden. Primary CTA → "Study for exam". Topics ranked by (board weight × mastery gap). Auto-deactivates post-exam. Streak shield auto-activates on first missed day.',
-      html: `
+{id:'db2',title:'Dashboard·crunch',ann:'<b>v2 spec:</b> Auto-activates when daysToExam ≤ 14. Countdown banner top. Non-essential widgets hidden. Primary CTA → "Study for exam". Topics ranked by (board weight × mastery gap). Auto-deactivates post-exam. Streak shield auto-activates on first missed day.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div class="tb"><div class="tt">Spinzy</div><div style="display:flex;align-items:center;gap:5px"><div style="font-size:10px;background:#FCEBEB;padding:2px 6px;border-radius:9px;color:#791F1F;font-weight:500">🔥 12</div><div class="av">M</div></div></div>
 <div class="bd" style="padding-bottom:0">
@@ -815,29 +273,14 @@ ${[
 </div>
 <div class="cd">
 <div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:7px">Critical chapters left</div>
-${[
-  ['Electricity', '7 marks', 'rd'],
-  ['Triangles', '7 marks', 'am'],
-  ['Quadratic Eq.', '8 marks', 'am'],
-]
-  .map(
-    ([n, m, c]) =>
-      `<div class="cs" style="display:flex;justify-content:space-between"><div style="font-size:11px">${n}</div><span class="bx ${c}">${m}</span></div>`
-  )
-  .join('')}
+${[['Electricity','7 marks','rd'],['Triangles','7 marks','am'],['Quadratic Eq.','8 marks','am']].map(([n,m,c])=>`<div class="cs" style="display:flex;justify-content:space-between"><div style="font-size:11px">${n}</div><span class="bx ${c}">${m}</span></div>`).join('')}
 </div>
 <div class="no" style="margin-bottom:0">3 revisions due · complete before your session</div>
 </div>
 <div class="nb"><div class="ni on"><div class="nc" style="background:#EEEDFE">⌂</div>Home</div><div class="ni"><div class="nc">📚</div>Learn</div><div class="ni"><div class="nc">❓</div>Doubts</div><div class="ni"><div class="nc">👤</div>Profile</div></div>
-</div>`,
-    },
+</div>`},
 
-    {
-      id: 'db3',
-      title: 'Dashboard·new user',
-      ann: '<b>v2 bug fix:</b> Current: "Ready to start? Your tutor is picking your first topic. Refresh in a moment." — wrong for a new user with no diagnostic. v2 correct empty state = onboarding checklist card. PrimaryActionCard must handle recommendation=null with this checklist, not a loading state.',
-      annClass: 'ae-e',
-      html: `
+{id:'db3',title:'Dashboard·new user',ann:'<b>v2 bug fix:</b> Current: "Ready to start? Your tutor is picking your first topic. Refresh in a moment." — wrong for a new user with no diagnostic. v2 correct empty state = onboarding checklist card. PrimaryActionCard must handle recommendation=null with this checklist, not a loading state.',annClass:'ae-e',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Spinzy</div><div class="av">M</div></div>
 <div class="bd" style="padding-bottom:0">
 <div class="cd">
@@ -853,14 +296,9 @@ ${[
 <div class="no" style="text-align:center">~15 minutes · no right/wrong answers · tells Vidya where to start</div>
 </div>
 <div class="nb"><div class="ni on"><div class="nc" style="background:#EEEDFE">⌂</div>Home</div><div class="ni"><div class="nc">📚</div>Learn</div><div class="ni"><div class="nc">❓</div>Doubts</div><div class="ni"><div class="nc">👤</div>Profile</div></div>
-</div>`,
-    },
+</div>`},
 
-    {
-      id: 'pre',
-      title: 'Pre-session',
-      ann: '<b>v2 spec:</b> Hook prefetch fires on mount (background). CTAs visible immediately — never blocked on prereq load. Prereq pills async (skeletons while loading). Amber warning if any incomplete prereq. "Study prerequisites first" → lowest-mastery prereq.',
-      html: `
+{id:'pre',title:'Pre-session',ann:'<b>v2 spec:</b> Hook prefetch fires on mount (background). CTAs visible immediately — never blocked on prereq load. Prereq pills async (skeletons while loading). Amber warning if any incomplete prereq. "Study prerequisites first" → lowest-mastery prereq.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div style="padding:9px 12px;display:flex;align-items:center;gap:8px;border-bottom:.5px solid var(--color-border-tertiary)"><div style="font-size:14px;color:var(--color-text-secondary)">←</div><div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">Before you start</div></div>
 <div class="bd">
@@ -879,14 +317,9 @@ ${[
 <button class="bp">Start session</button>
 <button class="bs">Study prerequisites first</button>
 <div class="no" style="text-align:center">Vidya is already preparing your first question</div>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'chat',
-      title: 'AI tutor',
-      ann: '<b>v2 spec:</b> Stage strip top (done=green, active=purple, pending=grey). Machine tags stripped — never shown to student. Typing dots while SSE open. Hint bar hidden during Explanation stages. Input sticky bottom + iOS safe-area. 90s inactivity → pulsing nudge above input. Min touch targets 44×44px. Reconnect: inline banner, 3 retries.',
-      html: `
+{id:'chat',title:'AI tutor',ann:'<b>v2 spec:</b> Stage strip top (done=green, active=purple, pending=grey). Machine tags stripped — never shown to student. Typing dots while SSE open. Hint bar hidden during Explanation stages. Input sticky bottom + iOS safe-area. 90s inactivity → pulsing nudge above input. Min touch targets 44×44px. Reconnect: inline banner, 3 retries.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div style="padding:7px 11px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid var(--color-border-tertiary)"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">Quadratic Equations</div><span class="bx pu">Guided Practice</span></div>
 <div class="sg"><div class="sc sd">Hook</div><div class="sc sd">Prereq</div><div class="sc sd">Explain</div><div class="sc sd">Example</div><div class="sc sa">Practice</div><div class="sc sp">Independent</div><div class="sc sp">Consolidation</div></div>
@@ -899,14 +332,9 @@ ${[
 </div>
 <div class="hb"><span>Hints: 1 / 3</span><span style="color:#534AB7;font-weight:500;cursor:pointer">Get a hint</span></div>
 <div class="ib"><input class="ci" placeholder="Type your answer..."><div class="sn"><svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M13 7L1 1l3 6-3 6 12-6z" fill="#EEEDFE"/></svg></div></div>
-</div>`,
-    },
+</div>`},
 
-    {
-      id: 'se',
-      title: 'Session end',
-      ann: '<b>v2 spec:</b> XP counter ticks up 800ms easeOut. If level-up: full-screen overlay first (min 1.5s, cannot skip). AI insight: 3s skeleton while GPT-4o-mini generates, session-specific. Rating optional — CTA unlocks after rating OR 5s timeout. Mastery delta: only concepts touched (max 5).',
-      html: `
+{id:'se',title:'Session end',ann:'<b>v2 spec:</b> XP counter ticks up 800ms easeOut. If level-up: full-screen overlay first (min 1.5s, cannot skip). AI insight: 3s skeleton while GPT-4o-mini generates, session-specific. Rating optional — CTA unlocks after rating OR 5s timeout. Mastery delta: only concepts touched (max 5).',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div style="padding:15px 13px 9px;text-align:center;border-bottom:.5px solid var(--color-border-tertiary)"><div style="font-size:22px;margin-bottom:4px">🎉</div><div class="h1" style="font-size:16px">Session complete!</div><div class="su">Quadratic Equations · 22 min</div></div>
 <div class="bd">
@@ -932,14 +360,9 @@ ${[
 <div style="text-align:center;margin-bottom:8px"><div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">How was this session?</div><div style="display:flex;gap:3px;justify-content:center;font-size:18px"><span>★</span><span>★</span><span>★</span><span>★</span><span style="color:var(--color-border-secondary)">☆</span></div></div>
 <button class="bp">Start next session</button>
 <button class="bs" style="margin-bottom:0">Back to dashboard</button>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'rv',
-      title: 'Revision',
-      ann: '<b>v2 spec:</b> SM-18 spaced repetition. 5 questions per due concept. 20-min daily cap. Score &gt;80% → stability increases, nextReviewAt extends. Score ≤80% → re-teach LearningPlanItem inserted within 24–48h. Retention % shown as bar not raw number.',
-      html: `
+{id:'rv',title:'Revision',ann:'<b>v2 spec:</b> SM-18 spaced repetition. 5 questions per due concept. 20-min daily cap. Score &gt;80% → stability increases, nextReviewAt extends. Score ≤80% → re-teach LearningPlanItem inserted within 24–48h. Retention % shown as bar not raw number.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div class="tb"><div class="tt">Revision cards</div><div style="font-size:10px;color:var(--color-text-tertiary)">5 due · 20 min cap</div></div>
 <div class="bd">
@@ -955,14 +378,9 @@ ${[
 <div class="pb"><div class="pf" style="width:40%;background:#1D9E75"></div></div>
 <div style="font-size:9px;color:var(--color-text-tertiary);margin-top:2px;margin-bottom:8px">2 of 5 complete today</div>
 <div class="no">Score &gt;80% → stability up · Score ≤80% → re-teach added to your plan</div>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'fg',
-      title: 'Freemium gate',
-      ann: '<b>v2 spec:</b> Full card — not toast, not modal. Cannot dismiss without choosing. Cap per-subject per-month. Never mid-session. "Remind me later" → sticky dashboard banner 24h. No referral copy. Resets on 1st — date shown. Per-subject usage shown.',
-      html: `
+{id:'fg',title:'Freemium gate',ann:'<b>v2 spec:</b> Full card — not toast, not modal. Cannot dismiss without choosing. Cap per-subject per-month. Never mid-session. "Remind me later" → sticky dashboard banner 24h. No referral copy. Resets on 1st — date shown. Per-subject usage shown.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Spinzy</div><div class="av">M</div></div>
 <div class="bd">
 <div class="cd" style="border:2px solid #534AB7">
@@ -978,14 +396,9 @@ ${[
 <button class="bs">Remind me later</button>
 </div>
 <div class="no">Science: 2 of 3 used this month · still available</div>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'up',
-      title: 'Upgrade',
-      ann: '<b>v2 spec:</b> UPI listed first (India-first). GST shown explicitly. Confirm button locked until scroll-to-bottom (IntersectionObserver). Featured plan: 2px border only. All amounts visible before payment. On success: receipt SMS + email → dashboard. On failure: 3 retries → support.',
-      html: `
+{id:'up',title:'Upgrade',ann:'<b>v2 spec:</b> UPI listed first (India-first). GST shown explicitly. Confirm button locked until scroll-to-bottom (IntersectionObserver). Featured plan: 2px border only. All amounts visible before payment. On success: receipt SMS + email → dashboard. On failure: 3 retries → support.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">Choose a plan</div></div>
 <div class="bd">
 <div class="pl"><div><div class="h2" style="font-size:12px">Monthly</div><div class="su" style="font-size:10px">₹399 / month</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">₹399</div><div style="font-size:9px;color:var(--color-text-tertiary)">+ GST ₹71.82</div></div></div>
@@ -994,19 +407,14 @@ ${[
 <div class="dv"></div>
 <div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px">Payment method</div>
 <div class="cs" style="display:flex;align-items:center;gap:8px;border:2px solid #534AB7"><div style="width:16px;height:16px;border-radius:50%;background:#534AB7;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff">✓</div><div style="font-size:11px;font-weight:500;color:var(--color-text-primary)">UPI</div><div style="font-size:9px;color:var(--color-text-tertiary)">GPay · PhonePe · Paytm</div></div>
-${['Debit / Credit card', 'Net banking'].map((m) => `<div class="cs" style="display:flex;align-items:center;gap:8px"><div style="width:16px;height:16px;border-radius:50%;border:.5px solid var(--color-border-tertiary)"></div><div style="font-size:11px;color:var(--color-text-secondary)">${m}</div></div>`).join('')}
+${['Debit / Credit card','Net banking'].map(m=>`<div class="cs" style="display:flex;align-items:center;gap:8px"><div style="width:16px;height:16px;border-radius:50%;border:.5px solid var(--color-border-tertiary)"></div><div style="font-size:11px;color:var(--color-text-secondary)">${m}</div></div>`).join('')}
 <div class="dv"></div>
 <div class="no" style="margin-bottom:8px">Quarterly · ₹267 + GST ₹48.06 = <b>₹315.06</b> · Renews 13 Jun 2026 · Cancel anytime</div>
 <button class="bp">Confirm &amp; pay ₹315</button>
 <div style="font-size:9px;color:var(--color-text-tertiary);text-align:center;margin-top:4px">Scroll to bottom to accept terms before confirming</div>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'is',
-      title: 'Interrupted',
-      ann: '<b>v2 spec:</b> Bottom sheet — slides up, context visible beneath (not a modal). Cannot dismiss by tapping outside. Fires only when Redis session state exists and age &lt; 24h. "Skip" → LearningPlanItem.status = DEFERRED. Three options always shown.',
-      html: `
+{id:'is',title:'Interrupted',ann:'<b>v2 spec:</b> Bottom sheet — slides up, context visible beneath (not a modal). Cannot dismiss by tapping outside. Fires only when Redis session state exists and age &lt; 24h. "Skip" → LearningPlanItem.status = DEFERRED. Three options always shown.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div><div class="tb"><div class="tt">Before you start</div></div>
 <div style="padding:12px;opacity:.4"><div class="h2" style="margin-bottom:2px">Quadratic Equations</div><div class="su">Tap start to begin</div></div>
 <div class="ob">
@@ -1015,27 +423,13 @@ ${['Debit / Credit card', 'Net banking'].map((m) => `<div class="cs" style="disp
 <div class="h2" style="margin-bottom:2px">You left mid-session</div>
 <div class="su" style="margin-bottom:12px">You were in <strong>Guided Practice</strong> — stage 5 of 7, about 14 min in.</div>
 <div style="display:flex;flex-direction:column;gap:6px">
-${[
-  ['▶', '#EEEDFE', 'Resume from where I left off', 'Continue in Guided Practice'],
-  ['↺', 'var(--color-background-secondary)', 'Restart this topic', 'Start fresh from Hook'],
-  ['→', 'var(--color-background-secondary)', 'Skip to next topic', 'Defer this topic to later'],
-]
-  .map(
-    ([ic, bg, t, s]) =>
-      `<div style="padding:10px 9px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);display:flex;align-items:center;gap:8px;cursor:pointer"><div style="width:28px;height:28px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">${ic}</div><div><div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">${t}</div><div style="font-size:10px;color:var(--color-text-secondary)">${s}</div></div></div>`
-  )
-  .join('')}
+${[['▶','#EEEDFE','Resume from where I left off','Continue in Guided Practice'],['↺','var(--color-background-secondary)','Restart this topic','Start fresh from Hook'],['→','var(--color-background-secondary)','Skip to next topic','Defer this topic to later']].map(([ic,bg,t,s])=>`<div style="padding:10px 9px;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);display:flex;align-items:center;gap:8px;cursor:pointer"><div style="width:28px;height:28px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">${ic}</div><div><div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">${t}</div><div style="font-size:10px;color:var(--color-text-secondary)">${s}</div></div></div>`).join('')}
 </div>
 </div>
 </div>
-</div>`,
-    },
+</div>`},
 
-    {
-      id: 'pr',
-      title: 'Progress',
-      ann: '<b>v2 spec:</b> AI narrative insight at top (Vidya-authored). 30-day sessions chart. Mastery bars per chapter (green &gt;70%, amber 40–70%, red &lt;40%). Test score history. PDF download optional. Never paywalled — all students see this regardless of subscription.',
-      html: `
+{id:'pr',title:'Progress',ann:'<b>v2 spec:</b> AI narrative insight at top (Vidya-authored). 30-day sessions chart. Mastery bars per chapter (green &gt;70%, amber 40–70%, red &lt;40%). Test score history. PDF download optional. Never paywalled — all students see this regardless of subscription.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div class="tb"><div class="tt">Progress report</div><div style="font-size:10px;color:#534AB7;cursor:pointer">PDF</div></div>
 <div class="bd">
@@ -1043,33 +437,18 @@ ${[
 <div class="cd">
 <div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:7px">Sessions — last 30 days</div>
 <div style="display:flex;align-items:flex-end;gap:2px;height:55px;margin-bottom:4px">
-${[40, 60, 80, 100, 20, 70, 90].map((h) => `<div style="flex:1;background:${h > 50 ? '#534AB7' : '#EEEDFE'};border-radius:2px 2px 0 0;height:${h}%"></div>`).join('')}
+${[40,60,80,100,20,70,90].map(h=>`<div style="flex:1;background:${h>50?'#534AB7':'#EEEDFE'};border-radius:2px 2px 0 0;height:${h}%"></div>`).join('')}
 </div>
 <div style="font-size:9px;color:var(--color-text-tertiary);text-align:center">Weekly sessions</div>
 </div>
 <div class="cd">
 <div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:7px">Chapter mastery — Mathematics</div>
-${[
-  ['Real Numbers', 84, '#1D9E75'],
-  ['Polynomials', 61, '#BA7517'],
-  ['Quadratic Eq.', 38, '#E24B4A'],
-  ['Triangles', 55, '#BA7517'],
-]
-  .map(
-    ([n, s, c]) =>
-      `<div style="margin-bottom:5px"><div class="r3" style="margin-bottom:2px"><div style="font-size:10px">${n}</div><div style="font-size:10px;color:${c}">${s}%</div></div><div class="pb"><div class="pf" style="width:${s}%;background:${c}"></div></div></div>`
-  )
-  .join('')}
+${[['Real Numbers',84,'#1D9E75'],['Polynomials',61,'#BA7517'],['Quadratic Eq.',38,'#E24B4A'],['Triangles',55,'#BA7517']].map(([n,s,c])=>`<div style="margin-bottom:5px"><div class="r3" style="margin-bottom:2px"><div style="font-size:10px">${n}</div><div style="font-size:10px;color:${c}">${s}%</div></div><div class="pb"><div class="pf" style="width:${s}%;background:${c}"></div></div></div>`).join('')}
 </div>
 <div class="no">Never paywalled · available to all students</div>
-</div></div>`,
-    },
+</div></div>`},
 
-    {
-      id: 'pp',
-      title: 'Parent view',
-      ann: '<b>v2 spec:</b> Separate auth from student. Read-only — no edit controls. Up to 3 linked children. Sessions/week, streak, readiness rings per subject. Exam countdown if set. Weekly digest auto-sent Sunday 18:00 IST. No transcript access — enforced server-side.',
-      html: `
+{id:'pp',title:'Parent view',ann:'<b>v2 spec:</b> Separate auth from student. Read-only — no edit controls. Up to 3 linked children. Sessions/week, streak, readiness rings per subject. Exam countdown if set. Weekly digest auto-sent Sunday 18:00 IST. No transcript access — enforced server-side.',html:`
 <div class="ph"><div class="sb"><span>9:41</span><span>◆◆◆</span></div>
 <div class="tb"><div class="tt">My children</div><div style="font-size:10px;color:var(--color-text-tertiary)">Read-only</div></div>
 <div class="bd">
@@ -1080,40 +459,26 @@ ${[
 <div class="cs" style="text-align:center"><div style="font-size:14px;font-weight:500;color:#BA7517">🔥 5</div><div style="font-size:9px;color:var(--color-text-tertiary)">day streak</div></div>
 </div>
 <div style="font-size:10px;font-weight:500;color:var(--color-text-primary);margin-bottom:5px">Subject readiness</div>
-${[
-  ['Mathematics', 62, '#BA7517'],
-  ['Science', 38, '#E24B4A'],
-]
-  .map(
-    ([n, s, c]) =>
-      `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px"><div class="rn" style="width:36px;height:36px;border:2.5px solid ${c}"><div style="font-size:11px;font-weight:500;color:${c}">${s}</div></div><div style="flex:1"><div style="font-size:10px;margin-bottom:1px">${n}</div><div class="pb"><div class="pf" style="width:${s}%;background:${c}"></div></div></div></div>`
-  )
-  .join('')}
+${[['Mathematics',62,'#BA7517'],['Science',38,'#E24B4A']].map(([n,s,c])=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px"><div class="rn" style="width:36px;height:36px;border:2.5px solid ${c}"><div style="font-size:11px;font-weight:500;color:${c}">${s}</div></div><div style="flex:1"><div style="font-size:10px;margin-bottom:1px">${n}</div><div class="pb"><div class="pf" style="width:${s}%;background:${c}"></div></div></div></div>`).join('')}
 <div class="dv" style="margin:7px 0"></div>
 <div style="font-size:10px;color:#534AB7;text-align:center;cursor:pointer">View full progress report →</div>
 </div>
 <div class="no">Cannot view session transcripts · read-only access only</div>
 <div class="no" style="text-align:center">Weekly digest sent every Sunday at 6 PM IST</div>
-</div></div>`,
-    },
-  ];
+</div></div>`}
+];
 
-  function render() {
-    const c = document.getElementById('screens');
-    c.innerHTML = screens
-      .map(
-        (s, i) =>
-          `<div class="sw${i === 0 ? ' on' : ''}" id="s${i}"><div>${s.html}</div><div class="ae ${s.annClass || ''}">${s.ann}</div></div>`
-      )
-      .join('');
-  }
+function render(){
+  const c=document.getElementById('screens');
+  c.innerHTML=screens.map((s,i)=>`<div class="sw${i===0?' on':''}" id="s${i}"><div>${s.html}</div><div class="ae ${s.annClass||''}">${s.ann}</div></div>`).join('');
+}
 
-  function go(i) {
-    document.querySelectorAll('.sw').forEach((s) => s.classList.remove('on'));
-    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('on'));
-    document.getElementById('s' + i).classList.add('on');
-    document.querySelectorAll('.tab')[i].classList.add('on');
-  }
+function go(i){
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('s'+i).classList.add('on');
+  document.querySelectorAll('.tab')[i].classList.add('on');
+}
 
-  render();
+render();
 </script>

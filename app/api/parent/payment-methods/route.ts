@@ -28,8 +28,7 @@ export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
   const userId = (session as any)?.user?.id;
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if ((session as any)?.user?.role !== 'parent')
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if ((session as any)?.user?.role !== 'parent') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   let body: unknown;
   try {
@@ -40,10 +39,8 @@ export async function POST(req: Request) {
 
   const b = body as Record<string, unknown>;
   const provider = typeof b.provider === 'string' ? b.provider : 'razorpay';
-  const providerCustomerId =
-    typeof b.providerCustomerId === 'string' ? b.providerCustomerId : undefined;
-  const providerPaymentMethodId =
-    typeof b.providerPaymentMethodId === 'string' ? b.providerPaymentMethodId : undefined;
+  const providerCustomerId = typeof b.providerCustomerId === 'string' ? b.providerCustomerId : undefined;
+  const providerPaymentMethodId = typeof b.providerPaymentMethodId === 'string' ? b.providerPaymentMethodId : undefined;
   const type = typeof b.type === 'string' ? b.type : '';
   const last4 = typeof b.last4 === 'string' ? b.last4 : undefined;
   const cardBrand = typeof b.cardBrand === 'string' ? b.cardBrand : undefined;
@@ -65,9 +62,7 @@ export async function POST(req: Request) {
         customer = await tx.paymentCustomer.findUnique({ where: { providerCustomerId } });
       }
       if (!customer) {
-        customer = await tx.paymentCustomer.create({
-          data: { userId, provider, providerCustomerId: providerCustomerId ?? null, meta: null },
-        });
+        customer = await tx.paymentCustomer.create({ data: { userId, provider, providerCustomerId: providerCustomerId ?? null, meta: null } });
       }
 
       // If this method should be default, clear existing default flags
@@ -97,11 +92,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, id: created.id }, { status: 201 });
   } catch (err) {
-    logger.error('Failed to save payment method', {
-      event: 'parent.paymentMethod.save.error',
-      context: { userId },
-      err,
-    });
+    logger.error('Failed to save payment method', { event: 'parent.paymentMethod.save.error', context: { userId }, err });
     return NextResponse.json({ error: 'Could not save payment method' }, { status: 500 });
   }
 }

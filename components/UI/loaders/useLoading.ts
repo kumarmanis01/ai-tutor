@@ -75,7 +75,7 @@ export function useLoading(minimumDisplayTime = 300): UseLoadingReturn {
         stopLoading();
       }
     },
-    [startLoading, stopLoading]
+    [startLoading, stopLoading],
   );
 
   const setProgress = useCallback((value: number) => {

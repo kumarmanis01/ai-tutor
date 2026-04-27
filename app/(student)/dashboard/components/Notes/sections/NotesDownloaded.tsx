@@ -15,7 +15,7 @@ import { useNotes, NoteEntry } from '../context/NotesProvider';
 
 export function NotesDownloaded() {
   const { downloaded, loading } = useNotes();
-
+  
   const openNote = useCallback((note: NoteEntry) => {
     // Navigate to learn page with note ID and type for proper context
     const params = new URLSearchParams();
@@ -33,8 +33,8 @@ export function NotesDownloaded() {
       ) : (
         <div className="space-y-2">
           {downloaded.map((n) => (
-            <button
-              key={n.id}
+            <button 
+              key={n.id} 
               onClick={() => openNote(n)}
               className="w-full px-3 py-2 border rounded text-left flex items-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-transform"
             >

@@ -20,9 +20,7 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Mock next-auth session as authenticated
-jest.mock('next-auth/react', () => ({
-  useSession: () => ({ data: { user: { name: 'Parent' } }, status: 'authenticated' }),
-}));
+jest.mock('next-auth/react', () => ({ useSession: () => ({ data: { user: { name: 'Parent' } }, status: 'authenticated' }) }));
 
 // Mock next/navigation router used inside the component
 const pushMock = jest.fn();
@@ -40,61 +38,25 @@ describe('ParentDashboardClient (integration)', () => {
     // default fetch mock to route responses by URL
     (global as any).fetch = jest.fn((url: string) => {
       if (typeof url === 'string' && url.includes('/api/parent/dashboard')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            ok: true,
-            isParent: true,
-            totalStudents: 1,
-            generatedAt: new Date().toISOString(),
-            students: [
-              {
-                studentId: 's1',
-                studentName: 'Test Student',
-                subjects: ['Math'],
-                weekly: [],
-                subjectProgress: [],
-                attentionBySubject: [],
-                masteryDistribution: [],
-                attentionOpenCount: 0,
-                readiness: [],
-              },
-            ],
-          }),
-        });
+        return Promise.resolve({ ok: true, json: async () => ({ ok: true, isParent: true, totalStudents: 1, generatedAt: new Date().toISOString(), students: [{ studentId: 's1', studentName: 'Test Student', subjects: ['Math'], weekly: [], subjectProgress: [], attentionBySubject: [], masteryDistribution: [], attentionOpenCount: 0, readiness: [] }] }) });
       }
 
       if (typeof url === 'string' && url.includes('/api/parent/subject-mastery')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => [
-            {
-              subject: 'Math',
-              avgAccuracy: 0.75,
-              topicCount: 10,
-              predictedMarkRange: [70, 85],
-              masteryExplanation: 'This is what this means',
-              chapters: [
-                {
-                  chapter: 'Algebra',
-                  topics: [
-                    {
-                      topicId: 't1',
-                      masteryLevel: 'advanced',
-                      accuracy: 0.9,
-                      questionsAttempted: 5,
-                    },
-                  ],
-                },
-              ],
-              topStrengths: [],
-              topWeaknesses: [],
-              predictedDaysTo80: null,
-              predictedReadyByDate: null,
-              peerPercentile: 78,
-            },
+        return Promise.resolve({ ok: true, json: async () => ([{
+          subject: 'Math',
+          avgAccuracy: 0.75,
+          topicCount: 10,
+          predictedMarkRange: [70, 85],
+          masteryExplanation: 'This is what this means',
+          chapters: [
+            { chapter: 'Algebra', topics: [{ topicId: 't1', masteryLevel: 'advanced', accuracy: 0.9, questionsAttempted: 5 }] }
           ],
-        });
+          topStrengths: [],
+          topWeaknesses: [],
+          predictedDaysTo80: null,
+          predictedReadyByDate: null,
+          peerPercentile: 78
+        }]) });
       }
 
       return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
@@ -108,9 +70,7 @@ describe('ParentDashboardClient (integration)', () => {
     render(<ParentDashboardClient />);
 
     // Wait for the deep-dive button to appear and click it
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Open detailed view/i })).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /Open detailed view/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Open detailed view/i }));
 
     // Wait for the subject button to appear (from fetched subject-mastery)
@@ -120,9 +80,7 @@ describe('ParentDashboardClient (integration)', () => {
     fireEvent.click(screen.getByText('Math'));
 
     // Info icon should have title equal to masteryExplanation
-    await waitFor(() =>
-      expect(screen.getByText('ⓘ')).toHaveAttribute('title', 'This is what this means')
-    );
+    await waitFor(() => expect(screen.getByText('ⓘ')).toHaveAttribute('title', 'This is what this means'));
 
     // Benchmarking copy should include the percentile (78)
     await waitFor(() => expect(screen.getByText(/78% of students/)).toBeInTheDocument());

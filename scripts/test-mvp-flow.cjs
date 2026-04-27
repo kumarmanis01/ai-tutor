@@ -41,9 +41,9 @@ require('./bootstrap-env.cjs');
  * Exit codes: 0 = all pass, 1 = any failure or fatal error.
  */
 
-('use strict');
+'use strict';
 
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
 
 // ── CLI flags ────────────────────────────────────────────────────────────────
@@ -61,8 +61,8 @@ function loadEnv() {
       const m = line.match(/^([^=\s]+)=((?:".*")|(?:'.*')|.*)$/);
       if (!m) continue;
       let val = m[2];
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
-        val = val.slice(1, -1);
+      if ((val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
       if (!process.env[m[1]]) process.env[m[1]] = val;
     }
     console.log(`[env] loaded ${p}`);
@@ -72,12 +72,10 @@ function loadEnv() {
 loadEnv();
 const { prisma } = require('../lib/prisma');
 
+
 // ── Config ────────────────────────────────────────────────────────────────────
-const BASE_URL = (
-  process.env.BASE_URL ||
-  process.env.NEXTAUTH_URL ||
-  'http://localhost:3000'
-).replace(/\/$/, '');
+const BASE_URL = (process.env.BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000')
+  .replace(/\/$/, '');
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
 // NextAuth uses __Secure- prefix on HTTPS
 const COOKIE_NAME = BASE_URL.startsWith('https')
@@ -141,14 +139,14 @@ async function createSessionCookie(userId, email, name = 'Test User') {
   const now = Math.floor(Date.now() / 1000);
   const token = await encode({
     token: {
-      sub: userId,
-      id: userId,
+      sub:   userId,
+      id:    userId,
       email,
       name,
-      role: 'user',
-      iat: now,
-      exp: now + 3600,
-      jti: `test-${userId}-${now}`,
+      role:  'user',
+      iat:   now,
+      exp:   now + 3600,
+      jti:   `test-${userId}-${now}`,
     },
     secret: NEXTAUTH_SECRET,
     maxAge: 3600,
@@ -170,9 +168,9 @@ async function apiGet(path, cookie) {
 async function apiPost(path, cookie, payload) {
   const url = `${BASE_URL}${path}`;
   const res = await fetch(url, {
-    method: 'POST',
+    method:  'POST',
     headers: { Cookie: cookie, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body:    JSON.stringify(payload),
   });
   const body = await res.json().catch(() => null);
   return { status: res.status, body };
@@ -181,7 +179,7 @@ async function apiPost(path, cookie, payload) {
 // ── DB helpers ────────────────────────────────────────────────────────────────
 async function ensureUser(email, board, grade) {
   return prisma.user.upsert({
-    where: { email },
+    where:  { email },
     update: { board, grade: String(grade), subjects: [] },
     create: { email, language: 'en', board, grade: String(grade), subjects: [] },
   });
@@ -197,23 +195,14 @@ async function ensureUser(email, board, grade) {
 async function simulatePracticeComplete(studentId, topicId, subject, chapter, accuracy) {
   await prisma.$transaction(async (tx) => {
     await tx.studentTopicMastery.upsert({
-      where: { studentId_topicId: { studentId, topicId } },
+      where:  { studentId_topicId: { studentId, topicId } },
       update: { accuracy, questionsAttempted: 10, lastAttemptedAt: new Date() },
-      create: {
-        studentId,
-        topicId,
-        subject,
-        chapter,
-        masteryLevel: 'beginner',
-        accuracy,
-        questionsAttempted: 10,
-        lastAttemptedAt: new Date(),
-      },
+      create: { studentId, topicId, subject, chapter, masteryLevel: 'beginner', accuracy, questionsAttempted: 10, lastAttemptedAt: new Date() },
     });
     if (accuracy >= 0.6) {
       await tx.attentionFlag.updateMany({
         where: { studentId, topicId, resolved: false },
-        data: { resolved: true },
+        data:  { resolved: true },
       });
     }
   });
@@ -244,7 +233,9 @@ async function getOrderedTopicsForStudent(studentId) {
   if (!user?.board || isNaN(grade)) return [];
 
   const subjectNameFilter =
-    Array.isArray(user.subjects) && user.subjects.length > 0 ? { name: { in: user.subjects } } : {};
+    Array.isArray(user.subjects) && user.subjects.length > 0
+      ? { name: { in: user.subjects } }
+      : {};
 
   return prisma.topicDef.findMany({
     where: {
@@ -281,12 +272,12 @@ async function testFreshStudent(topic) {
   console.log('\n━━━ Scenario 1: FRESH student ━━━');
 
   const { id: topicId, chapter } = topic;
-  const subject = chapter.subject.name;
+  const subject    = chapter.subject.name;
   const chapterName = chapter.name;
-  const boardSlug = chapter.subject.class.board.slug;
-  const grade = chapter.subject.class.grade;
+  const boardSlug  = chapter.subject.class.board.slug;
+  const grade      = chapter.subject.class.grade;
 
-  const user = await ensureUser('test-mvp-fresh@mvp-test.local', boardSlug, grade);
+  const user   = await ensureUser('test-mvp-fresh@mvp-test.local', boardSlug, grade);
   const userId = user.id;
   await clearUserData(userId);
 
@@ -300,9 +291,7 @@ async function testFreshStudent(topic) {
 
   // ── b) Complete lesson → POST complete-action (with topicId) ─────────────
   const r2 = await apiPost('/api/home/complete-action', cookie, {
-    topicId,
-    subject,
-    chapter: chapterName,
+    topicId, subject, chapter: chapterName,
   });
   assert('FRESH complete-action status', r2.status, 200);
   // complete-action returns nextAction inline -- should already be low_accuracy
@@ -328,38 +317,27 @@ async function testWeakStudent(topic) {
   console.log('\n━━━ Scenario 2: WEAK student ━━━');
 
   const { id: topicId, chapter } = topic;
-  const subject = chapter.subject.name;
+  const subject     = chapter.subject.name;
   const chapterName = chapter.name;
-  const boardSlug = chapter.subject.class.board.slug;
-  const grade = chapter.subject.class.grade;
+  const boardSlug   = chapter.subject.class.board.slug;
+  const grade       = chapter.subject.class.grade;
 
-  const user = await ensureUser('test-mvp-weak@mvp-test.local', boardSlug, grade);
+  const user   = await ensureUser('test-mvp-weak@mvp-test.local', boardSlug, grade);
   const userId = user.id;
   await clearUserData(userId);
 
   // Seed: mastery at 30% + unresolved AttentionFlag
   await prisma.studentTopicMastery.create({
     data: {
-      studentId: userId,
-      topicId,
-      subject,
-      chapter: chapterName,
-      masteryLevel: 'beginner',
-      accuracy: 0.3,
-      questionsAttempted: 10,
-      lastAttemptedAt: new Date(),
+      studentId: userId, topicId, subject, chapter: chapterName,
+      masteryLevel: 'beginner', accuracy: 0.3,
+      questionsAttempted: 10, lastAttemptedAt: new Date(),
     },
   });
   await prisma.attentionFlag.create({
     data: {
-      studentId: userId,
-      topicId,
-      subject,
-      chapter: chapterName,
-      masteryLevel: 'beginner',
-      accuracy: 0.3,
-      reason: 'low_mastery',
-      resolved: false,
+      studentId: userId, topicId, subject, chapter: chapterName,
+      masteryLevel: 'beginner', accuracy: 0.3, reason: 'low_mastery', resolved: false,
     },
   });
 
@@ -373,17 +351,11 @@ async function testWeakStudent(topic) {
 
   // ── b) Simulate a lesson-completion call (topic already in mastery, idempotent) ─
   const r2 = await apiPost('/api/home/complete-action', cookie, {
-    topicId,
-    subject,
-    chapter: chapterName,
+    topicId, subject, chapter: chapterName,
   });
   assert('WEAK complete-action status', r2.status, 200);
   // Flag still unresolved at this point -- next action stays low_mastery or low_accuracy
-  assertNot(
-    'WEAK post-lesson rule not next_new_topic yet',
-    r2.body?.nextAction?.ruleId,
-    'next_new_topic'
-  );
+  assertNot('WEAK post-lesson rule not next_new_topic yet', r2.body?.nextAction?.ruleId, 'next_new_topic');
 
   // ── c) Practice with good score (72%) → flag resolved ────────────────────
   await simulatePracticeComplete(userId, topicId, subject, chapterName, 0.72);
@@ -396,16 +368,8 @@ async function testWeakStudent(topic) {
 
   // ── d) Rule must advance -- P3 and P4 both gone ───────────────────────────
   const r3 = await apiGet('/api/home/next-action', cookie);
-  assertNot(
-    'WEAK after practice -- rule no longer low_mastery',
-    r3.body?.action?.ruleId,
-    'low_mastery'
-  );
-  assertNot(
-    'WEAK after practice -- rule no longer low_accuracy',
-    r3.body?.action?.ruleId,
-    'low_accuracy'
-  );
+  assertNot('WEAK after practice -- rule no longer low_mastery', r3.body?.action?.ruleId, 'low_mastery');
+  assertNot('WEAK after practice -- rule no longer low_accuracy', r3.body?.action?.ruleId, 'low_accuracy');
 
   return userId;
 }
@@ -415,12 +379,12 @@ async function testActiveStudent(topic) {
   console.log('\n━━━ Scenario 3: ACTIVE student (open session) ━━━');
 
   const { id: topicId, chapter } = topic;
-  const subject = chapter.subject.name;
+  const subject     = chapter.subject.name;
   const chapterName = chapter.name;
-  const boardSlug = chapter.subject.class.board.slug;
-  const grade = chapter.subject.class.grade;
+  const boardSlug   = chapter.subject.class.board.slug;
+  const grade       = chapter.subject.class.grade;
 
-  const user = await ensureUser('test-mvp-active@mvp-test.local', boardSlug, grade);
+  const user   = await ensureUser('test-mvp-active@mvp-test.local', boardSlug, grade);
   const userId = user.id;
   await clearUserData(userId);
 
@@ -443,11 +407,7 @@ async function testActiveStudent(topic) {
       completionPercentage: 0,
       startedAt: new Date(),
       endedAt: null,
-      meta: {
-        topicId: sessionTopic.id,
-        subject: sessionTopic.chapter.subject.name,
-        chapter: sessionTopic.chapter.name,
-      },
+      meta: { topicId: sessionTopic.id, subject: sessionTopic.chapter.subject.name, chapter: sessionTopic.chapter.name },
       lastAccessed: new Date(),
     },
   });
@@ -464,10 +424,7 @@ async function testActiveStudent(topic) {
 
   // ── b) Complete-action with sessionId → session closed, mastery seeded ───
   const r2 = await apiPost('/api/home/complete-action', cookie, {
-    topicId,
-    subject,
-    chapter: chapterName,
-    sessionId: sess.id,
+    topicId, subject, chapter: chapterName, sessionId: sess.id,
   });
   assert('ACTIVE complete-action status', r2.status, 200);
   // Session now closed → P1 gone; mastery at 0% → P4 fires
@@ -480,7 +437,7 @@ async function testActiveStudent(topic) {
   assert('ACTIVE next-action -- low_accuracy', r3.body?.action?.ruleId, 'low_accuracy');
 
   // ── d) Good practice score → advance ─────────────────────────────────────
-  await simulatePracticeComplete(userId, topicId, subject, chapterName, 0.8);
+  await simulatePracticeComplete(userId, topicId, subject, chapterName, 0.80);
 
   const r4 = await apiGet('/api/home/next-action', cookie);
   assertNot('ACTIVE after practice -- rule advanced', r4.body?.action?.ruleId, 'low_accuracy');
@@ -495,9 +452,9 @@ async function testMultiTopicSequential(topics) {
   // Use the first topic to derive board/grade for user creation
   const firstTopic = topics[0];
   const boardSlug = firstTopic.chapter.subject.class.board.slug;
-  const grade = firstTopic.chapter.subject.class.grade;
+  const grade     = firstTopic.chapter.subject.class.grade;
 
-  const user = await ensureUser('test-mvp-multi@mvp-test.local', boardSlug, grade);
+  const user   = await ensureUser('test-mvp-multi@mvp-test.local', boardSlug, grade);
   const userId = user.id;
   await clearUserData(userId);
 
@@ -507,10 +464,10 @@ async function testMultiTopicSequential(topics) {
 
   for (let i = 0; i < topics.length; i++) {
     const t = topics[i];
-    const topicId = t.id;
-    const subject = t.chapter.subject.name;
+    const topicId     = t.id;
+    const subject     = t.chapter.subject.name;
     const chapterName = t.chapter.name;
-    const label = `MULTI[${i + 1}/${topics.length}]`;
+    const label       = `MULTI[${i + 1}/${topics.length}]`;
 
     console.log(`\n  ── Topic ${i + 1}: "${t.name}" ──`);
 
@@ -523,18 +480,13 @@ async function testMultiTopicSequential(topics) {
     if (completedTopicIds.length > 0) {
       const currentTopicId = r1.body?.action?.topicId;
       const isRegression = completedTopicIds.includes(currentTopicId);
-      assertOk(
-        `${label} no regression to old topic`,
-        !isRegression,
-        isRegression ? `regressed to ${currentTopicId}` : 'ok'
-      );
+      assertOk(`${label} no regression to old topic`, !isRegression,
+        isRegression ? `regressed to ${currentTopicId}` : 'ok');
     }
 
     // b) Simulate lesson completion
     const r2 = await apiPost('/api/home/complete-action', cookie, {
-      topicId,
-      subject,
-      chapter: chapterName,
+      topicId, subject, chapter: chapterName,
     });
     assert(`${label} complete-action status`, r2.status, 200);
 
@@ -547,11 +499,7 @@ async function testMultiTopicSequential(topics) {
 
     // e) After practice, engine should NOT point back to this topic
     const r3 = await apiGet('/api/home/next-action', cookie);
-    assertNot(
-      `${label} no oscillation back to low_accuracy`,
-      r3.body?.action?.ruleId,
-      'low_accuracy'
-    );
+    assertNot(`${label} no oscillation back to low_accuracy`, r3.body?.action?.ruleId, 'low_accuracy');
 
     // If not the last topic, the next action should be next_new_topic for a different topic
     if (i < topics.length - 1) {
@@ -562,19 +510,12 @@ async function testMultiTopicSequential(topics) {
 
   // Final assertion: after all 5 topics, engine should point to the 6th topic
   const rFinal = await apiGet('/api/home/next-action', cookie);
-  assert(
-    'MULTI final rule = next_new_topic (6th topic)',
-    rFinal.body?.action?.ruleId,
-    'next_new_topic'
-  );
+  assert('MULTI final rule = next_new_topic (6th topic)', rFinal.body?.action?.ruleId, 'next_new_topic');
   // The 6th topic must not be any of the 5 completed topics
   const finalTopicId = rFinal.body?.action?.topicId;
   const isRepeat = completedTopicIds.includes(finalTopicId);
-  assertOk(
-    'MULTI 6th topic is new',
-    !isRepeat && !!finalTopicId,
-    isRepeat ? `repeated ${finalTopicId}` : `topicId=${finalTopicId}`
-  );
+  assertOk('MULTI 6th topic is new', !isRepeat && !!finalTopicId,
+    isRepeat ? `repeated ${finalTopicId}` : `topicId=${finalTopicId}`);
 
   console.log('\n  ┌─────────────────────────────────────────────────────┐');
   console.log('  │     MULTI-TOPIC SEQUENTIAL TEST PASSED              │');
@@ -613,12 +554,12 @@ async function testFullHttpPipeline(topic) {
   console.log('\n━━━ Scenario 5: FULL HTTP PRACTICE PIPELINE ━━━');
 
   const { id: topicId, chapter } = topic;
-  const subject = chapter.subject.name;
+  const subject     = chapter.subject.name;
   const chapterName = chapter.name;
-  const boardSlug = chapter.subject.class.board.slug;
-  const grade = chapter.subject.class.grade;
+  const boardSlug   = chapter.subject.class.board.slug;
+  const grade       = chapter.subject.class.grade;
 
-  const user = await ensureUser('test-mvp-pipeline@mvp-test.local', boardSlug, grade);
+  const user   = await ensureUser('test-mvp-pipeline@mvp-test.local', boardSlug, grade);
   const userId = user.id;
   await clearUserData(userId);
 
@@ -627,15 +568,15 @@ async function testFullHttpPipeline(topic) {
   const question = await prisma.question.create({
     data: {
       subject,
-      chapter: chapterName,
-      type: 'mcq',
-      prompt: '[S5] Scenario 5 test question: what is 1 + 1?',
-      choices: JSON.stringify([
+      chapter:       chapterName,
+      type:          'mcq',
+      prompt:        '[S5] Scenario 5 test question: what is 1 + 1?',
+      choices:       JSON.stringify([
         { key: 'A', label: '2' },
         { key: 'B', label: '3' },
       ]),
       correctAnswer: 'a',
-      difficulty: 'easy',
+      difficulty:    'easy',
     },
   });
 
@@ -645,19 +586,16 @@ async function testFullHttpPipeline(topic) {
   const genTest = await prisma.generatedTest.upsert({
     where: {
       topicId_difficulty_language_version: {
-        topicId,
-        difficulty: 'easy',
-        language: 'en',
-        version: 9999,
+        topicId, difficulty: 'easy', language: 'en', version: 9999,
       },
     },
     create: {
       topicId,
-      title: '[S5] Scenario 5 Test',
+      title:      '[S5] Scenario 5 Test',
       difficulty: 'easy',
-      language: 'en',
-      version: 9999,
-      status: 'approved',
+      language:   'en',
+      version:    9999,
+      status:     'approved',
     },
     update: { title: '[S5] Scenario 5 Test', status: 'approved' },
   });
@@ -667,7 +605,7 @@ async function testFullHttpPipeline(topic) {
   // by the HTTP API pipeline (complete-action seeds it; submit updates it).
   const attempt = await prisma.testResult.create({
     data: {
-      testId: genTest.id,
+      testId:    genTest.id,
       studentId: userId,
       startedAt: new Date(),
     },
@@ -681,20 +619,18 @@ async function testFullHttpPipeline(topic) {
 
   // ── a) GET /api/home/next-action → expect next_new_topic ─────────────────────
   const r1 = await apiGet('/api/home/next-action', cookie);
-  assert('PIPELINE [a] HTTP status', r1.status, 200);
-  assertNot('PIPELINE [a] no 500', r1.status, 500);
+  assert('PIPELINE [a] HTTP status',           r1.status,               200);
+  assertNot('PIPELINE [a] no 500',             r1.status,               500);
   assert('PIPELINE [a] rule = next_new_topic', r1.body?.action?.ruleId, 'next_new_topic');
 
   // ── b) POST /api/home/complete-action → seeds STM[topicId, accuracy=0] ───────
   // complete-action upserts StudentTopicMastery with accuracy=0 (first lesson done).
   // P4 (accuracy < 0.6) then fires → nextAction.ruleId = low_accuracy.
   const r2 = await apiPost('/api/home/complete-action', cookie, {
-    topicId,
-    subject,
-    chapter: chapterName,
+    topicId, subject, chapter: chapterName,
   });
-  assert('PIPELINE [b] complete-action status', r2.status, 200);
-  assertNot('PIPELINE [b] no 500', r2.status, 500);
+  assert('PIPELINE [b] complete-action status',        r2.status,                    200);
+  assertNot('PIPELINE [b] no 500',                     r2.status,                    500);
   assert('PIPELINE [b] rule transitions low_accuracy', r2.body?.nextAction?.ruleId, 'low_accuracy');
 
   // ── c) POST /api/tests/submit with correct answer ─────────────────────────────
@@ -703,14 +639,14 @@ async function testFullHttpPipeline(topic) {
   // and UPDATES the same STM record complete-action seeded (accuracy 0 → 1.0).
   const r3 = await apiPost('/api/tests/submit', cookie, {
     attemptId: attempt.id,
-    answers: [{ questionId: question.id, answer: 'A', timeSpent: 10 }],
+    answers:   [{ questionId: question.id, answer: 'A', timeSpent: 10 }],
   });
-  assert('PIPELINE [c] submit HTTP status', r3.status, 200);
-  assertNot('PIPELINE [c] no 500 error', r3.status, 500);
+  assert('PIPELINE [c] submit HTTP status',     r3.status,                        200);
+  assertNot('PIPELINE [c] no 500 error',        r3.status,                        500);
   assertOk(
     'PIPELINE [c] scorePercent returned',
     typeof r3.body?.scorePercent === 'number',
-    `scorePercent=${r3.body?.scorePercent}`
+    `scorePercent=${r3.body?.scorePercent}`,
   );
 
   // ── Verify: updateTopicMastery was triggered ──────────────────────────────────
@@ -723,12 +659,12 @@ async function testFullHttpPipeline(topic) {
   assertOk(
     'PIPELINE updateTopicMastery -- STM record updated for canonical topicId',
     !!mastery,
-    mastery ? `accuracy=${mastery.accuracy}` : 'NOT FOUND'
+    mastery ? `accuracy=${mastery.accuracy}` : 'NOT FOUND',
   );
   assertOk(
     'PIPELINE updateTopicMastery -- accuracy reflects correct answer (≥ 0.6)',
     mastery?.accuracy != null && mastery.accuracy >= 0.6,
-    `accuracy=${mastery?.accuracy}`
+    `accuracy=${mastery?.accuracy}`,
   );
 
   // ── Verify: no composite "subject::chapter" STM key leaked ────────────────────
@@ -738,7 +674,7 @@ async function testFullHttpPipeline(topic) {
   assertOk(
     'PIPELINE no composite :: mastery key written',
     staleComposite === null,
-    staleComposite ? `leaked topicId=${staleComposite.topicId}` : 'ok'
+    staleComposite ? `leaked topicId=${staleComposite.topicId}` : 'ok',
   );
 
   // ── Verify: AttentionFlag synced ─────────────────────────────────────────────
@@ -749,7 +685,7 @@ async function testFullHttpPipeline(topic) {
   assertOk(
     'PIPELINE AttentionFlag synced -- no open flag for canonical topicId',
     openFlag === null,
-    openFlag ? `unexpected flag id=${openFlag.id}` : 'ok'
+    openFlag ? `unexpected flag id=${openFlag.id}` : 'ok',
   );
 
   // ── d) GET /api/home/next-action → engine advances past low_accuracy ─────────
@@ -757,9 +693,13 @@ async function testFullHttpPipeline(topic) {
   // P4 no longer matches (accuracy ≥ 0.6) → engine advances to next topic (P5).
   const r4 = await apiGet('/api/home/next-action', cookie);
   assert('PIPELINE [d] HTTP status', r4.status, 200);
-  assertNot('PIPELINE [d] no 500', r4.status, 500);
+  assertNot('PIPELINE [d] no 500',   r4.status, 500);
   const ruleAfterD = r4.body?.action?.ruleId;
-  assertNot('PIPELINE [d] engine advanced -- no longer low_accuracy', ruleAfterD, 'low_accuracy');
+  assertNot(
+    'PIPELINE [d] engine advanced -- no longer low_accuracy',
+    ruleAfterD,
+    'low_accuracy',
+  );
 
   console.log('\n  ┌─────────────────────────────────────────────────────┐');
   console.log('  │     FULL HTTP PIPELINE TEST PASSED                  │');
@@ -793,9 +733,8 @@ async function main() {
 
   // Connectivity check
   try {
-    const ping =
-      (await fetch(`${BASE_URL}/api/health`).catch(() => null)) ||
-      (await fetch(`${BASE_URL}/`).catch(() => null));
+    const ping = await fetch(`${BASE_URL}/api/health`).catch(() => null)
+      || await fetch(`${BASE_URL}/`).catch(() => null);
     if (!ping) throw new Error('no response');
     console.log(`\n[ok] Server reachable at ${BASE_URL}`);
   } catch {
@@ -837,7 +776,7 @@ async function main() {
   }
 
   const boardSlug = seedTopic.chapter.subject.class.board.slug;
-  const grade = seedTopic.chapter.subject.class.grade;
+  const grade     = seedTopic.chapter.subject.class.grade;
 
   // Create a bootstrap user scoped to this board/grade so we can call the
   // shared curriculum helper -- same scoping the engine applies for real students.
@@ -852,7 +791,7 @@ async function main() {
   assertOk(
     'Curriculum returns active topics for test board/grade',
     allTopics.length >= 1,
-    `${allTopics.length} topics found for board=${boardSlug} grade=${grade}`
+    `${allTopics.length} topics found for board=${boardSlug} grade=${grade}`,
   );
 
   if (allTopics.length === 0) {
@@ -864,14 +803,10 @@ async function main() {
   console.log(`\nUsing topic : "${topic.name}" (${topic.id})`);
   console.log(`  Chapter   : ${topic.chapter.name}`);
   console.log(`  Subject   : ${topic.chapter.subject.name}`);
-  console.log(
-    `  Board     : ${topic.chapter.subject.class.board.slug}  Grade: ${topic.chapter.subject.class.grade}`
-  );
+  console.log(`  Board     : ${topic.chapter.subject.class.board.slug}  Grade: ${topic.chapter.subject.class.grade}`);
 
   if (allTopics.length < 6) {
-    console.warn(
-      `\n[WARN] Only ${allTopics.length} active topics found. Scenario 4 needs ≥6. Skipping Scenario 4.`
-    );
+    console.warn(`\n[WARN] Only ${allTopics.length} active topics found. Scenario 4 needs ≥6. Skipping Scenario 4.`);
   } else {
     console.log(`  Topics    : ${allTopics.length} active topics available for Scenario 4`);
   }
@@ -882,7 +817,7 @@ async function main() {
   // Scenario 5 creates a Question and GeneratedTest that are NOT cascade-linked to the
   // test user, so they must be cleaned up explicitly after user deletion (which cascades
   // TestResult → AttemptQuestion, freeing the AttemptQuestion→Question FK).
-  let s5GenTestId = null;
+  let s5GenTestId  = null;
   let s5QuestionId = null;
 
   try {
@@ -898,7 +833,7 @@ async function main() {
     // Scenario 5: full HTTP practice pipeline (always runs -- needs only 1 topic)
     const s5 = await testFullHttpPipeline(topic);
     userIds.push(s5.userId);
-    s5GenTestId = s5.genTestId;
+    s5GenTestId  = s5.genTestId;
     s5QuestionId = s5.questionId;
   } finally {
     console.log('\n── cleanup ──────────────────────────────────────────────────');

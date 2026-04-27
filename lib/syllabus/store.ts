@@ -17,9 +17,7 @@ export type SyllabusRecord = any;
  */
 export async function createSyllabus(input: CreateSyllabusInput): Promise<SyllabusRecord> {
   try {
-    const created = await prisma.syllabus.create({
-      data: { ...input, json: input.json, status: input.status as SyllabusStatus },
-    });
+    const created = await prisma.syllabus.create({ data: { ...input, json: input.json, status: input.status as SyllabusStatus } });
     return created;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -30,10 +28,7 @@ export async function createSyllabus(input: CreateSyllabusInput): Promise<Syllab
 /**
  * List syllabi with optional filters, ordered by `createdAt` DESC.
  */
-export async function listSyllabi(filter?: {
-  status?: string;
-  title?: string;
-}): Promise<SyllabusRecord[]> {
+export async function listSyllabi(filter?: { status?: string; title?: string }): Promise<SyllabusRecord[]> {
   try {
     const where: any = {};
     if (filter?.status) where.status = filter.status;
@@ -79,10 +74,7 @@ async function ensureMutable(id: string) {
 /**
  * Update a syllabus row if it's not approved. Returns the updated record.
  */
-export async function updateSyllabus(
-  id: string,
-  data: Partial<{ title: string; version: string; json: any; status?: string }>
-): Promise<SyllabusRecord> {
+export async function updateSyllabus(id: string, data: Partial<{ title: string; version: string; json: any; status?: string }>): Promise<SyllabusRecord> {
   try {
     await ensureMutable(id);
     const updated = await prisma.syllabus.update({ where: { id }, data: data as any });
@@ -105,6 +97,7 @@ export async function deleteSyllabus(id: string): Promise<void> {
     throw new Error(`deleteSyllabus failed: ${msg}`);
   }
 }
+
 
 const store = {
   createSyllabus,

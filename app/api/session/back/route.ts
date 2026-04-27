@@ -54,17 +54,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    const view = await navigateSessionBack(
-      user.id,
-      body.sessionId,
-      body.targetPhase as SessionPhase
-    );
+    const view = await navigateSessionBack(user.id, body.sessionId, body.targetPhase as SessionPhase);
     const phase = getPhaseContent(view.currentPhase);
     const content = await resolvePhaseContent(
       view.currentPhase,
       view.topicId,
       view.sessionId,
-      user.id
+      user.id,
     );
 
     res = NextResponse.json({ session: view, phase, content });

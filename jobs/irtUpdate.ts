@@ -1,20 +1,20 @@
-import { Queue } from 'bullmq';
-import { getSharedConnection } from '@/lib/redis';
-import { logger } from '@/lib/logger';
+import { Queue } from 'bullmq'
+import { getSharedConnection } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 
 export interface IRTUpdateJobData {
-  studentId: string;
-  conceptId: string;
-  questionId: string;
-  sessionId: string;
-  isCorrect: boolean;
-  itemDifficulty: number;
-  studentAnswer?: string;
+  studentId: string
+  conceptId: string
+  questionId: string
+  sessionId: string
+  isCorrect: boolean
+  itemDifficulty: number
+  studentAnswer?: string
 }
 
-export const IRT_UPDATE_QUEUE_NAME = 'irt-update';
+export const IRT_UPDATE_QUEUE_NAME = 'irt-update'
 
-let irtUpdateQueue: Queue<IRTUpdateJobData> | null = null;
+let irtUpdateQueue: Queue<IRTUpdateJobData> | null = null
 
 export function getIRTUpdateQueue(): Queue<IRTUpdateJobData> {
   if (!irtUpdateQueue) {
@@ -29,20 +29,20 @@ export function getIRTUpdateQueue(): Queue<IRTUpdateJobData> {
         removeOnComplete: 200,
         removeOnFail: 100,
       },
-    });
+    })
   }
-  return irtUpdateQueue;
+  return irtUpdateQueue
 }
 
 export async function enqueueIRTUpdate(data: IRTUpdateJobData): Promise<void> {
   try {
-    const queue = getIRTUpdateQueue();
-    await queue.add('update-theta', data);
+    const queue = getIRTUpdateQueue()
+    await queue.add('update-theta', data)
   } catch (err) {
     logger.error('[irt-update] enqueue failed', {
       error: String((err as any)?.message ?? err),
       studentId: data.studentId,
       conceptId: data.conceptId,
-    });
+    })
   }
 }

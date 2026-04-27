@@ -58,11 +58,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
     try {
       await fetch('/api/student/subscription/dismiss', { method: 'POST' });
     } catch (err) {
-      logger.warn('handleDismiss failed', {
-        component: 'UpgradeFlow',
-        methodName: 'handleDismiss',
-        error: String(err),
-      });
+      logger.warn('handleDismiss failed', { component: 'UpgradeFlow', methodName: 'handleDismiss', error: String(err) });
       // non-blocking -- dismiss is UX-only
     }
     // Reload so dashboard shows banner instead of gate
@@ -81,9 +77,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
       });
       const orderJson = await orderRes.json().catch(() => ({}));
       if (!orderRes.ok || !orderJson?.orderId || !orderJson?.keyId) {
-        throw new Error(
-          typeof orderJson?.error === 'string' ? orderJson.error : 'Could not create order'
-        );
+        throw new Error(typeof orderJson?.error === 'string' ? orderJson.error : 'Could not create order');
       }
 
       if (!window.Razorpay) {
@@ -106,11 +100,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         order_id: orderId,
         prefill: { name: studentName ?? '', email: studentEmail ?? '' },
         theme: { color: '#F97316' },
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
             const verifyRes = await fetch('/api/student/subscription/verify', {
               method: 'POST',
@@ -177,35 +167,27 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         </p>
 
         {/* Usage counter grid */}
-        {freeTierUsage &&
-          (() => {
-            const resetDate = new Date(freeTierUsage.periodStart);
-            resetDate.setMonth(resetDate.getMonth() + 1);
-            const resetLabel = resetDate.toLocaleDateString('en-IN', {
-              month: 'short',
-              day: 'numeric',
-            });
-            return (
-              <div className="mb-4 grid grid-cols-3 divide-x divide-[#534AB7]/15 rounded-xl bg-white dark:bg-slate-800/50 border border-[#534AB7]/20 overflow-hidden">
-                <div className="py-3 text-center">
-                  <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                    {freeTierUsage.sessionsUsed}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">used</p>
-                </div>
-                <div className="py-3 text-center">
-                  <p className="text-xl font-bold text-[#E24B4A]">
-                    {freeTierUsage.sessionsRemaining}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">left</p>
-                </div>
-                <div className="py-3 text-center">
-                  <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{resetLabel}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">resets</p>
-                </div>
+        {freeTierUsage && (() => {
+          const resetDate = new Date(freeTierUsage.periodStart);
+          resetDate.setMonth(resetDate.getMonth() + 1);
+          const resetLabel = resetDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+          return (
+            <div className="mb-4 grid grid-cols-3 divide-x divide-[#534AB7]/15 rounded-xl bg-white dark:bg-slate-800/50 border border-[#534AB7]/20 overflow-hidden">
+              <div className="py-3 text-center">
+                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{freeTierUsage.sessionsUsed}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">used</p>
               </div>
-            );
-          })()}
+              <div className="py-3 text-center">
+                <p className="text-xl font-bold text-[#E24B4A]">{freeTierUsage.sessionsRemaining}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">left</p>
+              </div>
+              <div className="py-3 text-center">
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{resetLabel}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">resets</p>
+              </div>
+            </div>
+          );
+        })()}
 
         <p className="mb-5 text-xl font-bold text-[#534AB7]">₹99/month</p>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -259,9 +241,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         {/* When user chooses card, surface saved methods and AddCard flow */}
         {method === 'card' && (
           <div className="pt-3">
-            <p className="text-sm text-muted-foreground">
-              Card payments are temporarily unavailable. Please choose another payment method.
-            </p>
+            <p className="text-sm text-muted-foreground">Card payments are temporarily unavailable. Please choose another payment method.</p>
           </div>
         )}
         <button
@@ -304,9 +284,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         aria-labelledby="upgrade-success-heading"
         className="rounded-2xl border border-[#1D9E75]/30 bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-5 py-6 text-center"
       >
-        <p className="text-3xl mb-3" aria-hidden>
-          🎉
-        </p>
+        <p className="text-3xl mb-3" aria-hidden>🎉</p>
         <h2
           id="upgrade-success-heading"
           className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2"

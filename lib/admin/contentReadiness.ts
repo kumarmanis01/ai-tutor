@@ -1,17 +1,5 @@
 /**
- * FILE OBJECTIVE:
- * - Admin Content Readiness: HydrationJob status summary and list for admin dashboard.
- *
- * LINKED UNIT TEST:
- * - tests/unit/lib/admin/contentReadiness.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
- * EDIT LOG:
- * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
- * - 2026-04-24T00:00:00Z | copilot | strict-mode: add unit test and header update
+ * Admin Content Readiness -- HydrationJob status summary and list for admin dashboard.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -71,19 +59,7 @@ export async function getReadinessList(opts: {
     where: where as object,
   });
 
-  // Local row type for hydrationJob
-  type HydrationJobRow = {
-    id: string;
-    topicId: string | null;
-    status: string;
-    contentReady: boolean;
-    lastError: string | null;
-    updatedAt: Date;
-    board?: string;
-    grade?: number;
-    subjectId?: string;
-  };
-  const jobs = (await prisma.hydrationJob.findMany({
+  const jobs = await prisma.hydrationJob.findMany({
     where: where as object,
     orderBy: { updatedAt: 'desc' },
     skip: offset,
@@ -99,25 +75,12 @@ export async function getReadinessList(opts: {
       grade: true,
       subjectId: true,
     },
-  })) as HydrationJobRow[];
+  });
 
-  const topicIds = [
-    ...new Set(jobs.map((j: HydrationJobRow) => j.topicId).filter(Boolean) as string[]),
-  ];
-  // Local row type for topicDef
-  type TopicDefRow = {
-    id: string;
-    name: string;
-    chapterId?: string;
-    chapter?: {
-      name?: string | null;
-      subjectId?: string;
-      subject?: { name?: string | null } | null;
-    } | null;
-  };
+  const topicIds = [...new Set((jobs.map((j) => j.topicId).filter(Boolean) as string[]))];
   const topics =
     topicIds.length > 0
-      ? ((await prisma.topicDef.findMany({
+      ? await prisma.topicDef.findMany({
           where: { id: { in: topicIds } },
           select: {
             id: true,
@@ -131,7 +94,7 @@ export async function getReadinessList(opts: {
               },
             },
           },
-        })) as TopicDefRow[])
+        })
       : [];
 
   interface TopicInfo {
@@ -139,9 +102,8 @@ export async function getReadinessList(opts: {
     chapterName: string;
     subjectName: string;
   }
-
   const topicMap = new Map<string, TopicInfo>(
-    (topics as TopicDefRow[]).map((t: TopicDefRow) => [
+    topics.map((t) => [
       t.id,
       {
         name: t.name,
@@ -151,7 +113,7 @@ export async function getReadinessList(opts: {
     ])
   );
 
-  const items: ContentReadinessItem[] = (jobs as HydrationJobRow[]).map((j: HydrationJobRow) => {
+  const items: ContentReadinessItem[] = jobs.map((j) => {
     const t = j.topicId ? topicMap.get(j.topicId) : null;
     return {
       jobId: j.id,
@@ -170,11 +132,9 @@ export async function getReadinessList(opts: {
 }
 
 export async function getGenerationPaused(): Promise<boolean> {
-  // Local row type for adminConfig
-  type AdminConfigRow = { value?: string | null };
-  const row = (await prisma.adminConfig.findUnique({
+  const row = await prisma.adminConfig.findUnique({
     where: { key: 'content_generation_paused' },
-  })) as AdminConfigRow | null;
+  });
   return row?.value === '1' || row?.value === 'true';
 }
 

@@ -1,56 +1,56 @@
-'use client';
-import { useState, useEffect } from 'react';
+'use client'
+import { useState, useEffect } from 'react'
 
 type Escalation = {
-  id: string;
-  studentId: string;
-  conceptId: string | null;
-  doubtText: string;
-  aiAttempts: unknown;
-  createdAt: string;
-  student: { email: string | null } | null;
-};
+  id: string
+  studentId: string
+  conceptId: string | null
+  doubtText: string
+  aiAttempts: unknown
+  createdAt: string
+  student: { email: string | null } | null
+}
 
-const RESOLUTION_TYPES = ['chunk_updated', 'misconception_added', 'prompt_fix', 'cached_answer'];
+const RESOLUTION_TYPES = ['chunk_updated', 'misconception_added', 'prompt_fix', 'cached_answer']
 
 export default function EscalationsPage() {
-  const [escalations, setEscalations] = useState<Escalation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [resolving, setResolving] = useState<Record<string, { type: string; note: string }>>({});
-  const [submitting, setSubmitting] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [escalations, setEscalations] = useState<Escalation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [resolving, setResolving] = useState<Record<string, { type: string; note: string }>>({})
+  const [submitting, setSubmitting] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/escalations')
       .then((r) => r.json())
       .then((d) => setEscalations(d.escalations ?? []))
       .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => setLoading(false))
+  }, [])
 
   async function resolveEscalation(id: string) {
-    const state = resolving[id];
-    if (!state?.type) return;
-    setSubmitting(id);
+    const state = resolving[id]
+    if (!state?.type) return
+    setSubmitting(id)
     try {
       const res = await fetch(`/api/admin/escalations/${id}/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resolutionType: state.type, resolutionNote: state.note }),
-      });
+      })
       if (res.ok) {
-        setEscalations((prev) => prev.filter((e) => e.id !== id));
-        setToast(`Resolved escalation ${id.slice(0, 8)}...`);
-        setTimeout(() => setToast(null), 3000);
+        setEscalations((prev) => prev.filter((e) => e.id !== id))
+        setToast(`Resolved escalation ${id.slice(0, 8)}...`)
+        setTimeout(() => setToast(null), 3000)
       }
     } finally {
-      setSubmitting(null);
+      setSubmitting(null)
     }
   }
 
-  if (loading) return <p className="p-6 text-gray-500">Loading escalations...</p>;
-  if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
+  if (loading) return <p className="p-6 text-gray-500">Loading escalations...</p>
+  if (error) return <p className="p-6 text-red-600">Error: {error}</p>
 
   return (
     <div>
@@ -69,13 +69,12 @@ export default function EscalationsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-500 mb-1">
-                    {new Date(e.createdAt).toLocaleDateString()} · Student:{' '}
-                    {(e.student?.email ?? e.studentId).slice(0, 20)} · Concept:{' '}
-                    {e.conceptId?.slice(0, 12) ?? '--'}
+                    {new Date(e.createdAt).toLocaleDateString()} ·{' '}
+                    Student: {(e.student?.email ?? e.studentId).slice(0, 20)} ·{' '}
+                    Concept: {e.conceptId?.slice(0, 12) ?? '--'}
                   </div>
                   <p className="text-sm text-gray-900 line-clamp-2">
-                    {e.doubtText.slice(0, 120)}
-                    {e.doubtText.length > 120 ? '...' : ''}
+                    {e.doubtText.slice(0, 120)}{e.doubtText.length > 120 ? '...' : ''}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
                     AI attempts: {Array.isArray(e.aiAttempts) ? e.aiAttempts.length : '?'}
@@ -94,9 +93,7 @@ export default function EscalationsPage() {
                   >
                     <option value="">-- resolution type --</option>
                     {RESOLUTION_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
+                      <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
                   <input
@@ -126,5 +123,5 @@ export default function EscalationsPage() {
         </div>
       )}
     </div>
-  );
+  )
 }

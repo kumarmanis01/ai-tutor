@@ -33,11 +33,7 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('POST /api/user/refresh-session error', {
-      className: 'api.user.refresh-session',
-      methodName: 'POST',
-      error: err,
-    });
+    logger.error('POST /api/user/refresh-session error', { className: 'api.user.refresh-session', methodName: 'POST', error: err });
     res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
     return res;

@@ -5,15 +5,14 @@
  */
 module.exports = {
   meta: {
-    type: 'suggestion',
+    type: "suggestion",
     docs: {
-      description: 'Disallow string-based academic filters (board, subject, grade, class)',
+      description: "Disallow string-based academic filters (board, subject, grade, class)",
       recommended: false,
     },
     schema: [],
     messages: {
-      avoid:
-        "Avoid string-based filters like '{{match}}'. Use canonical IDs (boardId, classId, subjectId) instead.",
+      avoid: "Avoid string-based filters like '{{match}}'. Use canonical IDs (boardId, classId, subjectId) instead.",
     },
   },
   create(context) {

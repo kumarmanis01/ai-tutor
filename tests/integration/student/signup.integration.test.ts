@@ -15,13 +15,7 @@ const prismaMock: any = {
 
 jest.mock('@/lib/prisma', () => ({ prisma: prismaMock }));
 jest.mock('@/lib/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    logAPI: jest.fn(),
-  },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
 jest.mock('@/lib/mailer', () => ({ sendMailSafe: jest.fn().mockResolvedValue(undefined) }));
 
@@ -39,23 +33,16 @@ describe('POST /api/auth/signup', () => {
     prismaMock.user.create.mockResolvedValueOnce(createdUser);
     prismaMock.user.update.mockResolvedValueOnce({ ...createdUser, welcomeEmailSent: true });
 
-    const req = {
-      json: async () => ({ name: 'Test', email: 'test@example.com', password: 'password123' }),
-    };
+    const req = { json: async () => ({ name: 'Test', email: 'test@example.com', password: 'password123' }) };
 
     const res = await route.POST(req);
 
     // Ensure DB create was called with expected email
-    expect(prismaMock.user.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ email: 'test@example.com' }) })
-    );
+    expect(prismaMock.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ email: 'test@example.com' }) }));
 
     // Wait a tick for the sendMailSafe().then(...) chain to execute
     await new Promise((r) => setImmediate(r));
 
-    expect(prismaMock.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
-      data: { welcomeEmailSent: true },
-    });
+    expect(prismaMock.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { welcomeEmailSent: true } });
   });
 });

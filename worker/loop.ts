@@ -6,25 +6,25 @@ import logger from '../lib/logger';
 // Register scheduled jobs only in worker processes. This import has no runtime
 // export; it registers job definitions via side-effects. It MUST NOT be
 // imported by the web process.
-import '../lib/jobs/registerJobs.js';
-import workerDefault, { startWorker } from './processors/regenerationWorker.js';
+import '../lib/jobs/registerJobs.js'
+import workerDefault, { startWorker } from './processors/regenerationWorker.js'
 
 // prefer explicit startWorker export
-const intervalMs = Number(process.env.WORKER_POLL_MS || 2000);
+const intervalMs = Number(process.env.WORKER_POLL_MS || 2000)
 try {
   if (typeof startWorker === 'function') {
-    startWorker({ intervalMs });
+    startWorker({ intervalMs })
   } else if (workerDefault && typeof (workerDefault as any).start === 'function') {
     // fallback
-    (workerDefault as any).start({ intervalMs });
+    ;(workerDefault as any).start({ intervalMs })
   } else if (workerDefault && typeof (workerDefault as any).startWorker === 'function') {
-    (workerDefault as any).startWorker({ intervalMs });
+    ;(workerDefault as any).startWorker({ intervalMs })
   } else {
-    logger.error('No worker start function found; exiting');
-    process.exit(2);
+    logger.error('No worker start function found; exiting')
+    process.exit(2)
   }
 } catch (err: any) {
-  logger.error('Failed to start worker', err);
-  process.exit(2);
+  logger.error('Failed to start worker', err)
+  process.exit(2)
 }
 // End of entry script

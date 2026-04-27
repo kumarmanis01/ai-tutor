@@ -13,10 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
 
-    const logs = await prisma.jobExecutionLog.findMany({
-      where: { jobId: id },
-      orderBy: { createdAt: 'asc' },
-    });
+    const logs = await prisma.jobExecutionLog.findMany({ where: { jobId: id }, orderBy: { createdAt: 'asc' } });
     return NextResponse.json({ logs });
   } catch (err) {
     logger?.error?.('GET /api/admin/content-engine/jobs/[id]/timeline error', { err });

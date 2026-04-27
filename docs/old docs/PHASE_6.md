@@ -5,14 +5,12 @@
 Purpose: Build the AI Syllabus Engine — the brain that converts a learning intent into a structured, reviewable, versioned syllabus.
 
 What Phase 6 builds
-
 - A deterministic syllabus generator that turns high-level inputs into a structured JSON syllabus.
 - Human-reviewable and versioned artifacts that are safe to approve before content generation.
 
 This phase answers: “What should the learner learn, in what order, and to what depth?” — it maps the curriculum, it does not create lesson content.
 
 ### Why Phase 6 exists
-
 Most AI content systems fail because they:
 
 - Jump directly to content generation
@@ -39,7 +37,6 @@ Those belong to later phases (7–9).
 ### Core goals of Phase 6
 
 Goal — Meaning
-
 - **Structured output:** JSON syllabus, not prose
 - **Deterministic:** Same input → similar structure
 - **Reviewable:** Humans can approve / edit
@@ -49,7 +46,6 @@ Goal — Meaning
 ## 2️⃣ Phase 6 Inputs → Outputs
 
 Inputs
-
 - Course title
 - Target audience
 - Skill level
@@ -58,7 +54,6 @@ Inputs
 - Constraints (exam-focused, project-based, practical, etc.)
 
 Outputs
-
 - Course syllabus JSON
 - Modules
 - Lessons

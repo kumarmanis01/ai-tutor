@@ -38,7 +38,7 @@ declare global {
  */
 export function pushToDataLayer(event: string, data?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;
-
+  
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({
     event,
@@ -59,7 +59,10 @@ export function trackPageView(url: string): void {
 /**
  * Track user events (for conversion tracking)
  */
-export function trackGTMEvent(eventName: string, eventParams?: Record<string, unknown>): void {
+export function trackGTMEvent(
+  eventName: string,
+  eventParams?: Record<string, unknown>
+): void {
   pushToDataLayer(eventName, eventParams);
 }
 
@@ -160,7 +163,7 @@ export default function GoogleTagManager(): JSX.Element | null {
   // Track page views on navigation
   useEffect(() => {
     if (!GTM_ID) return;
-
+    
     const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
     trackPageView(url);
   }, [pathname, searchParams]);

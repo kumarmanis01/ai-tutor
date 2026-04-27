@@ -15,7 +15,6 @@ EDIT LOG:
 Summary: compare server-emitted events (from CSV) against the client `VALID_EVENT_TYPES` allowlist in `app/api/analytics/event/route.ts` and recommend actions.
 
 Client allowlist (`VALID_EVENT_TYPES`):
-
 - lesson_viewed
 - lesson_completed
 - session_started
@@ -31,7 +30,6 @@ Client allowlist (`VALID_EVENT_TYPES`):
 - page_view
 
 Server-emitted events (canonical list from docs/v2/analytics_event_callsites.csv):
-
 - otp_widget_token (Event table) — [server-only audit]
 - trial_start (AnalyticsEvent)
 - converted_to_paid (AnalyticsEvent)
@@ -65,11 +63,11 @@ Findings & Recommendations
   4. Add a lightweight forwarder worker to optionally send sanitized analytics to a 3rd-party sink (PostHog / Amplitude / GA4) from `AnalyticsEvent` for downstream dashboards. See docs/v2/analytics_user_journey.md for recommended aggregator sketch.
 
 Files referenced:
-
 - `docs/v2/analytics_event_callsites.csv` — complete list of detected call sites (created)
 - `app/api/analytics/event/route.ts` — client-side allowlist (update point)
 
-If you'd like, I can:
 
+If you'd like, I can:
 - Open a PR to add `subject_selected` to the client allowlist and add a server-side `AnalyticsEvent` write on subject change.
 - Implement the forwarder worker skeleton that reads `AnalyticsEvent` and posts sanitized payloads to a 3rd-party sink.
+

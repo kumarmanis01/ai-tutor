@@ -4,10 +4,8 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSessionForHandlers();
-  if (!session)
-    return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'admin')
-    return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
+  if (!session) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
+  if (session.user.role !== 'admin') return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
 
   const { searchParams } = req.nextUrl;
   const status = searchParams.get('status') ?? undefined;

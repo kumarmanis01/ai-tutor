@@ -1,30 +1,28 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 // How old a lockedAt must be before "Unstick" is offered (10 min in ms)
 const STUCK_THRESHOLD_MS = 10 * 60 * 1000;
 
 const STATUS_CFG: Record<string, { bg: string; text: string }> = {
-  running: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]' },
-  pending: { bg: 'bg-[#FAEEDA]', text: 'text-[#633806]' },
+  running:   { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]' },
+  pending:   { bg: 'bg-[#FAEEDA]', text: 'text-[#633806]' },
   completed: { bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]' },
-  failed: { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]' },
-  paused: { bg: 'bg-gray-100', text: 'text-gray-600' },
-  cancelled: { bg: 'bg-gray-100', text: 'text-gray-500' },
+  failed:    { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]' },
+  paused:    { bg: 'bg-gray-100',  text: 'text-gray-600' },
+  cancelled: { bg: 'bg-gray-100',  text: 'text-gray-500' },
 };
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CFG[status] ?? { bg: 'bg-gray-100', text: 'text-gray-500' };
   return (
-    <span
-      className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text}`}
-    >
+    <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text}`}>
       {String(status).toUpperCase()}
     </span>
   );
@@ -44,10 +42,8 @@ function ProgressRow({
   // When tracked expected is 0 but actual exists, use actual as the denominator
   // so the bar reflects real progress even before the reconciler has run.
   const effectiveExpected = expected > 0 ? expected : actual;
-  const pct =
-    effectiveExpected > 0 ? Math.min(100, Math.round((completed / effectiveExpected) * 100)) : 0;
-  const trackedLabel =
-    expected > 0 ? `${completed}/${expected}` : actual > 0 ? 'not yet tracked' : '0/0';
+  const pct = effectiveExpected > 0 ? Math.min(100, Math.round((completed / effectiveExpected) * 100)) : 0;
+  const trackedLabel = expected > 0 ? `${completed}/${expected}` : actual > 0 ? 'not yet tracked' : '0/0';
   return (
     <div className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
       <div className="w-24 text-sm text-gray-600">{label}</div>
@@ -59,16 +55,12 @@ function ProgressRow({
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span
-            className={`text-xs w-28 text-right ${expected === 0 && actual > 0 ? 'text-[#BA7517]' : 'text-gray-500'}`}
-          >
+          <span className={`text-xs w-28 text-right ${expected === 0 && actual > 0 ? 'text-[#BA7517]' : 'text-gray-500'}`}>
             {trackedLabel}
           </span>
         </div>
       </div>
-      <div
-        className={`text-xs font-medium w-24 text-right ${actual > 0 ? 'text-[#1D9E75]' : 'text-gray-400'}`}
-      >
+      <div className={`text-xs font-medium w-24 text-right ${actual > 0 ? 'text-[#1D9E75]' : 'text-gray-400'}`}>
         {actual} in DB
       </div>
     </div>
@@ -86,7 +78,7 @@ export default function JobDetailPage() {
     {
       refreshInterval: (data) => {
         const status = data?.job?.status;
-        return status === 'running' || status === 'pending' ? 5000 : 0;
+        return (status === 'running' || status === 'pending') ? 5000 : 0;
       },
     }
   );
@@ -114,15 +106,12 @@ export default function JobDetailPage() {
 
   if (error) return <div className="p-6 text-red-600">Failed to load job.</div>;
   if (!data) return <div className="p-6 text-gray-500">Loading...</div>;
-  if (!data.job)
-    return (
-      <div className="p-6 text-red-600">
-        Job not found.{' '}
-        <Link href="/admin/jobs" className="underline text-blue-600">
-          Back to jobs
-        </Link>
-      </div>
-    );
+  if (!data.job) return (
+    <div className="p-6 text-red-600">
+      Job not found.{' '}
+      <Link href="/admin/jobs" className="underline text-blue-600">Back to jobs</Link>
+    </div>
+  );
 
   const { job } = data;
   const isRunning = job.status === 'running';
@@ -134,10 +123,8 @@ export default function JobDetailPage() {
   const isStuck = isRunning && lockedAgeMs > STUCK_THRESHOLD_MS;
 
   const trackedFieldsEmpty =
-    job.chaptersExpected === 0 &&
-    job.topicsExpected === 0 &&
-    job.notesExpected === 0 &&
-    job.questionsExpected === 0;
+    job.chaptersExpected === 0 && job.topicsExpected === 0 &&
+    job.notesExpected === 0 && job.questionsExpected === 0;
   const hasActualContent = (job.actualChapters ?? 0) > 0 || (job.actualTopics ?? 0) > 0;
 
   return (
@@ -149,8 +136,7 @@ export default function JobDetailPage() {
             &larr; All jobs
           </Link>
           <h1 className="text-xl font-semibold mt-1">
-            {job.subject ?? 'Unknown'} &mdash; Grade {job.grade} (
-            {String(job.board ?? '').toUpperCase()})
+            {job.subject ?? 'Unknown'} &mdash; Grade {job.grade} ({String(job.board ?? '').toUpperCase()})
           </h1>
           <p className="text-xs text-gray-500 mt-0.5 font-mono">{job.id}</p>
         </div>
@@ -171,9 +157,9 @@ export default function JobDetailPage() {
       {isStuck && (
         <div className="bg-[#FAEEDA] border border-[#EF9F27] rounded-lg px-4 py-3 text-sm text-[#633806]">
           <span className="font-semibold">Job appears stuck</span> -- locked{' '}
-          {Math.round(lockedAgeMs / 60000)} minutes ago with no progress update. If the task worker
-          is not running, use <strong>Unstick</strong> to reset it to pending so it can be reclaimed
-          when the worker restarts.
+          {Math.round(lockedAgeMs / 60000)} minutes ago with no progress update.
+          If the task worker is not running, use <strong>Unstick</strong> to reset it to
+          pending so it can be reclaimed when the worker restarts.
         </div>
       )}
 
@@ -183,48 +169,30 @@ export default function JobDetailPage() {
         {actionMsg && <span className="text-xs text-[#1D9E75] w-full">{actionMsg}</span>}
         {isRunning && !isStuck && (
           <>
-            <ActionBtn onClick={() => doAction('pause')} disabled={actionBusy} v="warn">
-              Pause
-            </ActionBtn>
-            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">
-              Cancel
-            </ActionBtn>
+            <ActionBtn onClick={() => doAction('pause')} disabled={actionBusy} v="warn">Pause</ActionBtn>
+            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">Cancel</ActionBtn>
           </>
         )}
         {isStuck && (
           <>
-            <ActionBtn onClick={() => doAction('unstick')} disabled={actionBusy} v="primary">
-              Unstick (reset to pending)
-            </ActionBtn>
-            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">
-              Cancel
-            </ActionBtn>
+            <ActionBtn onClick={() => doAction('unstick')} disabled={actionBusy} v="primary">Unstick (reset to pending)</ActionBtn>
+            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">Cancel</ActionBtn>
           </>
         )}
         {isPaused && (
           <>
-            <ActionBtn onClick={() => doAction('resume')} disabled={actionBusy} v="primary">
-              Resume
-            </ActionBtn>
-            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">
-              Cancel
-            </ActionBtn>
+            <ActionBtn onClick={() => doAction('resume')} disabled={actionBusy} v="primary">Resume</ActionBtn>
+            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">Cancel</ActionBtn>
           </>
         )}
         {isPending && (
           <>
-            <ActionBtn onClick={() => doAction('requeue')} disabled={actionBusy} v="primary">
-              Requeue
-            </ActionBtn>
-            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">
-              Cancel
-            </ActionBtn>
+            <ActionBtn onClick={() => doAction('requeue')} disabled={actionBusy} v="primary">Requeue</ActionBtn>
+            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">Cancel</ActionBtn>
           </>
         )}
         {isFailed && (
-          <ActionBtn onClick={() => doAction('requeue')} disabled={actionBusy} v="primary">
-            Retry
-          </ActionBtn>
+          <ActionBtn onClick={() => doAction('requeue')} disabled={actionBusy} v="primary">Retry</ActionBtn>
         )}
       </div>
 
@@ -275,9 +243,7 @@ export default function JobDetailPage() {
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-gray-700">
             Progress
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              (tracked = job fields, in DB = actual records)
-            </span>
+            <span className="ml-2 text-xs font-normal text-gray-400">(tracked = job fields, in DB = actual records)</span>
           </p>
         </div>
 
@@ -286,9 +252,9 @@ export default function JobDetailPage() {
           <div className="mb-3 flex items-start gap-2 bg-[#FAEEDA] border border-[#f5d193] rounded-lg px-3 py-2 text-[11px] text-[#633806]">
             <span className="shrink-0 mt-0.5">&#9432;</span>
             <span>
-              Tracked counters are 0 because the reconciler has not yet run. They update
-              automatically when the task worker is active. The <strong>in DB</strong> column shows
-              actual content that was already created.
+              Tracked counters are 0 because the reconciler has not yet run.
+              They update automatically when the task worker is active.
+              The <strong>in DB</strong> column shows actual content that was already created.
             </span>
           </div>
         )}
@@ -355,8 +321,8 @@ function ActionBtn({
 }) {
   const cls = {
     primary: 'border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] hover:bg-[#e0defe]',
-    danger: 'border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] hover:bg-[#f9d7d7]',
-    warn: 'border-[#f5d193] bg-[#FAEEDA] text-[#633806] hover:bg-[#f5d193]',
+    danger:  'border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] hover:bg-[#f9d7d7]',
+    warn:    'border-[#f5d193] bg-[#FAEEDA] text-[#633806] hover:bg-[#f5d193]',
   }[v];
   return (
     <button

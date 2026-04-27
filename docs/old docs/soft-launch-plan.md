@@ -3,7 +3,6 @@
 This document defines a controlled, measurable soft-launch for the AI Tutor content engine. It lists phased rollout targets, the metrics to monitor, alert thresholds, rollback steps, backup procedures, and the emergency kill-switch.
 
 ## Goals
-
 - Validate engine stability under real user traffic
 - Detect and fix race conditions, duplicate writes, and mastery corruption
 - Confirm acceptable error rates and UX metrics before broader release
@@ -95,5 +94,4 @@ redis-cli -u "$REDIS_URL" --rdb redis-prelaunch-$(date -u +%Y%m%dT%H%M%SZ).rdb
 - Document all rollback and remediation steps in the incident ticket.
 
 ---
-
 Document maintained in `docs/soft-launch-plan.md`. Update thresholds and owners before production rollout.

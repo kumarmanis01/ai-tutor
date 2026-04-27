@@ -6,9 +6,9 @@
  * EDIT LOG:
  * - 2026-03-06 | Manish Kumar | created for TodaysLessonCard hero card
  */
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export interface NextTopic {
   topicId: string;
@@ -26,7 +26,7 @@ export function useNextTopic(): { topic: NextTopic | null; loading: boolean } {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('/api/student/next-topic')
+    fetch("/api/student/next-topic")
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) setTopic(data?.topic ?? null);

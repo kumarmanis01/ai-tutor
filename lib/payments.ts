@@ -1,14 +1,12 @@
 let _razorpay: any = null;
-import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger'
 
 export async function getRazorpay() {
   if (_razorpay) return _razorpay;
   const key_id = process.env.RAZORPAY_KEY_ID;
   const key_secret = process.env.RAZORPAY_KEY_SECRET;
   if (!key_id || !key_secret) {
-    throw new Error(
-      'Missing billing credentials: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set'
-    );
+    throw new Error('Missing billing credentials: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set');
   }
   // dynamic import to satisfy ESLint's no-require-imports rule
   const RazorpayModule = await import('razorpay');
@@ -60,10 +58,7 @@ export async function createRazorpayTokenCharge(opts: {
 
     // SDK should forward this to Razorpay payments endpoint. Some SDKs expose payments.create.
     if (typeof client.payments?.create === 'function') {
-      const resp = await client.payments.create(
-        payload,
-        opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : undefined
-      );
+      const resp = await client.payments.create(payload, opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : undefined);
       return resp;
     }
 
@@ -72,19 +67,15 @@ export async function createRazorpayTokenCharge(opts: {
     const secret = process.env.RAZORPAY_KEY_SECRET;
     if (!key || !secret) return null;
     const auth = Buffer.from(`${key}:${secret}`).toString('base64');
-    const headers: any = { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' };
+    const headers: any = { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' };
     if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
     // Node global fetch is available on modern runtimes; if not, this will throw and be caught.
-    const res = await fetch('https://api.razorpay.com/v1/payments', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
+    const res = await fetch('https://api.razorpay.com/v1/payments', { method: 'POST', headers, body: JSON.stringify(payload) });
     const data = await res.json();
     if (!res.ok) return null;
     return data;
   } catch (err) {
-    logger.debug('createRazorpayTokenCharge failed', { error: String(err) });
+    logger.debug('createRazorpayTokenCharge failed', { error: String(err) })
     return null;
   }
 }

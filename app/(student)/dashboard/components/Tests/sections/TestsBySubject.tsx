@@ -38,7 +38,7 @@ export function TestsBySubject() {
       ) : (
         Object.entries(groups).map(([subject, tests]) => (
           <div key={subject} className="space-y-2">
-            <button
+            <button 
               onClick={() => navigateToSubject(subject)}
               className="text-sm font-medium text-primary hover:underline flex items-center gap-1"
             >
@@ -47,8 +47,8 @@ export function TestsBySubject() {
             </button>
             <div className="space-y-1 pl-4">
               {tests.slice(0, 3).map((t) => (
-                <button
-                  key={t.id}
+                <button 
+                  key={t.id} 
                   onClick={() => navigateToTest(t.id, subject)}
                   className="w-full px-3 py-2 border rounded text-left hover:bg-muted/50 active:scale-[0.98] transition-transform text-sm"
                 >
@@ -56,7 +56,7 @@ export function TestsBySubject() {
                 </button>
               ))}
               {tests.length > 3 && (
-                <button
+                <button 
                   onClick={() => navigateToSubject(subject)}
                   className="text-xs text-primary hover:underline"
                 >

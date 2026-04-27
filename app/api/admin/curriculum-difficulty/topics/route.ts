@@ -23,3 +23,4 @@ export async function GET(req: NextRequest) {
   const result = await getTopicDifficultyList({ from, to, subjectId, limit });
   return NextResponse.json(result);
 }
+

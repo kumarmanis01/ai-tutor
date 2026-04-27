@@ -76,8 +76,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.verified) {
-        const msg =
-          typeof json?.error === 'string' ? json.error : 'Invalid code. Please try again.';
+        const msg = typeof json?.error === 'string' ? json.error : 'Invalid code. Please try again.';
         throw new Error(msg);
       }
       router.refresh();
@@ -134,9 +133,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
         <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">
           A 6-digit code will be sent to:
           <br />
-          <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-            {maskedEmail}
-          </span>
+          <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">{maskedEmail}</span>
         </p>
 
         {/* Send / Resend button */}
@@ -149,10 +146,10 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
           {sending
             ? 'Sending...'
             : resendCooldown > 0
-              ? `Resend in ${resendCooldown}s`
-              : codeSent
-                ? 'Resend code'
-                : 'Send OTP to parent'}
+            ? `Resend in ${resendCooldown}s`
+            : codeSent
+            ? 'Resend code'
+            : 'Send OTP to parent'}
         </button>
 
         {codeSent && (
@@ -165,9 +162,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
               {digits.map((d, i) => (
                 <input
                   key={i}
-                  ref={(el) => {
-                    inputRefs.current[i] = el;
-                  }}
+                  ref={(el) => { inputRefs.current[i] = el; }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}

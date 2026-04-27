@@ -75,7 +75,8 @@ export default async function PreSessionPage({ params }: Props) {
   const subjectId = concept.subjectId;
   const subjectName = concept.topic.chapter.subject.name;
   const chapterName = concept.topic.chapter.name;
-  const boardMarks = concept.topic.chapter.boardChapterWeights[0]?.weightMarks ?? null;
+  const boardMarks =
+    concept.topic.chapter.boardChapterWeights[0]?.weightMarks ?? null;
   const estimatedMinutes = estimateMinutes(concept.irt_b);
 
   // Load prerequisite concepts and their mastery scores for this student
@@ -117,7 +118,9 @@ export default async function PreSessionPage({ params }: Props) {
 
   let interruptedSession: InterruptedSession | null = null;
   if (incompleteSession) {
-    const minutesIn = Math.round((Date.now() - incompleteSession.startedAt.getTime()) / 60_000);
+    const minutesIn = Math.round(
+      (Date.now() - incompleteSession.startedAt.getTime()) / 60_000,
+    );
     interruptedSession = {
       sessionId: incompleteSession.id,
       phase: incompleteSession.state,

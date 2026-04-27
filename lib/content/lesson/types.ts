@@ -1,34 +1,34 @@
 export interface Lesson {
-  id: string;
-  syllabusId: string;
-  moduleId: string;
-  lessonIndex: number;
+  id: string
+  syllabusId: string
+  moduleId: string
+  lessonIndex: number
 
-  title: string;
-  durationMinutes: number;
+  title: string
+  durationMinutes: number
 
-  objectives: string[];
+  objectives: string[]
 
   explanation: {
-    overview: string;
+    overview: string
     concepts: {
-      title: string;
-      explanation: string;
-      example?: string;
-    }[];
-  };
+      title: string
+      explanation: string
+      example?: string
+    }[]
+  }
 
-  keyTakeaways: string[];
+  keyTakeaways: string[]
 
   practice: {
-    prompt: string;
-    expectedOutcome: string;
-  };
+    prompt: string
+    expectedOutcome: string
+  }
 
   metadata: {
-    level: 'beginner' | 'intermediate' | 'advanced';
-    prerequisites?: string[];
-  };
+    level: "beginner" | "intermediate" | "advanced"
+    prerequisites?: string[]
+  }
 }
 
-export default Lesson;
+export default Lesson

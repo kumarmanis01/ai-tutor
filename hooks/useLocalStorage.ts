@@ -1,5 +1,5 @@
 // hooks/useLocalStorage.ts
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 /**
  * Typed useLocalStorage hook — small, robust, and replacable
@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 export function useLocalStorage<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
-      if (typeof window === 'undefined') return initial;
+      if (typeof window === "undefined") return initial;
       const raw = localStorage.getItem(key);
       return raw ? (JSON.parse(raw) as T) : initial;
     } catch {

@@ -12,11 +12,11 @@
 
 This document defines:
 
-- The **architecture** of the AI Content Engine
-- The **operating model** (job-based, not interactive)
-- The **admin workflows** for AI moderation
-- The **analytics & audit expectations**
-- The **rules that AI coding assistants MUST follow**
+* The **architecture** of the AI Content Engine
+* The **operating model** (job-based, not interactive)
+* The **admin workflows** for AI moderation
+* The **analytics & audit expectations**
+* The **rules that AI coding assistants MUST follow**
 
 > ❗ Any code, UI, API, or migration that violates this document is considered **incorrect by design**.
 
@@ -28,10 +28,10 @@ This document defines:
 
 We want to **generate syllabus-aligned educational content** (notes, tests, questions) across:
 
-- Boards: CBSE, ICSE, IB
-- Grades: 1–12
-- Subjects
-- Languages: English, Hindi
+* Boards: CBSE, ICSE, IB
+* Grades: 1–12
+* Subjects
+* Languages: English, Hindi
 
 …using AI, **safely, reviewably, and scalably**.
 
@@ -43,16 +43,16 @@ We want to **generate syllabus-aligned educational content** (notes, tests, ques
 
 It is NOT:
 
-- A streaming system
-- A long-running interactive process
-- A per-job pause/resume engine
+* A streaming system
+* A long-running interactive process
+* A per-job pause/resume engine
 
 It IS:
 
-- Intent-driven
-- Queue-based
-- State-machine controlled
-- Admin-governed
+* Intent-driven
+* Queue-based
+* State-machine controlled
+* Admin-governed
 
 ---
 
@@ -128,9 +128,9 @@ enum ContentStatus {
 
 All AI-generated content:
 
-- Starts as `pending`
-- Is invisible to students
-- Requires admin approval
+* Starts as `pending`
+* Is invisible to students
+* Requires admin approval
 
 ---
 
@@ -272,31 +272,32 @@ POST /api/admin/content-engine/jobs/{id}/retry
 
 ### Admin Dashboard MUST SHOW:
 
-- Job table
-  - Job Type
-  - Entity
-  - Language
-  - Status
-  - Created At
+* Job table
 
-- Actions:
-  - Retry (failed)
-  - Cancel (queued)
+  * Job Type
+  * Entity
+  * Language
+  * Status
+  * Created At
+* Actions:
+
+  * Retry (failed)
+  * Cancel (queued)
 
 ### Global Controls:
 
-- Pause Engine
-- Resume Engine
+* Pause Engine
+* Resume Engine
 
 ---
 
 ### Admin UI MUST NOT:
 
-- Show progress bars
-- Show percentages
-- Show timers
-- Show partial content
-- Allow resume of running jobs
+* Show progress bars
+* Show percentages
+* Show timers
+* Show partial content
+* Allow resume of running jobs
 
 ---
 
@@ -304,11 +305,11 @@ POST /api/admin/content-engine/jobs/{id}/retry
 
 Every AI call must:
 
-- Be **atomic**
-- Return **full JSON**
-- Be **schema-validated**
-- Be **retryable**
-- Log to `AIContentLog`
+* Be **atomic**
+* Return **full JSON**
+* Be **schema-validated**
+* Be **retryable**
+* Log to `AIContentLog`
 
 ### Logging example:
 
@@ -330,9 +331,9 @@ model AIContentLog {
 
 ### Prompts must be:
 
-- Versioned
-- Deterministic
-- JSON-only
+* Versioned
+* Deterministic
+* JSON-only
 
 Example:
 
@@ -351,21 +352,21 @@ Return STRICT JSON matching schema v1.2.
 
 ### 12.1 Do NOT use GTM for:
 
-- AI usage
-- Job execution
-- Content moderation
+* AI usage
+* Job execution
+* Content moderation
 
 ### 12.2 Log internally:
 
-- Job lifecycle
-- AI calls
-- Approval actions
+* Job lifecycle
+* AI calls
+* Approval actions
 
 External tools (GA, PostHog) only for:
 
-- UI clicks
-- Admin navigation
-- Funnel metrics
+* UI clicks
+* Admin navigation
+* Funnel metrics
 
 ---
 
@@ -384,10 +385,10 @@ Never hard-delete educational content.
 
 ## 14. MIGRATION SAFETY RULES
 
-- Additive migrations only
-- Never drop columns without archive
-- Approval logs are append-only
-- Rollback = new record, not overwrite
+* Additive migrations only
+* Never drop columns without archive
+* Approval logs are append-only
+* Rollback = new record, not overwrite
 
 ---
 
@@ -395,20 +396,20 @@ Never hard-delete educational content.
 
 ### Copilot MUST:
 
-- Use job-based orchestration
-- Respect state machines
-- Avoid progress tracking
-- Avoid streaming logic
-- Use enums, not strings
-- Ask before inventing abstractions
+* Use job-based orchestration
+* Respect state machines
+* Avoid progress tracking
+* Avoid streaming logic
+* Use enums, not strings
+* Ask before inventing abstractions
 
 ### Copilot MUST NOT:
 
-- Implement pause/resume per job
-- Add WebSockets
-- Add background loops in API routes
-- Chunk AI output
-- Store partial content
+* Implement pause/resume per job
+* Add WebSockets
+* Add background loops in API routes
+* Chunk AI output
+* Store partial content
 
 ---
 
@@ -431,9 +432,9 @@ Never hard-delete educational content.
 
 This document exists because:
 
-- Humans infer intent
-- AI assistants do not
-- Ambiguity causes architectural drift
+* Humans infer intent
+* AI assistants do not
+* Ambiguity causes architectural drift
 
 This is the **single source of truth**.
 
@@ -448,6 +449,7 @@ If this document is followed:
 ✅ AI content is safe & auditable  
 ✅ System scales without rewrites
 
+
 ## 🧩 ADMIN UI WIREFRAMES
 
 ### AI Content Engine Moderation & Control
@@ -455,20 +457,19 @@ If this document is followed:
 > **Design philosophy:** Clarity > Control > Auditability  
 > _No animations, no progress bars, no real-time streaming._
 > modular, plug & play, follow SOLID principles
-
 ---
 
 #### 1. **Job Table**
 
-| Job Type           | Entity                | Language | Status    | Created At       | Actions |
-| ------------------ | --------------------- | -------- | --------- | ---------------- | ------- |
-| GENERATE_NOTES     | Topic: Fractions      | Hindi    | queued    | 2024-06-01 10:00 | Cancel  |
-| GENERATE_TEST      | Chapter: Algebra      | English  | failed    | 2024-06-01 09:45 | Retry   |
-| GENERATE_QUESTIONS | Topic: Photosynthesis | Hindi    | completed | 2024-06-01 09:30 | -       |
+| Job Type         | Entity         | Language | Status    | Created At         | Actions         |
+|------------------|---------------|----------|-----------|--------------------|-----------------|
+| GENERATE_NOTES   | Topic: Fractions | Hindi    | queued    | 2024-06-01 10:00   | Cancel          |
+| GENERATE_TEST    | Chapter: Algebra | English  | failed    | 2024-06-01 09:45   | Retry           |
+| GENERATE_QUESTIONS | Topic: Photosynthesis | Hindi    | completed | 2024-06-01 09:30   | -               |
 
-- **Actions:**
-  - **Retry** (only for failed jobs)
-  - **Cancel** (only for queued jobs)
+- **Actions:**  
+    - **Retry** (only for failed jobs)  
+    - **Cancel** (only for queued jobs)
 
 ---
 
@@ -482,20 +483,20 @@ If this document is followed:
 
 #### 3. **Content Moderation Table**
 
-| Content ID | Type  | Status   | Language | Created At       | Actions          |
-| ---------- | ----- | -------- | -------- | ---------------- | ---------------- |
-| 12345      | Notes | pending  | Hindi    | 2024-06-01 10:05 | Approve / Reject |
-| 12346      | Test  | approved | English  | 2024-06-01 09:50 | -                |
-| 12347      | Notes | rejected | Hindi    | 2024-06-01 09:40 | -                |
+| Content ID | Type    | Status   | Language | Created At         | Actions                |
+|------------|---------|----------|----------|--------------------|------------------------|
+| 12345      | Notes   | pending  | Hindi    | 2024-06-01 10:05   | Approve / Reject       |
+| 12346      | Test    | approved | English  | 2024-06-01 09:50   | -                      |
+| 12347      | Notes   | rejected | Hindi    | 2024-06-01 09:40   | -                      |
 
 ---
 
 #### 4. **Approval Audit Trail**
 
-| Action   | Admin     | Entity       | Comment        | Timestamp        |
-| -------- | --------- | ------------ | -------------- | ---------------- |
-| approved | admin@xyz | Notes: 12345 | Looks good     | 2024-06-01 10:10 |
-| rejected | admin@xyz | Test: 12346  | Needs revision | 2024-06-01 09:55 |
+| Action      | Admin      | Entity         | Comment         | Timestamp            |
+|-------------|------------|----------------|-----------------|----------------------|
+| approved    | admin@xyz  | Notes: 12345   | Looks good      | 2024-06-01 10:10     |
+| rejected    | admin@xyz  | Test: 12346    | Needs revision  | 2024-06-01 09:55     |
 
 ---
 

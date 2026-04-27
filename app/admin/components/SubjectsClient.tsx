@@ -1,5 +1,5 @@
-'use client';
-import React, { useEffect, useState } from 'react';
+"use client"
+import React, { useEffect, useState } from "react";
 
 interface SubjectRow {
   id: string;
@@ -15,27 +15,18 @@ export default function SubjectsClient() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch('/api/hierarchy?include=subjects')
-      .then((res) => res.json())
+    fetch("/api/hierarchy?include=subjects")
+      .then(res => res.json())
       .then((boards: any[]) => {
         const rows: SubjectRow[] = [];
         for (const board of boards) {
           for (const cls of board.classes ?? []) {
             for (const sub of cls.subjects ?? []) {
-              rows.push({
-                id: sub.id,
-                name: sub.name,
-                slug: sub.slug,
-                board: board.name,
-                grade: cls.grade,
-              });
+              rows.push({ id: sub.id, name: sub.name, slug: sub.slug, board: board.name, grade: cls.grade });
             }
           }
         }
-        rows.sort(
-          (a, b) =>
-            a.board.localeCompare(b.board) || a.grade - b.grade || a.name.localeCompare(b.name)
-        );
+        rows.sort((a, b) => a.board.localeCompare(b.board) || a.grade - b.grade || a.name.localeCompare(b.name));
         setSubjects(rows);
       })
       .catch(() => setError(true))
@@ -43,13 +34,7 @@ export default function SubjectsClient() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="p-6 animate-pulse space-y-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-8 bg-gray-200 rounded" />
-        ))}
-      </div>
-    );
+    return <div className="p-6 animate-pulse space-y-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-8 bg-gray-200 rounded" />)}</div>;
   }
 
   if (error) {
@@ -71,13 +56,9 @@ export default function SubjectsClient() {
         </thead>
         <tbody>
           {subjects.length === 0 && (
-            <tr>
-              <td colSpan={4} className="border px-4 py-4 text-center text-gray-400">
-                No subjects found
-              </td>
-            </tr>
+            <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-400">No subjects found</td></tr>
           )}
-          {subjects.map((sub) => (
+          {subjects.map(sub => (
             <tr key={sub.id} className="hover:bg-gray-50">
               <td className="border px-4 py-2 font-medium">{sub.name}</td>
               <td className="border px-4 py-2 text-gray-500 font-mono text-xs">{sub.slug}</td>

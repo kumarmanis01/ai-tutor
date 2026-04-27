@@ -15,55 +15,55 @@
  *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
  *   2026-04-14 | gap-fix P1   | restore full widget set, wire server data, freemium counter
  *   2026-04-15 | copilot | filter dashboard subjects by student's learning plans when present
- *   2026-04-21T12:00:00Z | staff-engineer | fix: parse `user.grade` to integer before using in Prisma
- *                               `class.grade` filter; prefer learning-plan subject when
- *                               deduplicating by name; use `/diagnostic/[subjectId]`
- *                               for diagnostic CTA; add unit tests covering behaviors
+  *   2026-04-21T12:00:00Z | staff-engineer | fix: parse `user.grade` to integer before using in Prisma
+  *                               `class.grade` filter; prefer learning-plan subject when
+  *                               deduplicating by name; use `/diagnostic/[subjectId]`
+  *                               for diagnostic CTA; add unit tests covering behaviors
  */
 
-import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { requireActiveSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { getNextAction } from '@/lib/homeEngine/getNextAction';
-import { computeReadinessScore } from '@/lib/student/examReadiness';
+import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { requireActiveSession } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { getNextAction } from '@/lib/homeEngine/getNextAction'
+import { computeReadinessScore } from '@/lib/student/examReadiness'
 import TodaysLearningCard, {
   type TodaysLearningCardProps,
-} from '@/components/student/dashboard/TodaysLearningCard';
-import SecondaryStartOptions from '@/components/student/dashboard/SecondaryStartOptions';
-import { XPWidget } from '@/components/student/dashboard/XPWidget';
-import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip';
-import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget';
-import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard';
-import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
-import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter';
-import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
-import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle';
+} from '@/components/student/dashboard/TodaysLearningCard'
+import SecondaryStartOptions from '@/components/student/dashboard/SecondaryStartOptions'
+import { XPWidget } from '@/components/student/dashboard/XPWidget'
+import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip'
+import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
+import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
+import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
+import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
+import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
+import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Home | Spinzy AI Tutor',
   description: 'Your personalised AI tutor dashboard',
-};
+}
 
 /** Exam crunch mode: <= 14 days to exam date. */
 function computeCrunchMode(examDate: Date | null | undefined): boolean {
-  if (!examDate) return false;
-  const daysToExam = Math.ceil((examDate.getTime() - Date.now()) / 86400000);
-  return daysToExam >= 0 && daysToExam <= 14;
+  if (!examDate) return false
+  const daysToExam = Math.ceil((examDate.getTime() - Date.now()) / 86400000)
+  return daysToExam >= 0 && daysToExam <= 14
 }
 
-const FREE_TIER_SESSION_CAP = 3;
+const FREE_TIER_SESSION_CAP = 3
 
 export default async function StudentHomeDashboardPage() {
-  const authSession = await requireActiveSession();
-  if (!authSession) redirect('/');
+  const authSession = await requireActiveSession()
+  if (!authSession) redirect('/')
 
-  const userId = (authSession.user as { id: string }).id;
+  const userId = (authSession.user as { id: string }).id
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)
 
   // ── Round 1: all independent queries in a single parallel fetch ──────────────
   // XP aggregates merged here so there is no second sequential Promise.all below.
@@ -124,50 +124,43 @@ export default async function StudentHomeDashboardPage() {
       where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
       _sum: { amount: true },
     }),
-  ]);
+  ])
 
-  if (!user) redirect('/');
+  if (!user) redirect('/')
 
-  const isPremium = user.subscriptionStatus === 'premium';
-  const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0;
-  const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_CAP - sessionsUsed);
-  const periodStart =
-    freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString();
+  const isPremium = user.subscriptionStatus === 'premium'
+  const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
+  const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_CAP - sessionsUsed)
+  const periodStart = freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString()
 
-  const latestPlan = user.learningPlans[0];
+  const latestPlan = user.learningPlans[0]
   // Respect per-user preference: 'on' | 'off' | 'auto'
-  const prefCrunch = (user as any)?.preferences?.crunchMode ?? 'auto';
-  const autoCrunch = computeCrunchMode(latestPlan?.examDate);
-  const isCrunchMode = prefCrunch === 'on' ? true : prefCrunch === 'off' ? false : autoCrunch;
+  const prefCrunch = (user as any)?.preferences?.crunchMode ?? 'auto'
+  const autoCrunch = computeCrunchMode(latestPlan?.examDate)
+  const isCrunchMode = prefCrunch === 'on' ? true : prefCrunch === 'off' ? false : autoCrunch
 
   // ── XP breakdown ─────────────────────────────────────────────────────────────
-  const xpThisWeek = xpThisWeekResult._sum.amount ?? 0;
-  const xpBySource: Record<string, number> = {};
+  const xpThisWeek = xpThisWeekResult._sum.amount ?? 0
+  const xpBySource: Record<string, number> = {}
   for (const row of xpBySourceRaw) {
-    xpBySource[row.source] = row._sum.amount ?? 0;
+    xpBySource[row.source] = row._sum.amount ?? 0
   }
 
   // ── Subject resolution (depends on Round 1 data -- unavoidable sequential step) ──
   // Prefer subjects from the student's profile `subjects` (enrolled subjects),
   // then fall back to subjects referenced by their learning plans, then active subjects.
-  let subjects = [] as { id: string; name: string }[];
+  let subjects = [] as { id: string; name: string }[]
 
   // Resolve enrolled subjects from user.subjects (may be string[] or Postgres wire-format string)
-  let enrolledSubjects: string[] | null = null;
+  let enrolledSubjects: string[] | null = null
   if (user?.subjects) {
     if (Array.isArray(user.subjects)) {
-      const arr = (user.subjects as string[]).filter(Boolean);
-      if (arr.length > 0) enrolledSubjects = arr;
+      const arr = (user.subjects as string[]).filter(Boolean)
+      if (arr.length > 0) enrolledSubjects = arr
     } else if (typeof user.subjects === 'string' && user.subjects.length > 0) {
-      const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim();
-      const parts =
-        cleaned.length > 0
-          ? cleaned
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [];
-      if (parts.length > 0) enrolledSubjects = parts;
+      const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim()
+      const parts = cleaned.length > 0 ? cleaned.split(',').map((s) => s.trim()).filter(Boolean) : []
+      if (parts.length > 0) enrolledSubjects = parts
     }
   }
 
@@ -179,12 +172,12 @@ export default async function StudentHomeDashboardPage() {
     const parsedUserGrade =
       typeof user?.grade === 'string'
         ? (() => {
-            const normalizedGrade = user.grade.trim();
-            if (normalizedGrade.length === 0) return null;
-            const numericGrade = Number(normalizedGrade);
-            return Number.isInteger(numericGrade) ? numericGrade : null;
+            const normalizedGrade = user.grade.trim()
+            if (normalizedGrade.length === 0) return null
+            const numericGrade = Number(normalizedGrade)
+            return Number.isInteger(numericGrade) ? numericGrade : null
           })()
-        : null;
+        : null
 
     // Scope to the student's own board + grade to avoid cross-grade/board duplicates
     // when multiple active SubjectDef rows share the same display name.
@@ -203,35 +196,33 @@ export default async function StudentHomeDashboardPage() {
         OR: [{ name: { in: enrolledSubjects } }, { slug: { in: enrolledSubjects } }],
       },
       select: { id: true, name: true },
-    });
+    })
   } else {
-    const planSubjectIds = Array.from(
-      new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId))
-    );
+    const planSubjectIds = Array.from(new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId)))
     if (planSubjectIds.length > 0) {
       subjects = await prisma.subjectDef.findMany({
         where: { id: { in: planSubjectIds }, lifecycle: 'active' },
         select: { id: true, name: true },
-      });
+      })
     } else {
       subjects = await prisma.subjectDef.findMany({
         where: { lifecycle: 'active' },
         select: { id: true, name: true },
         take: 5,
-      });
+      })
     }
   }
 
   // Deduplicate by lowercase name -- prefer the subject that is in a learning plan so
   // that "Start Diagnostic" always links to the subject the student actually enrolled in.
   {
-    const planSubjectIdSet = new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId));
-    const seen = new Map<string, { id: string; name: string }>();
+    const planSubjectIdSet = new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId))
+    const seen = new Map<string, { id: string; name: string }>()
     for (const s of subjects) {
-      const key = s.name.toLowerCase();
-      if (!seen.has(key) || planSubjectIdSet.has(s.id)) seen.set(key, s);
+      const key = s.name.toLowerCase()
+      if (!seen.has(key) || planSubjectIdSet.has(s.id)) seen.set(key, s)
     }
-    subjects = Array.from(seen.values());
+    subjects = Array.from(seen.values())
   }
 
   // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
@@ -239,23 +230,23 @@ export default async function StudentHomeDashboardPage() {
   // SUBJECT_CONCURRENCY subjects at a time to avoid a burst of concurrent Neon
   // connections that would saturate the connection pool and cause tail-latency spikes.
   // Within each batch, the three per-subject queries run in an inner Promise.all.
-  const SUBJECT_CAP = 5;
-  const SUBJECT_CONCURRENCY = 3;
+  const SUBJECT_CAP = 5
+  const SUBJECT_CONCURRENCY = 3
 
   type ReadinessRow = {
-    subjectId: string;
-    subjectName: string;
-    score: number;
-    predictedRange?: any;
-    diagnosticDone: boolean;
-    retakeEligibleAt: string | null;
-  };
+    subjectId: string
+    subjectName: string
+    score: number
+    predictedRange?: any
+    diagnosticDone: boolean
+    retakeEligibleAt: string | null
+  }
 
-  const cappedSubjects = subjects.slice(0, SUBJECT_CAP);
-  const readinessResults: ReadinessRow[] = [];
+  const cappedSubjects = subjects.slice(0, SUBJECT_CAP)
+  const readinessResults: ReadinessRow[] = []
 
   for (let i = 0; i < cappedSubjects.length; i += SUBJECT_CONCURRENCY) {
-    const batch = cappedSubjects.slice(i, i + SUBJECT_CONCURRENCY);
+    const batch = cappedSubjects.slice(i, i + SUBJECT_CONCURRENCY)
     const batchRows = await Promise.all(
       batch.map(async (sub): Promise<ReadinessRow> => {
         const [result, diagStatus] = await Promise.all([
@@ -265,7 +256,7 @@ export default async function StudentHomeDashboardPage() {
             chapters: [],
           })),
           getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
-        ]);
+        ])
         return {
           subjectId: sub.id,
           subjectName: sub.name,
@@ -275,24 +266,26 @@ export default async function StudentHomeDashboardPage() {
           // (lowercase 'completed'), not in the DiagnosticSession Prisma model.
           diagnosticDone: diagStatus?.status === 'completed',
           retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
-        };
-      })
-    );
-    readinessResults.push(...batchRows);
+        }
+      }),
+    )
+    readinessResults.push(...batchRows)
   }
 
   // ── Weekly study strip data ──────────────────────────────────────────────────
-  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const now = new Date();
-  const todayDow = now.getUTCDay(); // 0=Sun
+  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const now = new Date()
+  const todayDow = now.getUTCDay() // 0=Sun
   const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
     // Monday-based week: offset from Monday
-    const dayOffset = i - (todayDow === 0 ? 6 : todayDow - 1);
-    d.setUTCDate(d.getUTCDate() + dayOffset);
-    return d.toISOString().split('T')[0];
-  });
-  const activeDateSet = new Set(weeklyActivity.map((s) => s.startedAt.toISOString().split('T')[0]));
+    const dayOffset = i - (todayDow === 0 ? 6 : todayDow - 1)
+    d.setUTCDate(d.getUTCDate() + dayOffset)
+    return d.toISOString().split('T')[0]
+  })
+  const activeDateSet = new Set(
+    weeklyActivity.map((s) => s.startedAt.toISOString().split('T')[0])
+  )
   const weeklyStripData = {
     days: weekDays.map((date, i) => ({
       date,
@@ -302,18 +295,18 @@ export default async function StudentHomeDashboardPage() {
     sessionCountThisWeek: weeklyActivity.length,
     currentStreak: 0,
     weeklyGoal: 5,
-  };
+  }
 
   // ── Build TodaysLearningCard props from getNextAction result ─────────────────
   // diagnosticHref should point to the FIRST subject that still needs a diagnostic
   // so the "Take diagnostic test" CTA never sends the student to a completed subject.
-  const firstPendingDiagSubject = readinessResults.find((r) => !r.diagnosticDone);
+  const firstPendingDiagSubject = readinessResults.find((r) => !r.diagnosticDone)
   const firstDiagSubjectId =
-    firstPendingDiagSubject?.subjectId ?? latestPlan?.subjectId ?? subjects[0]?.id;
+    firstPendingDiagSubject?.subjectId ?? latestPlan?.subjectId ?? subjects[0]?.id
   let cardProps: TodaysLearningCardProps = {
     type: 'empty',
     diagnosticHref: firstDiagSubjectId ? `/diagnostic/${firstDiagSubjectId}` : '/dashboard',
-  };
+  }
 
   if (nextAction) {
     if (nextAction.ruleId === 'resume_session' && nextAction.sessionId) {
@@ -327,7 +320,7 @@ export default async function StudentHomeDashboardPage() {
           chapter: nextAction.chapter ?? '',
           currentPhase: nextAction.resumePhase ?? 'OVERVIEW',
         },
-      };
+      }
     } else if (nextAction.ruleId === 'homework_pending' && nextAction.assignmentId) {
       cardProps = {
         type: 'homework',
@@ -338,7 +331,7 @@ export default async function StudentHomeDashboardPage() {
           dueDate: new Date(Date.now() + 86400000).toISOString(),
           status: 'PENDING',
         },
-      };
+      }
     } else if (nextAction.topicId) {
       cardProps = {
         type: 'start',
@@ -349,7 +342,7 @@ export default async function StudentHomeDashboardPage() {
           estimatedTimeMin: 20,
         },
         ctaLabel: isCrunchMode ? 'Study for exam' : undefined,
-      };
+      }
     }
   }
 
@@ -357,9 +350,9 @@ export default async function StudentHomeDashboardPage() {
   // is ready yet, show the plan-loading state instead of the onboarding checklist.
   // This prevents "Take diagnostic test" from appearing after all tests are done.
   const allDiagnosticsComplete =
-    readinessResults.length > 0 && readinessResults.every((r) => r.diagnosticDone);
+    readinessResults.length > 0 && readinessResults.every((r) => r.diagnosticDone)
   if (cardProps.type === 'empty' && allDiagnosticsComplete) {
-    cardProps = { type: 'plan_loading' };
+    cardProps = { type: 'plan_loading' }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -375,9 +368,7 @@ export default async function StudentHomeDashboardPage() {
               </div>
               <div>
                 <p className="text-sm font-bold text-[#E24B4A]">Exam approaching</p>
-                <p className="text-xs text-[#E24B4A]/80">
-                  Focus mode on -- only exam-relevant actions shown.
-                </p>
+                <p className="text-xs text-[#E24B4A]/80">Focus mode on -- only exam-relevant actions shown.</p>
               </div>
             </div>
             <CrunchModeToggle />
@@ -391,18 +382,11 @@ export default async function StudentHomeDashboardPage() {
           {/* F-STU-032 AC-03: Primary CTA */}
 
           <TodaysLearningCard {...cardProps} />
-          {!isCrunchMode && (
-            <SecondaryStartOptions todaysConceptId={cardProps.recommendation?.conceptId} />
-          )}
+          {!isCrunchMode && <SecondaryStartOptions todaysConceptId={cardProps.recommendation?.conceptId} />}
 
           {/* F-STU-031: XP + Level + source breakdown (hidden in crunch mode) */}
           {!isCrunchMode && (
-            <XPWidget
-              totalXp={user.totalXp}
-              level={user.level}
-              xpThisWeek={xpThisWeek}
-              xpBySource={xpBySource}
-            />
+            <XPWidget totalXp={user.totalXp} level={user.level} xpThisWeek={xpThisWeek} xpBySource={xpBySource} />
           )}
 
           {/* Weekly activity strip (hidden in crunch mode) */}
@@ -470,5 +454,5 @@ export default async function StudentHomeDashboardPage() {
         </div>
       </div>
     </main>
-  );
+  )
 }

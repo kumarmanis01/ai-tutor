@@ -8,15 +8,16 @@
  * - tests/unit/worker/services/inactivityAlertWorker.test.ts
  */
 
-import { logger } from '@/lib/logger';
-import { runInactivityAlerts } from '@/worker/jobs/inactivityAlert';
+import { logger } from '@/lib/logger'
+import { runInactivityAlerts } from '@/worker/jobs/inactivityAlert'
 
 export async function processParentInactivityAlerts(now = new Date()): Promise<void> {
   try {
-    await runInactivityAlerts();
+    await runInactivityAlerts()
   } catch (err) {
-    logger.error('inactivityAlertWorker.wrapperFailed', { error: String(err) });
+    logger.error('inactivityAlertWorker.wrapperFailed', { error: String(err) })
   }
 }
 
-export default processParentInactivityAlerts;
+export default processParentInactivityAlerts
+

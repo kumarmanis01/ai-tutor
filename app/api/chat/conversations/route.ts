@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -26,16 +26,7 @@ export async function GET(req: Request) {
       select: { id: true, conversationId: true, content: true, role: true, createdAt: true },
     });
 
-    const byConv: Record<
-      string,
-      {
-        conversationId: string;
-        lastMessage: string;
-        lastRole: 'user' | 'assistant';
-        updatedAt: Date;
-        count: number;
-      }
-    > = {};
+    const byConv: Record<string, { conversationId: string; lastMessage: string; lastRole: 'user' | 'assistant'; updatedAt: Date; count: number }> = {};
     for (const r of rows) {
       const cid = (r.conversationId || '').trim();
       if (!cid) continue; // skip legacy items without conversationId
@@ -66,11 +57,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ subject, threads });
   } catch (e) {
-    logger.error('GET /api/chat/conversations error', {
-      className: 'api.chat.conversations',
-      methodName: 'GET',
-      error: e,
-    });
+    logger.error('GET /api/chat/conversations error', { className: 'api.chat.conversations', methodName: 'GET', error: e });
     return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

@@ -1,28 +1,28 @@
-import Lesson from '../../content/lesson/types';
-import Quiz from '../../content/quiz/types';
-import ProjectAssignment from '../../content/project/types';
+import Lesson from '../../content/lesson/types'
+import Quiz from '../../content/quiz/types'
+import ProjectAssignment from '../../content/project/types'
 
 export interface CourseModule {
-  moduleId: string;
-  title: string;
+  moduleId: string
+  title: string
 
-  lessons: Lesson[];
-  quizzes?: Quiz[];
-  projects?: ProjectAssignment[];
+  lessons: Lesson[]
+  quizzes?: Quiz[]
+  projects?: ProjectAssignment[]
 }
 
 export interface CoursePackage {
-  id: string;
-  syllabusId: string;
-  version: number;
+  id: string
+  syllabusId: string
+  version: number
 
-  title: string;
-  description?: string;
+  title: string
+  description?: string
 
-  modules: CourseModule[];
+  modules: CourseModule[]
 
-  createdAt: string;
-  frozen: true;
+  createdAt: string
+  frozen: true
 }
 
-export default CoursePackage;
+export default CoursePackage

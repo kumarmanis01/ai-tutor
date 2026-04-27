@@ -6,14 +6,14 @@
 // so components that consume streaming APIs (SSE / Fetch body readers) do
 // not crash when constructing decoders in tests.
 try {
-  const g: any = globalThis as any;
+  const g: any = globalThis as any
   if (typeof g.TextDecoder === 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    g.TextDecoder = require('util').TextDecoder;
+    g.TextDecoder = require('util').TextDecoder
   }
   if (typeof g.TextEncoder === 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    g.TextEncoder = require('util').TextEncoder;
+    g.TextEncoder = require('util').TextEncoder
   }
 } catch {
   // best-effort: if require is not available, ignore and continue
@@ -21,13 +21,13 @@ try {
 
 if (typeof (globalThis as any).window !== 'undefined') {
   try {
-    const g: any = globalThis as any;
+    const g: any = globalThis as any
     if (g.HTMLElement && !g.HTMLElement.prototype.scrollIntoView) {
       // Provide a no-op implementation used by components that call
       // `element.scrollIntoView(...)` during lifecycle effects.
       g.HTMLElement.prototype.scrollIntoView = function () {
         // no-op for tests
-      };
+      }
     }
   } catch {
     // ignore failures in odd runtime shims

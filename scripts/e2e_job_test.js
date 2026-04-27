@@ -11,16 +11,13 @@
     console.log('Using board:', board.name, board.id);
 
     // pick first class from board.classes
-    const classObj =
-      Array.isArray(board.classes) && board.classes.length > 0 ? board.classes[0] : null;
+    const classObj = Array.isArray(board.classes) && board.classes.length > 0 ? board.classes[0] : null;
     if (!classObj) throw new Error('No classes on the selected board');
     console.log('Using class grade:', classObj.grade, 'id:', classObj.id);
 
     // fetch subjects for class
     console.log('Fetching subjects for classId=', classObj.id);
-    res = await fetch(
-      `http://localhost:3000/api/subjects?classId=${encodeURIComponent(classObj.id)}`
-    );
+    res = await fetch(`http://localhost:3000/api/subjects?classId=${encodeURIComponent(classObj.id)}`);
     let subjects = await res.json();
     if (!Array.isArray(subjects)) throw new Error('Subjects endpoint did not return array');
     if (subjects.length === 0) throw new Error('No subjects for class');
@@ -35,9 +32,7 @@
 
     // fetch topics for subject (across chapters)
     console.log('Fetching topics for subjectId=', subject.id);
-    res = await fetch(
-      `http://localhost:3000/api/topics?subjectId=${encodeURIComponent(subject.id)}`
-    );
+    res = await fetch(`http://localhost:3000/api/topics?subjectId=${encodeURIComponent(subject.id)}`);
     const topics = await res.json();
     console.log('Topics count:', Array.isArray(topics) ? topics.length : 'unknown');
 
@@ -60,16 +55,10 @@
     console.log('POST result:', postResult);
 
     // Verify in DB using Prisma
-    const { prisma } = require('../lib/prisma');
-
-    const job = await prisma.executionJob.findFirst({
-      where: { entityId: subject.id },
-      orderBy: { createdAt: 'desc' },
-    });
-    console.log(
-      'DB job found:',
-      job ? { id: job.id, jobType: job.jobType, status: job.status } : null
-    );
+const { prisma } = require('../lib/prisma');
+    
+    const job = await prisma.executionJob.findFirst({ where: { entityId: subject.id }, orderBy: { createdAt: 'desc' } });
+    console.log('DB job found:', job ? { id: job.id, jobType: job.jobType, status: job.status } : null);
     await prisma.$disconnect();
 
     process.exit(0);

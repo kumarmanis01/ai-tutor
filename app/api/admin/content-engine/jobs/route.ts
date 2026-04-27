@@ -59,12 +59,8 @@ export async function GET(req: Request) {
     const status = url.searchParams.get('status') ?? undefined;
     const jobType = url.searchParams.get('jobType') ?? undefined;
     const entityType = url.searchParams.get('entityType') ?? undefined;
-    const createdAfter = url.searchParams.get('createdAfter')
-      ? new Date(String(url.searchParams.get('createdAfter')))
-      : undefined;
-    const createdBefore = url.searchParams.get('createdBefore')
-      ? new Date(String(url.searchParams.get('createdBefore')))
-      : undefined;
+    const createdAfter = url.searchParams.get('createdAfter') ? new Date(String(url.searchParams.get('createdAfter'))) : undefined;
+    const createdBefore = url.searchParams.get('createdBefore') ? new Date(String(url.searchParams.get('createdBefore'))) : undefined;
 
     // Pagination: cursor-based using createdAt + id
     const limit = Math.min(Number(url.searchParams.get('limit') || '25') || 25, 100);

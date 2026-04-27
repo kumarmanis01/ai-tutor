@@ -21,7 +21,6 @@ provides a short description of their purpose when known. Only variables
 referenced in application source files (not Next.js internals) are included.
 
 **Core infrastructure**
-
 - DATABASE_URL: Postgres connection string used by Prisma/DB access.
 - REDIS_URL: Redis connection string used by queues, caching and rate limiters.
 - REDIS_USE_TLS: Enable TLS for Redis (when using rediss:// or explicit toggle).
@@ -29,7 +28,6 @@ referenced in application source files (not Next.js internals) are included.
 - REDIS_TLS_REJECT_UNAUTHORIZED: Set to '0' to skip Redis TLS cert validation.
 
 **Authentication / app URL**
-
 - NEXTAUTH_SECRET: Secret used by NextAuth for signing/encryption.
 - NEXTAUTH_URL: Public base URL used for auth callbacks and link generation.
 - NEXTAUTH_URL_INTERNAL: Internal auth base URL variant used server-side.
@@ -40,7 +38,6 @@ referenced in application source files (not Next.js internals) are included.
 - APP_URL: Server-side fallback app URL.
 
 **Feature flags & rollout**
-
 - ENABLE_AI_TUTOR: Toggle AI tutor feature on/off.
 - ENABLE_DISTRESS_DETECTION: Toggle distress-detection features.
 - ENABLE_TUTOR_CARD: Toggle tutor card UI/behavior.
@@ -51,23 +48,20 @@ referenced in application source files (not Next.js internals) are included.
 - ENABLE_SESSION_ENGINE: Toggle alternate session engine behavior.
 
 **Payments (Razorpay / billing)**
-
 - RAZORPAY_KEY_ID: Razorpay API key (private) used server-side.
 - RAZORPAY_KEY_SECRET: Razorpay API secret (private) used server-side.
 - RAZORPAY_WEBHOOK_SECRET: Secret used to verify Razorpay webhooks.
 - NEXT_PUBLIC_RAZORPAY_KEY_ID: Client-facing Razorpay key id for checkout.
-- RAZORPAY*PLAN*_ / RAZORPAY*PLAN_STANDARD_MONTHLY / RAZORPAY_PLAN_FAMILY*_: Plan IDs used to map product SKUs.
+- RAZORPAY_PLAN_* / RAZORPAY_PLAN_STANDARD_MONTHLY / RAZORPAY_PLAN_FAMILY_*: Plan IDs used to map product SKUs.
 - RAZORPAY_FAMILY_MONTHLY_PLAN_ID / RAZORPAY_FAMILY_ANNUAL_PLAN_ID: billing plan ids.
 
 **Email / Notification providers**
-
 - RESEND_API_KEY: API key for Resend (email provider).
 - EMAIL_FROM: Default `From` address used for outbound email.
 - SUPPORT_EMAIL: Fallback support email used in templates.
 - ONCALL_EMAIL: On-call contact for alerts and reports.
 
 **SMS / WhatsApp**
-
 - MSG91_AUTH_KEY: auth key for MSG91 SMS service.
 - MSG91_TEMPLATE_ID: default MSG91 template id for SMS messages.
 - MSG91_WIDGET_TOKEN: token for MSG91 widget integrations.
@@ -78,7 +72,6 @@ referenced in application source files (not Next.js internals) are included.
 - WHATSAPP_VERIFY_TOKEN: Verify token for incoming WhatsApp webhooks.
 
 **Storage (S3 / Cloud R2 / S3 presign)**
-
 - S3_BUCKET: S3 bucket name for AWS uploads (server-side).
 - NEXT_PUBLIC_S3_BUCKET: Client-visible bucket name (if exposed).
 - S3_PRESIGN_EXPIRES: Default expires (seconds) for S3 presigned URLs.
@@ -88,7 +81,6 @@ referenced in application source files (not Next.js internals) are included.
 - R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ENDPOINT / R2_REGION / R2_BUCKET / R2_PUBLIC_URL: Cloudflare R2 credentials & endpoints.
 
 **LLM / AI / embeddings**
-
 - OPENAI_API_KEY: OpenAI API key for embeddings and completions.
 - ANTHROPIC_API_KEY: Anthropic API key (failover provider).
 - MODEL_SMALL / MODEL_MEDIUM / MODEL_LARGE / MODEL_DEFAULT: Model name overrides used by the callLLM logic.
@@ -105,14 +97,12 @@ referenced in application source files (not Next.js internals) are included.
 - RAG_CONTEXT_CHAR_LIMIT / MAX_PROMPT_LENGTH: prompt/context limits used by RAG and prompt building.
 
 **Validation / tuning caps**
-
 - VALIDATION_CAP_CHAPTERS: cap used by validators for chapter counts.
 - VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY: cap for question validation per difficulty.
 - VALIDATION_CAP_TOPICS_PER_CHAPTER: cap for topics per chapter validation.
 - QUESTIONS_LLM_TIMEOUT_MS / SYLLABUS_LLM_TIMEOUT_MS / NOTES_LLM_TIMEOUT_MS: LLM timeouts per worker type.
 
 **Debug / test helpers**
-
 - NODE_ENV: Node environment ('development'|'production'|'test').
 - NEXT_PUBLIC_DEBUG_MODE: client-side debug toggle.
 - WORKER_DEBUG: worker-level debug override.
@@ -123,12 +113,10 @@ referenced in application source files (not Next.js internals) are included.
 - QA_EMAIL: QA email used for testing utilities.
 
 **OTP / security**
-
 - OTP_SECRET: Secret used to sign/verify OTP codes.
 - OTP_EXPIRY_SECONDS: expiry window for OTP codes.
 
 **Alerts / observability / exec settings**
-
 - SLACK_WEBHOOK: Slack webhook URL used by alerting scripts.
 - SLACK_CHANNEL / SLACK_USERNAME: optional slack sink settings.
 - PAGER_WEBHOOK: Pager/webhook for alert sinks.
@@ -137,24 +125,21 @@ referenced in application source files (not Next.js internals) are included.
 - SHUTDOWN_TIMEOUT_MS: graceful shutdown timeout for scripts.
 
 **Queues / runtime heuristics**
-
 - QUEUE_BACKLOG_THRESHOLD: threshold for queue backlog alerts.
 - QUEUE_AGE_THRESHOLD: age threshold for queue jobs to trigger alerts.
 - FAILED_SPIKE_MULT / FAILED_SPIKE_MIN: heuristics for failure spike detection.
 - JOB_DRY_RUN: run jobs in dry-run mode when set to '1'.
 
 **Invoices / tax**
-
 - PLATFORM_GST_RATE: GST rate applied to invoices (decimal, e.g. 0.18).
 - PLATFORM_HSN: HSN code used on invoices.
 - PLATFORM_GSTIN: GSTIN for platform invoices.
 
 **Misc / convenience**
-
 - SUPPORT_EMAIL: support contact used in templates.
 - ADMIN_PURGE_SECRET: admin endpoint secret used for purge operations.
 - SUBSCRIPTION_RENEWAL_SIMULATE_FAILURES: testing toggle to simulate failures.
 - QA_EMAIL: email used for QA/test flows.
 
-If you want this file to include internal Next.js or build-time envs (e.g. **NEXT_PREVIEW_MODE_ID,
-**NEXT*BUILD_ID, \_\_NEXT*\*), or a machine-readable CSV/JSON export, tell me and I will add that.
+If you want this file to include internal Next.js or build-time envs (e.g. __NEXT_PREVIEW_MODE_ID,
+__NEXT_BUILD_ID, __NEXT_*), or a machine-readable CSV/JSON export, tell me and I will add that.

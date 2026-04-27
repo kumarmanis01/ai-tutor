@@ -1,13 +1,10 @@
 # Spinzy AI Home Tutor — Session Handoff
-
 # Date: 2026-03-19
-
 # For: New Claude chat continuation
 
 ---
 
 ## Project Identity
-
 - **Product:** Spinzy Academy — AI home tutor "Vidya" for Indian K-12 students
 - **Domain:** https://spinzyacademy.com (migrated from Vercel to VPS today)
 - **VPS:** gnosiva@srv1232455, app path: `/home/gnosiva/apps/content-engine/ai-tutor/`
@@ -19,7 +16,6 @@
 ---
 
 ## Current Production State
-
 - Site is LIVE at https://spinzyacademy.com
 - Google OAuth working (URIs updated in Google Console)
 - Cloudflare: A record → VPS IP, SSL Full (strict)
@@ -31,7 +27,6 @@
 ## THIS SESSION — What Was Done
 
 ### 1. Domain Migration (COMPLETE)
-
 - Removed Vercel DNS from Cloudflare
 - Added A records pointing to VPS IP for @ and www
 - Updated NEXTAUTH_URL in .env.production
@@ -39,19 +34,15 @@
 - Removed domain from Vercel dashboard
 
 ### 2. Class 1–12 Expansion (COMPLETE — needs deploy)
-
 All changes applied via Claude Code, committed and pushed:
-
 - `components/student/onboarding/ProfileSetupForm.tsx` — grade picker expanded from [6..12] to [1..12], grid-cols-4
 - `app/api/user/onboarding/route.ts` — subjects validation now skips if no subjects seeded for grade, case-insensitive matching
 - Landing page copy updated in 8 files: all "6–12" → "1–12"
 - `app/(public)/landing-page/components/TestimonialsSection.tsx` — testimonial role updated
 
 ### 3. ClassLevel DB Seed (PENDING)
-
 Grades 1–5 may be missing from ClassLevel table. Script ready, failed due to env issue.
 Run on VPS:
-
 ```bash
 cd /home/gnosiva/apps/content-engine/ai-tutor
 set -a && source .env.production && set +a
@@ -83,29 +74,18 @@ node /tmp/seed-classes.js
 ### 4. Onboarding 400 Error (PARTIALLY FIXED — needs one more Claude Code fix)
 
 **Root cause confirmed:** POST to `/api/user/onboarding` returns 400 with:
-
 ```json
-{
-  "error": "validation_error",
-  "fieldErrors": { "name": "Name is required", "age": "Age is required" }
-}
+{ "error": "validation_error", "fieldErrors": { "name": "Name is required", "age": "Age is required" } }
 ```
 
 **Request payload the form sends:**
-
 ```json
-{
-  "board": "cbse",
-  "class_grade": 4,
-  "preferred_language": "en",
-  "subjects": ["hindi", "english", "mathematics"]
-}
+{ "board": "cbse", "class_grade": 4, "preferred_language": "en", "subjects": ["hindi","english","mathematics"] }
 ```
 
 The form never sends `name` or `age`. The API requires both but shouldn't.
 
 **Fix needed in Claude Code:**
-
 ```
 /run cat app/api/user/onboarding/route.ts
 
@@ -126,13 +106,11 @@ Do not change anything else. npm run build must pass. Report exact lines removed
 After fix: commit, push, deploy.
 
 ### 5. Image Optimizer Still Broken (UNRESOLVED)
-
 - `curl -I http://localhost:3000/logos/icon-192.png` → 200 OK ✅
 - `curl -I "http://localhost:3000/_next/image?url=%2Flogos%2Ficon-192.png&w=32&q=75"` → 400 Bad Request ❌
 - `localPatterns` added to `next.config.ts` but build not picking it up
 - Clean rebuild (`rm -rf .next && npm run build`) needed on VPS
 - `next.config.ts` localPatterns config:
-
 ```typescript
 images: {
   localPatterns: [
@@ -144,7 +122,6 @@ images: {
 ```
 
 **To fix:** After onboarding fix is deployed, do clean rebuild:
-
 ```bash
 cd /home/gnosiva/apps/content-engine/ai-tutor
 pm2 stop ai-tutor-web
@@ -152,11 +129,9 @@ rm -rf .next
 npm run build
 pm2 start ecosystem.config.cjs --env production
 ```
-
 Then verify: `curl -I "http://localhost:3000/_next/image?url=%2Flogos%2Ficon-192.png&w=32&q=75"` should return 200.
 
 ### 6. SubjectDef Duplicate SQL (PENDING — run on Neon)
-
 ```sql
 DELETE FROM "SubjectDef" a
 USING "SubjectDef" b
@@ -166,7 +141,6 @@ WHERE a.id > b.id
 ```
 
 ### 7. Favicon (DEFERRED)
-
 - Owl favicon is unrecognisable at 16px
 - Recommended fix: SVG letter-based favicon (purple square + white "S")
 - Deferred to post-launch
@@ -174,19 +148,18 @@ WHERE a.id > b.id
 ---
 
 ## Key File Paths
-
-| Purpose           | Path                                                   |
-| ----------------- | ------------------------------------------------------ |
-| Onboarding API    | `app/api/user/onboarding/route.ts`                     |
-| Subjects API      | `app/api/subjects/for-selection/route.ts`              |
-| Grade picker form | `components/student/onboarding/ProfileSetupForm.tsx`   |
-| Logo component    | `components/Logo.tsx`                                  |
-| Dashboard topbar  | `components/dashboard/DashboardTopbar.tsx`             |
-| Next config       | `next.config.ts`                                       |
-| PM2 config        | `ecosystem.config.cjs`                                 |
-| Deploy script     | `scripts/deploy-and-run.sh`                            |
-| Landing hero      | `app/(public)/landing-page/components/HeroSection.tsx` |
-| Onboarding layout | `app/(student)/onboarding/`                            |
+| Purpose | Path |
+|---------|------|
+| Onboarding API | `app/api/user/onboarding/route.ts` |
+| Subjects API | `app/api/subjects/for-selection/route.ts` |
+| Grade picker form | `components/student/onboarding/ProfileSetupForm.tsx` |
+| Logo component | `components/Logo.tsx` |
+| Dashboard topbar | `components/dashboard/DashboardTopbar.tsx` |
+| Next config | `next.config.ts` |
+| PM2 config | `ecosystem.config.cjs` |
+| Deploy script | `scripts/deploy-and-run.sh` |
+| Landing hero | `app/(public)/landing-page/components/HeroSection.tsx` |
+| Onboarding layout | `app/(student)/onboarding/` |
 
 ---
 
@@ -203,7 +176,6 @@ WHERE a.id > b.id
 ---
 
 ## Architecture Decisions Made
-
 - No Nginx/Apache needed — Next.js + PM2 + Cloudflare is correct setup
 - `localPatterns` required in next.config.ts for Next.js image optimizer with local files
 - Age field removed from onboarding (was part of dateOfBirth flow, now optional)
@@ -213,7 +185,6 @@ WHERE a.id > b.id
 ---
 
 ## Known Tech Debt
-
 - `StudentConceptState` has no `concept` relation in Prisma schema — workaround in diagnosticGuard.ts uses two-step query
 - In-memory circuit breaker in lib/redis.ts (unsafe in PM2 multi-process) — Task 16 in backlog
 - Phase12/regenerationWorker integration tests excluded from CI (stale fixtures)
@@ -223,9 +194,7 @@ WHERE a.id > b.id
 ---
 
 ## Previous Session Context
-
 Full implementation history in transcripts:
-
 - `/mnt/transcripts/2026-03-17-05-54-53-spinzy-ai-tutor-v2-sprint-complete.txt` — V2 sprint, all 32 tasks
 - `/mnt/transcripts/2026-03-18-01-05-31-spinzy-ai-tutor-brand-bugs.txt` — brand assets, bug fixes, this session
 - Gap analysis doc: `/mnt/user-data/outputs/PreLaunch_Gap_Analysis_v2.md`

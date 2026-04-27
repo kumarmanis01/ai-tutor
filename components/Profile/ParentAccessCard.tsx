@@ -8,19 +8,8 @@ type ParentViewResponse = {
   linkedParents: { name: string; email: string | null }[];
   pendingInvites: { code: string; createdAt: string; expiresAt?: string }[];
   parentCanSee: {
-    attentionFlags: Array<{
-      subject: string;
-      chapter: string;
-      masteryLevel: string;
-      accuracy: number;
-      reason: string;
-    }>;
-    readiness: Array<{
-      subject: string;
-      readinessScore: number;
-      readinessLabel: string;
-      coveragePercent: number;
-    }>;
+    attentionFlags: Array<{ subject: string; chapter: string; masteryLevel: string; accuracy: number; reason: string }>;
+    readiness: Array<{ subject: string; readinessScore: number; readinessLabel: string; coveragePercent: number }>;
     note: string;
   };
 };
@@ -148,9 +137,7 @@ export default function ParentAccessCard() {
 
           <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-4">
             <div className="text-sm font-semibold mb-2">What parents can see</div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              {data?.parentCanSee?.note ?? ''}
-            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">{data?.parentCanSee?.note ?? ''}</p>
             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-gray-500 mb-1">Attention flags (sample)</div>
@@ -159,9 +146,7 @@ export default function ParentAccessCard() {
                     <ul className="space-y-1">
                       {data.parentCanSee.attentionFlags.slice(0, 5).map((a, idx) => (
                         <li key={idx} className="flex items-center justify-between">
-                          <span>
-                            {a.subject} / {a.chapter}
-                          </span>
+                          <span>{a.subject} / {a.chapter}</span>
                           <span className="text-gray-500">{Math.round(a.accuracy * 100)}%</span>
                         </li>
                       ))}
@@ -179,9 +164,7 @@ export default function ParentAccessCard() {
                       {data.parentCanSee.readiness.slice(0, 5).map((r, idx) => (
                         <li key={idx} className="flex items-center justify-between">
                           <span className="capitalize">{r.subject}</span>
-                          <span className="text-gray-700 dark:text-gray-200 font-medium">
-                            {r.readinessScore}%
-                          </span>
+                          <span className="text-gray-700 dark:text-gray-200 font-medium">{r.readinessScore}%</span>
                         </li>
                       ))}
                     </ul>
@@ -197,3 +180,4 @@ export default function ParentAccessCard() {
     </section>
   );
 }
+

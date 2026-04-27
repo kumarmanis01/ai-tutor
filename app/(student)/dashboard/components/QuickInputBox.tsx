@@ -11,12 +11,7 @@ import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
 
 interface QuickInputBoxProps {
-  onReply?: (
-    reply: string,
-    userMessage?: string,
-    language?: string,
-    suggestions?: string[]
-  ) => void;
+  onReply?: (reply: string, userMessage?: string, language?: string, suggestions?: string[]) => void;
   onError?: (err: string) => void;
   initialPreferredLang?: string | null;
   subject?: string;
@@ -24,278 +19,193 @@ interface QuickInputBoxProps {
   onConversationId?: (cid?: string) => void;
 }
 
-const QuickInputBox: React.FC<QuickInputBoxProps> = ({
-  onReply,
-  onError,
-  initialPreferredLang = null,
-  subject,
-  conversationId: conversationIdProp,
-  onConversationId,
-}) => {
+const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId }) => {
   const [questionText, setQuestionText] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const [interimTranscript, setInterimTranscript] = useState('');
-  const stopVoiceRef = useRef<(() => void) | null>(null);
-  // Start with a deterministic server-safe value to avoid hydration mismatches.
-  // We'll load the user's saved preference (localStorage) or server value on mount.
-  const [preferredLang, setPreferredLang] = useState<string>('auto');
-  const [subjectAvailableCodes, setSubjectAvailableCodes] = useState<string[] | null>(null);
-  const [subjectTeachingLang, setSubjectTeachingLang] = useState<string | null>(null);
+    const [isListening, setIsListening] = useState(false);
+    const [interimTranscript, setInterimTranscript] = useState('');
+    const stopVoiceRef = useRef<(() => void) | null>(null);
+    // Start with a deterministic server-safe value to avoid hydration mismatches.
+    // We'll load the user's saved preference (localStorage) or server value on mount.
+    const [preferredLang, setPreferredLang] = useState<string>('auto');
+    const [subjectAvailableCodes, setSubjectAvailableCodes] = useState<string[] | null>(null);
+    const [subjectTeachingLang, setSubjectTeachingLang] = useState<string | null>(null);
 
-  // On client mount, prefer in-order: `initialPreferredLang` prop -> localStorage -> server
-  useEffect(() => {
-    let cancelled = false;
-    try {
-      if (initialPreferredLang) {
-        setPreferredLang(initialPreferredLang);
-        try {
-          localStorage.setItem('ai-tutor:preferredLang', initialPreferredLang);
-        } catch (err) {
-          logger.warn('Failed to persist initialPreferredLang to localStorage', {
-            className: 'QuickInputBox',
-            methodName: 'mount',
-            error: String(err),
-          });
-        }
-        return;
-      }
-
-      // Check localStorage first (fast, client-only)
+    // On client mount, prefer in-order: `initialPreferredLang` prop -> localStorage -> server
+    useEffect(() => {
+      let cancelled = false;
       try {
-        if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem('ai-tutor:preferredLang');
-          if (stored) {
-            setPreferredLang(stored);
-            return;
+        if (initialPreferredLang) {
+          setPreferredLang(initialPreferredLang);
+          try {
+            localStorage.setItem('ai-tutor:preferredLang', initialPreferredLang);
+          } catch (err) {
+            logger.warn('Failed to persist initialPreferredLang to localStorage', { className: 'QuickInputBox', methodName: 'mount', error: String(err) });
           }
+          return;
         }
-      } catch (err) {
-        logger.warn('Failed to read preferredLang from localStorage', {
-          className: 'QuickInputBox',
-          methodName: 'mount',
-          error: String(err),
-        });
-      }
 
-      // Fall back to server-provided persisted language
-      async function loadFromServer() {
+        // Check localStorage first (fast, client-only)
         try {
-          const res = await fetch('/api/user/language');
-          if (!res.ok) return;
-          const j = await res.json().catch(() => ({}));
-          const serverLang = j?.language;
-          if (!cancelled && serverLang && typeof serverLang === 'string') {
-            setPreferredLang(serverLang);
-            try {
-              localStorage.setItem('ai-tutor:preferredLang', serverLang);
-            } catch (err) {
-              logger.warn('Failed to persist server preferredLang to localStorage', {
-                className: 'QuickInputBox',
-                methodName: 'loadFromServer',
-                error: String(err),
-              });
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('ai-tutor:preferredLang');
+            if (stored) {
+              setPreferredLang(stored);
+              return;
             }
           }
         } catch (err) {
-          logger.warn('Failed to load preferredLang from server', {
-            className: 'QuickInputBox',
-            methodName: 'loadFromServer',
-            error: String(err),
-          });
+          logger.warn('Failed to read preferredLang from localStorage', { className: 'QuickInputBox', methodName: 'mount', error: String(err) });
         }
+
+        // Fall back to server-provided persisted language
+        async function loadFromServer() {
+          try {
+            const res = await fetch('/api/user/language');
+            if (!res.ok) return;
+            const j = await res.json().catch(() => ({}));
+            const serverLang = j?.language;
+            if (!cancelled && serverLang && typeof serverLang === 'string') {
+              setPreferredLang(serverLang);
+              try {
+                localStorage.setItem('ai-tutor:preferredLang', serverLang);
+              } catch (err) {
+                logger.warn('Failed to persist server preferredLang to localStorage', { className: 'QuickInputBox', methodName: 'loadFromServer', error: String(err) });
+              }
+            }
+          } catch (err) {
+            logger.warn('Failed to load preferredLang from server', { className: 'QuickInputBox', methodName: 'loadFromServer', error: String(err) });
+          }
+        }
+        loadFromServer();
+      } catch (err) {
+        logger.warn('QuickInputBox mount effect failed', { className: 'QuickInputBox', methodName: 'mount', error: String(err) });
       }
-      loadFromServer();
-    } catch (err) {
-      logger.warn('QuickInputBox mount effect failed', {
-        className: 'QuickInputBox',
-        methodName: 'mount',
-        error: String(err),
-      });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [initialPreferredLang]);
-  // Separate menu state so the Speak button menu and the Text-input menu do not conflict
-  const [showLangMenuVoice, setShowLangMenuVoice] = useState(false);
-  const [showLangMenuText, setShowLangMenuText] = useState(false);
-  const [detectionPrompt, setDetectionPrompt] = useState<null | { lang: string; label: string }>(
-    null
-  );
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [images, setImages] = useState<{ id: string; url: string; uploading: boolean }[]>([]);
-
-  const [favorites, setFavorites] = useState<string[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ai-tutor:langFavorites');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setFavorites(parsed);
-      }
-    } catch (err) {
-      logger.warn('Failed to load langFavorites from localStorage', {
-        className: 'QuickInputBox',
-        methodName: 'loadFavorites',
-        error: String(err),
-      });
-    }
-  }, []);
-
-  // When used in a subject context, load subject-specific availability and current selection
-  useEffect(() => {
-    let cancelled = false;
-    if (!subject) {
-      setSubjectAvailableCodes(null);
-      setSubjectTeachingLang(null);
       return () => {
         cancelled = true;
       };
-    }
+    }, [initialPreferredLang]);
+    // Separate menu state so the Speak button menu and the Text-input menu do not conflict
+    const [showLangMenuVoice, setShowLangMenuVoice] = useState(false);
+    const [showLangMenuText, setShowLangMenuText] = useState(false);
+    const [detectionPrompt, setDetectionPrompt] = useState<null | { lang: string; label: string }>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [images, setImages] = useState<{ id: string; url: string; uploading: boolean }[]>([]);
 
-    (async () => {
+    const [favorites, setFavorites] = useState<string[]>([]);
+
+    useEffect(() => {
       try {
-        const res = await fetch(
-          `/api/student/subject-language?subjectId=${encodeURIComponent(subject)}`
-        );
-        if (!res.ok) return;
-        const j = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        const avail = Array.isArray(j?.availableLanguages) ? j.availableLanguages : null;
-        setSubjectAvailableCodes(avail);
-        const subjLangs = j?.subjectLanguages ?? {};
-        const current = typeof subjLangs === 'object' ? subjLangs[subject] : undefined;
-        if (current && typeof current === 'string') setSubjectTeachingLang(current);
-      } catch (err) {
-        logger.warn('Failed to load subject language availability', {
-          className: 'QuickInputBox',
-          methodName: 'loadSubjectLang',
-          error: String(err),
-          subject,
-        });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [subject]);
-
-  const toggleFavorite = (tag: string) => {
-    try {
-      setFavorites((prev) => {
-        let next: string[];
-        if (prev.includes(tag)) {
-          next = prev.filter((t) => t !== tag);
-        } else {
-          next = [tag, ...prev.filter((t) => t !== tag)].slice(0, 2);
+        const raw = localStorage.getItem('ai-tutor:langFavorites');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setFavorites(parsed);
         }
+      } catch (err) {
+        logger.warn('Failed to load langFavorites from localStorage', { className: 'QuickInputBox', methodName: 'loadFavorites', error: String(err) });
+      }
+    }, []);
+
+    // When used in a subject context, load subject-specific availability and current selection
+    useEffect(() => {
+      let cancelled = false;
+      if (!subject) {
+        setSubjectAvailableCodes(null);
+        setSubjectTeachingLang(null);
+        return () => { cancelled = true; };
+      }
+
+      (async () => {
         try {
-          localStorage.setItem('ai-tutor:langFavorites', JSON.stringify(next));
+          const res = await fetch(`/api/student/subject-language?subjectId=${encodeURIComponent(subject)}`);
+          if (!res.ok) return;
+          const j = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          const avail = Array.isArray(j?.availableLanguages) ? j.availableLanguages : null;
+          setSubjectAvailableCodes(avail);
+          const subjLangs = j?.subjectLanguages ?? {};
+          const current = typeof subjLangs === 'object' ? subjLangs[subject] : undefined;
+          if (current && typeof current === 'string') setSubjectTeachingLang(current);
         } catch (err) {
-          logger.warn('Failed to persist langFavorites to localStorage', {
-            className: 'QuickInputBox',
-            methodName: 'toggleFavorite',
-            error: String(err),
-          });
+          logger.warn('Failed to load subject language availability', { className: 'QuickInputBox', methodName: 'loadSubjectLang', error: String(err), subject });
         }
-        return next;
-      });
-    } catch (err) {
-      logger.warn('toggleFavorite failed', {
-        className: 'QuickInputBox',
-        methodName: 'toggleFavorite',
-        error: String(err),
-      });
-    }
-  };
+      })();
 
-  const tagToShort = (tag: string) => {
-    try {
-      const t = String(tag || '').toLowerCase();
-      if (t.startsWith('hi')) return 'hi';
-      if (t.startsWith('ta')) return 'ta';
-      if (t.startsWith('bn')) return 'bn';
-      if (t.startsWith('fr')) return 'fr';
-      if (t.startsWith('es')) return 'es';
-      if (t.startsWith('en')) return 'en';
-    } catch {}
-    return 'en';
-  };
+      return () => { cancelled = true; };
+    }, [subject]);
 
-  const handleSelectorPick = async (name: string) => {
-    try {
-      const tag = mapNameToTag(name);
-      setPreferredLang(tag);
+    const toggleFavorite = (tag: string) => {
       try {
-        localStorage.setItem('ai-tutor:preferredLang', tag);
-      } catch (err) {
-        logger.warn('Failed to persist preferredLang to localStorage', {
-          className: 'QuickInputBox',
-          methodName: 'handleSelectorPick',
-          error: String(err),
-        });
-      }
-
-      // If a subject is active, persist as per-subject teaching language instead
-      if (subject) {
-        try {
-          const short = tagToShort(tag);
-          // Guard against unavailable languages for this subject
-          if (subjectAvailableCodes && !subjectAvailableCodes.includes(short)) {
-            try {
-              toast('Selected language is not yet available for this subject.');
-            } catch {}
+        setFavorites((prev) => {
+          let next: string[];
+          if (prev.includes(tag)) {
+            next = prev.filter((t) => t !== tag);
           } else {
-            await fetch('/api/student/subject-language', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ subjectId: subject, language: short }),
-            });
-            setSubjectTeachingLang(short);
+            next = [tag, ...prev.filter((t) => t !== tag)].slice(0, 2);
           }
-        } catch (err) {
-          logger.warn('Failed to persist subject teaching language', {
-            className: 'QuickInputBox',
-            methodName: 'handleSelectorPick',
-            error: String(err),
-            subject,
-          });
-        }
-      } else {
-        // Global UI shell language
-        try {
-          fetch('/api/user/language', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language: tag }),
-          }).catch((err) => {
-            logger.warn('Failed to persist preferredLang to server', {
-              className: 'QuickInputBox',
-              methodName: 'handleSelectorPick',
-              error: String(err),
-            });
-          });
-        } catch (err) {
-          logger.warn('Failed to queue preferredLang persist request', {
-            className: 'QuickInputBox',
-            methodName: 'handleSelectorPick',
-            error: String(err),
-          });
-        }
+          try {
+            localStorage.setItem('ai-tutor:langFavorites', JSON.stringify(next));
+          } catch (err) {
+            logger.warn('Failed to persist langFavorites to localStorage', { className: 'QuickInputBox', methodName: 'toggleFavorite', error: String(err) });
+          }
+          return next;
+        });
+      } catch (err) {
+        logger.warn('toggleFavorite failed', { className: 'QuickInputBox', methodName: 'toggleFavorite', error: String(err) });
       }
-    } catch (err) {
-      logger.warn('handleSelectorPick failed', {
-        className: 'QuickInputBox',
-        methodName: 'handleSelectorPick',
-        error: String(err),
-      });
-    }
-    setShowLangMenuText(false);
-  };
+    };
 
-  const favSelected = favorites.includes(preferredLang);
+    const tagToShort = (tag: string) => {
+      try {
+        const t = String(tag || '').toLowerCase();
+        if (t.startsWith('hi')) return 'hi';
+        if (t.startsWith('ta')) return 'ta';
+        if (t.startsWith('bn')) return 'bn';
+        if (t.startsWith('fr')) return 'fr';
+        if (t.startsWith('es')) return 'es';
+        if (t.startsWith('en')) return 'en';
+      } catch {}
+      return 'en';
+    };
+
+    const handleSelectorPick = async (name: string) => {
+      try {
+        const tag = mapNameToTag(name);
+        setPreferredLang(tag);
+        try {
+          localStorage.setItem('ai-tutor:preferredLang', tag);
+        } catch (err) {
+          logger.warn('Failed to persist preferredLang to localStorage', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+        }
+
+        // If a subject is active, persist as per-subject teaching language instead
+        if (subject) {
+          try {
+            const short = tagToShort(tag);
+            // Guard against unavailable languages for this subject
+            if (subjectAvailableCodes && !subjectAvailableCodes.includes(short)) {
+              try { toast('Selected language is not yet available for this subject.'); } catch {}
+            } else {
+              await fetch('/api/student/subject-language', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subjectId: subject, language: short }) });
+              setSubjectTeachingLang(short);
+            }
+          } catch (err) {
+            logger.warn('Failed to persist subject teaching language', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err), subject });
+          }
+        } else {
+          // Global UI shell language
+          try {
+            fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch((err) => { logger.warn('Failed to persist preferredLang to server', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) }) });
+          } catch (err) {
+            logger.warn('Failed to queue preferredLang persist request', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+          }
+        }
+      } catch (err) {
+        logger.warn('handleSelectorPick failed', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+      }
+      setShowLangMenuText(false);
+    };
+
+    const favSelected = favorites.includes(preferredLang);
 
   const handlePhotoUpload = () => {
     // Open file picker
@@ -309,12 +219,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
     // Create a small preview using the resize helper for better thumbnails
     let previewFile: File | Blob = file;
     try {
-      previewFile = await resizeImageFile(file, {
-        maxWidth: 800,
-        maxHeight: 800,
-        quality: 0.75,
-        mimeType: 'image/jpeg',
-      });
+      previewFile = await resizeImageFile(file, { maxWidth: 800, maxHeight: 800, quality: 0.75, mimeType: 'image/jpeg' });
     } catch {
       previewFile = file;
     }
@@ -327,9 +232,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result || objectUrl);
-      setImages((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, url: dataUrl, uploading: it.uploading } : it))
-      );
+      setImages((prev) => prev.map((it) => (it.id === id ? { ...it, url: dataUrl, uploading: it.uploading } : it)));
     };
     reader.onerror = () => {
       // keep objectUrl if reading fails
@@ -339,24 +242,13 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
     try {
       const result = await uploadImage(file);
       if (!result.ok) {
-        logger.error('upload failed', {
-          className: 'QuickInputBox',
-          methodName: 'handleFileChange',
-          error: result.error,
-          details: result.details,
-        });
+        logger.error('upload failed', { className: 'QuickInputBox', methodName: 'handleFileChange', error: result.error, details: result.details });
         onError?.(result.error || 'Upload failed');
         // If the server returned an AWS credential-related error, surface a user-friendly toast
         try {
           const details = result.details || '';
-          if (
-            result.error === 'aws_credentials' ||
-            (typeof details === 'string' && details.toLowerCase().includes('credential'))
-          ) {
-            setAwsCredentialError(
-              details ||
-                'AWS credentials invalid or expired. Run `aws sso login` or set `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` in your environment.'
-            );
+          if (result.error === 'aws_credentials' || (typeof details === 'string' && details.toLowerCase().includes('credential'))) {
+            setAwsCredentialError(details || 'AWS credentials invalid or expired. Run `aws sso login` or set `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` in your environment.');
             setAwsCredentialVisible(true);
           }
         } catch {}
@@ -366,27 +258,20 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
       }
 
       // Replace the object URL with the uploaded URL
-      setImages((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, url: result.url, uploading: false } : it))
-      );
+      setImages((prev) => prev.map((it) => (it.id === id ? { ...it, url: result.url, uploading: false } : it)));
       // Set a helpful prompt if the input was empty
       setQuestionText((prev) => prev || 'Describe the problem in the image...');
-      logger.add(`Uploaded image URL: ${result.url}`, {
-        className: 'QuickInputBox',
-        methodName: 'handleFileChange',
-      });
+      logger.add(`Uploaded image URL: ${result.url}`, { className: 'QuickInputBox', methodName: 'handleFileChange' });
     } catch (err) {
-      logger.error('Image upload error', {
-        className: 'QuickInputBox',
-        methodName: 'handleFileChange',
-        error: String(err),
-      });
+      logger.error('Image upload error', { className: 'QuickInputBox', methodName: 'handleFileChange', error: String(err) });
       onError?.('Image upload failed');
       setImages((prev) => prev.map((it) => (it.id === id ? { ...it, uploading: false } : it)));
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
+  
 
   // Emit a typing event so the chat container can dismiss suggestions when user types
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -423,158 +308,135 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
   // (language loading handled in the mount effect above)
 
   const handleVoiceInput = () => {
-    // Start voice input via shared handler
-    if (isListening) {
-      // stop
-      stopVoiceRef.current?.();
-      stopVoiceRef.current = null;
-      setIsListening(false);
-      setInterimTranscript('');
-      return;
-    }
+      // Start voice input via shared handler
+      if (isListening) {
+        // stop
+        stopVoiceRef.current?.();
+        stopVoiceRef.current = null;
+        setIsListening(false);
+        setInterimTranscript('');
+        return;
+      }
 
-    // prefer browser locale when starting recognition so Hindi is recognized in Devanagari
-    const navLang = typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
-    const resolvedNav = navLang.startsWith('hi') ? 'hi-IN' : navLang;
-    const langToUse = preferredLang && preferredLang !== 'auto' ? preferredLang : resolvedNav;
+      // prefer browser locale when starting recognition so Hindi is recognized in Devanagari
+      const navLang = typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
+      const resolvedNav = navLang.startsWith('hi') ? 'hi-IN' : navLang;
+      const langToUse = preferredLang && preferredLang !== 'auto' ? preferredLang : resolvedNav;
 
-    const stop = startVoiceInput(
-      // interim
-      (txt: string) => {
-        setInterimTranscript(txt);
-      },
-      // final
-      async (txt: string, detectedLang?: string) => {
-        let finalText = txt;
-        try {
-          // If recognition suggests Hindi but result is romanized (Latin chars), try to transliterate to Devanagari
-          const looksLatin = /^[A-Za-z0-9\s,.'"()-]+$/.test(String(txt).trim());
-          if (detectedLang && String(detectedLang).toLowerCase().startsWith('hi') && looksLatin) {
-            try {
-              // Dynamic import so the package is optional. Recommend installing `sanscript` for better transliteration.
-              const sanscript = await import('sanscript');
-              if (sanscript && typeof sanscript.t === 'function') {
-                // Try common roman schemes -> devanagari
-                // Use 'iast' -> 'devanagari' as a best-effort, fall back to itrans if available
-                try {
-                  finalText = sanscript.t(txt, 'iast', 'devanagari');
-                } catch {
+      const stop = startVoiceInput(
+        // interim
+        (txt: string) => {
+          setInterimTranscript(txt);
+        },
+        // final
+        async (txt: string, detectedLang?: string) => {
+          let finalText = txt;
+          try {
+            // If recognition suggests Hindi but result is romanized (Latin chars), try to transliterate to Devanagari
+            const looksLatin = /^[A-Za-z0-9\s,.'"()-]+$/.test(String(txt).trim());
+            if (detectedLang && String(detectedLang).toLowerCase().startsWith('hi') && looksLatin) {
+              try {
+                // Dynamic import so the package is optional. Recommend installing `sanscript` for better transliteration.
+                const sanscript = await import('sanscript');
+                if (sanscript && typeof sanscript.t === 'function') {
+                  // Try common roman schemes -> devanagari
+                  // Use 'iast' -> 'devanagari' as a best-effort, fall back to itrans if available
                   try {
-                    finalText = sanscript.t(txt, 'itrans', 'devanagari');
+                    finalText = sanscript.t(txt, 'iast', 'devanagari');
                   } catch {
-                    // leave finalText as-is
+                    try {
+                      finalText = sanscript.t(txt, 'itrans', 'devanagari');
+                    } catch {
+                      // leave finalText as-is
+                    }
                   }
                 }
+              } catch {
+                // package not installed or failed; ignore and keep latin text
               }
-            } catch {
-              // package not installed or failed; ignore and keep latin text
             }
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
-        }
 
-        setQuestionText(finalText);
-        if (detectedLang) {
-          // Normalize detected locale (e.g. 'hi-IN') to base code ('hi') for storage and server
-          const short = tagToShort(detectedLang);
-          setDetectedLang(short);
-          // persist preferred language locally and server-side (base code)
-          try {
+          setQuestionText(finalText);
+          if (detectedLang) {
+            // Normalize detected locale (e.g. 'hi-IN') to base code ('hi') for storage and server
+            const short = tagToShort(detectedLang);
+            setDetectedLang(short);
+            // persist preferred language locally and server-side (base code)
             try {
-              localStorage.setItem('ai-tutor:preferredLang', short);
+              try {
+                localStorage.setItem('ai-tutor:preferredLang', short);
+              } catch {}
+              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
             } catch {}
-            fetch('/api/user/language', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ language: short }),
-            }).catch(() => {});
-          } catch {}
-        }
-        setInterimTranscript('');
-        setIsListening(false);
-        stopVoiceRef.current = null;
-      },
-      // error
-      (msg: string) => {
-        onError?.(msg);
-        try {
-          toast(msg);
-        } catch {}
-        setIsListening(false);
-        setInterimTranscript('');
-        stopVoiceRef.current = null;
-      },
-      langToUse
-    );
+          }
+          setInterimTranscript('');
+          setIsListening(false);
+          stopVoiceRef.current = null;
+        },
+        // error
+        (msg: string) => {
+          onError?.(msg);
+          try { toast(msg); } catch {}
+          setIsListening(false);
+          setInterimTranscript('');
+          stopVoiceRef.current = null;
+        },
+        langToUse,
+      );
 
-    if (stop) {
-      stopVoiceRef.current = stop;
-      setIsListening(true);
-    } else {
-      // startVoiceInput may return null when recognition isn't supported or permission denied
-      try {
-        toast('Voice input not available in this browser or microphone not accessible.');
-      } catch {}
-    }
+      if (stop) {
+        stopVoiceRef.current = stop;
+        setIsListening(true);
+      } else {
+        // startVoiceInput may return null when recognition isn't supported or permission denied
+        try {
+          toast('Voice input not available in this browser or microphone not accessible.');
+        } catch {}
+      }
   };
 
   // Toggle small language menu (used by speak button)
   const toggleLangMenuVoice = () => setShowLangMenuVoice((s) => !s);
 
-  const languageOptions = useMemo<{ value: string; label: string }[]>(
-    () => [
-      { value: 'auto', label: 'Auto (browser)' },
-      { value: 'hi-IN', label: 'हिन्दी (Hindi)' },
-      { value: 'en-US', label: 'English' },
-      { value: 'ta-IN', label: 'தமிழ் (Tamil)' },
-      { value: 'bn-IN', label: 'বাংলা (Bengali)' },
-      { value: 'fr-FR', label: 'Français' },
-      { value: 'es-ES', label: 'Español' },
-    ],
-    []
-  );
+  const languageOptions = useMemo<{ value: string; label: string }[]>(() => ([
+    { value: 'auto', label: 'Auto (browser)' },
+    { value: 'hi-IN', label: 'हिन्दी (Hindi)' },
+    { value: 'en-US', label: 'English' },
+    { value: 'ta-IN', label: 'தமிழ் (Tamil)' },
+    { value: 'bn-IN', label: 'বাংলা (Bengali)' },
+    { value: 'fr-FR', label: 'Français' },
+    { value: 'es-ES', label: 'Español' },
+  ]), []);
 
   const languageOptionsRef = useRef(languageOptions);
-  useEffect(() => {
-    languageOptionsRef.current = languageOptions;
-  }, [languageOptions]);
+  useEffect(() => { languageOptionsRef.current = languageOptions; }, [languageOptions]);
   const onErrorRef = useRef(onError);
-  useEffect(() => {
-    onErrorRef.current = onError;
-  }, [onError]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
   const [consentToShare, setConsentToShare] = useState(false);
   // Track conversation/topic id for threading context per chat panel
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null);
-  useEffect(() => {
-    setConversationId(conversationIdProp ?? null);
-  }, [conversationIdProp]);
+  useEffect(() => { setConversationId(conversationIdProp ?? null); }, [conversationIdProp]);
 
   const renderThumb = (it: { id: string; url: string; uploading: boolean }) => {
     const isBlob = !!(it.url && (it.url.startsWith('blob:') || it.url.startsWith('data:')));
     let disableOpt: boolean = isBlob;
     try {
-      if (
-        !disableOpt &&
-        it.url &&
-        (it.url.startsWith('http://') || it.url.startsWith('https://'))
-      ) {
+      if (!disableOpt && it.url && (it.url.startsWith('http://') || it.url.startsWith('https://'))) {
         const u = new URL(it.url);
-        if (u.hostname === 'ai-tutor-uploads-spinzyacademy-01.s3.eu-north-1.amazonaws.com')
-          disableOpt = true;
+        if (u.hostname === 'ai-tutor-uploads-spinzyacademy-01.s3.eu-north-1.amazonaws.com') disableOpt = true;
       }
     } catch {
       // ignore malformed URLs
     }
 
     return (
-      <div
-        key={it.id}
-        className="relative w-24 h-24 rounded-md overflow-hidden border border-border bg-muted flex-shrink-0"
-      >
+      <div key={it.id} className="relative w-24 h-24 rounded-md overflow-hidden border border-border bg-muted flex-shrink-0">
         <Image
           src={it.url}
           alt="thumb"
@@ -584,17 +446,11 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           unoptimized={disableOpt}
         />
         {it.uploading && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs text-white">
-            Uploading
-          </div>
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs text-white">Uploading</div>
         )}
-        {!it.uploading &&
-          it.url &&
-          (it.url.startsWith('http://') || it.url.startsWith('https://')) && (
-            <div className="absolute bottom-1 right-1 bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded">
-              Ready
-            </div>
-          )}
+        {!it.uploading && it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && (
+          <div className="absolute bottom-1 right-1 bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded">Ready</div>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -614,99 +470,61 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
     );
   };
   // Send a message to the server-side chat API and return the AI reply and optional suggestions.
-  const handleSend = useCallback(
-    async (
-      message: string,
-      languageHint?: string
-    ): Promise<{
-      ok: boolean;
-      reply?: string;
-      error?: string;
-      language?: string;
-      suggestions?: string[];
-    }> => {
+  const handleSend = useCallback(async (message: string, languageHint?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string; suggestions?: string[] }> => {
+    try {
+      const imageUrls = images
+        .filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading)
+        .map((it) => it.url);
+
+      // Ensure a conversationId is present on first message so the server
+      // can thread messages consistently even if it chooses not to generate one.
+      let cidToSend = conversationId;
+      if (!cidToSend) {
+        cidToSend = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        try { setConversationId(cidToSend); } catch {}
+      }
+
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend, subject }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        return { ok: false, error: payload?.error || `status-${res.status}` };
+      }
+      const json = await res.json().catch(() => ({}));
       try {
-        const imageUrls = images
-          .filter(
-            (it) =>
-              it.url &&
-              (it.url.startsWith('http://') || it.url.startsWith('https://')) &&
-              !it.uploading
-          )
-          .map((it) => it.url);
-
-        // Ensure a conversationId is present on first message so the server
-        // can thread messages consistently even if it chooses not to generate one.
-        let cidToSend = conversationId;
-        if (!cidToSend) {
-          cidToSend = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-          try {
-            setConversationId(cidToSend);
-          } catch {}
-        }
-
-        const res = await fetch('/api/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: message,
-            language: languageHint,
-            images: imageUrls,
-            consentToShare,
-            conversationId: cidToSend,
-            subject,
-          }),
-        });
-        if (!res.ok) {
-          const payload = await res.json().catch(() => ({}));
-          return { ok: false, error: payload?.error || `status-${res.status}` };
-        }
-        const json = await res.json().catch(() => ({}));
-        try {
-          const cid = json?.conversationId || json?.topic;
-          if (cid && typeof cid === 'string') {
-            setConversationId(cid);
-            try {
-              onConversationId?.(cid);
-            } catch {}
-          }
-        } catch {}
-        // Normalize reply: if server mistakenly returned a JSON string, extract answer/suggestions
-        let reply: string | undefined = json?.answer ?? json?.reply;
-        let suggestions: string[] | undefined = Array.isArray(json?.suggestions)
-          ? json.suggestions
-          : undefined;
-        let language: string | undefined = json?.language ?? json?.lang;
-        try {
-          if (typeof reply === 'string' && reply.trim().startsWith('{')) {
-            const parsed = JSON.parse(reply);
-            if (parsed && typeof parsed === 'object') {
-              reply = parsed.answer || parsed.answerMarkdown || parsed.text || reply;
-              if (!language) language = parsed.language || parsed.lang;
-              if (!suggestions && Array.isArray(parsed.suggestions)) {
-                suggestions = parsed.suggestions
-                  .filter((s: any) => typeof s === 'string')
-                  .slice(0, 5);
-              }
+        const cid = json?.conversationId || json?.topic;
+        if (cid && typeof cid === 'string') { setConversationId(cid); try { onConversationId?.(cid); } catch {} }
+      } catch {}
+      // Normalize reply: if server mistakenly returned a JSON string, extract answer/suggestions
+      let reply: string | undefined = json?.answer ?? json?.reply;
+      let suggestions: string[] | undefined = Array.isArray(json?.suggestions) ? json.suggestions : undefined;
+      let language: string | undefined = json?.language ?? json?.lang;
+      try {
+        if (typeof reply === 'string' && reply.trim().startsWith('{')) {
+          const parsed = JSON.parse(reply);
+          if (parsed && typeof parsed === 'object') {
+            reply = parsed.answer || parsed.answerMarkdown || parsed.text || reply;
+            if (!language) language = parsed.language || parsed.lang;
+            if (!suggestions && Array.isArray(parsed.suggestions)) {
+              suggestions = parsed.suggestions.filter((s: any) => typeof s === 'string').slice(0, 5);
             }
           }
-        } catch {}
-        return { ok: true, reply, language, suggestions };
-      } catch (err: any) {
-        return { ok: false, error: err?.message || String(err) };
-      }
-    },
-    [images, consentToShare, conversationId, languageOptions, onError, subject]
-  );
+        }
+      } catch {}
+      return { ok: true, reply, language, suggestions };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || String(err) };
+    }
+  }, [images, consentToShare, conversationId, languageOptions, onError, subject]);
 
   const handleAskQuestion = useCallback(async () => {
     if (!questionText.trim() || asking) return;
     // Guard: if user attached images but none are ready (still uploading or blob/data), delay ask
     const hasAttached = images.length > 0;
-    const readyRemote = images.filter(
-      (it) =>
-        it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading
-    );
+    const readyRemote = images.filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading);
     if (hasAttached && readyRemote.length === 0) {
       try {
         toast('Image is still uploading. Please wait a moment, then try Ask again.');
@@ -716,26 +534,16 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
     try {
       setAsking(true);
       // Clear any suggestion hint once we submit
-      try {
-        setSuggestionHint(null);
-      } catch {}
-      const languageToSend =
-        detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);
+      try { setSuggestionHint(null); } catch {}
+      const languageToSend = detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);
       const res = await handleSend(questionText.trim(), languageToSend);
       if (!res.ok) {
-        logger.error('Question send failed', {
-          className: 'QuickInputBox',
-          methodName: 'handleAskQuestion',
-          error: res.error,
-        });
+        logger.error('Question send failed', { className: 'QuickInputBox', methodName: 'handleAskQuestion', error: res.error });
         onErrorRef.current?.(res.error || 'Failed to ask question');
         return;
       }
       // Send AI reply to parent for display
-      logger.add(`AI reply: ${String(res.reply)}`, {
-        className: 'QuickInputBox',
-        methodName: 'handleAsk',
-      });
+      logger.add(`AI reply: ${String(res.reply)}`, { className: 'QuickInputBox', methodName: 'handleAsk' });
       // update detected language from response if provided
       if (res.language) {
         // Normalize server-detected language to base code
@@ -745,11 +553,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           try {
             localStorage.setItem('ai-tutor:preferredLang', short);
           } catch {}
-          fetch('/api/user/language', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language: short }),
-          }).catch(() => {});
+          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
         } catch {}
         // If server detected a language different from user's preference, prompt to switch
         try {
@@ -757,11 +561,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           const normDetected = String(short).toLowerCase();
           if (normDetected && normPreferred !== normDetected) {
             // find a label for the detected language; languageOptionsRef contains locale values like 'hi-IN'
-            const match = languageOptionsRef.current.find(
-              (o) =>
-                o.value.toLowerCase() === normDetected ||
-                o.value.toLowerCase().startsWith(normDetected.split('-')[0])
-            );
+            const match = languageOptionsRef.current.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
             setDetectionPrompt({ lang: short, label: match ? match.label : mapTagToName(short) });
           }
         } catch {}
@@ -780,24 +580,11 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
       // Clear input after successful ask
       setQuestionText('');
       setInterimTranscript('');
-      try {
-        setSuggestionHint(null);
-      } catch {}
+      try { setSuggestionHint(null); } catch {}
     } finally {
       setAsking(false);
     }
-  }, [
-    questionText,
-    asking,
-    images,
-    detectedLang,
-    preferredLang,
-    handleSend,
-    onReply,
-    setSuggestionHint,
-    setDetectedLang,
-    setAsking,
-  ]);
+  }, [questionText, asking, images, detectedLang, preferredLang, handleSend, onReply, setSuggestionHint, setDetectedLang, setAsking]);
 
   // Listen for picked suggestions to populate the input and auto-submit
   useEffect(() => {
@@ -808,35 +595,21 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
         const { suggestion } = detail;
         setQuestionText(suggestion);
         const hasAttached = images.length > 0;
-        const readyRemote = images.filter(
-          (it) =>
-            it.url &&
-            (it.url.startsWith('http://') || it.url.startsWith('https://')) &&
-            !it.uploading
-        );
+        const readyRemote = images.filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading);
         if (hasAttached && readyRemote.length === 0) {
-          try {
-            toast('Image is still uploading. Please wait a moment.');
-          } catch {}
-          try {
-            document.getElementById('question-input')?.focus();
-          } catch {}
+          try { toast('Image is still uploading. Please wait a moment.'); } catch {}
+          try { document.getElementById('question-input')?.focus(); } catch {}
           return;
         }
         setTimeout(() => {
           handleAskQuestion();
         }, 0);
       } catch (err) {
-        logger.error('QuickInputBox suggestion handler error', {
-          className: 'QuickInputBox',
-          methodName: 'suggestionHandler',
-          error: String(err),
-        });
+        logger.error('QuickInputBox suggestion handler error', { className: 'QuickInputBox', methodName: 'suggestionHandler', error: String(err) });
       }
     }
     window.addEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
-    return () =>
-      window.removeEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
+    return () => window.removeEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
   }, [images, handleAskQuestion]);
 
   const acceptDetection = () => {
@@ -847,11 +620,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
       localStorage.setItem('ai-tutor:preferredLang', v);
     } catch {}
     try {
-      fetch('/api/user/language', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: v }),
-      }).catch(() => {});
+      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
     } catch {}
     setDetectionPrompt(null);
   };
@@ -933,24 +702,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           onClick={handlePhotoUpload}
           className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors border border-border"
         >
-          <svg
-            className="w-8 h-8 text-primary mb-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-            />
+          <svg className="w-8 h-8 text-primary mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span className="text-sm font-medium text-foreground">📸 Upload Photo</span>
           <span className="text-xs text-muted-foreground mt-1">फोटो लें</span>
@@ -963,18 +717,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
             className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors border border-border w-full"
             title="Speak (tap) -- long-press or use the menu to change language"
           >
-            <svg
-              className="w-8 h-8 text-primary mb-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-              />
+            <svg className="w-8 h-8 text-primary mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
             <span className="text-sm font-medium text-foreground">🎤 Speak</span>
             <span className="text-xs text-muted-foreground mt-1">बोलें</span>
@@ -991,20 +735,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
             className="absolute -top-1 -right-1 bg-card border border-border rounded-full p-1 shadow-sm"
             title="Choose language for voice recognition and replies"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M6 8l4-4 4 4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
 
@@ -1030,18 +762,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           onClick={() => document.getElementById('question-input')?.focus()}
           className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors border border-border"
         >
-          <svg
-            className="w-8 h-8 text-primary mb-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-            />
+          <svg className="w-8 h-8 text-primary mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
           <span className="text-sm font-medium text-foreground">✍️ Type</span>
           <span className="text-xs text-muted-foreground mt-1">लिखें</span>
@@ -1055,27 +777,13 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           <div className="inline-flex items-center gap-2">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowLangMenuText(true);
-              }}
+              onClick={(e) => { e.stopPropagation(); setShowLangMenuText(true); }}
               className="px-3 py-1 rounded border border-border text-sm bg-card flex items-center gap-2"
               title="Select language"
             >
               <span>{mapTagToName(preferredLang)}</span>
-              <svg
-                className="w-3 h-3"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6 8l4 4 4-4"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              <svg className="w-3 h-3" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <button
@@ -1092,14 +800,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
       </div>
       {showLangMenuText && (
         <div className="absolute z-50">
-          <LanguageSelector
-            lang={mapTagToName(subjectTeachingLang ?? preferredLang)}
-            availableCodes={subjectAvailableCodes ?? undefined}
-            setLang={(name: string) => {
-              void handleSelectorPick(name);
-              setShowLangMenuText(false);
-            }}
-          />
+          <LanguageSelector lang={mapTagToName(subjectTeachingLang ?? preferredLang)} availableCodes={subjectAvailableCodes ?? undefined} setLang={(name: string) => { void handleSelectorPick(name); setShowLangMenuText(false); }} />
         </div>
       )}
       <div className="mb-3">
@@ -1107,19 +808,12 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           id="question-input"
           type="text"
           value={isListening && interimTranscript ? interimTranscript : questionText}
-          onChange={handleInputChange}
-          placeholder={
-            isListening ? 'Listening... Speak now' : 'Type your question... / अपना सवाल लिखें...'
-          }
+            onChange={handleInputChange}
+          placeholder={isListening ? 'Listening... Speak now' : 'Type your question... / अपना सवाल लिखें...'}
           className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-base"
         />
         {asking && (
-          <div
-            className="mt-2 text-sm text-muted-foreground flex items-center gap-2"
-            aria-live="polite"
-            aria-busy="true"
-            role="status"
-          >
+          <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2" aria-live="polite" aria-busy="true" role="status">
             <span>Thinking</span>
             <span className="inline-flex gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" />
@@ -1131,7 +825,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
       </div>
 
       {/* Suggestion hint (appears when a suggestion is inserted) */}
-      {suggestionHint && <div className="mb-3 text-sm text-muted-foreground">{suggestionHint}</div>}
+      {suggestionHint && (
+        <div className="mb-3 text-sm text-muted-foreground">{suggestionHint}</div>
+      )}
 
       {/* AWS credential remediation toast (persistent until dismissed) */}
       {awsCredentialVisible && awsCredentialError && (
@@ -1175,26 +871,14 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
           role="status"
         >
           <div className="flex-1">
-            <div className="text-sm">
-              Detected <strong>{detectionPrompt.label}</strong>. Switch for future replies?
-            </div>
+            <div className="text-sm">Detected <strong>{detectionPrompt.label}</strong>. Switch for future replies?</div>
             <div className="mt-2 h-1 w-full bg-muted rounded overflow-hidden">
               <div className="detection-toast-progress" />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={dismissDetection}
-              className="px-2 py-1 text-xs rounded border border-border"
-            >
-              Keep
-            </button>
-            <button
-              onClick={acceptDetection}
-              className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground"
-            >
-              Switch
-            </button>
+            <button onClick={dismissDetection} className="px-2 py-1 text-xs rounded border border-border">Keep</button>
+            <button onClick={acceptDetection} className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">Switch</button>
           </div>
         </div>
       )}
@@ -1227,17 +911,16 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({
             className="w-4 h-4"
           />
           <label htmlFor="consent-share" className="text-sm">
-            I consent to upload this image to an external provider (OpenAI) for analysis. The image
-            will be deleted within 24 hours. See our Privacy Policy.
+            I consent to upload this image to an external provider (OpenAI) for analysis. The image will be deleted within 24 hours. See our Privacy Policy.
           </label>
         </div>
       )}
 
       {/* Ask Button */}
-      <button
-        onClick={handleAskQuestion}
-        className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-3 rounded-lg transition-colors shadow-cta"
-        disabled={asking || (images.length > 0 && !consentToShare)}
+        <button
+          onClick={handleAskQuestion}
+          className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-3 rounded-lg transition-colors shadow-cta"
+          disabled={asking || (images.length > 0 && !consentToShare)}
       >
         {asking ? 'Asking...' : 'Ask AI Tutor / पूछें'}
       </button>

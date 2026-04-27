@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
   const entityId = searchParams.get('entityId');
 
   if (!entityType || !entityId) {
-    return NextResponse.json({ error: 'Missing entityType or entityId' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Missing entityType or entityId' },
+      { status: 400 }
+    );
   }
 
   const history = await getHistoryForEntity(entityType, entityId);

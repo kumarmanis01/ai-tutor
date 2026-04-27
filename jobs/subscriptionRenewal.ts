@@ -10,16 +10,16 @@
  * - 2026-04-08T00:00:00Z | copilot | created subscription renewal job registration
  */
 
-import { Queue } from 'bullmq';
-import { getSharedConnection } from '@/lib/redis';
-import { logger } from '@/lib/logger';
+import { Queue } from 'bullmq'
+import { getSharedConnection } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 
-export const SUBSCRIPTION_RENEWAL_QUEUE_NAME = 'subscription-renewal';
+export const SUBSCRIPTION_RENEWAL_QUEUE_NAME = 'subscription-renewal'
 
 // Run hourly to pick up due renewals and EMI installments
-const RENEWAL_CRON = '0 * * * *';
+const RENEWAL_CRON = '0 * * * *'
 
-let renewalQueue: Queue | null = null;
+let renewalQueue: Queue | null = null
 
 export function getSubscriptionRenewalQueue(): Queue {
   if (!renewalQueue) {
@@ -30,31 +30,25 @@ export function getSubscriptionRenewalQueue(): Queue {
         removeOnComplete: 20,
         removeOnFail: 50,
       },
-    });
+    })
   }
-  return renewalQueue;
+  return renewalQueue
 }
 
 export async function registerSubscriptionRenewalJob(): Promise<void> {
   try {
-    const queue = getSubscriptionRenewalQueue();
-    const repeatable = await queue.getRepeatableJobs();
-    const already = repeatable.some(
-      (j) => j.pattern === RENEWAL_CRON && j.name === 'subscription-renewal'
-    );
+    const queue = getSubscriptionRenewalQueue()
+    const repeatable = await queue.getRepeatableJobs()
+    const already = repeatable.some((j) => j.pattern === RENEWAL_CRON && j.name === 'subscription-renewal')
     if (already) {
-      logger.info('[subscriptionRenewal] repeatable job already registered', {
-        cron: RENEWAL_CRON,
-      });
-      return;
+      logger.info('[subscriptionRenewal] repeatable job already registered', { cron: RENEWAL_CRON })
+      return
     }
-    await queue.add('subscription-renewal', {}, { repeat: { pattern: RENEWAL_CRON } });
-    logger.info('[subscriptionRenewal] registered repeatable job', { cron: RENEWAL_CRON });
+    await queue.add('subscription-renewal', {}, { repeat: { pattern: RENEWAL_CRON } })
+    logger.info('[subscriptionRenewal] registered repeatable job', { cron: RENEWAL_CRON })
   } catch (err) {
-    logger.error('[subscriptionRenewal] failed to register job', {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    logger.error('[subscriptionRenewal] failed to register job', { error: err instanceof Error ? err.message : String(err) })
   }
 }
 
-export default getSubscriptionRenewalQueue;
+export default getSubscriptionRenewalQueue

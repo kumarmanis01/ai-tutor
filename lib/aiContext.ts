@@ -1,23 +1,23 @@
-import logger from './logger';
+import logger from "./logger";
 
 /**
  * Simple session-based context memory for AI (client-only helpers)
  * - Stores last N messages in local/session storage
  * - Can be extended to Redis/DB for persistence
- *
+ * 
  */
 const MAX_CONTEXT = 10;
 
 export function getContext(): { role: string; content: string }[] {
-  if (typeof window === 'undefined') return [];
-  return JSON.parse(localStorage.getItem('chatContext') || '[]');
+  if (typeof window === "undefined") return [];
+  return JSON.parse(localStorage.getItem("chatContext") || "[]");
 }
 
 export function saveMessage(role: string, content: string) {
   const ctx = getContext();
   ctx.push({ role, content });
   if (ctx.length > MAX_CONTEXT) ctx.shift();
-  localStorage.setItem('chatContext', JSON.stringify(ctx));
+  localStorage.setItem("chatContext", JSON.stringify(ctx));
   return ctx;
 }
 
@@ -40,9 +40,7 @@ export function createAIClient() {
         // Intentionally no external calls in stub. Log in dev for visibility.
         if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
-          logger.debug('[createAIClient.stub] complete called with prompt length:', {
-            promptLength: prompt?.length ?? 0,
-          });
+          logger.debug('[createAIClient.stub] complete called with prompt length:', { promptLength: prompt?.length ?? 0 })
         }
       } catch {}
       return { text: '[]' } as { text: string };

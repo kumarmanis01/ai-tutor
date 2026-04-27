@@ -39,7 +39,8 @@ export function OverviewPhase({
     onReadyToProceed?.(true);
   }, [onReadyToProceed]);
   const steps = PHASE_ORDER.map((phase) => PHASE_UI_CONFIG[phase].label);
-  const learningGoals = content.objectives.length > 0 ? content.objectives : DEFAULT_LEARNING_GOALS;
+  const learningGoals =
+    content.objectives.length > 0 ? content.objectives : DEFAULT_LEARNING_GOALS;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">

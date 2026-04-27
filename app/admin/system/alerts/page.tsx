@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import useSWR from 'swr';
 import { useState } from 'react';
@@ -7,10 +7,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function SystemAlertsPage() {
   const [includeResolved, setIncludeResolved] = useState(false);
-  const { data, error, isLoading } = useSWR(
-    `/api/admin/system/alerts?includeResolved=${includeResolved ? '1' : '0'}`,
-    fetcher
-  );
+  const { data, error, isLoading } = useSWR(`/api/admin/system/alerts?includeResolved=${includeResolved ? '1' : '0'}`, fetcher);
 
   if (isLoading) return <div>Loading alerts...</div>;
   if (error) return <div>Error loading alerts</div>;
@@ -22,11 +19,7 @@ export default function SystemAlertsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">System Alerts</h2>
         <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={includeResolved}
-            onChange={(e) => setIncludeResolved(e.target.checked)}
-          />
+          <input type="checkbox" checked={includeResolved} onChange={(e) => setIncludeResolved(e.target.checked)} />
           <span className="text-sm">Include resolved</span>
         </label>
       </div>
@@ -46,9 +39,7 @@ export default function SystemAlertsPage() {
           <tbody>
             {alerts.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">
-                  No alerts
-                </td>
+                <td colSpan={6} className="p-4 text-center text-gray-500">No alerts</td>
               </tr>
             )}
             {alerts.map((a: any) => (

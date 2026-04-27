@@ -1,17 +1,17 @@
-'use client';
+'use client'
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
 export function RefreshButton() {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
 
   function refresh() {
-    setBusy(true);
-    router.refresh();
+    setBusy(true)
+    router.refresh()
     // brief visual feedback only
-    setTimeout(() => setBusy(false), 800);
+    setTimeout(() => setBusy(false), 800)
   }
 
   return (
@@ -22,5 +22,5 @@ export function RefreshButton() {
     >
       {busy ? 'Refreshing...' : 'Refresh'}
     </button>
-  );
+  )
 }

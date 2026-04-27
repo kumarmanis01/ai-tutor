@@ -32,4 +32,8 @@ export {
 } from './schemas';
 
 // Engine
-export { DiagnosticEngine, createDiagnosticSession, type QuestionBank } from './engine';
+export {
+  DiagnosticEngine,
+  createDiagnosticSession,
+  type QuestionBank,
+} from './engine';

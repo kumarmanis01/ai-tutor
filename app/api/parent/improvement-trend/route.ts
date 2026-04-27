@@ -69,10 +69,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
-import {
-  predictDaysToReadiness,
-  PLATFORM_DEFAULT_GAIN_PER_SESSION,
-} from '@/lib/parent/dashboardHelpers';
+import { predictDaysToReadiness, PLATFORM_DEFAULT_GAIN_PER_SESSION } from '@/lib/parent/dashboardHelpers';
 import type { AppSession } from '@/lib/types/auth';
 
 const CLASS_NAME = 'ParentImprovementTrendAPI';
@@ -84,7 +81,7 @@ const WEEK_WINDOW = 8;
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface WeeklyAccuracy {
-  week: string; // ISO week label, e.g. "2026-W10"
+  week: string;     // ISO week label, e.g. "2026-W10"
   accuracy: number; // AVG(accuracy) for that week, rounded to 4 d.p.
 }
 
@@ -106,7 +103,7 @@ interface RawTrendRow {
  */
 function mondayNWeeksAgo(weeksAgo: number): Date {
   const now = new Date();
-  const dow = now.getUTCDay(); // 0 = Sunday
+  const dow = now.getUTCDay();                   // 0 = Sunday
   const distToMonday = dow === 0 ? 6 : dow - 1;
 
   const thisMonday = new Date(now);
@@ -195,7 +192,7 @@ export async function GET(req: NextRequest) {
         GROUP  BY DATE_TRUNC('week', "updatedAt")
         ORDER  BY DATE_TRUNC('week', "updatedAt") ASC
         LIMIT  ${WEEK_WINDOW}
-      `
+      `,
     );
 
     // ── 6. Coerce and shape ──────────────────────────────────────────────────
@@ -203,54 +200,43 @@ export async function GET(req: NextRequest) {
     // Round to 4 decimal places -- enough precision for a trend line without
     // floating-point noise (e.g. 0.5799999... → 0.58).
     const trend: WeeklyAccuracy[] = rows.map((r) => ({
-      week: r.week,
+      week:     r.week,
       accuracy: Math.round(Number(r.avg_accuracy) * 10_000) / 10_000,
     }));
 
     // Predict days to reach 80% readiness at current pace (F-PAR-012 AC-05)
-    let predictedDaysTo80: number | null = null;
-    let predictedReadyByDate: string | null = null;
+    let predictedDaysTo80: number | null = null
+    let predictedReadyByDate: string | null = null
 
     try {
       // Average weekly sessions over last 4 weeks
-      const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
-      const weeklySummaries = await prisma.weeklyStudentSummary.findMany({
-        where: { studentId, weekStart: { gte: fourWeeksAgo } },
-        select: { sessionsCount: true },
-      });
-      const totalSessions = weeklySummaries.reduce((s, w) => s + w.sessionsCount, 0);
-      const completedWeeks = Math.max(1, weeklySummaries.length);
-      const avgWeeklySessions = totalSessions / completedWeeks;
+      const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
+      const weeklySummaries = await prisma.weeklyStudentSummary.findMany({ where: { studentId, weekStart: { gte: fourWeeksAgo } }, select: { sessionsCount: true } })
+      const totalSessions = weeklySummaries.reduce((s, w) => s + w.sessionsCount, 0)
+      const completedWeeks = Math.max(1, weeklySummaries.length)
+      const avgWeeklySessions = totalSessions / completedWeeks
 
       // Current readiness score: prefer readinessStatus aggregate; fall back to latest trend point
-      const agg = await prisma.readinessStatus.aggregate({
-        where: { studentId },
-        _avg: { readinessScore: true },
-      });
-      let currentScore: number | null = null;
+      const agg = await prisma.readinessStatus.aggregate({ where: { studentId }, _avg: { readinessScore: true } })
+      let currentScore: number | null = null
       if (agg._avg.readinessScore !== null && agg._avg.readinessScore !== undefined) {
-        currentScore = Math.round((agg._avg.readinessScore as number) * 100) / 100;
+        currentScore = Math.round((agg._avg.readinessScore as number) * 100) / 100
       } else if (trend.length > 0) {
         // trend.accuracy is 0..1; convert to percentage
-        const last = trend[trend.length - 1];
-        currentScore = Math.round(last.accuracy * 100 * 100) / 100;
+        const last = trend[trend.length - 1]
+        currentScore = Math.round((last.accuracy * 100) * 100) / 100
       }
 
       if (currentScore !== null && Number.isFinite(currentScore)) {
-        const prediction = predictDaysToReadiness(
-          currentScore,
-          80,
-          avgWeeklySessions,
-          PLATFORM_DEFAULT_GAIN_PER_SESSION
-        );
+        const prediction = predictDaysToReadiness(currentScore, 80, avgWeeklySessions, PLATFORM_DEFAULT_GAIN_PER_SESSION)
         if (prediction.feasible && prediction.estimatedDays !== null) {
-          predictedDaysTo80 = prediction.estimatedDays;
-          const targetDate = new Date(Date.now() + predictedDaysTo80 * 24 * 60 * 60 * 1000);
-          predictedReadyByDate = targetDate.toISOString().slice(0, 10);
+          predictedDaysTo80 = prediction.estimatedDays
+          const targetDate = new Date(Date.now() + predictedDaysTo80 * 24 * 60 * 60 * 1000)
+          predictedReadyByDate = targetDate.toISOString().slice(0, 10)
         }
       }
     } catch (err) {
-      logger.debug('improvement-trend: prediction failed', { error: String(err) });
+      logger.debug('improvement-trend: prediction failed', { error: String(err) })
     }
 
     const response = NextResponse.json({ trend, predictedDaysTo80, predictedReadyByDate });
@@ -272,6 +258,9 @@ export async function GET(req: NextRequest) {
       methodName: METHOD_NAME,
       error,
     });
-    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
+    return NextResponse.json(
+      { error: formatErrorForResponse(error) },
+      { status: 500 },
+    );
   }
 }

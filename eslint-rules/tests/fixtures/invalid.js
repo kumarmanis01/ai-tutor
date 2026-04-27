@@ -5,6 +5,4 @@ import { Queue } from 'bullmq';
 const redis = new IORedis('redis://localhost:6379');
 const q = new Queue('content', { connection: redis });
 
-export function noop() {
-  return 1;
-}
+export function noop() { return 1 }

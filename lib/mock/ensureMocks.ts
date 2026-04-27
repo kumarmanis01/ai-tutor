@@ -16,11 +16,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { ensureQuestions } from '@/lib/tests';
-import {
-  MOCK_SECTION_DEFS,
-  MOCK_TOTAL_MARKS,
-  MOCK_DURATION_MIN,
-} from '@/lib/mock/selectMockQuestions';
+import { MOCK_SECTION_DEFS, MOCK_TOTAL_MARKS, MOCK_DURATION_MIN } from '@/lib/mock/selectMockQuestions';
 import { logger } from '@/lib/logger';
 
 /**
@@ -38,13 +34,7 @@ import { logger } from '@/lib/logger';
 export async function ensureMinimumMocks(opts?: { minPer?: number; dryRun?: boolean }) {
   const minPer = opts?.minPer ?? 5;
   const dryRun = !!opts?.dryRun;
-  const created: Array<{
-    subjectId: string;
-    subjectName: string;
-    grade: number;
-    board: string;
-    examId: string;
-  }> = [];
+  const created: Array<{ subjectId: string; subjectName: string; grade: number; board: string; examId: string }> = [];
 
   // Fetch active subjects that are enabled by admin
   const subjects = await prisma.subjectDef.findMany({
@@ -67,13 +57,7 @@ export async function ensureMinimumMocks(opts?: { minPer?: number; dryRun?: bool
     let target = minPer - existingCount;
     if (target <= 0) continue;
 
-    logger.info('ensureMocks.creating', {
-      subjectId: s.id,
-      subject: s.name,
-      grade,
-      board,
-      need: target,
-    });
+    logger.info('ensureMocks.creating', { subjectId: s.id, subject: s.name, grade, board, need: target });
 
     while (target > 0) {
       // Select or generate questions for each section (ensureQuestions falls back to AI generation)
@@ -81,10 +65,10 @@ export async function ensureMinimumMocks(opts?: { minPer?: number; dryRun?: bool
         MOCK_SECTION_DEFS.map(async (sectionDef) => {
           const questions = await ensureQuestions(
             { subject: s.name, grade: String(grade), board, type: sectionDef.type },
-            sectionDef.count
+            sectionDef.count,
           );
           return { sectionDef, questions };
-        })
+        }),
       );
 
       // Ensure we have at least one question per section; otherwise skip creation.
@@ -95,9 +79,7 @@ export async function ensureMinimumMocks(opts?: { minPer?: number; dryRun?: bool
       }
 
       // Determine new version number (simple increment over existing count)
-      const existingForVer = await prisma.mockExam.count({
-        where: { subjectId: s.id, grade, board: { equals: board, mode: 'insensitive' } },
-      });
+      const existingForVer = await prisma.mockExam.count({ where: { subjectId: s.id, grade, board: { equals: board, mode: 'insensitive' } } });
       const ver = existingForVer + 1;
       const title = `${s.name} Full Mock -- Paper ${ver}`;
 
@@ -105,13 +87,7 @@ export async function ensureMinimumMocks(opts?: { minPer?: number; dryRun?: bool
         // Simulate creation without writing to DB
         const simulatedId = `dryrun-${s.id}-${ver}-${Date.now()}`;
         created.push({ subjectId: s.id, subjectName: s.name, grade, board, examId: simulatedId });
-        logger.info('ensureMocks.dryrun_created', {
-          subject: s.name,
-          grade,
-          board,
-          examId: simulatedId,
-          title,
-        });
+        logger.info('ensureMocks.dryrun_created', { subject: s.name, grade, board, examId: simulatedId, title });
       } else {
         try {
           const exam = await prisma.$transaction(async (tx) => {
@@ -155,12 +131,7 @@ export async function ensureMinimumMocks(opts?: { minPer?: number; dryRun?: bool
           created.push({ subjectId: s.id, subjectName: s.name, grade, board, examId: exam.id });
           logger.info('ensureMocks.created', { subject: s.name, grade, board, examId: exam.id });
         } catch (err) {
-          logger.error('ensureMocks.create_failed', {
-            subject: s.name,
-            grade,
-            board,
-            error: String(err),
-          });
+          logger.error('ensureMocks.create_failed', { subject: s.name, grade, board, error: String(err) });
           break; // abort further attempts for this subject to avoid repeated failures
         }
       }

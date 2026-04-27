@@ -9,15 +9,11 @@
  */
 
 // Mock dependencies so we can import the route without a DB or Redis connection
-jest.mock('@/lib/prisma', () => ({ prisma: {} }));
-jest.mock('@/lib/logger', () => ({
-  logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), logAPI: jest.fn() },
-}));
-jest.mock('@/lib/queues/analyticsQueue', () => ({
-  getAnalyticsQueue: jest.fn().mockReturnValue(null),
-}));
+jest.mock('@/lib/prisma', () => ({ prisma: {} }))
+jest.mock('@/lib/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), logAPI: jest.fn() } }))
+jest.mock('@/lib/queues/analyticsQueue', () => ({ getAnalyticsQueue: jest.fn().mockReturnValue(null) }))
 
-import { VALID_EVENT_TYPES } from '../../../app/api/analytics/event/route';
+import { VALID_EVENT_TYPES } from '../../../app/api/analytics/event/route'
 
 describe('VALID_EVENT_TYPES allowlist', () => {
   // These are the exact client-facing event types permitted.
@@ -37,11 +33,11 @@ describe('VALID_EVENT_TYPES allowlist', () => {
     'diagnostic_completed',
     'page_view',
     'subject_selected',
-  ]);
+  ])
 
   it('should contain exactly the expected event types', () => {
-    expect(VALID_EVENT_TYPES).toEqual(EXPECTED_TYPES);
-  });
+    expect(VALID_EVENT_TYPES).toEqual(EXPECTED_TYPES)
+  })
 
   // Server-only events must never appear in the client allowlist
   const SERVER_ONLY_TYPES = [
@@ -59,9 +55,9 @@ describe('VALID_EVENT_TYPES allowlist', () => {
     'whatsapp_opt_in',
     'whatsapp_opt_out',
     'whatsapp_message_sent',
-  ];
+  ]
 
   it.each(SERVER_ONLY_TYPES)('should NOT allow server-only type: %s', (type) => {
-    expect(VALID_EVENT_TYPES.has(type)).toBe(false);
-  });
-});
+    expect(VALID_EVENT_TYPES.has(type)).toBe(false)
+  })
+})

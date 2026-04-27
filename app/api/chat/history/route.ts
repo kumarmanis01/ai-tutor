@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -32,11 +32,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ subject, conversationId, messages });
   } catch (e) {
-    logger.error('GET /api/chat/history error', {
-      className: 'api.chat.history',
-      methodName: 'GET',
-      error: e,
-    });
+    logger.error('GET /api/chat/history error', { className: 'api.chat.history', methodName: 'GET', error: e });
     return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

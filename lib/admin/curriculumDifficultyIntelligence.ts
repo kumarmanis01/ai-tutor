@@ -1,27 +1,5 @@
-/**
- * FILE OBJECTIVE:
- * - Compute per-topic difficulty index from mastery and progress signals.
- *
- * LINKED UNIT TEST:
- * - tests/unit/lib/admin/curriculumDifficultyIntelligence.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - .github/copilot-instructions.md
- * - /docs/COPILOT_GUARDRAILS.md
- *
- * EDIT LOG:
- * - 2026-04-23T05:45:00Z | copilot | fix(strict): add explicit TopicRow type and cast Prisma results to remove implicit-any in callbacks
- */
-
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-
-// Local DB row typings
-type TopicRow = {
-  id: string;
-  name: string;
-  chapter?: { name?: string | null; subject?: { name?: string | null } | null } | null;
-};
 
 export interface TopicDifficultyRow {
   topicId: string;
@@ -81,7 +59,7 @@ export async function getTopicDifficultyList(opts: {
   const limit = Math.min(opts.limit ?? 100, 500);
 
   // 1) Base topic + hierarchy list (active topics only)
-  const topics = (await prisma.topicDef.findMany({
+  const topics = await prisma.topicDef.findMany({
     where: {
       lifecycle: 'active',
       ...(opts.subjectId ? { chapter: { subjectId: opts.subjectId } } : {}),
@@ -96,7 +74,7 @@ export async function getTopicDifficultyList(opts: {
         },
       },
     },
-  })) as TopicRow[];
+  });
 
   if (topics.length === 0) {
     return { from, to, items: [] };
@@ -153,12 +131,8 @@ export async function getTopicDifficultyList(opts: {
   const weakMap = new Map<string, WeakAggRow>(weakAgg.map((r) => [r.topicId, r]));
 
   // 4) Normalize attempts and speed within this result set (rank-based min/max fallback).
-  const attemptVals = masteryAgg
-    .map((r) => r.medianAttempts ?? null)
-    .filter((v): v is number => v != null);
-  const speedVals = masteryAgg
-    .map((r) => r.speedMedian ?? null)
-    .filter((v): v is number => v != null);
+  const attemptVals = masteryAgg.map((r) => (r.medianAttempts ?? null)).filter((v): v is number => v != null);
+  const speedVals = masteryAgg.map((r) => (r.speedMedian ?? null)).filter((v): v is number => v != null);
   const attemptMin = attemptVals.length ? Math.min(...attemptVals) : 0;
   const attemptMax = attemptVals.length ? Math.max(...attemptVals) : 0;
   const speedMin = speedVals.length ? Math.min(...speedVals) : 0;
@@ -180,28 +154,25 @@ export async function getTopicDifficultyList(opts: {
       const avgAccuracy = m?.avgAccuracy ?? null;
       const medianAttempts = m?.medianAttempts ?? null;
       const speedMedian = m?.speedMedian ?? null;
-      const weakRate = w && w.attemptedStudents > 0 ? w.weakStudents / w.attemptedStudents : null;
+      const weakRate =
+        w && w.attemptedStudents > 0 ? w.weakStudents / w.attemptedStudents : null;
 
       const lowData = attemptedStudents < 30 || masteryRows < 30;
 
       // Components (0-1) where higher means harder
       const nA = avgAccuracy == null ? null : clamp01(1 - avgAccuracy);
-      const nP =
-        medianAttempts == null
-          ? null
-          : normMinMax(
-              Math.log(1 + medianAttempts),
-              Math.log(1 + attemptMin),
-              Math.log(1 + attemptMax)
-            );
-      const nS =
-        speedMedian == null ? null : clamp01(1 - normMinMax(speedMedian, speedMin, speedMax));
+      const nP = medianAttempts == null ? null : normMinMax(Math.log(1 + medianAttempts), Math.log(1 + attemptMin), Math.log(1 + attemptMax));
+      const nS = speedMedian == null ? null : clamp01(1 - normMinMax(speedMedian, speedMin, speedMax));
       const nW = weakRate == null ? null : clamp01(weakRate);
 
       const comps = [nA, nP, nS, nW].filter((x): x is number => x != null);
       const difficultyIndex =
         comps.length >= 2
-          ? 100 * (0.4 * (nA ?? 0) + 0.25 * (nP ?? 0) + 0.2 * (nS ?? 0) + 0.15 * (nW ?? 0))
+          ? 100 *
+            (0.4 * (nA ?? 0) +
+              0.25 * (nP ?? 0) +
+              0.2 * (nS ?? 0) +
+              0.15 * (nW ?? 0))
           : null;
 
       return {
@@ -224,3 +195,4 @@ export async function getTopicDifficultyList(opts: {
 
   return { from, to, items };
 }
+

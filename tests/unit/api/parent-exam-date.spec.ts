@@ -2,59 +2,39 @@
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
-jest.mock('@/lib/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    logAPI: jest.fn(),
-  },
-}));
-jest.mock('@/lib/ai/learningPlan', () => ({
-  generateLearningPlan: jest.fn().mockResolvedValue('plan-1'),
-}));
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
-import '../../helpers/mockSession';
+jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() } }));
+jest.mock('@/lib/ai/learningPlan', () => ({ generateLearningPlan: jest.fn().mockResolvedValue('plan-1') }));
+import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock'
+import '../../helpers/mockSession'
 
 describe('Parent set exam-date API', () => {
   beforeEach(() => {
-    resetPrismaMock();
-    (global as any).__TEST_SESSION__ = {
-      user: { id: 'parent-1', role: 'parent', email: 'parent@example.test' },
-    };
-  });
+    resetPrismaMock()
+    ;(global as any).__TEST_SESSION__ = { user: { id: 'parent-1', role: 'parent', email: 'parent@example.test' } }
+  })
 
   it('returns 403 when parent not linked to student', async () => {
-    prismaMock.parentStudent.findUnique.mockResolvedValue(null);
-    const { POST } = await import('@/app/api/parent/exam-date/route');
-    const req = new Request('http://localhost', {
-      method: 'POST',
-      body: JSON.stringify({ studentId: 'student-1', examDate: '2026-05-01' }),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const res = (await POST(req as any)) as any;
-    expect(res.status).toBe(403);
-  });
+    prismaMock.parentStudent.findUnique.mockResolvedValue(null)
+    const { POST } = await import('@/app/api/parent/exam-date/route')
+    const req = new Request('http://localhost', { method: 'POST', body: JSON.stringify({ studentId: 'student-1', examDate: '2026-05-01' }), headers: { 'Content-Type': 'application/json' } })
+    const res = await POST(req as any) as any
+    expect(res.status).toBe(403)
+  })
 
   it('updates examDate when linked', async () => {
-    prismaMock.parentStudent.findUnique.mockResolvedValue({ id: 'link-1', status: 'active' });
-    prismaMock.user.update.mockResolvedValue({});
-    prismaMock.learningPlan.findMany.mockResolvedValue([{ subjectId: 'sub-1', weeklyGoal: 5 }]);
-    const { POST } = await import('@/app/api/parent/exam-date/route');
-    const req = new Request('http://localhost', {
-      method: 'POST',
-      body: JSON.stringify({ studentId: 'student-1', examDate: '2026-05-01T00:00:00.000Z' }),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const res = (await POST(req as any)) as any;
-    expect(res.status).toBe(200);
-    expect(prismaMock.user.update).toHaveBeenCalled();
+    prismaMock.parentStudent.findUnique.mockResolvedValue({ id: 'link-1', status: 'active' })
+    prismaMock.user.update.mockResolvedValue({})
+    prismaMock.learningPlan.findMany.mockResolvedValue([{ subjectId: 'sub-1', weeklyGoal: 5 }])
+    const { POST } = await import('@/app/api/parent/exam-date/route')
+    const req = new Request('http://localhost', { method: 'POST', body: JSON.stringify({ studentId: 'student-1', examDate: '2026-05-01T00:00:00.000Z' }), headers: { 'Content-Type': 'application/json' } })
+    const res = await POST(req as any) as any
+    expect(res.status).toBe(200)
+    expect(prismaMock.user.update).toHaveBeenCalled()
 
     // allow background regen to run
-    await new Promise((r) => setImmediate(r));
-    const { generateLearningPlan } = (await import('@/lib/ai/learningPlan')) as any;
-    expect(generateLearningPlan).toHaveBeenCalled();
-  });
-});
+    await new Promise((r) => setImmediate(r))
+    const { generateLearningPlan } = await import('@/lib/ai/learningPlan') as any
+    expect(generateLearningPlan).toHaveBeenCalled()
+  })
+})

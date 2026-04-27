@@ -4,64 +4,61 @@
  * Server component. Fetches active ParentStudent links, computes
  * per-student average mastery, passes to ParentsTable.
  */
-import React from 'react';
-import { prisma } from '@/lib/prisma';
-import { AdminTopbar } from '../../../components/admin/AdminTopbar';
-import { ParentsTable, type ParentRowData } from './ParentsTable';
+import React from 'react'
+import { prisma } from '@/lib/prisma'
+import { AdminTopbar } from '../../../components/admin/AdminTopbar'
+import { ParentsTable, type ParentRowData } from './ParentsTable'
 
 export default async function ParentsPage() {
   const [links, masteryRows, totalLinked, lastDigest] = await Promise.all([
-    prisma.parentStudent
-      .findMany({
-        where: { status: 'active' },
-        include: {
-          parent: {
-            select: { id: true, name: true, email: true, parentEmail: true },
-          },
-          student: {
-            select: {
-              id: true,
-              name: true,
-              grade: true,
-              parentVerifiedAt: true,
-              requiresParentVerification: true,
-            },
+    prisma.parentStudent.findMany({
+      where: { status: 'active' },
+      include: {
+        parent: {
+          select: { id: true, name: true, email: true, parentEmail: true },
+        },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            grade: true,
+            parentVerifiedAt: true,
+            requiresParentVerification: true,
           },
         },
-      })
-      .catch(() => []),
+      },
+    }).catch(() => []),
 
-    prisma.studentTopicProgress
-      .groupBy({
-        by: ['studentId'],
-        _avg: { mastery: true },
-      })
-      .catch(() => []),
+    prisma.studentTopicProgress.groupBy({
+      by: ['studentId'],
+      _avg: { mastery: true },
+    }).catch(() => []),
 
     prisma.parentStudent.count({ where: { status: 'active' } }).catch(() => 0),
 
     // Most recent notification log that was a parent weekly digest
-    prisma.notificationLog
-      .findFirst({
-        where: {
-          OR: [
-            { audience: { contains: 'parent' } },
-            { title: { contains: 'digest', mode: 'insensitive' } },
-          ],
-          status: 'sent',
-        },
-        orderBy: { sentAt: 'desc' },
-        select: { sentAt: true, sentTo: true },
-      })
-      .catch(() => null),
-  ]);
+    prisma.notificationLog.findFirst({
+      where: {
+        OR: [
+          { audience: { contains: 'parent' } },
+          { title: { contains: 'digest', mode: 'insensitive' } },
+        ],
+        status: 'sent',
+      },
+      orderBy: { sentAt: 'desc' },
+      select: { sentAt: true, sentTo: true },
+    }).catch(() => null),
+  ])
 
   // Build mastery map: studentId -> avgMastery 0-100
   const masteryMap = new Map<string, number>(
-    masteryRows.map((r) => [r.studentId, Math.round((r._avg.mastery ?? 0) * 100)])
-  );
+    masteryRows.map(r => [
+      r.studentId,
+      Math.round((r._avg.mastery ?? 0) * 100),
+    ])
+  )
 
-  const rows: ParentRowData[] = links.map((l) => ({
+  const rows: ParentRowData[] = links.map(l => ({
     id: l.id,
     parentId: l.parentId,
     parentName: l.parent.name ?? null,
@@ -72,13 +69,13 @@ export default async function ParentsPage() {
     verifiedAt: l.student.parentVerifiedAt?.toISOString() ?? null,
     requiresVerification: l.student.requiresParentVerification,
     avgMastery: masteryMap.get(l.studentId) ?? 0,
-  }));
+  }))
 
   // Avg readiness across linked students (null when no parents linked)
   const avgReadiness: number | null =
     rows.length > 0
       ? Math.round(rows.reduce((acc, r) => acc + r.avgMastery, 0) / rows.length)
-      : null;
+      : null
 
   return (
     <>
@@ -111,7 +108,7 @@ export default async function ParentsPage() {
         <ParentsTable rows={rows} />
       </div>
     </>
-  );
+  )
 }
 
 function StatCard({
@@ -120,23 +117,21 @@ function StatCard({
   sub,
   variant = 'default',
 }: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  variant?: 'green' | 'amber' | 'default';
+  label: string
+  value: string | number
+  sub?: string
+  variant?: 'green' | 'amber' | 'default'
 }) {
   const textCls = {
     green: 'text-[#27500A]',
     amber: 'text-[#633806]',
     default: 'text-gray-900 dark:text-white',
-  }[variant];
+  }[variant]
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
-      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-        {label}
-      </p>
+      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
       <p className={`text-2xl font-semibold mt-1 ${textCls}`}>{value}</p>
       {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
-  );
+  )
 }

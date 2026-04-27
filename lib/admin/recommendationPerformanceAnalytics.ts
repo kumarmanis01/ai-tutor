@@ -70,14 +70,7 @@ export async function getRecommendationPerformanceSummary(opts: {
 
   const decisions: DecisionRow[] = await prisma.homeRecommendationDecision.findMany({
     where: { evaluatedAt: { gte: from, lte: to } },
-    select: {
-      id: true,
-      evaluatedAt: true,
-      studentId: true,
-      ruleId: true,
-      topicId: true,
-      sessionId: true,
-    },
+    select: { id: true, evaluatedAt: true, studentId: true, ruleId: true, topicId: true, sessionId: true },
     orderBy: { evaluatedAt: 'desc' },
     take: 50_000,
   });
@@ -86,14 +79,8 @@ export async function getRecommendationPerformanceSummary(opts: {
     return { from, to, rows: [] };
   }
 
-  const minEval = decisions.reduce(
-    (min, d) => (d.evaluatedAt < min ? d.evaluatedAt : min),
-    decisions[0].evaluatedAt
-  );
-  const maxEval = decisions.reduce(
-    (max, d) => (d.evaluatedAt > max ? d.evaluatedAt : max),
-    decisions[0].evaluatedAt
-  );
+  const minEval = decisions.reduce((min, d) => (d.evaluatedAt < min ? d.evaluatedAt : min), decisions[0].evaluatedAt);
+  const maxEval = decisions.reduce((max, d) => (d.evaluatedAt > max ? d.evaluatedAt : max), decisions[0].evaluatedAt);
   const sessionStartMin = new Date(minEval.getTime());
   const sessionStartMax = new Date(maxEval.getTime() + windowMin * 60 * 1000);
 
@@ -102,15 +89,7 @@ export async function getRecommendationPerformanceSummary(opts: {
     where: {
       startedAt: { gte: sessionStartMin, lte: sessionStartMax },
     },
-    select: {
-      id: true,
-      studentId: true,
-      topicId: true,
-      startedAt: true,
-      completedAt: true,
-      state: true,
-      meta: true,
-    },
+    select: { id: true, studentId: true, topicId: true, startedAt: true, completedAt: true, state: true, meta: true },
     orderBy: { startedAt: 'asc' },
     take: 200_000,
   });
@@ -143,14 +122,7 @@ export async function getRecommendationPerformanceSummary(opts: {
     const rule = d.ruleId || 'unknown';
     let agg = byRule.get(rule);
     if (!agg) {
-      agg = {
-        decisions: 0,
-        attributed: 0,
-        started: 0,
-        completed: 0,
-        improvementSum: 0,
-        improvementCount: 0,
-      };
+      agg = { decisions: 0, attributed: 0, started: 0, completed: 0, improvementSum: 0, improvementCount: 0 };
       byRule.set(rule, agg);
     }
     agg.decisions++;
@@ -194,8 +166,7 @@ export async function getRecommendationPerformanceSummary(opts: {
       const sessionStartRate = a.decisions > 0 ? a.started / a.decisions : 0;
       const sessionCompletionRate = a.started > 0 ? a.completed / a.started : 0;
       const improvementCoverage = a.started > 0 ? a.improvementCount / a.started : 0;
-      const avgAccuracyImprovement =
-        a.improvementCount > 0 ? a.improvementSum / a.improvementCount : null;
+      const avgAccuracyImprovement = a.improvementCount > 0 ? a.improvementSum / a.improvementCount : null;
       return {
         ruleId,
         decisions: a.decisions,
@@ -211,3 +182,4 @@ export async function getRecommendationPerformanceSummary(opts: {
 
   return { from, to, rows };
 }
+

@@ -18,11 +18,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
-import type {
-  HierarchySubject,
-  HierarchyChapter,
-  HierarchyTopic,
-} from '@/hooks/useAcademicHierarchy';
+import type { HierarchySubject, HierarchyChapter, HierarchyTopic } from '@/hooks/useAcademicHierarchy';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -95,9 +91,7 @@ export default function NotesTab() {
       .finally(() => {
         if (!cancelled) setOverviewLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   // ── Load TopicNote when a topic is selected ───────────────────────────
@@ -111,12 +105,7 @@ export default function NotesTab() {
     fetch(`/api/notes/for-topic?topicId=${encodeURIComponent(topicId)}`)
       .then((r) => r.json())
       .then(async (data) => {
-        const notes = data?.notes as {
-          id: string;
-          title: string;
-          language: string;
-          version: number;
-        }[];
+        const notes = data?.notes as { id: string; title: string; language: string; version: number }[];
         if (!notes || notes.length === 0) {
           setNoteError('No notes available for this topic yet.');
           setNoteLoading(false);
@@ -216,7 +205,9 @@ export default function NotesTab() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#534AB7]">
                   {PHASE_LABELS[t.phase] ?? t.phase}
                 </p>
-                <h3 className="mt-1 text-base font-bold text-gray-900 truncate">{t.topicName}</h3>
+                <h3 className="mt-1 text-base font-bold text-gray-900 truncate">
+                  {t.topicName}
+                </h3>
                 <p className="mt-0.5 text-xs text-gray-500">
                   {t.subject} &middot; {t.chapter}
                 </p>
@@ -239,7 +230,9 @@ export default function NotesTab() {
                 className="text-left rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-gray-900 truncate">{t.topicName}</h3>
+                  <h3 className="text-base font-bold text-gray-900 truncate">
+                    {t.topicName}
+                  </h3>
                   <MasteryBadge mastery={t.mastery} />
                 </div>
                 <p className="mt-0.5 text-xs text-gray-500">
@@ -285,10 +278,7 @@ function SectionHeading({ title, accent }: { title: string; accent: string }) {
   };
   return (
     <div className="flex items-center gap-2 mb-3">
-      <span
-        className={`inline-block w-2 h-2 rounded-full ${colors[accent] ?? 'bg-gray-400'}`}
-        aria-hidden
-      />
+      <span className={`inline-block w-2 h-2 rounded-full ${colors[accent] ?? 'bg-gray-400'}`} aria-hidden />
       <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">{title}</h2>
     </div>
   );
@@ -412,59 +402,21 @@ type VidyaSection = {
     isCommonMistakePoint: boolean;
   }> | null;
   conceptCheck?: { question: string; hint: string; answer: string } | null;
-};
+}
 
-const SECTION_STYLES: Record<
-  string,
-  { bg: string; border: string; label: string; labelColor: string }
-> = {
-  hook: {
-    bg: 'bg-[#EEEDFE]',
-    border: 'border-indigo-200',
-    label: 'Hook',
-    labelColor: 'text-[#534AB7]',
-  },
-  concept: {
-    bg: 'bg-white',
-    border: 'border-gray-200',
-    label: 'Concept',
-    labelColor: 'text-gray-600',
-  },
-  worked_example: {
-    bg: 'bg-white',
-    border: 'border-indigo-100',
-    label: 'Worked Example',
-    labelColor: 'text-[#534AB7]',
-  },
-  concept_check: {
-    bg: 'bg-[#EAF3DE]',
-    border: 'border-green-200',
-    label: 'Concept Check',
-    labelColor: 'text-[#1D9E75]',
-  },
-  common_mistake: {
-    bg: 'bg-[#FCEBEB]',
-    border: 'border-red-200',
-    label: 'Common Mistake',
-    labelColor: 'text-[#E24B4A]',
-  },
-  memory_aid: {
-    bg: 'bg-[#EAF3DE]',
-    border: 'border-green-200',
-    label: 'Memory Aid',
-    labelColor: 'text-[#1D9E75]',
-  },
-  summary: {
-    bg: 'bg-[#FAEEDA]',
-    border: 'border-amber-200',
-    label: 'Summary',
-    labelColor: 'text-[#BA7517]',
-  },
-};
+const SECTION_STYLES: Record<string, { bg: string; border: string; label: string; labelColor: string }> = {
+  hook:           { bg: 'bg-[#EEEDFE]',  border: 'border-indigo-200', label: 'Hook',            labelColor: 'text-[#534AB7]' },
+  concept:        { bg: 'bg-white',       border: 'border-gray-200',   label: 'Concept',         labelColor: 'text-gray-600' },
+  worked_example: { bg: 'bg-white',       border: 'border-indigo-100', label: 'Worked Example',  labelColor: 'text-[#534AB7]' },
+  concept_check:  { bg: 'bg-[#EAF3DE]',  border: 'border-green-200',  label: 'Concept Check',   labelColor: 'text-[#1D9E75]' },
+  common_mistake: { bg: 'bg-[#FCEBEB]',  border: 'border-red-200',    label: 'Common Mistake',  labelColor: 'text-[#E24B4A]' },
+  memory_aid:     { bg: 'bg-[#EAF3DE]',  border: 'border-green-200',  label: 'Memory Aid',      labelColor: 'text-[#1D9E75]' },
+  summary:        { bg: 'bg-[#FAEEDA]',  border: 'border-amber-200',  label: 'Summary',         labelColor: 'text-[#BA7517]' },
+}
 
 function ConceptCheckCard({ check }: { check: NonNullable<VidyaSection['conceptCheck']> }) {
-  const [showHint, setShowHint] = useState(false);
-  const [showAnswer, setShowAnswer] = useState(false);
+  const [showHint, setShowHint] = useState(false)
+  const [showAnswer, setShowAnswer] = useState(false)
   return (
     <div className="mt-3 rounded-lg border border-green-200 bg-white p-3 space-y-2">
       <p className="text-sm font-medium text-gray-800">{check.question}</p>
@@ -486,22 +438,20 @@ function ConceptCheckCard({ check }: { check: NonNullable<VidyaSection['conceptC
       </div>
       {showHint && (
         <p className="text-xs text-gray-600 bg-green-50 rounded px-3 py-2">
-          <span className="font-semibold">Hint: </span>
-          {check.hint}
+          <span className="font-semibold">Hint: </span>{check.hint}
         </p>
       )}
       {showAnswer && (
         <p className="text-xs text-gray-700 bg-indigo-50 rounded px-3 py-2">
-          <span className="font-semibold">Answer: </span>
-          {check.answer}
+          <span className="font-semibold">Answer: </span>{check.answer}
         </p>
       )}
     </div>
-  );
+  )
 }
 
 function VidyaSectionCard({ sec }: { sec: VidyaSection }) {
-  const style = SECTION_STYLES[sec.type] ?? SECTION_STYLES.concept;
+  const style = SECTION_STYLES[sec.type] ?? SECTION_STYLES.concept
   return (
     <div className={`rounded-xl border ${style.border} ${style.bg} p-4 space-y-3`}>
       <div className="flex items-center gap-2">
@@ -541,9 +491,7 @@ function VidyaSectionCard({ sec }: { sec: VidyaSection }) {
                     <p className="text-xs text-gray-500 italic">{step.teacherComment}</p>
                   )}
                   {step.isCommonMistakePoint && (
-                    <p className="text-xs font-semibold text-[#E24B4A]">
-                      Watch out -- common mistake point!
-                    </p>
+                    <p className="text-xs font-semibold text-[#E24B4A]">Watch out -- common mistake point!</p>
                   )}
                 </div>
               </div>
@@ -559,54 +507,36 @@ function VidyaSectionCard({ sec }: { sec: VidyaSection }) {
           <p className="text-xs font-semibold text-gray-400 mb-1">Blackboard</p>
           <ul className="space-y-0.5">
             {sec.blackboardNotes.map((note, i) => (
-              <li key={i} className="text-xs font-mono text-yellow-200">
-                {note}
-              </li>
+              <li key={i} className="text-xs font-mono text-yellow-200">{note}</li>
             ))}
           </ul>
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function VidyaNoteRenderer({ obj }: { obj: Record<string, unknown> }) {
-  const sections = obj.sections as VidyaSection[];
-  const keyConcepts = obj.keyConcepts as
-    | Array<{ term: string; definition: string; formula: string | null }>
-    | undefined;
-  const examTips = obj.examTips as string[] | undefined;
-  const bridgeToNext = obj.bridgeToNext as string | undefined;
-  const metadata = obj.metadata as Record<string, unknown> | undefined;
+  const sections = obj.sections as VidyaSection[]
+  const keyConcepts = obj.keyConcepts as Array<{ term: string; definition: string; formula: string | null }> | undefined
+  const examTips = obj.examTips as string[] | undefined
+  const bridgeToNext = obj.bridgeToNext as string | undefined
+  const metadata = obj.metadata as Record<string, unknown> | undefined
 
   return (
     <article className="space-y-4">
       {metadata && (
         <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-          {metadata.board && (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.board)}</span>
-          )}
-          {metadata.grade && (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5">
-              Grade {String(metadata.grade)}
-            </span>
-          )}
-          {metadata.difficultyLevel && (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 capitalize">
-              {String(metadata.difficultyLevel)}
-            </span>
-          )}
+          {metadata.board && <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.board)}</span>}
+          {metadata.grade && <span className="rounded-full bg-gray-100 px-2 py-0.5">Grade {String(metadata.grade)}</span>}
+          {metadata.difficultyLevel && <span className="rounded-full bg-gray-100 px-2 py-0.5 capitalize">{String(metadata.difficultyLevel)}</span>}
           {metadata.estimatedReadingMinutes && (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5">
-              {String(metadata.estimatedReadingMinutes)} min read
-            </span>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.estimatedReadingMinutes)} min read</span>
           )}
         </div>
       )}
 
-      {sections.map((sec, i) => (
-        <VidyaSectionCard key={i} sec={sec} />
-      ))}
+      {sections.map((sec, i) => <VidyaSectionCard key={i} sec={sec} />)}
 
       {Array.isArray(keyConcepts) && keyConcepts.length > 0 && (
         <div className="rounded-xl border border-indigo-200 bg-[#EEEDFE] p-4 space-y-3">
@@ -646,13 +576,15 @@ function VidyaNoteRenderer({ obj }: { obj: Record<string, unknown> }) {
         </div>
       )}
     </article>
-  );
+  )
 }
 
 function NoteRenderer({ content, title }: { content: unknown; title: string }) {
   if (!content) {
     return (
-      <div className="rounded-lg border p-6 text-sm text-gray-500">Note content is empty.</div>
+      <div className="rounded-lg border p-6 text-sm text-gray-500">
+        Note content is empty.
+      </div>
     );
   }
 
@@ -670,12 +602,8 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
     const obj = content as Record<string, unknown>;
 
     // VidyaNotesSchema: sections array where each item has a `type` field
-    if (
-      Array.isArray(obj.sections) &&
-      obj.sections.length > 0 &&
-      typeof (obj.sections[0] as any)?.type === 'string'
-    ) {
-      return <VidyaNoteRenderer obj={obj} />;
+    if (Array.isArray(obj.sections) && obj.sections.length > 0 && typeof (obj.sections[0] as any)?.type === 'string') {
+      return <VidyaNoteRenderer obj={obj} />
     }
 
     // Legacy sections format: heading/content/points
@@ -685,7 +613,9 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
           {(obj.sections as Array<Record<string, unknown>>).map((sec, i) => (
             <div key={i}>
               {sec.heading && (
-                <h3 className="text-base font-bold text-gray-900 mb-2">{String(sec.heading)}</h3>
+                <h3 className="text-base font-bold text-gray-900 mb-2">
+                  {String(sec.heading)}
+                </h3>
               )}
               {sec.content && (
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
@@ -735,9 +665,7 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
             <p className="text-sm text-gray-700 leading-relaxed">{String(obj.concept)}</p>
           )}
           {obj.explanation && (
-            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-              {String(obj.explanation)}
-            </div>
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{String(obj.explanation)}</div>
           )}
           {obj.objectives && Array.isArray(obj.objectives) && obj.objectives.length > 0 && (
             <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4 mt-2">
@@ -751,9 +679,7 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
           )}
           {obj.example && (
             <div className="rounded-md bg-gray-50 border border-gray-200 p-3">
-              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-                Examples
-              </p>
+              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Examples</p>
               <div className="text-sm text-gray-700 whitespace-pre-wrap">{String(obj.example)}</div>
             </div>
           )}
@@ -761,9 +687,7 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
             <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4">
               <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Key Points</h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
-                {(obj.keyPoints as string[]).map((k, i) => (
-                  <li key={i}>{k}</li>
-                ))}
+                {(obj.keyPoints as string[]).map((k, i) => <li key={i}>{k}</li>)}
               </ul>
             </div>
           )}
@@ -771,14 +695,12 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
             <div className="rounded-lg bg-[#FCEBEB] border border-red-100 p-4">
               <h3 className="text-sm font-semibold text-[#E24B4A] mb-2">Common Mistakes</h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-red-900">
-                {(obj.commonMistakes as string[]).map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
+                {(obj.commonMistakes as string[]).map((m, i) => <li key={i}>{m}</li>)}
               </ul>
             </div>
           )}
         </article>
-      );
+      )
     }
 
     // Fallback: render as formatted JSON

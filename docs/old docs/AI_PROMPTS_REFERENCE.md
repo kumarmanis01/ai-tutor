@@ -8,8 +8,7 @@ This document lists **all prompts in the project used to generate AI content**. 
 
 These are rendered via `renderTemplate()` and used by workers and APIs.
 
-### 1.1 Topic notes — `prompts/topic-notes.ts`
-
+### 1.1 Topic notes — `prompts/topic-notes.ts`  
 **Used by:** `worker/services/notesWorker.ts` (template name: `topic-notes`)
 
 ```
@@ -36,8 +35,7 @@ Output JSON Schema (RETURN ONLY valid JSON matching this EXACT structure):
 Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above, nothing else.
 ```
 
-### 1.2 Topic questions — `prompts/topic-questions.ts`
-
+### 1.2 Topic questions — `prompts/topic-questions.ts`  
 **Used by:** `worker/services/questionsWorker.ts` (template name: `topic-questions`)
 
 ```
@@ -70,8 +68,7 @@ Required JSON format:
 Return ONLY the JSON object above with exactly {count} questions. No other text.
 ```
 
-### 1.3 Bilingual notes — `prompts/bilingual-notes.ts`
-
+### 1.3 Bilingual notes — `prompts/bilingual-notes.ts`  
 **Used by:** `renderTemplate('bilingual-notes', ...)` (exported; callers can use for en+hi notes)
 
 ```
@@ -87,8 +84,7 @@ Notes Schema (for each "en" and "hi"): { title, concept, explanation, example, k
 Strict Output Instruction: Return ONLY valid JSON with top-level keys "en" and "hi" matching the schema; nothing else.
 ```
 
-### 1.4 Syllabus — `prompts/syllabus.ts`
-
+### 1.4 Syllabus — `prompts/syllabus.ts`  
 **Used by:** `worker/services/syllabusWorker.ts` (template name: `syllabus`)
 
 ```
@@ -111,8 +107,7 @@ Output JSON Schema (RETURN ONLY valid JSON):
 Strict Output Instruction: Return ONLY valid JSON matching the schema above, nothing else.
 ```
 
-### 1.5 Chapters — `prompts/chapters.ts`
-
+### 1.5 Chapters — `prompts/chapters.ts`  
 **Used by:** `renderTemplate('chapters', ...)` (exported for chapter-level generation)
 
 ```
@@ -123,8 +118,7 @@ Output JSON Schema (RETURN ONLY valid JSON array): [ { "title", "order", "summar
 Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above.
 ```
 
-### 1.6 Assemble — `prompts/assemble.ts`
-
+### 1.6 Assemble — `prompts/assemble.ts`  
 **Used by:** `renderTemplate('assemble', ...)` (versioned content assembly)
 
 ```
@@ -152,8 +146,7 @@ Strict Output Instruction: Return ONLY the single JSON object described above wi
 
 Used by `lib/ai/prompts/promptBuilder.ts` and/or API routes (e.g. doubts, notes, practice).
 
-### 3.1 Global system prompt — `lib/ai/prompts/global.ts`
-
+### 3.1 Global system prompt — `lib/ai/prompts/global.ts`  
 **Used by:** All promptBuilder flows (notes, practice, doubts) as first system message.
 
 ```
@@ -174,8 +167,7 @@ Remember: You are helping shape young minds. Every response matters.
 
 Plus grade-specific language guidance and language instructions (Hindi / Hinglish / English) from `getGradeLanguageGuidance()` and `getLanguageInstructions()`.
 
-### 3.2 Doubts (chat) — `lib/ai/prompts/doubts.ts`
-
+### 3.2 Doubts (chat) — `lib/ai/prompts/doubts.ts`  
 **Used by:** `app/api/doubts/route.ts`, `promptBuilder.ts` (doubts flow).
 
 User prompt is built by `buildDoubtsPrompt(input)`: student context (grade, board, subject, chapter, topic, language), conversation history, student question, intent-specific guidelines (`getIntentGuidelines`), response guidelines (explanation first, encouraging tone, age-appropriate, follow-up question, stay on topic, confidence level). Output schema:
@@ -184,14 +176,12 @@ User prompt is built by `buildDoubtsPrompt(input)`: student context (grade, boar
 { "response": "string", "followUpQuestion": "string", "confidenceLevel": "high | medium | low" }
 ```
 
-### 3.3 Notes — `lib/ai/prompts/notes.ts`
-
+### 3.3 Notes — `lib/ai/prompts/notes.ts`  
 **Used by:** `promptBuilder.ts` (notes flow).
 
 User prompt is built by `buildNotesPrompt(input)`: student profile, explanation level (simple/conceptual/detailed), content length (short/medium/long), content guidelines, worked examples, key takeaways, common mistakes. Output schema: `NOTES_OUTPUT_SCHEMA` (title, learningObjectives, coreExplanation, workedExamples, keyTakeaways, commonMistakes).
 
-### 3.4 Practice — `lib/ai/prompts/practice.ts`
-
+### 3.4 Practice — `lib/ai/prompts/practice.ts`  
 **Used by:** `promptBuilder.ts` (practice flow).
 
 User prompt is built by `buildPracticePrompt(input)`: student profile, difficulty (easy/medium/hard with descriptions), question types (mcq, short_answer, true_false, fill_blank), question design principles, concept coverage. Output schema: `PRACTICE_OUTPUT_SCHEMA` (questions array with id, type, question, options, correctAnswer, explanation, difficulty, conceptTested).
@@ -200,8 +190,7 @@ User prompt is built by `buildPracticePrompt(input)`: student profile, difficult
 
 ## 4. API route prompts
 
-### 4.1 Learn generate — `app/api/learn/generate/route.ts`
-
+### 4.1 Learn generate — `app/api/learn/generate/route.ts`  
 **Function:** `buildGenerationPrompt(topic, subject, grade, board, language)`
 
 ```
@@ -228,8 +217,7 @@ OUTPUT: JSON ONLY (no markdown, no explanations outside JSON)
 JSON Schema: { title, content: { introduction, learningObjectives, sections, keyTerms, realWorldExamples, practiceQuestions, summary, funFact, studyTips } }
 ```
 
-### 4.2 Ask (general Q&A) — `app/api/ask/route.ts`
-
+### 4.2 Ask (general Q&A) — `app/api/ask/route.ts`  
 **Constant:** `SYSTEM_PROMPT`
 
 ```
@@ -244,8 +232,7 @@ Return only valid JSON. The object MUST contain these keys:
 Do not add any other text, explanation, or commentary outside the JSON object. If you cannot provide suggestions, return an empty array for 'suggestions'.
 ```
 
-### 4.3 Chat (subject-specific) — `app/api/chat/route.ts`
-
+### 4.3 Chat (subject-specific) — `app/api/chat/route.ts`  
 **Source:** `lib/subjectEngines.ts` — `subjectPrompts`
 
 - **math:** "You are a math tutor. Explain step-by-step."
@@ -254,8 +241,7 @@ Do not add any other text, explanation, or commentary outside the JSON object. I
 
 (Actual chat may combine these with message history and user message.)
 
-### 4.4 Image caption — `app/api/image-caption/route.ts`
-
+### 4.4 Image caption — `app/api/image-caption/route.ts`  
 **Inline prompt when using OpenAI:**
 
 ```
@@ -266,8 +252,7 @@ Please provide a single short caption (one sentence) describing the image in pla
 
 ## 5. Content generators (lesson / quiz / project)
 
-### 5.1 Lesson — `lib/content/lesson/prompt.ts`
-
+### 5.1 Lesson — `lib/content/lesson/prompt.ts`  
 **Function:** `buildLessonPrompt(input)`
 
 ```
@@ -288,8 +273,7 @@ Input:
 Return an array of Lesson objects.
 ```
 
-### 5.2 Quiz — `lib/content/quiz/prompt.ts`
-
+### 5.2 Quiz — `lib/content/quiz/prompt.ts`  
 **Function:** `buildQuizPrompt(input)`
 
 ```
@@ -307,8 +291,7 @@ Input:
 Return a Quiz object matching the schema.
 ```
 
-### 5.3 Project — `lib/content/project/prompt.ts`
-
+### 5.3 Project — `lib/content/project/prompt.ts`  
 **Function:** `buildProjectPrompt(input)`
 
 ```
@@ -330,8 +313,7 @@ Return a single ProjectAssignment object matching the schema.
 
 ## 6. Language and guardrails
 
-### 6.1 Language system prompts — `services/ai/language/systemPrompts.ts`
-
+### 6.1 Language system prompts — `services/ai/language/systemPrompts.ts`  
 **Used by:** Language-aware flows (EN / HI / HINGLISH × junior / middle / senior).
 
 - **EN:** junior / middle / senior system prompts + language rules + vocabulary guidelines.
@@ -340,24 +322,20 @@ Return a single ProjectAssignment object matching the schema.
 
 Exposed via `getLanguageSystemPrompt(language, grade)` and `getCompleteSystemPrompt(language, grade)`.
 
-### 6.2 Prompt rewriter — `lib/ai/guardrails/promptRewriter.ts`
-
+### 6.2 Prompt rewriter — `lib/ai/guardrails/promptRewriter.ts`  
 **Purpose:** Rewrite student inputs (shortcut-seeking, homework-dump, etc.) into learning-focused prompts. Uses `RewriteStrategy` and templates; does not generate end-user content, only transforms the user prompt.
 
-### 6.3 Safe responses — `lib/ai/guardrails/safeResponses.ts`
-
+### 6.3 Safe responses — `lib/ai/guardrails/safeResponses.ts`  
 **Purpose:** Fallback message templates when AI cannot respond (off-topic, unsafe, technical error, etc.). Predefined strings, not LLM-generated content.
 
-### 6.4 Fallback templates — `services/ai/prompts/fallbacks/templates.ts`
-
+### 6.4 Fallback templates — `services/ai/prompts/fallbacks/templates.ts`  
 **Purpose:** Grade-wise fallback templates (e.g. SIMPLIFY_AND_RETRY) for safe failure messages. Predefined `FallbackTemplate` objects, not LLM prompts.
 
 ---
 
 ## 7. AI tools (parent report, daily task)
 
-### 7.1 Parent weekly report — `lib/ai/tools/generateParentReport.ts`
-
+### 7.1 Parent weekly report — `lib/ai/tools/generateParentReport.ts`  
 **Function:** `buildPrompt(studentName, summary, language)`
 
 ```
@@ -382,8 +360,7 @@ Respond ONLY with valid JSON:
 { "summary", "improvement", "encouragement", "parent_action" }
 ```
 
-### 7.2 Daily task — `lib/ai/tools/generateDailyTask.ts`
-
+### 7.2 Daily task — `lib/ai/tools/generateDailyTask.ts`  
 **Function:** `buildPrompt(profile, context, forceRecovery, effectiveDifficulty)`
 
 ```
@@ -410,8 +387,7 @@ Respond ONLY with valid JSON:
 
 ## 8. Worker retry / correction prompts
 
-### 8.1 Notes worker parse retry — `worker/services/notesWorker.ts`
-
+### 8.1 Notes worker parse retry — `worker/services/notesWorker.ts`  
 **When:** Previous LLM response failed to parse as JSON (inside `callAndParseJSON`).
 
 ```
@@ -438,30 +414,30 @@ These are **not** used by the main syllabus/notes/questions workers (those use `
 
 ## Summary table
 
-| Category        | Source path(s)                          | Consumed by                         |
-| --------------- | --------------------------------------- | ----------------------------------- |
-| Topic notes     | `prompts/topic-notes.ts`                | notesWorker                         |
-| Topic questions | `prompts/topic-questions.ts`            | questionsWorker                     |
-| Bilingual notes | `prompts/bilingual-notes.ts`            | renderTemplate                      |
-| Syllabus        | `prompts/syllabus.ts`                   | syllabusWorker                      |
-| Chapters        | `prompts/chapters.ts`                   | renderTemplate                      |
-| Assemble        | `prompts/assemble.ts`                   | renderTemplate                      |
-| Global system   | `lib/ai/prompts/global.ts`              | promptBuilder (all flows)           |
-| Doubts          | `lib/ai/prompts/doubts.ts`              | api/doubts, promptBuilder           |
-| Notes (lib)     | `lib/ai/prompts/notes.ts`               | promptBuilder                       |
-| Practice        | `lib/ai/prompts/practice.ts`            | promptBuilder                       |
-| Learn generate  | `app/api/learn/generate/route.ts`       | POST /api/learn/generate            |
-| Ask             | `app/api/ask/route.ts`                  | POST /api/ask                       |
-| Chat            | `lib/subjectEngines.ts`                 | POST /api/chat                      |
-| Image caption   | `app/api/image-caption/route.ts`        | POST /api/image-caption (OpenAI)    |
-| Lesson          | `lib/content/lesson/prompt.ts`          | lesson generator                    |
-| Quiz            | `lib/content/quiz/prompt.ts`            | quiz generator                      |
-| Project         | `lib/content/project/prompt.ts`         | project generator                   |
-| Language        | `services/ai/language/systemPrompts.ts` | Language-aware flows                |
-| Parent report   | `lib/ai/tools/generateParentReport.ts`  | generateParentReportAI              |
-| Daily task      | `lib/ai/tools/generateDailyTask.ts`     | generateDailyTaskAI                 |
-| Notes retry     | `worker/services/notesWorker.ts`        | callAndParseJSON (on parse failure) |
+| Category        | Source path(s)                          | Consumed by                                      |
+|----------------|-----------------------------------------|--------------------------------------------------|
+| Topic notes    | `prompts/topic-notes.ts`                | notesWorker                                      |
+| Topic questions| `prompts/topic-questions.ts`            | questionsWorker                                  |
+| Bilingual notes| `prompts/bilingual-notes.ts`           | renderTemplate                                   |
+| Syllabus       | `prompts/syllabus.ts`                   | syllabusWorker                                   |
+| Chapters       | `prompts/chapters.ts`                   | renderTemplate                                   |
+| Assemble       | `prompts/assemble.ts`                   | renderTemplate                                   |
+| Global system  | `lib/ai/prompts/global.ts`             | promptBuilder (all flows)                        |
+| Doubts         | `lib/ai/prompts/doubts.ts`             | api/doubts, promptBuilder                        |
+| Notes (lib)    | `lib/ai/prompts/notes.ts`               | promptBuilder                                    |
+| Practice       | `lib/ai/prompts/practice.ts`           | promptBuilder                                    |
+| Learn generate | `app/api/learn/generate/route.ts`       | POST /api/learn/generate                         |
+| Ask            | `app/api/ask/route.ts`                  | POST /api/ask                                    |
+| Chat           | `lib/subjectEngines.ts`                 | POST /api/chat                                   |
+| Image caption  | `app/api/image-caption/route.ts`        | POST /api/image-caption (OpenAI)                 |
+| Lesson         | `lib/content/lesson/prompt.ts`          | lesson generator                                 |
+| Quiz           | `lib/content/quiz/prompt.ts`            | quiz generator                                   |
+| Project        | `lib/content/project/prompt.ts`        | project generator                                |
+| Language       | `services/ai/language/systemPrompts.ts`| Language-aware flows                             |
+| Parent report  | `lib/ai/tools/generateParentReport.ts`  | generateParentReportAI                           |
+| Daily task     | `lib/ai/tools/generateDailyTask.ts`     | generateDailyTaskAI                              |
+| Notes retry    | `worker/services/notesWorker.ts`         | callAndParseJSON (on parse failure)              |
 
 ---
 
-_Generated from the ai-tutor codebase. Update this file when adding or changing AI generation prompts._
+*Generated from the ai-tutor codebase. Update this file when adding or changing AI generation prompts.*

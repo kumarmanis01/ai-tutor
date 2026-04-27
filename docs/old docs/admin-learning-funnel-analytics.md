@@ -2,14 +2,13 @@
 
 **Role:** Senior Product Data Scientist  
 **Goal:** Identify where students drop off during learning sessions and quantify conversion across stages.  
-**Primary data sources:** `StructuredSession`, `StudentTopicProgress` (and `StructuredSession.meta` + `SessionEvent` where available).
+**Primary data sources:** `StructuredSession`, `StudentTopicProgress` (and `StructuredSession.meta` + `SessionEvent` where available).  
 
 ### Fit to current codebase (recent changes)
-
 - **Practice/Test completion signals are already persisted** into `StructuredSession.meta` by:
   - `POST /api/session/[sessionId]/practice/submit` → `meta.practiceResult.score`
   - `POST /api/session/[sessionId]/test/submit` → `meta.testResult.score`
-- **Session lifecycle events exist** via `SessionEvent` (`SESSION_STARTED`, `SESSION_OVERVIEW_VIEWED`, `QUESTION_ANSWERED`, `HOMEWORK_SUBMITTED`, `SESSION_COMPLETED`). These improve funnel accuracy (especially “resume” and “homework completed”).
+- **Session lifecycle events exist** via `SessionEvent` (`SESSION_STARTED`, `SESSION_OVERVIEW_VIEWED`, `QUESTION_ANSWERED`, `HOMEWORK_SUBMITTED`, `SESSION_COMPLETED`). These improve funnel accuracy (especially “resume” and “homework completed”).  
 - **Recommendation traces are not impressions**: the system currently has observability traces (Redis `RecommendationTrace` and a DB `RecommendationTrace` model), but neither is a guaranteed “shown to user” event. Treat “Recommendation shown” as requiring explicit UI impression instrumentation.
 
 ---
@@ -17,7 +16,6 @@
 ## SECTION 1 — Metrics definition
 
 ### Funnel stages (canonical)
-
 All metrics are computed for a filterable time window \([from,to]\) in UTC, segmented by board/grade/subject where possible.
 
 1. **Recommendation shown**
@@ -42,7 +40,6 @@ All metrics are computed for a filterable time window \([from,to]\) in UTC, segm
    - **Note**: `StructuredSession.state='COMPLETE'` indicates the session finished, but it is not guaranteed that it strictly implies homework completion unless session engine enforces it. Treat “homework completed” as an explicit event whenever possible.
 
 ### Core funnel KPIs
-
 - **Stage counts** (per window):
   - **sessionsStarted**, **practiceCompletedSessions**, **testCompletedSessions**, **homeworkCompletedSessions**
 - **Stage conversion rates**:
@@ -56,7 +53,6 @@ All metrics are computed for a filterable time window \([from,to]\) in UTC, segm
   - `testCompleted - homeworkCompleted`
 
 ### Operational diagnostics (high value)
-
 - **Latency to stage** (distribution): time from `startedAt` to practice/test/homework completion (median, p90/p95).
 - **Resumption behavior**: % of sessions with ≥1 `SESSION_OVERVIEW_VIEWED` before completion.
 - **Learning impact proxy (limits)**:
@@ -64,14 +60,12 @@ All metrics are computed for a filterable time window \([from,to]\) in UTC, segm
   - Track “topics with lastStudiedAt in window” and report current mastery distribution; avoid claiming causal delta without baseline.
 
 ### Instrumentation requirement (Recommendation shown)
-
 To measure “Recommendation shown” as a true funnel top:
-
 - Emit a **RecommendationImpression** event when the UI renders the recommendation.
 - Minimal storage options:
   - Reuse `SessionEvent` with a new eventType `RECOMMENDATION_SHOWN` and metadata `{ studentId, ruleId, topicId, actionType }`, or
   - Create a small table `RecommendationImpression` (append-only).
-
+  
 Until this instrumentation exists, the Admin funnel should **start at “Session started”** and display a banner: “Recommendation shown not instrumented.”
 
 ---
@@ -79,9 +73,7 @@ Until this instrumentation exists, the Admin funnel should **start at “Session
 ## SECTION 2 — Aggregation logic
 
 ### Entity-level derived flags (per StructuredSession)
-
 For each session in \([from,to]\):
-
 - `started = startedAt in window`
 - `practiceCompleted = meta.practiceResult exists`
 - `testCompleted = meta.testResult exists`
@@ -89,16 +81,13 @@ For each session in \([from,to]\):
 - `completed = (state='COMPLETE' and completedAt not null)` (supporting metric)
 
 ### SQL/Prisma-friendly approach
-
 Two-pass aggregation for performance:
-
 1. **Fetch candidate sessions**: `StructuredSession` filtered by `startedAt` range (and optional join filters via `User.board/grade`).
 2. **Compute stage completion**:
    - Practice/test: derived from `meta` JSON presence (read in app layer) OR precomputed flags (recommended for rollups).
    - Homework: via `SessionEvent` existence lookup (groupBy sessionId where eventType=HOMEWORK_SUBMITTED).
 
 ### Aggregation outputs
-
 - **Window summary**: stage counts + conversion rates + latency stats.
 - **Breakdowns**:
   - by board, grade, subject (topic → chapter → subject join), and “new vs resumed session start”
@@ -108,9 +97,7 @@ Two-pass aggregation for performance:
   - “Test done but no homework within 72h”
 
 ### Rollup strategy (recommended)
-
 Create daily aggregates for fast dashboards:
-
 - `LearningFunnelDailyAggregate(dateUTC, board?, grade?, subjectId?, sessionsStarted, practiceCompleted, testCompleted, homeworkCompleted, medianLatencyPracticeSec, medianLatencyTestSec, medianLatencyHomeworkSec, updatedAt)`
 - Populate via nightly job or incremental updater.
 
@@ -119,11 +106,9 @@ Create daily aggregates for fast dashboards:
 ## SECTION 3 — Admin service design
 
 ### Service: `AdminLearningFunnelAnalyticsService`
-
 **Location:** `lib/admin/learningFunnelAnalytics.ts` (recommended)
 
 **Responsibilities**
-
 - `getFunnelSummary({from,to, board?, grade?, subjectId?})`
   - returns stage counts, conversion rates, latency percentiles, and data-quality flags (e.g. % sessions missing meta)
 - `getFunnelTimeseries({from,to, granularity:'day', board?, grade?, subjectId?})`
@@ -132,7 +117,6 @@ Create daily aggregates for fast dashboards:
   - returns top topics / chapters / segments driving drop-off (e.g. many sessions start but few reach test)
 
 **Design constraints**
-
 - Read-only for analytics queries (writes only if rollup tables/jobs are adopted).
 - Deterministic derivations; no AI inference.
 
@@ -155,7 +139,6 @@ All endpoints admin-only.
    - Response: `{ topTopics: [...], topChapters: [...], topSegments: [...] }`
 
 Optional (if “Recommendation shown” instrumentation is added):
-
 - `GET /api/admin/learning-funnel/impressions`
 
 ---
@@ -165,13 +148,11 @@ Optional (if “Recommendation shown” instrumentation is added):
 ### Page: `/admin/learning-funnel`
 
 **Top controls**
-
 - Date range (default last 7 days)
 - Board, Grade, Subject filters
 - Toggle: “New sessions only” vs “Include resumes”
 
 **Primary visualization**
-
 - Funnel chart:
   - Recommendation shown (if instrumented)
   - Session started
@@ -180,7 +161,6 @@ Optional (if “Recommendation shown” instrumentation is added):
   - Homework completed
 
 **Supporting panels**
-
 - Trend line (daily) of stage counts and end-to-end completion rate
 - Latency panel (median/p95 time-to-practice/test/homework)
 - Drop-off drivers:
@@ -189,3 +169,4 @@ Optional (if “Recommendation shown” instrumentation is added):
 - Data quality panel:
   - % sessions missing practice/test meta
   - event coverage for homework submitted
+

@@ -43,7 +43,7 @@ interface MotivationSignal {
 export function detectMotivationSignals(analytics: LearningAnalytics): MotivationSignal[] {
   const signals: MotivationSignal[] = [];
   const { currentSession, history, confidence } = analytics;
-
+  
   // IMPROVEMENT: Check if student improved accuracy
   if (history.accuracyTrend > 0.05) {
     signals.push({
@@ -52,11 +52,12 @@ export function detectMotivationSignals(analytics: LearningAnalytics): Motivatio
       reason: `Accuracy improved by ${Math.round(history.accuracyTrend * 100)}%`,
     });
   }
-
+  
   // EFFORT: Check session engagement
   if (currentSession.questionsAttempted >= 5 || currentSession.durationMinutes >= 15) {
     const effortScore = Math.min(
-      (currentSession.questionsAttempted / 10) * 0.5 + (currentSession.durationMinutes / 30) * 0.5,
+      (currentSession.questionsAttempted / 10) * 0.5 +
+      (currentSession.durationMinutes / 30) * 0.5,
       1
     );
     signals.push({
@@ -65,7 +66,7 @@ export function detectMotivationSignals(analytics: LearningAnalytics): Motivatio
       reason: `Attempted ${currentSession.questionsAttempted} questions in ${currentSession.durationMinutes} minutes`,
     });
   }
-
+  
   // CONSISTENCY: Check learning streak
   if (history.currentStreak >= 3) {
     signals.push({
@@ -74,7 +75,7 @@ export function detectMotivationSignals(analytics: LearningAnalytics): Motivatio
       reason: `${history.currentStreak}-day learning streak`,
     });
   }
-
+  
   // PERSEVERANCE: Overcame difficulty (used hints but got correct)
   if (currentSession.hintsUsed > 0 && currentSession.questionsCorrect > 0) {
     const perseveranceScore = Math.min(
@@ -87,7 +88,7 @@ export function detectMotivationSignals(analytics: LearningAnalytics): Motivatio
       reason: `Used ${currentSession.hintsUsed} hints and answered ${currentSession.questionsCorrect} correctly`,
     });
   }
-
+  
   // CURIOSITY: Asked doubts
   if (currentSession.doubtsAsked >= 2) {
     signals.push({
@@ -96,7 +97,7 @@ export function detectMotivationSignals(analytics: LearningAnalytics): Motivatio
       reason: `Asked ${currentSession.doubtsAsked} questions`,
     });
   }
-
+  
   // THOROUGHNESS: Completed planned activity
   if (currentSession.completedPlannedActivity) {
     signals.push({
@@ -105,7 +106,7 @@ export function detectMotivationSignals(analytics: LearningAnalytics): Motivatio
       reason: 'Completed planned learning activity',
     });
   }
-
+  
   // COMPLETION: Always applicable as fallback
   if (currentSession.durationMinutes > 0) {
     signals.push({
@@ -114,7 +115,7 @@ export function detectMotivationSignals(analytics: LearningAnalytics): Motivatio
       reason: 'Completed a learning session',
     });
   }
-
+  
   // Sort by strength (highest first)
   return signals.sort((a, b) => b.strength - a.strength);
 }
@@ -127,20 +128,21 @@ export function selectBestFocus(
   config: GradeMotivationConfig
 ): MotivationSignal {
   // Filter out avoided focuses
-  const eligibleSignals = signals.filter((s) => !config.avoidFocuses.includes(s.focus));
-
-  // Prefer configured focuses
-  const preferredSignals = eligibleSignals.filter((s) => config.preferredFocuses.includes(s.focus));
-
-  // Return best preferred, or best eligible, or completion fallback
-  return (
-    preferredSignals[0] ||
-    eligibleSignals[0] || {
-      focus: MotivationFocus.COMPLETION,
-      strength: 0.3,
-      reason: 'Session completed',
-    }
+  const eligibleSignals = signals.filter(
+    s => !config.avoidFocuses.includes(s.focus)
   );
+  
+  // Prefer configured focuses
+  const preferredSignals = eligibleSignals.filter(
+    s => config.preferredFocuses.includes(s.focus)
+  );
+  
+  // Return best preferred, or best eligible, or completion fallback
+  return preferredSignals[0] || eligibleSignals[0] || {
+    focus: MotivationFocus.COMPLETION,
+    strength: 0.3,
+    reason: 'Session completed',
+  };
 }
 
 // ============================================================================
@@ -164,43 +166,30 @@ function getMessageTemplates(
   const templates: Record<MotivationFocus, Record<MotivationTone, MessageTemplate[]>> = {
     [MotivationFocus.IMPROVEMENT]: {
       [MotivationTone.PLAYFUL]: [
-        {
-          primary: "Wow! You're getting better and better!",
-          emoji: '🌟',
-          secondary: 'Keep going, superstar!',
-        },
-        { primary: 'Look at you go! You learned so much today!', emoji: '🚀' },
+        { primary: "Wow! You're getting better and better!", emoji: '🌟', secondary: "Keep going, superstar!" },
+        { primary: "Look at you go! You learned so much today!", emoji: '🚀' },
       ],
       [MotivationTone.SUPPORTIVE]: [
-        {
-          primary: 'Great progress! Your hard work is paying off.',
-          secondary: "You're understanding more each day.",
-        },
-        {
-          primary: "You've improved since last time! That's what learning looks like.",
-          emoji: '📈',
-        },
+        { primary: "Great progress! Your hard work is paying off.", secondary: "You're understanding more each day." },
+        { primary: "You've improved since last time! That's what learning looks like.", emoji: '📈' },
       ],
       [MotivationTone.RESPECTFUL]: [
-        { primary: 'Your accuracy has improved. Consistent effort leads to consistent growth.' },
+        { primary: "Your accuracy has improved. Consistent effort leads to consistent growth." },
         { primary: "You're building real understanding. Keep up the focused practice." },
       ],
     },
     [MotivationFocus.EFFORT]: {
       [MotivationTone.PLAYFUL]: [
-        { primary: 'You worked so hard today!', emoji: '💪', secondary: "That's awesome!" },
-        { primary: 'Look at all the practice you did!', emoji: '⭐' },
+        { primary: "You worked so hard today!", emoji: '💪', secondary: "That's awesome!" },
+        { primary: "Look at all the practice you did!", emoji: '⭐' },
       ],
       [MotivationTone.SUPPORTIVE]: [
-        {
-          primary: "You put in real effort today. That's what matters most.",
-          secondary: 'Learning happens through practice.',
-        },
-        { primary: 'Great work ethic! Every question you try makes you stronger.' },
+        { primary: "You put in real effort today. That's what matters most.", secondary: "Learning happens through practice." },
+        { primary: "Great work ethic! Every question you try makes you stronger." },
       ],
       [MotivationTone.RESPECTFUL]: [
-        { primary: 'Solid effort today. Deep practice builds lasting understanding.' },
-        { primary: 'You invested quality time in learning. That commitment matters.' },
+        { primary: "Solid effort today. Deep practice builds lasting understanding." },
+        { primary: "You invested quality time in learning. That commitment matters." },
       ],
     },
     [MotivationFocus.CONSISTENCY]: {
@@ -209,83 +198,72 @@ function getMessageTemplates(
         { primary: "You keep coming back to learn! That's super cool!", emoji: '🌈' },
       ],
       [MotivationTone.SUPPORTIVE]: [
-        {
-          primary: `${analytics.history.currentStreak}-day streak! Consistency is your superpower.`,
-          emoji: '🔥',
-        },
+        { primary: `${analytics.history.currentStreak}-day streak! Consistency is your superpower.`, emoji: '🔥' },
         { primary: "You're building a great learning habit. Keep it going!" },
       ],
       [MotivationTone.RESPECTFUL]: [
-        {
-          primary: `${analytics.history.currentStreak} consecutive days of learning. Discipline creates results.`,
-        },
+        { primary: `${analytics.history.currentStreak} consecutive days of learning. Discipline creates results.` },
         { primary: "Your consistency shows commitment. That's how expertise is built." },
       ],
     },
     [MotivationFocus.PERSEVERANCE]: {
       [MotivationTone.PLAYFUL]: [
         { primary: "You didn't give up! You're a problem-solving hero!", emoji: '🦸' },
-        { primary: 'You kept trying until you got it! So proud of you!', emoji: '🎉' },
+        { primary: "You kept trying until you got it! So proud of you!", emoji: '🎉' },
       ],
       [MotivationTone.SUPPORTIVE]: [
-        {
-          primary: 'You stuck with it even when it was hard. That takes courage.',
-          secondary: "The best learners don't give up.",
-        },
+        { primary: "You stuck with it even when it was hard. That takes courage.", secondary: "The best learners don't give up." },
         { primary: "You asked for help and kept going. That's real strength." },
       ],
       [MotivationTone.RESPECTFUL]: [
-        { primary: 'You persevered through difficulty. That resilience will serve you well.' },
-        { primary: 'Challenging problems require patience. You showed both today.' },
+        { primary: "You persevered through difficulty. That resilience will serve you well." },
+        { primary: "Challenging problems require patience. You showed both today." },
       ],
     },
     [MotivationFocus.CURIOSITY]: {
       [MotivationTone.PLAYFUL]: [
-        { primary: 'You asked great questions! Curious minds learn the most!', emoji: '🤔' },
+        { primary: "You asked great questions! Curious minds learn the most!", emoji: '🤔' },
         { primary: "So many good questions! You're a super explorer!", emoji: '🔍' },
       ],
       [MotivationTone.SUPPORTIVE]: [
-        { primary: 'Your questions show real thinking. Curiosity drives learning.', emoji: '💡' },
+        { primary: "Your questions show real thinking. Curiosity drives learning.", emoji: '💡' },
         { primary: "Great questions today! Never stop asking 'why'." },
       ],
       [MotivationTone.RESPECTFUL]: [
-        { primary: 'Thoughtful questions lead to deeper understanding. Keep questioning.' },
-        { primary: 'Your curiosity is an asset. The best thinkers always ask questions.' },
+        { primary: "Thoughtful questions lead to deeper understanding. Keep questioning." },
+        { primary: "Your curiosity is an asset. The best thinkers always ask questions." },
       ],
     },
     [MotivationFocus.THOROUGHNESS]: {
       [MotivationTone.PLAYFUL]: [
-        { primary: 'You finished everything! What a champion!', emoji: '🏆' },
-        { primary: 'You did it all! High five!', emoji: '✋' },
+        { primary: "You finished everything! What a champion!", emoji: '🏆' },
+        { primary: "You did it all! High five!", emoji: '✋' },
       ],
       [MotivationTone.SUPPORTIVE]: [
-        {
-          primary: 'You completed your learning goal. Well done!',
-          secondary: 'Finishing what you start is a valuable skill.',
-        },
-        { primary: 'Task complete! You followed through on your plan.' },
+        { primary: "You completed your learning goal. Well done!", secondary: "Finishing what you start is a valuable skill." },
+        { primary: "Task complete! You followed through on your plan." },
       ],
       [MotivationTone.RESPECTFUL]: [
-        { primary: 'You completed your planned session. Execution matters as much as intent.' },
-        { primary: 'Goal achieved. Consistent completion builds momentum.' },
+        { primary: "You completed your planned session. Execution matters as much as intent." },
+        { primary: "Goal achieved. Consistent completion builds momentum." },
       ],
     },
     [MotivationFocus.COMPLETION]: {
       [MotivationTone.PLAYFUL]: [
-        { primary: 'Yay! You learned something new today!', emoji: '🎈' },
-        { primary: 'Great job coming to learn today!', emoji: '😊' },
+        { primary: "Yay! You learned something new today!", emoji: '🎈' },
+        { primary: "Great job coming to learn today!", emoji: '😊' },
       ],
       [MotivationTone.SUPPORTIVE]: [
-        { primary: 'Thanks for spending time learning today.', secondary: 'Every session counts.' },
+        { primary: "Thanks for spending time learning today.", secondary: "Every session counts." },
         { primary: "Another session complete. You're making progress." },
       ],
       [MotivationTone.RESPECTFUL]: [
-        { primary: 'Session complete. Consistent learning accumulates over time.' },
-        { primary: 'Good work today. See you in the next session.' },
+        { primary: "Session complete. Consistent learning accumulates over time." },
+        { primary: "Good work today. See you in the next session." },
       ],
     },
   };
-
+  
   return templates[focus]?.[tone] || templates[MotivationFocus.COMPLETION][tone];
 }
 
@@ -302,25 +280,25 @@ export function generateMotivationMessage(
   trigger: MotivationTrigger = MotivationTrigger.SESSION_END
 ): MotivationMessage {
   const config = getMotivationConfig(analytics.grade);
-
+  
   // Detect applicable motivation signals
   const signals = detectMotivationSignals(analytics);
-
+  
   // Select the best focus for this student
   const selectedSignal = selectBestFocus(signals, config);
-
+  
   // Get message templates
   const templates = getMessageTemplates(selectedSignal.focus, config.tone, analytics);
-
+  
   // Randomly select a template (with variation)
   const template = templates[Math.floor(Math.random() * templates.length)];
-
+  
   // Build achievement data if applicable
   const achievement = buildAchievement(selectedSignal, analytics);
-
+  
   // Build suggested action
   const suggestedAction = buildSuggestedAction(analytics, trigger);
-
+  
   // Construct the message
   const message: MotivationMessage = {
     id: uuidv4(),
@@ -337,16 +315,14 @@ export function generateMotivationMessage(
       analyticsSnapshot: {
         sessionDuration: analytics.currentSession.durationMinutes,
         questionsAttempted: analytics.currentSession.questionsAttempted,
-        accuracy:
-          analytics.currentSession.questionsAttempted > 0
-            ? analytics.currentSession.questionsCorrect /
-              analytics.currentSession.questionsAttempted
-            : 0,
+        accuracy: analytics.currentSession.questionsAttempted > 0
+          ? analytics.currentSession.questionsCorrect / analytics.currentSession.questionsAttempted
+          : 0,
         streak: analytics.history.currentStreak,
       },
     },
   };
-
+  
   return message;
 }
 
@@ -358,7 +334,7 @@ function buildAchievement(
   analytics: LearningAnalytics
 ): MotivationMessage['achievement'] | undefined {
   const { currentSession, history } = analytics;
-
+  
   // Check for personal bests
   if (signal.focus === MotivationFocus.CONSISTENCY && history.currentStreak >= 7) {
     return {
@@ -367,7 +343,7 @@ function buildAchievement(
       isPersonalBest: true,
     };
   }
-
+  
   if (signal.focus === MotivationFocus.IMPROVEMENT && history.accuracyTrend > 0.1) {
     return {
       type: 'accuracy_improvement',
@@ -375,7 +351,7 @@ function buildAchievement(
       isPersonalBest: false,
     };
   }
-
+  
   if (signal.focus === MotivationFocus.EFFORT && currentSession.questionsAttempted >= 10) {
     return {
       type: 'practice_volume',
@@ -383,7 +359,7 @@ function buildAchievement(
       isPersonalBest: false,
     };
   }
-
+  
   return undefined;
 }
 
@@ -395,7 +371,7 @@ function buildSuggestedAction(
   trigger: MotivationTrigger
 ): MotivationMessage['suggestedAction'] | undefined {
   const { currentSession, history, confidence } = analytics;
-
+  
   // After long session, suggest rest
   if (currentSession.durationMinutes > 45) {
     return {
@@ -403,7 +379,7 @@ function buildSuggestedAction(
       actionType: 'rest',
     };
   }
-
+  
   // Low confidence, suggest practice
   if (confidence.current < 0.5) {
     return {
@@ -411,7 +387,7 @@ function buildSuggestedAction(
       actionType: 'practice',
     };
   }
-
+  
   // High performance, suggest exploring new topics
   if (currentSession.questionsCorrect / Math.max(currentSession.questionsAttempted, 1) > 0.85) {
     return {
@@ -419,7 +395,7 @@ function buildSuggestedAction(
       actionType: 'explore',
     };
   }
-
+  
   // Default: continue learning
   if (trigger === MotivationTrigger.SESSION_END && currentSession.durationMinutes < 20) {
     return {
@@ -427,7 +403,7 @@ function buildSuggestedAction(
       actionType: 'continue',
     };
   }
-
+  
   return undefined;
 }
 
@@ -442,12 +418,12 @@ function buildSuggestedAction(
 export function translateToHindi(message: MotivationMessage): MotivationMessage {
   // Simplified translation mapping (production would have full translations)
   const hindiMappings: Record<string, string> = {
-    "Wow! You're getting better and better!": 'वाह! तुम बेहतर से बेहतर होते जा रहे हो!',
-    'You worked so hard today!': 'आज तुमने बहुत मेहनत की!',
-    'Great progress!': 'बहुत अच्छी प्रगति!',
-    'Keep going!': 'ऐसे ही चलते रहो!',
+    "Wow! You're getting better and better!": "वाह! तुम बेहतर से बेहतर होते जा रहे हो!",
+    "You worked so hard today!": "आज तुमने बहुत मेहनत की!",
+    "Great progress!": "बहुत अच्छी प्रगति!",
+    "Keep going!": "ऐसे ही चलते रहो!",
   };
-
+  
   return {
     ...message,
     primaryMessage: hindiMappings[message.primaryMessage] || message.primaryMessage,
@@ -459,12 +435,12 @@ export function translateToHindi(message: MotivationMessage): MotivationMessage 
  */
 export function translateToHinglish(message: MotivationMessage): MotivationMessage {
   const hinglishMappings: Record<string, string> = {
-    "Wow! You're getting better and better!": 'Wow! Tum better se better hote ja rahe ho!',
-    'You worked so hard today!': 'Aaj tumne bahut hard work kiya!',
-    'Great progress!': 'Bahut acchi progress!',
-    'Keep going!': 'Aise hi chalte raho!',
+    "Wow! You're getting better and better!": "Wow! Tum better se better hote ja rahe ho!",
+    "You worked so hard today!": "Aaj tumne bahut hard work kiya!",
+    "Great progress!": "Bahut acchi progress!",
+    "Keep going!": "Aise hi chalte raho!",
   };
-
+  
   return {
     ...message,
     primaryMessage: hinglishMappings[message.primaryMessage] || message.primaryMessage,

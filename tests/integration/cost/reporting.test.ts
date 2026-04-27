@@ -89,7 +89,7 @@ function setupBasePrismaMocks(overrides: {
 
   // Last 7 days metrics (rolling average basis)
   const last7 = Array.from({ length: 7 }, (_, i) =>
-    makeDailyCostMetric(last7DaysCostPerSession, i + 1)
+    makeDailyCostMetric(last7DaysCostPerSession, i + 1),
   );
   prismaMock.dailyCostMetric.findMany.mockResolvedValueOnce(last7);
 
@@ -100,7 +100,7 @@ function setupBasePrismaMocks(overrides: {
 
   // Yesterday metric (for dropout detection)
   prismaMock.dailyCostMetric.findFirst.mockResolvedValueOnce(
-    makeDailyCostMetric(last7DaysCostPerSession, 1)
+    makeDailyCostMetric(last7DaysCostPerSession, 1),
   );
 
   prismaMock.dailyCostMetric.upsert.mockResolvedValueOnce({});
@@ -143,18 +143,16 @@ describe('Rolling average anomaly detection', () => {
 
     const sessionRows = Array.from({ length: todaySessions }, (_, i) => ({ sessionId: `s${i}` }));
     prismaMock.aITutorTurnLog.findMany.mockResolvedValueOnce(sessionRows);
-    prismaMock.aITutorTurnLog.aggregate.mockResolvedValueOnce({
-      _sum: { costUsd: todayTotalCost },
-    });
+    prismaMock.aITutorTurnLog.aggregate.mockResolvedValueOnce({ _sum: { costUsd: todayTotalCost } });
     prismaMock.$queryRaw
       .mockResolvedValueOnce([]) // trending doubts (empty)
       .mockResolvedValueOnce([{ total: BigInt(100), cached: BigInt(60) }]); // cache stats
     const last7 = Array.from({ length: 7 }, (_, i) =>
-      makeDailyCostMetric(last7DaysCostPerSession, i + 1)
+      makeDailyCostMetric(last7DaysCostPerSession, i + 1),
     );
     prismaMock.dailyCostMetric.findMany.mockResolvedValueOnce(last7);
     prismaMock.dailyCostMetric.findFirst.mockResolvedValueOnce(
-      makeDailyCostMetric(last7DaysCostPerSession, 1)
+      makeDailyCostMetric(last7DaysCostPerSession, 1),
     );
     prismaMock.dailyCostMetric.upsert.mockResolvedValueOnce({});
     prismaMock.concept.findMany.mockResolvedValueOnce([]);
@@ -175,18 +173,16 @@ describe('Rolling average anomaly detection', () => {
 
     const sessionRows = Array.from({ length: todaySessions }, (_, i) => ({ sessionId: `s${i}` }));
     prismaMock.aITutorTurnLog.findMany.mockResolvedValueOnce(sessionRows);
-    prismaMock.aITutorTurnLog.aggregate.mockResolvedValueOnce({
-      _sum: { costUsd: todayTotalCost },
-    });
+    prismaMock.aITutorTurnLog.aggregate.mockResolvedValueOnce({ _sum: { costUsd: todayTotalCost } });
     prismaMock.$queryRaw
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ total: BigInt(100), cached: BigInt(60) }]);
     const last7 = Array.from({ length: 7 }, (_, i) =>
-      makeDailyCostMetric(last7DaysCostPerSession, i + 1)
+      makeDailyCostMetric(last7DaysCostPerSession, i + 1),
     );
     prismaMock.dailyCostMetric.findMany.mockResolvedValueOnce(last7);
     prismaMock.dailyCostMetric.findFirst.mockResolvedValueOnce(
-      makeDailyCostMetric(last7DaysCostPerSession, 1)
+      makeDailyCostMetric(last7DaysCostPerSession, 1),
     );
     prismaMock.dailyCostMetric.upsert.mockResolvedValueOnce({});
     prismaMock.concept.findMany.mockResolvedValueOnce([]);
@@ -205,9 +201,7 @@ describe('Rolling average anomaly detection', () => {
 
     const sessionRows = Array.from({ length: todaySessions }, (_, i) => ({ sessionId: `s${i}` }));
     prismaMock.aITutorTurnLog.findMany.mockResolvedValueOnce(sessionRows);
-    prismaMock.aITutorTurnLog.aggregate.mockResolvedValueOnce({
-      _sum: { costUsd: todayTotalCost },
-    });
+    prismaMock.aITutorTurnLog.aggregate.mockResolvedValueOnce({ _sum: { costUsd: todayTotalCost } });
     prismaMock.$queryRaw
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ total: BigInt(100), cached: BigInt(60) }]);
@@ -301,7 +295,7 @@ describe('Cache hit rate warning', () => {
     // Verify logger.warn was called for cache low
     expect((logger as any).warn).toHaveBeenCalledWith(
       'costReportingWorker.cacheLow',
-      expect.objectContaining({ cacheHitRate: 0.4 })
+      expect.objectContaining({ cacheHitRate: 0.4 }),
     );
   });
 
@@ -318,7 +312,7 @@ describe('Cache hit rate warning', () => {
     await runDailyCostReport();
 
     const warnCalls = (logger as any).warn.mock.calls.filter(
-      (call: any[]) => call[0] === 'costReportingWorker.cacheLow'
+      (call: any[]) => call[0] === 'costReportingWorker.cacheLow',
     );
     expect(warnCalls).toHaveLength(0);
   });

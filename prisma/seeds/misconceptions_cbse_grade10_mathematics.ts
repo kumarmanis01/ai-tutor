@@ -1,5 +1,5 @@
-import type { PrismaClient } from '@prisma/client';
-import { prisma } from '../../lib/prisma';
+import type { PrismaClient } from '@prisma/client'
+import { prisma } from '../../lib/prisma'
 
 export const MISCONCEPTIONS_MATH_GRADE10 = [
   {
@@ -9,8 +9,7 @@ export const MISCONCEPTIONS_MATH_GRADE10 = [
     name: 'Area vs Perimeter Confusion',
     description: 'Students confuse area and perimeter and apply linear formulas to area problems.',
     triggerPatterns: ['uses perimeter formula', 'adds side lengths instead of multiplying'],
-    correction:
-      'Explain units and show examples where doubling side length quadruples area but doubles perimeter.',
+    correction: 'Explain units and show examples where doubling side length quadruples area but doubles perimeter.',
   },
   {
     id: 'CBSE-MATH10-MIS-002',
@@ -116,8 +115,7 @@ export const MISCONCEPTIONS_MATH_GRADE10 = [
     subjectId: 'CBSE-MATH-10',
     conceptId: 'CBSE-MATH10-CH07-C004',
     name: 'Radians vs Degrees',
-    description:
-      'Confuse units when applying trig functions, forgetting radian-mode in calculators.',
+    description: 'Confuse units when applying trig functions, forgetting radian-mode in calculators.',
     triggerPatterns: ['uses degrees in radian formula', 'calculator mode error'],
     correction: 'Explicitly state and convert units; include calculator mode reminder.',
   },
@@ -182,14 +180,13 @@ export const MISCONCEPTIONS_MATH_GRADE10 = [
     name: 'Vector Direction vs Magnitude Errors',
     description: 'Confusing direction components with magnitude; sign errors in component algebra.',
     triggerPatterns: ['adds magnitudes directly', 'swaps components signs'],
-    correction:
-      'Separate magnitude calculation and component algebra; visual component decomposition.',
+    correction: 'Separate magnitude calculation and component algebra; visual component decomposition.',
   },
-];
+]
 
 export async function seedMisconceptions(prisma: PrismaClient, opts?: { dryRun?: boolean }) {
   for (const m of MISCONCEPTIONS_MATH_GRADE10) {
-    if (opts?.dryRun) continue;
+    if (opts?.dryRun) continue
     await prisma.misconception.upsert({
       where: { id: m.id },
       update: {
@@ -211,22 +208,20 @@ export async function seedMisconceptions(prisma: PrismaClient, opts?: { dryRun?:
         conceptId: m.conceptId,
         prevalenceRate: 0,
       },
-    });
+    })
   }
 }
 
 if (require.main === module) {
-  (async () => {
+  ;(async () => {
     try {
-      await seedMisconceptions(prisma);
-      console.log('Seeded math misconceptions');
+      await seedMisconceptions(prisma)
+      console.log('Seeded math misconceptions')
     } catch (err) {
-      console.error('Seed failed', err);
-      process.exit(1);
+      console.error('Seed failed', err)
+      process.exit(1)
     } finally {
-      try {
-        await prisma.$disconnect();
-      } catch {}
+      try { await prisma.$disconnect() } catch {}
     }
-  })();
+  })()
 }

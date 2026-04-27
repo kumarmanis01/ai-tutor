@@ -23,19 +23,11 @@ if (!process.env.DATABASE_URL) {
 
 (async () => {
   try {
-    console.log(
-      'Using DATABASE_URL:',
-      process.env.DATABASE_URL.replace(/(postgres:\/\/)(.*@)/, '$1***@')
-    );
+    console.log('Using DATABASE_URL:', process.env.DATABASE_URL.replace(/(postgres:\/\/)(.*@)/, '$1***@'));
 
     // Resolve dist module paths
     const base = path.join(process.cwd(), 'dist');
-    const enqueueTopicPath = path.join(
-      base,
-      'lib',
-      'execution-pipeline',
-      'enqueueTopicHydration.js'
-    );
+    const enqueueTopicPath = path.join(base, 'lib', 'execution-pipeline', 'enqueueTopicHydration.js');
 
     if (!fs.existsSync(enqueueTopicPath)) {
       console.error('Cannot find built enqueueTopicHydration at', enqueueTopicPath);
@@ -43,8 +35,7 @@ if (!process.env.DATABASE_URL) {
     }
 
     const enqueueTopicMod = await import(pathToFileURL(enqueueTopicPath).href);
-    const { enqueueNotesHydration, enqueueQuestionsHydration, enqueueTestsHydration } =
-      enqueueTopicMod;
+    const { enqueueNotesHydration, enqueueQuestionsHydration, enqueueTestsHydration } = enqueueTopicMod;
 
     // Find a subject and a topic using the generated prisma client in dist
     const prismaPath = path.join(base, 'lib', 'prisma.js');
@@ -56,9 +47,7 @@ if (!process.env.DATABASE_URL) {
     const prisma = prismaMod.prisma;
 
     // pick one subject (resolve subjectDef with class + board)
-    const subj = await prisma.subjectDef.findFirst({
-      include: { class: { include: { board: true } } },
-    });
+    const subj = await prisma.subjectDef.findFirst({ include: { class: { include: { board: true } } } });
     if (!subj) {
       console.error('No subject found in DB');
       process.exit(1);
@@ -80,47 +69,32 @@ if (!process.env.DATABASE_URL) {
 
     // Enqueue questions for three difficulties
     for (const d of ['easy', 'medium', 'hard']) {
-      const qres = await enqueueQuestionsHydration({
-        topicId: chosenTopic.id,
-        language: 'en',
-        difficulty: d,
-      });
+      const qres = await enqueueQuestionsHydration({ topicId: chosenTopic.id, language: 'en', difficulty: d });
       console.log(`enqueueQuestionsHydration ${d} result:`, qres);
     }
 
     // Enqueue assemble/tests
-    const tres = await enqueueTestsHydration({
-      topicId: chosenTopic.id,
-      language: 'en',
-      difficulty: 'medium',
-    });
+    const tres = await enqueueTestsHydration({ topicId: chosenTopic.id, language: 'en', difficulty: 'medium' });
     console.log('enqueueTestsHydration result:', tres);
 
     // List recent hydration jobs for subject/topic
-    const jobs = await prisma.hydrationJob.findMany({
-      where: { OR: [{ subjectId: subj.id }, { topicId: chosenTopic.id }] },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
+    const jobs = await prisma.hydrationJob.findMany({ where: { OR: [{ subjectId: subj.id }, { topicId: chosenTopic.id }] }, orderBy: { createdAt: 'desc' }, take: 20 });
     console.log('\nRecent HydrationJobs (id, jobType, status, topicId, subjectId, createdAt):');
     for (const j of jobs) {
       console.log(j.id, j.jobType, j.status, j.topicId, j.subjectId, j.createdAt);
     }
 
     // List recent outbox rows
-    const outboxes = await prisma.outbox.findMany({
-      where: { meta: { path: ['topicId'], equals: chosenTopic.id } },
-    });
+    const outboxes = await prisma.outbox.findMany({ where: { meta: { path: ['topicId'], equals: chosenTopic.id } } });
     // The above filter may not work in older Prisma; fallback to recent 20 outbox rows
-    const recentOutbox = outboxes.length
-      ? outboxes
-      : await prisma.outbox.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
+    const recentOutbox = outboxes.length ? outboxes : await prisma.outbox.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
     console.log('\nRecent Outbox rows (id, queue, meta):');
     for (const o of recentOutbox) console.log(o.id, o.queue, o.meta, o.payload);
 
     await prisma.$disconnect();
     process.exit(0);
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Error running hydrate-smoke:', err);
     process.exit(1);
   }

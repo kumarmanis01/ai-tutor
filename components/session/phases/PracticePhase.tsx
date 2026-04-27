@@ -20,9 +20,7 @@ import { TutorTipPanel } from '@/components/session/TutorTipPanel';
 interface PracticePhaseProps {
   content: PracticeContent;
   topicName?: string;
-  onSubmit: (
-    answers: { questionId: string; answer: string }[]
-  ) => Promise<SubmitActionResult | null>;
+  onSubmit: (answers: { questionId: string; answer: string }[]) => Promise<SubmitActionResult | null>;
   onReadyToProceed: (ready: boolean) => void;
   submitting?: boolean;
 }
@@ -64,9 +62,7 @@ function ResultsScreen({ result }: { result: SubmitActionResult }) {
                 : 'bg-orange-500/5 border border-orange-500/15'
             }`}
           >
-            <span
-              className={`font-bold flex-shrink-0 ${r.isCorrect ? 'text-green-600' : 'text-orange-600'}`}
-            >
+            <span className={`font-bold flex-shrink-0 ${r.isCorrect ? 'text-green-600' : 'text-orange-600'}`}>
               {r.isCorrect ? '✓' : '✗'}
             </span>
             <span className="text-muted-foreground">Q{i + 1}</span>
@@ -89,13 +85,7 @@ function ResultsScreen({ result }: { result: SubmitActionResult }) {
 const FEEDBACK_CORRECT = 'Great job!';
 const FEEDBACK_INCORRECT = 'Almost there -- try again.';
 
-export function PracticePhase({
-  content,
-  topicName: _topicName,
-  onSubmit,
-  onReadyToProceed,
-  submitting: _submitting,
-}: PracticePhaseProps) {
+export function PracticePhase({ content, topicName: _topicName, onSubmit, onReadyToProceed, submitting: _submitting }: PracticePhaseProps) {
   const questions = content.questions;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; answer: string }[]>([]);
@@ -125,7 +115,7 @@ export function PracticePhase({
         if (res) setResult(res);
       }
     },
-    [answers, currentIndex, onSubmit, questions]
+    [answers, currentIndex, onSubmit, questions],
   );
 
   if (result) {

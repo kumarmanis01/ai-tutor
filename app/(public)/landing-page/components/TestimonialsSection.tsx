@@ -84,11 +84,7 @@ const TestimonialsSection = () => {
     size?: 'sm' | 'md' | 'lg';
   }) => {
     const sizeClass =
-      size === 'lg'
-        ? 'w-20 h-20 text-2xl'
-        : size === 'sm'
-          ? 'w-12 h-12 text-base'
-          : 'w-16 h-16 text-xl';
+      size === 'lg' ? 'w-20 h-20 text-2xl' : size === 'sm' ? 'w-12 h-12 text-base' : 'w-16 h-16 text-xl';
     return (
       <div
         className={`${sizeClass} ${color} rounded-full flex items-center justify-center font-headline font-bold text-white border-2 border-white shadow-md flex-shrink-0`}
@@ -147,9 +143,7 @@ const TestimonialsSection = () => {
                     name="StarIcon"
                     size={14}
                     variant="solid"
-                    className={
-                      i < testimonial.rating ? 'text-[#BA7517]' : 'text-muted-foreground/30'
-                    }
+                    className={i < testimonial.rating ? 'text-[#BA7517]' : 'text-muted-foreground/30'}
                   />
                 ))}
               </div>
@@ -166,12 +160,7 @@ const TestimonialsSection = () => {
                   <p className="font-body text-xs text-muted-foreground">Before</p>
                 </div>
                 <div className="flex items-center justify-center">
-                  <Icon
-                    name="ArrowRightIcon"
-                    size={16}
-                    variant="outline"
-                    className="text-[#1D9E75]"
-                  />
+                  <Icon name="ArrowRightIcon" size={16} variant="outline" className="text-[#1D9E75]" />
                 </div>
                 <div className="text-center">
                   <p className="font-headline font-bold text-base text-[#1D9E75]">
@@ -215,16 +204,9 @@ const TestimonialsSection = () => {
               <div className="bg-background rounded-xl p-5 border-2 border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-[#1D9E75]/10 rounded-lg flex items-center justify-center">
-                    <Icon
-                      name="ChartBarIcon"
-                      size={24}
-                      variant="solid"
-                      className="text-[#1D9E75]"
-                    />
+                    <Icon name="ChartBarIcon" size={24} variant="solid" className="text-[#1D9E75]" />
                   </div>
-                  <h4 className="font-headline font-bold text-lg text-secondary">
-                    Grade Improvement
-                  </h4>
+                  <h4 className="font-headline font-bold text-lg text-secondary">Grade Improvement</h4>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-center">
@@ -233,12 +215,7 @@ const TestimonialsSection = () => {
                     </p>
                     <p className="font-body text-xs text-muted-foreground">Before</p>
                   </div>
-                  <Icon
-                    name="ArrowRightIcon"
-                    size={28}
-                    variant="outline"
-                    className="text-[#1D9E75]"
-                  />
+                  <Icon name="ArrowRightIcon" size={28} variant="outline" className="text-[#1D9E75]" />
                   <div className="text-center">
                     <p className="font-headline font-bold text-3xl text-[#1D9E75] mb-1">
                       {active.afterGrade}
@@ -251,20 +228,11 @@ const TestimonialsSection = () => {
               <div className="bg-background rounded-xl p-5 border-2 border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-[#534AB7]/10 rounded-lg flex items-center justify-center">
-                    <Icon
-                      name="CurrencyRupeeIcon"
-                      size={24}
-                      variant="solid"
-                      className="text-[#534AB7]"
-                    />
+                    <Icon name="CurrencyRupeeIcon" size={24} variant="solid" className="text-[#534AB7]" />
                   </div>
-                  <h4 className="font-headline font-bold text-lg text-secondary">
-                    Monthly Savings
-                  </h4>
+                  <h4 className="font-headline font-bold text-lg text-secondary">Monthly Savings</h4>
                 </div>
-                <p className="font-headline font-bold text-4xl text-[#534AB7] mb-1">
-                  {active.savings}
-                </p>
+                <p className="font-headline font-bold text-4xl text-[#534AB7] mb-1">{active.savings}</p>
                 <p className="font-body text-xs text-muted-foreground">
                   Saved by switching from traditional tuition to Spinzy Academy
                 </p>

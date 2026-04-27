@@ -70,7 +70,7 @@ function makeTopic(
   id: string,
   chapterOrder: number,
   topicOrder: number,
-  parentId: string | null = null
+  parentId: string | null = null,
 ): OrderedTopic {
   return {
     id,
@@ -133,7 +133,10 @@ describe('rankTopics — P5 scoring', () => {
 
   // ── 2. Skips fully mastered topics ─────────────────────────────────────────
   it('skips topics where mastery >= 0.8 AND practiceCount >= 5', async () => {
-    const topics = [makeTopic('mastered-topic', 1, 1), makeTopic('next-topic', 1, 2)];
+    const topics = [
+      makeTopic('mastered-topic', 1, 1),
+      makeTopic('next-topic', 1, 2),
+    ];
 
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
       { topicId: 'mastered-topic', mastery: 0.9, practiceCount: 6, lastStudiedAt: null },
@@ -210,7 +213,9 @@ describe('rankTopics — P5 scoring', () => {
   it(`scores at most FRONTIER_SIZE (${FRONTIER_SIZE}) topics from the frontier`, async () => {
     // Build FRONTIER_SIZE + 10 topics, all unstarted.
     const total = FRONTIER_SIZE + 10;
-    const topics = Array.from({ length: total }, (_, i) => makeTopic(`topic-${i}`, 1, i + 1));
+    const topics = Array.from({ length: total }, (_, i) =>
+      makeTopic(`topic-${i}`, 1, i + 1),
+    );
 
     // No progress — all topics are unstarted, frontier starts at index 0.
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([]);

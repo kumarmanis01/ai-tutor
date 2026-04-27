@@ -47,7 +47,7 @@ export async function advancePhaseAction(sessionId: string): Promise<SessionActi
 
 export async function submitPracticeAction(
   sessionId: string,
-  answers: { questionId: string; answer: string }[]
+  answers: { questionId: string; answer: string }[],
 ): Promise<SubmitActionResult> {
   const res = await fetch(`/api/session/${sessionId}/practice/submit`, {
     method: 'POST',
@@ -61,7 +61,7 @@ export async function submitPracticeAction(
 
 export async function navigateToPhaseAction(
   sessionId: string,
-  targetPhase: string
+  targetPhase: string,
 ): Promise<SessionActionResult> {
   const res = await fetch('/api/session/back', {
     method: 'POST',
@@ -75,7 +75,7 @@ export async function navigateToPhaseAction(
 
 export async function submitTestAction(
   sessionId: string,
-  answers: { questionId: string; answer: string }[]
+  answers: { questionId: string; answer: string }[],
 ): Promise<SubmitActionResult> {
   const res = await fetch(`/api/session/${sessionId}/test/submit`, {
     method: 'POST',

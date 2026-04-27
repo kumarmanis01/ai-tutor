@@ -19,7 +19,10 @@ export const dynamic = 'force-dynamic';
  *
  * Auth: student must own the assignment.
  */
-export async function GET(req: Request, { params }: { params: { assignmentId: string } }) {
+export async function GET(
+  req: Request,
+  { params }: { params: { assignmentId: string } }
+) {
   const start = Date.now();
   let res: Response;
 
@@ -72,9 +75,7 @@ export async function GET(req: Request, { params }: { params: { assignmentId: st
   }
 
   const isGraded = assignment.status === 'GRADED' || assignment.status === 'SUBMITTED';
-  const rawQuestions = Array.isArray(assignment.questions)
-    ? (assignment.questions as Record<string, unknown>[])
-    : [];
+  const rawQuestions = Array.isArray(assignment.questions) ? assignment.questions as Record<string, unknown>[] : [];
 
   // Strip correctAnswer + explanation from ungraded assignments
   const questions = rawQuestions.map((q) => ({

@@ -35,7 +35,7 @@ export const MOCK_SECTION_DEFS = [
 
 export const MOCK_TOTAL_MARKS = MOCK_SECTION_DEFS.reduce(
   (acc, s) => acc + s.marksPerQ * s.count,
-  0
+  0,
 ); // 80
 
 export const MOCK_DURATION_MIN = 180; // 3 hours standard board exam
@@ -65,10 +65,10 @@ export async function selectMockQuestions(params: {
     MOCK_SECTION_DEFS.map(async (sectionDef) => {
       const questions = await selectQuestions(
         { ...baseFilters, type: sectionDef.type },
-        sectionDef.count
+        sectionDef.count,
       );
       return { sectionDef, questions };
-    })
+    }),
   );
 
   return sections;
@@ -103,7 +103,7 @@ export function computeSectionScores(
     sectionId: string;
     scorePercent: number | null;
     answers: unknown;
-  }>
+  }>,
 ): Array<{
   sectionId: string;
   title: string;

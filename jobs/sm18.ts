@@ -1,12 +1,12 @@
-import { Queue } from 'bullmq';
-import { getSharedConnection } from '@/lib/redis';
-import { logger } from '@/lib/logger';
+import { Queue } from 'bullmq'
+import { getSharedConnection } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 
-export const SM18_SCHEDULER_QUEUE_NAME = 'sm18-scheduler';
+export const SM18_SCHEDULER_QUEUE_NAME = 'sm18-scheduler'
 
-const NIGHTLY_CRON = '0 2 * * *'; // 2 AM daily
+const NIGHTLY_CRON = '0 2 * * *' // 2 AM daily
 
-let sm18Queue: Queue | null = null;
+let sm18Queue: Queue | null = null
 
 export function getSM18Queue(): Queue {
   if (!sm18Queue) {
@@ -21,9 +21,9 @@ export function getSM18Queue(): Queue {
         removeOnComplete: 50,
         removeOnFail: 20,
       },
-    });
+    })
   }
-  return sm18Queue;
+  return sm18Queue
 }
 
 /**
@@ -31,24 +31,24 @@ export function getSM18Queue(): Queue {
  */
 export async function registerNightlySM18Job(): Promise<void> {
   try {
-    const queue = getSM18Queue();
-    const repeatable = await queue.getRepeatableJobs();
-    const already = repeatable.some((j) => j.pattern === NIGHTLY_CRON && j.name === 'nightly-sm18');
+    const queue = getSM18Queue()
+    const repeatable = await queue.getRepeatableJobs()
+    const already = repeatable.some((j) => j.pattern === NIGHTLY_CRON && j.name === 'nightly-sm18')
     if (already) {
-      logger.info('[sm18] nightly repeatable job already registered', { cron: NIGHTLY_CRON });
-      return;
+      logger.info('[sm18] nightly repeatable job already registered', { cron: NIGHTLY_CRON })
+      return
     }
     await queue.add(
       'nightly-sm18',
       {},
       {
         repeat: { pattern: NIGHTLY_CRON },
-      }
-    );
-    logger.info('[sm18] registered nightly repeatable job', { cron: NIGHTLY_CRON });
+      },
+    )
+    logger.info('[sm18] registered nightly repeatable job', { cron: NIGHTLY_CRON })
   } catch (err) {
     logger.error('[sm18] failed to register nightly job', {
       error: String((err as any)?.message ?? err),
-    });
+    })
   }
 }

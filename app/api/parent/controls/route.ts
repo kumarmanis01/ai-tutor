@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 /**
  * FILE OBJECTIVE:
@@ -129,29 +129,15 @@ export async function PUT(req: NextRequest) {
 
     // Validate time limit
     if (dailyTimeLimitMin !== null && dailyTimeLimitMin !== undefined) {
-      if (
-        typeof dailyTimeLimitMin !== 'number' ||
-        dailyTimeLimitMin < 15 ||
-        dailyTimeLimitMin > 480
-      ) {
-        return NextResponse.json(
-          { error: 'dailyTimeLimitMin must be 15-480 minutes' },
-          { status: 400 }
-        );
+      if (typeof dailyTimeLimitMin !== 'number' || dailyTimeLimitMin < 15 || dailyTimeLimitMin > 480) {
+        return NextResponse.json({ error: 'dailyTimeLimitMin must be 15-480 minutes' }, { status: 400 });
       }
     }
 
     // Validate weeklyHoursTarget (F-PAR-002 AC-02)
     if (weeklyHoursTarget !== null && weeklyHoursTarget !== undefined) {
-      if (
-        typeof weeklyHoursTarget !== 'number' ||
-        weeklyHoursTarget < 1 ||
-        weeklyHoursTarget > 70
-      ) {
-        return NextResponse.json(
-          { error: 'weeklyHoursTarget must be 1-70 hours' },
-          { status: 400 }
-        );
+      if (typeof weeklyHoursTarget !== 'number' || weeklyHoursTarget < 1 || weeklyHoursTarget > 70) {
+        return NextResponse.json({ error: 'weeklyHoursTarget must be 1-70 hours' }, { status: 400 });
       }
     }
 
@@ -159,20 +145,14 @@ export async function PUT(req: NextRequest) {
     const VALID_SCHEDULE_PREFS = ['morning', 'afternoon', 'evening'];
     if (schedulePreference !== null && schedulePreference !== undefined) {
       if (!VALID_SCHEDULE_PREFS.includes(schedulePreference)) {
-        return NextResponse.json(
-          { error: 'schedulePreference must be morning, afternoon, or evening' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'schedulePreference must be morning, afternoon, or evening' }, { status: 400 });
       }
     }
 
     // Validate topicFocusRequest (F-PAR-002 AC-03): free-text, max 500 chars
     if (topicFocusRequest !== null && topicFocusRequest !== undefined) {
       if (typeof topicFocusRequest !== 'string' || topicFocusRequest.length > 500) {
-        return NextResponse.json(
-          { error: 'topicFocusRequest must be a string up to 500 characters' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'topicFocusRequest must be a string up to 500 characters' }, { status: 400 });
       }
     }
 
@@ -188,9 +168,7 @@ export async function PUT(req: NextRequest) {
         ...(schedulePreference !== undefined && { schedulePreference: schedulePreference ?? null }),
         ...(topicFocusRequest !== undefined && { topicFocusRequest: topicFocusRequest ?? null }),
         ...(isPaused !== undefined && { isPaused }),
-        ...(pausedUntil !== undefined && {
-          pausedUntil: pausedUntil ? new Date(pausedUntil) : null,
-        }),
+        ...(pausedUntil !== undefined && { pausedUntil: pausedUntil ? new Date(pausedUntil) : null }),
         ...(pauseReason !== undefined && { pauseReason }),
       },
       create: {
@@ -218,26 +196,15 @@ export async function PUT(req: NextRequest) {
     }
 
     // Audit
-    await prisma.auditLog
-      .create({
-        data: {
-          adminId: parentId,
-          targetEntity: 'User',
-          targetId: studentId,
-          action: null,
-          details: {
-            legacyAction: 'parent_update_controls',
-            controls: {
-              dailyTimeLimitMin,
-              allowedSubjects,
-              focusMode,
-              studyHoursStart,
-              studyHoursEnd,
-            },
-          },
-        },
-      })
-      .catch((err) => logger.warn('audit log failed', { error: String(err) }));
+    await prisma.auditLog.create({
+      data: {
+        adminId: parentId,
+        targetEntity: 'User',
+        targetId: studentId,
+        action: null,
+        details: { legacyAction: 'parent_update_controls', controls: { dailyTimeLimitMin, allowedSubjects, focusMode, studyHoursStart, studyHoursEnd } },
+      },
+    }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
 
     logger.info('Parent controls updated', { className: CLASS_NAME, parentId, studentId });
 

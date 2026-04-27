@@ -31,15 +31,8 @@ jest.mock('@/app/dashboard/components/home/TodaysLearningCard', () => ({
 }));
 
 jest.mock('@/app/dashboard/components/home/ContinueWhereLeftOff', () => ({
-  ContinueWhereLeftOff: ({
-    onContinueActivity,
-  }: {
-    onContinueActivity?: (id: string, type: string) => void;
-  }) => (
-    <div
-      data-testid="continue-learning"
-      onClick={() => onContinueActivity?.('test-activity', 'note')}
-    >
+  ContinueWhereLeftOff: ({ onContinueActivity }: { onContinueActivity?: (id: string, type: string) => void }) => (
+    <div data-testid="continue-learning" onClick={() => onContinueActivity?.('test-activity', 'note')}>
       Mock ContinueWhereLeftOff
     </div>
   ),

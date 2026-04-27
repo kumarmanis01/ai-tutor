@@ -30,10 +30,7 @@ export async function GET(req: Request) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const chapters = searchParams
-      .getAll('chapter')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const chapters = searchParams.getAll('chapter').map((s) => s.trim()).filter(Boolean);
     if (chapters.length === 0) {
       res = NextResponse.json({ error: 'Missing chapter param' }, { status: 400 });
       logger.logAPI(req, res, { className: 'TestsTrendsAPI', methodName: 'GET' }, start);

@@ -101,7 +101,7 @@ describe('contentWorker dispatch', () => {
 
   describe('dispatch logic', () => {
     it('reads worker type from job.data.type', () => {
-      expect(contentWorkerContent).toContain('job.data?.type');
+      expect(contentWorkerContent).toContain("job.data?.type");
     });
 
     it('looks up handler from WORKER_HANDLERS', () => {
@@ -151,7 +151,7 @@ describe('notesWorker structure', () => {
   });
 
   it('marks linked ExecutionJob completed', () => {
-    expect(content).toContain('jobExecutionLog.create');
+    expect(content).toContain("jobExecutionLog.create");
   });
 });
 

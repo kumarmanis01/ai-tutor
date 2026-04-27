@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const session = await getServerSessionForHandlers();
   const userId = session?.user?.id as string | undefined;
-
+  
   if (!userId) {
     return NextResponse.json({ items: [] });
   }
@@ -31,7 +31,7 @@ export async function GET() {
   try {
     // Get personalized recommendations from engine
     const recommendations = await getRecommendationsForUser(userId, 15);
-
+    
     // Transform to API response format
     const items = recommendations.map((r) => ({
       id: r.id,
@@ -44,7 +44,7 @@ export async function GET() {
       score: r.score,
       reasoning: r.reasoning.join(' • '),
       priority: r.score, // For backward compatibility
-      meta: r.meta,
+      meta: r.meta
     }));
 
     // If no recommendations from engine, fall back to basic profile match
@@ -60,7 +60,7 @@ export async function GET() {
       userId,
       error,
     });
-
+    
     // Graceful fallback on error
     const fallback = await getFallbackRecommendations(userId);
     return NextResponse.json({ items: fallback });
@@ -96,27 +96,24 @@ async function getFallbackRecommendations(userId: string) {
 
   // 1. Incomplete session → resume topic
   if (incompleteSession) {
-    const meta =
-      incompleteSession.meta && typeof incompleteSession.meta === 'object'
-        ? (incompleteSession.meta as Record<string, unknown>)
-        : {};
+    const meta = (incompleteSession.meta && typeof incompleteSession.meta === 'object')
+      ? incompleteSession.meta as Record<string, unknown>
+      : {};
     const topicId = (meta.topicId as string) || incompleteSession.activityRef || null;
     if (topicId) {
-      const topic = await prisma.topicDef
-        .findUnique({
-          where: { id: topicId },
-          select: {
-            name: true,
-            chapter: {
-              select: {
-                id: true,
-                name: true,
-                subject: { select: { id: true, name: true } },
-              },
+      const topic = await prisma.topicDef.findUnique({
+        where: { id: topicId },
+        select: {
+          name: true,
+          chapter: {
+            select: {
+              id: true,
+              name: true,
+              subject: { select: { id: true, name: true } },
             },
           },
-        })
-        .catch(() => null);
+        },
+      }).catch(() => null);
       items.push({
         id: `resume:${topicId}`,
         contentId: `topic:${topicId}`,
@@ -144,31 +141,29 @@ async function getFallbackRecommendations(userId: string) {
     select: { score: true, totalMarks: true, testId: true },
   });
   const weakTestIds = weakResults
-    .filter((r) => r.totalMarks && r.totalMarks > 0 && (r.score ?? 0) / r.totalMarks < 0.6)
-    .map((r) => r.testId)
+    .filter(r => r.totalMarks && r.totalMarks > 0 && (r.score ?? 0) / r.totalMarks < 0.6)
+    .map(r => r.testId)
     .filter(Boolean);
 
   if (weakTestIds.length > 0) {
-    const weakTest = await prisma.generatedTest
-      .findFirst({
-        where: { id: { in: weakTestIds as string[] } },
-        select: {
-          topic: {
-            select: {
-              id: true,
-              name: true,
-              chapter: {
-                select: {
-                  id: true,
-                  name: true,
-                  subject: { select: { id: true, name: true } },
-                },
+    const weakTest = await prisma.generatedTest.findFirst({
+      where: { id: { in: weakTestIds as string[] } },
+      select: {
+        topic: {
+          select: {
+            id: true,
+            name: true,
+            chapter: {
+              select: {
+                id: true,
+                name: true,
+                subject: { select: { id: true, name: true } },
               },
             },
           },
         },
-      })
-      .catch(() => null);
+      },
+    }).catch(() => null);
     if (weakTest?.topic) {
       items.push({
         id: `weak:${weakTest.topic.id}`,

@@ -33,10 +33,10 @@ if (process.env.NODE_ENV !== 'production') {
   try {
     // Hard fail if env is missing -- DO NOT load dotenv here
     if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL is not set');
+      throw new Error("DATABASE_URL is not set");
     }
     if (!process.env.REDIS_URL) {
-      throw new Error('REDIS_URL is not set');
+      throw new Error("REDIS_URL is not set");
     }
 
     // Optional deep validation (best-effort, but fatal if present and fails)
@@ -46,11 +46,12 @@ if (process.env.NODE_ENV !== 'production') {
       // lib/bootstrap/validateEnvironment.ts compiles to dist/worker/lib/bootstrap/validateEnvironment.js
       // So the correct runtime path from entry.js is ../lib/bootstrap/validateEnvironment.js
       // We use a string literal with .js extension to avoid tsc-alias rewriting it.
-      const validateEnvPath = '../lib/bootstrap/validateEnvironment.js';
+      const validateEnvPath = "../lib/bootstrap/validateEnvironment.js";
       const mod = await import(validateEnvPath);
-      const validateEnvironment = (mod as any)?.validateEnvironment ?? (mod as any)?.default;
+      const validateEnvironment =
+        (mod as any)?.validateEnvironment ?? (mod as any)?.default;
 
-      if (typeof validateEnvironment === 'function') {
+      if (typeof validateEnvironment === "function") {
         await validateEnvironment({ checkMigrations: false });
       }
     } catch (err: any) {
@@ -69,7 +70,7 @@ if (process.env.NODE_ENV !== 'production') {
     }
 
     // Start worker runtime
-    const { bootstrapWorker } = await import('./bootstrap.js');
+    const { bootstrapWorker } = await import("./bootstrap.js");
     await bootstrapWorker();
   } catch (err) {
     // Print full stack to stderr first to ensure visibility in container logs.
@@ -83,10 +84,10 @@ if (process.env.NODE_ENV !== 'production') {
 
     // Use dynamic import for logger so we avoid top-level import emissions.
     try {
-      const mod = await import('../lib/logger.js').catch(() => ({}));
+      const mod = await import("../lib/logger.js").catch(() => ({}));
       const logger = (mod as any)?.logger ?? (mod as any)?.default ?? null;
       if (logger && typeof logger.error === 'function') {
-        logger.error('[worker] fatal startup error');
+        logger.error("[worker] fatal startup error");
       } else {
         // Already printed stack above; still emit a compact message.
         process.stderr.write(`[worker] fatal startup error: ${String(err)}\n`);

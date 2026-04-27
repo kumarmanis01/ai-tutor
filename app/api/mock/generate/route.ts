@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import {
-  selectMockQuestions,
-  MOCK_TOTAL_MARKS,
-  MOCK_DURATION_MIN,
-} from '@/lib/mock/selectMockQuestions';
+import { selectMockQuestions, MOCK_TOTAL_MARKS, MOCK_DURATION_MIN } from '@/lib/mock/selectMockQuestions';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -51,10 +47,7 @@ export async function POST(req: Request) {
   const board = profile?.board ?? null;
 
   if (!grade || !board) {
-    const res = NextResponse.json(
-      { error: 'Student profile incomplete (grade/board required)' },
-      { status: 422 }
-    );
+    const res = NextResponse.json({ error: 'Student profile incomplete (grade/board required)' }, { status: 422 });
     logger.logAPI(req, res, { className: 'MockGenerateAPI', methodName: 'POST' }, start);
     return res;
   }
@@ -85,11 +78,7 @@ export async function POST(req: Request) {
   const title = `${subjectDef.name} Full Mock -- Paper ${version}`;
 
   // Select questions (full-syllabus)
-  const sections = await selectMockQuestions({
-    subject: subjectDef.name,
-    grade: String(grade),
-    board,
-  });
+  const sections = await selectMockQuestions({ subject: subjectDef.name, grade: String(grade), board });
 
   // Persist in a transaction
   const exam = await prisma.$transaction(async (tx) => {

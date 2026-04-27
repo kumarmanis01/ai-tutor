@@ -64,19 +64,17 @@ export function extractSections(contentJson: unknown): NormalisedSection[] {
 
   // Intro / summary
   const intro =
-    typeof root.introduction === 'string'
-      ? root.introduction
-      : typeof root.summary === 'string'
-        ? root.summary
-        : null;
+    typeof root.introduction === 'string' ? root.introduction
+    : typeof root.summary === 'string' ? root.summary
+    : null;
   if (intro) sections.push({ body: intro });
 
   // sections[]
   if (Array.isArray(root.sections)) {
     for (const s of root.sections as Record<string, unknown>[]) {
       const title = typeof s.title === 'string' ? s.title : undefined;
-      const body =
-        typeof s.body === 'string' ? s.body : typeof s.content === 'string' ? s.content : '';
+      const body = typeof s.body === 'string' ? s.body
+        : typeof s.content === 'string' ? s.content : '';
       if (body) sections.push({ title, body });
     }
   }
@@ -85,12 +83,8 @@ export function extractSections(contentJson: unknown): NormalisedSection[] {
   if (Array.isArray(root.concepts)) {
     for (const c of root.concepts as Record<string, unknown>[]) {
       const title = typeof c.title === 'string' ? c.title : undefined;
-      const body =
-        typeof c.explanation === 'string'
-          ? c.explanation
-          : typeof c.body === 'string'
-            ? c.body
-            : '';
+      const body = typeof c.explanation === 'string' ? c.explanation
+        : typeof c.body === 'string' ? c.body : '';
       if (body) sections.push({ title, body });
     }
   }
@@ -116,7 +110,7 @@ function extractProseMirrorNodes(nodes: Record<string, unknown>[]): NormalisedSe
 
   for (const node of nodes) {
     const type = String(node.type ?? '');
-    const children = Array.isArray(node.content) ? (node.content as Record<string, unknown>[]) : [];
+    const children = Array.isArray(node.content) ? node.content as Record<string, unknown>[] : [];
 
     if (type === 'paragraph') {
       const text = children
@@ -129,7 +123,7 @@ function extractProseMirrorNodes(nodes: Record<string, unknown>[]): NormalisedSe
         .flatMap((li) =>
           Array.isArray(li.content)
             ? extractProseMirrorNodes(li.content as Record<string, unknown>[])
-            : []
+            : [],
         )
         .map((s) => `• ${s.body}`)
         .join('\n');

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { assertNoStringFilters } from '@/lib/guards/noStringFilters';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { assertNoStringFilters } from "@/lib/guards/noStringFilters";
+import { logger } from "@/lib/logger";
 import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function GET(req: Request) {
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
       assertNoStringFilters(req);
     } catch (e) {
       // Log the error using the project's logger utility
-      logger.error('Invalid string filters in chapters GET request', {
+      logger.error("Invalid string filters in chapters GET request", {
         error: e,
         req,
       });
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     return NextResponse.json(chapters);
   } catch (error) {
     // Log the error using the project's logger utility
-    logger.error('Failed to fetch chapters', {
+    logger.error("Failed to fetch chapters", {
       error,
       req,
     });

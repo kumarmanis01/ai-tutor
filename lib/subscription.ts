@@ -13,7 +13,7 @@
  * - 2026-04-15T00:00:00Z | copilot | add minimal subscription helpers
  */
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma'
 
 /**
  * Return true if the given userId is considered a paid/premium subscriber.
@@ -21,18 +21,15 @@ import { prisma } from '@/lib/prisma';
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
   try {
-    const u = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { subscriptionStatus: true },
-    });
-    if (!u || !u.subscriptionStatus) return false;
-    return u.subscriptionStatus !== 'free';
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionStatus: true } })
+    if (!u || !u.subscriptionStatus) return false
+    return u.subscriptionStatus !== 'free'
   } catch {
-    return false;
+    return false
   }
 }
 
 const subscriptionHelpers = {
   isPremiumUser,
-};
-export default subscriptionHelpers;
+}
+export default subscriptionHelpers

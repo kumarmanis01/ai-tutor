@@ -1,17 +1,17 @@
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma'
 
 export type PaymentEventPayload = {
-  paymentId?: string;
-  userId?: string;
-  provider: string;
-  providerIdempotencyKey?: string;
-  transactionId?: string;
-  orderId?: string;
-  eventType: string;
-  payload?: any;
-  amount?: number;
-  status?: string;
-};
+  paymentId?: string
+  userId?: string
+  provider: string
+  providerIdempotencyKey?: string
+  transactionId?: string
+  orderId?: string
+  eventType: string
+  payload?: any
+  amount?: number
+  status?: string
+}
 
 /**
  * Record a payment lifecycle event. Accepts either a Prisma transaction object
@@ -20,15 +20,15 @@ export type PaymentEventPayload = {
  */
 export async function recordPaymentEvent(prismaOrTx: any, ev?: PaymentEventPayload) {
   // Allow calling as recordPaymentEvent(ev) or recordPaymentEvent(tx, ev)
-  let tx: any;
-  let data: PaymentEventPayload | undefined;
+  let tx: any
+  let data: PaymentEventPayload | undefined
   if (ev === undefined) {
     // called as recordPaymentEvent(evOnly)
-    data = prismaOrTx as PaymentEventPayload;
-    tx = null;
+    data = prismaOrTx as PaymentEventPayload
+    tx = null
   } else {
-    tx = prismaOrTx;
-    data = ev;
+    tx = prismaOrTx
+    data = ev
   }
 
   const row = {
@@ -42,22 +42,18 @@ export async function recordPaymentEvent(prismaOrTx: any, ev?: PaymentEventPaylo
     payload: data?.payload ?? undefined,
     amount: data?.amount ?? undefined,
     status: data?.status ?? undefined,
-  };
-
-  if (tx && tx.paymentEvent && typeof tx.paymentEvent.create === 'function') {
-    return tx.paymentEvent.create({ data: row as any });
   }
 
-  if (
-    prisma &&
-    (prisma as any).paymentEvent &&
-    typeof (prisma as any).paymentEvent.create === 'function'
-  ) {
-    return (prisma as any).paymentEvent.create({ data: row as any });
+  if (tx && tx.paymentEvent && typeof tx.paymentEvent.create === 'function') {
+    return tx.paymentEvent.create({ data: row as any })
+  }
+
+  if (prisma && (prisma as any).paymentEvent && typeof (prisma as any).paymentEvent.create === 'function') {
+    return (prisma as any).paymentEvent.create({ data: row as any })
   }
 
   // No-op when running in test harnesses or mocks where paymentEvent is not
   // available on the provided tx or the global prisma mock. This keeps audit
   // attempts best-effort and non-fatal.
-  return null;
+  return null
 }

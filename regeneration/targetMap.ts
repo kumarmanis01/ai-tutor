@@ -5,8 +5,8 @@ export const targetTableCandidates: Record<string, string[]> = {
   QUIZ: ['"Quiz"', '"quiz"', '"quizzes"', '"GeneratedTest"', '"generated_test"'],
   PROJECT: ['"Project"', '"project"'],
   MODULE: ['"Module"', '"module"', '"course_module"'],
-};
+}
 
 export function getCandidatesFor(targetType: string) {
-  return targetTableCandidates[targetType] ?? [];
+  return targetTableCandidates[targetType] ?? []
 }

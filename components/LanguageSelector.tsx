@@ -1,4 +1,4 @@
-'use client';
+"use client";
 /**
  * FILE OBJECTIVE:
  * - Reusable language selector that supports per-content availability.
@@ -59,17 +59,8 @@ export function codeToName(code: string) {
  * Prefer the first browser language whose base code exists in availableCodes.
  * Falls back to the first availableCodes entry or 'en'.
  */
-export function resolveAutoCode(
-  availableCodes?: string[],
-  browserLang?: string | string[]
-): string {
-  const langs = Array.isArray(browserLang)
-    ? browserLang
-    : typeof browserLang === 'string'
-      ? [browserLang]
-      : typeof navigator !== 'undefined'
-        ? navigator.languages || [navigator.language]
-        : [];
+export function resolveAutoCode(availableCodes?: string[], browserLang?: string | string[]): string {
+  const langs = Array.isArray(browserLang) ? browserLang : (typeof browserLang === 'string' ? [browserLang] : (typeof navigator !== 'undefined' ? (navigator.languages || [navigator.language]) : []));
   if (Array.isArray(langs)) {
     for (const tag of langs) {
       if (!tag) continue;
@@ -125,10 +116,7 @@ export default function LanguageSelector({
     let persistedCode = code;
     if (code === 'auto') {
       // Resolve auto preference to an available code
-      persistedCode = resolveAutoCode(
-        availableCodes,
-        typeof navigator !== 'undefined' ? navigator.languages || navigator.language : undefined
-      );
+      persistedCode = resolveAutoCode(availableCodes, typeof navigator !== 'undefined' ? navigator.languages || navigator.language : undefined);
     }
 
     const display = code === 'auto' ? `Auto (Browser)` : codeToName(persistedCode);
@@ -176,30 +164,16 @@ export default function LanguageSelector({
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
         title="Choose Language"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-4.5V6.75a6.5 6.5 0 014 0V13.5a4.5 4.5 0 10-4 0z"
-            clipRule="evenodd"
-          />
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-4.5V6.75a6.5 6.5 0 014 0V13.5a4.5 4.5 0 10-4 0z" clipRule="evenodd" />
         </svg>
       </button>
 
       {open && (
-        <div
-          ref={menuRef}
-          className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2"
-        >
+        <div ref={menuRef} className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2">
           <div className="flex items-center justify-between mb-2 px-2">
             <div className="text-sm font-semibold">Choose language</div>
-            <button type="button" onClick={() => setOpen(false)} className="text-gray-600">
-              ✕
-            </button>
+            <button type="button" onClick={() => setOpen(false)} className="text-gray-600">✕</button>
           </div>
 
           <button
@@ -209,11 +183,7 @@ export default function LanguageSelector({
             <span>Auto (Browser)</span>
             {selectedCode === 'auto' && (
               <svg className="h-4 w-4 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 00-1.414-1.414L8 11.172 4.707 7.879a1 1 0 10-1.414 1.414l4 4a1 1 0 001.414 0l8-8z"
-                  clipRule="evenodd"
-                />
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414-1.414L8 11.172 4.707 7.879a1 1 0 10-1.414 1.414l4 4a1 1 0 001.414 0l8-8z" clipRule="evenodd" />
               </svg>
             )}
           </button>
@@ -237,11 +207,7 @@ export default function LanguageSelector({
                 </span>
                 {isSelected && (
                   <svg className="h-4 w-4 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 00-1.414-1.414L8 11.172 4.707 7.879a1 1 0 10-1.414 1.414l4 4a1 1 0 001.414 0l8-8z"
-                      clipRule="evenodd"
-                    />
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414-1.414L8 11.172 4.707 7.879a1 1 0 10-1.414 1.414l4 4a1 1 0 001.414 0l8-8z" clipRule="evenodd" />
                   </svg>
                 )}
               </button>

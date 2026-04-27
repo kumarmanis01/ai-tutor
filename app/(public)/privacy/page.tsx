@@ -13,11 +13,11 @@
  * - 2026-04-17T00:00:00Z | staff-engineer | add Hindi translation + language toggle; update API link client text
  */
 
-'use client';
+'use client'
 
-import { useState } from 'react';
+import { useState } from 'react'
 
-type Lang = 'en' | 'hi';
+type Lang = 'en' | 'hi'
 
 const translations: Record<Lang, any> = {
   en: {
@@ -68,29 +68,25 @@ const translations: Record<Lang, any> = {
     toggleEn: 'English',
     toggleHi: 'हिन्दी',
   },
-};
+}
 
 export default function PrivacyPolicyPage() {
-  const [lang, setLang] = useState<Lang>('en');
-  const t = translations[lang];
+  const [lang, setLang] = useState<Lang>('en')
+  const t = translations[lang]
 
   return (
     <div className="max-w-3xl mx-auto p-6 text-gray-900 dark:text-gray-100">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-center text-blue-700 dark:text-yellow-300">
-          {t.title}
-        </h1>
+        <h1 className="text-2xl font-bold text-center text-blue-700 dark:text-yellow-300">{t.title}</h1>
         <div className="ml-4 flex gap-2">
           <button
             onClick={() => setLang('en')}
-            className={`px-3 py-1 rounded ${lang === 'en' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}
-          >
+            className={`px-3 py-1 rounded ${lang === 'en' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>
             {translations.en.toggleEn}
           </button>
           <button
             onClick={() => setLang('hi')}
-            className={`px-3 py-1 rounded ${lang === 'hi' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}
-          >
+            className={`px-3 py-1 rounded ${lang === 'hi' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>
             {translations.en.toggleHi}
           </button>
         </div>
@@ -119,5 +115,5 @@ export default function PrivacyPolicyPage() {
         {t.lastUpdated} {new Date().getFullYear()}
       </p>
     </div>
-  );
+  )
 }

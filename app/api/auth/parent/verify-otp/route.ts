@@ -35,12 +35,7 @@ export async function POST(req: NextRequest) {
     }
     if (user.parentPhoneVerifiedAt) {
       const res = NextResponse.json({ ok: true, alreadyVerified: true });
-      logger.logAPI(
-        req,
-        res,
-        { className: 'api.auth.parent.verify-otp', methodName: 'POST' },
-        start
-      );
+      logger.logAPI(req, res, { className: 'api.auth.parent.verify-otp', methodName: 'POST' }, start);
       return res;
     }
 
@@ -72,13 +67,10 @@ export async function POST(req: NextRequest) {
     logger.logAPI(req, res, { className: 'api.auth.parent.verify-otp', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('parent verify-otp error', {
-      className: 'api.auth.parent.verify-otp',
-      methodName: 'POST',
-      error: err,
-    });
+    logger.error('parent verify-otp error', { className: 'api.auth.parent.verify-otp', methodName: 'POST', error: err });
     const res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     logger.logAPI(req, res, { className: 'api.auth.parent.verify-otp', methodName: 'POST' }, start);
     return res;
   }
 }
+

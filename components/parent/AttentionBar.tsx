@@ -1,22 +1,11 @@
-import React from 'react';
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Bar,
-} from 'recharts';
+import React from 'react'
+import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts'
 
-type AttentionBySubject = { subject: string; count: number };
+type AttentionBySubject = { subject: string; count: number }
 
 export default function AttentionBar({ items }: { items: AttentionBySubject[] }) {
-  const data = items.map((i) => ({ subject: i.subject, count: i.count }));
-  if (data.length === 0)
-    return (
-      <div className="text-sm text-gray-500 dark:text-gray-400">No attention flags right now.</div>
-    );
+  const data = items.map((i) => ({ subject: i.subject, count: i.count }))
+  if (data.length === 0) return <div className="text-sm text-gray-500 dark:text-gray-400">No attention flags right now.</div>
 
   return (
     <div className="h-56">
@@ -30,5 +19,5 @@ export default function AttentionBar({ items }: { items: AttentionBySubject[] })
         </ComposedChart>
       </ResponsiveContainer>
     </div>
-  );
+  )
 }

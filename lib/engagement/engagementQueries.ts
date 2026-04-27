@@ -20,7 +20,7 @@ export async function getUniqueStudyDays(
     sinceUtc?: Date;
     untilUtc?: Date;
     limit?: number;
-  } = {}
+  } = {},
 ): Promise<string[]> {
   const tz = options.timezone ?? TZ_DEFAULT;
   const completedAtCond: { not: null; gte?: Date; lte?: Date } = { not: null };
@@ -53,7 +53,7 @@ export async function getUniqueStudyDays(
  */
 export function computeStreakFromStudyDays(
   studyDays: string[],
-  todayLocal: string
+  todayLocal: string,
 ): { current: number; longest: number } {
   if (studyDays.length === 0) return { current: 0, longest: 0 };
   const sorted = [...studyDays].sort();
@@ -106,14 +106,17 @@ export function computeStreakFromStudyDays(
  */
 export async function getWeeklyActivity(
   studentId: string,
-  timezone: string | null | undefined
+  timezone: string | null | undefined,
 ): Promise<{ date: string; completed: boolean }[]> {
   const tz = timezone ?? TZ_DEFAULT;
   const today = getLocalDateString(new Date(), tz);
   const results: { date: string; completed: boolean }[] = [];
   const start = startOfLocalDayUtc(today, tz);
   const sevenDaysAgo = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000);
-  const sinceUtc = startOfLocalDayUtc(getLocalDateString(sevenDaysAgo, tz), tz);
+  const sinceUtc = startOfLocalDayUtc(
+    getLocalDateString(sevenDaysAgo, tz),
+    tz,
+  );
 
   const studyDays = await getUniqueStudyDays(studentId, {
     timezone: tz,
@@ -137,7 +140,7 @@ export async function getWeeklyActivity(
 export async function countCompletionsInRange(
   studentId: string,
   fromUtc: Date,
-  toUtc: Date
+  toUtc: Date,
 ): Promise<number> {
   const n = await prisma.structuredSession.count({
     where: {

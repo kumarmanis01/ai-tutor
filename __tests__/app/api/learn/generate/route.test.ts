@@ -86,7 +86,7 @@ describe('POST /api/learn/generate', () => {
       mockGetSession.mockResolvedValue({
         user: { id: 'user-1', role: 'student' },
       });
-
+      
       (mockPrisma.subscription.findFirst as jest.Mock).mockResolvedValue(null);
       (mockPrisma.generatedStudyContent.count as jest.Mock).mockResolvedValue(3); // At limit
 
@@ -106,7 +106,7 @@ describe('POST /api/learn/generate', () => {
       mockGetSession.mockResolvedValue({
         user: { id: 'user-1', role: 'student' },
       });
-
+      
       (mockPrisma.subscription.findFirst as jest.Mock).mockResolvedValue({
         id: 'sub-1',
         status: 'active',
@@ -114,7 +114,7 @@ describe('POST /api/learn/generate', () => {
       });
       (mockPrisma.generatedStudyContent.count as jest.Mock).mockResolvedValue(5); // Under premium limit
       (mockPrisma.generatedStudyContent.findUnique as jest.Mock).mockResolvedValue(null);
-
+      
       mockCallLLM.mockResolvedValue({
         content: JSON.stringify({
           title: 'Understanding Photosynthesis',
@@ -234,7 +234,7 @@ describe('POST /api/learn/generate', () => {
 
     it('should generate and store new content if not cached', async () => {
       (mockPrisma.generatedStudyContent.findUnique as jest.Mock).mockResolvedValue(null);
-
+      
       const generatedContent = {
         title: 'Understanding Photosynthesis',
         content: {
@@ -384,7 +384,7 @@ describe('GET /api/learn/generate', () => {
     mockGetSession.mockResolvedValue({
       user: { id: 'user-1', role: 'student' },
     });
-
+    
     (mockPrisma.subscription.findFirst as jest.Mock).mockResolvedValue(null);
     (mockPrisma.generatedStudyContent.count as jest.Mock).mockResolvedValue(1);
     (mockPrisma.generatedStudyContent.findMany as jest.Mock).mockResolvedValue([

@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 const { prisma } = require('../lib/prisma');
-(async () => {
+;(async () => {
+  
   try {
-    const res = await prisma.jobLock.deleteMany({ where: { jobName: 'analytics_jobs' } });
-    console.log('cleared job lock', res);
+    const res = await prisma.jobLock.deleteMany({ where: { jobName: 'analytics_jobs' } })
+    console.log('cleared job lock', res)
   } catch (err) {
-    console.error('failed to clear job lock', err);
-    process.exit(2);
+    console.error('failed to clear job lock', err)
+    process.exit(2)
   } finally {
-    await prisma.$disconnect();
+    await prisma.$disconnect()
   }
-})();
+})()

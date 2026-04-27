@@ -12,23 +12,16 @@ declare module '@prisma/client' {
 
   // export enums/consts as values and types
   export const LanguageCode: { en: 'en'; hi: 'hi'; [k: string]: string };
-  export type LanguageCode = (typeof LanguageCode)[keyof typeof LanguageCode];
+  export type LanguageCode = typeof LanguageCode[keyof typeof LanguageCode];
 
-  export const JobType: {
-    syllabus: string;
-    tests: string;
-    notes: string;
-    questions: string;
-    assemble: string;
-    [k: string]: string;
-  };
-  export type JobType = (typeof JobType)[keyof typeof JobType];
+  export const JobType: { syllabus: string; tests: string; notes: string; questions: string; assemble: string; [k: string]: string };
+  export type JobType = typeof JobType[keyof typeof JobType];
 
   export const DifficultyLevel: { easy: string; medium: string; hard: string; [k: string]: string };
-  export type DifficultyLevel = (typeof DifficultyLevel)[keyof typeof DifficultyLevel];
+  export type DifficultyLevel = typeof DifficultyLevel[keyof typeof DifficultyLevel];
 
   export const UserRole: { admin: string; user: string; [k: string]: string };
-  export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+  export type UserRole = typeof UserRole[keyof typeof UserRole];
 
   export type Syllabus = any;
   export type SyllabusStatus = any;
@@ -67,7 +60,7 @@ declare module '@prisma/client' {
     WORKER_START: 'WORKER_START';
     WORKER_STOP: 'WORKER_STOP';
   };
-  export type AdminActionType = (typeof AdminActionType)[keyof typeof AdminActionType];
+  export type AdminActionType = typeof AdminActionType[keyof typeof AdminActionType];
 
   export const ConsentScope: {
     DATA_PROCESSING: 'DATA_PROCESSING';
@@ -75,7 +68,7 @@ declare module '@prisma/client' {
     PARENT_NOTIFICATION: 'PARENT_NOTIFICATION';
     MARKETING: 'MARKETING';
   };
-  export type ConsentScope = (typeof ConsentScope)[keyof typeof ConsentScope];
+  export type ConsentScope = typeof ConsentScope[keyof typeof ConsentScope];
 
   const _default: any;
   export default _default;

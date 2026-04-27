@@ -57,9 +57,7 @@ export default function ProfileWidgets({
         const existingPrefs = (data && data.preferences) || {};
         setPrefs(existingPrefs);
         const initial = Array.isArray(existingPrefs.badgeShowcase)
-          ? (existingPrefs.badgeShowcase as string[]).filter((id) =>
-              (badges ?? []).some((b) => b.id === id)
-            )
+          ? (existingPrefs.badgeShowcase as string[]).filter((id) => (badges ?? []).some((b) => b.id === id))
           : [];
         setSelected(initial);
       } catch {
@@ -76,10 +74,8 @@ export default function ProfileWidgets({
     const showcase = prefs?.badgeShowcase;
     if (Array.isArray(showcase) && showcase.length > 0) {
       const map = new Map(badges.map((b) => [b.id, b]));
-      const selectedList = (showcase as string[])
-        .map((id) => map.get(id))
-        .filter(Boolean) as BadgeView[];
-      const rest = badges.filter((b) => !(showcase as string[]).includes(b.id));
+      const selectedList = (showcase as string[]).map((id) => map.get(id)).filter(Boolean) as BadgeView[];
+      const rest = badges.filter((b) => !((showcase as string[]).includes(b.id)));
       return [...selectedList, ...rest];
     }
     return badges;
@@ -144,8 +140,7 @@ export default function ProfileWidgets({
         <div className="flex gap-3 flex-wrap">
           {orderedBadges && orderedBadges.length > 0 ? (
             orderedBadges.map((b) => {
-              const highlighted =
-                Array.isArray(prefs?.badgeShowcase) && prefs.badgeShowcase.includes(b.id);
+              const highlighted = Array.isArray(prefs?.badgeShowcase) && prefs.badgeShowcase.includes(b.id);
               return (
                 <div
                   key={b.id}
@@ -158,17 +153,11 @@ export default function ProfileWidgets({
                   <div className="min-w-0">
                     <div className="font-medium truncate">{b.name}</div>
                     {b.description && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {b.description}
-                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{b.description}</div>
                     )}
                   </div>
                   <div className="ml-auto">
-                    <ShareBadge
-                      badgeId={b.id}
-                      title={b.name}
-                      description={b.description ?? undefined}
-                    />
+                    <ShareBadge badgeId={b.id} title={b.name} description={b.description ?? undefined} />
                   </div>
                 </div>
               );
@@ -189,17 +178,9 @@ export default function ProfileWidgets({
           <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-2xl w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-semibold">Manage Badge Showcase</h4>
-              <button
-                type="button"
-                onClick={() => setShowManage(false)}
-                className="text-sm px-2 py-1"
-              >
-                Close
-              </button>
+              <button type="button" onClick={() => setShowManage(false)} className="text-sm px-2 py-1">Close</button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Select up to 5 badges to showcase on your profile.
-            </p>
+            <p className="text-sm text-gray-600 mb-4">Select up to 5 badges to showcase on your profile.</p>
 
             <div className="grid grid-cols-2 gap-3 max-h-80 overflow-auto mb-4">
               {(badges ?? []).map((b) => {
@@ -210,19 +191,13 @@ export default function ProfileWidgets({
                     type="button"
                     onClick={() => toggleSelection(b.id)}
                     className={`flex items-center gap-3 p-3 rounded border text-left ${
-                      isSelected
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                      isSelected ? 'bg-primary/10 border-primary' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                     }`}
                   >
                     <span className="text-2xl">{b.icon ?? '🏅'}</span>
                     <div className="min-w-0">
                       <div className="font-medium truncate">{b.name}</div>
-                      {b.description && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {b.description}
-                        </div>
-                      )}
+                      {b.description && <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{b.description}</div>}
                     </div>
                     <div className="ml-auto text-sm">{isSelected ? 'Selected' : ''}</div>
                   </button>
@@ -233,13 +208,7 @@ export default function ProfileWidgets({
             {error && <div className="text-sm text-red-600 mb-3">{error}</div>}
 
             <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowManage(false)}
-                className="px-4 py-2 border rounded"
-              >
-                Cancel
-              </button>
+              <button type="button" onClick={() => setShowManage(false)} className="px-4 py-2 border rounded">Cancel</button>
               <button
                 type="button"
                 onClick={saveSelection}

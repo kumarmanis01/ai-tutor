@@ -5,9 +5,7 @@ class FlakySink implements AlertSink {
   name = 'flaky';
   calls = 0;
   failTimes: number;
-  constructor(failTimes = 2) {
-    this.failTimes = failTimes;
-  }
+  constructor(failTimes = 2) { this.failTimes = failTimes; }
   async send(_: AlertPayload) {
     void _;
     this.calls += 1;
@@ -20,10 +18,7 @@ class FlakySink implements AlertSink {
 
 class AlwaysFailSink implements AlertSink {
   name = 'always';
-  async send(_: AlertPayload): Promise<SinkResult> {
-    void _;
-    throw new Error('boom');
-  }
+  async send(_: AlertPayload): Promise<SinkResult> { void _; throw new Error('boom'); }
 }
 
 describe('SinkWrapper', () => {
@@ -37,10 +32,7 @@ describe('SinkWrapper', () => {
 
   test('opens circuit after repeated failures', async () => {
     const s = new AlwaysFailSink();
-    const w = new SinkWrapper(s, {
-      retries: 0,
-      circuitBreakerOptions: { failureThreshold: 2, timeoutMs: 10 },
-    });
+    const w = new SinkWrapper(s, { retries: 0, circuitBreakerOptions: { failureThreshold: 2, timeoutMs: 10 } });
     const r1 = await w.send({ title: 'x', message: 'y', severity: 'info' } as any);
     expect(r1.success).toBe(false);
     const r2 = await w.send({ title: 'x', message: 'y', severity: 'info' } as any);

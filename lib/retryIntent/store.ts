@@ -1,14 +1,14 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import { logAuditEvent } from '../audit/log';
+import { logAuditEvent } from '../audit/log'
 
 export type CreateRetryIntentInput = {
-  sourceJobId: string;
-  sourceOutputRef?: any;
-  reasonCode: any;
-  reasonText: string;
-  approvedBy: string;
-  approvedAt?: Date;
-};
+  sourceJobId: string
+  sourceOutputRef?: any
+  reasonCode: any
+  reasonText: string
+  approvedBy: string
+  approvedAt?: Date
+}
 
 export function makeRetryIntentStore(prisma: PrismaClient) {
   async function createRetryIntent(input: CreateRetryIntentInput) {
@@ -16,11 +16,11 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
     const job = await prisma.regenerationJob.findUnique({
       where: { id: input.sourceJobId },
       select: { id: true, status: true },
-    });
+    })
 
-    if (!job) throw new Error('source job not found');
+    if (!job) throw new Error('source job not found')
     if (job.status !== 'FAILED') {
-      throw new Error('only FAILED jobs may be retried');
+      throw new Error('only FAILED jobs may be retried')
     }
 
     const created = await prisma.retryIntent.create({
@@ -33,7 +33,8 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
         approvedAt: input.approvedAt,
         status: 'PENDING',
       },
-    });
+    })
+
 
     // fire-and-forget audit (non-blocking)
     try {
@@ -41,36 +42,29 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
         targetEntity: 'RetryIntent',
         targetId: created.id,
         action: null,
-        details: {
-          legacyAction: 'RETRY_INTENT_CREATED',
-          sourceJobId: input.sourceJobId,
-          approvedBy: input.approvedBy,
-        },
-      });
+        details: { legacyAction: 'RETRY_INTENT_CREATED', sourceJobId: input.sourceJobId, approvedBy: input.approvedBy },
+      })
     } catch {
       // swallow errors -- auditing must not break flow
     }
 
-    return created;
+    return created
   }
 
   async function consumeRetryIntent(id: string, tx?: Prisma.TransactionClient) {
-    const client = tx ?? prisma;
+    const client = tx ?? prisma
 
     // Attempt guarded update: only transition PENDING -> CONSUMED
     const res = await client.retryIntent.updateMany({
       where: { id, status: 'PENDING' },
       data: { status: 'CONSUMED' },
-    });
+    })
 
     if (res.count === 0) {
       // Determine whether it was already consumed or missing
-      const existing = await client.retryIntent.findUnique({
-        where: { id },
-        select: { id: true, status: true },
-      });
-      if (!existing) throw new Error('retry intent not found');
-      throw new Error('retry intent already consumed or rejected');
+      const existing = await client.retryIntent.findUnique({ where: { id }, select: { id: true, status: true } })
+      if (!existing) throw new Error('retry intent not found')
+      throw new Error('retry intent already consumed or rejected')
     }
 
     // Emit audit event (non-blocking)
@@ -80,26 +74,23 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
         targetId: id,
         action: null,
         details: { legacyAction: 'RETRY_INTENT_CONSUMED' },
-      });
+      })
     } catch {
       // swallow
     }
 
     // return the consumed record
-    const consumed = await client.retryIntent.findUnique({ where: { id } });
-    return consumed;
+    const consumed = await client.retryIntent.findUnique({ where: { id } })
+    return consumed
   }
 
   async function listRetryIntentsForJob(jobId: string) {
-    return prisma.retryIntent.findMany({
-      where: { sourceJobId: jobId },
-      orderBy: { createdAt: 'desc' },
-    });
+    return prisma.retryIntent.findMany({ where: { sourceJobId: jobId }, orderBy: { createdAt: 'desc' } })
   }
 
-  return { createRetryIntent, consumeRetryIntent, listRetryIntentsForJob };
+  return { createRetryIntent, consumeRetryIntent, listRetryIntentsForJob }
 }
 
-export type RetryIntentStore = ReturnType<typeof makeRetryIntentStore>;
+export type RetryIntentStore = ReturnType<typeof makeRetryIntentStore>
 
-export default makeRetryIntentStore;
+export default makeRetryIntentStore

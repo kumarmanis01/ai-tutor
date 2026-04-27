@@ -49,7 +49,9 @@ function chapterColor(mastery100: number) {
 function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
   const mastery100 = Math.round(chapter.masteryScore * 100);
   const { bar, text } = chapterColor(mastery100);
-  const href = chapter.weakestConceptId ? `/session/pre/${chapter.weakestConceptId}` : '#';
+  const href = chapter.weakestConceptId
+    ? `/session/pre/${chapter.weakestConceptId}`
+    : '#';
 
   return (
     <a
@@ -62,7 +64,9 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
           <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate pr-2">
             {chapter.chapterName}
           </span>
-          <span className={`${text} text-xs font-semibold flex-shrink-0`}>{mastery100}%</span>
+          <span className={`${text} text-xs font-semibold flex-shrink-0`}>
+            {mastery100}%
+          </span>
         </div>
         <div
           className="h-2 rounded-full bg-gray-100 dark:bg-slate-600 overflow-hidden"
@@ -78,16 +82,10 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
         </div>
         {/* Memory strength (visual only) */}
         <div className="mt-2">
-          <div
-            className="h-1 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden"
-            aria-hidden
-          >
+          <div className="h-1 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden" aria-hidden>
             <div
               className="h-full rounded-full"
-              style={{
-                width: `${Math.round((chapter.memoryStrength ?? 0) * 100)}%`,
-                backgroundColor: '#534AB7',
-              }}
+              style={{ width: `${Math.round((chapter.memoryStrength ?? 0) * 100)}%`, backgroundColor: '#534AB7' }}
             />
           </div>
         </div>

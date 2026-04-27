@@ -1,6 +1,5 @@
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
-import TrustMoat from './TrustMoat';
 import HowItWorksSection from './HowItWorksSection';
 import ProblemSection from './ProblemSection';
 import TestimonialsSection from './TestimonialsSection';
@@ -16,8 +15,6 @@ const LandingPageInteractive = () => {
       <main className="min-h-screen">
         <HeroSection />
         <TrustBar />
-        {/* LP-3.1: Trust Moat -- DPDP & Safety Icons Grid */}
-        <TrustMoat />
         <HowItWorksSection />
         <ProblemSection />
         <TestimonialsSection />

@@ -19,23 +19,23 @@
  * - 2026-04-21 | staff-engineer | review fix: correct header (per-job create, not createMany); add test
  */
 
-import { Worker, Job } from 'bullmq';
-import { Prisma } from '@prisma/client';
-import { prisma } from '../../lib/prisma';
-import { logger } from '../../lib/logger';
-import { redisConnection } from '../../lib/redis';
-import { ANALYTICS_INGEST_QUEUE } from '../../lib/queues/constants';
+import { Worker, Job } from 'bullmq'
+import { Prisma } from '@prisma/client'
+import { prisma } from '../../lib/prisma'
+import { logger } from '../../lib/logger'
+import { redisConnection } from '../../lib/redis'
+import { ANALYTICS_INGEST_QUEUE } from '../../lib/queues/constants'
 
 export type AnalyticsIngestPayload = {
-  eventType: string;
-  userId: string | null;
-  courseId: string | null;
-  lessonIdx: number | null;
-  metadata: Prisma.InputJsonValue;
-};
+  eventType: string
+  userId: string | null
+  courseId: string | null
+  lessonIdx: number | null
+  metadata: Prisma.InputJsonValue
+}
 
 export async function processAnalyticsIngest(job: Job<AnalyticsIngestPayload>): Promise<void> {
-  const { eventType, userId, courseId, lessonIdx, metadata } = job.data;
+  const { eventType, userId, courseId, lessonIdx, metadata } = job.data
   await prisma.analyticsEvent.create({
     data: {
       eventType,
@@ -44,23 +44,23 @@ export async function processAnalyticsIngest(job: Job<AnalyticsIngestPayload>): 
       lessonIdx: lessonIdx ?? null,
       metadata: metadata ?? {},
     },
-  });
+  })
 }
 
 export function startAnalyticsIngestWorker(): Worker {
-  const batchSize = Number(process.env.ANALYTICS_INGEST_BATCH_SIZE || 500);
+  const batchSize = Number(process.env.ANALYTICS_INGEST_BATCH_SIZE || 500)
 
   const worker = new Worker<AnalyticsIngestPayload>(
     ANALYTICS_INGEST_QUEUE,
     async (job) => {
       try {
-        await processAnalyticsIngest(job);
+        await processAnalyticsIngest(job)
       } catch (err) {
         logger.warn('analyticsIngestWorker: job failed', {
           event: 'analytics_ingest_job_failed',
           context: { jobId: job.id, eventType: job.data.eventType, error: String(err) },
-        });
-        throw err;
+        })
+        throw err
       }
     },
     {
@@ -68,20 +68,20 @@ export function startAnalyticsIngestWorker(): Worker {
       concurrency: batchSize,
       removeOnComplete: { count: 200 },
       removeOnFail: { count: 50 },
-    }
-  );
+    },
+  )
 
   worker.on('failed', (job, err) => {
     logger.warn('analyticsIngestWorker: worker-level failure', {
       event: 'analytics_ingest_worker_failed',
       context: { jobId: job?.id, error: String(err) },
-    });
-  });
+    })
+  })
 
   logger.info('analyticsIngestWorker: started', {
     event: 'analytics_ingest_worker_started',
     context: { queue: ANALYTICS_INGEST_QUEUE, concurrency: batchSize },
-  });
+  })
 
-  return worker;
+  return worker
 }

@@ -10,8 +10,8 @@
  * - 2026-04-15T00:30:00Z | copilot | add compatibility shim re-exporting billing helpers
  */
 
-export { isPremiumUser, getTodaysQuestionCount } from '@/lib/billing/subscription';
+export { isPremiumUser, getTodaysQuestionCount } from '@/lib/billing/subscription'
 
 // Default export kept for modules that import the module as a default object
-import * as _all from '@/lib/billing/subscription';
-export default _all;
+import * as _all from '@/lib/billing/subscription'
+export default _all

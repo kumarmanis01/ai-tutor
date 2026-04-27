@@ -39,7 +39,7 @@ const MIN_HOURS_BETWEEN_MESSAGES = 7 * 24; // 1 week
 export async function sendWhatsAppMessage(
   parentPhone: string,
   message: string,
-  parentId: string
+  parentId: string,
 ): Promise<boolean> {
   if (!WHATSAPP_ENABLED) {
     logger.info('whatsapp.disabled', { parentId });
@@ -63,10 +63,9 @@ export async function sendWhatsAppMessage(
   }
 
   // Truncate message
-  const truncated =
-    message.length > MAX_MESSAGE_LENGTH
-      ? message.slice(0, MAX_MESSAGE_LENGTH - 3) + '...'
-      : message;
+  const truncated = message.length > MAX_MESSAGE_LENGTH
+    ? message.slice(0, MAX_MESSAGE_LENGTH - 3) + '...'
+    : message;
 
   try {
     await callWhatsAppAPI(parentPhone, truncated);
@@ -92,19 +91,13 @@ export function buildWeeklyWhatsAppMessage(
   daysActive: number,
   improvedTopic: string | null,
   strugglingTopic: string | null,
-  language: string = 'en'
+  language: string = 'en',
 ): string {
   if (language === 'hi') {
     return buildHindiMessage(parentName, studentName, daysActive, improvedTopic, strugglingTopic);
   }
   if (language === 'hinglish') {
-    return buildHinglishMessage(
-      parentName,
-      studentName,
-      daysActive,
-      improvedTopic,
-      strugglingTopic
-    );
+    return buildHinglishMessage(parentName, studentName, daysActive, improvedTopic, strugglingTopic);
   }
   return buildEnglishMessage(parentName, studentName, daysActive, improvedTopic, strugglingTopic);
 }
@@ -140,7 +133,7 @@ function buildEnglishMessage(
   studentName: string,
   daysActive: number,
   improved: string | null,
-  struggling: string | null
+  struggling: string | null,
 ): string {
   const lines: string[] = [];
   lines.push(`Hi ${parentName},`);
@@ -167,7 +160,7 @@ function buildHindiMessage(
   studentName: string,
   daysActive: number,
   improved: string | null,
-  struggling: string | null
+  struggling: string | null,
 ): string {
   const lines: string[] = [];
   lines.push(`🙏 नमस्ते ${parentName},`);
@@ -194,7 +187,7 @@ function buildHinglishMessage(
   studentName: string,
   daysActive: number,
   improved: string | null,
-  struggling: string | null
+  struggling: string | null,
 ): string {
   const lines: string[] = [];
   lines.push(`🙏 Namaste ${parentName},`);
@@ -231,7 +224,7 @@ async function callWhatsAppAPI(phone: string, message: string): Promise<void> {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
+      'Authorization': `Bearer ${WHATSAPP_API_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

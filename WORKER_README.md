@@ -3,7 +3,6 @@
 Purpose: brief reference for worker runtime debug flags and recommended VPS deploy steps.
 
 Flags
-
 - `WORKER_DEBUG` — set to `1` or `true` to force server-side verbose logs. When set:
   - `lib/logger` emits `debug`-level output and `logger.getLogs()`/`subscribe()` return logs.
   - Useful for PM2-run worker processes when you need detailed job lifecycle traces.
@@ -23,17 +22,16 @@ module.exports = {
         NODE_ENV: 'production',
         DATABASE_URL: 'postgres://...',
         REDIS_URL: 'redis://...',
-        WORKER_DEBUG: '1', // enable verbose worker logs
-        HYDRATION_DEBUG: '1', // enable hydration debug
-        AI_CONTENT_DEBUG: '1', // enable LLM debug
-      },
-    },
-  ],
-};
+        WORKER_DEBUG: '1',           // enable verbose worker logs
+        HYDRATION_DEBUG: '1',       // enable hydration debug
+        AI_CONTENT_DEBUG: '1',      // enable LLM debug
+      }
+    }
+  ]
+}
 ```
 
 Notes on `npx prisma generate`
-
 - You only need to run `npx prisma generate` on the VPS when one of the following happens:
   - The Prisma schema (`prisma/schema.prisma`) changed.
   - The `@prisma/client` package or its version changed (due to `npm ci` / package install).
@@ -60,7 +58,6 @@ pm2 restart ecosystem.config.cjs --env production
 ```
 
 Important runtime constraints
-
 - Workers must run the compiled JS from `dist/` (PM2 must point to `dist/worker/bootstrap.js`).
 - Do NOT load `dotenv` in production code; env vars must be injected by PM2 or the process manager.
 

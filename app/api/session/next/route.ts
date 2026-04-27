@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       view.currentPhase,
       view.topicId,
       view.sessionId,
-      user.id
+      user.id,
     );
 
     recordSessionEvent({

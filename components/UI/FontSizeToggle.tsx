@@ -13,56 +13,54 @@
  * - 2026-04-17T00:00:00Z | copilot | replace console.* with logger; add unit test
  */
 
-'use client';
+'use client'
 
-import React, { useEffect, useState } from 'react';
-import useCurrentUser from '@/hooks/useCurrentUser';
-import { logger } from '@/lib/logger';
+import React, { useEffect, useState } from 'react'
+import useCurrentUser from '@/hooks/useCurrentUser'
+import { logger } from '@/lib/logger'
 
-const MAP: Record<string, number> = { small: 14, medium: 16, large: 18 };
+const MAP: Record<string, number> = { small: 14, medium: 16, large: 18 }
 
 export default function FontSizeToggle() {
-  const { data: profile, mutate } = useCurrentUser();
-  const initial =
-    (profile as any)?.preferences?.fontSize ?? (localStorage.getItem('fontSize') || 'medium');
-  const [value, setValue] = useState<string>(initial);
-  const [saving, setSaving] = useState(false);
+  const { data: profile, mutate } = useCurrentUser()
+  const initial = (profile as any)?.preferences?.fontSize ?? (localStorage.getItem('fontSize') || 'medium')
+  const [value, setValue] = useState<string>(initial)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const v =
-      (profile as any)?.preferences?.fontSize || localStorage.getItem('fontSize') || 'medium';
-    setValue(v);
-    apply(v);
+    const v = (profile as any)?.preferences?.fontSize || localStorage.getItem('fontSize') || 'medium'
+    setValue(v)
+    apply(v)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile]);
+  }, [profile])
 
   function apply(v: string) {
-    const px = MAP[v] ?? MAP.medium;
+    const px = MAP[v] ?? MAP.medium
     try {
-      document.documentElement.style.setProperty('--font-size-base', `${px}px`);
-      localStorage.setItem('fontSize', v);
+      document.documentElement.style.setProperty('--font-size-base', `${px}px`)
+      localStorage.setItem('fontSize', v)
     } catch {
       // ignore
     }
   }
 
   async function onChange(v: string) {
-    setValue(v);
-    apply(v);
-    setSaving(true);
+    setValue(v)
+    apply(v)
+    setSaving(true)
     try {
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preferences: { fontSize: v } }),
-      });
+      })
       if (res.ok) {
-        mutate();
+        mutate()
       }
     } catch (err) {
-      logger.error('Failed to save font size', { error: err });
+      logger.error('Failed to save font size', { error: err })
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
@@ -96,5 +94,5 @@ export default function FontSizeToggle() {
         </button>
       </div>
     </div>
-  );
+  )
 }

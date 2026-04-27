@@ -11,21 +11,21 @@
  */
 
 // Skip in browser (jsdom) environments where Prisma's Node engine cannot run.
-const _isNode = typeof (globalThis as any).window === 'undefined';
+const _isNode = typeof (globalThis as any).window === 'undefined'
 
-let _LocalPrismaClient: any | undefined;
+let _LocalPrismaClient: any | undefined
 if (_isNode) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pkg = require('@prisma/client');
-    _LocalPrismaClient = pkg && pkg.PrismaClient;
+    const pkg = require('@prisma/client')
+    _LocalPrismaClient = pkg && pkg.PrismaClient
   } catch {
-    _LocalPrismaClient = undefined;
+    _LocalPrismaClient = undefined
   }
 }
 
 if (_isNode && _LocalPrismaClient && typeof _LocalPrismaClient === 'function') {
-  let _localClient: any | null = null;
+  let _localClient: any | null = null
 
   /**
    * beforeAll: create a dedicated client, run schema migrations, then disconnect it.
@@ -34,55 +34,29 @@ if (_isNode && _LocalPrismaClient && typeof _LocalPrismaClient === 'function') {
    */
   beforeAll(async () => {
     try {
-      _localClient = new _LocalPrismaClient();
+      _localClient = new _LocalPrismaClient()
     } catch {
       // Cannot instantiate — skip schema prep silently.
-      return;
+      return
     }
 
     try {
       // Postgres: add nullable columns if they don't exist yet.
-      await _localClient.$executeRawUnsafe(
-        'ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "lockedAt" TIMESTAMP NULL'
-      );
-      await _localClient.$executeRawUnsafe(
-        'ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP NULL'
-      );
-      await _localClient.$executeRawUnsafe(
-        'ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryOfJobId" TEXT NULL'
-      );
-      await _localClient.$executeRawUnsafe(
-        'ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryIntentId" TEXT NULL'
-      );
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "lockedAt" TIMESTAMP NULL')
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP NULL')
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryOfJobId" TEXT NULL')
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryIntentId" TEXT NULL')
     } catch {
       // SQLite or locked CI DB — try the simpler form, ignore all errors.
-      try {
-        await _localClient.$executeRawUnsafe(
-          'ALTER TABLE RegenerationJob ADD COLUMN lockedAt TEXT'
-        );
-      } catch {}
-      try {
-        await _localClient.$executeRawUnsafe(
-          'ALTER TABLE RegenerationJob ADD COLUMN completedAt TEXT'
-        );
-      } catch {}
-      try {
-        await _localClient.$executeRawUnsafe(
-          'ALTER TABLE RegenerationJob ADD COLUMN retryOfJobId TEXT'
-        );
-      } catch {}
-      try {
-        await _localClient.$executeRawUnsafe(
-          'ALTER TABLE RegenerationJob ADD COLUMN retryIntentId TEXT'
-        );
-      } catch {}
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN lockedAt TEXT') } catch {}
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN completedAt TEXT') } catch {}
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN retryOfJobId TEXT') } catch {}
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN retryIntentId TEXT') } catch {}
     }
 
     // Clear prepared-statement cache to avoid "cached plan must not change result type".
-    try {
-      await _localClient.$executeRawUnsafe('DISCARD ALL');
-    } catch {}
-  });
+    try { await _localClient.$executeRawUnsafe('DISCARD ALL') } catch {}
+  })
 
   /**
    * afterAll: disconnect the dedicated local client.
@@ -90,10 +64,8 @@ if (_isNode && _LocalPrismaClient && typeof _LocalPrismaClient === 'function') {
    */
   afterAll(async () => {
     if (_localClient) {
-      try {
-        await _localClient.$disconnect();
-      } catch {}
-      _localClient = null;
+      try { await _localClient.$disconnect() } catch {}
+      _localClient = null
     }
-  }, 20000);
+  }, 20000)
 }

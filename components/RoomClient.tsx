@@ -36,7 +36,7 @@ export default function RoomClient({ roomId }: Props) {
         setLeaderboard(
           (data.room?.members || [])
             .slice()
-            .sort((a: RoomMember, b: RoomMember) => (b.score ?? 0) - (a.score ?? 0))
+            .sort((a: RoomMember, b: RoomMember) => (b.score ?? 0) - (a.score ?? 0)),
         );
       });
   }, [roomId]);
@@ -108,8 +108,8 @@ export default function RoomClient({ roomId }: Props) {
           <div className="mb-4 max-h-64 overflow-y-auto">
             {messages.map((msg) => (
               <div key={msg.id} className="mb-2">
-                <b className="text-[#534AB7] dark:text-yellow-300">{msg.sender ?? msg.senderId}</b>:{' '}
-                <span className="text-gray-800 dark:text-yellow-100">{msg.content}</span>
+                <b className="text-[#534AB7] dark:text-yellow-300">{msg.sender ?? msg.senderId}</b>
+                : <span className="text-gray-800 dark:text-yellow-100">{msg.content}</span>
               </div>
             ))}
           </div>
@@ -131,7 +131,9 @@ export default function RoomClient({ roomId }: Props) {
         </div>
         {/* Badges & Achievements */}
         <div className="w-full max-w-xl mb-6 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg shadow flex flex-col">
-          <h3 className="font-semibold text-lg mb-2 text-[#534AB7] dark:text-yellow-200">Badges</h3>
+          <h3 className="font-semibold text-lg mb-2 text-[#534AB7] dark:text-yellow-200">
+            Badges
+          </h3>
           <div className="flex gap-3 mb-4 flex-wrap">
             {BADGES.map((badge) => (
               <span

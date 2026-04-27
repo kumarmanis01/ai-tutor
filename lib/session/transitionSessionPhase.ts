@@ -87,7 +87,7 @@ export interface TransitionResult {
 export async function transitionSessionPhase(
   sessionId: string,
   nextPhase: SessionPhase,
-  studentId: string
+  studentId: string,
 ): Promise<TransitionResult> {
   const session = await prisma.structuredSession.findFirst({
     where: { id: sessionId, studentId },
@@ -125,7 +125,7 @@ export async function transitionSessionPhase(
 
   // Merge the new phase timestamp into the existing meta object.
   const existingMeta = (session.meta as Record<string, unknown>) ?? {};
-  const phaseTimestamps = (existingMeta.phaseTimestamps as Record<string, string>) ?? {};
+  const phaseTimestamps = ((existingMeta.phaseTimestamps as Record<string, string>) ?? {});
   phaseTimestamps[nextPhase] = now.toISOString();
 
   // CAS guard: updateMany WHERE state = currentPhase ensures only one concurrent
@@ -157,9 +157,7 @@ export async function transitionSessionPhase(
     const reloadedPhase = reloaded.state as SessionPhase;
     const meta = (reloaded.meta as Record<string, unknown>) ?? {};
     const phaseStartedAt =
-      (meta.phaseStartedAt as string) ??
-      (meta.phaseTimestamps as Record<string, string>)?.[reloadedPhase] ??
-      new Date().toISOString();
+      (meta.phaseStartedAt as string) ?? (meta.phaseTimestamps as Record<string, string>)?.[reloadedPhase] ?? new Date().toISOString();
 
     logger.info('[PHASE_TRANSITION_RACE_LOST]', {
       sessionId,

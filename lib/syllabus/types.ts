@@ -8,7 +8,12 @@
 
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | string;
 
-export type TeachingStyle = 'lecture' | 'project' | 'hands-on' | 'blended' | string;
+export type TeachingStyle =
+  | 'lecture'
+  | 'project'
+  | 'hands-on'
+  | 'blended'
+  | string;
 
 /** Common AI metadata attached to generated artifacts */
 export interface AIMetadata {

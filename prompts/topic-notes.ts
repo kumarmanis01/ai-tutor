@@ -21,22 +21,22 @@
  */
 
 export type TopicNotesParams = {
-  topicName: string;
-  grade: number; // 6-12
-  board: string; // e.g. 'CBSE'
-  subject: string; // e.g. 'Mathematics'
-  chapter: string; // e.g. 'Quadratic Equations'
-  priorTopics?: string[]; // topics already covered in this chapter
-  difficultyLevel?: 'foundation' | 'standard' | 'advanced';
-  language?: 'en' | 'hi-en';
+  topicName: string
+  grade: number             // 6-12
+  board: string             // e.g. 'CBSE'
+  subject: string           // e.g. 'Mathematics'
+  chapter: string           // e.g. 'Quadratic Equations'
+  priorTopics?: string[]    // topics already covered in this chapter
+  difficultyLevel?: 'foundation' | 'standard' | 'advanced'
+  language?: 'en' | 'hi-en'
   /** Official NCERT chapter text. When present, ground all notes in this
    *  content and do not introduce concepts absent from the NCERT text. */
-  ncertContext?: string;
-};
+  ncertContext?: string
+}
 
 function gradeToAgeRange(grade: number): string {
-  const age = grade + 5;
-  return `${age}-${age + 1} years`;
+  const age = grade + 5
+  return `${age}-${age + 1} years`
 }
 
 export function topicNotesPrompt(params: TopicNotesParams): string {
@@ -49,36 +49,33 @@ export function topicNotesPrompt(params: TopicNotesParams): string {
     priorTopics = [],
     difficultyLevel = grade <= 8 ? 'foundation' : grade <= 10 ? 'standard' : 'advanced',
     language = 'en',
-  } = params;
+  } = params
 
-  const ageRange = gradeToAgeRange(grade);
-  const isHinglish = language === 'hi-en';
+  const ageRange = gradeToAgeRange(grade)
+  const isHinglish = language === 'hi-en'
   const langNote = isHinglish
     ? 'Write in a warm Hinglish tone (English sentences with natural Hindi phrases like "acha", "samjhe?", "dekho" woven in). Technical terms stay in English.'
-    : 'Write entirely in clear, conversational English.';
+    : 'Write entirely in clear, conversational English.'
 
   const ncertSection = params.ncertContext
     ? `\nOFFICIAL NCERT SOURCE TEXT (primary source -- ground ALL notes in this text only, do not introduce extra concepts):\n---\n${params.ncertContext}\n---\n`
-    : '';
+    : ''
 
-  const priorSection =
-    priorTopics.length > 0
-      ? `Prior topics students have already covered in this chapter: ${priorTopics.join(', ')}.\nBuild on this prior knowledge where natural; do not re-teach it.`
-      : '';
+  const priorSection = priorTopics.length > 0
+    ? `Prior topics students have already covered in this chapter: ${priorTopics.join(', ')}.\nBuild on this prior knowledge where natural; do not re-teach it.`
+    : ''
 
-  const stepGranularity =
-    difficultyLevel === 'foundation'
-      ? 'Show micro-steps. Assume the student needs every small move explained.'
-      : difficultyLevel === 'advanced'
-        ? 'Standard step granularity. Students can handle multi-step moves.'
-        : 'Moderate granularity -- skip trivial arithmetic but explain every concept move.';
+  const stepGranularity = difficultyLevel === 'foundation'
+    ? 'Show micro-steps. Assume the student needs every small move explained.'
+    : difficultyLevel === 'advanced'
+    ? 'Standard step granularity. Students can handle multi-step moves.'
+    : 'Moderate granularity -- skip trivial arithmetic but explain every concept move.'
 
-  const examPattern =
-    board === 'ICSE'
-      ? 'ICSE structured answer format (show all working, use correct notation).'
-      : 'NCERT + CBSE board style (3-mark and 5-mark worked examples are most common).';
+  const examPattern = board === 'ICSE'
+    ? 'ICSE structured answer format (show all working, use correct notation).'
+    : 'NCERT + CBSE board style (3-mark and 5-mark worked examples are most common).'
 
-  const targetSections = difficultyLevel === 'advanced' ? 9 : 7;
+  const targetSections = difficultyLevel === 'advanced' ? 9 : 7
 
   return `You are Vidya, an expert AI tutor for Indian K-12 students (${board}).
 Your teaching style mirrors a warm, engaging classroom teacher -- not a textbook.
@@ -210,5 +207,5 @@ QUALITY REQUIREMENTS (the response will be rejected if any of these fail):
 - exampleSteps: required for "worked_example" type, null for all others.
 - conceptCheck: required for "concept_check" type, null for all others.
 
-Strict Output Instruction: Return ONLY valid JSON matching the schema above. No text before or after.`;
+Strict Output Instruction: Return ONLY valid JSON matching the schema above. No text before or after.`
 }

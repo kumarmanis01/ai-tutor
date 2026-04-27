@@ -12,10 +12,7 @@ async function main() {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
-    const filtered = rows.filter(
-      (r) =>
-        r.hydrationJobId === jobId || r.hydration_job_id === jobId || r.hydrationjobid === jobId
-    );
+    const filtered = rows.filter(r => (r.hydrationJobId === jobId) || (r.hydration_job_id === jobId) || (r.hydrationjobid === jobId));
     if (filtered.length === 0) {
       console.log('No aIContentLog rows matched hydrationJobId (fetched latest 50 rows).');
       console.log('Sample row keys (if any):', rows.length ? Object.keys(rows[0]) : 'no rows');

@@ -42,12 +42,12 @@ export async function GET() {
                 subject: {
                   select: {
                     name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -60,17 +60,17 @@ export async function GET() {
         topic: {
           select: {
             name: true,
-          },
-        },
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
 
     // Combine and format for display
-    type NoteItem = (typeof draftNotes)[number];
-    type TestItem = (typeof draftTests)[number];
-
+    type NoteItem = typeof draftNotes[number];
+    type TestItem = typeof draftTests[number];
+    
     const contents = [
       ...draftNotes.map((n: NoteItem) => ({
         id: n.id,

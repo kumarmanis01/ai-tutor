@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
@@ -31,32 +31,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   await prisma.$transaction([
     prisma.generatedTest.update({ where: { id }, data: { status: ApprovalStatus.Rejected } }),
-    prisma.auditLog.create({
-      data: {
-        adminId,
-        targetEntity: 'GeneratedTest',
-        targetId: id,
-        action: 'CONTENT_REJECT',
-        previousValue: { status: test.status },
-        newValue: { status: 'rejected' },
-        reason: reason ?? null,
-      },
-    }),
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'GeneratedTest', targetId: id, action: 'CONTENT_REJECT', previousValue: { status: test.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
   ]);
 
   // Auto-regenerate: enqueue a new questions hydration job for this topic
   if (test.topicId) {
-    enqueueQuestionsHydration({
-      topicId: test.topicId,
-      language: String(test.language),
-      difficulty: String(test.difficulty),
-    })
+    enqueueQuestionsHydration({ topicId: test.topicId, language: String(test.language), difficulty: String(test.difficulty) })
       .then((result) => {
-        logger.info('reject_test: auto-regeneration enqueued', {
-          testId: id,
-          topicId: test.topicId,
-          ...result,
-        });
+        logger.info('reject_test: auto-regeneration enqueued', { testId: id, topicId: test.topicId, ...result });
       })
       .catch((err) => {
         logger.error('reject_test: auto-regeneration failed', { testId: id, error: String(err) });

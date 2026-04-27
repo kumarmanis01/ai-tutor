@@ -11,9 +11,7 @@ export async function GET(req: Request) {
     await requireAdminOrModerator();
     const url = new URL(req.url);
     // Default: only active alerts
-    const includeResolved =
-      url.searchParams.get('includeResolved') === '1' ||
-      url.searchParams.get('includeResolved') === 'true';
+    const includeResolved = url.searchParams.get('includeResolved') === '1' || url.searchParams.get('includeResolved') === 'true';
 
     const where: any = {};
     if (!includeResolved) where.active = true;

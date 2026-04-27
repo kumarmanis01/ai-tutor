@@ -14,7 +14,10 @@ export const dynamic = 'force-dynamic';
  * AC-02: Returns durationSeconds so the client can start the countdown.
  * Auth-guarded: 401 before any DB query.
  */
-export async function POST(req: Request, { params }: { params: { examId: string } }) {
+export async function POST(
+  req: Request,
+  { params }: { params: { examId: string } },
+) {
   const start = Date.now();
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id: string } | undefined;

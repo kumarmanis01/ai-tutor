@@ -42,15 +42,7 @@ let failures = [];
 for (const t of tests) {
   write('\n=== RUNNING: ' + t + ' ===');
   const cmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const args = [
-    'jest',
-    '--config',
-    'jest.integration.config.cjs',
-    '--runInBand',
-    '--detectOpenHandles',
-    '--runTestsByPath',
-    t,
-  ];
+  const args = ['jest', '--config', 'jest.integration.config.cjs', '--runInBand', '--detectOpenHandles', '--runTestsByPath', t];
   const res = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
   write(res.stdout || '');
   write(res.stderr || '');

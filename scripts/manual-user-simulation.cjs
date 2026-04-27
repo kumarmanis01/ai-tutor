@@ -17,11 +17,7 @@ const { stdin: input, stdout: output } = require('process');
 const rl = readline.createInterface({ input, output });
 const path = require('path');
 
-const BASE_URL = (
-  process.env.BASE_URL ||
-  process.env.NEXTAUTH_URL ||
-  'http://localhost:3000'
-).replace(/\/$/, '');
+const BASE_URL = (process.env.BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '');
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
 
 function question(prompt) {
@@ -38,41 +34,23 @@ async function createSessionCookie(userId, email, name = 'Manual User') {
   const encode = await getEncoder();
   const now = Math.floor(Date.now() / 1000);
   const token = await encode({
-    token: {
-      sub: userId,
-      id: userId,
-      email,
-      name,
-      role: 'user',
-      iat: now,
-      exp: now + 3600,
-      jti: `manual-${userId}-${now}`,
-    },
+    token: { sub: userId, id: userId, email, name, role: 'user', iat: now, exp: now + 3600, jti: `manual-${userId}-${now}` },
     secret: NEXTAUTH_SECRET,
     maxAge: 3600,
   });
-  const cookieName = BASE_URL.startsWith('https')
-    ? '__Secure-next-auth.session-token'
-    : 'next-auth.session-token';
+  const cookieName = BASE_URL.startsWith('https') ? '__Secure-next-auth.session-token' : 'next-auth.session-token';
   return `${cookieName}=${token}`;
 }
 
 let _fetch = global.fetch;
 if (!_fetch) {
-  try {
-    _fetch = require('node-fetch');
-  } catch (e) {
-    /* will error later */
-  }
+  try { _fetch = require('node-fetch'); } catch (e) { /* will error later */ }
 }
 
 async function apiGet(path, cookie) {
   if (!_fetch) throw new Error('fetch not available (Node <18) and node-fetch not installed');
   const url = `${BASE_URL}${path}`;
-  const res = await _fetch(url, {
-    method: 'GET',
-    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
-  });
+  const res = await _fetch(url, { method: 'GET', headers: { Cookie: cookie, 'Content-Type': 'application/json' } });
   const body = await res.json().catch(() => null);
   return { status: res.status, body };
 }
@@ -80,11 +58,7 @@ async function apiGet(path, cookie) {
 async function apiPost(path, cookie, payload) {
   if (!_fetch) throw new Error('fetch not available (Node <18) and node-fetch not installed');
   const url = `${BASE_URL}${path}`;
-  const res = await _fetch(url, {
-    method: 'POST',
-    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  const res = await _fetch(url, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   const body = await res.json().catch(() => null);
   return { status: res.status, body };
 }

@@ -45,7 +45,15 @@ export async function POST(req: Request) {
     return res;
   }
 
-  const { question, subject, chapter, topic, intent, conversationHistory, questionId } = body as {
+  const {
+    question,
+    subject,
+    chapter,
+    topic,
+    intent,
+    conversationHistory,
+    questionId,
+  } = body as {
     question: string;
     subject?: string;
     chapter?: string;
@@ -131,11 +139,7 @@ export async function POST(req: Request) {
         grade: String(gradeNum),
         content: question,
         status: 'processing',
-        aiMetadata: {
-          intent: intent ?? 'conceptual_clarity',
-          chapter: studentChapter,
-          topic: studentTopic,
-        },
+        aiMetadata: { intent: intent ?? 'conceptual_clarity', chapter: studentChapter, topic: studentTopic },
       },
     });
   }

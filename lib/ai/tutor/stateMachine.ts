@@ -8,7 +8,7 @@ export type TutorStage =
   | 'WORKED_EXAMPLE'
   | 'GUIDED_PRACTICE'
   | 'INDEPENDENT_PRACTICE'
-  | 'CONSOLIDATION';
+  | 'CONSOLIDATION'
 
 export type TutorTag =
   | 'QUESTION'
@@ -17,15 +17,15 @@ export type TutorTag =
   | 'STAGE_ADVANCE'
   | 'PREREQ_FAIL'
   | 'STRUGGLE_DETECTED'
-  | 'MASTERY_CONFIRMED';
+  | 'MASTERY_CONFIRMED'
 
 export interface TutorSessionState {
-  stage: TutorStage;
-  stageAttemptCount: number;
-  hintsUsed: number; // 0-3
-  prereqRemediationActive: boolean;
-  prereqReturnStage: TutorStage | null;
-  consecutiveWrongAnswers: number;
+  stage: TutorStage
+  stageAttemptCount: number
+  hintsUsed: number // 0-3
+  prereqRemediationActive: boolean
+  prereqReturnStage: TutorStage | null
+  consecutiveWrongAnswers: number
 }
 
 const STAGE_ORDER: TutorStage[] = [
@@ -36,22 +36,22 @@ const STAGE_ORDER: TutorStage[] = [
   'GUIDED_PRACTICE',
   'INDEPENDENT_PRACTICE',
   'CONSOLIDATION',
-];
+]
 
 function isKnownStage(stage: any): stage is TutorStage {
-  return typeof stage === 'string' && (STAGE_ORDER as string[]).includes(stage);
+  return typeof stage === 'string' && (STAGE_ORDER as string[]).includes(stage)
 }
 
 function nextStage(stage: TutorStage): TutorStage | null {
-  const idx = STAGE_ORDER.indexOf(stage);
-  if (idx < 0) return null;
-  if (idx >= STAGE_ORDER.length - 1) return null;
-  return STAGE_ORDER[idx + 1];
+  const idx = STAGE_ORDER.indexOf(stage)
+  if (idx < 0) return null
+  if (idx >= STAGE_ORDER.length - 1) return null
+  return STAGE_ORDER[idx + 1]
 }
 
 function clampInt(n: number, min: number, max: number) {
-  const x = Number.isFinite(n) ? Math.trunc(n) : min;
-  return Math.max(min, Math.min(max, x));
+  const x = Number.isFinite(n) ? Math.trunc(n) : min
+  return Math.max(min, Math.min(max, x))
 }
 
 function resetPerStageCounters(s: TutorSessionState): TutorSessionState {
@@ -62,7 +62,7 @@ function resetPerStageCounters(s: TutorSessionState): TutorSessionState {
     consecutiveWrongAnswers: 0,
     prereqRemediationActive: false,
     prereqReturnStage: null,
-  };
+  }
 }
 
 export function applyTagTransition(state: TutorSessionState, tag: TutorTag): TutorSessionState {
@@ -74,7 +74,7 @@ export function applyTagTransition(state: TutorSessionState, tag: TutorTag): Tut
     prereqRemediationActive: !!state.prereqRemediationActive,
     prereqReturnStage: state.prereqReturnStage ?? null,
     consecutiveWrongAnswers: clampInt(state.consecutiveWrongAnswers, 0, 10_000),
-  };
+  }
 
   // If stage is unknown, only PREREQ_FAIL has a defined safe behaviour in tests.
   if (!isKnownStage(s.stage)) {
@@ -87,36 +87,32 @@ export function applyTagTransition(state: TutorSessionState, tag: TutorTag): Tut
         stageAttemptCount: 0,
         hintsUsed: 0,
         consecutiveWrongAnswers: 0,
-      };
+      }
     }
-    return s;
+    return s
   }
 
   // AC-08 (F-STU-011 MUST): reset consecutive wrong counter on any correct signal
   if (tag === 'STAGE_ADVANCE' || tag === 'MASTERY_CONFIRMED' || tag === 'VALIDATE') {
-    s = { ...s, consecutiveWrongAnswers: 0 };
+    s = { ...s, consecutiveWrongAnswers: 0 }
   }
 
   switch (tag) {
     case 'QUESTION':
-      return s;
+      return s
 
     case 'VALIDATE':
-      return { ...s, stageAttemptCount: s.stageAttemptCount + 1, consecutiveWrongAnswers: 0 };
+      return { ...s, stageAttemptCount: s.stageAttemptCount + 1, consecutiveWrongAnswers: 0 }
 
     case 'HINT_OFFER':
-      return { ...s, hintsUsed: clampInt(s.hintsUsed + 1, 0, 3) };
+      return { ...s, hintsUsed: clampInt(s.hintsUsed + 1, 0, 3) }
 
     case 'STRUGGLE_DETECTED':
-      return {
-        ...s,
-        consecutiveWrongAnswers: s.consecutiveWrongAnswers + 1,
-        stageAttemptCount: s.stageAttemptCount + 1,
-      };
+      return { ...s, consecutiveWrongAnswers: s.consecutiveWrongAnswers + 1, stageAttemptCount: s.stageAttemptCount + 1 }
 
     case 'PREREQ_FAIL': {
       // Already in remediation: no-op (do not re-enter)
-      if (s.prereqRemediationActive) return s;
+      if (s.prereqRemediationActive) return s
       return {
         ...s,
         prereqRemediationActive: true,
@@ -125,35 +121,35 @@ export function applyTagTransition(state: TutorSessionState, tag: TutorTag): Tut
         stageAttemptCount: 0,
         hintsUsed: 0,
         consecutiveWrongAnswers: 0,
-      };
+      }
     }
 
     case 'MASTERY_CONFIRMED': {
       // Valid only during remediation with a return stage
-      if (!s.prereqRemediationActive) return s;
-      if (!s.prereqReturnStage) return s;
+      if (!s.prereqRemediationActive) return s
+      if (!s.prereqReturnStage) return s
       return {
         ...s,
         stage: s.prereqReturnStage,
         prereqRemediationActive: false,
         prereqReturnStage: null,
         stageAttemptCount: 0,
-      };
+      }
     }
 
     case 'STAGE_ADVANCE': {
       // Terminal stage: no-op
-      if (s.stage === 'CONSOLIDATION') return s;
+      if (s.stage === 'CONSOLIDATION') return s
 
       // Guard: if they've never attempted the stage AND burned all hints, don't advance.
-      if (s.stageAttemptCount === 0 && s.hintsUsed >= 3) return s;
+      if (s.stageAttemptCount === 0 && s.hintsUsed >= 3) return s
 
-      const n = nextStage(s.stage);
-      if (!n) return s;
+      const n = nextStage(s.stage)
+      if (!n) return s
 
       // If we were in remediation, exiting remediation on any successful advance.
-      const cleared = resetPerStageCounters(s);
-      return { ...cleared, stage: n };
+      const cleared = resetPerStageCounters(s)
+      return { ...cleared, stage: n }
     }
   }
 }
@@ -166,9 +162,9 @@ export function applyTagTransition(state: TutorSessionState, tag: TutorTag): Tut
  */
 export function applyTagTransitionWithRemediation(
   state: TutorSessionState,
-  tag: TutorTag
+  tag: TutorTag,
 ): { next: TutorSessionState; effectiveTag: TutorTag } {
-  const next = applyTagTransition(state, tag);
+  const next = applyTagTransition(state, tag)
 
   if (
     tag === 'STRUGGLE_DETECTED' &&
@@ -176,8 +172,9 @@ export function applyTagTransitionWithRemediation(
     !next.prereqRemediationActive
   ) {
     // AC-08: auto-upgrade -- student has given 3 consecutive wrong answers
-    return { next: applyTagTransition(next, 'PREREQ_FAIL'), effectiveTag: 'PREREQ_FAIL' };
+    return { next: applyTagTransition(next, 'PREREQ_FAIL'), effectiveTag: 'PREREQ_FAIL' }
   }
 
-  return { next, effectiveTag: tag };
+  return { next, effectiveTag: tag }
 }
+

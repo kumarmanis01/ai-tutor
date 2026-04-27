@@ -37,9 +37,7 @@ const PROGRESS_WEIGHTS: Record<ActivityType, number> = {
 };
 
 /** Derives a MasteryLevel string from an accuracy value. */
-function computeMasteryLevel(
-  accuracy: number
-): 'beginner' | 'intermediate' | 'advanced' | 'expert' {
+function computeMasteryLevel(accuracy: number): 'beginner' | 'intermediate' | 'advanced' | 'expert' {
   if (accuracy >= 0.9) return 'expert';
   if (accuracy >= 0.75) return 'advanced';
   if (accuracy >= 0.6) return 'intermediate';
@@ -55,7 +53,9 @@ function computeMasteryLevel(
  * - `activityType = "STUDY"` with `totalAnswers = 0` is a touch-only update
  *   (only refreshes lastStudiedAt without changing mastery).
  */
-export async function updateStudentTopicProgress(input: UpdateTopicProgressInput): Promise<void> {
+export async function updateStudentTopicProgress(
+  input: UpdateTopicProgressInput,
+): Promise<void> {
   const { studentId, topicId, correctAnswers, totalAnswers, activityType } = input;
 
   if (!topicId) return;
@@ -89,9 +89,8 @@ export async function updateStudentTopicProgress(input: UpdateTopicProgressInput
     // Prisma.sql may not be available in some test/mock environments
     // Guard access and fall back to a simple raw SQL string so unit tests
     // that mock `tx.$executeRaw` do not throw at template-tag resolution time.
-    const rawSql =
-      Prisma && typeof (Prisma as any).sql === 'function'
-        ? Prisma.sql`
+    const rawSql = (Prisma && typeof (Prisma as any).sql === 'function')
+      ? Prisma.sql`
         INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt")
         VALUES (${progressId}, ${studentId}, ${topicId}, ${initialMastery}, ${totalAnswers}, NOW(), NOW())
         ON CONFLICT ("studentId", "topicId")
@@ -101,7 +100,7 @@ export async function updateStudentTopicProgress(input: UpdateTopicProgressInput
           "lastStudiedAt" = NOW(),
           "updatedAt" = NOW()
       `
-        : `INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt") VALUES ('${progressId}', '${studentId}', '${topicId}', ${initialMastery}, ${totalAnswers}, NOW(), NOW()) ON CONFLICT ("studentId", "topicId") DO UPDATE SET "mastery" = LEAST(1, GREATEST(0, "StudentTopicProgress"."mastery" + ${progressDelta})), "practiceCount" = "StudentTopicProgress"."practiceCount" + ${totalAnswers}, "lastStudiedAt" = NOW(), "updatedAt" = NOW()`;
+      : `INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt") VALUES ('${progressId}', '${studentId}', '${topicId}', ${initialMastery}, ${totalAnswers}, NOW(), NOW()) ON CONFLICT ("studentId", "topicId") DO UPDATE SET "mastery" = LEAST(1, GREATEST(0, "StudentTopicProgress"."mastery" + ${progressDelta})), "practiceCount" = "StudentTopicProgress"."practiceCount" + ${totalAnswers}, "lastStudiedAt" = NOW(), "updatedAt" = NOW()`;
 
     await tx.$executeRaw(rawSql as any);
 
@@ -138,9 +137,9 @@ export async function updateStudentTopicProgress(input: UpdateTopicProgressInput
     studentId,
     topicId,
     activityType,
-    accuracy: totalAnswers > 0 ? +accuracy.toFixed(3) : null,
-    progressDelta: +progressDelta.toFixed(4),
-    newMastery: updated ? +updated.mastery.toFixed(3) : null,
+    accuracy: totalAnswers > 0 ? +(accuracy.toFixed(3)) : null,
+    progressDelta: +(progressDelta.toFixed(4)),
+    newMastery: updated ? +(updated.mastery.toFixed(3)) : null,
     practiceCount: updated?.practiceCount ?? null,
   });
 }

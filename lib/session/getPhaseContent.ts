@@ -124,7 +124,7 @@ export async function resolvePhaseContent(
   topicId: string,
   sessionId: string,
   studentId: string,
-  studentMastery?: number | null
+  studentMastery?: number | null,
 ): Promise<PhaseContentData> {
   switch (phase) {
     case 'OVERVIEW':
@@ -140,9 +140,6 @@ export async function resolvePhaseContent(
     case 'COMPLETE':
       return { type: 'complete' };
   }
-
-  // Should be unreachable: ensure function always returns the declared type.
-  throw new Error(`Unsupported session phase: ${phase}`);
 }
 
 // ─── Phase Resolvers ─────────────────────────────────────────────────────────
@@ -170,11 +167,7 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
   });
 
   if (!topic) {
-    logger.warn('[PHASE_CONTENT_MISSING]', {
-      phase: 'OVERVIEW',
-      topicId,
-      reason: 'topic_not_found',
-    });
+    logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'OVERVIEW', topicId, reason: 'topic_not_found' });
     return { type: 'pending', message: 'Topic information could not be loaded.' };
   }
 
@@ -192,15 +185,14 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
     const json = note.contentJson as Record<string, unknown>;
 
     // Unwrap nested content envelope if present (some notes wrap top-level in {content:...}).
-    const content =
-      json.content && typeof json.content === 'object'
-        ? (json.content as Record<string, unknown>)
-        : json;
+    const content = (json.content && typeof json.content === 'object')
+      ? (json.content as Record<string, unknown>)
+      : json;
 
     summary =
-      typeof content.summary === 'string' && content.summary
+      (typeof content.summary === 'string' && content.summary)
         ? content.summary
-        : typeof content.introduction === 'string' && content.introduction
+        : (typeof content.introduction === 'string' && content.introduction)
           ? content.introduction
           : null;
 
@@ -211,7 +203,9 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
     }
   }
 
-  const upcomingPhases = UPCOMING_PHASES_ORDER.map((p) => PHASE_METADATA[p].upcomingLabel!);
+  const upcomingPhases = UPCOMING_PHASES_ORDER.map(
+    (p) => PHASE_METADATA[p].upcomingLabel!,
+  );
 
   return {
     type: 'overview',
@@ -238,12 +232,7 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
   });
 
   if (note) {
-    return {
-      type: 'explanation',
-      noteId: note.id,
-      title: note.title,
-      contentJson: note.contentJson,
-    };
+    return { type: 'explanation', noteId: note.id, title: note.title, contentJson: note.contentJson };
   }
 
   // Draft fallback.
@@ -254,12 +243,7 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
   });
 
   if (draft) {
-    return {
-      type: 'explanation',
-      noteId: draft.id,
-      title: draft.title,
-      contentJson: draft.contentJson,
-    };
+    return { type: 'explanation', noteId: draft.id, title: draft.title, contentJson: draft.contentJson };
   }
 
   logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'EXPLANATION', topicId });
@@ -273,18 +257,9 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
  * Falls back to any difficulty for the topic when the target band has no questions yet,
  * so the student is never blocked by a content gap.
  */
-async function resolvePractice(
-  topicId: string,
-  studentMastery: number | null
-): Promise<PhaseContentData> {
+async function resolvePractice(topicId: string, studentMastery: number | null): Promise<PhaseContentData> {
   const targetDifficulty = resolveTargetDifficulty(studentMastery);
-  const questionSelect = {
-    id: true,
-    type: true,
-    prompt: true,
-    choices: true,
-    difficulty: true,
-  } as const;
+  const questionSelect = { id: true, type: true, prompt: true, choices: true, difficulty: true } as const;
 
   // Primary: questions at the student's target difficulty band.
   let questions = await prisma.question.findMany({
@@ -322,10 +297,7 @@ async function resolvePractice(
  *   2. Any approved test for the topic (difficulty fallback).
  *   3. Draft test at any difficulty (content-in-progress fallback).
  */
-async function resolveTest(
-  topicId: string,
-  studentMastery: number | null
-): Promise<PhaseContentData> {
+async function resolveTest(topicId: string, studentMastery: number | null): Promise<PhaseContentData> {
   const targetDifficulty = resolveTargetDifficulty(studentMastery);
   const questionSelect = {
     select: { id: true, type: true, question: true, options: true, explanation: true },
@@ -339,13 +311,7 @@ async function resolveTest(
   });
 
   if (approvedAtBand && approvedAtBand.questions.length > 0) {
-    return {
-      type: 'test',
-      testId: approvedAtBand.id,
-      title: approvedAtBand.title,
-      difficulty: approvedAtBand.difficulty,
-      questions: approvedAtBand.questions,
-    };
+    return { type: 'test', testId: approvedAtBand.id, title: approvedAtBand.title, difficulty: approvedAtBand.difficulty, questions: approvedAtBand.questions };
   }
 
   // Fallback: any approved test (ignores difficulty band).
@@ -356,13 +322,7 @@ async function resolveTest(
   });
 
   if (approvedAny && approvedAny.questions.length > 0) {
-    return {
-      type: 'test',
-      testId: approvedAny.id,
-      title: approvedAny.title,
-      difficulty: approvedAny.difficulty,
-      questions: approvedAny.questions,
-    };
+    return { type: 'test', testId: approvedAny.id, title: approvedAny.title, difficulty: approvedAny.difficulty, questions: approvedAny.questions };
   }
 
   // Final fallback: draft (content review in progress).
@@ -373,13 +333,7 @@ async function resolveTest(
   });
 
   if (draft && draft.questions.length > 0) {
-    return {
-      type: 'test',
-      testId: draft.id,
-      title: draft.title,
-      difficulty: draft.difficulty,
-      questions: draft.questions,
-    };
+    return { type: 'test', testId: draft.id, title: draft.title, difficulty: draft.difficulty, questions: draft.questions };
   }
 
   logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'TEST', topicId, targetDifficulty });

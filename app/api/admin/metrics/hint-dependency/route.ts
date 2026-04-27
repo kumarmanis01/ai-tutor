@@ -13,24 +13,24 @@
  *   minTurns - minimum total turns for a concept to appear (default 10)
  *   limit    - max concepts to return, sorted by hintRate desc (default 50)
  */
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSessionForHandlers } from '@/lib/session';
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSessionForHandlers } from '@/lib/session'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
-  const session = await getServerSessionForHandlers();
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id || (session.user as any).role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const url = new URL(req.url);
-  const days = Math.min(parseInt(url.searchParams.get('days') ?? '30', 10) || 30, 90);
-  const minTurns = parseInt(url.searchParams.get('minTurns') ?? '10', 10) || 10;
-  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 200);
+  const url = new URL(req.url)
+  const days = Math.min(parseInt(url.searchParams.get('days') ?? '30', 10) || 30, 90)
+  const minTurns = parseInt(url.searchParams.get('minTurns') ?? '10', 10) || 10
+  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 200)
 
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
   // AITutorTurnLog.sessionId links turns to sessions. Concept-level aggregation
   // is approximated via the stage field (concepts map to sessions started in
@@ -38,11 +38,11 @@ export async function GET(req: Request) {
   // available here so we group by sessionId and compute hint rate per session,
   // then return session-level data as a proxy until conceptId is on AITutorTurnLog.
   type HintRow = {
-    sessionId: string;
-    totalTurns: bigint;
-    hintTurns: bigint;
-    hintRate: number;
-  };
+    sessionId: string
+    totalTurns: bigint
+    hintTurns: bigint
+    hintRate: number
+  }
 
   const rows = await prisma.$queryRaw<HintRow[]>`
     SELECT
@@ -56,11 +56,13 @@ export async function GET(req: Request) {
     HAVING COUNT(*) >= ${minTurns}
     ORDER BY "hintRate" DESC
     LIMIT ${limit}
-  `;
+  `
 
-  const totalSessions = rows.length;
+  const totalSessions = rows.length
   const avgHintRate =
-    totalSessions > 0 ? rows.reduce((s, r) => s + Number(r.hintRate), 0) / totalSessions : null;
+    totalSessions > 0
+      ? rows.reduce((s, r) => s + Number(r.hintRate), 0) / totalSessions
+      : null
 
   return NextResponse.json({
     period: { days, since: since.toISOString() },
@@ -73,5 +75,5 @@ export async function GET(req: Request) {
       hintTurns: Number(r.hintTurns),
       hintRate: Math.round(Number(r.hintRate) * 10000) / 10000,
     })),
-  });
+  })
 }

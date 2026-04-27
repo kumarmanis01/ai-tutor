@@ -17,12 +17,7 @@ describe('calculateProrationCredit', () => {
     const end = new Date('2026-03-31T00:00:00.000Z'); // 30 days
     const now = new Date('2026-03-11T00:00:00.000Z'); // 10 days elapsed, 20 remaining
 
-    const res = calculateProrationCredit({
-      startDate: start,
-      endDate: end,
-      now,
-      billedRupees: 300,
-    });
+    const res = calculateProrationCredit({ startDate: start, endDate: end, now, billedRupees: 300 });
 
     expect(res.totalDays).toBeGreaterThanOrEqual(30);
     expect(res.remainingDays).toBeGreaterThanOrEqual(20);
@@ -35,12 +30,7 @@ describe('calculateProrationCredit', () => {
     const end = new Date('2026-01-31T00:00:00.000Z');
     const now = new Date('2026-02-10T00:00:00.000Z');
 
-    const res = calculateProrationCredit({
-      startDate: start,
-      endDate: end,
-      now,
-      billedRupees: 500,
-    });
+    const res = calculateProrationCredit({ startDate: start, endDate: end, now, billedRupees: 500 });
     expect(res.creditRupees).toBe(0);
     expect(res.remainingDays).toBe(0);
   });

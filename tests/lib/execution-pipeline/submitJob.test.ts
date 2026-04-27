@@ -44,7 +44,10 @@ type ValidationResult = { valid: true } | { valid: false; reason: string };
  * @param entityType - The entity type (BOARD, CLASS, SUBJECT, CHAPTER, TOPIC)
  * @returns Validation result with reason if invalid
  */
-function validateJobEntityCombination(jobType: string, entityType: string): ValidationResult {
+function validateJobEntityCombination(
+  jobType: string,
+  entityType: string
+): ValidationResult {
   const allowedEntities = VALID_JOB_ENTITY_COMBINATIONS[jobType];
 
   if (!allowedEntities) {
@@ -275,19 +278,19 @@ describe('source parity', () => {
       path.join(process.cwd(), 'lib/execution-pipeline/submitJob.ts'),
       'utf-8'
     );
-
+    
     // Verify syllabus is SUBJECT-scoped in source
     expect(sourceContent).toContain("syllabus: ['SUBJECT']");
-
+    
     // Verify notes is TOPIC-scoped in source
     expect(sourceContent).toContain("notes: ['TOPIC']");
-
+    
     // Verify questions is TOPIC-scoped in source
     expect(sourceContent).toContain("questions: ['TOPIC']");
-
+    
     // Verify tests is TOPIC-scoped in source
     expect(sourceContent).toContain("tests: ['TOPIC']");
-
+    
     // Verify assemble is TOPIC-scoped in source
     expect(sourceContent).toContain("assemble: ['TOPIC']");
   });

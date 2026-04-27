@@ -18,9 +18,9 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────
 
-const DEFAULT_USD_TO_INR = 83.5;
+const DEFAULT_USD_TO_INR = 83.50;
 const SUBSCRIPTION_PRICE_INR = 199;
-const WHATSAPP_COST_PER_MSG_INR = 0.5; // Meta Business API conversation pricing ~₹0.50
+const WHATSAPP_COST_PER_MSG_INR = 0.50; // Meta Business API conversation pricing ~₹0.50
 
 // Fixed costs per student per month (infra, DB, CDN, monitoring)
 const FIXED_INFRA_COST_PER_STUDENT_INR = 8;
@@ -98,7 +98,7 @@ export function simulateUnitEconomics(input: UnitEconomicsInput): UnitEconomicsO
     studentCount,
     avgTokensPerDay,
     model,
-    languageMix = { en: 0.4, hi: 0.35, hinglish: 0.25 },
+    languageMix = { en: 0.40, hi: 0.35, hinglish: 0.25 },
     whatsappMessagesPerMonth = 4,
     parentLinkRate = 0.6,
     usdToInrRate = DEFAULT_USD_TO_INR,
@@ -175,8 +175,9 @@ export function simulateUnitEconomics(input: UnitEconomicsInput): UnitEconomicsO
   // Fixed monthly costs (team, servers baseline, etc.) — assume ₹50,000 for early stage
   const fixedMonthlyCostInr = 50_000;
   const contributionPerStudent = grossProfitPerStudentInr;
-  const breakEvenStudents =
-    contributionPerStudent > 0 ? Math.ceil(fixedMonthlyCostInr / contributionPerStudent) : Infinity;
+  const breakEvenStudents = contributionPerStudent > 0
+    ? Math.ceil(fixedMonthlyCostInr / contributionPerStudent)
+    : Infinity;
 
   // ── Budget compliance ────────────────────────────────────────────
 
@@ -272,13 +273,13 @@ export function checkTokenGovernorCompliance(): {
 } {
   const junior = simulateUnitEconomics({
     studentCount: 1000,
-    avgTokensPerDay: 400, // Grade 1-3: 300-500 token budget
+    avgTokensPerDay: 400,  // Grade 1-3: 300-500 token budget
     model: 'gpt-4o-mini',
   });
 
   const middle = simulateUnitEconomics({
     studentCount: 1000,
-    avgTokensPerDay: 750, // Grade 4-6: 600-900 token budget
+    avgTokensPerDay: 750,  // Grade 4-6: 600-900 token budget
     model: 'gpt-4o-mini',
   });
 

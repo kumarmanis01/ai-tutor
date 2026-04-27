@@ -1,4 +1,4 @@
-'use client';
+"use client";
 /**
  * FILE OBJECTIVE:
  * - Client control to manage per-subject teaching language. Fetches availability
@@ -37,19 +37,12 @@ export default function SubjectLanguageControl({ subjectId }: { subjectId: strin
         const currentFor = subjLangs?.[subjectId];
         if (currentFor && typeof currentFor === 'string') setCurrent(currentFor);
       } catch (err) {
-        logger.warn('Failed to load subject language info', {
-          className: 'SubjectLanguageControl',
-          methodName: 'mount',
-          subjectId,
-          error: String(err),
-        });
+        logger.warn('Failed to load subject language info', { className: 'SubjectLanguageControl', methodName: 'mount', subjectId, error: String(err) });
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [subjectId]);
 
   const nameToShort = (name: string) => {
@@ -70,9 +63,7 @@ export default function SubjectLanguageControl({ subjectId }: { subjectId: strin
     <div className="flex items-center gap-3" aria-busy={loading}>
       <div className="text-sm">
         <div className="font-medium">Teaching language</div>
-        <div className="text-xs text-muted-foreground">
-          Used by the tutor for this subject. Change applies from the next session.
-        </div>
+        <div className="text-xs text-muted-foreground">Used by the tutor for this subject. Change applies from the next session.</div>
       </div>
       <div>
         <LanguageSelector
@@ -84,37 +75,20 @@ export default function SubjectLanguageControl({ subjectId }: { subjectId: strin
               if (short !== 'auto') {
                 // Guard availability if provided
                 if (availableCodes && !availableCodes.includes(short)) {
-                  try {
-                    toast('Language not available for this subject yet.');
-                  } catch {}
+                  try { toast('Language not available for this subject yet.'); } catch {}
                   return;
                 }
               }
-              const res = await fetch('/api/student/subject-language', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subjectId, language: short }),
-              });
+              const res = await fetch('/api/student/subject-language', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subjectId, language: short }) });
               if (!res.ok) {
-                try {
-                  toast('Failed to update subject language.');
-                } catch {}
+                try { toast('Failed to update subject language.'); } catch {}
                 return;
               }
               setCurrent(short);
-              try {
-                toast('Teaching language updated');
-              } catch {}
+              try { toast('Teaching language updated'); } catch {}
             } catch (err) {
-              logger.warn('Failed to persist subject language', {
-                className: 'SubjectLanguageControl',
-                methodName: 'setLang',
-                subjectId,
-                error: String(err),
-              });
-              try {
-                toast('Failed to update subject language.');
-              } catch {}
+              logger.warn('Failed to persist subject language', { className: 'SubjectLanguageControl', methodName: 'setLang', subjectId, error: String(err) });
+              try { toast('Failed to update subject language.'); } catch {}
             }
           }}
         />

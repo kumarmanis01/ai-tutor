@@ -42,7 +42,7 @@ function defaultBFromDifficulty(difficulty?: string | null) {
  * Returns { theta, se } -- se=1 when no items have been administered yet.
  */
 export async function computeSessionTheta(
-  session: DiagnosticSessionPayload
+  session: DiagnosticSessionPayload,
 ): Promise<{ theta: number; se: number }> {
   const administered = session.administered ?? [];
   const administeredIds = administered.map((a) => a.questionId).filter(Boolean);
@@ -50,16 +50,7 @@ export async function computeSessionTheta(
 
   const adminRows: QuestionRow[] = await prisma.question.findMany({
     where: { id: { in: administeredIds } },
-    select: {
-      id: true,
-      irt_a: true,
-      irt_b: true,
-      irt_c: true,
-      topicId: true,
-      prompt: true,
-      choices: true,
-      difficulty: true,
-    },
+    select: { id: true, irt_a: true, irt_b: true, irt_c: true, topicId: true, prompt: true, choices: true, difficulty: true },
   });
 
   const items = adminRows.map((r) => ({
@@ -67,8 +58,8 @@ export async function computeSessionTheta(
     b: r.irt_b ?? defaultBFromDifficulty(r.difficulty),
     c: r.irt_c ?? defaultC(),
   }));
-  const responses = administeredIds.map((id) =>
-    administered.find((a) => a.questionId === id)?.correct ? 1 : 0
+  const responses = administeredIds.map(
+    (id) => (administered.find((a) => a.questionId === id)?.correct ? 1 : 0),
   );
   return eapEstimate(items, responses);
 }
@@ -81,25 +72,14 @@ export async function selectNextQuestion(session: DiagnosticSessionPayload) {
   const { theta } = await computeSessionTheta(session);
 
   // Remaining candidate ids
-  const remaining = (session.candidateQuestionIds ?? []).filter(
-    (id) => !administeredIds.includes(id)
-  );
+  const remaining = (session.candidateQuestionIds ?? []).filter((id) => !administeredIds.includes(id));
   if (remaining.length === 0) return null;
 
   // Fetch both candidate rows and administered rows (for topic balancing) in parallel
-  const [candidateRows, administeredRows] = (await Promise.all([
+  const [candidateRows, administeredRows] = await Promise.all([
     prisma.question.findMany({
       where: { id: { in: remaining } },
-      select: {
-        id: true,
-        irt_a: true,
-        irt_b: true,
-        irt_c: true,
-        topicId: true,
-        prompt: true,
-        choices: true,
-        difficulty: true,
-      },
+      select: { id: true, irt_a: true, irt_b: true, irt_c: true, topicId: true, prompt: true, choices: true, difficulty: true },
     }),
     administeredIds.length > 0
       ? prisma.question.findMany({
@@ -107,17 +87,11 @@ export async function selectNextQuestion(session: DiagnosticSessionPayload) {
           select: { id: true, topicId: true },
         })
       : Promise.resolve([] as Pick<QuestionRow, 'id' | 'topicId'>[]),
-  ])) as [QuestionRow[], Pick<QuestionRow, 'id' | 'topicId'>[]];
+  ]);
 
   // Topic balancing: prefer questions from topics not yet administered
-  const administeredTopics = new Set(
-    (administeredRows as Pick<QuestionRow, 'topicId'>[])
-      .map((r) => r.topicId)
-      .filter((tid): tid is string => typeof tid === 'string' && tid.length > 0)
-  );
-  const notSeen = (candidateRows as QuestionRow[]).filter(
-    (c: QuestionRow) => !administeredTopics.has(c.topicId ?? '')
-  );
+  const administeredTopics = new Set(administeredRows.map((r) => r.topicId).filter(Boolean));
+  const notSeen = candidateRows.filter((c) => !administeredTopics.has(c.topicId ?? ''));
 
   const pool = notSeen.length > 0 ? notSeen : candidateRows;
 

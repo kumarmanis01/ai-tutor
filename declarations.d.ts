@@ -18,10 +18,7 @@ declare module 'resend' {
     [key: string]: any;
   };
 
-  export type ResendSendResult = {
-    data?: { id?: string } | null;
-    error?: { message?: string } | null;
-  };
+  export type ResendSendResult = { data?: { id?: string } | null; error?: { message?: string } | null };
 
   export class Resend {
     constructor(apiKey?: string);

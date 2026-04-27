@@ -27,7 +27,7 @@ export type { Difficulty };
  *
  * Boundaries are half-open intervals [min, max) so 0.50 → medium, 0.75 → hard.
  */
-const EASY_CEILING = 0.5;
+const EASY_CEILING = 0.50;
 const MEDIUM_CEILING = 0.75;
 
 /**

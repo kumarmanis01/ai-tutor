@@ -10,29 +10,29 @@
  * - 2026-04-09T00:00:00Z | copilot | added dual timezone display per child
  */
 
-import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
-import Link from 'next/link';
+import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard'
+import Link from 'next/link'
 
 interface ChildReadiness {
-  subjectId: string;
-  subjectName: string;
-  score: number;
+  subjectId: string
+  subjectName: string
+  score: number
 }
 
 interface ChildData {
-  studentId: string;
-  name: string;
-  grade: string;
-  board: string;
-  streak: number;
-  sessionsThisWeek: number;
-  readiness: ChildReadiness[];
-  timezone?: string | null;
+  studentId: string
+  name: string
+  grade: string
+  board: string
+  streak: number
+  sessionsThisWeek: number
+  readiness: ChildReadiness[]
+  timezone?: string | null
 }
 
 interface ParentDashboardProps {
-  childrenData: ChildData[];
-  parentTimezone?: string | null;
+  childrenData: ChildData[]
+  parentTimezone?: string | null
 }
 
 export default function ParentDashboard({ childrenData, parentTimezone }: ParentDashboardProps) {
@@ -45,8 +45,8 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
           No children linked yet
         </h2>
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Ask your child to share an invite link from the Spinzy app, then tap it to connect your
-          accounts.
+          Ask your child to share an invite link from the Spinzy app,
+          then tap it to connect your accounts.
         </p>
         <Link
           href="/parent/link-child"
@@ -55,13 +55,15 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
           Link a child
         </Link>
       </main>
-    );
+    )
   }
 
   // ── Child cards ──────────────────────────────────────────────────────────
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 space-y-5">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">My children</h1>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">
+        My children
+      </h1>
 
       {childrenData.map((child) => (
         <section
@@ -81,16 +83,16 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
               )}
               <p className="mt-1 text-2xs text-gray-400 dark:text-gray-500">
                 {(() => {
-                  const pTz = parentTimezone ?? null;
-                  const sTz = child.timezone ?? null;
+                  const pTz = parentTimezone ?? null
+                  const sTz = child.timezone ?? null
                   if (pTz && sTz) {
                     // Show dual timezones only when they differ (NRI / cross-timezone case)
-                    if (pTz === sTz) return `Times shown: ${pTz}`;
-                    return `Times shown: ${pTz} • Student: ${sTz}`;
+                    if (pTz === sTz) return `Times shown: ${pTz}`
+                    return `Times shown: ${pTz} • Student: ${sTz}`
                   }
-                  if (pTz) return `Times shown: ${pTz}`;
-                  if (sTz) return `Times shown: Student: ${sTz}`;
-                  return 'Times shown: your timezone';
+                  if (pTz) return `Times shown: ${pTz}`
+                  if (sTz) return `Times shown: Student: ${sTz}`
+                  return 'Times shown: your timezone'
                 })()}
               </p>
             </div>
@@ -135,10 +137,12 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500">Subjects not set up yet.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Subjects not set up yet.
+            </p>
           )}
         </section>
       ))}
     </main>
-  );
+  )
 }

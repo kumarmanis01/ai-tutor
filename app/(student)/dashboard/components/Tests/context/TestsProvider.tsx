@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { logger } from '@/lib/logger';
@@ -14,21 +14,13 @@ export interface TestsService {
 
 export class HttpTestsService implements TestsService {
   async fetchRecommended(subject: string, grade?: string, board?: string) {
-    const qs = new URLSearchParams({
-      subject,
-      ...(grade ? { grade } : {}),
-      ...(board ? { board } : {}),
-    });
+    const qs = new URLSearchParams({ subject, ...(grade ? { grade } : {}), ...(board ? { board } : {}) });
     const res = await fetch(`/api/tests/recommended?${qs}`);
     if (!res.ok) return [];
     return (await res.json()).items ?? [];
   }
   async fetchUpcoming(subject: string, grade?: string, board?: string) {
-    const qs = new URLSearchParams({
-      subject,
-      ...(grade ? { grade } : {}),
-      ...(board ? { board } : {}),
-    });
+    const qs = new URLSearchParams({ subject, ...(grade ? { grade } : {}), ...(board ? { board } : {}) });
     const res = await fetch(`/api/tests/upcoming?${qs}`);
     if (!res.ok) return [];
     return (await res.json()).items ?? [];
@@ -53,40 +45,26 @@ export type TestsAPI = TestsState & {
 
 const Ctx = createContext<TestsAPI | null>(null);
 
-export function TestsProvider({
-  children,
-  service,
-}: {
-  children: React.ReactNode;
-  service?: TestsService;
-}) {
+export function TestsProvider({ children, service }: { children: React.ReactNode; service?: TestsService }) {
   const svc = useMemo(() => service ?? new HttpTestsService(), [service]);
-  const [state, setState] = useState<TestsState>({
-    items: [],
-    upcoming: [],
-    results: [],
-    loading: false,
-  });
+  const [state, setState] = useState<TestsState>({ items: [], upcoming: [], results: [], loading: false });
 
-  const refresh = useCallback(
-    async (subject: string, grade?: string, board?: string) => {
-      setState((s) => ({ ...s, loading: true }));
-      try {
-        const [items, upcoming, results] = await Promise.all([
-          svc.fetchRecommended(subject, grade, board),
-          svc.fetchUpcoming(subject, grade, board),
-          svc.fetchRecentResults(),
-        ]);
-        setState((s) => ({ ...s, items, upcoming, results }));
-        logger.info('tests.refresh', { subject, grade, board });
-      } catch (e) {
-        logger.warn('tests.refresh.error', { message: String(e) });
-      } finally {
-        setState((s) => ({ ...s, loading: false }));
-      }
-    },
-    [svc]
-  );
+  const refresh = useCallback(async (subject: string, grade?: string, board?: string) => {
+    setState((s) => ({ ...s, loading: true }));
+    try {
+      const [items, upcoming, results] = await Promise.all([
+        svc.fetchRecommended(subject, grade, board),
+        svc.fetchUpcoming(subject, grade, board),
+        svc.fetchRecentResults(),
+      ]);
+      setState((s) => ({ ...s, items, upcoming, results }));
+      logger.info('tests.refresh', { subject, grade, board });
+    } catch (e) {
+      logger.warn('tests.refresh.error', { message: String(e) });
+    } finally {
+      setState((s) => ({ ...s, loading: false }));
+    }
+  }, [svc]);
 
   const api: TestsAPI = {
     ...state,

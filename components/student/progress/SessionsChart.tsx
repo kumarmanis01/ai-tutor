@@ -34,7 +34,9 @@ export default function SessionsChart({
 
   return (
     <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-      <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-4">Sessions</h2>
+      <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-4">
+        Sessions
+      </h2>
 
       {/* Bar chart */}
       <div className="flex items-end gap-3 h-24" aria-label="Sessions bar chart">
@@ -48,7 +50,9 @@ export default function SessionsChart({
                 <div
                   className={[
                     'w-full rounded-t transition-all',
-                    hasActivity ? 'bg-[#534AB7]' : 'bg-gray-100 dark:bg-slate-700',
+                    hasActivity
+                      ? 'bg-[#534AB7]'
+                      : 'bg-gray-100 dark:bg-slate-700',
                   ].join(' ')}
                   style={{
                     height: hasActivity ? `${Math.max(heightPct, 8)}%` : '8%',
@@ -58,7 +62,9 @@ export default function SessionsChart({
                   aria-label={`${labels[i]}: ${count} session${count !== 1 ? 's' : ''}`}
                 />
               </div>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">{labels[i]}</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                {labels[i]}
+              </span>
             </div>
           );
         })}

@@ -1,15 +1,17 @@
-export type JobSchedule = { type: 'manual' } | { type: 'interval'; everySec: number };
+export type JobSchedule =
+  | { type: 'manual' }
+  | { type: 'interval'; everySec: number }
 
 export interface JobDefinition {
-  name: string;
+  name: string
   // The job's main entrypoint -- must be async and side-effecting
-  run: () => Promise<void>;
+  run: () => Promise<void>
   // A numeric key used to derive advisory lock ids
-  lockKey: string;
+  lockKey: string
   // Maximum allowed runtime in milliseconds
-  timeoutMs: number;
+  timeoutMs: number
   // Scheduling metadata (no execution is performed by this module)
-  schedule: JobSchedule;
+  schedule: JobSchedule
 }
 
 /**
@@ -17,20 +19,20 @@ export interface JobDefinition {
  * `registerJob()` to add their JobDefinition. This module does NOT run
  * jobs -- it only stores metadata.
  */
-const registry = new Map<string, JobDefinition>();
+const registry = new Map<string, JobDefinition>()
 
 export function registerJob(job: JobDefinition) {
-  if (!job || !job.name) throw new Error('invalid job definition');
-  if (registry.has(job.name)) throw new Error(`job already registered: ${job.name}`);
-  registry.set(job.name, job);
+  if (!job || !job.name) throw new Error('invalid job definition')
+  if (registry.has(job.name)) throw new Error(`job already registered: ${job.name}`)
+  registry.set(job.name, job)
 }
 
 export function getJob(name: string): JobDefinition | undefined {
-  return registry.get(name);
+  return registry.get(name)
 }
 
 export function listJobs(): JobDefinition[] {
-  return Array.from(registry.values());
+  return Array.from(registry.values())
 }
 
-export default registry;
+export default registry

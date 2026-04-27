@@ -38,9 +38,7 @@ export function StudentGreeting() {
   const grade = profile?.grade;
   const board = profile?.board;
 
-  const dailyStreak = streaks?.find(
-    (s: { kind?: string }) => s.kind === 'daily' || s.kind === 'daily_study'
-  );
+  const dailyStreak = streaks?.find((s: { kind?: string }) => s.kind === 'daily' || s.kind === 'daily_study');
   const streakDays = dailyStreak?.current ?? 0;
 
   if (loading) {

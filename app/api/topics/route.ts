@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { assertNoStringFilters } from '@/lib/guards/noStringFilters';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { assertNoStringFilters } from "@/lib/guards/noStringFilters";
+import { logger } from "@/lib/logger";
 import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function GET(req: Request) {
@@ -13,27 +13,21 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const chapterId = searchParams.get('chapterId');
-    const subjectId = searchParams.get('subjectId');
+    const chapterId = searchParams.get("chapterId");
+    const subjectId = searchParams.get("subjectId");
 
     if (!chapterId && !subjectId) {
-      return NextResponse.json({ error: 'chapterId or subjectId required' }, { status: 400 });
+      return NextResponse.json({ error: "chapterId or subjectId required" }, { status: 400 });
     }
 
     let topics;
     if (chapterId) {
-      topics = await prisma.topicDef.findMany({
-        where: { chapterId, lifecycle: 'active' },
-        orderBy: { order: 'asc' },
-      });
+      topics = await prisma.topicDef.findMany({ where: { chapterId, lifecycle: "active" }, orderBy: { order: "asc" } });
     } else {
       // subjectId path: include topics across chapters for the subject
       const chapterWhere: any = { lifecycle: 'active' };
       if (subjectId) chapterWhere.subjectId = subjectId;
-      topics = await prisma.topicDef.findMany({
-        where: { chapter: chapterWhere },
-        orderBy: { order: 'asc' },
-      });
+      topics = await prisma.topicDef.findMany({ where: { chapter: chapterWhere }, orderBy: { order: 'asc' } });
     }
 
     return NextResponse.json(topics);

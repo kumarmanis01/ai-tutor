@@ -21,7 +21,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { callLLM } from '@/lib/callLLM';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
-import { parseLlmJson } from '@/lib/llm/sanitizeJson';
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 
 /**
  * Rate limits per user type (requests per day)
@@ -35,13 +35,7 @@ const RATE_LIMITS = {
 /**
  * Generate a content hash for deduplication
  */
-function generateContentHash(
-  topic: string,
-  subject?: string,
-  grade?: number,
-  board?: string,
-  language?: string
-): string {
+function generateContentHash(topic: string, subject?: string, grade?: number, board?: string, language?: string): string {
   const normalized = [
     topic.toLowerCase().trim(),
     subject?.toLowerCase().trim() || '',
@@ -49,17 +43,14 @@ function generateContentHash(
     board?.toLowerCase().trim() || '',
     language || 'en',
   ].join('|');
-
+  
   return crypto.createHash('sha256').update(normalized).digest('hex').slice(0, 32);
 }
 
 /**
  * Check rate limit for user
  */
-async function checkRateLimit(
-  userId: string,
-  userType: 'free' | 'premium' | 'admin'
-): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
+async function checkRateLimit(userId: string, userType: 'free' | 'premium' | 'admin'): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
   const limit = RATE_LIMITS[userType];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -86,13 +77,7 @@ async function checkRateLimit(
 /**
  * Build the generation prompt
  */
-function buildGenerationPrompt(
-  topic: string,
-  subject?: string,
-  grade?: number,
-  board?: string,
-  language?: string
-): string {
+function buildGenerationPrompt(topic: string, subject?: string, grade?: number, board?: string, language?: string): string {
   const gradeText = grade ? `Class ${grade}` : 'general';
   const boardText = board || 'general curriculum';
   const subjectText = subject || 'general knowledge';
@@ -182,7 +167,7 @@ export async function POST(req: Request) {
   }
 
   const userId = session.user.id;
-
+  
   // Determine user type for rate limiting
   let userType: 'free' | 'premium' | 'admin' = 'free';
   if (session.user.role === 'admin') {
@@ -244,7 +229,7 @@ export async function POST(req: Request) {
   // Content moderation check (basic)
   const lowerTopic = topic.toLowerCase();
   const blockedTerms = ['hack', 'cheat', 'answer key', 'exam answers'];
-  if (blockedTerms.some((term) => lowerTopic.includes(term))) {
+  if (blockedTerms.some(term => lowerTopic.includes(term))) {
     return NextResponse.json(
       { error: 'This topic cannot be generated. Please try a different topic.' },
       { status: 400 }
@@ -253,7 +238,7 @@ export async function POST(req: Request) {
 
   // Check for existing cached content
   const contentHash = generateContentHash(topic, subject, grade, board, language);
-
+  
   const existingContent = await prisma.generatedStudyContent.findUnique({
     where: { contentHash },
   });

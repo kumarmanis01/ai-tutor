@@ -46,13 +46,10 @@ interface ContentSummary {
  */
 export async function GET() {
   logger.info('[content-approval] API called');
-
+  
   const session = await getServerSessionForHandlers();
-  logger.info('[content-approval] Session fetched', {
-    hasSession: !!session,
-    role: session?.user?.role,
-  });
-
+  logger.info('[content-approval] Session fetched', { hasSession: !!session, role: session?.user?.role });
+  
   if (!session?.user?.id || session.user.role !== 'admin') {
     logger.warn('[content-approval] Forbidden - no admin session');
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -97,12 +94,12 @@ export async function GET() {
                 board: {
                   select: {
                     name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -144,14 +141,14 @@ export async function GET() {
                     board: {
                       select: {
                         name: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -197,16 +194,16 @@ export async function GET() {
                         board: {
                           select: {
                             name: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -254,19 +251,19 @@ export async function GET() {
                         board: {
                           select: {
                             name: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
         questions: {
-          select: { id: true },
-        },
+          select: { id: true }
+        }
       },
       orderBy: { createdAt: 'desc' },
       take: 100,

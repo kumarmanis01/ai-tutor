@@ -33,26 +33,20 @@ export async function POST(req: Request) {
     return res;
   }
 
-  const attempt = await prisma.testResult.findFirst({
-    where: { id: payload.attemptId, studentId: user.id },
-  });
+  const attempt = await prisma.testResult.findFirst({ where: { id: payload.attemptId, studentId: user.id } });
   if (!attempt) {
     res = NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
     logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
     return res;
   }
 
+
   // Guard: If a LearningSession exists for this topic and is open, mark complete before grading
   if (attempt.sessionId) {
-    const session = await prisma.learningSession.findFirst({
-      where: { id: attempt.sessionId, isCompleted: false },
-    });
+    const session = await prisma.learningSession.findFirst({ where: { id: attempt.sessionId, isCompleted: false } });
     if (session) {
       const now = new Date();
-      const elapsedMinutes = Math.max(
-        1,
-        Math.floor((now.getTime() - session.startedAt.getTime()) / 60000)
-      );
+      const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - session.startedAt.getTime()) / 60000));
       await prisma.learningSession.update({
         where: { id: session.id },
         data: {
@@ -124,10 +118,7 @@ export async function POST(req: Request) {
   let nextRule: string | null = null;
   try {
     const nextActionResult = await getNextAction(user.id);
-    const nextAction =
-      nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
-        ? nextActionResult.action
-        : (nextActionResult as any);
+    const nextAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult ? nextActionResult.action : (nextActionResult as any);
     nextRule = nextAction?.ruleId ?? null;
   } catch {
     // non-fatal

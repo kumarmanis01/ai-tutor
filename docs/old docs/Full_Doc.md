@@ -5,14 +5,12 @@
 Purpose: Build the AI Syllabus Engine — the brain that converts a learning intent into a structured, reviewable, versioned syllabus.
 
 What Phase 6 builds
-
 - A deterministic syllabus generator that turns high-level inputs into a structured JSON syllabus.
 - Human-reviewable and versioned artifacts that are safe to approve before content generation.
 
 This phase answers: “What should the learner learn, in what order, and to what depth?” — it maps the curriculum, it does not create lesson content.
 
 ### Why Phase 6 exists
-
 Most AI content systems fail because they:
 
 - Jump directly to content generation
@@ -39,7 +37,6 @@ Those belong to later phases (7–9).
 ### Core goals of Phase 6
 
 Goal — Meaning
-
 - **Structured output:** JSON syllabus, not prose
 - **Deterministic:** Same input → similar structure
 - **Reviewable:** Humans can approve / edit
@@ -49,7 +46,6 @@ Goal — Meaning
 ## 2️⃣ Phase 6 Inputs → Outputs
 
 Inputs
-
 - Course title
 - Target audience
 - Skill level
@@ -58,7 +54,6 @@ Inputs
 - Constraints (exam-focused, project-based, practical, etc.)
 
 Outputs
-
 - Course syllabus JSON
 - Modules
 - Lessons
@@ -118,6 +113,7 @@ The Phase 6 deliverable is accepted when:
 
 Place this file at `docs/PHASE_6.md` and use it as the north star for team work on the Syllabus Engine.
 
+
 # Phase 7 — AI Content Generation Engine (Lessons, Quizzes, Projects)
 
 Principle:
@@ -160,12 +156,12 @@ To prevent:
 
 🧱 Phase 7 Sub-Phases (Execution Order)
 Phase 7
-├─ 7.1 Lesson Schema
-├─ 7.2 Lesson Generator
-├─ 7.3 Quiz Schema + Generator
-├─ 7.4 Project / Assignment Generator
-├─ 7.5 Content Approval Workflow
-└─ 7.6 Content Packaging (Course View)
+ ├─ 7.1 Lesson Schema
+ ├─ 7.2 Lesson Generator
+ ├─ 7.3 Quiz Schema + Generator
+ ├─ 7.4 Project / Assignment Generator
+ ├─ 7.5 Content Approval Workflow
+ └─ 7.6 Content Packaging (Course View)
 
 Each sub-phase is independently testable.
 
@@ -179,12 +175,12 @@ Lesson Schema Design
 Conceptual model
 
 Course
-└─ Module
-└─ Lesson
-├─ Explanation
-├─ Examples
-├─ Key Takeaways
-├─ Practice Prompt
+ └─ Module
+     └─ Lesson
+         ├─ Explanation
+         ├─ Examples
+         ├─ Key Takeaways
+         ├─ Practice Prompt
 
 TypeScript Types
 
@@ -192,36 +188,36 @@ TypeScript Types
 
 ```ts
 export interface Lesson {
-  id: string;
-  syllabusId: string;
-  moduleId: string;
-  lessonIndex: number;
+  id: string
+  syllabusId: string
+  moduleId: string
+  lessonIndex: number
 
-  title: string;
-  durationMinutes: number;
+  title: string
+  durationMinutes: number
 
-  objectives: string[];
+  objectives: string[]
 
   explanation: {
-    overview: string;
+    overview: string
     concepts: {
-      title: string;
-      explanation: string;
-      example?: string;
-    }[];
-  };
+      title: string
+      explanation: string
+      example?: string
+    }[]
+  }
 
-  keyTakeaways: string[];
+  keyTakeaways: string[]
 
   practice: {
-    prompt: string;
-    expectedOutcome: string;
-  };
+    prompt: string
+    expectedOutcome: string
+  }
 
   metadata: {
-    level: 'beginner' | 'intermediate' | 'advanced';
-    prerequisites?: string[];
-  };
+    level: "beginner" | "intermediate" | "advanced"
+    prerequisites?: string[]
+  }
 }
 ```
 
@@ -230,7 +226,7 @@ Zod Schema
 📄 lib/content/lesson/schema.ts
 
 ```ts
-import { z } from 'zod';
+import { z } from "zod"
 
 export const LessonSchema = z.object({
   id: z.string(),
@@ -245,29 +241,27 @@ export const LessonSchema = z.object({
 
   explanation: z.object({
     overview: z.string().min(50),
-    concepts: z
-      .array(
-        z.object({
-          title: z.string(),
-          explanation: z.string().min(50),
-          example: z.string().optional(),
-        })
-      )
-      .min(1),
+    concepts: z.array(
+      z.object({
+        title: z.string(),
+        explanation: z.string().min(50),
+        example: z.string().optional()
+      })
+    ).min(1)
   }),
 
   keyTakeaways: z.array(z.string()).min(2),
 
   practice: z.object({
     prompt: z.string().min(30),
-    expectedOutcome: z.string().min(30),
+    expectedOutcome: z.string().min(30)
   }),
 
   metadata: z.object({
-    level: z.enum(['beginner', 'intermediate', 'advanced']),
-    prerequisites: z.array(z.string()).optional(),
-  }),
-});
+    level: z.enum(["beginner", "intermediate", "advanced"]),
+    prerequisites: z.array(z.string()).optional()
+  })
+})
 ```
 
 🟦 Phase 7.2 — Lesson Generator (Controlled AI)
@@ -318,7 +312,7 @@ Input:
 ${JSON.stringify(input, null, 2)}
 
 Return an array of Lesson objects.
-`;
+`
 }
 ```
 
@@ -327,14 +321,13 @@ Generator Logic
 📄 generator.ts
 
 ```ts
-const raw = await llm.generate(prompt);
-const parsed = JSON.parse(raw);
-const lessons = parsed.map(validateLesson);
-return lessons;
+const raw = await llm.generate(prompt)
+const parsed = JSON.parse(raw)
+const lessons = parsed.map(validateLesson)
+return lessons
 ```
 
 Notes:
-
 - Do not implement generation logic yet — this section is the contract and prompt guidance only.
 
 🟦 Phase 7.3 — Quiz Generator
@@ -347,18 +340,17 @@ Quiz Schema (Simple & Safe)
 
 ```ts
 export interface Quiz {
-  lessonId: string;
+  lessonId: string
   questions: {
-    question: string;
-    options: string[];
-    correctIndex: number;
-    explanation: string;
-  }[];
+    question: string
+    options: string[]
+    correctIndex: number
+    explanation: string
+  }[]
 }
 ```
 
 Zod enforces:
-
 1. 4 options
 2. correctIndex ∈ [0–3]
 
@@ -389,12 +381,12 @@ Projects must be:
 🧱 Phase 7.4 — Data Model
 Conceptual Structure
 Course
-└─ Module
-└─ Project / Assignment
-├─ Problem Statement
-├─ Constraints
-├─ Deliverables
-├─ Evaluation Rubric
+ └─ Module
+   └─ Project / Assignment
+     ├─ Problem Statement
+     ├─ Constraints
+     ├─ Deliverables
+     ├─ Evaluation Rubric
 
 🔷 Phase 7.5 — Content Approval Workflow (Critical Gate)
 
@@ -403,19 +395,16 @@ Course
 Phase 7.5 is the safety gate.
 
 Nothing becomes:
-
 1. Publishable
 2. Persistent
 3. Visible to users
 
 Unless it is:
-
 1. Explicitly approved
 2. Audited
 3. Immutable after approval
 
 Notes:
-
 - Approval is an explicit admin action that records `approvedBy`, `approvedAt`, and an immutable snapshot of the content JSON.
 - All attempts to modify an `APPROVED` artifact must be rejected; retries should create new draft artifacts instead.
 - Every approval action must create an `AuditLog` entry that includes actor, timestamp, entity id, and a brief rationale.
@@ -429,25 +418,27 @@ Design Rules (Copilot must obey)
 - Approval requires: `approver`, `timestamp`, and an optional `note`.
 - All approval actions are audited (create `AuditLog` entries including actor, timestamp, entity id, and rationale).
 
+
+
 🟦 Phase 7.6 — Course Packaging
 
 Assemble:
 
 Course
-├─ Syllabus
-├─ Lessons
-├─ Quizzes
-└─ Projects
+ ├─ Syllabus
+ ├─ Lessons
+ ├─ Quizzes
+ └─ Projects
 
 No AI here — pure composition.
 
 🧠 Why This Prevents Rework & Tech Debt
-Risk How Phase 7 avoids it
-AI hallucinations Schema + validation
-Content drift Versioning
-Inconsistent quality Fixed prompt contracts
-Unreviewable output Approval gates
-Cost explosions Deterministic generation
+Risk	How Phase 7 avoids it
+AI hallucinations	Schema + validation
+Content drift	Versioning
+Inconsistent quality	Fixed prompt contracts
+Unreviewable output	Approval gates
+Cost explosions	Deterministic generation
 
 **Phase 7 Summary**
 
@@ -484,12 +475,12 @@ What you do NOT have yet (by design):
 This is correct.
 
 🔶 What Comes Next (High-Level Roadmap)
-Phase Purpose
-7.6 Course Packaging (assemble approved content)
-8.0 Persistence + Versioning
-8.1 Publish API (read-only, immutable)
-8.2 Regeneration + diffing
-9.0 Delivery (UI, LMS, exports)
+Phase	Purpose
+7.6	Course Packaging (assemble approved content)
+8.0	Persistence + Versioning
+8.1	Publish API (read-only, immutable)
+8.2	Regeneration + diffing
+9.0	Delivery (UI, LMS, exports)
 
 We now proceed one irreversible phase at a time.
 
@@ -512,14 +503,12 @@ No AI here. No generation. Only assembly.
 
 🧱 Conceptual Model
 Approved Syllabus
+ + Approved Lessons
+ + Approved Quizzes
+ + Approved Projects
+ --------------------------------
+ → CoursePackage (versioned, frozen)
 
-- Approved Lessons
-- Approved Quizzes
-- Approved Projects
-
----
-
-→ CoursePackage (versioned, frozen)
 
 🟦 PHASE 8 — Persistence, Publishing & Versioning
 
@@ -560,13 +549,13 @@ By the end of Phase 8, you will have:
 
 🧱 Phase 8 Architecture Overview
 Approved Syllabus + Content
-↓
+        ↓
 CoursePackage (built in Phase 7.6)
-↓
+        ↓
 Persisted (Phase 8.1)
-↓
+        ↓
 Published (Phase 8.2)
-↓
+        ↓
 Read-only APIs + Admin UI
 
 🟦 Phase 8.1 — Persistence Layer
@@ -577,28 +566,27 @@ Persist CoursePackage safely and immutably.
 🧬 Prisma Schema (REQUIRED)
 📄 schema.prisma
 enum CoursePackageStatus {
-PUBLISHED
-ARCHIVED
+  PUBLISHED
+  ARCHIVED
 }
 
 model CoursePackage {
-id String @id @default(cuid())
-syllabusId String
-version Int
+  id            String   @id @default(cuid())
+  syllabusId    String
+  version       Int
 
-status CoursePackageStatus @default(PUBLISHED)
+  status        CoursePackageStatus @default(PUBLISHED)
 
-/// Frozen JSON blob (validated before insert)
-json Json
+  /// Frozen JSON blob (validated before insert)
+  json          Json
 
-createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 
-@@unique([syllabusId, version])
-@@index([syllabusId])
+  @@unique([syllabusId, version])
+  @@index([syllabusId])
 }
 
 🔒 Rules
-
 1. json is immutable
 2. No UPDATEs allowed (only INSERT)
 3. New version = new row
@@ -606,30 +594,29 @@ createdAt DateTime @default(now())
 🧠 Persistence Helper
 📁 lib/course/package/store.ts
 export async function saveCoursePackage(
-prisma,
-pkg: CoursePackage
+  prisma,
+  pkg: CoursePackage
 ) {
-return prisma.coursePackage.create({
-data: {
-syllabusId: pkg.syllabusId,
-version: pkg.version,
-json: pkg,
-}
-})
+  return prisma.coursePackage.create({
+    data: {
+      syllabusId: pkg.syllabusId,
+      version: pkg.version,
+      json: pkg,
+    }
+  })
 }
 
 export async function getCoursePackagesBySyllabus(
-prisma,
-syllabusId: string
+  prisma,
+  syllabusId: string
 ) {
-return prisma.coursePackage.findMany({
-where: { syllabusId },
-orderBy: { version: 'desc' }
-})
+  return prisma.coursePackage.findMany({
+    where: { syllabusId },
+    orderBy: { version: 'desc' }
+  })
 }
 
 🧪 Tests (Required)
-
 1. cannot insert duplicate version
 2. json matches schema
 3. version increments correctly
@@ -643,24 +630,26 @@ Expose published courses safely.
 📄 /api/courses/route.ts
 GET /api/courses
 
+
 Returns:
 
 [
-{
-"syllabusId": "abc",
-"latestVersion": 3,
-"title": "Intro to AI"
-}
+  {
+    "syllabusId": "abc",
+    "latestVersion": 3,
+    "title": "Intro to AI"
+  }
 ]
 
 📄 /api/courses/[syllabusId]/route.ts
 GET /api/courses/:syllabusId
 
+
 Returns:
 
 {
-"syllabusId": "abc",
-"versions": [3,2,1]
+  "syllabusId": "abc",
+  "versions": [3,2,1]
 }
 
 📄 /api/courses/[syllabusId]/[version]/route.ts
@@ -671,7 +660,6 @@ Returns:
 Allow admins to see what’s published.
 
 🖥️ UI Pages
-
 - /admin/courses
   - List syllabi
   - Show latest version
@@ -689,13 +677,13 @@ Allow admins to see what’s published.
 🟦 Phase 8.4 — Safety & Guarantees
 🔒 Hard Rules to Enforce
 
-Rule Where
-Approved-only content Builder (7.6)
-Insert-only persistence Store
-Immutable JSON DB + code
-Versioned publishing DB constraint
-No mutation APIs Routes
-Audit preserved Phase 7
+Rule	Where
+Approved-only content	Builder (7.6)
+Insert-only persistence	Store
+Immutable JSON	DB + code
+Versioned publishing	DB constraint
+No mutation APIs	Routes
+Audit preserved	Phase 7
 
 🧪 Final Validation Checklist
 
@@ -718,7 +706,8 @@ Phase 9 — Delivery
 - Personalization
 - Monetization
 
-````markdown
+
+```markdown
 ```markdown
 📘 PHASE 9 — DELIVERY, CONSUMPTION & MONETIZATION
 
@@ -753,25 +742,25 @@ Phase 9 ONLY READS from Phase 8.
 
 🧩 Phase 9 High-Level Architecture
 CoursePackage (immutable)
-↓
+        ↓
 Read-only Delivery APIs
-↓
+        ↓
 Learner Player UI
-↓
+        ↓
 Progress + Entitlements (new models)
-↓
+        ↓
 Exporters (PDF / LMS)
 
 📦 Phase 9 Sub-Phases
-Sub-Phase Purpose
-9.1 Learner content delivery APIs
-9.2 Course Player UI
-9.3 Progress tracking
-9.4 PDF / LMS Exporters
-9.5 Multi-tenant monetization
-9.6 Access control & safety
+Sub-Phase	Purpose
+9.1	Learner content delivery APIs
+9.2	Course Player UI
+9.3	Progress tracking
+9.4	PDF / LMS Exporters
+9.5	Multi-tenant monetization
+9.6	Access control & safety
+
 ```
-````
 
 🔹 PHASE 9.1 — Learner Read APIs (FOUNDATION)
 🎯 Outcome
@@ -790,7 +779,6 @@ Fetch lesson by index
 Create Phase 9.1 learner delivery APIs.
 
 Requirements:
-
 - Read-only APIs only
 - Source: CoursePackage (published only)
 - No admin logic
@@ -807,13 +795,13 @@ GET /api/learn/courses/[courseId]/lessons/[index]
 → single lesson object
 
 Rules:
-
 - Reject non-PUBLISHED packages
 - No mutations
 - Use Prisma client
 - Add basic Jest tests
 
 Do not add auth yet.
+
 
 ✅ Stop when APIs + tests pass.
 
@@ -848,42 +836,39 @@ Track learner progress without touching content.
 
 Prisma Models (NEW — SAFE)
 model Enrollment {
-id String @id @default(cuid())
-userId String
-courseId String
-createdAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
 }
 
 model LessonProgress {
-id String @id @default(cuid())
-userId String
-courseId String
-lessonIdx Int
-completed Boolean
-updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String
+  courseId   String
+  lessonIdx  Int
+  completed  Boolean
+  updatedAt  DateTime @updatedAt
 
-@@unique([userId, courseId, lessonIdx])
+  @@unique([userId, courseId, lessonIdx])
 }
 
 🧠 Prompt - Phase 9.3
 Implement learner progress tracking.
 
 Tasks:
-
 - Add Enrollment and LessonProgress Prisma models
 - Create APIs:
   POST /api/learn/enroll
   POST /api/learn/progress
-  GET /api/learn/progress/[courseId]
+  GET  /api/learn/progress/[courseId]
 
 Rules:
-
 - Progress writes only
 - CoursePackage remains immutable
 - Require enrollment before progress writes
 
 Add unit tests for:
-
 - enrollment
 - marking lesson complete
 - reading progress
@@ -894,22 +879,20 @@ Add unit tests for:
 Allow offline / institutional usage.
 
 Export Targets
-Export Format
-PDF Printable course
-LMS SCORM-like ZIP (JSON + HTML)
+Export	Format
+PDF	Printable course
+LMS	SCORM-like ZIP (JSON + HTML)
 
 🧠 Prompt - Phase 9.4 (PDF)
 Create a PDF exporter for CoursePackage.
 
 Requirements:
-
 - Input: published CoursePackage JSON
 - Output: PDF
 - One lesson per section
 - Include title, objectives, content
 
 Tech:
-
 - Node PDF library (pdfkit or equivalent)
 - No DB writes
 
@@ -922,15 +905,13 @@ Add basic test (snapshot size > 0).
 Create an LMS exporter.
 
 Requirements:
-
 - Input: CoursePackage JSON
 - Output: ZIP
   - index.html
-  - lessons/\*.html
+  - lessons/*.html
   - manifest.json
 
 Rules:
-
 - No mutations
 - Deterministic output
 - No LMS auth logic
@@ -945,31 +926,30 @@ Sell courses without forking content.
 
 Prisma Models (NEW)
 model Tenant {
-id String @id @default(cuid())
-name String
+  id   String @id @default(cuid())
+  name String
 }
 
 model Product {
-id String @id @default(cuid())
-tenantId String
-courseId String
-priceCents Int
-currency String
-active Boolean
+  id        String @id @default(cuid())
+  tenantId  String
+  courseId  String
+  priceCents Int
+  currency  String
+  active    Boolean
 }
 
 model Purchase {
-id String @id @default(cuid())
-userId String
-productId String
-createdAt DateTime @default(now())
+  id        String @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
 }
 
 🧠 Copilot Prompt — Phase 9.5
 Implement multi-tenant monetization.
 
 Tasks:
-
 - Add Tenant, Product, Purchase models
 - APIs:
   GET /api/store/products
@@ -979,13 +959,11 @@ Tasks:
   - tenant isolation
 
 Rules:
-
 - No content duplication
 - Product references courseId only
 - Purchases grant access, not content ownership
 
 Add tests for:
-
 - access gating
 - tenant isolation
 
@@ -994,17 +972,15 @@ Add tests for:
 
 Prevent leaks and misuse.
 
-🧠 Prompt — Phase 9.6
+🧠  Prompt — Phase 9.6
 Add access guards.
 
 Rules:
-
 - Learner APIs require purchase OR enrollment
 - Admin APIs unchanged
 - CoursePackage JSON never modified
 
 Add middleware:
-
 - requireEnrollment
 - requirePurchase (if monetized)
 
@@ -1020,11 +996,11 @@ Add tests for unauthorized access.
 ✅ Enterprise-safe architecture
 
 🚦 What Comes After Phase 9 (Preview Only)
-Phase Focus
-10 Analytics & insights
-11 Personalization
-12 Marketplace
-13 AI tutoring layer
+Phase	Focus
+10	Analytics & insights
+11	Personalization
+12	Marketplace
+13	AI tutoring layer
 
 What Was Intended
 
@@ -1050,7 +1026,7 @@ Prisma models added: Tenant, Product, Purchase (migration applied).
 Store APIs implemented: GET /api/store/products, POST /api/store/purchase.
 Enrollment guarded to require purchase if a Product exists for a course.
 Auth & Guards:
-Central session helper getServerSessionForHandlers() in session.ts (tests can inject global.**TEST_SESSION**).
+Central session helper getServerSessionForHandlers() in session.ts (tests can inject global.__TEST_SESSION__).
 Access guard hasLearnerAccess(db, userId, courseId) implemented in access.ts.
 Updated many routes/tests to use session-derived user id and test session injection.
 Quality:
@@ -1093,10 +1069,12 @@ If you want, I can:
 
 Scaffold tenant-admin APIs and a minimal admin UI for managing Product/Tenant.
 Add audit-log calls into POST /api/store/purchase and enrollment routes.
-Implement the small test helper to centralize global.**TEST_SESSION** setup/teardown and refactor tests to use it.
+Implement the small test helper to centralize global.__TEST_SESSION__ setup/teardown and refactor tests to use it.
 Which of those should I do next?
 
+
 # Phase 9 Hardening
+
 
 This is the right moment to harden Phase 9 before analytics amplifies anything.
 
@@ -1112,28 +1090,27 @@ Make Phase 9 production-safe by adding auditability, tenant isolation, and abuse
 ❌ No breaking API changes
 
 HARDENING SCOPE (What & Why)
-Area Why it matters
-Audit Logs Regulatory, debugging, abuse detection
-Tenant Scoping Prevent cross-tenant data leaks
-Export Rate Limits Prevent DoS & cost abuse
-Payload Size Guards Prevent memory / ZIP bomb attacks
+Area	Why it matters
+Audit Logs	Regulatory, debugging, abuse detection
+Tenant Scoping	Prevent cross-tenant data leaks
+Export Rate Limits	Prevent DoS & cost abuse
+Payload Size Guards	Prevent memory / ZIP bomb attacks
 ✅ STEP 1 — Add Audit Logging (Highest Priority)
 Objective
 
 Ensure every sensitive write or export is auditable.
 
 Events to log
-Action Entity Actor
-Product create/update Product admin
-Purchase creation Purchase learner
-Enrollment creation Enrollment learner
-PDF export CoursePackage learner
-LMS ZIP export CoursePackage learner
+Action	Entity	Actor
+Product create/update	Product	admin
+Purchase creation	Purchase	learner
+Enrollment creation	Enrollment	learner
+PDF export	CoursePackage	learner
+LMS ZIP export	CoursePackage	learner
 📌 Copilot Prompt — Step 1
 Add audit logging to Phase 9.
 
 Requirements:
-
 1. Use existing AuditLog Prisma model.
 2. Create helper function:
    lib/audit/log.ts → logAuditEvent(db, { actorId, action, entityType, entityId, metadata })
@@ -1158,10 +1135,10 @@ Requirements:
    - AuditLog row is created for export
 
 Rules:
-
 - No schema changes
 - No API response changes
 - Type-check and lint must pass
+
 
 ✅ Stop after completing audit logging and tests.
 
@@ -1184,7 +1161,6 @@ Learner cannot purchase cross-tenant products
 Harden tenant isolation in Phase 9 monetization.
 
 Tasks:
-
 1. Enforce tenantId checks in:
    - GET /api/store/products
    - POST /api/store/purchase
@@ -1201,7 +1177,6 @@ Tasks:
    - Cannot access course from another tenant
 
 Constraints:
-
 - No new tables
 - No UI changes
 - Use existing session helper
@@ -1226,7 +1201,6 @@ Applies to both PDF and LMS
 Add rate-limiting to course export endpoints.
 
 Requirements:
-
 1. Create utility:
    lib/rateLimit/exportLimiter.ts
 
@@ -1248,7 +1222,6 @@ Requirements:
    - 4th export fails with 429
 
 Notes:
-
 - Do not introduce Redis yet
 - Limiter resets on process restart (acceptable)
 
@@ -1269,7 +1242,6 @@ Validate before export generation
 Add CoursePackage size safety guard.
 
 Tasks:
-
 1. Add helper:
    lib/safety/validatePackageSize.ts
 
@@ -1289,7 +1261,6 @@ Tasks:
    - Oversized package is rejected
 
 Constraints:
-
 - No schema changes
 - No UI changes
 
@@ -1298,13 +1269,11 @@ Constraints:
 Run full verification after Phase 9 hardening.
 
 Checklist:
-
 - npm run lint
 - npm run type-check
 - npm test
 
 Then:
-
 - Summarize changes
 - List all new guards added
 - Confirm no breaking API changes
@@ -1324,12 +1293,11 @@ You will now have:
 
 This makes Phase 10 safe, measurable, and trustworthy.
 
+
 # 🧱 PART A — HELM / K8s PLAN FOR LEARNER SERVICES
 
 ## 🎯 Objective
-
 Deploy learner-facing services in Kubernetes for:
-
 - Read-only content delivery
 - Scalable progress tracking (write-only progress APIs)
 - Monetization safety
@@ -1337,17 +1305,16 @@ Deploy learner-facing services in Kubernetes for:
 
 ## 🧩 Services to Deploy
 
-| Service     | Responsibility                                                         |
-| ----------- | ---------------------------------------------------------------------- |
+| Service     | Responsibility |
+|-------------|----------------|
 | learner-api | Phase 9 APIs (learn, progress, store) — stateless, horizontally scaled |
-| admin-api   | Existing admin APIs (deployed separately)                              |
-| evaluator   | Alerting/worker (Phase 5)                                              |
-| postgres    | External (Neon / RDS)                                                  |
-| redis       | External (Upstash / ElastiCache)                                       |
-| pushgateway | Metrics bridge (Phase 10)                                              |
+| admin-api   | Existing admin APIs (deployed separately) |
+| evaluator   | Alerting/worker (Phase 5) |
+| postgres    | External (Neon / RDS) |
+| redis       | External (Upstash / ElastiCache) |
+| pushgateway | Metrics bridge (Phase 10) |
 
 ## 📦 Helm Chart Structure
-
 ```
 helm/
 └── ai-platform/
@@ -1366,33 +1333,28 @@ helm/
 ```
 
 ## 🔐 Secrets Strategy (Critical)
-
 - NO secrets in values files.
 - Create secrets from an env file and reference by name in values.
 
 Create secret:
-
 ```bash
 kubectl create secret generic ai-platform-secrets \
   --from-env-file=.env.production
 ```
 
 Helm values reference:
-
 ```yaml
 secrets:
   secretName: ai-platform-secrets
 ```
 
 ## 🚀 learner-api Deployment (Key Design)
-
 - Stateless, horizontally scalable
 - Read-only content APIs; write-only progress APIs
 - Default replicas: 2 (HPA min 2 / max 10)
 - Env from secrets: DATABASE_URL, REDIS_URL, NODE_ENV, TENANT_MODE=enabled
 
 Resource defaults (values.yaml):
-
 ```yaml
 replicaCount: 2
 resources:
@@ -1410,36 +1372,32 @@ env:
 ```
 
 ## 📈 Autoscaling (HPA)
-
 ```yaml
 hpa:
   minReplicas: 2
   maxReplicas: 10
   metrics:
-    - type: Resource
-      resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+  - type: Resource
+    resource:
+    name: cpu
+    target:
+      type: Utilization
+      averageUtilization: 70
 ```
 
 ## 🔍 Observability Hooks (Phase 10 Ready)
-
 - Expose `/metrics` endpoint (Prometheus)
 - Push to Pushgateway when scraping is not feasible
-  Suggested metrics:
+Suggested metrics:
 - lesson_views_total
 - lesson_completed_total
 - course_enrollments_total
 - purchase_completed_total
 
 ## 🧠 Deployment Flow (Recommended)
-
 1. Build image (GitHub Actions)
 2. Push to GHCR
 3. Helm upgrade/install:
-
 ```bash
 helm upgrade --install ai-platform ./helm/ai-platform \
   -f values-staging.yaml \
@@ -1447,24 +1405,21 @@ helm upgrade --install ai-platform ./helm/ai-platform \
 ```
 
 ## ✅ Quick validation
-
 - `helm lint ./helm/ai-platform`
 - `helm template ./helm/ai-platform -f values-staging.yaml`
 
 ## ⚠️ Risks & Recommendations
-
 - Ensure managed Postgres & Redis provisioned before install
 - NO secrets committed; secure .env.production
 - Prefer Prometheus pull (scrape) where possible; use Pushgateway only when necessary
 - Add readiness/liveness probes to learner-api
 - Include RBAC / NetworkPolicy templates for production
 - Tune resource requests/limits to real load
-- CI: run helm lint/template on PRs touching helm/\*\*
+- CI: run helm lint/template on PRs touching helm/**
 
 ---
 
-## — SUMMARY OF CHANGES (Phase 10A)
-
+##  — SUMMARY OF CHANGES (Phase 10A)
 - Objective: Deploy learner-facing services in K8s for safe, observable delivery
 - Services: learner-api (stateless), admin-api (separate), evaluator, external postgres/redis, pushgateway
 - Helm: created `ai-platform` chart with values and templates (deployment, service, HPA, evaluator, serviceaccount, configmap, secrets)
@@ -1476,46 +1431,38 @@ helm upgrade --install ai-platform ./helm/ai-platform \
 # PHASE 10 — Analytics, Insights & Intelligence
 
 ## 🎯 Goal
-
 Turn learner activity into:
-
 - Actionable insights
 - Funnel metrics
 - Course quality signals
 - Monetization intelligence  
-  Do this WITHOUT touching content or generation logic.
+Do this WITHOUT touching content or generation logic.
 
 ## 🔒 Core Rule
-
 Phase 10 observes only. It must never modify:
-
 - CoursePackage
 - Lessons
 - Quizzes
 - Projects
 
 ## 🧩 Architecture
-
 Learner Events → Event Collector → Analytics Store → Dashboards / Reports
 
 ## 📊 What We Measure
 
 ### Learner Engagement
-
-- lesson_viewed
-- lesson_completed
-- quiz_attempted
+- lesson_viewed  
+- lesson_completed  
+- quiz_attempted  
 - quiz_passed
 
 ### Funnel Metrics
-
-- course_view → enroll → complete
+- course_view → enroll → complete  
 - purchase → enroll → completion
 
 ### Quality Signals
-
-- drop-off per lesson
-- quiz failure rate
+- drop-off per lesson  
+- quiz failure rate  
 - time spent per lesson
 
 ## 🧱 Data Model (NEW)
@@ -1540,37 +1487,31 @@ model AnalyticsEvent {
 ---
 
 ## Phase 10.1 — Event Ingestion
-
 Create a write-only, batched ingestion endpoint.
 
 - Add AnalyticsEvent Prisma model
 - POST /api/analytics/event
-  - Accept batched events
-  - Validate eventType against enum
-  - Fire-and-forget design (write-only)
+    - Accept batched events
+    - Validate eventType against enum
+    - Fire-and-forget design (write-only)
 - Rules: No reads, no business logic
 - Add unit tests
 
 ## Phase 10.2 — Client Event Emitters
-
 Client-side emitters for:
-
 - lesson_viewed
 - lesson_completed
 - quiz_attempted
 - quiz_passed
 
 Requirements:
-
 - Debounced
 - Non-blocking
 - POST → /api/analytics/event
 - No UI changes
 
 ## Phase 10.3 — Aggregation Jobs
-
 Nightly aggregation jobs to compute:
-
 - lesson completion rate
 - average time per lesson
 - course completion %
@@ -1578,36 +1519,28 @@ Nightly aggregation jobs to compute:
 Store results in an `AnalyticsDailyAggregate` model. Implement as idempotent, testable job (no UI).
 
 ## Phase 10.4 — Admin Analytics APIs
-
 Read-only admin endpoints (aggregated data only):
-
 - GET /api/admin/analytics/course/[courseId]
 - GET /api/admin/analytics/funnel/[courseId]
 
 Rules:
-
 - Return only aggregated data (no raw events)
 - Admin-only access
 - Add tests
 
 ## Phase 10.5 — Analytics Dashboard UI
-
 Admin dashboard pages (read-only):
-
 - Course analytics overview
 - Lesson drop-off chart
 - Funnel visualization
 
 Requirements:
-
 - Use Phase 10.4 APIs
 - Simple chart library
 - No write actions or exports yet
 
 ## Phase 10.6 — Intelligence Signals (Non-AI)
-
 Rule-based signals saved to `AnalyticsSignal`:
-
 - High drop-off lesson
 - Low quiz pass rate
 - High refund rate (approximate until explicit refunds available)
@@ -1617,7 +1550,6 @@ No AI suggestions yet. Add unit tests.
 ---
 
 ## ✅ Outcomes (Phase 10 Completed)
-
 - Full analytics pipeline (ingest → aggregate → surface)
 - Monetization insights decoupled from content
 - Course quality signals persisted
@@ -1625,7 +1557,6 @@ No AI suggestions yet. Add unit tests.
 - AI-ready intelligence layer (non-generative signals)
 
 ## 🚧 Pending / Recommended
-
 - Schedule nightly aggregator and signals worker (cron/orchestrator)
 - Add admin read API for AnalyticsSignal and surface alerts in dashboard
 - Replace purchase→enrollment refund heuristic with explicit refunds
@@ -1636,27 +1567,25 @@ No AI suggestions yet. Add unit tests.
 - Improve admin UX (time-range, course picker, pagination, drilldowns)
 
 ## Suggestions / Next Steps (prioritized)
-
-1. Add admin read API for AnalyticsSignal (high impact).
-2. Schedule nightly aggregator + signals worker + monitoring (operational critical).
-3. Implement retention policy and DB indexes for scaling.
-4. Replace refund heuristic and convert eventType to enum safely.
+1. Add admin read API for AnalyticsSignal (high impact).  
+2. Schedule nightly aggregator + signals worker + monitoring (operational critical).  
+3. Implement retention policy and DB indexes for scaling.  
+4. Replace refund heuristic and convert eventType to enum safely.  
 5. Iterate dashboard to use per-lesson aggregates.
 
 ---
 
 ## 🚦 What Comes After Phase 10 (Preview)
 
-| Phase | Focus                            |
-| ----- | -------------------------------- |
+| Phase | Focus                         |
+|-------|-------------------------------|
 | 11    | Personalization (non-generative) |
-| 12    | AI Tutor (safe, scoped)          |
-| 13    | Marketplace & creators           |
-| 14    | Adaptive learning                |
+| 12    | AI Tutor (safe, scoped)       |
+| 13    | Marketplace & creators        |
+| 14    | Adaptive learning             |
 
 ## 🔥 Final Advice
-
-- Content is immutable. Analytics is observational. Monetization is decoupled. AI is boxed and audited.
+- Content is immutable. Analytics is observational. Monetization is decoupled. AI is boxed and audited.  
 - Do not let shortcuts compromise the architecture.
 
 ---
@@ -1666,7 +1595,6 @@ No AI suggestions yet. Add unit tests.
 **Intention:** Build a read-only, observational analytics pipeline to collect learner events, aggregate metrics for admins, and produce rule-based intelligence signals — without modifying content or generation logic.
 
 **Achieved:**
-
 - Event ingestion endpoint (batched, validated, write-only) with tests.
 - Debounced, non-blocking client emitters.
 - Nightly-style aggregator that upserts into `AnalyticsDailyAggregate` with tests.
@@ -1676,54 +1604,46 @@ No AI suggestions yet. Add unit tests.
 - Tests updated to use test DB/session injection pattern for reliability.
 
 **Next operational tasks:**
-
 - Wire aggregator and signals into scheduler/cron.
 - Expose admin APIs for signals.
 - Implement retention, improve refund metric fidelity, and convert eventType to enum in a migration.
+
 
 # PHASE 10 — Analytics, Insights & Intelligence
 
 ## 🎯 Goal
-
 Turn learner activity into:
-
 - Actionable insights
 - Funnel metrics
 - Course quality signals
 - Monetization intelligence  
-  Do this WITHOUT touching content or generation logic.
+Do this WITHOUT touching content or generation logic.
 
 ## 🔒 Core Rule
-
 Phase 10 observes only. It must never modify:
-
 - CoursePackage
 - Lessons
 - Quizzes
 - Projects
 
 ## 🧩 Architecture
-
 Learner Events → Event Collector → Analytics Store → Dashboards / Reports
 
 ## 📊 What We Measure
 
 ### Learner Engagement
-
-- lesson_viewed
-- lesson_completed
-- quiz_attempted
+- lesson_viewed  
+- lesson_completed  
+- quiz_attempted  
 - quiz_passed
 
 ### Funnel Metrics
-
-- course_view → enroll → complete
+- course_view → enroll → complete  
 - purchase → enroll → completion
 
 ### Quality Signals
-
-- drop-off per lesson
-- quiz failure rate
+- drop-off per lesson  
+- quiz failure rate  
 - time spent per lesson
 
 ## 🧱 Data Model (NEW)
@@ -1748,37 +1668,31 @@ model AnalyticsEvent {
 ---
 
 ## Phase 10.1 — Event Ingestion
-
 Create a write-only, batched ingestion endpoint.
 
 - Add AnalyticsEvent Prisma model
 - POST /api/analytics/event
-  - Accept batched events
-  - Validate eventType against enum
-  - Fire-and-forget design (write-only)
+    - Accept batched events
+    - Validate eventType against enum
+    - Fire-and-forget design (write-only)
 - Rules: No reads, no business logic
 - Add unit tests
 
 ## Phase 10.2 — Client Event Emitters
-
 Client-side emitters for:
-
 - lesson_viewed
 - lesson_completed
 - quiz_attempted
 - quiz_passed
 
 Requirements:
-
 - Debounced
 - Non-blocking
 - POST → /api/analytics/event
 - No UI changes
 
 ## Phase 10.3 — Aggregation Jobs
-
 Nightly aggregation jobs to compute:
-
 - lesson completion rate
 - average time per lesson
 - course completion %
@@ -1786,36 +1700,28 @@ Nightly aggregation jobs to compute:
 Store results in an `AnalyticsDailyAggregate` model. Implement as idempotent, testable job (no UI).
 
 ## Phase 10.4 — Admin Analytics APIs
-
 Read-only admin endpoints (aggregated data only):
-
 - GET /api/admin/analytics/course/[courseId]
 - GET /api/admin/analytics/funnel/[courseId]
 
 Rules:
-
 - Return only aggregated data (no raw events)
 - Admin-only access
 - Add tests
 
 ## Phase 10.5 — Analytics Dashboard UI
-
 Admin dashboard pages (read-only):
-
 - Course analytics overview
 - Lesson drop-off chart
 - Funnel visualization
 
 Requirements:
-
 - Use Phase 10.4 APIs
 - Simple chart library
 - No write actions or exports yet
 
 ## Phase 10.6 — Intelligence Signals (Non-AI)
-
 Rule-based signals saved to `AnalyticsSignal`:
-
 - High drop-off lesson
 - Low quiz pass rate
 - High refund rate (approximate until explicit refunds available)
@@ -1825,7 +1731,6 @@ No AI suggestions yet. Add unit tests.
 ---
 
 ## ✅ Outcomes (Phase 10 Completed)
-
 - Full analytics pipeline (ingest → aggregate → surface)
 - Monetization insights decoupled from content
 - Course quality signals persisted
@@ -1833,7 +1738,6 @@ No AI suggestions yet. Add unit tests.
 - AI-ready intelligence layer (non-generative signals)
 
 ## 🚧 Pending / Recommended
-
 - Schedule nightly aggregator and signals worker (cron/orchestrator)
 - Add admin read API for AnalyticsSignal and surface alerts in dashboard
 - Replace purchase→enrollment refund heuristic with explicit refunds
@@ -1844,27 +1748,25 @@ No AI suggestions yet. Add unit tests.
 - Improve admin UX (time-range, course picker, pagination, drilldowns)
 
 ## Suggestions / Next Steps (prioritized)
-
-1. Add admin read API for AnalyticsSignal (high impact).
-2. Schedule nightly aggregator + signals worker + monitoring (operational critical).
-3. Implement retention policy and DB indexes for scaling.
-4. Replace refund heuristic and convert eventType to enum safely.
+1. Add admin read API for AnalyticsSignal (high impact).  
+2. Schedule nightly aggregator + signals worker + monitoring (operational critical).  
+3. Implement retention policy and DB indexes for scaling.  
+4. Replace refund heuristic and convert eventType to enum safely.  
 5. Iterate dashboard to use per-lesson aggregates.
 
 ---
 
 ## 🚦 What Comes After Phase 10 (Preview)
 
-| Phase | Focus                            |
-| ----- | -------------------------------- |
+| Phase | Focus                         |
+|-------|-------------------------------|
 | 11    | Personalization (non-generative) |
-| 12    | AI Tutor (safe, scoped)          |
-| 13    | Marketplace & creators           |
-| 14    | Adaptive learning                |
+| 12    | AI Tutor (safe, scoped)       |
+| 13    | Marketplace & creators        |
+| 14    | Adaptive learning             |
 
 ## 🔥 Final Advice
-
-- Content is immutable. Analytics is observational. Monetization is decoupled. AI is boxed and audited.
+- Content is immutable. Analytics is observational. Monetization is decoupled. AI is boxed and audited.  
 - Do not let shortcuts compromise the architecture.
 
 ---
@@ -1874,7 +1776,6 @@ No AI suggestions yet. Add unit tests.
 **Intention:** Build a read-only, observational analytics pipeline to collect learner events, aggregate metrics for admins, and produce rule-based intelligence signals — without modifying content or generation logic.
 
 **Achieved:**
-
 - Event ingestion endpoint (batched, validated, write-only) with tests.
 - Debounced, non-blocking client emitters.
 - Nightly-style aggregator that upserts into `AnalyticsDailyAggregate` with tests.
@@ -1884,10 +1785,10 @@ No AI suggestions yet. Add unit tests.
 - Tests updated to use test DB/session injection pattern for reliability.
 
 **Next operational tasks:**
-
 - Wire aggregator and signals into scheduler/cron.
 - Expose admin APIs for signals.
 - Implement retention, improve refund metric fidelity, and convert eventType to enum in a migration.
+
 
 ✅ Phase 10 Status — FINAL VERDICT
 ✔ What Phase 10 already achieved (this is important)
@@ -2001,7 +1902,6 @@ Create a new server-side job runner for analytics aggregation and signals.
 File: src/jobs/analyticsJobs.ts
 
 Responsibilities:
-
 - Export a single async function runAnalyticsJobs()
 - Inside it:
   1. Call analyticsAggregator.runForAllCourses()
@@ -2014,27 +1914,25 @@ Responsibilities:
   { success: boolean, durationMs: number, error?: string }
 
 Constraints:
-
 - No DB writes except those performed by the called functions
 - No content mutation
 - No direct Prisma import; use injected db or shared helper pattern
 
-  10.J2 — Non-overlapping Execution Guard
-  Prompt to Copilot
-  Add a non-overlapping execution guard for analytics jobs.
+10.J2 — Non-overlapping Execution Guard
+Prompt to Copilot
+Add a non-overlapping execution guard for analytics jobs.
 
 Approach:
-
 - Create src/jobs/jobLock.ts
 - Implement acquireJobLock(jobName: string, ttlMs: number)
 - Implement releaseJobLock(jobName: string)
 - Use Prisma with a JobLock table OR reuse an existing lock mechanism if present
 
 Rules:
-
 - If a lock exists and is not expired, abort execution gracefully
 - Do not throw; return { skipped: true, reason: "locked" }
 - Ensure lock auto-expires if process crashes
+
 
 (If no JobLock table exists, Copilot should add it via Prisma with minimal fields: jobName, lockedUntil.)
 
@@ -2043,7 +1941,6 @@ Prompt to Copilot
 Add audit logging for analytics job runs.
 
 For each run of runAnalyticsJobs():
-
 - Write a non-blocking audit entry with:
   action: "ANALYTICS_JOB_RUN"
   status: SUCCESS | FAILED | SKIPPED
@@ -2052,29 +1949,26 @@ For each run of runAnalyticsJobs():
 - Reuse existing audit log helper (do not invent new infra)
 - Audit failure must NEVER block job completion
 
-  10.J4 — Scheduler Hook
-  Prompt to Copilot
-  Wire analytics jobs into the existing scheduler / orchestrator.
+10.J4 — Scheduler Hook
+Prompt to Copilot
+Wire analytics jobs into the existing scheduler / orchestrator.
 
 Options (pick what exists):
-
 - If cron-based: add a nightly cron entry
 - If serverless scheduled job: add handler
 - If GitHub Actions (temporary): nightly workflow calling the job
 
 Rules:
-
 - Frequency: once per day (UTC or system timezone)
 - Ensure job lock is checked before execution
 - Ensure logs are emitted for start/end
 - No retries yet (fail fast, observable)
 
-  10.J5 — Minimal Monitoring Signal
-  Prompt to Copilot
-  Add minimal observability for analytics jobs.
+10.J5 — Minimal Monitoring Signal
+Prompt to Copilot
+Add minimal observability for analytics jobs.
 
 Requirements:
-
 - Log structured JSON:
   { job: "analytics", status, durationMs }
 - Increment a simple counter (if metrics infra exists)
@@ -2093,8 +1987,8 @@ No new write paths to content tables
 
 ➡️ Once done: Phase 10 is officially “LIVE”
 
-# Phase 10 — implementation Summary
 
+# Phase 10 — implementation Summary
 Intended
 Lock: Add non-overlapping job lock for analytics runs (DB-backed JobLock).
 Implementation: Create jobLock.ts and use in analyticsJobs.ts.
@@ -2109,7 +2003,7 @@ Job runner: Updated analyticsJobs.ts to use the lock, write non-blocking audit e
 Orchestrator: Scheduling hook added in orchestrator.ts (env-controlled).
 Metrics: Added analytics_job_runs_total counter and incAnalyticsJobRun() in metrics-server.ts.
 Tests: Added analyticsJobs.test.ts and fixed related tests; full test suite passed (32 suites, 82 tests).
-Lint/TS: Replaced problematic console.\* usages with project logger and fixed TS typing issues.
+Lint/TS: Replaced problematic console.* usages with project logger and fixed TS typing issues.
 Pending
 DB migration: Apply Prisma migration so JobLock exists in the running DB.
 Integration tests (optional): Run job runner end-to-end against a migrated test/staging DB.
@@ -2132,7 +2026,6 @@ Draft a sample Prometheus alert rule and a short monitoring playbook, or
 Enable the orchestrator in staging and run a manual job run.
 
 # Phase 11
-
 📘 PHASE 11 — Adaptive Intelligence (Human-in-the-Loop)
 1️⃣ Phase 11 — Why This Phase Exists
 
@@ -2158,16 +2051,17 @@ Full human accountability
 
 3️⃣ Phase 11 — Conceptual Architecture
 AnalyticsEvent (raw)
-↓
+      ↓
 AnalyticsDailyAggregate
-↓
+      ↓
 AnalyticsSignal (rule-based)
-↓
+      ↓
 Insight Engine (Phase 11)
-↓
+      ↓
 ContentSuggestion (immutable)
-↓
+      ↓
 Admin Review UI
+
 
 🚫 No path back into generators
 🚫 No auto-approval
@@ -2180,44 +2074,45 @@ This is the single output of Phase 11.
 
 Prisma Schema
 enum SuggestionScope {
-COURSE
-MODULE
-LESSON
-QUIZ
+  COURSE
+  MODULE
+  LESSON
+  QUIZ
 }
 
 enum SuggestionType {
-LOW_COMPLETION
-HIGH_RETRY
-DROP_OFF
-LOW_ENGAGEMENT
-CONTENT_CLARITY
+  LOW_COMPLETION
+  HIGH_RETRY
+  DROP_OFF
+  LOW_ENGAGEMENT
+  CONTENT_CLARITY
 }
 
 enum SuggestionSeverity {
-LOW
-MEDIUM
-HIGH
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum SuggestionStatus {
-OPEN
-ACCEPTED
-DISMISSED
+  OPEN
+  ACCEPTED
+  DISMISSED
 }
 
 model ContentSuggestion {
-id String @id @default(cuid())
-courseId String
-scope SuggestionScope
-targetId String
-type SuggestionType
-severity SuggestionSeverity
-message String
-evidenceJson Json
-status SuggestionStatus @default(OPEN)
-createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  courseId      String
+  scope         SuggestionScope
+  targetId      String
+  type          SuggestionType
+  severity      SuggestionSeverity
+  message       String
+  evidenceJson  Json
+  status        SuggestionStatus @default(OPEN)
+  createdAt     DateTime @default(now())
 }
+
 
 Rules
 Insert-only
@@ -2237,7 +2132,6 @@ into ContentSuggestion records.
 File: src/insights/engine.ts
 
 Requirements:
-
 - Export generateSuggestionsForSignal(signal)
 - Use pure deterministic rule mapping
 - Each signal maps to 1+ suggestions
@@ -2247,22 +2141,21 @@ Requirements:
   - evidenceJson (metrics snapshot)
 
 Rules:
-
 - No DB reads except the signal itself
 - No deduplication
 - No content mutation
 - Suggestions must be reproducible from inputs
 
 Do NOT:
-
 - Call any generator
 - Modify syllabus/lesson/package tables
 
 Example Mapping (Implicit)
-Signal Suggestion
-LOW_COMPLETION Lesson too long / unclear
-HIGH_RETRY Quiz ambiguity
-DROP_OFF Module difficulty spike
+Signal	Suggestion
+LOW_COMPLETION	Lesson too long / unclear
+HIGH_RETRY	Quiz ambiguity
+DROP_OFF	Module difficulty spike
+
 
 🧾 11.3 Suggestion Persistence
 Goal
@@ -2275,13 +2168,11 @@ Create a persistence helper for ContentSuggestion.
 File: src/insights/store.ts
 
 Functions:
-
 - saveSuggestions(suggestions[])
 - listSuggestions(filters)
 - updateSuggestionStatus(id, status)
 
 Rules:
-
 - Only status can be updated
 - All writes must be audited
 - No deletes
@@ -2295,12 +2186,10 @@ Copilot Instruction — Tests
 Add unit tests for Phase 11.
 
 Paths:
-
 - tests/phase11/engine.test.ts
 - tests/phase11/store.test.ts
 
 Test cases:
-
 - Same AnalyticsSignal always produces same suggestions
 - EvidenceJson matches expected metrics
 - Status transitions work (OPEN → ACCEPTED / DISMISSED)
@@ -2309,26 +2198,21 @@ Test cases:
 Do NOT mock Prisma excessively; use test DB injection.
 
 🔒 11.5 Admin APIs (Read / Review)
-
 ## APIs
-
-Route Purpose
-GET /api/admin/suggestions List
-POST /api/admin/suggestions/:id/accept Approve
-POST /api/admin/suggestions/:id/dismiss Reject
+Route	Purpose
+GET /api/admin/suggestions	List
+POST /api/admin/suggestions/:id/accept	Approve
+POST /api/admin/suggestions/:id/dismiss	Reject
 
 # Copilot Instruction — Admin APIs
-
 Implement admin-only APIs for ContentSuggestion.
 
 Files:
-
 - src/app/api/admin/suggestions/route.ts
 - src/app/api/admin/suggestions/[id]/accept/route.ts
 - src/app/api/admin/suggestions/[id]/dismiss/route.ts
 
 Rules:
-
 - Admin auth required
 - Accept/Dismiss updates status only
 - Log audit event on every action
@@ -2336,7 +2220,6 @@ Rules:
 - No edits to message or evidence
 
 # 🖥️ 11.6 Admin UI (Review Dashboard)
-
 UI Capabilities
 
 List suggestions
@@ -2352,63 +2235,50 @@ Accept / Dismiss
 🚫 No approve chain
 
 ## Copilot Instruction — UI
-
 Create an admin UI for reviewing content suggestions.
 
 Path:
-
 - app/admin/suggestions/page.tsx
 - components/SuggestionCard.tsx
 
 Features:
-
 - Server-rendered list
 - Severity badge
 - Expandable evidence viewer
 - Accept / Dismiss buttons
 
 Rules:
-
 - Read-only except status
 - Optimistic UI allowed
 - No client-side mutation of suggestion data
 
 # 🧾 11.7 Audit Logging
-
 ## Copilot Instruction — Audit
-
 Ensure every suggestion lifecycle action is audited.
 
 Events:
-
 - SUGGESTION_CREATED
 - SUGGESTION_ACCEPTED
 - SUGGESTION_DISMISSED
 
 Rules:
-
 - Non-blocking
 - Never throw
 - Include suggestionId, adminId (if applicable)
 
 # ⏰ 11.8 Job Wiring (Optional but Recommended)
-
 ## Copilot Instruction — Job Hook
-
 Wire Insight Engine into nightly analytics job.
 
 When:
-
 - After generateSignalsForAllCourses()
 
 Steps:
-
 - Fetch new AnalyticsSignal records
 - Generate ContentSuggestions
 - Persist them
 
 Rules:
-
 - Idempotent per signal
 - Guard against duplicates if signal already processed
 - Use job lock
@@ -2450,6 +2320,7 @@ Versioned upgrades
 
 But only after Phase 11 is stable.
 
+
 Great question. Phase 11 is almost complete prompt-wise, but a few critical Copilot prompts were implicit, not explicitly written. Below is a clean, exhaustive list of the missing prompts, written in Copilot-ready, copy-pasteable form, with no overlap with what you already have.
 
 I’ll group them by what gap they close.
@@ -2486,7 +2357,6 @@ Copilot Prompt — Prisma Migration
 Add Prisma schema and migration for Phase 11 ContentSuggestion.
 
 Steps:
-
 1. Update schema.prisma:
    - Add enums:
      SuggestionScope, SuggestionType, SuggestionSeverity, SuggestionStatus
@@ -2504,10 +2374,10 @@ Steps:
    - Ensure no existing tables are modified
 
 Rules:
-
 - Insert-only semantics
 - Status is the only mutable column
 - No indexes yet unless explicitly requested
+
 
 Why this matters:
 
@@ -2527,7 +2397,6 @@ Create a deterministic mapping registry for AnalyticsSignal → ContentSuggestio
 File: src/insights/mappings.ts
 
 Requirements:
-
 - Export mapSignalToSuggestions(signal)
 - Pure function (no DB access)
 - One signal can emit multiple suggestions
@@ -2539,11 +2408,11 @@ Requirements:
   - evidence selector
 
 Rules:
-
 - No randomness
 - No date/time logic
 - Mapping must be exhaustively switch-based on signal.type
 - Throw error on unknown signal types
+
 
 Why this matters:
 
@@ -2563,16 +2432,15 @@ Add unit tests for AnalyticsSignal → ContentSuggestion mappings.
 File: tests/phase11/mappings.test.ts
 
 Test cases:
-
 - Each signal type produces expected suggestion types
 - Severity mapping is correct
 - EvidenceJson contains expected metrics
 - Unknown signal type throws error
 
 Rules:
-
 - Use snapshot-style expectations for evidenceJson
 - No Prisma usage
+
 
 Why this matters:
 
@@ -2588,20 +2456,18 @@ Copilot Prompt — Idempotency Guard
 Add idempotency protection for ContentSuggestion creation.
 
 Approach:
-
 - Extend ContentSuggestion with sourceSignalId (String)
 - Enforce unique constraint on (sourceSignalId, type, targetId)
 
 Update:
-
 - Prisma schema
 - Insight Engine persistence logic
 
 Rules:
-
 - Same signal must never create duplicate suggestions
 - Engine must skip already-processed signals
 - Do NOT delete or overwrite suggestions
+
 
 Why this matters:
 
@@ -2619,20 +2485,18 @@ Add a reusable admin authorization guard.
 File: src/auth/adminGuard.ts
 
 Requirements:
-
 - Export requireAdmin(session)
 - Throw HTTP 403 if user is not admin
 - Use role-based check (session.user.role === 'ADMIN')
 
 Apply guard to:
-
 - All /api/admin/suggestions routes
 - Future Phase 11 admin APIs
 
 Rules:
-
 - No silent fallbacks
 - No client-side checks
+
 
 Why this matters:
 
@@ -2648,13 +2512,11 @@ Copilot Prompt — Audit Events
 Extend audit logging with Phase 11 events.
 
 Add constants:
-
 - CONTENT_SUGGESTION_CREATED
 - CONTENT_SUGGESTION_ACCEPTED
 - CONTENT_SUGGESTION_DISMISSED
 
 Ensure:
-
 - All suggestion lifecycle events are logged
 - Payload includes:
   - suggestionId
@@ -2663,9 +2525,9 @@ Ensure:
   - timestamp
 
 Rules:
-
 - Non-blocking
 - Never throw
+
 
 Why this matters:
 
@@ -2683,7 +2545,6 @@ Copilot Prompt — Dashboard Linking
 Enhance admin analytics dashboard to surface content suggestions.
 
 Steps:
-
 - For a given courseId:
   - Fetch AnalyticsSignals
   - Fetch ContentSuggestions
@@ -2693,15 +2554,14 @@ Steps:
   - signal type
 
 UI:
-
 - Show “Suggested Actions” panel
 - Clicking opens suggestion details
 - Read-only evidence viewer
 
 Rules:
-
 - No inline edits
 - No generator triggers
+
 
 Why this matters:
 
@@ -2717,37 +2577,34 @@ Copilot Prompt — Retention
 Add retention policy for Phase 11 data.
 
 Policy:
-
 - ContentSuggestion: retain forever
 - AnalyticsSignal: retain 180 days
 - Raw AnalyticsEvent: retain 90 days
 
 Implementation:
-
 - Scheduled job
 - Soft-delete or archive (no hard deletes unless required)
 - Audit every pruning action
 
 Rules:
-
 - Never delete suggestions
 - Never delete aggregates
 
 ✅ FINAL STATUS — PHASE 11 PROMPT COMPLETENESS
-Area Status
-Insight Engine ✅
-Store ✅
-Admin APIs ✅
-Admin UI ✅
-Audit ✅
-Jobs ✅
-Prisma migration ❌ → now added
-Signal mapping registry ❌ → now added
-Idempotency guard ❌ → now added
-Admin guard ❌ → now added
-Audit taxonomy ❌ → now added
-Dashboard linkage ❌ → now added
-Retention policy ⚠ optional
+Area	Status
+Insight Engine	✅
+Store	✅
+Admin APIs	✅
+Admin UI	✅
+Audit	✅
+Jobs	✅
+Prisma migration	❌ → now added
+Signal mapping registry	❌ → now added
+Idempotency guard	❌ → now added
+Admin guard	❌ → now added
+Audit taxonomy	❌ → now added
+Dashboard linkage	❌ → now added
+Retention policy	⚠ optional
 🎯 Recommendation (Strong)
 
 Execute missing prompts in this order:
@@ -2762,8 +2619,8 @@ Execute missing prompts in this order:
 
 Once done → Phase 11 is architecturally complete.
 
-# Phase 11 implementation summary
 
+# Phase 11 implementation summary
 Intended
 
 Goal: Convert AnalyticsSignal → reproducible, insert-only ContentSuggestion records for admin review (no auto-mutation).
@@ -2802,7 +2659,6 @@ Add the integration test for job → suggestion → audit idempotency, or
 Implement the audit event constants and wire them through store/APIs.
 
 # 📘 Phase 12 — Regeneration Jobs (Admin Control Plane)
-
 Phase Goal
 
 Provide a safe, admin-only, observable control plane for content regeneration jobs — without allowing:
@@ -2817,37 +2673,31 @@ This phase establishes human-in-the-loop regeneration control, not automation.
 ## Why Phase 12 Exists
 
 Earlier phases intentionally separated:
-
 - Insight generation (Phase 11)
 - Content generation (Phases 6–7)
 - Analytics (Phase 10)
 - Phase 12 bridges intent → execution without violating immutability or safety guarantees.
 
 ## Core Principles
-
-Principle Rule
-
-- Insert-only RegenerationJob rows are never deleted or edited
-- Explicit action Only admins may trigger regeneration
-- Generator isolation UI/API never call generators
-- Read-only UI JSON is observable, never editable
-- Auditability Every lifecycle event is logged
-- Determinism Triggering creates state change only
+Principle	Rule
+- Insert-only	RegenerationJob rows are never deleted or edited
+- Explicit action	Only admins may trigger regeneration
+- Generator isolation	UI/API never call generators
+- Read-only UI	JSON is observable, never editable
+- Auditability	Every lifecycle event is logged
+- Determinism	Triggering creates state change only
 - Scope (What This Phase Covers)
 
 ## ✅ Admin UI to:
-
 - List regeneration jobs
 - Inspect job details
 - Trigger pending jobs
 
 ## ✅ APIs to:
-
 - Read job metadata
 - Transition job state from PENDING → RUNNING
 
 ## ❌ Explicitly out of scope:
-
 - Editing jobs
 - Deleting jobs
 - Retrying completed/failed jobs
@@ -2857,33 +2707,30 @@ Principle Rule
 
 Data Model (Assumed)
 RegenerationJob {
-id
-status // PENDING | RUNNING | COMPLETED | FAILED
-targetType
-targetId
-instructionJson
-outputRef
-errorJson
-createdAt
-createdBy
+  id
+  status            // PENDING | RUNNING | COMPLETED | FAILED
+  targetType
+  targetId
+  instructionJson
+  outputRef
+  errorJson
+  createdAt
+  createdBy
 }
 
 ## Only status may change.
-
 ### API Contract
-
-Method Route Purpose
-GET /api/admin/regeneration-jobs List jobs
-GET /api/admin/regeneration-jobs/[id] Job detail
-POST /api/admin/regeneration-jobs/[id]/trigger Transition to RUNNING
+Method	Route	Purpose
+GET	/api/admin/regeneration-jobs	List jobs
+GET	/api/admin/regeneration-jobs/[id]	Job detail
+POST	/api/admin/regeneration-jobs/[id]/trigger	Transition to RUNNING
 
 No other HTTP verbs permitted.
 
 ### UI Pages
-
-Path Description
-/admin/regeneration-jobs Job list
-/admin/regeneration-jobs/[id] Job detail
+Path	Description
+/admin/regeneration-jobs	Job list
+/admin/regeneration-jobs/[id]	Job detail
 
 ### UI is server-rendered, admin-only.
 
@@ -2899,7 +2746,6 @@ Audit failures must never block state transitions.
 Completion Criteria
 
 ### Phase 12 is complete when:
-
 - Admins can observe all regeneration jobs
 - Admins can trigger pending jobs
 - No mutation beyond status change is possible
@@ -2910,7 +2756,6 @@ Completion Criteria
 ### What Comes Next
 
 Phase 13 will:
-
 - Execute jobs asynchronously
 - Produce outputs
 - Attach outputs to immutable references
@@ -2959,6 +2804,7 @@ If a change would violate these invariants, do NOT implement it.
 
 Acknowledge and wait for next instruction.
 
+
 ✅ Expected output: Copilot confirms understanding, no code changes.
 
 ## 🔌 Prompt 12.2 — Admin API: List Regeneration Jobs
@@ -2971,7 +2817,6 @@ Create a new admin-only API route:
 GET /api/admin/regeneration-jobs
 
 Requirements:
-
 - Read-only
 - Admin-auth guarded
 - No pagination yet
@@ -2980,14 +2825,12 @@ Requirements:
   id, status, targetType, targetId, createdAt, createdBy
 
 Constraints:
-
 - Do not allow POST/PUT/PATCH/DELETE
 - Return 405 for unsupported methods
 - Do not modify any database rows
 - Do not include instructionJson or outputRef here
 
 Add unit tests asserting:
-
 - Non-admin access is rejected
 - PUT/DELETE return 405
 - Returned data is sorted correctly
@@ -3002,7 +2845,6 @@ Create a new admin-only API route:
 GET /api/admin/regeneration-jobs/[jobId]
 
 Requirements:
-
 - Read-only
 - Admin-auth guarded
 - Returns full job record:
@@ -3011,14 +2853,12 @@ Requirements:
   createdAt, createdBy
 
 Constraints:
-
 - No mutation
 - No status change
 - Return 404 if job not found
 - Return 405 for non-GET methods
 
 Add unit tests asserting:
-
 - Admin can fetch job
 - Non-admin is rejected
 - Unsupported methods return 405
@@ -3033,7 +2873,6 @@ Create a new admin-only API route:
 POST /api/admin/regeneration-jobs/[jobId]/trigger
 
 Behavior:
-
 - Validate job exists
 - Validate status === PENDING
 - Inside a DB transaction:
@@ -3042,7 +2881,6 @@ Behavior:
 - Return updated job metadata
 
 Constraints:
-
 - Do NOT execute any generator
 - Do NOT enqueue background work
 - Do NOT modify any other fields
@@ -3050,7 +2888,6 @@ Constraints:
 - Unsupported methods return 405
 
 Add unit tests asserting:
-
 - Trigger works only for PENDING jobs
 - Trigger is idempotent-safe
 - Trigger does not call generators
@@ -3065,7 +2902,6 @@ Create a server-rendered admin page at:
 /admin/regeneration-jobs
 
 UI requirements:
-
 - Server component
 - Admin-only guard
 - Fetch from GET /api/admin/regeneration-jobs
@@ -3074,7 +2910,6 @@ UI requirements:
 - Each row links to detail page
 
 Constraints:
-
 - No client-side fetching
 - No mutations
 - No buttons
@@ -3089,7 +2924,6 @@ Create a server-rendered admin page at:
 /admin/regeneration-jobs/[jobId]
 
 Render:
-
 - Job metadata
 - instructionJson (read-only)
 - outputRef (read-only, if exists)
@@ -3097,14 +2931,12 @@ Render:
 - Audit events (if available)
 
 Trigger Button:
-
 - Visible only when status === PENDING
 - POSTs to trigger endpoint
 - Disabled while submitting
 - Redirects back to same page
 
 Constraints:
-
 - No editing
 - No retry button
 - No delete button
@@ -3116,14 +2948,12 @@ Maps to: Phase 12 → UI Utilities
 Create a reusable ReadOnlyJsonViewer component.
 
 Features:
-
 - Pretty-printed JSON
 - Collapsible nodes
 - Copy-to-clipboard button
 - Download JSON button
 
 Constraints:
-
 - Absolutely read-only
 - No textarea or input
 - No mutation handlers
@@ -3134,11 +2964,9 @@ Constraints:
 Maps to: Phase 12 → Audit
 
 Ensure audit logging exists for:
-
 - REGEN_JOB_TRIGGERED
 
 Requirements:
-
 - Non-blocking
 - Failures must not stop the request
 - Include admin user id and job id
@@ -3159,7 +2987,6 @@ Add regression tests to enforce Phase 12 invariants:
 - ✅ Status transition only affects status column
 
 Run:
-
 - npm run lint
 - npm run type-check
 - npm test
@@ -3173,7 +3000,6 @@ After Prompt 12.9, Phase 12 is complete.
 Do not proceed to execution, scheduling, retries, or Phase 13 unless explicitly instructed.
 
 ✅ Why This Will Work
-
 - Each prompt has one responsibility
 - Constraints are locally restated
 - Copilot can reason within context limits
@@ -3181,7 +3007,6 @@ Do not proceed to execution, scheduling, retries, or Phase 13 unless explicitly 
 - Easy to debug if something goes wrong
 
 # Summary of Phase 12 implemetation
-
 ## What Was Intended?
 
 - Goal: Build a safe, admin-only control plane for RegenerationJobs: list, inspect, and trigger jobs without allowing edits or generator runs.
@@ -3194,24 +3019,23 @@ Do not proceed to execution, scheduling, retries, or Phase 13 unless explicitly 
 - UI Utility: Added ReadOnlyJsonViewer.tsx (client component with collapsible view, copy, download).
 - Audit: Central helper log.ts used; trigger path switched to fire‑and‑forget logAuditEvent to satisfy “non‑blocking” requirement.
 - Tests: Updated regenerationJobs.trigger.test.ts; added regression tests regenerationJobs.regressions.test.ts enforcing invariants (double-trigger, completed/failed blocking, method 405s, no generators imported, status-only update).
-  Verification: Ran lint, type-check, and full test suite — all green (full test run after changes: 42 suites, 104 tests passed).
+Verification: Ran lint, type-check, and full test suite — all green (full test run after changes: 42 suites, 104 tests passed).
 
 ## What Is Pending?
 
 - Integration: Replace raw <pre/> JSON rendering in page.tsx with the new ReadOnlyJsonViewer.tsx.
 - UI Tests: End-to-end or integration tests for admin detail page + trigger flow (client behavior, redirect, error handling).
-  Audit resilience: Consider stronger handling/monitoring for audit failures (alerts, metrics, or a durable fallback) beyond current fire‑and‑forget logging.
-  UX / Scale: Pagination/filtering for the list endpoint and richer audit browsing in the admin UI (optional, future phases).
+Audit resilience: Consider stronger handling/monitoring for audit failures (alerts, metrics, or a durable fallback) beyond current fire‑and‑forget logging.
+UX / Scale: Pagination/filtering for the list endpoint and richer audit browsing in the admin UI (optional, future phases).
 
 ## Suggestions
 
 - Integrate viewer now: I can wire ReadOnlyJsonViewer into page.tsx and re-run checks (recommended next step).
 - Add an E2E test: Add one Cypress/Playwright test to exercise admin trigger end‑to‑end (auth, POST trigger, page reload, audit presence).
-  Monitor audit writes: Add a lightweight metric/alert when logAuditEvent emits warnings so audit failures become observable.
+Monitor audit writes: Add a lightweight metric/alert when logAuditEvent emits warnings so audit failures become observable.
 - Future improvement: Add server-side pagination and filtering to the list API if the job set grows.
 
 ## 📘 Phase 13 — Regeneration Execution Worker (Isolated, Deterministic, Audited)
-
 13.0 Phase Intent (Read This First)
 Goal
 
@@ -3245,14 +3069,15 @@ Execution Rules
 
 Status State Machine (Authoritative)
 PENDING
-↓ (worker lock)
+  ↓ (worker lock)
 RUNNING
-↓ success
+  ↓ success
 COMPLETED
 
 RUNNING
-↓ failure
+  ↓ failure
 FAILED
+
 
 ❌ No transitions backward
 ❌ No re-run of COMPLETED or FAILED jobs
@@ -3260,25 +3085,25 @@ FAILED
 
 13.2 System Architecture
 ┌────────────────────────┐
-│ Admin UI (Phase 12) │
-│ - Trigger only │
-│ - Read-only │
+│ Admin UI (Phase 12)    │
+│ - Trigger only         │
+│ - Read-only            │
 └──────────┬─────────────┘
-│
-▼
+           │
+           ▼
 ┌────────────────────────┐
-│ RegenerationJob (DB) │
-│ status=PENDING │
+│ RegenerationJob (DB)   │
+│ status=PENDING         │
 └──────────┬─────────────┘
-│
-▼
+           │
+           ▼
 ┌──────────────────────────────┐
 │ Regeneration Worker (Phase13)│
-│ - Polls DB │
-│ - Locks job │
-│ - Executes generator │
-│ - Writes output │
-│ - Audits lifecycle │
+│ - Polls DB                   │
+│ - Locks job                  │
+│ - Executes generator         │
+│ - Writes output              │
+│ - Audits lifecycle           │
 └──────────────────────────────┘
 
 13.3 Prisma Changes (If Needed)
@@ -3287,15 +3112,16 @@ FAILED
 Ensure fields exist:
 
 model RegenerationJob {
-id String @id @default(cuid())
-status RegenerationJobStatus
-instructionJson Json
-outputRef String?
-errorJson Json?
-lockedAt DateTime?
-completedAt DateTime?
-createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  status         RegenerationJobStatus
+  instructionJson Json
+  outputRef      String?
+  errorJson      Json?
+  lockedAt       DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
 }
+
 
 No new mutable fields beyond status + refs.
 
@@ -3332,8 +3158,8 @@ Re-runs must be no-ops
 13.6 Generator Interface (Strict)
 All generators must conform to:
 export interface RegenerationExecutor {
-type: RegenerationJobType
-run(input: InstructionJson): Promise<ExecutionResult>
+  type: RegenerationJobType
+  run(input: InstructionJson): Promise<ExecutionResult>
 }
 No generator registry exposed to UI or APIs.
 
@@ -3373,7 +3199,6 @@ Do NOT retry
 Do NOT rollback previous outputs
 
 13.10 Testing Strategy
-
 - Required Tests
 - 1Worker claims PENDING job
 - Completed job not re-run
@@ -3384,49 +3209,41 @@ Do NOT rollback previous outputs
 Crash recovery (lock prevents double run)
 
 ## 🧠 COPILOT PROMPTS (BROKEN DOWN, SAFE)
-
 🔹 Copilot Prompt 13.A — Worker Skeleton
 Create a new regeneration worker module that runs independently
 from API routes and UI.
 
 Requirements:
-
 - Location: /workers/regenerationWorker.ts
 - No HTTP imports
 - No Next.js imports
 - No session/auth imports
 
 Behavior:
-
 - Poll RegenerationJob where status = 'PENDING'
 - Process jobs sequentially (no concurrency yet)
 - Do not implement generator logic yet
 
 Include:
-
 - startWorker()
 - processNextJob()
 - claimJob(jobId)
 
 Do NOT:
-
 - Call any generator
 - Modify schemas
 - Import admin/UI code
 
 ## 🔹 Copilot Prompt 13.B — Job Locking Logic
-
 Implement atomic job locking for RegenerationJob.
 
 Task:
-
 - Update claimJob(jobId) to:
   - Transition status PENDING → RUNNING
   - Set lockedAt = now()
   - Return null if already locked
 
 Rules:
-
 - Use Prisma updateMany or equivalent
 - Ensure exactly-once semantics
 - Add unit tests for:
@@ -3434,11 +3251,9 @@ Rules:
   - Double-claim prevention
 
 ## 🔹 Copilot Prompt 13.C — Generator Interface
-
 Define a strict RegenerationExecutor interface.
 
 Requirements:
-
 - Interface only, no implementations
 - Located in /regeneration/executor.ts
 - run(input) returns ExecutionResult
@@ -3446,17 +3261,14 @@ Requirements:
 - No DB access inside interface
 
 Do NOT:
-
 - Implement generators
 - Import worker code
 
 ## 🔹 Copilot Prompt 13.D — Execution + Output Write
-
 Extend regenerationWorker to execute a generator
 after locking a job.
 
 Tasks:
-
 1. Read instructionJson
 2. Select generator by type
 3. Run generator
@@ -3465,36 +3277,30 @@ Tasks:
 6. Mark COMPLETED
 
 Rules:
-
 - OutputRef written exactly once
 - No overwrite allowed
 - Catch errors and mark FAILED
 - Write errorJson on failure
 
 ## 🔹 Copilot Prompt 13.E — Audit Wiring
-
 Add non-blocking audit logging to the regeneration worker.
 
 Events:
-
 - REGEN_JOB_LOCKED
 - REGEN_JOB_STARTED
 - REGEN_JOB_COMPLETED
 - REGEN_JOB_FAILED
 
 Rules:
-
 - Fire-and-forget logging
 - Never throw from audit
 - Include jobId and status
 - Reuse existing logAuditEvent helper
 
 ## 🔹 Copilot Prompt 13.F — Worker Tests
-
 Add unit tests for regenerationWorker.
 
 Test cases:
-
 1. PENDING job is claimed and completed
 2. COMPLETED job is skipped
 3. FAILED job is skipped
@@ -3503,7 +3309,6 @@ Test cases:
 6. Audit events emitted
 
 Rules:
-
 - Use test DB
 - No real generators (mock executor)
 - No filesystem writes (mock storage)
@@ -3519,7 +3324,6 @@ You may declare Phase 13 complete only when:
 ✅ Tests enforce invariants
 
 # Detailed summary of Phase 13 implementation
-
 ## What was intended
 
 Introduce an isolated, headless execution plane (worker-only) that materializes RegenerationJob → immutable RegenerationOutput.
@@ -3529,7 +3333,6 @@ Emit non-blocking audit events at lifecycle points: REGEN_JOB_LOCKED, REGEN_JOB_
 Provide a strict RegenerationExecutor interface for generators, and comprehensive unit + DB-backed tests enforcing invariants.
 
 ## What was completed
-
 executor.ts: added strict RegenerationExecutor interface and ExecutionResult types (generator contract).
 regenerationWorker.ts: implemented worker with:
 processNextJob() and claimJob() using transactional/atomic semantics (PENDING → RUNNING, set lockedAt).
@@ -3540,7 +3343,6 @@ Safe error handling: write errorJson and mark FAILED; no retries, no partial str
 regenerationJobRunner.ts: aligned runner semantics with worker (advisory lock-style, guarded updates).
 
 ## Tests added/updated:
-
 Unit tests for claim semantics, process flow, execution success/failure behavior, audit emission (mocks).
 DB-backed integration tests with quick DB-reachability checks (fail-fast if DATABASE_URL unreachable).
 Adjusted Phase 11/12 tests to avoid schema-coupling (explicit select) and to increase reliability/timeouts.
@@ -3550,7 +3352,6 @@ Fixed TypeScript/lint issues (removed debug console statements, corrected mock s
 Full verification completed: ESLint, tsc and Jest passed (final run reported green).
 
 ## What is pending
-
 Production object storage integration (S3 / blob) for outputs — current implementation supports deterministic local storage options; S3 integration is optional/left to be chosen.
 Formal PR/merge step and review (branching/commit polish, changelog/PR description).
 Optional: broaden E2E tests that exercise real generators + real object storage to validate full production flow (currently generator implementations are mocked in tests).
@@ -3558,7 +3359,6 @@ Optional hardening: operational telemetry for worker (metrics, backoff behavior,
 If your production DB schema differs (e.g., fields like lockedAt missing), ensure migrations are applied in target environments — some tests were made resilient, but production migration must be validated.
 
 ## Suggestions
-
 Integrate production object storage (S3/Blob) for outputs now — implement a deterministic path strategy and a small adapter behind an interface used by the worker; add integration tests that point at a test bucket.
 Open a focused PR containing:
 Summary of invariants (link Phase_13.md), changed files, tests added, and verification results.
@@ -3574,25 +3374,20 @@ Add basic Prometheus metrics hooks and a runbook doc.
 Would you like me to open the PR now or implement S3 output storage next?
 
 ## 📘 PHASE 14 — REGENERATION GOVERNANCE & RETRY CONTROL
-
 # 1. Phase 14 — Purpose & Positioning
-
 Why Phase 14 exists
 
 By the end of Phase 13, the system can:
-
 - Execute regeneration jobs exactly once
 - Produce immutable outputs
 - Separate control plane (admin/UI) from execution plane (worker)
 
 However, the system is currently terminal:
-
 - FAILED jobs cannot be retried
 - COMPLETED jobs cannot be superseded
 - Admins can observe failures but not govern recovery
 
 Phase 14 introduces human-governed recovery without breaking:
-
 - Immutability
 - Auditability
 - Execution isolation
@@ -3601,44 +3396,40 @@ Phase 14 introduces human-governed recovery without breaking:
 # 2. Core Principles (Non-Negotiable)
 
 Phase 14 MUST preserve all of these:
-
 - No mutation of existing jobs or outputs
 - Retries create new lineage, never reuse
 - Admins approve intent, workers execute
 - Retry is explicit, audited, and reasoned
 - No generators run from APIs or UI
 - Every retry is explainable post-hoc
-  If any of these are violated → Phase 14 is incorrect.
+If any of these are violated → Phase 14 is incorrect.
 
 # 3. High-Level Concept
-
 Introduce a new first-class concept: RetryIntent
 
 A RetryIntent is:
 An admin-created, audited declaration:
-
 - “I want this failed job to be retried, for this reason, under these constraints.”
-  It does not:
+It does not:
 - Execute generators
 - Modify jobs
 - Modify outputs
-  It simply authorizes the system to create a new RegenerationJob.
+It simply authorizes the system to create a new RegenerationJob.
 
 # 4. New Domain Objects
-
 ## 4.1 RetryIntent (NEW)
-
 RetryIntent {
-id
-sourceJobId // original FAILED job
-sourceOutputRef? // optional, if output exists
-reasonCode // enum
-reasonText // admin explanation
-approvedBy // admin user id
-approvedAt
-status // PENDING | CONSUMED | REJECTED
-createdAt
+  id
+  sourceJobId        // original FAILED job
+  sourceOutputRef?   // optional, if output exists
+  reasonCode         // enum
+  reasonText         // admin explanation
+  approvedBy         // admin user id
+  approvedAt
+  status             // PENDING | CONSUMED | REJECTED
+  createdAt
 }
+
 
 Invariants
 Insert-only
@@ -3648,33 +3439,32 @@ One RetryIntent can only be consumed once
 ## 4.2 RegenerationJob (EXTENSION)
 
 Add lineage fields (no behavior change):
-retryOfJobId? // points to original job
-retryIntentId? // points to RetryIntent
+retryOfJobId?        // points to original job
+retryIntentId?       // points to RetryIntent
 
 Invariant
 retryOfJobId is immutable
 retryIntentId must be unique per job
 
 ## 5. Lifecycle Flow (Authoritative)
-
 FAILED Job
-↓
+   ↓
 Admin reviews failure
-↓
+   ↓
 Admin creates RetryIntent (audited)
-↓
+   ↓
 System creates NEW RegenerationJob (PENDING)
-↓
+   ↓
 Worker claims & executes (Phase 13 rules)
-↓
+   ↓
 New RegenerationOutput (immutable)
+
 
 At no point:
 Is the original job modified
 Is the original output overwritten
 
 ## 6. Phase 14 Sub-Phases
-
 🔹 Phase 14.1 — Prisma Schema Changes
 What we add
 RetryIntent model
@@ -3718,7 +3508,6 @@ Generate Prisma client.
 Do not write APIs or business logic yet.
 
 ## 🔹 Phase 14.2 — RetryIntent Store Layer
-
 Purpose
 
 - Centralize persistence
@@ -3736,7 +3525,6 @@ Only admin callers
 Consumed intents cannot be reused
 
 ### Copilot Prompt — Phase 14.2 (Store)
-
 Copilot Prompt:
 
 Implement the RetryIntent persistence layer.
@@ -3765,7 +3553,6 @@ Idempotency on consume
 Do not add APIs or UI.
 
 ## 🔹 Phase 14.3 — Retry Job Creation Service
-
 Purpose
 
 Convert a RetryIntent into a new RegenerationJob
@@ -3803,7 +3590,6 @@ Transactional safety
 Do not touch worker code.
 
 ## 🔹 Phase 14.4 — Admin APIs
-
 APIs (Admin-only)
 POST /api/admin/retry-intents
 POST /api/admin/retry-intents/:id/execute
@@ -3842,7 +3628,6 @@ Double execution blocked
 Do not modify worker or generator code.
 
 ## 🔹 Phase 14.5 — Admin UI
-
 Pages
 
 Failed Job Detail → “Retry” section
@@ -3875,7 +3660,6 @@ Reuse ReadOnlyJsonViewer for evidence.
 Do not allow edits or deletes.
 
 ## 🔹 Phase 14.6 — Tests & Invariant Enforcement
-
 Required Tests
 
 RetryIntent idempotency
@@ -3910,10 +3694,10 @@ Worker executes retried jobs unchanged
 Admin has visibility and control
 All invariants are enforced by tests
 
+
 # What Was Intended (Phase 14)
 
 ## Goal: Add human-governed, auditable retry control without changing execution-plane invariants.
-
 New concept: RetryIntent — an admin-created, insert-only intent that authorizes creating a new RegenerationJob.
 Schema changes: Add RetryIntent model + enums (RetryIntentStatus, RetryReasonCode); extend RegenerationJob with retryOfJobId and retryIntentId.
 Store/service: Provide a store to create/consume/list intents and a service to atomically consume an intent and create a new job (transactional, idempotent).
@@ -3921,7 +3705,6 @@ APIs: Admin-only routes to create/list/execute intents (no generator calls in AP
 Invariants: No mutation of existing jobs/outputs; retries create new jobs; single-consumption of an intent; full audit trail.
 
 ## What We Accomplished
-
 Schema: Updated schema.prisma with enums and RetryIntent model; added lineage fields to RegenerationJob; created migrations and applied them to DB.
 Persistence: Implemented store.ts with createRetryIntent, consumeRetryIntent, listRetryIntentsForJob and unit tests enforcing FAILED-job guard and consume idempotency.
 Service: Implemented retryService.ts with transactional createRetryJobFromIntent (consume intent → create new RegenerationJob) and unit tests (double-execution blocked, transactional safety).
@@ -3935,7 +3718,6 @@ Tests: Added Phase 14 invariant tests (lineage, original outputs unchanged, idem
 Migrations & Client: Created migration files and successfully ran npx prisma migrate deploy and npx prisma generate against the configured DB.
 
 ## What Is Still Pending
-
 CI/Test DB sync: Ensure CI and all test environments apply the new migrations (we ran migrate deploy locally — CI must do the same).
 End-to-end DB-backed integration coverage: Add or expand E2E tests that exercise full admin → execute → worker end-to-end on CI (some DB-backed tests were added and pass locally).
 Admin UI: Phase 14 UI pages (failed-job Retry section, intent list/detail, execute button) remain to be implemented.
@@ -3943,22 +3725,19 @@ Observability/metrics: Optional: add metrics/alerts for retry intent creation/co
 Deployment checklist: Communicate migration window, backups, and rollout plan for production (required before deploy).
 
 ## Suggestions
-
 CI: Add a migration step to CI pipeline that runs npx prisma migrate deploy before tests/build to keep DB in sync. Example:
 Audit & Monitoring: Emit metrics for RETRY_INTENT_CREATED / RETRY_INTENT_CONSUMED and alert on unusual retry rates (surge → investigation).
 UI UX guardrails: Implement read-only admin UI with clear reason/approvedBy fields and a disabled/confirm modal for execute (force admin confirmation and require reason text).
 Operational: Document migration and rollback steps in WORKFLOWS.md and add a short runbook entry for retry governance operations.
 Security: Ensure admin APIs are RBAC-guarded and audit logs include actor, IP, and request context.
 Would you like me to:
-
 ## Next steps
-
 Add the CI migration step to the repo (CI config), or
 Scaffold the admin UI pages for RetryIntents, or
 Open a PR with a summary and migration notes?
 
-# Open AI Feedback
 
+# Open AI Feedback
 This is a very strong Phase 14 outcome — Copilot executed it correctly and, importantly, did not violate any execution-plane or immutability guarantees. Well done.
 
 Now let me answer clearly and decisively what comes next and what you should instruct Copilot to do, in the right order, without rework.
@@ -4021,7 +3800,6 @@ This is the last missing core deliverable of Phase 14.
 You already did this pattern in Phase 12 and Phase 11 — reuse it.
 
 ### 2.1 UI Scope (STRICT)
-
 Pages to build
 RetryIntents List (per Job)
 RetryIntent Detail
@@ -4121,7 +3899,6 @@ No edits, no deletes.
 ✅ Phase 14 Completion Checklist (Final)
 
 Phase 14 is DONE when:
-
 - RetryIntent schema + migration exists
 - Store + service enforce idempotency
 - APIs are admin-only and audited
@@ -4131,7 +3908,6 @@ Phase 14 is DONE when:
 - After Step 2 → Phase 14 is fully closed.
 
 What Comes Next (Preview)
-
 - Once Phase 14 UI is done, the system now supports:
 - Observation → Signal → Suggestion → Retry → Execution → New Output
-  That unlocks Phase 15:
+That unlocks Phase 15:

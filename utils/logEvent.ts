@@ -11,7 +11,7 @@ import { logger } from '@/lib/logger';
  */
 export async function logEvent(
   type: string,
-  metadata: Prisma.InputJsonValue = {} // Ensure metadata matches Prisma's InputJsonValue type
+  metadata: Prisma.InputJsonValue = {}, // Ensure metadata matches Prisma's InputJsonValue type
 ): Promise<void> {
   try {
     const session = await getServerSessionForHandlers();
@@ -19,10 +19,7 @@ export async function logEvent(
 
     // Ensure userId exists in the User table
     if (!userId) {
-      logger.warn(`Skipping event logging due to missing userId.`, {
-        className: 'logEvent',
-        methodName: 'logEvent',
-      });
+      logger.warn(`Skipping event logging due to missing userId.`, { className: 'logEvent', methodName: 'logEvent' });
       return;
     }
 
@@ -31,10 +28,7 @@ export async function logEvent(
     });
 
     if (!userExists) {
-      logger.warn(`Skipping event logging: userId ${userId} does not exist.`, {
-        className: 'logEvent',
-        methodName: 'logEvent',
-      });
+      logger.warn(`Skipping event logging: userId ${userId} does not exist.`, { className: 'logEvent', methodName: 'logEvent' });
       return;
     }
 
@@ -47,14 +41,8 @@ export async function logEvent(
       },
     });
     // Log using central logger
-    logger.add(`Event logged: type=${type}, userId=${userId}`, {
-      className: 'logEvent',
-      methodName: 'logEvent',
-    });
+    logger.add(`Event logged: type=${type}, userId=${userId}`, { className: 'logEvent', methodName: 'logEvent' });
   } catch (error) {
-    logger.error(`Failed to log event: type=${type} - ${String(error)}`, {
-      className: 'logEvent',
-      methodName: 'logEvent',
-    });
+    logger.error(`Failed to log event: type=${type} - ${String(error)}`, { className: 'logEvent', methodName: 'logEvent' });
   }
 }

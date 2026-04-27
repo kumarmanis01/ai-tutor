@@ -50,7 +50,7 @@ spec:
       containers:
         - name: evaluator
           image: your-registry/ai-tutor:latest
-          command: ['node', '/app/build/runAlertEvaluator.js']
+          command: ["node", "/app/build/runAlertEvaluator.js"]
           env:
             - name: DATABASE_URL
               valueFrom:
@@ -76,14 +76,13 @@ spec:
             periodSeconds: 30
           resources:
             limits:
-              cpu: '500m'
-              memory: '256Mi'
+              cpu: "500m"
+              memory: "256Mi"
             requests:
-              cpu: '100m'
-              memory: '128Mi'
+              cpu: "100m"
+              memory: "128Mi"
 ```
 
 Notes:
-
 - The `readinessProbe` shown expects the app to expose `/api/health` (see next section).
 - Prefer mounting a small sidecar (Pushgateway) or using Prometheus scraping of the `/api/metrics` route.

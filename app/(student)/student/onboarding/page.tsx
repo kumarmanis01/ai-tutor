@@ -21,12 +21,7 @@ export const dynamic = 'force-dynamic';
 function parseSubjects(raw: unknown): string[] {
   if (Array.isArray(raw)) return (raw as string[]).filter(Boolean);
   if (typeof raw === 'string' && raw.length > 0) {
-    return raw
-      .replace(/^\{/, '')
-      .replace(/\}$/, '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    return raw.replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean);
   }
   return [];
 }
@@ -39,17 +34,7 @@ export default async function StudentOnboardingPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      board: true,
-      grade: true,
-      language: true,
-      subjects: true,
-      age: true,
-      parentEmail: true,
-      parentPhone: true,
-      parentPhoneVerifiedAt: true,
-      whatsappPhone: true,
-    },
+    select: { board: true, grade: true, language: true, subjects: true, age: true, parentEmail: true, parentPhone: true, parentPhoneVerifiedAt: true, whatsappPhone: true },
   });
 
   if (user && isProfileComplete(user)) {
@@ -65,8 +50,7 @@ export default async function StudentOnboardingPage() {
     age: user?.age ?? null,
     parentEmail: user?.parentEmail ?? null,
     parentPhone: user?.parentPhone ?? null,
-    parentPhoneVerified:
-      user?.parentPhoneVerifiedAt !== null && user?.parentPhoneVerifiedAt !== undefined,
+    parentPhoneVerified: user?.parentPhoneVerifiedAt !== null && user?.parentPhoneVerifiedAt !== undefined,
     whatsappPhone: user?.whatsappPhone ?? null,
   };
 

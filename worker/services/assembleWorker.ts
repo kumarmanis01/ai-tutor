@@ -28,17 +28,17 @@ const MIN_QUESTIONS_FOR_APPROVAL = 5;
 /**
  * Worker handler for ASSEMBLE_TEST hydration jobs.
  * Called by contentWorker when job.data.type === 'ASSEMBLE_TEST'.
- *
+ * 
  * Assembles tests by checking draft GeneratedTest records and optionally
  * auto-approving those that meet the minimum question threshold.
- *
+ * 
  * @param jobId - The HydrationJob ID to process
  */
 export async function handleAssembleJob(jobId: string): Promise<void> {
   // Atomically claim the job
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },
-    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() },
+    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() }
   });
   if (claim.count === 0) {
     logger.info('handleAssembleJob: job already claimed or not pending', { jobId });
@@ -54,10 +54,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
   // Check global pause -- use Paused status so the resume route can find and re-enqueue this job
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
   if (isSystemSettingEnabled(paused?.value)) {
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Paused, lockedAt: null },
-    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Paused, lockedAt: null } });
     logger.info('handleAssembleJob: hydration paused, setting job to paused', { jobId });
     return;
   }
@@ -66,10 +63,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
   if (!topicId) {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'missing_topicId');
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
     throw new Error('missing_topicId');
   }
 
@@ -78,10 +72,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
   if (!topic) {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'topic_not_found');
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
     throw new Error('topic_not_found');
   }
 
@@ -96,7 +87,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
       promptType: 'assemble',
       language,
       requestBody: { jobId: job.id },
-      renderer: { schemaHash: null, version: null },
+      renderer: { schemaHash: null, version: null }
     });
     const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
       let lastErr: any = null;
@@ -124,13 +115,13 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
           topicId,
           language,
           difficulty,
-          status: 'draft',
+          status: 'draft'
         },
         include: {
           _count: {
-            select: { questions: true },
-          },
-        },
+            select: { questions: true }
+          }
+        }
       });
 
       let assembledCount = 0;
@@ -143,7 +134,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
           // Auto-approve tests that meet threshold
           await tx.generatedTest.update({
             where: { id: test.id },
-            data: { status: 'approved' },
+            data: { status: 'approved' }
           });
           assembledCount++;
           logger.info('handleAssembleJob: approved test', { testId: test.id, questionCount });
@@ -151,42 +142,22 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
       }
 
       // Mark hydration job completed (workers only update their own HydrationJob)
-      await tx.hydrationJob.update({
-        where: { id: job.id },
-        data: {
-          status: JobStatus.Completed,
-          completedAt: new Date(),
-          contentReady: assembledCount > 0,
-        },
-      });
+      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: assembledCount > 0 } });
 
       // Emit JobExecutionLog for observability but DO NOT mutate ExecutionJob
-      const linked = await tx.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: job.id } },
-      });
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
         const prevStatus = linked.status ?? null;
-        await tx.jobExecutionLog.create({
-          data: {
-            jobId: linked.id,
-            event: 'COMPLETED',
-            prevStatus,
-            newStatus: prevStatus,
-            meta: { hydrationJobId: job.id, assembledCount },
-          },
-        });
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id, assembledCount } } });
       }
 
       // Update AIContentLog as success
       if (aiLog?.id) {
-        await tx.aIContentLog.update({
-          where: { id: aiLog.id },
-          data: {
-            success: true,
-            status: 'success',
-            responseBody: { assembledCount },
-          },
-        });
+        await tx.aIContentLog.update({ where: { id: aiLog.id }, data: {
+          success: true,
+          status: 'success',
+          responseBody: { assembledCount }
+        } });
       }
 
       logger.info('handleAssembleJob: completed', { jobId, topicId, assembledCount });
@@ -195,24 +166,8 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
     const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
     const code = inferFailureCodeFromMessage(err?.message || '');
     const le = formatLastError(code, String(err?.message || 'assemble_failed'));
-    await prisma.hydrationJob.update({
-      where: { id: job.id },
-      data: { status: JobStatus.Failed, lastError: le },
-    });
-    try {
-      await prisma.aIContentLog.create({
-        data: {
-          model: 'none',
-          promptType: 'assemble',
-          language: job.language || 'en',
-          success: false,
-          status: 'failed',
-          error: le,
-          requestBody: { jobId: job.id },
-          responseBody: null,
-        },
-      });
-    } catch {}
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'assemble', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null } }) } catch {}
     throw err;
   }
 }

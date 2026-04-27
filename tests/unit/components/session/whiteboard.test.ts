@@ -44,8 +44,7 @@ describe('needsWhiteboard', () => {
   it('should NOT activate for history', () => expect(needsWhiteboard('History')).toBe(false));
   it('should NOT activate for english', () => expect(needsWhiteboard('English')).toBe(false));
   it('should NOT activate for empty string', () => expect(needsWhiteboard('')).toBe(false));
-  it('should handle leading/trailing whitespace', () =>
-    expect(needsWhiteboard('  maths  ')).toBe(true));
+  it('should handle leading/trailing whitespace', () => expect(needsWhiteboard('  maths  ')).toBe(true));
 });
 
 describe('extractSteps', () => {

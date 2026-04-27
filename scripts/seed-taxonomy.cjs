@@ -17,6 +17,7 @@ require('dotenv').config({
  */
 const { prisma } = require('../lib/prisma');
 
+
 // ── data constants ───────────────────────────────────────────────────────────
 
 const BOARDS = [
@@ -37,69 +38,65 @@ const BOARDS = [
 //      is implemented in onboarding (post-launch backlog)
 // ─────────────────────────────────────────────────────────────────────────────
 const SUBJECT_MATRIX = {
+
   // ── Grades 1-2: Foundational stage (NEP 2020) ──────────────────────────
   '1-2': [
-    { name: 'English', slug: 'english', hasNCERT: true, mvp: false },
-    { name: 'Hindi', slug: 'hindi', hasNCERT: true, mvp: false },
-    { name: 'Mathematics', slug: 'mathematics', hasNCERT: true, mvp: false },
-    { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true, mvp: false },
+    { name: 'English',               slug: 'english',               hasNCERT: true,  mvp: false },
+    { name: 'Hindi',                 slug: 'hindi',                 hasNCERT: true,  mvp: false },
+    { name: 'Mathematics',           slug: 'mathematics',           hasNCERT: true,  mvp: false },
+    { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true,  mvp: false },
   ],
 
   // ── Grades 3-5: Preparatory stage ────────────────────────────────────────
   '3-5': [
-    { name: 'English', slug: 'english', hasNCERT: true, mvp: false },
-    { name: 'Hindi', slug: 'hindi', hasNCERT: true, mvp: false },
-    { name: 'Mathematics', slug: 'mathematics', hasNCERT: true, mvp: false },
-    { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true, mvp: false },
+    { name: 'English',               slug: 'english',               hasNCERT: true,  mvp: false },
+    { name: 'Hindi',                 slug: 'hindi',                 hasNCERT: true,  mvp: false },
+    { name: 'Mathematics',           slug: 'mathematics',           hasNCERT: true,  mvp: false },
+    { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true,  mvp: false },
   ],
 
   // ── Grades 6-8: Middle school ─────────────────────────────────────────────
   // NCERT 2024: Curiosity (Science), Ganita Prakash (Maths),
   //             Exploring Society (Social Science), Poorvi (English)
   '6-8': [
-    { name: 'English', slug: 'english', hasNCERT: true, mvp: true },
-    { name: 'Hindi', slug: 'hindi', hasNCERT: true, mvp: true },
-    { name: 'Mathematics', slug: 'mathematics', hasNCERT: true, mvp: true },
-    { name: 'Science', slug: 'science', hasNCERT: true, mvp: true },
-    { name: 'Social Science', slug: 'social-science', hasNCERT: true, mvp: true },
-    { name: 'Sanskrit', slug: 'sanskrit', hasNCERT: true, mvp: false },
-    { name: 'Urdu', slug: 'urdu', hasNCERT: true, mvp: false },
+    { name: 'English',        slug: 'english',        hasNCERT: true,  mvp: true  },
+    { name: 'Hindi',          slug: 'hindi',          hasNCERT: true,  mvp: true  },
+    { name: 'Mathematics',    slug: 'mathematics',    hasNCERT: true,  mvp: true  },
+    { name: 'Science',        slug: 'science',        hasNCERT: true,  mvp: true  },
+    { name: 'Social Science', slug: 'social-science', hasNCERT: true,  mvp: true  },
+    { name: 'Sanskrit',       slug: 'sanskrit',       hasNCERT: true,  mvp: false },
+    { name: 'Urdu',           slug: 'urdu',           hasNCERT: true,  mvp: false },
   ],
 
   // ── Grades 9-10: Secondary (board exam) ──────────────────────────────────
   '9-10': [
-    { name: 'English', slug: 'english', hasNCERT: true, mvp: true },
-    { name: 'Hindi', slug: 'hindi', hasNCERT: true, mvp: true },
-    { name: 'Mathematics', slug: 'mathematics', hasNCERT: true, mvp: true },
-    { name: 'Science', slug: 'science', hasNCERT: true, mvp: true },
-    { name: 'Social Science', slug: 'social-science', hasNCERT: true, mvp: true },
-    { name: 'Sanskrit', slug: 'sanskrit', hasNCERT: true, mvp: false },
-    { name: 'Information Technology', slug: 'information-technology', hasNCERT: false, mvp: false },
-    {
-      name: 'Artificial Intelligence',
-      slug: 'artificial-intelligence',
-      hasNCERT: false,
-      mvp: false,
-    },
+    { name: 'English',                 slug: 'english',                  hasNCERT: true,  mvp: true  },
+    { name: 'Hindi',                   slug: 'hindi',                    hasNCERT: true,  mvp: true  },
+    { name: 'Mathematics',             slug: 'mathematics',              hasNCERT: true,  mvp: true  },
+    { name: 'Science',                 slug: 'science',                  hasNCERT: true,  mvp: true  },
+    { name: 'Social Science',          slug: 'social-science',           hasNCERT: true,  mvp: true  },
+    { name: 'Sanskrit',                slug: 'sanskrit',                 hasNCERT: true,  mvp: false },
+    { name: 'Information Technology',  slug: 'information-technology',   hasNCERT: false, mvp: false },
+    { name: 'Artificial Intelligence', slug: 'artificial-intelligence',  hasNCERT: false, mvp: false },
   ],
 
   // ── Grades 11-12: Science stream (JEE/NEET -- highest demand) ─────────────
   // Commerce + Humanities: seeded separately post-launch via stream selection
   '11-12-science': [
-    { name: 'English', slug: 'english', hasNCERT: true, mvp: true },
-    { name: 'Physics', slug: 'physics', hasNCERT: true, mvp: true },
-    { name: 'Chemistry', slug: 'chemistry', hasNCERT: true, mvp: true },
-    { name: 'Mathematics', slug: 'mathematics', hasNCERT: true, mvp: true },
-    { name: 'Biology', slug: 'biology', hasNCERT: true, mvp: true },
-    { name: 'Computer Science', slug: 'computer-science', hasNCERT: true, mvp: false },
+    { name: 'English',            slug: 'english',          hasNCERT: true,  mvp: true  },
+    { name: 'Physics',            slug: 'physics',          hasNCERT: true,  mvp: true  },
+    { name: 'Chemistry',          slug: 'chemistry',        hasNCERT: true,  mvp: true  },
+    { name: 'Mathematics',        slug: 'mathematics',      hasNCERT: true,  mvp: true  },
+    { name: 'Biology',            slug: 'biology',          hasNCERT: true,  mvp: true  },
+    { name: 'Computer Science',   slug: 'computer-science', hasNCERT: true,  mvp: false },
     { name: 'Physical Education', slug: 'physical-education', hasNCERT: false, mvp: false },
   ],
 };
 
 function gradeRange(grade) {
-  if (grade <= 2) return '1-2';
-  if (grade <= 5) return '3-5';
-  if (grade <= 8) return '6-8';
+  if (grade <= 2)  return '1-2';
+  if (grade <= 5)  return '3-5';
+  if (grade <= 8)  return '6-8';
   if (grade <= 10) return '9-10';
   return '11-12-science'; // Science stream default; other streams added post-launch
 }
@@ -162,14 +159,8 @@ async function seedSubjectDefs() {
 // Subjects that are mandatory core (isCore=true) for every board+grade.
 // Everything not in this list is optional (isCore=false).
 const CORE_SUBJECT_SLUGS = new Set([
-  'english',
-  'mathematics',
-  'science',
-  'social-science',
-  'hindi',
-  'physics',
-  'chemistry',
-  'biology',
+  'english', 'mathematics', 'science', 'social-science',
+  'hindi', 'physics', 'chemistry', 'biology',
 ]);
 
 async function seedBoardSubjectConfig() {

@@ -75,7 +75,7 @@ export async function GET() {
 
   for (const s of sessions) {
     const dow = new Date(s.startedAt).getUTCDay(); // 0=Sun
-    const idx = dow === 0 ? 6 : dow - 1; // convert to Mon=0
+    const idx = dow === 0 ? 6 : dow - 1;           // convert to Mon=0
     if (idx >= 0 && idx < 7) days[idx].hasSession = true;
   }
 

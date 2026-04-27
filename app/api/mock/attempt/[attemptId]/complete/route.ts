@@ -20,7 +20,10 @@ export const dynamic = 'force-dynamic';
  * Idempotent: calling twice returns the stored result.
  * Auth-guarded: 401 before any DB query.
  */
-export async function POST(req: Request, { params }: { params: { attemptId: string } }) {
+export async function POST(
+  req: Request,
+  { params }: { params: { attemptId: string } },
+) {
   const start = Date.now();
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id: string } | undefined;
@@ -58,8 +61,7 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
 
   // Idempotent: already finished
   if (attempt.finishedAt) {
-    const percentileReliable =
-      (attempt.cohortCount ?? 0) >= MIN_COHORT && typeof attempt.percentile === 'number';
+    const percentileReliable = (attempt.cohortCount ?? 0) >= MIN_COHORT && typeof attempt.percentile === 'number';
     const res = NextResponse.json({
       attemptId,
       scorePercent: attempt.scorePercent,
@@ -75,7 +77,7 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
 
   // Auto-submit any sections that haven't been submitted yet
   const submittedSectionIds = new Set(
-    attempt.sectionAttempts.filter((sa) => sa.submittedAt).map((sa) => sa.sectionId)
+    attempt.sectionAttempts.filter((sa) => sa.submittedAt).map((sa) => sa.sectionId),
   );
 
   for (const sec of attempt.mockExam.sections) {
@@ -181,25 +183,14 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
     await prisma.$transaction([
       prisma.badge.upsert({
         where: { key: 'mock_complete' },
-        create: {
-          key: 'mock_complete',
-          name: 'Mock Champ',
-          description: 'Completed your first full mock exam',
-          icon: 'medal',
-        },
+        create: { key: 'mock_complete', name: 'Mock Champ', description: 'Completed your first full mock exam', icon: 'medal' },
         update: {},
       }),
-      prisma.userBadge.createMany({
-        data: [{ studentId: user.id, badgeKey: 'mock_complete' }],
-        skipDuplicates: true,
-      }),
-    ]);
+      prisma.userBadge.createMany({ data: [{ studentId: user.id, badgeKey: 'mock_complete' }], skipDuplicates: true }),
+    ])
   } catch (err) {
     // Non-blocking: don't fail the mock complete API if badge awarding fails
-    logger.warn('mock.complete: failed to award mock_complete badge', {
-      studentId: user.id,
-      error: String(err),
-    });
+    logger.warn('mock.complete: failed to award mock_complete badge', { studentId: user.id, error: String(err) })
   }
 
   logger.info('mock.completed', {

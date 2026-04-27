@@ -31,6 +31,5 @@ The following captures the main failure traces observed in older runs prior to s
     (node) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`
 
 Notes / root cause analysis:
-
 - The failing runs invoked the experimental `ts-node/esm` loader; these runs showed both loader warnings and intermittent test failures (e.g., `QUEUE_BACKLOG not active`) — symptomatic of a flaky runtime or environment/timing differences under the ESM loader.
 - The applied fix was to adopt a compile-first approach (generate Prisma client -> `tsc -p tsconfig.integration.json` -> `node scripts/run-with-env.mjs dist-integration/...`) which stabilizes test execution in CI by removing the experimental loader.

@@ -13,13 +13,13 @@
  * - 2026-04-15T00:00:00Z | copilot | add simple Razorpay client helper
  */
 
-import Razorpay from 'razorpay';
+import Razorpay from 'razorpay'
 
 export function getRazorpayClient(): Razorpay | null {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  if (!keyId || !keySecret) return null;
-  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+  const keyId = process.env.RAZORPAY_KEY_ID
+  const keySecret = process.env.RAZORPAY_KEY_SECRET
+  if (!keyId || !keySecret) return null
+  return new Razorpay({ key_id: keyId, key_secret: keySecret })
 }
 
-export default getRazorpayClient;
+export default getRazorpayClient

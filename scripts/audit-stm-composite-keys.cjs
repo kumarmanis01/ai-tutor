@@ -19,7 +19,7 @@
 
 'use strict';
 
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
 
 // ── Env loader (same as test-mvp-flow.cjs) ───────────────────────────────────
@@ -34,8 +34,8 @@ function loadEnv() {
       const m = line.match(/^([^=\s]+)=((?:".*")|(?:'.*')|.*)$/);
       if (!m) continue;
       let val = m[2];
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
-        val = val.slice(1, -1);
+      if ((val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
       if (!process.env[m[1]]) process.env[m[1]] = val;
     }
     break;
@@ -43,6 +43,7 @@ function loadEnv() {
 }
 loadEnv();
 const { prisma } = require('../lib/prisma');
+
 
 async function main() {
   console.log('═'.repeat(62));

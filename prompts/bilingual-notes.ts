@@ -17,13 +17,13 @@
  */
 
 export type BilingualNotesParams = {
-  topicName: string;
-  grade: number;
-  maxWords?: number;
-};
+  topicName: string
+  grade: number
+  maxWords?: number
+}
 
 export function bilingualNotesPrompt(params: BilingualNotesParams): string {
-  const maxWords = params.maxWords ?? 1200;
+  const maxWords = params.maxWords ?? 1200
   return `You are an experienced ${params.grade <= 8 ? 'middle school' : 'senior school'} teacher with 20 years of classroom experience in Indian schools.
 
 Task: Write classroom-quality study notes for "${params.topicName}" for Grade ${params.grade} students, in TWO languages: English ("en") and Hindi ("hi"). Each language version must be fully self-contained and independently complete.
@@ -99,5 +99,5 @@ Validation Constraints:
 - All text fields: plain text only, no HTML, no markdown markers.
 - If unable to produce valid content for a language, set that language value to '{}' (an empty object).
 
-Strict Output Instruction: Return ONLY valid JSON with top-level keys "en" and "hi" matching the schema; nothing else.`;
+Strict Output Instruction: Return ONLY valid JSON with top-level keys "en" and "hi" matching the schema; nothing else.`
 }

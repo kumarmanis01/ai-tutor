@@ -10,9 +10,7 @@ const dry = dryIndex !== -1;
 if (dry) args.splice(dryIndex, 1);
 
 if (args.length === 0) {
-  console.error(
-    'git-commit-wrapper: no args provided. Example: node scripts/git-commit-wrapper.js -m "msg"'
-  );
+  console.error('git-commit-wrapper: no args provided. Example: node scripts/git-commit-wrapper.js -m "msg"');
   process.exit(2);
 }
 

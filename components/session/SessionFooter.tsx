@@ -32,10 +32,7 @@ export function SessionFooter({
   if (!onPrevious && !onNext) return null;
 
   return (
-    <div
-      className="sticky z-30 bg-background/95 backdrop-blur border-t border-border/50 px-4 py-3"
-      style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}
-    >
+    <div className="sticky z-30 bg-background/95 backdrop-blur border-t border-border/50 px-4 py-3" style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}>
       <div className="max-w-2xl mx-auto flex flex-col gap-2">
         {/* Primary CTA -- always full width */}
         {onNext && (
@@ -45,19 +42,11 @@ export function SessionFooter({
             className="w-full min-h-[48px] flex items-center justify-center gap-2 px-5 bg-[#534AB7] hover:bg-[#3C3489] disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-sm shadow-md shadow-[#534AB7]/20"
           >
             {loading ? (
-              <span className="animate-spin text-base" aria-label="Loading">
-                ⏳
-              </span>
+              <span className="animate-spin text-base" aria-label="Loading">⏳</span>
             ) : (
               <>
                 <span>{nextLabel}</span>
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </>
@@ -71,13 +60,7 @@ export function SessionFooter({
             onClick={onPrevious}
             className="w-full min-h-[44px] flex items-center justify-center gap-1.5 px-5 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 rounded-xl transition-colors text-sm"
           >
-            <svg
-              className="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             <span>Previous</span>

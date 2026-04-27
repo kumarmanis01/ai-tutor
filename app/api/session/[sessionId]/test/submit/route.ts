@@ -87,7 +87,10 @@ interface TestResult {
  *     nextPhase: 'HOMEWORK'
  *   }
  */
-export async function POST(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
   const start = Date.now();
   let res: Response;
 
@@ -112,7 +115,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
   if (!body || !Array.isArray(body.answers) || body.answers.length === 0) {
     res = NextResponse.json(
       { error: 'answers[] is required and must be non-empty' },
-      { status: 400 }
+      { status: 400 },
     );
     logger.logAPI(req, res, { className: 'TestSubmitAPI', methodName: 'POST' }, start);
     return res;
@@ -153,7 +156,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         error: 'Test can only be submitted while the session is in the TEST phase',
         currentPhase: session.state,
       },
-      { status: 409 }
+      { status: 409 },
     );
     logger.logAPI(req, res, { className: 'TestSubmitAPI', methodName: 'POST' }, start);
     return res;
@@ -181,13 +184,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
   if (!test || test.questions.length === 0) {
     res = NextResponse.json(
       { error: 'No test questions available for this topic' },
-      { status: 404 }
+      { status: 404 },
     );
     logger.logAPI(req, res, { className: 'TestSubmitAPI', methodName: 'POST' }, start);
     return res;
   }
 
-  const questionMap = new Map<string, TestQuestionForGrading>(test.questions.map((q) => [q.id, q]));
+  const questionMap = new Map<string, TestQuestionForGrading>(
+    test.questions.map((q) => [q.id, q]),
+  );
 
   // ── Grade answers ─────────────────────────────────────────────────────────
 
@@ -259,7 +264,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         studentId: user.id,
         topicId: session.topicId,
         error: err,
-      })
+      }),
     );
   }
 
@@ -275,7 +280,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
           isCorrect: ga.isCorrect,
           source: 'test',
         },
-      }))
+      })),
     );
   }
 
@@ -312,7 +317,7 @@ function extractCorrectAnswer(answer: unknown): string | null {
 function gradeTestQuestion(
   question: TestQuestionForGrading,
   studentAnswer: string,
-  correctAnswerStr: string | null
+  correctAnswerStr: string | null,
 ): boolean {
   if (!correctAnswerStr) return false;
 

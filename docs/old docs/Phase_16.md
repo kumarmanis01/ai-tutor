@@ -6,7 +6,6 @@ This phase introduces NO new product features.
 It is pure hardening, ops, reliability, and governance.
 
 # PHASE 16 — Production Hardening, Ops, and Governance
-
 Phase 16 Purpose (WHY)
 
 By Phase 15, your system has:
@@ -30,9 +29,7 @@ Every background job must be idempotent
 Every environment must be reproducible
 
 Phase 16 Breakdown
-
 ## 16.1 Background Job Orchestration & Scheduling
-
 What we want to achieve
 
 Centralized, explicit job scheduling
@@ -64,7 +61,6 @@ One job = one execution unit
 Create a lib/jobs/registry.ts that exports a JobDefinition interface and a JobRegistry map.
 
 Each JobDefinition must include:
-
 - name: string
 - run(): Promise<void>
 - lockKey: string
@@ -75,9 +71,7 @@ Do NOT add cron logic yet.
 Do NOT execute jobs automatically.
 
 #### Prompt 2 — Register Existing Jobs
-
 Register existing jobs:
-
 - analyticsAggregator
 - generateSignals
 - generateSuggestions
@@ -87,7 +81,6 @@ Each must be wrapped as a JobDefinition using existing run functions.
 Do not change job logic.
 
 ## 16.2 Unified Job Runner (Safe Execution Wrapper)
-
 What we want to achieve
 
 One way to run jobs
@@ -108,13 +101,11 @@ Never crash the process
 Never retry automatically
 
 ### Copilot Prompt — Phase 16.2
-
 #### Prompt 3 — Job Runner
 
 Create lib/jobs/runner.ts.
 
 Implement runJob(job: JobDefinition) that:
-
 - Acquires Postgres advisory lock using job.lockKey
 - Enforces timeout using AbortController or Promise.race
 - Logs structured start/end/error events
@@ -123,15 +114,14 @@ Implement runJob(job: JobDefinition) that:
 Do NOT add retries.
 Do NOT swallow errors silently.
 
-### Copilot Prompt - Phase 16.3
 
+### Copilot Prompt - Phase 16.3
 #### Prompt 4 — Dry Run Support
 
 Add support for JOB_DRY_RUN=1.
 When enabled, runJob logs execution but does not call job.run().
 
 ## 16.3 Metrics & Observability (Minimum Viable)
-
 What we want to achieve
 
 Know when jobs run
@@ -149,11 +139,9 @@ Use counters + histograms
 Emit from job runner only
 
 #### Prompt 5 — Metrics Helper
-
 Create lib/metrics/jobs.ts.
 
 Expose functions:
-
 - recordJobStart(name)
 - recordJobSuccess(name, durationMs)
 - recordJobFailure(name, error)
@@ -161,14 +149,13 @@ Expose functions:
 Implementation may be console-based or Prometheus-style, but must be isolated.
 Do not import this directly into job logic.
 
-### Copilot Prompt - 16.4
 
+### Copilot Prompt - 16.4
 #### Prompt 6 — Integrate Metrics
 
 Integrate metrics helper into runJob() so all jobs emit metrics automatically.
 
 ## 16.4 Alerting on Job Failures (Ops Signals)
-
 What we want to achieve
 
 Humans know when jobs fail
@@ -189,26 +176,24 @@ No auto-recovery
 #### Prompt 7 — Job Failure Alerts
 
 When runJob catches an error:
-
 - Emit a JOB_FAILED alert using existing alert router
 - Include job name and error message
 - Respect rate limiting
 
 ## 16.5 Retention & Data Pruning
-
 What we want to achieve
 Control DB growth
 Preserve critical artifacts
 Avoid accidental deletion
 Retention Policy
-Model Retention
-AnalyticsEvent 90 days
-AnalyticsDailyAggregate 2 years
-AnalyticsSignal 1 year
-ContentSuggestion FOREVER
-RegenerationOutput FOREVER
-PublishedOutput FOREVER
-AuditLog FOREVER
+Model	Retention
+AnalyticsEvent	90 days
+AnalyticsDailyAggregate	2 years
+AnalyticsSignal	1 year
+ContentSuggestion	FOREVER
+RegenerationOutput	FOREVER
+PublishedOutput	FOREVER
+AuditLog	FOREVER
 Design
 
 Retention job (manual + scheduled)
@@ -227,7 +212,6 @@ Do NOT delete signals, suggestions, outputs, or audits.
 Register this as a JobDefinition (manual trigger only).
 
 ## 16.6 Environment & Deployment Hardening
-
 What we want to achieve
 
 Same behavior locally, CI, staging, prod
@@ -242,13 +226,11 @@ Fail fast on misconfiguration
 Explicit ENV contract
 
 ### Copilot Prompt — Phase 16.6
-
 #### Prompt 9 — Startup Validation
 
 Create lib/bootstrap/validateEnvironment.ts.
 
 On app start:
-
 - Verify DATABASE_URL exists
 - Verify prisma client can connect
 - Optionally check for pending migrations
@@ -256,7 +238,6 @@ On app start:
 Throw a fatal error if validation fails.
 
 ## 16.7 Operational Runbooks (Docs Only)
-
 What we want to achieve
 
 Humans know what to do
@@ -271,7 +252,6 @@ INCIDENTS.md
 #### Prompt 10 — Runbook Docs
 
 Create docs/JOBS.md documenting:
-
 - Each job
 - How to run manually
 - Expected duration
@@ -322,8 +302,8 @@ Once Phase 16 is complete, your system is:
 
 At that point, going live is a business decision, not a technical one.
 
-# Summary of Phase 16 implementaion
 
+# Summary of Phase 16 implementaion
 ## What Was Intended
 
 Goal: Centralize and harden background jobs so they are safe, observable, auditable, and non-destructive per Phase 16 (no new features or content mutations).
@@ -351,6 +331,6 @@ Operational verification in staging: run jobs in staging for a few cycles, valid
 
 Wire registration at bootstrap: add import '@/lib/jobs/registerJobs' to your server bootstrap (example: top of providers.tsx or your orchestrator entry). I can patch this for you.
 Deploy migrations from CI: run in CI with locked credentials:
-Prometheus & monitoring: expose Prometheus metrics endpoint (or ensure existing exporter scrapes prom-client) so job\_\* metrics are collected.
+Prometheus & monitoring: expose Prometheus metrics endpoint (or ensure existing exporter scrapes prom-client) so job_* metrics are collected.
 Staging runbook: run retention job in dry-run first, then a small production-like window; validate alerts and audit logs.
 Optional: I can (a) add the bootstrap import patch now, (b) add a tiny CI checklist / one-liner job to run migrations in deployment, or (c) create a short docs/RETENTION.md with safe-run instructions — which would you like me to do next?

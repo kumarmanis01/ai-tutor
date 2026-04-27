@@ -28,10 +28,7 @@ const { Client } = require('pg');
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   try {
     await client.connect();
-    const jobLogsRes = await client.query(
-      'SELECT * FROM "JobExecutionLog" WHERE "jobId" = $1 ORDER BY "createdAt" DESC LIMIT 200',
-      [execId]
-    );
+    const jobLogsRes = await client.query('SELECT * FROM "JobExecutionLog" WHERE "jobId" = $1 ORDER BY "createdAt" DESC LIMIT 200', [execId]);
     console.log('\n=== JobExecutionLog rows (latest first) ===');
     console.log(JSON.stringify(jobLogsRes.rows, null, 2));
 
@@ -39,9 +36,7 @@ const { Client } = require('pg');
     console.log('\n=== ExecutionJob ===');
     console.log(JSON.stringify(execRes.rows, null, 2));
 
-    const hydRes = await client.query('SELECT * FROM "HydrationJob" WHERE "id" = $1', [
-      hydrationId,
-    ]);
+    const hydRes = await client.query('SELECT * FROM "HydrationJob" WHERE "id" = $1', [hydrationId]);
     console.log('\n=== HydrationJob ===');
     console.log(JSON.stringify(hydRes.rows, null, 2));
   } catch (e) {

@@ -18,20 +18,20 @@
  * values are silently ignored rather than causing type errors.
  */
 
-import { getRedis } from './redis';
+import { getRedis } from './redis'
 
 /**
  * Read a cached value. Returns null on miss or any error.
  */
 export async function cacheGet<T>(key: string): Promise<T | null> {
-  const redis = getRedis();
-  if (!redis) return null;
+  const redis = getRedis()
+  if (!redis) return null
   try {
-    const raw = await redis.get(key);
-    if (!raw) return null;
-    return JSON.parse(raw) as T;
+    const raw = await redis.get(key)
+    if (!raw) return null
+    return JSON.parse(raw) as T
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -39,10 +39,10 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
  * Write a value with a TTL in seconds. Silent no-op on any error.
  */
 export async function cacheSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
-  const redis = getRedis();
-  if (!redis) return;
+  const redis = getRedis()
+  if (!redis) return
   try {
-    await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+    await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds)
   } catch {
     // Cache write failures must never crash callers
   }
@@ -52,10 +52,10 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
  * Delete a single cache key (call after a mutation that invalidates data).
  */
 export async function cacheDel(key: string): Promise<void> {
-  const redis = getRedis();
-  if (!redis) return;
+  const redis = getRedis()
+  if (!redis) return
   try {
-    await redis.del(key);
+    await redis.del(key)
   } catch {
     // ignore
   }
@@ -67,17 +67,17 @@ export async function cacheDel(key: string): Promise<void> {
  * Example: cacheDelPattern('dash:v1:*')
  */
 export async function cacheDelPattern(pattern: string): Promise<void> {
-  const redis = getRedis();
-  if (!redis) return;
+  const redis = getRedis()
+  if (!redis) return
   try {
-    let cursor = '0';
+    let cursor = '0'
     do {
-      const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-      cursor = next;
+      const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100)
+      cursor = next
       if (keys.length > 0) {
-        await redis.del(...keys);
+        await redis.del(...keys)
       }
-    } while (cursor !== '0');
+    } while (cursor !== '0')
   } catch {
     // ignore
   }

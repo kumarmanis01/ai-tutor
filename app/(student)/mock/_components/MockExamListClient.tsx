@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * MockExamListClient -- client component for the mock exam selection page.
@@ -50,11 +50,7 @@ export default function MockExamListClient({ mocks, subjects, grade, board }: Pr
       if (!res.ok) throw new Error(json.error || 'Failed to generate exam');
       router.refresh(); // reload the server component to show new exam
     } catch (e: any) {
-      showAlert({
-        title: 'Error',
-        message: e.message ?? 'Failed to generate exam',
-        variant: 'error',
-      });
+      showAlert({ title: 'Error', message: e.message ?? 'Failed to generate exam', variant: 'error' });
     } finally {
       setGenerating(false);
     }

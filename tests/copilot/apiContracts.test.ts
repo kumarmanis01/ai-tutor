@@ -31,9 +31,7 @@ import {
 /**
  * Factory for creating valid notes responses
  */
-export function createNotesAPIResponse(
-  overrides: Partial<StudentAPIResponse> = {}
-): StudentAPIResponse {
+export function createNotesAPIResponse(overrides: Partial<StudentAPIResponse> = {}): StudentAPIResponse {
   return {
     success: true,
     data: {
@@ -48,7 +46,9 @@ export function createNotesAPIResponse(
             visualAid: 'Imagine a plant as a tiny food factory!',
           },
         ],
-        keyTerms: [{ term: 'Chlorophyll', definition: 'Green pigment in plants' }],
+        keyTerms: [
+          { term: 'Chlorophyll', definition: 'Green pigment in plants' },
+        ],
         summary: 'Photosynthesis is how plants make food.',
       },
       metadata: {
@@ -88,28 +88,28 @@ describe('API Success Response Builder', () => {
   it('should create valid success response structure', () => {
     const data = { conceptTitle: 'Test Concept' };
     const response = buildSuccessResponse(data, 'req_123');
-
+    
     expect(response.success).toBe(true);
     expect(response.data).toEqual(data);
     expect(response.requestId).toBe('req_123');
     expect(response.timestamp).toBeTruthy();
   });
-
+  
   it('should include ISO 8601 timestamp', () => {
     const response = buildSuccessResponse({ test: true }, 'req_456');
-
+    
     // Validate ISO 8601 format
     const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
     expect(response.timestamp).toMatch(isoRegex);
   });
-
+  
   it('should not include error field in success response', () => {
     const response = buildSuccessResponse({ data: 'test' }, 'req_789');
-
+    
     expect(response.error).toBeUndefined();
     expect(response.success).toBe(true);
   });
-
+  
   it('should preserve complex nested data', () => {
     const complexData = {
       sections: [
@@ -120,9 +120,9 @@ describe('API Success Response Builder', () => {
         nested: { deep: { value: 123 } },
       },
     };
-
+    
     const response = buildSuccessResponse(complexData, 'req_complex');
-
+    
     expect(response.data).toEqual(complexData);
   });
 });
@@ -140,50 +140,60 @@ describe('API Error Response Builder', () => {
         'req_err1',
         { field: 'grade', received: 'abc' }
       );
-
+      
       expect(response.success).toBe(false);
       expect(response.error.code).toBe('VALIDATION_ERROR');
       expect(response.error.message).toBe('Invalid grade parameter');
       expect(response.error.details.field).toBe('grade');
     });
-
+    
     it('should create rate limit error response', () => {
-      const response = buildErrorResponse('RATE_LIMIT_EXCEEDED', 'Too many requests', 'req_rate', {
-        retryAfter: 60,
-        limit: 100,
-      });
-
+      const response = buildErrorResponse(
+        'RATE_LIMIT_EXCEEDED',
+        'Too many requests',
+        'req_rate',
+        { retryAfter: 60, limit: 100 }
+      );
+      
       expect(response.error.code).toBe('RATE_LIMIT_EXCEEDED');
       expect(response.error.details.retryAfter).toBe(60);
     });
-
+    
     it('should create not found error response', () => {
-      const response = buildErrorResponse('NOT_FOUND', 'Resource not found', 'req_404');
-
+      const response = buildErrorResponse(
+        'NOT_FOUND',
+        'Resource not found',
+        'req_404'
+      );
+      
       expect(response.error.code).toBe('NOT_FOUND');
       expect(response.success).toBe(false);
     });
-
+    
     it('should create authentication error response', () => {
-      const response = buildErrorResponse('UNAUTHORIZED', 'Invalid or expired token', 'req_auth');
-
+      const response = buildErrorResponse(
+        'UNAUTHORIZED',
+        'Invalid or expired token',
+        'req_auth'
+      );
+      
       expect(response.error.code).toBe('UNAUTHORIZED');
     });
-
+    
     it('should create internal error response', () => {
       const response = buildErrorResponse(
         'INTERNAL_ERROR',
         'An unexpected error occurred',
         'req_500'
       );
-
+      
       expect(response.error.code).toBe('INTERNAL_ERROR');
       // Should NOT expose stack traces
       expect(response.error.message).not.toContain('at ');
       expect(response.error.message).not.toContain('Error:');
     });
   });
-
+  
   describe('Error Message Safety', () => {
     it('should not expose internal paths in error messages', () => {
       const response = buildErrorResponse(
@@ -192,11 +202,11 @@ describe('API Error Response Builder', () => {
         'req_safe1',
         { originalError: 'Error at /home/user/app/db.js:123' }
       );
-
+      
       // The response message should be sanitized
       expect(response.error.message).not.toContain('/home/user/app');
     });
-
+    
     it('should not expose API keys in error details', () => {
       const response = buildErrorResponse(
         'AUTHENTICATION_ERROR',
@@ -204,7 +214,7 @@ describe('API Error Response Builder', () => {
         'req_safe2',
         { context: 'key: sk-1234567890abcdef' }
       );
-
+      
       // Should mask or omit sensitive data
       const stringified = JSON.stringify(response);
       expect(stringified).not.toContain('sk-');
@@ -226,26 +236,26 @@ describe('API Request Schema Validation', () => {
         subject: 'Science',
         language: 'en',
       };
-
+      
       const result = validateRequestSchema('notes', request);
-
+      
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
-
+    
     it('should reject notes request without topic', () => {
       const request = {
         grade: 6,
         board: 'CBSE',
         subject: 'Science',
       };
-
+      
       const result = validateRequestSchema('notes', request);
-
+      
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('topic is required');
     });
-
+    
     it('should reject invalid grade range', () => {
       const request = {
         topic: 'Math',
@@ -253,14 +263,14 @@ describe('API Request Schema Validation', () => {
         board: 'CBSE',
         subject: 'Mathematics',
       };
-
+      
       const result = validateRequestSchema('notes', request);
-
+      
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('grade'))).toBe(true);
+      expect(result.errors.some(e => e.includes('grade'))).toBe(true);
     });
   });
-
+  
   describe('Practice Request', () => {
     it('should accept valid practice request', () => {
       const request = {
@@ -269,12 +279,12 @@ describe('API Request Schema Validation', () => {
         difficulty: 'MEDIUM',
         count: 5,
       };
-
+      
       const result = validateRequestSchema('practice', request);
-
+      
       expect(result.valid).toBe(true);
     });
-
+    
     it('should reject invalid difficulty level', () => {
       const request = {
         topic: 'Algebra',
@@ -282,13 +292,13 @@ describe('API Request Schema Validation', () => {
         difficulty: 'SUPER_HARD', // Invalid
         count: 5,
       };
-
+      
       const result = validateRequestSchema('practice', request);
-
+      
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('difficulty'))).toBe(true);
+      expect(result.errors.some(e => e.includes('difficulty'))).toBe(true);
     });
-
+    
     it('should enforce max count limit', () => {
       const request = {
         topic: 'Algebra',
@@ -296,14 +306,14 @@ describe('API Request Schema Validation', () => {
         difficulty: 'MEDIUM',
         count: 100, // Too many
       };
-
+      
       const result = validateRequestSchema('practice', request);
-
+      
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('count'))).toBe(true);
+      expect(result.errors.some(e => e.includes('count'))).toBe(true);
     });
   });
-
+  
   describe('Doubt Request', () => {
     it('should accept valid doubt request', () => {
       const request = {
@@ -312,36 +322,36 @@ describe('API Request Schema Validation', () => {
         subject: 'Science',
         context: 'Chapter 4: States of Matter',
       };
-
+      
       const result = validateRequestSchema('doubt', request);
-
+      
       expect(result.valid).toBe(true);
     });
-
+    
     it('should reject empty question', () => {
       const request = {
         question: '',
         grade: 7,
         subject: 'Science',
       };
-
+      
       const result = validateRequestSchema('doubt', request);
-
+      
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('question'))).toBe(true);
+      expect(result.errors.some(e => e.includes('question'))).toBe(true);
     });
-
+    
     it('should reject question that is too short', () => {
       const request = {
         question: 'Why?',
         grade: 7,
         subject: 'Science',
       };
-
+      
       const result = validateRequestSchema('doubt', request);
-
+      
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('question'))).toBe(true);
+      expect(result.errors.some(e => e.includes('question'))).toBe(true);
     });
   });
 });
@@ -354,12 +364,12 @@ describe('API Response Schema Validation', () => {
   describe('Notes Response', () => {
     it('should validate correct notes response', () => {
       const response = createNotesAPIResponse();
-
+      
       const result = validateResponseSchema('notes', response.data);
-
+      
       expect(result.valid).toBe(true);
     });
-
+    
     it('should reject notes without required fields', () => {
       const response = {
         type: 'notes',
@@ -368,13 +378,13 @@ describe('API Response Schema Validation', () => {
           sections: [],
         },
       };
-
+      
       const result = validateResponseSchema('notes', response);
-
+      
       expect(result.valid).toBe(false);
     });
   });
-
+  
   describe('Practice Response', () => {
     it('should validate correct practice response', () => {
       const response = {
@@ -390,12 +400,12 @@ describe('API Response Schema Validation', () => {
           },
         ],
       };
-
+      
       const result = validateResponseSchema('practice', response);
-
+      
       expect(result.valid).toBe(true);
     });
-
+    
     it('should reject question without correct answer', () => {
       const response = {
         type: 'practice',
@@ -409,9 +419,9 @@ describe('API Response Schema Validation', () => {
           },
         ],
       };
-
+      
       const result = validateResponseSchema('practice', response);
-
+      
       expect(result.valid).toBe(false);
     });
   });
@@ -427,14 +437,14 @@ describe('API Response No Free Text Rule', () => {
       success: true,
       data: 'Here is some free text explanation about the topic...',
     };
-
+    
     // String data should be rejected
     const result = validateResponseSchema('notes', response.data);
-
+    
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes('structured'))).toBe(true);
+    expect(result.errors.some(e => e.includes('structured'))).toBe(true);
   });
-
+  
   it('should reject response with only message field', () => {
     const response = {
       success: true,
@@ -442,12 +452,12 @@ describe('API Response No Free Text Rule', () => {
         message: 'The answer to your question is 42.',
       },
     };
-
+    
     const result = validateResponseSchema('doubt', response.data);
-
+    
     expect(result.valid).toBe(false);
   });
-
+  
   it('should require typed content field', () => {
     const response = {
       success: true,
@@ -457,9 +467,9 @@ describe('API Response No Free Text Rule', () => {
         content: 'This is free text content',
       },
     };
-
+    
     const result = validateResponseSchema('notes', response.data);
-
+    
     expect(result.valid).toBe(false);
   });
 });
@@ -470,27 +480,31 @@ describe('API Response No Free Text Rule', () => {
 
 describe('API Rate Limiting Contracts', () => {
   it('should include rate limit headers in success response', () => {
-    const response = buildSuccessResponse({ data: 'test' }, 'req_rl1', {
-      rateLimit: {
-        limit: 100,
-        remaining: 95,
-        resetAt: Date.now() + 60000,
-      },
-    });
-
+    const response = buildSuccessResponse(
+      { data: 'test' },
+      'req_rl1',
+      {
+        rateLimit: {
+          limit: 100,
+          remaining: 95,
+          resetAt: Date.now() + 60000,
+        },
+      }
+    );
+    
     expect(response.rateLimit).toBeDefined();
     expect(response.rateLimit.limit).toBe(100);
     expect(response.rateLimit.remaining).toBe(95);
     expect(response.rateLimit.resetAt).toBeGreaterThan(Date.now());
   });
-
+  
   it('should enforce different limits for free vs premium users', () => {
     const freeUserLimits = { limit: 10, remaining: 5, resetAt: Date.now() + 3600000 };
     const premiumUserLimits = { limit: 100, remaining: 95, resetAt: Date.now() + 3600000 };
-
+    
     expect(premiumUserLimits.limit).toBeGreaterThan(freeUserLimits.limit);
   });
-
+  
   it('should return retryAfter in rate limit error', () => {
     const response = buildErrorResponse(
       'RATE_LIMIT_EXCEEDED',
@@ -498,7 +512,7 @@ describe('API Rate Limiting Contracts', () => {
       'req_rl_err',
       { retryAfter: 300 }
     );
-
+    
     expect(response.error.details.retryAfter).toBe(300);
   });
 });
@@ -509,23 +523,31 @@ describe('API Rate Limiting Contracts', () => {
 
 describe('API Cache Control Contracts', () => {
   it('should include cache hints for cacheable responses', () => {
-    const response = buildSuccessResponse({ conceptTitle: 'Test' }, 'req_cache1', {
-      cache: {
-        ttl: 3600,
-        varyBy: ['grade', 'board', 'language'],
-      },
-    });
-
+    const response = buildSuccessResponse(
+      { conceptTitle: 'Test' },
+      'req_cache1',
+      {
+        cache: {
+          ttl: 3600,
+          varyBy: ['grade', 'board', 'language'],
+        },
+      }
+    );
+    
     expect(response.cache).toBeDefined();
     expect(response.cache.ttl).toBe(3600);
     expect(response.cache.varyBy).toContain('grade');
   });
-
+  
   it('should not cache user-specific responses', () => {
-    const response = buildSuccessResponse({ userProgress: { completed: 5 } }, 'req_nocache', {
-      cache: { ttl: 0, private: true },
-    });
-
+    const response = buildSuccessResponse(
+      { userProgress: { completed: 5 } },
+      'req_nocache',
+      {
+        cache: { ttl: 0, private: true },
+      }
+    );
+    
     expect(response.cache.ttl).toBe(0);
     expect(response.cache.private).toBe(true);
   });
@@ -537,23 +559,27 @@ describe('API Cache Control Contracts', () => {
 
 describe('API Pagination Contracts', () => {
   it('should include pagination metadata for list responses', () => {
-    const response = buildSuccessResponse({ items: [{ id: 1 }, { id: 2 }] }, 'req_page1', {
-      pagination: {
-        page: 1,
-        pageSize: 20,
-        totalItems: 100,
-        totalPages: 5,
-        hasNextPage: true,
-        hasPreviousPage: false,
-      },
-    });
-
+    const response = buildSuccessResponse(
+      { items: [{ id: 1 }, { id: 2 }] },
+      'req_page1',
+      {
+        pagination: {
+          page: 1,
+          pageSize: 20,
+          totalItems: 100,
+          totalPages: 5,
+          hasNextPage: true,
+          hasPreviousPage: false,
+        },
+      }
+    );
+    
     expect(response.pagination).toBeDefined();
     expect(response.pagination.page).toBe(1);
     expect(response.pagination.hasNextPage).toBe(true);
     expect(response.pagination.hasPreviousPage).toBe(false);
   });
-
+  
   it('should calculate total pages correctly', () => {
     const pagination = {
       page: 3,
@@ -563,7 +589,7 @@ describe('API Pagination Contracts', () => {
       hasNextPage: true,
       hasPreviousPage: true,
     };
-
+    
     expect(pagination.totalPages).toBe(5);
   });
 });

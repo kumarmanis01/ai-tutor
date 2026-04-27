@@ -31,31 +31,18 @@ describe('ProfileWidgets showcase', () => {
     const mockFetch = jest.fn((input: any, opts?: any) => {
       if (!opts) {
         // GET /api/user/profile
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ preferences: { badgeShowcase: [] } }),
-        });
+        return Promise.resolve({ ok: true, json: async () => ({ preferences: { badgeShowcase: [] } }) });
       }
       if (opts.method === 'PATCH') {
         const body = JSON.parse(opts.body || '{}');
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            ok: true,
-            preferences: { badgeShowcase: body.preferences.badgeShowcase },
-          }),
-        });
+        return Promise.resolve({ ok: true, json: async () => ({ ok: true, preferences: { badgeShowcase: body.preferences.badgeShowcase } }) });
       }
       return Promise.resolve({ ok: false });
     });
 
     (global as any).fetch = mockFetch;
 
-    render(
-      (
-        <ProfileWidgets badges={badges as any} showLeaderboard={false} showChallenge={false} />
-      ) as any
-    );
+    render(<ProfileWidgets badges={badges as any} showLeaderboard={false} showChallenge={false} /> as any);
 
     // wait for manage button
     const manage = await screen.findByRole('button', { name: /Manage Showcase/i });

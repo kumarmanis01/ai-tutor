@@ -15,9 +15,9 @@
 
 describe('GET /api/admin/metrics/ltv-cac', () => {
   beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
-  });
+    jest.resetModules()
+    jest.clearAllMocks()
+  })
 
   it('returns computed metrics when DB returns a row', async () => {
     const dbRow = {
@@ -33,26 +33,26 @@ describe('GET /api/admin/metrics/ltv-cac', () => {
       new_customers: 50,
       cac_paise: 2000,
       ltv_cac_ratio: 150.0,
-    };
+    }
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: { $queryRaw: async () => [dbRow] } }));
+    jest.doMock('@/lib/prisma', () => ({ prisma: { $queryRaw: async () => [dbRow] } }))
 
-    const route = await import('@/app/api/admin/metrics/ltv-cac/route');
-    const req = new Request('http://localhost');
-    const res: any = await route.GET(req as any);
+    const route = await import('@/app/api/admin/metrics/ltv-cac/route')
+    const req = new Request('http://localhost')
+    const res: any = await route.GET(req as any)
 
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.metrics).toBeDefined();
-    expect(body.metrics.mrr_paise).toBe(500000);
-    expect(body.metrics.mrr_inr).toBe(5000);
-    expect(body.metrics.active_subscriptions).toBe(100);
-    expect(body.metrics.new_customers).toBe(50);
-    expect(body.metrics.cac_paise).toBe(2000);
-    expect(body.metrics.cac_inr).toBe(20);
-    expect(body.metrics.ltv_cac_ratio).toBe(150);
-  });
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.metrics).toBeDefined()
+    expect(body.metrics.mrr_paise).toBe(500000)
+    expect(body.metrics.mrr_inr).toBe(5000)
+    expect(body.metrics.active_subscriptions).toBe(100)
+    expect(body.metrics.new_customers).toBe(50)
+    expect(body.metrics.cac_paise).toBe(2000)
+    expect(body.metrics.cac_inr).toBe(20)
+    expect(body.metrics.ltv_cac_ratio).toBe(150)
+  })
 
   it('handles zero new customers (CAC null)', async () => {
     const dbRow = {
@@ -68,18 +68,18 @@ describe('GET /api/admin/metrics/ltv-cac', () => {
       new_customers: 0,
       cac_paise: null,
       ltv_cac_ratio: null,
-    };
+    }
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: { $queryRaw: async () => [dbRow] } }));
+    jest.doMock('@/lib/prisma', () => ({ prisma: { $queryRaw: async () => [dbRow] } }))
 
-    const route = await import('@/app/api/admin/metrics/ltv-cac/route');
-    const req = new Request('http://localhost');
-    const res: any = await route.GET(req as any);
+    const route = await import('@/app/api/admin/metrics/ltv-cac/route')
+    const req = new Request('http://localhost')
+    const res: any = await route.GET(req as any)
 
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.metrics.cac_paise).toBeNull();
-    expect(body.metrics.ltv_cac_ratio).toBeNull();
-  });
-});
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.metrics.cac_paise).toBeNull()
+    expect(body.metrics.ltv_cac_ratio).toBeNull()
+  })
+})

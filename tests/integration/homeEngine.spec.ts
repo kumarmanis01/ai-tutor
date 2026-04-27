@@ -116,7 +116,7 @@ describe('getNextAction deterministic priority rules', () => {
         topicId: topic.id,
         date: new Date(),
         title: "Today's task",
-        description: 'Daily practice',
+        description: "Daily practice",
       },
     });
 

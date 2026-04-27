@@ -36,7 +36,7 @@ import type {
 export function safeParseLLMJson<T>(rawResponse: string): ValidationResult<T> {
   // Step 1: Clean up common LLM output issues
   let cleaned = rawResponse.trim();
-
+  
   // Remove markdown code fences if present
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.slice(7);
@@ -47,11 +47,11 @@ export function safeParseLLMJson<T>(rawResponse: string): ValidationResult<T> {
     cleaned = cleaned.slice(0, -3);
   }
   cleaned = cleaned.trim();
-
+  
   // Remove any leading/trailing text before/after JSON
   const jsonStart = cleaned.indexOf('{');
   const jsonEnd = cleaned.lastIndexOf('}');
-
+  
   if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
     return {
       valid: false,
@@ -59,9 +59,9 @@ export function safeParseLLMJson<T>(rawResponse: string): ValidationResult<T> {
       errors: ['Response does not contain valid JSON object'],
     };
   }
-
+  
   cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
-
+  
   // Step 2: Parse JSON
   try {
     const parsed = JSON.parse(cleaned) as T;
@@ -86,20 +86,20 @@ export function safeParseLLMJson<T>(rawResponse: string): ValidationResult<T> {
 function validateExplanationSection(section: unknown, index: number): string[] {
   const errors: string[] = [];
   const prefix = `coreExplanation[${index}]`;
-
+  
   if (!section || typeof section !== 'object') {
     return [`${prefix}: must be an object`];
   }
-
+  
   const s = section as Record<string, unknown>;
-
+  
   if (typeof s.heading !== 'string' || s.heading.length === 0) {
     errors.push(`${prefix}.heading: must be a non-empty string`);
   }
   if (typeof s.content !== 'string' || s.content.length === 0) {
     errors.push(`${prefix}.content: must be a non-empty string`);
   }
-
+  
   return errors;
 }
 
@@ -109,20 +109,20 @@ function validateExplanationSection(section: unknown, index: number): string[] {
 function validateWorkedExample(example: unknown, index: number): string[] {
   const errors: string[] = [];
   const prefix = `workedExamples[${index}]`;
-
+  
   if (!example || typeof example !== 'object') {
     return [`${prefix}: must be an object`];
   }
-
+  
   const e = example as Record<string, unknown>;
-
+  
   if (typeof e.question !== 'string' || e.question.length === 0) {
     errors.push(`${prefix}.question: must be a non-empty string`);
   }
   if (typeof e.explanation !== 'string' || e.explanation.length === 0) {
     errors.push(`${prefix}.explanation: must be a non-empty string`);
   }
-
+  
   return errors;
 }
 
@@ -131,18 +131,18 @@ function validateWorkedExample(example: unknown, index: number): string[] {
  */
 export function validateNotesOutput(data: unknown): ValidationResult<NotesOutputSchema> {
   const errors: string[] = [];
-
+  
   if (!data || typeof data !== 'object') {
     return { valid: false, data: null, errors: ['Response must be an object'] };
   }
-
+  
   const obj = data as Record<string, unknown>;
-
+  
   // Required string field
   if (typeof obj.title !== 'string' || obj.title.length === 0) {
     errors.push('title: must be a non-empty string');
   }
-
+  
   // Required array fields
   if (!Array.isArray(obj.learningObjectives)) {
     errors.push('learningObjectives: must be an array');
@@ -151,7 +151,7 @@ export function validateNotesOutput(data: unknown): ValidationResult<NotesOutput
   } else if (!obj.learningObjectives.every((item) => typeof item === 'string')) {
     errors.push('learningObjectives: all items must be strings');
   }
-
+  
   if (!Array.isArray(obj.coreExplanation)) {
     errors.push('coreExplanation: must be an array');
   } else if (obj.coreExplanation.length === 0) {
@@ -161,7 +161,7 @@ export function validateNotesOutput(data: unknown): ValidationResult<NotesOutput
       errors.push(...validateExplanationSection(section, i));
     });
   }
-
+  
   if (!Array.isArray(obj.workedExamples)) {
     errors.push('workedExamples: must be an array');
   } else {
@@ -169,23 +169,23 @@ export function validateNotesOutput(data: unknown): ValidationResult<NotesOutput
       errors.push(...validateWorkedExample(example, i));
     });
   }
-
+  
   if (!Array.isArray(obj.keyTakeaways)) {
     errors.push('keyTakeaways: must be an array');
   } else if (!obj.keyTakeaways.every((item) => typeof item === 'string')) {
     errors.push('keyTakeaways: all items must be strings');
   }
-
+  
   if (!Array.isArray(obj.commonMistakes)) {
     errors.push('commonMistakes: must be an array');
   } else if (!obj.commonMistakes.every((item) => typeof item === 'string')) {
     errors.push('commonMistakes: all items must be strings');
   }
-
+  
   if (errors.length > 0) {
     return { valid: false, data: null, errors };
   }
-
+  
   return { valid: true, data: obj as unknown as NotesOutputSchema, errors: [] };
 }
 
@@ -202,25 +202,25 @@ const VALID_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 function validateQuestion(question: unknown, index: number): string[] {
   const errors: string[] = [];
   const prefix = `questions[${index}]`;
-
+  
   if (!question || typeof question !== 'object') {
     return [`${prefix}: must be an object`];
   }
-
+  
   const q = question as Record<string, unknown>;
-
+  
   if (typeof q.id !== 'string' || q.id.length === 0) {
     errors.push(`${prefix}.id: must be a non-empty string`);
   }
-
+  
   if (typeof q.type !== 'string' || !VALID_QUESTION_TYPES.includes(q.type as QuestionType)) {
     errors.push(`${prefix}.type: must be one of ${VALID_QUESTION_TYPES.join(', ')}`);
   }
-
+  
   if (typeof q.question !== 'string' || q.question.length === 0) {
     errors.push(`${prefix}.question: must be a non-empty string`);
   }
-
+  
   // Options validation depends on question type
   const qType = q.type as QuestionType;
   if (qType === 'mcq') {
@@ -239,33 +239,30 @@ function validateQuestion(question: unknown, index: number): string[] {
       // Allow but don't require null
     }
   }
-
+  
   if (typeof q.correctAnswer !== 'string' || q.correctAnswer.length === 0) {
     errors.push(`${prefix}.correctAnswer: must be a non-empty string`);
   }
-
+  
   // For MCQ, verify correctAnswer matches one of the options
   if (qType === 'mcq' && Array.isArray(q.options)) {
     if (!q.options.includes(q.correctAnswer)) {
       errors.push(`${prefix}.correctAnswer: must match one of the options for MCQ`);
     }
   }
-
+  
   if (typeof q.explanation !== 'string' || q.explanation.length === 0) {
     errors.push(`${prefix}.explanation: must be a non-empty string`);
   }
-
-  if (
-    typeof q.difficulty !== 'string' ||
-    !VALID_DIFFICULTIES.includes(q.difficulty as Difficulty)
-  ) {
+  
+  if (typeof q.difficulty !== 'string' || !VALID_DIFFICULTIES.includes(q.difficulty as Difficulty)) {
     errors.push(`${prefix}.difficulty: must be one of ${VALID_DIFFICULTIES.join(', ')}`);
   }
-
+  
   if (typeof q.conceptTested !== 'string' || q.conceptTested.length === 0) {
     errors.push(`${prefix}.conceptTested: must be a non-empty string`);
   }
-
+  
   return errors;
 }
 
@@ -274,29 +271,29 @@ function validateQuestion(question: unknown, index: number): string[] {
  */
 export function validatePracticeOutput(data: unknown): ValidationResult<PracticeOutputSchema> {
   const errors: string[] = [];
-
+  
   if (!data || typeof data !== 'object') {
     return { valid: false, data: null, errors: ['Response must be an object'] };
   }
-
+  
   const obj = data as Record<string, unknown>;
-
+  
   if (!Array.isArray(obj.questions)) {
     return { valid: false, data: null, errors: ['questions: must be an array'] };
   }
-
+  
   if (obj.questions.length === 0) {
     errors.push('questions: must contain at least one question');
   }
-
+  
   obj.questions.forEach((question, i) => {
     errors.push(...validateQuestion(question, i));
   });
-
+  
   if (errors.length > 0) {
     return { valid: false, data: null, errors };
   }
-
+  
   return { valid: true, data: obj as unknown as PracticeOutputSchema, errors: [] };
 }
 
@@ -311,32 +308,32 @@ const VALID_CONFIDENCE_LEVELS: ConfidenceLevel[] = ['high', 'medium', 'low'];
  */
 export function validateDoubtsOutput(data: unknown): ValidationResult<DoubtsOutputSchema> {
   const errors: string[] = [];
-
+  
   if (!data || typeof data !== 'object') {
     return { valid: false, data: null, errors: ['Response must be an object'] };
   }
-
+  
   const obj = data as Record<string, unknown>;
-
+  
   if (typeof obj.response !== 'string' || obj.response.length === 0) {
     errors.push('response: must be a non-empty string');
   }
-
+  
   if (typeof obj.followUpQuestion !== 'string' || obj.followUpQuestion.length === 0) {
     errors.push('followUpQuestion: must be a non-empty string');
   }
-
+  
   if (
     typeof obj.confidenceLevel !== 'string' ||
     !VALID_CONFIDENCE_LEVELS.includes(obj.confidenceLevel as ConfidenceLevel)
   ) {
     errors.push(`confidenceLevel: must be one of ${VALID_CONFIDENCE_LEVELS.join(', ')}`);
   }
-
+  
   if (errors.length > 0) {
     return { valid: false, data: null, errors };
   }
-
+  
   return { valid: true, data: obj as unknown as DoubtsOutputSchema, errors: [] };
 }
 
@@ -355,7 +352,7 @@ export function validateLLMResponse<T>(
 ): ValidationResult<T> {
   // First, parse the JSON
   const parseResult = safeParseLLMJson<unknown>(rawResponse);
-
+  
   if (!parseResult.valid || !parseResult.data) {
     return {
       valid: false,
@@ -363,7 +360,7 @@ export function validateLLMResponse<T>(
       errors: parseResult.errors,
     };
   }
-
+  
   // Then, validate based on type
   switch (promptType) {
     case 'notes':

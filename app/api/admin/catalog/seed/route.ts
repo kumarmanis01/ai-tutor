@@ -19,35 +19,23 @@ export async function POST(req: NextRequest) {
     } catch {
       // Parse JSONL
       items = text
-        .split(/\r?\n/)
+        .split(/\r?\n/) 
         .map((line) => line.trim())
         .filter((line) => line.length > 0)
         .map((line) => {
-          try {
-            return JSON.parse(line);
-          } catch {
-            return null;
-          }
+          try { return JSON.parse(line); } catch { return null; }
         })
         .filter(Boolean) as any[];
     }
   } catch {
-    return NextResponse.json(
-      { error: 'invalid_body', message: 'Provide JSON array or JSONL' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'invalid_body', message: 'Provide JSON array or JSONL' }, { status: 400 });
   }
 
   const results = { upserted: 0, errors: [] as string[] };
   for (const item of items) {
-    const required = ['contentId', 'title', 'subject', 'board', 'grade', 'language'];
+    const required = ['contentId','title','subject','board','grade','language'];
     const missing = required.filter((k) => !item[k] || String(item[k]).trim() === '');
-    if (missing.length) {
-      results.errors.push(
-        `missing fields for ${item.contentId || 'unknown'}: ${missing.join(',')}`
-      );
-      continue;
-    }
+    if (missing.length) { results.errors.push(`missing fields for ${item.contentId || 'unknown'}: ${missing.join(',')}`); continue; }
     try {
       const contentId = String(item.contentId);
       const title = String(item.title);
@@ -78,18 +66,7 @@ export async function POST(req: NextRequest) {
            "tags" = EXCLUDED."tags",
            "active" = EXCLUDED."active",
            "updatedAt" = NOW()`,
-        contentId,
-        title,
-        description,
-        url,
-        type,
-        subject,
-        board,
-        grade,
-        language,
-        difficulty,
-        tags,
-        active
+        contentId, title, description, url, type, subject, board, grade, language, difficulty, tags, active,
       );
       results.upserted++;
     } catch (e: any) {

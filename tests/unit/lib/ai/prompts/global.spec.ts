@@ -109,14 +109,14 @@ describe('Global System Prompt', () => {
   describe('buildSystemPrompt', () => {
     it('combines global prompt with grade guidance', () => {
       const prompt = buildSystemPrompt(5, 'English');
-
+      
       expect(prompt).toContain('K–12 students');
       expect(prompt).toContain('GRADE-SPECIFIC GUIDANCE');
     });
 
     it('includes language instructions', () => {
       const prompt = buildSystemPrompt(8, 'Hindi');
-
+      
       expect(prompt).toContain('LANGUAGE INSTRUCTIONS');
       expect(prompt).toContain('Devanagari');
     });
@@ -124,7 +124,7 @@ describe('Global System Prompt', () => {
     it('adapts to different grade levels', () => {
       const grade3Prompt = buildSystemPrompt(3, 'English');
       const grade10Prompt = buildSystemPrompt(10, 'English');
-
+      
       expect(grade3Prompt).toContain('6-8 year old');
       expect(grade10Prompt).toContain('high school');
     });

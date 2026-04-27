@@ -38,84 +38,84 @@ Audit everything
 
 High-Level Flow
 RegenerationOutput (immutable)
-↓
+        ↓
 PromotionCandidate (admin-visible)
-↓
+        ↓
 PromotionDecision (approve/reject)
-↓
+        ↓
 PublishedOutput (ACTIVE pointer)
-↓
+        ↓
 Learner APIs consume ONLY this
 
 🧱 DATA MODEL (Prisma)
 15.1 New Enums
 enum PromotionStatus {
-PENDING
-APPROVED
-REJECTED
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum PublishScope {
-COURSE
-MODULE
-LESSON
+  COURSE
+  MODULE
+  LESSON
 }
 
 15.2 New Models
 PromotionCandidate
 model PromotionCandidate {
-id String @id @default(cuid())
-scope PublishScope
-scopeRefId String // courseId / lessonId etc
-regenerationJobId String
-outputRef String // immutable pointer
-status PromotionStatus @default(PENDING)
+  id                String   @id @default(cuid())
+  scope             PublishScope
+  scopeRefId        String   // courseId / lessonId etc
+  regenerationJobId String
+  outputRef         String   // immutable pointer
+  status            PromotionStatus @default(PENDING)
 
-createdBy String
-createdAt DateTime @default(now())
+  createdBy         String
+  createdAt         DateTime @default(now())
 
-reviewedBy String?
-reviewedAt DateTime?
-reviewNotes Json?
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  reviewNotes       Json?
 
-@@index([scope, scopeRefId])
-@@unique([scope, scopeRefId, outputRef])
+  @@index([scope, scopeRefId])
+  @@unique([scope, scopeRefId, outputRef])
 }
 
 PublishedOutput (The “Pointer” Model)
 model PublishedOutput {
-id String @id @default(cuid())
-scope PublishScope
-scopeRefId String
-outputRef String
+  id          String   @id @default(cuid())
+  scope       PublishScope
+  scopeRefId  String
+  outputRef   String
 
-promotedBy String
-promotedAt DateTime @default(now())
+  promotedBy  String
+  promotedAt  DateTime @default(now())
 
-@@unique([scope, scopeRefId])
+  @@unique([scope, scopeRefId])
 }
+
 
 Important:
 This guarantees exactly one ACTIVE output per scope.
 
 🔐 SAFETY INVARIANTS
-Rule Enforcement
-One active output DB unique constraint
-No mutation Insert-only models
-No auto publish Admin-only APIs
-Reversible Promote another output
-Learners see only approved Guarded read APIs
-Auditable Audit events on every action
-
+Rule	Enforcement
+One active output	DB unique constraint
+No mutation	Insert-only models
+No auto publish	Admin-only APIs
+Reversible	Promote another output
+Learners see only approved	Guarded read APIs
+Auditable	Audit events on every action
 ## 🧠 PHASE 15 SUB-PHASES
+Sub-Phase	Purpose
+15.1	Prisma schema & migration
+15.2	Promotion store/service
+15.3	Admin APIs
+15.4	Admin UI
+15.5	Learner read guards
+15.6	Audit & tests
 
-Sub-Phase Purpose
-15.1 Prisma schema & migration
-15.2 Promotion store/service
-15.3 Admin APIs
-15.4 Admin UI
-15.5 Learner read guards
-15.6 Audit & tests
 
 🤖 COPILOT PROMPTS (RUN IN ORDER)
 
@@ -124,7 +124,6 @@ Run one prompt at a time
 Commit after each sub-phase
 
 ### 🧩 15.1 — Prisma Schema & Migration
-
 Copilot Prompt — Phase 15.1
 
 Add Prisma schema for Phase 15 output promotion.
@@ -149,7 +148,6 @@ Run prisma generate.
 Do NOT modify existing models.
 
 ### 🧩 15.2 — Promotion Store & Service
-
 Purpose
 Encapsulate promotion logic outside APIs.
 
@@ -204,11 +202,10 @@ No double approve
 No learner access
 
 ### 🧩 15.4 — Admin UI
-
 Pages
-Page Route
-Candidate List /admin/promotions
-Candidate Detail /admin/promotions/[id]
+Page	Route
+Candidate List	/admin/promotions
+Candidate Detail	/admin/promotions/[id]
 
 Copilot Prompt — Phase 15.4
 Implement admin UI for output promotion.
@@ -229,7 +226,6 @@ Disable actions once decided
 Use existing ReadOnlyJsonViewer.
 
 ### 🧩 15.5 — Learner Read Guards
-
 Purpose
 
 Learners only see PublishedOutput.
@@ -269,7 +265,6 @@ Promotion is reversible by replacement
 Ensure full test suite passes.
 
 ### ✅ PHASE 15 DONE WHEN
-
 - Prisma migration applied
 - Admin can promote outputs
 - Learners see only ACTIVE output

@@ -48,10 +48,8 @@ export function extractJsonSpan(text: string): string | null {
   const lastObj = t.lastIndexOf('}');
   const firstArr = t.indexOf('[');
   const lastArr = t.lastIndexOf(']');
-  if (firstObj !== -1 && lastObj !== -1 && lastObj > firstObj)
-    return t.slice(firstObj, lastObj + 1).trim();
-  if (firstArr !== -1 && lastArr !== -1 && lastArr > firstArr)
-    return t.slice(firstArr, lastArr + 1).trim();
+  if (firstObj !== -1 && lastObj !== -1 && lastObj > firstObj) return t.slice(firstObj, lastObj + 1).trim();
+  if (firstArr !== -1 && lastArr !== -1 && lastArr > firstArr) return t.slice(firstArr, lastArr + 1).trim();
 
   return null;
 }

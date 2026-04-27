@@ -13,16 +13,16 @@
  * - 2026-04-10T00:00:00Z | copilot | created
  */
 
-import { Queue } from 'bullmq';
-import { getSharedConnection } from '@/lib/redis';
-import { logger } from '@/lib/logger';
+import { Queue } from 'bullmq'
+import { getSharedConnection } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 
-export const INSTALLMENT_DUNNING_QUEUE_NAME = 'installment-dunning';
+export const INSTALLMENT_DUNNING_QUEUE_NAME = 'installment-dunning'
 
 // Run daily at 03:00 UTC
-const DAILY_CRON = '0 3 * * *';
+const DAILY_CRON = '0 3 * * *'
 
-let installmentQueue: Queue | null = null;
+let installmentQueue: Queue | null = null
 
 export function getInstallmentDunningQueue(): Queue {
   if (!installmentQueue) {
@@ -33,25 +33,23 @@ export function getInstallmentDunningQueue(): Queue {
         removeOnComplete: 10,
         removeOnFail: 20,
       },
-    });
+    })
   }
-  return installmentQueue;
+  return installmentQueue
 }
 
 export async function registerDailyInstallmentDunningJob(): Promise<void> {
   try {
-    const queue = getInstallmentDunningQueue();
-    const repeatable = await queue.getRepeatableJobs();
-    const already = repeatable.some(
-      (j) => j.pattern === DAILY_CRON && j.name === 'installment-dunning'
-    );
+    const queue = getInstallmentDunningQueue()
+    const repeatable = await queue.getRepeatableJobs()
+    const already = repeatable.some((j) => j.pattern === DAILY_CRON && j.name === 'installment-dunning')
     if (already) {
-      logger.info('[installmentDunning] repeatable job already registered', { cron: DAILY_CRON });
-      return;
+      logger.info('[installmentDunning] repeatable job already registered', { cron: DAILY_CRON })
+      return
     }
-    await queue.add('installment-dunning', {}, { repeat: { pattern: DAILY_CRON } });
-    logger.info('[installmentDunning] registered repeatable job', { cron: DAILY_CRON });
+    await queue.add('installment-dunning', {}, { repeat: { pattern: DAILY_CRON } })
+    logger.info('[installmentDunning] registered repeatable job', { cron: DAILY_CRON })
   } catch (err) {
-    logger.error('[installmentDunning] failed to register job', { error: String(err) });
+    logger.error('[installmentDunning] failed to register job', { error: String(err) })
   }
 }

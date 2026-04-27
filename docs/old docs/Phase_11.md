@@ -23,16 +23,17 @@ Full human accountability
 
 3️⃣ Phase 11 — Conceptual Architecture
 AnalyticsEvent (raw)
-↓
+      ↓
 AnalyticsDailyAggregate
-↓
+      ↓
 AnalyticsSignal (rule-based)
-↓
+      ↓
 Insight Engine (Phase 11)
-↓
+      ↓
 ContentSuggestion (immutable)
-↓
+      ↓
 Admin Review UI
+
 
 🚫 No path back into generators
 🚫 No auto-approval
@@ -45,44 +46,45 @@ This is the single output of Phase 11.
 
 Prisma Schema
 enum SuggestionScope {
-COURSE
-MODULE
-LESSON
-QUIZ
+  COURSE
+  MODULE
+  LESSON
+  QUIZ
 }
 
 enum SuggestionType {
-LOW_COMPLETION
-HIGH_RETRY
-DROP_OFF
-LOW_ENGAGEMENT
-CONTENT_CLARITY
+  LOW_COMPLETION
+  HIGH_RETRY
+  DROP_OFF
+  LOW_ENGAGEMENT
+  CONTENT_CLARITY
 }
 
 enum SuggestionSeverity {
-LOW
-MEDIUM
-HIGH
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum SuggestionStatus {
-OPEN
-ACCEPTED
-DISMISSED
+  OPEN
+  ACCEPTED
+  DISMISSED
 }
 
 model ContentSuggestion {
-id String @id @default(cuid())
-courseId String
-scope SuggestionScope
-targetId String
-type SuggestionType
-severity SuggestionSeverity
-message String
-evidenceJson Json
-status SuggestionStatus @default(OPEN)
-createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  courseId      String
+  scope         SuggestionScope
+  targetId      String
+  type          SuggestionType
+  severity      SuggestionSeverity
+  message       String
+  evidenceJson  Json
+  status        SuggestionStatus @default(OPEN)
+  createdAt     DateTime @default(now())
 }
+
 
 Rules
 Insert-only
@@ -102,7 +104,6 @@ into ContentSuggestion records.
 File: src/insights/engine.ts
 
 Requirements:
-
 - Export generateSuggestionsForSignal(signal)
 - Use pure deterministic rule mapping
 - Each signal maps to 1+ suggestions
@@ -112,22 +113,21 @@ Requirements:
   - evidenceJson (metrics snapshot)
 
 Rules:
-
 - No DB reads except the signal itself
 - No deduplication
 - No content mutation
 - Suggestions must be reproducible from inputs
 
 Do NOT:
-
 - Call any generator
 - Modify syllabus/lesson/package tables
 
 Example Mapping (Implicit)
-Signal Suggestion
-LOW_COMPLETION Lesson too long / unclear
-HIGH_RETRY Quiz ambiguity
-DROP_OFF Module difficulty spike
+Signal	Suggestion
+LOW_COMPLETION	Lesson too long / unclear
+HIGH_RETRY	Quiz ambiguity
+DROP_OFF	Module difficulty spike
+
 
 🧾 11.3 Suggestion Persistence
 Goal
@@ -140,13 +140,11 @@ Create a persistence helper for ContentSuggestion.
 File: src/insights/store.ts
 
 Functions:
-
 - saveSuggestions(suggestions[])
 - listSuggestions(filters)
 - updateSuggestionStatus(id, status)
 
 Rules:
-
 - Only status can be updated
 - All writes must be audited
 - No deletes
@@ -160,12 +158,10 @@ Copilot Instruction — Tests
 Add unit tests for Phase 11.
 
 Paths:
-
 - tests/phase11/engine.test.ts
 - tests/phase11/store.test.ts
 
 Test cases:
-
 - Same AnalyticsSignal always produces same suggestions
 - EvidenceJson matches expected metrics
 - Status transitions work (OPEN → ACCEPTED / DISMISSED)
@@ -174,26 +170,21 @@ Test cases:
 Do NOT mock Prisma excessively; use test DB injection.
 
 🔒 11.5 Admin APIs (Read / Review)
-
 ## APIs
-
-Route Purpose
-GET /api/admin/suggestions List
-POST /api/admin/suggestions/:id/accept Approve
-POST /api/admin/suggestions/:id/dismiss Reject
+Route	Purpose
+GET /api/admin/suggestions	List
+POST /api/admin/suggestions/:id/accept	Approve
+POST /api/admin/suggestions/:id/dismiss	Reject
 
 # Copilot Instruction — Admin APIs
-
 Implement admin-only APIs for ContentSuggestion.
 
 Files:
-
 - src/app/api/admin/suggestions/route.ts
 - src/app/api/admin/suggestions/[id]/accept/route.ts
 - src/app/api/admin/suggestions/[id]/dismiss/route.ts
 
 Rules:
-
 - Admin auth required
 - Accept/Dismiss updates status only
 - Log audit event on every action
@@ -201,7 +192,6 @@ Rules:
 - No edits to message or evidence
 
 # 🖥️ 11.6 Admin UI (Review Dashboard)
-
 UI Capabilities
 
 List suggestions
@@ -217,63 +207,50 @@ Accept / Dismiss
 🚫 No approve chain
 
 ## Copilot Instruction — UI
-
 Create an admin UI for reviewing content suggestions.
 
 Path:
-
 - app/admin/suggestions/page.tsx
 - components/SuggestionCard.tsx
 
 Features:
-
 - Server-rendered list
 - Severity badge
 - Expandable evidence viewer
 - Accept / Dismiss buttons
 
 Rules:
-
 - Read-only except status
 - Optimistic UI allowed
 - No client-side mutation of suggestion data
 
 # 🧾 11.7 Audit Logging
-
 ## Copilot Instruction — Audit
-
 Ensure every suggestion lifecycle action is audited.
 
 Events:
-
 - SUGGESTION_CREATED
 - SUGGESTION_ACCEPTED
 - SUGGESTION_DISMISSED
 
 Rules:
-
 - Non-blocking
 - Never throw
 - Include suggestionId, adminId (if applicable)
 
 # ⏰ 11.8 Job Wiring (Optional but Recommended)
-
 ## Copilot Instruction — Job Hook
-
 Wire Insight Engine into nightly analytics job.
 
 When:
-
 - After generateSignalsForAllCourses()
 
 Steps:
-
 - Fetch new AnalyticsSignal records
 - Generate ContentSuggestions
 - Persist them
 
 Rules:
-
 - Idempotent per signal
 - Guard against duplicates if signal already processed
 - Use job lock
@@ -315,6 +292,7 @@ Versioned upgrades
 
 But only after Phase 11 is stable.
 
+
 Great question. Phase 11 is almost complete prompt-wise, but a few critical Copilot prompts were implicit, not explicitly written. Below is a clean, exhaustive list of the missing prompts, written in Copilot-ready, copy-pasteable form, with no overlap with what you already have.
 
 I’ll group them by what gap they close.
@@ -351,7 +329,6 @@ Copilot Prompt — Prisma Migration
 Add Prisma schema and migration for Phase 11 ContentSuggestion.
 
 Steps:
-
 1. Update schema.prisma:
    - Add enums:
      SuggestionScope, SuggestionType, SuggestionSeverity, SuggestionStatus
@@ -369,10 +346,10 @@ Steps:
    - Ensure no existing tables are modified
 
 Rules:
-
 - Insert-only semantics
 - Status is the only mutable column
 - No indexes yet unless explicitly requested
+
 
 Why this matters:
 
@@ -392,7 +369,6 @@ Create a deterministic mapping registry for AnalyticsSignal → ContentSuggestio
 File: src/insights/mappings.ts
 
 Requirements:
-
 - Export mapSignalToSuggestions(signal)
 - Pure function (no DB access)
 - One signal can emit multiple suggestions
@@ -404,11 +380,11 @@ Requirements:
   - evidence selector
 
 Rules:
-
 - No randomness
 - No date/time logic
 - Mapping must be exhaustively switch-based on signal.type
 - Throw error on unknown signal types
+
 
 Why this matters:
 
@@ -428,16 +404,15 @@ Add unit tests for AnalyticsSignal → ContentSuggestion mappings.
 File: tests/phase11/mappings.test.ts
 
 Test cases:
-
 - Each signal type produces expected suggestion types
 - Severity mapping is correct
 - EvidenceJson contains expected metrics
 - Unknown signal type throws error
 
 Rules:
-
 - Use snapshot-style expectations for evidenceJson
 - No Prisma usage
+
 
 Why this matters:
 
@@ -453,20 +428,18 @@ Copilot Prompt — Idempotency Guard
 Add idempotency protection for ContentSuggestion creation.
 
 Approach:
-
 - Extend ContentSuggestion with sourceSignalId (String)
 - Enforce unique constraint on (sourceSignalId, type, targetId)
 
 Update:
-
 - Prisma schema
 - Insight Engine persistence logic
 
 Rules:
-
 - Same signal must never create duplicate suggestions
 - Engine must skip already-processed signals
 - Do NOT delete or overwrite suggestions
+
 
 Why this matters:
 
@@ -484,20 +457,18 @@ Add a reusable admin authorization guard.
 File: src/auth/adminGuard.ts
 
 Requirements:
-
 - Export requireAdmin(session)
 - Throw HTTP 403 if user is not admin
 - Use role-based check (session.user.role === 'ADMIN')
 
 Apply guard to:
-
 - All /api/admin/suggestions routes
 - Future Phase 11 admin APIs
 
 Rules:
-
 - No silent fallbacks
 - No client-side checks
+
 
 Why this matters:
 
@@ -513,13 +484,11 @@ Copilot Prompt — Audit Events
 Extend audit logging with Phase 11 events.
 
 Add constants:
-
 - CONTENT_SUGGESTION_CREATED
 - CONTENT_SUGGESTION_ACCEPTED
 - CONTENT_SUGGESTION_DISMISSED
 
 Ensure:
-
 - All suggestion lifecycle events are logged
 - Payload includes:
   - suggestionId
@@ -528,9 +497,9 @@ Ensure:
   - timestamp
 
 Rules:
-
 - Non-blocking
 - Never throw
+
 
 Why this matters:
 
@@ -548,7 +517,6 @@ Copilot Prompt — Dashboard Linking
 Enhance admin analytics dashboard to surface content suggestions.
 
 Steps:
-
 - For a given courseId:
   - Fetch AnalyticsSignals
   - Fetch ContentSuggestions
@@ -558,15 +526,14 @@ Steps:
   - signal type
 
 UI:
-
 - Show “Suggested Actions” panel
 - Clicking opens suggestion details
 - Read-only evidence viewer
 
 Rules:
-
 - No inline edits
 - No generator triggers
+
 
 Why this matters:
 
@@ -582,37 +549,34 @@ Copilot Prompt — Retention
 Add retention policy for Phase 11 data.
 
 Policy:
-
 - ContentSuggestion: retain forever
 - AnalyticsSignal: retain 180 days
 - Raw AnalyticsEvent: retain 90 days
 
 Implementation:
-
 - Scheduled job
 - Soft-delete or archive (no hard deletes unless required)
 - Audit every pruning action
 
 Rules:
-
 - Never delete suggestions
 - Never delete aggregates
 
 ✅ FINAL STATUS — PHASE 11 PROMPT COMPLETENESS
-Area Status
-Insight Engine ✅
-Store ✅
-Admin APIs ✅
-Admin UI ✅
-Audit ✅
-Jobs ✅
-Prisma migration ❌ → now added
-Signal mapping registry ❌ → now added
-Idempotency guard ❌ → now added
-Admin guard ❌ → now added
-Audit taxonomy ❌ → now added
-Dashboard linkage ❌ → now added
-Retention policy ⚠ optional
+Area	Status
+Insight Engine	✅
+Store	✅
+Admin APIs	✅
+Admin UI	✅
+Audit	✅
+Jobs	✅
+Prisma migration	❌ → now added
+Signal mapping registry	❌ → now added
+Idempotency guard	❌ → now added
+Admin guard	❌ → now added
+Audit taxonomy	❌ → now added
+Dashboard linkage	❌ → now added
+Retention policy	⚠ optional
 🎯 Recommendation (Strong)
 
 Execute missing prompts in this order:
@@ -627,8 +591,8 @@ Execute missing prompts in this order:
 
 Once done → Phase 11 is architecturally complete.
 
-# Phase 11 implementation summary
 
+# Phase 11 implementation summary
 Intended
 
 Goal: Convert AnalyticsSignal → reproducible, insert-only ContentSuggestion records for admin review (no auto-mutation).

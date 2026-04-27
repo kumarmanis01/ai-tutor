@@ -9,11 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-import {
-  getRecoveryNudge,
-  markRecoveryResponded,
-  dismissRecoveryNudge,
-} from '@/lib/failureRecovery';
+import { getRecoveryNudge, markRecoveryResponded, dismissRecoveryNudge } from '@/lib/failureRecovery';
 
 export async function GET() {
   const session = await getServerSessionForHandlers();

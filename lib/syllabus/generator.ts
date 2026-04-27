@@ -32,7 +32,7 @@ export interface GenerateSyllabusInput {
  */
 export async function generateSyllabus(
   input: GenerateSyllabusInput,
-  llmFn: (input: GenerateSyllabusInput) => Promise<unknown> = stubLLMGenerate
+  llmFn: (input: GenerateSyllabusInput) => Promise<unknown> = stubLLMGenerate,
 ): Promise<CourseSyllabus> {
   // 1) Call the provided LLM function (defaults to stub)
   const raw = await llmFn(input);

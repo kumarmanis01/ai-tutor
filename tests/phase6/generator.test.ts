@@ -21,9 +21,7 @@ describe('generateSyllabus', () => {
 
   it('throws a readable validation error when LLM returns invalid JSON', async () => {
     const badLLM = jest.fn().mockResolvedValue({ foo: 'bar' });
-    await expect(generateSyllabus({ title: 'Broken Syllabus' }, badLLM)).rejects.toThrow(
-      /Syllabus schema validation failed/
-    );
+    await expect(generateSyllabus({ title: 'Broken Syllabus' }, badLLM)).rejects.toThrow(/Syllabus schema validation failed/);
   });
 
   it('fails clearly when required fields are missing from LLM output', async () => {

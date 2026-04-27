@@ -68,9 +68,7 @@ export default function ProfilePage() {
               tierColor={getTierColor(profile?.level ?? 1)}
             />
             <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              {profile?.email ?? session?.user?.email}
-            </p>
+            <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
             <div className="mt-2 flex gap-3 items-center text-sm text-gray-600 dark:text-gray-300">
               <div className="inline-flex items-center gap-2">
                 <span className="text-lg">🔥</span>
@@ -114,9 +112,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-muted-foreground">Set daily & weekly study targets</p>
                 </div>
               </div>
-              <span className="text-muted-foreground group-hover:text-primary transition-colors text-xl">
-                &rarr;
-              </span>
+              <span className="text-muted-foreground group-hover:text-primary transition-colors text-xl">&rarr;</span>
             </Link>
           </div>
 
@@ -147,31 +143,17 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <div>
                     <span className="font-semibold">UI Shell Language:</span>
-                    <div className="text-xs text-muted-foreground">
-                      Used for UI labels and system text. Teaching language is configured per
-                      subject.
-                    </div>
+                    <div className="text-xs text-muted-foreground">Used for UI labels and system text. Teaching language is configured per subject.</div>
                   </div>
                   <div>
                     <LanguageSelector
-                      lang={
-                        profile?.language
-                          ? (LANGUAGES.find((l) => l.code === profile.language)?.name ??
-                            profile.language)
-                          : 'English'
-                      }
+                      lang={profile?.language ? (LANGUAGES.find((l) => l.code === profile.language)?.name ?? profile.language) : 'English'}
                       // LanguageSelector performs persistence; keep this callback UI-only to avoid duplicate POSTs
                       setLang={async (_name: string) => {
                         try {
-                          try {
-                            await mutate();
-                          } catch {}
+                          try { await mutate(); } catch {}
                         } catch (err) {
-                          logger.warn('LanguageSelector setLang failed', {
-                            className: 'ProfilePage',
-                            methodName: 'LanguageSelector.setLang',
-                            error: String(err),
-                          });
+                          logger.warn('LanguageSelector setLang failed', { className: 'ProfilePage', methodName: 'LanguageSelector.setLang', error: String(err) });
                         }
                       }}
                       availableCodes={LANGUAGES.map((l) => l.code)}
@@ -185,21 +167,14 @@ export default function ProfilePage() {
               </div>
               <div>
                 <span className="font-semibold">Grade:</span>{' '}
-                {profile?.grade ? (
-                  `Class ${profile.grade}`
-                ) : (
-                  <span className="text-gray-400">Not set</span>
-                )}
+                {profile?.grade ? `Class ${profile.grade}` : <span className="text-gray-400">Not set</span>}
               </div>
               <div>
                 <span className="font-semibold">Subjects:</span>{' '}
                 {profile?.subjects && profile.subjects.length > 0 ? (
                   <span className="inline-flex flex-wrap gap-1 mt-1">
                     {profile.subjects.map((s: string) => (
-                      <span
-                        key={s}
-                        className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm"
-                      >
+                      <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm">
                         {s}
                       </span>
                     ))}

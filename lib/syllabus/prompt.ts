@@ -9,44 +9,44 @@ export interface SyllabusPromptInput {
 
 export function buildSyllabusPrompt(input: SyllabusPromptInput): string {
   const example = {
-    title: 'Example Course Title',
-    description: 'Short one-line description of the course.',
-    targetAudience: 'Beginner developers',
-    skillLevel: 'beginner',
+    title: "Example Course Title",
+    description: "Short one-line description of the course.",
+    targetAudience: "Beginner developers",
+    skillLevel: "beginner",
     timeBudgetMinutes: 180,
-    teachingStyle: 'hands-on',
+    teachingStyle: "hands-on",
     constraints: [],
     modules: [
       {
-        title: 'Module 1: Foundations',
-        description: 'Introductory concepts',
+        title: "Module 1: Foundations",
+        description: "Introductory concepts",
         lessons: [
           {
-            title: 'Lesson 1: Overview',
-            description: 'High-level overview',
-            objectives: ['Understand core concepts', 'Be able to explain key terms'],
-            estimatedMinutes: 30,
-          },
+            title: "Lesson 1: Overview",
+            description: "High-level overview",
+            objectives: ["Understand core concepts", "Be able to explain key terms"],
+            estimatedMinutes: 30
+          }
         ],
-        estimatedMinutes: 30,
-      },
+        estimatedMinutes: 30
+      }
     ],
-    outcomes: ['Learner can explain core concepts'],
-    version: '0.1.0-draft',
+    outcomes: ["Learner can explain core concepts"],
+    version: "0.1.0-draft",
     approved: false,
-    createdBy: 'syllabus-generator',
-    createdAt: '2025-01-01T00:00:00.000Z',
+    createdBy: "syllabus-generator",
+    createdAt: "2025-01-01T00:00:00.000Z",
     aiMetadata: {},
-    metadata: {},
+    metadata: {}
   };
 
   return (
     `You are an assistant that MUST produce a valid JSON object that exactly follows the syllabus schema.\n` +
     `Requirements (IMPORTANT):\n` +
-    `- Return RAW JSON ONLY -- do NOT wrap the JSON in markdown code fences (\\\`\\\`\\\`), do NOT add any explanation, commentary, or prose.\n` +
+      `- Return RAW JSON ONLY -- do NOT wrap the JSON in markdown code fences (\\\`\\\`\\\`), do NOT add any explanation, commentary, or prose.\n` +
     `- If you include markdown fences or any surrounding text, the consumer will strip them; however prefer to return plain JSON to avoid parsing errors.\n` +
-    `- Do NOT include prose or commentary -- only the JSON object (no fences, no language tags, no extra code blocks).\n` +
-    `- If a value is unknown, use an empty array, empty object, false, null, or an empty string as appropriate; do not omit required fields.\n` +
+      `- Do NOT include prose or commentary -- only the JSON object (no fences, no language tags, no extra code blocks).\n` +
+      `- If a value is unknown, use an empty array, empty object, false, null, or an empty string as appropriate; do not omit required fields.\n` +
     `- The JSON must use these fields exactly: title, description, targetAudience, skillLevel, timeBudgetMinutes, teachingStyle, constraints, modules, outcomes, version, approved, createdBy, createdAt, aiMetadata, metadata.\n` +
     `- modules is an array of objects with: title (string), description (string, optional), lessons (non-empty array), estimatedMinutes (integer minutes, optional).\n` +
     `- lessons is an array of objects with: title (string), description (string, optional), objectives (array of strings, non-empty), estimatedMinutes (integer minutes, optional), resources (array of {title, url?}, optional), assessmentHints (optional).\n` +

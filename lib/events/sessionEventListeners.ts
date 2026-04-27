@@ -15,13 +15,13 @@ onSessionCompleted((payload) => {
     logger.warn('[SESSION_EVENT] TopicRanker cache invalidation failed', {
       studentId: payload.studentId,
       error: err,
-    })
+    }),
   );
   recordSessionCompletion(payload.studentId, payload.sessionId).catch((err) =>
     logger.warn('[SESSION_EVENT] Engagement recordSessionCompletion failed', {
       studentId: payload.studentId,
       sessionId: payload.sessionId,
       error: err,
-    })
+    }),
   );
 });

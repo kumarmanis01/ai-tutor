@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * FILE OBJECTIVE:
@@ -38,27 +38,14 @@ export default function ModerationPageRedirect() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
       <div className="text-center">
         <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center animate-pulse">
-          <svg
-            className="w-8 h-8 text-indigo-600 dark:text-indigo-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 7l5 5m0 0l-5 5m5-5H6"
-            />
+          <svg className="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
         </div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Redirecting...</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Content moderation has moved to the unified{' '}
-          <Link href="/admin/content-approval" className="text-indigo-600 hover:underline">
-            Content Review
-          </Link>{' '}
-          page.
+          <Link href="/admin/content-approval" className="text-indigo-600 hover:underline">Content Review</Link> page.
         </p>
       </div>
     </div>

@@ -29,11 +29,11 @@
  * - Per COPILOT RULES: Hydrators only enqueue jobs, NO AI calls allowed here.
  */
 
-import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
-import { normalizeDifficulty, normalizeLanguage } from '@/lib/normalize';
-import { logger } from '@/lib/logger';
+import { enqueueQuestionsHydration } from "@/lib/execution-pipeline/enqueueTopicHydration"
+import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize"
+import { logger } from "@/lib/logger"
 
-const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1';
+const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
 
 /**
  * @deprecated Use `submitJob({ jobType: 'questions', entityType: 'TOPIC', entityId, payload: { language, difficulty } })`
@@ -47,28 +47,23 @@ export async function hydrateQuestions(
   difficulty: ReturnType<typeof normalizeDifficulty>,
   language: ReturnType<typeof normalizeLanguage>
 ): Promise<{ enqueued: boolean; jobId?: string; reason?: string }> {
-  if (HYDRATION_DEBUG)
-    logger.debug('[hydration][DEBUG] hydrateQuestions called (deprecated wrapper)', {
-      topicId,
-      difficulty,
-      language,
-    });
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] hydrateQuestions called (deprecated wrapper)', { topicId, difficulty, language })
 
   // Test environment: run legacy in-process hydration via test helper (DB writes)
   if (process.env.NODE_ENV === 'test') {
     try {
       // Dynamically import the test helper so this file has no static imports of the helper/prisma
-      const helper = await import('./testLegacyHydrateHelpers');
-      await helper.runLegacyQuestionsHydrate(topicId, difficulty as any, language as any);
-      return { enqueued: false };
+      const helper = await import('./testLegacyHydrateHelpers')
+      await helper.runLegacyQuestionsHydrate(topicId, difficulty as any, language as any)
+      return { enqueued: false }
     } catch (err) {
-      logger.error('hydrateQuestions (test) failed', { error: err });
-      return { enqueued: false, reason: 'llm_error' };
+      logger.error('hydrateQuestions (test) failed', { error: err })
+      return { enqueued: false, reason: 'llm_error' }
     }
   }
 
   // Delegate to the proper enqueue function
-  const result = await enqueueQuestionsHydration({ topicId, language, difficulty });
+  const result = await enqueueQuestionsHydration({ topicId, language, difficulty })
 
   if (HYDRATION_DEBUG) {
     logger.debug('[hydration][DEBUG] hydrateQuestions enqueue result', {
@@ -77,14 +72,14 @@ export async function hydrateQuestions(
       language,
       created: result.created,
       jobId: result.jobId,
-      reason: result.created ? undefined : (result as any).reason,
-    });
+      reason: result.created ? undefined : (result as any).reason
+    })
   }
 
   if (result.created) {
-    return { enqueued: true, jobId: result.jobId };
+    return { enqueued: true, jobId: result.jobId }
   } else {
-    return { enqueued: false, reason: (result as any).reason, jobId: result.jobId };
+    return { enqueued: false, reason: (result as any).reason, jobId: result.jobId }
   }
 }
 

@@ -1,12 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import type { Question, TestResult } from '@prisma/client';
 // Type matches Prisma enum -- defined inline to avoid build dependency on prisma generate
-const MasteryLevel = {
-  beginner: 'beginner',
-  intermediate: 'intermediate',
-  advanced: 'advanced',
-  expert: 'expert',
-} as const;
+const MasteryLevel = { beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced', expert: 'expert' } as const;
 type MasteryLevel = (typeof MasteryLevel)[keyof typeof MasteryLevel];
 import { createAIClient } from '@/lib/aiContext';
 import { callTutorLLM } from '@/lib/callLLM';
@@ -50,16 +45,14 @@ export function computeJaccardSimilarity(a: string, b: string): number {
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, ' ')
         .split(/\s+/)
-        .filter((t) => t.length > 2)
+        .filter((t) => t.length > 2),
     );
   const setA = tokenise(a);
   const setB = tokenise(b);
   if (setA.size === 0 && setB.size === 0) return 1;
   if (setA.size === 0 || setB.size === 0) return 0;
   let intersection = 0;
-  setA.forEach((t) => {
-    if (setB.has(t)) intersection++;
-  });
+  setA.forEach((t) => { if (setB.has(t)) intersection++ });
   const union = setA.size + setB.size - intersection;
   return intersection / union;
 }
@@ -73,7 +66,7 @@ export async function getRecentlyUsedQuestionIds(
   studentId: string,
   chapter: string,
   subject: string,
-  windowDays = 90
+  windowDays = 90,
 ): Promise<Set<string>> {
   const since = new Date();
   since.setDate(since.getDate() - windowDays);
@@ -90,7 +83,7 @@ export async function getRecentlyUsedQuestionIds(
     },
     select: { questionId: true },
   });
-  return new Set(rows.map((r: { questionId: string }) => r.questionId));
+  return new Set(rows.map((r) => r.questionId));
 }
 
 /**
@@ -102,7 +95,7 @@ export async function getRecentlyUsedQuestionPrompts(
   studentId: string,
   chapter: string,
   subject: string,
-  windowDays = 90
+  windowDays = 90,
 ): Promise<string[]> {
   const since = new Date();
   since.setDate(since.getDate() - windowDays);
@@ -117,7 +110,7 @@ export async function getRecentlyUsedQuestionPrompts(
     select: { question: { select: { prompt: true } } },
     take: 200,
   });
-  return rows.map((r: { question: { prompt: string } }) => r.question.prompt);
+  return rows.map((r) => r.question.prompt);
 }
 
 /**
@@ -140,7 +133,7 @@ export function isSemanticallyDuplicate(candidatePrompt: string, usedPrompts: st
 export async function selectQuestions(
   filters: QuestionFilters,
   count: number,
-  excludeIds?: Set<string>
+  excludeIds?: Set<string>,
 ): Promise<Question[]> {
   const excludeClause =
     excludeIds && excludeIds.size > 0 ? { id: { notIn: Array.from(excludeIds) } } : {};
@@ -191,10 +184,7 @@ export async function selectQuestions(
     } catch {}
     pool = await syncFromGeneratedQuestions(filters, count * 3);
     try {
-      logger.debug('selectQuestions.sync_from_generated.after', {
-        filters,
-        poolCount: pool.length,
-      });
+      logger.debug('selectQuestions.sync_from_generated.after', { filters, poolCount: pool.length });
     } catch {}
   }
 
@@ -231,10 +221,7 @@ export async function selectQuestions(
  * Query GeneratedQuestion via the topic/chapter/subject hierarchy,
  * upsert into the Question table (so AttemptQuestion FK works), and return them.
  */
-async function syncFromGeneratedQuestions(
-  filters: QuestionFilters,
-  take: number
-): Promise<Question[]> {
+async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number): Promise<Question[]> {
   const subjectFilter: Record<string, unknown> = {};
   if (filters.subject) subjectFilter.name = { equals: filters.subject, mode: 'insensitive' };
   if (filters.board || filters.grade) {
@@ -272,17 +259,7 @@ async function syncFromGeneratedQuestions(
             select: {
               id: true,
               name: true,
-              chapter: {
-                select: {
-                  name: true,
-                  subject: {
-                    select: {
-                      name: true,
-                      class: { select: { grade: true, board: { select: { slug: true } } } },
-                    },
-                  },
-                },
-              },
+              chapter: { select: { name: true, subject: { select: { name: true, class: { select: { grade: true, board: { select: { slug: true } } } } } } } },
             },
           },
         },
@@ -340,10 +317,7 @@ async function syncFromGeneratedQuestions(
  * Uses `lib/aiContext.ts` to request structured questions for the given filters.
  * In production, add validation and de-duplication before persisting.
  */
-export async function generateQuestionsAI(
-  filters: QuestionFilters,
-  count: number
-): Promise<Question[]> {
+export async function generateQuestionsAI(filters: QuestionFilters, count: number): Promise<Question[]> {
   const ai = createAIClient();
   const prompt = `Generate ${count} ${filters.type ?? 'mixed'} questions for subject ${filters.subject ?? 'General'} grade ${filters.grade ?? '-'} board ${filters.board ?? '-'}. Return JSON array with fields: type, prompt, choices (for mcq), correctAnswer, difficulty.`;
   const result = await ai.complete({ prompt, maxTokens: 800 });
@@ -384,11 +358,7 @@ export async function generateQuestionsAI(
  * Hook to select or generate questions ensuring minimum count.
  * Attempts bank first; falls back to AI generation.
  */
-export async function ensureQuestions(
-  filters: QuestionFilters,
-  count: number,
-  excludeIds?: Set<string>
-) {
+export async function ensureQuestions(filters: QuestionFilters, count: number, excludeIds?: Set<string>) {
   const bank = await selectQuestions(filters, count, excludeIds);
   if (bank.length >= count) return bank.slice(0, count);
   const needed = count - bank.length;
@@ -435,78 +405,80 @@ function timeForType(type: string, board?: string | null): number {
 export async function selectQuestionsWithMix(
   filters: Omit<QuestionFilters, 'type'>,
   count: number,
-  studentId?: string
+  studentId?: string,
 ): Promise<{ questions: Question[]; timeLimitSeconds: number }> {
   // AC-01: fetch recently seen question IDs and prompts for 90-day exclusion + semantic dedup.
-  const [excludeIds, usedPrompts] = await (studentId && filters.chapter && filters.subject
-    ? Promise.all([
-        getRecentlyUsedQuestionIds(studentId, filters.chapter, filters.subject),
-        getRecentlyUsedQuestionPrompts(studentId, filters.chapter, filters.subject),
-      ])
-    : Promise.resolve([new Set<string>(), [] as string[]]));
+  const [excludeIds, usedPrompts] = await (
+    studentId && filters.chapter && filters.subject
+      ? Promise.all([
+          getRecentlyUsedQuestionIds(studentId, filters.chapter, filters.subject),
+          getRecentlyUsedQuestionPrompts(studentId, filters.chapter, filters.subject),
+        ])
+      : Promise.resolve([new Set<string>(), [] as string[]])
+  );
 
-  const mcqTarget = Math.floor(count * 0.4);
-  const longTarget = Math.floor(count * 0.3);
-  const shortTarget = count - mcqTarget - longTarget; // absorbs remainder
+  const mcqTarget = Math.floor(count * 0.4)
+  const longTarget = Math.floor(count * 0.3)
+  const shortTarget = count - mcqTarget - longTarget // absorbs remainder
 
   const [mcqPool, shortPool, longPool] = await Promise.all([
     selectQuestions({ ...filters, type: 'mcq' }, mcqTarget * 3, excludeIds),
     selectQuestions({ ...filters, type: 'short' }, shortTarget * 3, excludeIds),
     selectQuestions({ ...filters, type: 'long_answer' }, longTarget * 3, excludeIds),
-  ]);
+  ])
 
   function pickN(pool: Question[], n: number, exclude: Set<string>): Question[] {
     // F-STU-020 AC-01: additionally filter Jaccard-similar questions if prompts are available.
     const available = pool.filter(
       (q) =>
         !exclude.has(q.id) &&
-        (usedPrompts.length === 0 || !isSemanticallyDuplicate(q.prompt, usedPrompts))
-    );
-    const shuffled = [...available].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, n);
+        (usedPrompts.length === 0 || !isSemanticallyDuplicate(q.prompt, usedPrompts)),
+    )
+    const shuffled = [...available].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, n)
   }
 
   // Start `used` with recently-seen question IDs so they are excluded
   // from selection. This ensures selectQuestionsWithMix honours the
   // 90-day exclusion window (F-STU-020 AC-01).
-  const used = new Set<string>(excludeIds ? Array.from(excludeIds) : []);
+  const used = new Set<string>(excludeIds ? Array.from(excludeIds) : [])
 
-  const mcqSelected = pickN(mcqPool, mcqTarget, used);
-  mcqSelected.forEach((q) => used.add(q.id));
+  const mcqSelected = pickN(mcqPool, mcqTarget, used)
+  mcqSelected.forEach((q) => used.add(q.id))
 
-  const longSelected = pickN(longPool, longTarget, used);
-  longSelected.forEach((q) => used.add(q.id));
+  const longSelected = pickN(longPool, longTarget, used)
+  longSelected.forEach((q) => used.add(q.id))
 
-  let shortSelected = pickN(shortPool, shortTarget, used);
-  shortSelected.forEach((q) => used.add(q.id));
+  let shortSelected = pickN(shortPool, shortTarget, used)
+  shortSelected.forEach((q) => used.add(q.id))
 
   // Backfill: if long_answer pool was sparse, pull extras from short pool.
   if (longSelected.length < longTarget) {
-    const extra = pickN(shortPool, longTarget - longSelected.length, used);
-    extra.forEach((q) => used.add(q.id));
+    const extra = pickN(shortPool, longTarget - longSelected.length, used)
+    extra.forEach((q) => used.add(q.id))
     // Push extras into shortSelected so they appear in the set; caller sees combined list.
-    shortSelected = [...shortSelected, ...extra];
+    shortSelected = [...shortSelected, ...extra]
   }
 
   // Final backfill: if still below count, draw from whichever pool has surplus.
-  const all = [...mcqSelected, ...longSelected, ...shortSelected];
+  const all = [...mcqSelected, ...longSelected, ...shortSelected]
   if (all.length < count) {
-    const surplus = pickN([...mcqPool, ...shortPool, ...longPool], count - all.length, used);
-    surplus.forEach((q) => used.add(q.id));
-    all.push(...surplus);
+    const surplus = pickN([...mcqPool, ...shortPool, ...longPool], count - all.length, used)
+    surplus.forEach((q) => used.add(q.id))
+    all.push(...surplus)
   }
 
-  const questions = all.slice(0, count);
+  const questions = all.slice(0, count)
   // AC-03: board-calibrated seconds = marks_per_type * board_time_per_mark
   const timeLimitSeconds = questions.reduce(
     (acc, q) => acc + timeForType(q.type, filters.board),
-    0
-  );
+    0,
+  )
 
-  return { questions, timeLimitSeconds };
+  return { questions, timeLimitSeconds }
 }
 
-const EXPLANATION_TIMEOUT_MS = 8_000;
+const EXPLANATION_TIMEOUT_MS = 8_000
 
 /**
  * Enrich wrong-answer graded results with LLM-generated explanations.
@@ -517,15 +489,15 @@ const EXPLANATION_TIMEOUT_MS = 8_000;
 export async function addLLMExplanations(
   graded: GradedResult[],
   studentId: string,
-  attemptId: string
+  attemptId: string,
 ): Promise<GradedResult[]> {
-  const wrong = graded.filter((g) => !g.correct && !g.explanation && g.questionText);
-  if (wrong.length === 0) return graded;
+  const wrong = graded.filter((g) => !g.correct && !g.explanation && g.questionText)
+  if (wrong.length === 0) return graded
 
   const lines = wrong.map(
     (g, i) =>
-      `${i + 1}. questionId: "${g.questionId}"\n   Question: ${g.questionText}\n   Correct answer: ${g.correctAnswer ?? '(see working)'}`
-  );
+      `${i + 1}. questionId: "${g.questionId}"\n   Question: ${g.questionText}\n   Correct answer: ${g.correctAnswer ?? '(see working)'}`,
+  )
 
   const prompt = [
     'For each wrong answer below, write a brief 1-2 sentence explanation that helps the student understand the correct answer.',
@@ -533,25 +505,25 @@ export async function addLLMExplanations(
     'Tone: encouraging, forward-looking. Never say "you were wrong" or "you failed".',
     '',
     ...lines,
-  ].join('\n');
+  ].join('\n')
 
   try {
     const result = await callTutorLLM(
       prompt,
       { callType: 'tutor:eval', studentId, sessionId: attemptId },
-      EXPLANATION_TIMEOUT_MS
-    );
-    const text = (result?.content ?? '').trim();
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return graded;
-    const parsed: Array<{ questionId: string; explanation: string }> = JSON.parse(match[0]);
-    const byId = new Map(parsed.map((e) => [e.questionId, e.explanation]));
+      EXPLANATION_TIMEOUT_MS,
+    )
+    const text = (result?.content ?? '').trim()
+    const match = text.match(/\[[\s\S]*\]/)
+    if (!match) return graded
+    const parsed: Array<{ questionId: string; explanation: string }> = JSON.parse(match[0])
+    const byId = new Map(parsed.map((e) => [e.questionId, e.explanation]))
     return graded.map((g) => ({
       ...g,
       explanation: g.explanation ?? byId.get(g.questionId),
-    }));
+    }))
   } catch {
-    return graded;
+    return graded
   }
 }
 
@@ -577,11 +549,7 @@ export type GradedResult = {
  * - numeric: exact or tolerance match (0.01 by default)
  * - short: normalized string equality; (LLM rubric can be added later)
  */
-export function gradeSingle(
-  question: Question,
-  rawAnswer?: string,
-  options?: { tolerance?: number; points?: number }
-) {
+export function gradeSingle(question: Question, rawAnswer?: string, options?: { tolerance?: number; points?: number }) {
   const type = question.type.toLowerCase();
   const points = options?.points ?? 1;
   const tolerance = options?.tolerance ?? 0.01;
@@ -638,15 +606,14 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
     totalPoints += 1;
     const g = gradeSingle(aq.question, ans?.answer);
     earnedPoints += g.awardedPoints;
-
+    
     // Parse choices for MCQ questions
     let parsedChoices: Array<{ key: string; label: string }> | undefined;
     if (aq.question.type?.toLowerCase() === 'mcq' && aq.question.choices) {
       try {
-        const raw =
-          typeof aq.question.choices === 'string'
-            ? JSON.parse(aq.question.choices)
-            : aq.question.choices;
+        const raw = typeof aq.question.choices === 'string' 
+          ? JSON.parse(aq.question.choices) 
+          : aq.question.choices;
         if (Array.isArray(raw)) {
           parsedChoices = raw.map((c: any) => ({
             key: String(c.key ?? c.id ?? ''),
@@ -657,7 +624,7 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
         // Skip invalid choices
       }
     }
-
+    
     graded.push({
       attemptQuestionId: aq.id,
       questionId: aq.questionId,
@@ -778,10 +745,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
   // attempt belong to that single topic -- aggregate under one key.
   // When unknown (quick-practice), group by subject+chapter and resolve each
   // group to a TopicDef.id via the curriculum hierarchy.
-  const groups: Record<
-    string,
-    { correct: number; total: number; subject: string; chapter: string }
-  > = {};
+  const groups: Record<string, { correct: number; total: number; subject: string; chapter: string }> = {};
 
   if (canonicalTopicId) {
     // GeneratedTest path -- single canonical topic for all questions.
@@ -796,10 +760,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
     }
   } else {
     // Quick-practice fallback: group by subject+chapter, resolve to TopicDef.id.
-    const tempGroups: Record<
-      string,
-      { correct: number; total: number; subject: string; chapter: string }
-    > = {};
+    const tempGroups: Record<string, { correct: number; total: number; subject: string; chapter: string }> = {};
     for (const aq of attemptQuestions) {
       const subject = aq.question.subject || 'unknown';
       const chapter = aq.question.chapter || 'unknown';
@@ -852,7 +813,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
     // Defensive guard: never write composite "subject::chapter" keys to STM.
     if (topicId.includes('::')) {
       throw new Error(
-        `Invalid mastery key format: topicId="${topicId}" contains "::". Expected canonical TopicDef UUID.`
+        `Invalid mastery key format: topicId="${topicId}" contains "::". Expected canonical TopicDef UUID.`,
       );
     }
 
@@ -869,16 +830,12 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
       const rollingAccuracy =
         totalAttempted > 0
           ? (prevAccuracy * prevAttempted + stats.correct) / totalAttempted
-          : stats.total > 0
-            ? stats.correct / stats.total
-            : 0;
+          : stats.total > 0 ? stats.correct / stats.total : 0;
 
       let masteryLevel: MasteryLevel = MasteryLevel.beginner;
       if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
-      else if (rollingAccuracy >= 0.75 && totalAttempted >= 10)
-        masteryLevel = MasteryLevel.advanced;
-      else if (rollingAccuracy >= 0.6 && totalAttempted >= 5)
-        masteryLevel = MasteryLevel.intermediate;
+      else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
+      else if (rollingAccuracy >= 0.6 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
 
       const firstSessionAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
 

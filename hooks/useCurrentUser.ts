@@ -7,10 +7,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<User
 export function useCurrentUser() {
   const { data: session } = useSession();
   const shouldFetch = !!session;
-  const { data, error, isLoading, mutate } = useSWR<User | undefined>(
-    shouldFetch ? '/api/user/profile' : null,
-    fetcher
-  );
+  const { data, error, isLoading, mutate } = useSWR<User | undefined>(shouldFetch ? '/api/user/profile' : null, fetcher);
   return { data, error, loading: isLoading, signedIn: !!session, mutate } as {
     data?: User;
     error: any;

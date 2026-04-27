@@ -1,34 +1,34 @@
-const sharp = require('sharp');
+const sharp = require('sharp')
 async function main() {
-  const source = 'public/icons/spinzy-logo-owl.png';
-  const meta = await sharp(source).metadata();
-  const W = meta.width;
-  const H = meta.height;
-  const third = Math.floor(W / 3);
-  console.log(`Source: ${W}x${H}, each third: ${third}px`);
+  const source = 'public/icons/spinzy-logo-owl.png'
+  const meta = await sharp(source).metadata()
+  const W = meta.width
+  const H = meta.height
+  const third = Math.floor(W / 3)
+  console.log(`Source: ${W}x${H}, each third: ${third}px`)
 
-  const padX = Math.floor(third * 0.08);
-  const padY = Math.floor(H * 0.12);
+  const padX = Math.floor(third * 0.08)
+  const padY = Math.floor(H * 0.12)
 
   // LEFT THIRD -- favicon owl face icon
   await sharp(source)
-    .extract({ left: padX, top: padY, width: third - padX * 2, height: H - padY * 2 })
+    .extract({ left: padX, top: padY, width: third - (padX * 2), height: H - (padY * 2) })
     .png()
-    .toFile('public/icons/spinzy-favicon-source.png');
-  console.log('✅ spinzy-favicon-source.png');
+    .toFile('public/icons/spinzy-favicon-source.png')
+  console.log('✅ spinzy-favicon-source.png')
 
   // MIDDLE THIRD -- navbar icon + Spinzy text
   await sharp(source)
-    .extract({ left: third + padX, top: padY, width: third - padX * 2, height: H - padY * 2 })
+    .extract({ left: third + padX, top: padY, width: third - (padX * 2), height: H - (padY * 2) })
     .png()
-    .toFile('public/icons/spinzy-navbar-source.png');
-  console.log('✅ spinzy-navbar-source.png');
+    .toFile('public/icons/spinzy-navbar-source.png')
+  console.log('✅ spinzy-navbar-source.png')
 
   // RIGHT THIRD -- full marketing logo
   await sharp(source)
-    .extract({ left: third * 2 + padX, top: padY, width: third - padX * 2, height: H - padY * 2 })
+    .extract({ left: (third * 2) + padX, top: padY, width: third - (padX * 2), height: H - (padY * 2) })
     .png()
-    .toFile('public/icons/spinzy-marketing-source.png');
-  console.log('✅ spinzy-marketing-source.png');
+    .toFile('public/icons/spinzy-marketing-source.png')
+  console.log('✅ spinzy-marketing-source.png')
 }
-main().catch(console.error);
+main().catch(console.error)

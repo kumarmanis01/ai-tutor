@@ -30,9 +30,7 @@ const ACTIVITY_CONFIG: Record<string, { icon: string; label: string; color: stri
 
 function getActivityConfig(type: string) {
   const key = type?.toLowerCase() || '';
-  return (
-    ACTIVITY_CONFIG[key] || { icon: '📚', label: 'Learning', color: 'bg-primary/10 text-primary' }
-  );
+  return ACTIVITY_CONFIG[key] || { icon: '📚', label: 'Learning', color: 'bg-primary/10 text-primary' };
 }
 
 export function ContinueWhereLeftOff() {
@@ -71,9 +69,7 @@ export function ContinueWhereLeftOff() {
     >
       <div className="flex items-center gap-4">
         {/* Activity Icon */}
-        <div
-          className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${config.color}`}
-        >
+        <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${config.color}`}>
           {config.icon}
         </div>
 
@@ -99,7 +95,9 @@ export function ContinueWhereLeftOff() {
                   style={{ width: `${Math.min(progress, 100)}%` }}
                 />
               </div>
-              <span className="text-xs font-medium text-muted-foreground">{progress}%</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {progress}%
+              </span>
             </div>
           )}
         </div>

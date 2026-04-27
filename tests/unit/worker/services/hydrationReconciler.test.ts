@@ -231,6 +231,7 @@ describe('HydrationReconciler - Finalization', () => {
       }),
     });
   });
+
 });
 
 describe('HydrationReconciler - Full Reconciliation Flow', () => {
@@ -257,7 +258,9 @@ describe('HydrationReconciler - Full Reconciliation Flow', () => {
     ]);
 
     // Mock level completion checks (all incomplete)
-    prismaMock.hydrationJob.groupBy.mockResolvedValue([{ status: 'running', _count: 2 }]);
+    prismaMock.hydrationJob.groupBy.mockResolvedValue([
+      { status: 'running', _count: 2 },
+    ]);
 
     await reconciler.reconcile();
 

@@ -4,9 +4,7 @@
 
 // Mock prisma and logger before importing worker
 jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../../helpers/prismaMock').prismaMock }));
-jest.mock('@/lib/logger.js', () => ({
-  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-}));
+jest.mock('@/lib/logger.js', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
 
 // Mock payments helper
 jest.mock('@/lib/payments.js', () => ({ createRazorpayTokenCharge: jest.fn() }));
@@ -49,20 +47,8 @@ describe('paymentDunningWorker - auto-charge', () => {
       },
     ]);
 
-    prismaMock.user.findUnique.mockResolvedValue({
-      id: 'parent-1',
-      email: 'p@example.com',
-      phone: '9999999999',
-      name: 'Parent',
-    });
-    prismaMock.paymentMethod.findFirst.mockResolvedValue({
-      id: 'pm-1',
-      userId: 'parent-1',
-      provider: 'razorpay',
-      providerPaymentMethodId: 'pm_1',
-      verified: true,
-      customer: { providerCustomerId: 'rcust_1' },
-    });
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'parent-1', email: 'p@example.com', phone: '9999999999', name: 'Parent' });
+    prismaMock.paymentMethod.findFirst.mockResolvedValue({ id: 'pm-1', userId: 'parent-1', provider: 'razorpay', providerPaymentMethodId: 'pm_1', verified: true, customer: { providerCustomerId: 'rcust_1' } });
 
     // Mock transaction to call callback with prismaMock
     prismaMock.$transaction.mockImplementation(async (cb: any) => await cb(prismaMock));
@@ -71,10 +57,7 @@ describe('paymentDunningWorker - auto-charge', () => {
     prismaMock.user.update.mockResolvedValue({ id: 'child-1' });
 
     // Mock payment helper success
-    (createRazorpayTokenCharge as jest.Mock).mockResolvedValue({
-      id: 'pay_123',
-      order_id: 'order_1',
-    });
+    (createRazorpayTokenCharge as jest.Mock).mockResolvedValue({ id: 'pay_123', order_id: 'order_1' });
 
     await processPaymentDunning();
 
@@ -86,23 +69,9 @@ describe('paymentDunningWorker - auto-charge', () => {
   it('falls back to reminder when charge fails', async () => {
     const now = new Date(Date.now() - 26 * 60 * 60 * 1000);
     prismaMock.subscription.findMany.mockResolvedValue([
-      {
-        id: 'sub-2',
-        userId: 'parent-2',
-        plan: 'individual',
-        billingCycle: 'monthly',
-        dunningAttempts: 1,
-        lastDunningAt: now,
-        endDate: null,
-        meta: {},
-      },
+      { id: 'sub-2', userId: 'parent-2', plan: 'individual', billingCycle: 'monthly', dunningAttempts: 1, lastDunningAt: now, endDate: null, meta: {} },
     ]);
-    prismaMock.user.findUnique.mockResolvedValue({
-      id: 'parent-2',
-      email: 'p2@example.com',
-      phone: '9999999998',
-      name: 'Parent2',
-    });
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'parent-2', email: 'p2@example.com', phone: '9999999998', name: 'Parent2' });
     prismaMock.paymentMethod.findFirst.mockResolvedValue(null);
 
     // Ensure charge helper not called and reminder increments attempts

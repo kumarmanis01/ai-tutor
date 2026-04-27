@@ -33,78 +33,78 @@ v1 (What Exists) vs v2 Spec (What's Required)
 
 #### 1.1 Teaching Engine & Session State Machine
 
-| Area                               | v1 State                                                                                                                                        | v2 Requires                                                                                                                                                                                    | Severity     |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| Per‑turn AI teaching loop          | No dedicated AI loop in sessions. Content engine generates notes/questions in workers only. Sessions consume pre‑generated content.             | `POST /api/tutor/turn` — full per‑turn Socratic dialogue engine backed by orchestrator and state machine.                                                                                      | 🔴 BLOCKER   |
-| 7‑stage pedagogical state machine  | 5‑phase session shell (`OVERVIEW` / `EXPLANATION` / `PRACTICE` / `TEST` / `HOMEWORK`). No per‑turn stage transitions. No machine‑readable tags. | Hook → Prerequisite Bridge → Core Explanation → Worked Example → Guided Practice → Independent Practice → Consolidation. Tag‑driven transitions only.                                          | 🔴 BLOCKER   |
-| Redis session state per turn       | DB is source of truth (`StructuredSession`). Redis not used for per‑turn pedagogy.                                                              | Redis session state written synchronously on every turn. Full `RedisSessionState` schema. 24h TTL.                                                                                             | 🔴 BLOCKER   |
-| Socratic dialogue rules            | AI behaves as chatbot/enhanced tutor. No hard contracts enforced.                                                                               | One question per turn. Never direct answers to practice problems. Partial‑credit acknowledgement. "I don't know" pivots to prerequisite probes. Enforced via `PEDAGOGICAL_RULES` prompt layer. | 🔴 BLOCKER   |
-| Machine‑readable tag system        | Does not exist.                                                                                                                                 | All 7 tags: `[QUESTION]`, `[VALIDATE]`, `[HINT_OFFER]`, `[STAGE_ADVANCE]`, `[PREREQ_FAIL]`, `[STRUGGLE_DETECTED]`, `[MASTERY_CONFIRMED]`. Parser strips tag before delivery to student.        | 🔴 BLOCKER   |
-| 3‑tier hint system                 | No structured hint system.                                                                                                                      | Tier 1 (directional nudge) → Tier 2 (structural hint) → Tier 3 (worked scaffold). Explicit student request. 90s inactivity prompt. Hint counter visible.                                       | 🟠 CRITICAL  |
-| Prerequisite remediation sub‑flow  | No prerequisite‑triggered remediation.                                                                                                          | Two failed exits at same stage → `[PREREQ_FAIL]` → short remediation loop on prerequisites → return to failed stage.                                                                           | 🟠 CRITICAL  |
-| Misconception library (seeded)     | No misconception library or detection.                                                                                                          | Minimum 20 misconceptions per subject (CBSE 10 Maths + Science) with regex patterns and contrastive explanations. `StudentMisconception` table.                                                | 🟠 CRITICAL  |
-| Frustration/fatigue signal scoring | Not implemented.                                                                                                                                | Weighted score over: consecutive errors, hints used, negative language, latency ratio. Threshold e.g. 0.60 → `FRUSTRATED` state. Response tone adaptation. Not visible to student.             | 🟡 IMPORTANT |
-| Session summary compression        | Not implemented.                                                                                                                                | Every 10 turns: GPT‑4o-mini compresses all but last 8 turns into `sessionSummary`. Last 8 kept verbatim.                                                                                       | 🟡 IMPORTANT |
-| Incomplete turn recovery           | Not implemented.                                                                                                                                | Redis state tracks `lastTurnStartedAt` + `lastTurnCompleted`. On session load, if `lastTurnCompleted = false` → roll back partial turn before resuming.                                        | 🔴 BLOCKER   |
-| Concurrent session prevention      | Not implemented.                                                                                                                                | Redis key check on session start; second device sees "resume / view summary" but can't run parallel full sessions.                                                                             | 🟢 DEFER     |
-| 90‑minute session cap              | Not implemented.                                                                                                                                | Hard 90‑min cap: AI ends session with summary + plan; further work starts a new session.                                                                                                       | 🟢 DEFER     |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Per‑turn AI teaching loop | No dedicated AI loop in sessions. Content engine generates notes/questions in workers only. Sessions consume pre‑generated content. | `POST /api/tutor/turn` — full per‑turn Socratic dialogue engine backed by orchestrator and state machine. | 🔴 BLOCKER |
+| 7‑stage pedagogical state machine | 5‑phase session shell (`OVERVIEW` / `EXPLANATION` / `PRACTICE` / `TEST` / `HOMEWORK`). No per‑turn stage transitions. No machine‑readable tags. | Hook → Prerequisite Bridge → Core Explanation → Worked Example → Guided Practice → Independent Practice → Consolidation. Tag‑driven transitions only. | 🔴 BLOCKER |
+| Redis session state per turn | DB is source of truth (`StructuredSession`). Redis not used for per‑turn pedagogy. | Redis session state written synchronously on every turn. Full `RedisSessionState` schema. 24h TTL. | 🔴 BLOCKER |
+| Socratic dialogue rules | AI behaves as chatbot/enhanced tutor. No hard contracts enforced. | One question per turn. Never direct answers to practice problems. Partial‑credit acknowledgement. "I don't know" pivots to prerequisite probes. Enforced via `PEDAGOGICAL_RULES` prompt layer. | 🔴 BLOCKER |
+| Machine‑readable tag system | Does not exist. | All 7 tags: `[QUESTION]`, `[VALIDATE]`, `[HINT_OFFER]`, `[STAGE_ADVANCE]`, `[PREREQ_FAIL]`, `[STRUGGLE_DETECTED]`, `[MASTERY_CONFIRMED]`. Parser strips tag before delivery to student. | 🔴 BLOCKER |
+| 3‑tier hint system | No structured hint system. | Tier 1 (directional nudge) → Tier 2 (structural hint) → Tier 3 (worked scaffold). Explicit student request. 90s inactivity prompt. Hint counter visible. | 🟠 CRITICAL |
+| Prerequisite remediation sub‑flow | No prerequisite‑triggered remediation. | Two failed exits at same stage → `[PREREQ_FAIL]` → short remediation loop on prerequisites → return to failed stage. | 🟠 CRITICAL |
+| Misconception library (seeded) | No misconception library or detection. | Minimum 20 misconceptions per subject (CBSE 10 Maths + Science) with regex patterns and contrastive explanations. `StudentMisconception` table. | 🟠 CRITICAL |
+| Frustration/fatigue signal scoring | Not implemented. | Weighted score over: consecutive errors, hints used, negative language, latency ratio. Threshold e.g. 0.60 → `FRUSTRATED` state. Response tone adaptation. Not visible to student. | 🟡 IMPORTANT |
+| Session summary compression | Not implemented. | Every 10 turns: GPT‑4o-mini compresses all but last 8 turns into `sessionSummary`. Last 8 kept verbatim. | 🟡 IMPORTANT |
+| Incomplete turn recovery | Not implemented. | Redis state tracks `lastTurnStartedAt` + `lastTurnCompleted`. On session load, if `lastTurnCompleted = false` → roll back partial turn before resuming. | 🔴 BLOCKER |
+| Concurrent session prevention | Not implemented. | Redis key check on session start; second device sees "resume / view summary" but can't run parallel full sessions. | 🟢 DEFER |
+| 90‑minute session cap | Not implemented. | Hard 90‑min cap: AI ends session with summary + plan; further work starts a new session. | 🟢 DEFER |
 
 #### 1.2 Prompt Assembly
 
-| Area                    | v1 State                                                                     | v2 Requires                                                                                                                                                                    | Severity     |
-| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| 7‑layer prompt stack    | Basic subject system prompts. No layering or token budget.                   | PERSONA → SAFETY → PEDAGOGICAL_RULES → STUDENT_PROFILE → SESSION_STATE → CURRICULUM_CONTEXT → RESPONSE_FORMAT. Priority‑ordered truncation, 16K total, 4K reserved for output. | 🔴 BLOCKER   |
-| PERSONA layer (Vidya)   | Subject‑specific "you are a tutor" prompts; no named persona or graded tone. | Vidya persona: tone by grade band; emphasise coaching (not answering); Indian‑context analogies; accepts code‑switching.                                                       | 🔴 BLOCKER   |
-| PEDAGOGICAL_RULES layer | Absent as a fixed layer; only soft suggestions.                              | 7 non‑negotiable rules encoded as **never‑truncated** system prompt section.                                                                                                   | 🔴 BLOCKER   |
-| STUDENT_PROFILE layer   | Not assembled per turn.                                                      | Inject: name, grade, board, exam date proximity, teaching language, learning style, recent misconceptions, basic mastery summary, emotional state.                             | 🔴 BLOCKER   |
-| SESSION_STATE layer     | Not implemented.                                                             | Current stage, stage attempt count, hints used, last 8 turns (summary or raw), `sessionSummary`, active misconception, frustration score.                                      | 🔴 BLOCKER   |
-| Token budget management | Not implemented.                                                             | Truncation policy: drop RAG chunks first, then oldest summary sentences; never truncate PERSONA/SAFETY/PEDAGOGICAL_RULES. 16K total throughout — do not use 12K figure.        | 🟠 CRITICAL  |
-| Provider prefix caching | Not implemented.                                                             | Fixed layers identical across calls → rely on OpenAI prefix caching for 30–40% input token cost reduction.                                                                     | 🟡 IMPORTANT |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| 7‑layer prompt stack | Basic subject system prompts. No layering or token budget. | PERSONA → SAFETY → PEDAGOGICAL_RULES → STUDENT_PROFILE → SESSION_STATE → CURRICULUM_CONTEXT → RESPONSE_FORMAT. Priority‑ordered truncation, 16K total, 4K reserved for output. | 🔴 BLOCKER |
+| PERSONA layer (Vidya) | Subject‑specific "you are a tutor" prompts; no named persona or graded tone. | Vidya persona: tone by grade band; emphasise coaching (not answering); Indian‑context analogies; accepts code‑switching. | 🔴 BLOCKER |
+| PEDAGOGICAL_RULES layer | Absent as a fixed layer; only soft suggestions. | 7 non‑negotiable rules encoded as **never‑truncated** system prompt section. | 🔴 BLOCKER |
+| STUDENT_PROFILE layer | Not assembled per turn. | Inject: name, grade, board, exam date proximity, teaching language, learning style, recent misconceptions, basic mastery summary, emotional state. | 🔴 BLOCKER |
+| SESSION_STATE layer | Not implemented. | Current stage, stage attempt count, hints used, last 8 turns (summary or raw), `sessionSummary`, active misconception, frustration score. | 🔴 BLOCKER |
+| Token budget management | Not implemented. | Truncation policy: drop RAG chunks first, then oldest summary sentences; never truncate PERSONA/SAFETY/PEDAGOGICAL_RULES. 16K total throughout — do not use 12K figure. | 🟠 CRITICAL |
+| Provider prefix caching | Not implemented. | Fixed layers identical across calls → rely on OpenAI prefix caching for 30–40% input token cost reduction. | 🟡 IMPORTANT |
 
 #### 1.3 Knowledge Graph & IRT
 
-| Area                                      | v1 State                                                                                                       | v2 Requires                                                                                                                                                                   | Severity    |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------- | ----------- |
-| `StudentConceptState` table               | Only topic‑level (`StudentTopicMastery`, `StudentTopicProgress`).                                              | Per‑student, per‑concept state: `masteryScore`, `masteryVariance`, `theta`, `stability`, `retention`, `nextReviewAt`, `attemptCount`, `lastInteraction`.                      | 🔴 BLOCKER  |
-| IRT theta update per answer               | Heuristic difficulty bands only.                                                                               | MAP estimation using 3PL logistic model per subject. Bounded `Δtheta ≤ 0.5`.                                                                                                  | 🔴 BLOCKER  |
-| Knowledge graph bootstrap from diagnostic | Diagnostic outputs topic/chapter insights only.                                                                | On diagnostic completion → BullMQ job → `StudentConceptState` seeded for **all** concepts in subject (tested + untested).                                                     | 🔴 BLOCKER  |
-| Concept taxonomy fields                   | Taxonomy exists; `irt_b`, bloom, prereqs, commonly-confused likely incomplete.                                 | Every concept for launch slice: `irt_b`, `bloomLevel`, `prerequisiteConceptIds[]`, `commonlyConfusedWithIds[]`, `description`.                                                | 🔴 BLOCKER  |
-| `irt_b` on question bank                  | Questions exist but likely have no `irt_b` estimates. Without these, theta-based adaptive selection is random. | Manually assign `irt_b` for launch slice: recall = `-1.5 to -0.5`, single-step = `-0.5 to 0.5`, multi-step = `0.5 to 2.0`.                                                    | 🔴 BLOCKER  |
-| Prerequisite graph edges                  | Not modelled.                                                                                                  | `prerequisiteConceptIds[]` drives: learning plan unlock, pre‑session warnings, `PREREQ_FAIL` remediation targets.                                                             | 🟠 CRITICAL |
-| Adaptive question selection by theta      | Difficulty bands; not theta‑optimised.                                                                         | Target difficulty `b* = theta`; select questions with `                                                                                                                       | irt_b - b\* | < 0.3` and high Fisher Information. | 🟠 CRITICAL |
-| Incremental graph update pipeline         | Not implemented.                                                                                               | Answer event → IRT update → mastery recompute → prereq cascade → retention update → Postgres write → Redis cache invalidation. All async via BullMQ, non-blocking to session. | 🟠 CRITICAL |
-| SM‑18 spaced repetition                   | Not implemented.                                                                                               | For each concept: `R = e^(−t/S)`; if `R < 0.85` → due. Nightly scheduler populates revision queue and updates `nextReviewAt`.                                                 | 🟠 CRITICAL |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| `StudentConceptState` table | Only topic‑level (`StudentTopicMastery`, `StudentTopicProgress`). | Per‑student, per‑concept state: `masteryScore`, `masteryVariance`, `theta`, `stability`, `retention`, `nextReviewAt`, `attemptCount`, `lastInteraction`. | 🔴 BLOCKER |
+| IRT theta update per answer | Heuristic difficulty bands only. | MAP estimation using 3PL logistic model per subject. Bounded `Δtheta ≤ 0.5`. | 🔴 BLOCKER |
+| Knowledge graph bootstrap from diagnostic | Diagnostic outputs topic/chapter insights only. | On diagnostic completion → BullMQ job → `StudentConceptState` seeded for **all** concepts in subject (tested + untested). | 🔴 BLOCKER |
+| Concept taxonomy fields | Taxonomy exists; `irt_b`, bloom, prereqs, commonly-confused likely incomplete. | Every concept for launch slice: `irt_b`, `bloomLevel`, `prerequisiteConceptIds[]`, `commonlyConfusedWithIds[]`, `description`. | 🔴 BLOCKER |
+| `irt_b` on question bank | Questions exist but likely have no `irt_b` estimates. Without these, theta-based adaptive selection is random. | Manually assign `irt_b` for launch slice: recall = `-1.5 to -0.5`, single-step = `-0.5 to 0.5`, multi-step = `0.5 to 2.0`. | 🔴 BLOCKER |
+| Prerequisite graph edges | Not modelled. | `prerequisiteConceptIds[]` drives: learning plan unlock, pre‑session warnings, `PREREQ_FAIL` remediation targets. | 🟠 CRITICAL |
+| Adaptive question selection by theta | Difficulty bands; not theta‑optimised. | Target difficulty `b* = theta`; select questions with `|irt_b - b*| < 0.3` and high Fisher Information. | 🟠 CRITICAL |
+| Incremental graph update pipeline | Not implemented. | Answer event → IRT update → mastery recompute → prereq cascade → retention update → Postgres write → Redis cache invalidation. All async via BullMQ, non-blocking to session. | 🟠 CRITICAL |
+| SM‑18 spaced repetition | Not implemented. | For each concept: `R = e^(−t/S)`; if `R < 0.85` → due. Nightly scheduler populates revision queue and updates `nextReviewAt`. | 🟠 CRITICAL |
 
 #### 1.4 RAG Pipeline
 
-| Area                                   | v1 State                                                  | v2 Requires                                                                                                                                                                   | Severity     |
-| -------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| Curriculum chunks with `concept_ids[]` | Ingestion + pgvector exist; tagging completeness unknown. | Every content chunk tagged with `conceptIds[]` for launch slice. Verify with `SELECT COUNT(*) FROM chunks WHERE concept_ids IS NULL`.                                         | 🔴 BLOCKER   |
-| Per‑turn RAG retrieval                 | Used primarily in content engine (notes/questions).       | Every teaching turn: embed concept context + summary → pgvector query → rerank by concept/board → top 4 chunks after reranking injected into `CURRICULUM_CONTEXT`.            | 🟠 CRITICAL  |
-| `doubt_kb` table + pgvector            | Not implemented.                                          | `doubt_kb` table with embeddings; ivfflat index; similarity search used for repeated doubts. Basic doubt routing in Week 3; full pgvector cache in Week 5.                    | 🟠 CRITICAL  |
-| `doubt_kb` write deduplication         | Not applicable.                                           | On write, run similarity search at threshold 0.88. If near-duplicate exists, update `timesServed` + `alternatePhrasings[]` instead of inserting. Prevents KB bloat over time. | 🟠 CRITICAL  |
-| Explanation cache                      | Not implemented.                                          | Redis `cache:exp:{conceptId}:{lang}:{modality}`; 7‑day TTL; served for explanation‑style calls. Cache key must include `contentVersion` to invalidate on chunk updates.       | 🟡 IMPORTANT |
-| Groundedness checking                  | Not implemented.                                          | Check factual claims against retrieved chunks; low‑groundedness responses logged to analytics.                                                                                | 🟡 IMPORTANT |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Curriculum chunks with `concept_ids[]` | Ingestion + pgvector exist; tagging completeness unknown. | Every content chunk tagged with `conceptIds[]` for launch slice. Verify with `SELECT COUNT(*) FROM chunks WHERE concept_ids IS NULL`. | 🔴 BLOCKER |
+| Per‑turn RAG retrieval | Used primarily in content engine (notes/questions). | Every teaching turn: embed concept context + summary → pgvector query → rerank by concept/board → top 4 chunks after reranking injected into `CURRICULUM_CONTEXT`. | 🟠 CRITICAL |
+| `doubt_kb` table + pgvector | Not implemented. | `doubt_kb` table with embeddings; ivfflat index; similarity search used for repeated doubts. Basic doubt routing in Week 3; full pgvector cache in Week 5. | 🟠 CRITICAL |
+| `doubt_kb` write deduplication | Not applicable. | On write, run similarity search at threshold 0.88. If near-duplicate exists, update `timesServed` + `alternatePhrasings[]` instead of inserting. Prevents KB bloat over time. | 🟠 CRITICAL |
+| Explanation cache | Not implemented. | Redis `cache:exp:{conceptId}:{lang}:{modality}`; 7‑day TTL; served for explanation‑style calls. Cache key must include `contentVersion` to invalidate on chunk updates. | 🟡 IMPORTANT |
+| Groundedness checking | Not implemented. | Check factual claims against retrieved chunks; low‑groundedness responses logged to analytics. | 🟡 IMPORTANT |
 
 #### 1.5 LLM Router & Failover
 
-| Area                                 | v1 State                                                  | v2 Requires                                                                                                                                                                         | Severity    |
-| ------------------------------------ | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Multi‑tier model routing             | `callLLM.ts` routes models by `promptType` for content.   | `CallRouter` service with tiers by `callType` (teach/practice/diagnostic/eval/embed); centralised, not embedded in handlers.                                                        | 🟠 CRITICAL |
-| Anthropic failover + circuit breaker | Not implemented.                                          | Redis‑backed breaker (not in-memory — PM2 cluster has multiple processes): 3 failures / 30s → circuit open; re‑probe after 60s; failover to Anthropic models.                       | 🟠 CRITICAL |
-| `AITutorTurnLog` table               | `AIContentLog` exists for content; no per‑turn tutor log. | New table: `sessionId`, `callType`, `model`, `inputTokens`, `outputTokens`, `costUsd`, `latencyMs`, `tag`, `stage`, `safetyFlagged`, `cached`, `ragChunksUsed`, `frustrationScore`. | 🟠 CRITICAL |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Multi‑tier model routing | `callLLM.ts` routes models by `promptType` for content. | `CallRouter` service with tiers by `callType` (teach/practice/diagnostic/eval/embed); centralised, not embedded in handlers. | 🟠 CRITICAL |
+| Anthropic failover + circuit breaker | Not implemented. | Redis‑backed breaker (not in-memory — PM2 cluster has multiple processes): 3 failures / 30s → circuit open; re‑probe after 60s; failover to Anthropic models. | 🟠 CRITICAL |
+| `AITutorTurnLog` table | `AIContentLog` exists for content; no per‑turn tutor log. | New table: `sessionId`, `callType`, `model`, `inputTokens`, `outputTokens`, `costUsd`, `latencyMs`, `tag`, `stage`, `safetyFlagged`, `cached`, `ragChunksUsed`, `frustrationScore`. | 🟠 CRITICAL |
 
 #### 1.6 Safety Layer
 
-| Area                                               | v1 State                                        | v2 Requires                                                                                                                                                                                                     | Severity     |
-| -------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| PII redaction                                      | Only profanity/offensive filters in some paths. | Redact Indian mobiles `\b[6-9]\d{9}\b`, emails, Aadhaar-style `\b\d{4}\s?\d{4}\s?\d{4}\b` before any LLM call. Regex pre-compiled at module load, not in hot path.                                              | 🔴 BLOCKER   |
-| Jailbreak/prompt injection detection               | Not implemented.                                | Detect and immediately return safe refusal — do NOT call LLM, do NOT rewrite-and-continue. Log `safety_event`. Account flagged after 3 attempts.                                                                | 🔴 BLOCKER   |
-| Emotional distress detection + parent notification | Not implemented.                                | Detect distress keywords/sentiment. Respond supportively. Log `safety_event`. Notify parent (email/SMS) within defined SLA. `ENABLE_DISTRESS_DETECTION` flag must be off until T43 (copy review) is signed off. | 🔴 BLOCKER   |
-| Age‑appropriate output classifier                  | Not implemented.                                | Scan tutor output before delivery; block/regenerate unsafe NSFW/violent content; log safety event.                                                                                                              | 🔴 BLOCKER   |
-| `safety_event` table                               | Not present.                                    | Table: `id`, `triggerType`, `sessionId`, `turnId`, `studentId`, `severity`, `createdAt`, `resolvedAt`, `resolution`.                                                                                            | 🟠 CRITICAL  |
-| Distress notification when no parent linked        | Not applicable.                                 | If no verified parent mobile: silently skip notification, log event with `severity = CRITICAL` for admin review. Never fail the student-facing response.                                                        | 🟠 CRITICAL  |
-| Jailbreak attempt counter                          | Not tracked.                                    | Count jailbreak attempts per student over last N days; threshold → soft suspension / admin review queue.                                                                                                        | 🟡 IMPORTANT |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| PII redaction | Only profanity/offensive filters in some paths. | Redact Indian mobiles `\b[6-9]\d{9}\b`, emails, Aadhaar-style `\b\d{4}\s?\d{4}\s?\d{4}\b` before any LLM call. Regex pre-compiled at module load, not in hot path. | 🔴 BLOCKER |
+| Jailbreak/prompt injection detection | Not implemented. | Detect and immediately return safe refusal — do NOT call LLM, do NOT rewrite-and-continue. Log `safety_event`. Account flagged after 3 attempts. | 🔴 BLOCKER |
+| Emotional distress detection + parent notification | Not implemented. | Detect distress keywords/sentiment. Respond supportively. Log `safety_event`. Notify parent (email/SMS) within defined SLA. `ENABLE_DISTRESS_DETECTION` flag must be off until T43 (copy review) is signed off. | 🔴 BLOCKER |
+| Age‑appropriate output classifier | Not implemented. | Scan tutor output before delivery; block/regenerate unsafe NSFW/violent content; log safety event. | 🔴 BLOCKER |
+| `safety_event` table | Not present. | Table: `id`, `triggerType`, `sessionId`, `turnId`, `studentId`, `severity`, `createdAt`, `resolvedAt`, `resolution`. | 🟠 CRITICAL |
+| Distress notification when no parent linked | Not applicable. | If no verified parent mobile: silently skip notification, log event with `severity = CRITICAL` for admin review. Never fail the student-facing response. | 🟠 CRITICAL |
+| Jailbreak attempt counter | Not tracked. | Count jailbreak attempts per student over last N days; threshold → soft suspension / admin review queue. | 🟡 IMPORTANT |
 
 ---
 
@@ -112,106 +112,106 @@ v1 (What Exists) vs v2 Spec (What's Required)
 
 #### 2.1 Onboarding & Gating
 
-| Area                               | v1 State                                  | v2 Requires                                                                                                                                                                                                    | Severity    |
-| ---------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Parent OTP enforcement (global)    | OTP routes exist; enforcement patchy.     | `accountStatus = PENDING_PARENT_VERIFY` blocks **all** learning routes until verified; overlay/banner everywhere in student shell.                                                                             | 🔴 BLOCKER  |
-| Profile completeness gate (global) | Some routes guarded; inconsistent.        | Board + Grade + Medium + ≥1 subject mandatory before any learning features; overlay‑style gate to avoid redirect loops.                                                                                        | 🔴 BLOCKER  |
-| Diagnostic hard gate per subject   | Some entrypoints enforce; not universal.  | At all session entrypoints: `hasDiagnosticForSubject()`; if no completed diagnostic → redirect to diagnostic start/resume.                                                                                     | 🔴 BLOCKER  |
-| Grade immutability                 | Partially enforced on some APIs.          | Server‑side: strip `grade` from all student‑facing profile updates in `PATCH /api/student/profile` unconditionally; only admin/grade‑change requests can modify.                                               | 🟠 CRITICAL |
-| `BoardSubjectConfig` seed          | Unknown completeness.                     | Core subjects flagged and seeded per board+grade; 6‑subject cap; locked core subjects. Must be seeded before onboarding subject picker is usable — without it the picker renders empty.                        | 🟠 CRITICAL |
-| `concept.description`              | Likely incomplete/null for many concepts. | Non‑empty for **every** concept in launch slice. Null = broken prompt on every call. Verify with `SELECT COUNT(*) FROM concepts WHERE description IS NULL AND subjectId IN (...)` before any AI tutor testing. | 🔴 BLOCKER  |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Parent OTP enforcement (global) | OTP routes exist; enforcement patchy. | `accountStatus = PENDING_PARENT_VERIFY` blocks **all** learning routes until verified; overlay/banner everywhere in student shell. | 🔴 BLOCKER |
+| Profile completeness gate (global) | Some routes guarded; inconsistent. | Board + Grade + Medium + ≥1 subject mandatory before any learning features; overlay‑style gate to avoid redirect loops. | 🔴 BLOCKER |
+| Diagnostic hard gate per subject | Some entrypoints enforce; not universal. | At all session entrypoints: `hasDiagnosticForSubject()`; if no completed diagnostic → redirect to diagnostic start/resume. | 🔴 BLOCKER |
+| Grade immutability | Partially enforced on some APIs. | Server‑side: strip `grade` from all student‑facing profile updates in `PATCH /api/student/profile` unconditionally; only admin/grade‑change requests can modify. | 🟠 CRITICAL |
+| `BoardSubjectConfig` seed | Unknown completeness. | Core subjects flagged and seeded per board+grade; 6‑subject cap; locked core subjects. Must be seeded before onboarding subject picker is usable — without it the picker renders empty. | 🟠 CRITICAL |
+| `concept.description` | Likely incomplete/null for many concepts. | Non‑empty for **every** concept in launch slice. Null = broken prompt on every call. Verify with `SELECT COUNT(*) FROM concepts WHERE description IS NULL AND subjectId IN (...)` before any AI tutor testing. | 🔴 BLOCKER |
 
 #### 2.2 Learning Plan
 
-| Area                                | v1 State                             | v2 Requires                                                                                                          | Severity     |
-| ----------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------ |
-| `LearningPlan` / `LearningPlanItem` | Not implemented.                     | Plan from diagnostic gaps + syllabus; weak‑first ordering; mandatory board topics locked; exam date drives duration. | 🟠 CRITICAL  |
-| "Today's Plan" widget               | Driven by `getNextAction`, not plan. | `TodaysLearningCard` reads from `LearningPlanItem` (`weekNumber = currentWeek`, `status = UPCOMING`) as primary CTA. | 🟠 CRITICAL  |
-| Weekly plan adjustment job          | Not implemented.                     | Sunday nightly BullMQ job adjusting plan based on completion; behind → weak chapters sooner, ahead → enrichment.     | 🟡 IMPORTANT |
-| Exam date + weekly hours capture    | Not implemented.                     | Profile setup step capturing exam date or "no exam" and weekly hours; drives plan horizon and urgency.               | 🟠 CRITICAL  |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| `LearningPlan` / `LearningPlanItem` | Not implemented. | Plan from diagnostic gaps + syllabus; weak‑first ordering; mandatory board topics locked; exam date drives duration. | 🟠 CRITICAL |
+| "Today's Plan" widget | Driven by `getNextAction`, not plan. | `TodaysLearningCard` reads from `LearningPlanItem` (`weekNumber = currentWeek`, `status = UPCOMING`) as primary CTA. | 🟠 CRITICAL |
+| Weekly plan adjustment job | Not implemented. | Sunday nightly BullMQ job adjusting plan based on completion; behind → weak chapters sooner, ahead → enrichment. | 🟡 IMPORTANT |
+| Exam date + weekly hours capture | Not implemented. | Profile setup step capturing exam date or "no exam" and weekly hours; drives plan horizon and urgency. | 🟠 CRITICAL |
 
 #### 2.3 Session Flow
 
-| Area                             | v1 State                                | v2 Requires                                                                                                                                                                                                          | Severity    |
-| -------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Pre‑session prerequisites screen | Not implemented.                        | Pre‑session modal: topic, estimated duration, prerequisite mastery; unmet prereqs show amber warnings with "Study Prerequisite First" / "Continue Anyway".                                                           | 🟠 CRITICAL |
-| Interrupted session handling     | Not implemented.                        | On entry when incomplete session < 24h: bottom sheet with "Resume / Restart / Skip" plus stage/time context.                                                                                                         | 🟠 CRITICAL |
-| Auto‑save & crash resilience     | DB only; no strict "per turn" contract. | Redis write every turn; Postgres write every 5 turns; sessions recoverable after reload; no progress loss beyond last few seconds.                                                                                   | 🔴 BLOCKER  |
-| Hook stage pre-generation        | Not implemented.                        | While student reads pre-session screen, trigger background Hook prompt assembly and prefetch first AI message into Redis `session:{id}:hook_prefetch`. Without this, first-message latency will regularly exceed 5s. | 🟠 CRITICAL |
-| Latency SLO                      | Baseline unknown.                       | Session load < 3s; first AI message < 5s on 4G. Hook prefetch is primary mitigation.                                                                                                                                 | 🟠 CRITICAL |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Pre‑session prerequisites screen | Not implemented. | Pre‑session modal: topic, estimated duration, prerequisite mastery; unmet prereqs show amber warnings with "Study Prerequisite First" / "Continue Anyway". | 🟠 CRITICAL |
+| Interrupted session handling | Not implemented. | On entry when incomplete session < 24h: bottom sheet with "Resume / Restart / Skip" plus stage/time context. | 🟠 CRITICAL |
+| Auto‑save & crash resilience | DB only; no strict "per turn" contract. | Redis write every turn; Postgres write every 5 turns; sessions recoverable after reload; no progress loss beyond last few seconds. | 🔴 BLOCKER |
+| Hook stage pre-generation | Not implemented. | While student reads pre-session screen, trigger background Hook prompt assembly and prefetch first AI message into Redis `session:{id}:hook_prefetch`. Without this, first-message latency will regularly exceed 5s. | 🟠 CRITICAL |
+| Latency SLO | Baseline unknown. | Session load < 3s; first AI message < 5s on 4G. Hook prefetch is primary mitigation. | 🟠 CRITICAL |
 
 #### 2.4 Assessment, Revision, Readiness
 
-| Area                                  | v1 State                                                          | v2 Requires                                                                                                                                                                                                             | Severity     |
-| ------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| 4‑gate question generation            | Basic schema validation; no solvability/dup/reading‑level checks. | Gate 1: schema; Gate 2: independent LLM solver check; Gate 3: cosine similarity vs student's last 90 days (threshold 0.85); Gate 4: Flesch-Kincaid ±1 grade level.                                                      | 🟠 CRITICAL  |
-| Semantic dedup for questions          | Not implemented.                                                  | Embedding similarity threshold 0.85 vs student's last 90 days of questions. Reject + regenerate on hit.                                                                                                                 | 🟠 CRITICAL  |
-| Error‑typed feedback on wrong answers | Generic incorrect feedback.                                       | Each wrong answer shows worked solution + specific error type label (sign error, formula confusion, unit error, procedural error, reasoning gap). Not generic "incorrect".                                              | 🟠 CRITICAL  |
-| Timed chapter tests                   | Timing behaviour unknown/inconsistent.                            | Visible countdown; auto‑submit at 0; confirmation dialog showing unanswered count on manual submit.                                                                                                                     | 🟡 IMPORTANT |
-| Score < 40% → revision plan insertion | Not implemented.                                                  | Automatic BullMQ job inserts targeted revision `LearningPlanItem` within 24–48h of test submission.                                                                                                                     | 🟡 IMPORTANT |
-| ExamReadinessScore                    | Not implemented.                                                  | At launch: simplified readiness proxy (weighted chapter mastery average). Full formula (mastery × `BoardChapterWeight` + mock exam recency + retention) after Week 4 knowledge model is stable. Severity: 🟡 IMPORTANT. | 🟡 IMPORTANT |
-| SM‑18 revision cards                  | Not implemented.                                                  | 5‑question revision sessions per due concept; `nextReviewAt` scheduling; score > 80% → stability increases; score ≤ 80% → re-teach inserted; 20‑minute daily cap.                                                       | 🟠 CRITICAL  |
-| Question flagging & quarantine        | Partial plumbing; not fully wired.                                | `QuestionFlag` table; 3 flags → `QUARANTINED` status; quarantined questions excluded from all serving queries.                                                                                                          | 🟡 IMPORTANT |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| 4‑gate question generation | Basic schema validation; no solvability/dup/reading‑level checks. | Gate 1: schema; Gate 2: independent LLM solver check; Gate 3: cosine similarity vs student's last 90 days (threshold 0.85); Gate 4: Flesch-Kincaid ±1 grade level. | 🟠 CRITICAL |
+| Semantic dedup for questions | Not implemented. | Embedding similarity threshold 0.85 vs student's last 90 days of questions. Reject + regenerate on hit. | 🟠 CRITICAL |
+| Error‑typed feedback on wrong answers | Generic incorrect feedback. | Each wrong answer shows worked solution + specific error type label (sign error, formula confusion, unit error, procedural error, reasoning gap). Not generic "incorrect". | 🟠 CRITICAL |
+| Timed chapter tests | Timing behaviour unknown/inconsistent. | Visible countdown; auto‑submit at 0; confirmation dialog showing unanswered count on manual submit. | 🟡 IMPORTANT |
+| Score < 40% → revision plan insertion | Not implemented. | Automatic BullMQ job inserts targeted revision `LearningPlanItem` within 24–48h of test submission. | 🟡 IMPORTANT |
+| ExamReadinessScore | Not implemented. | At launch: simplified readiness proxy (weighted chapter mastery average). Full formula (mastery × `BoardChapterWeight` + mock exam recency + retention) after Week 4 knowledge model is stable. Severity: 🟡 IMPORTANT. | 🟡 IMPORTANT |
+| SM‑18 revision cards | Not implemented. | 5‑question revision sessions per due concept; `nextReviewAt` scheduling; score > 80% → stability increases; score ≤ 80% → re-teach inserted; 20‑minute daily cap. | 🟠 CRITICAL |
+| Question flagging & quarantine | Partial plumbing; not fully wired. | `QuestionFlag` table; 3 flags → `QUARANTINED` status; quarantined questions excluded from all serving queries. | 🟡 IMPORTANT |
 
 #### 2.5 Engagement & Retention
 
-| Area                                   | v1 State                                        | v2 Requires                                                                                                                                                                | Severity     |
-| -------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| Streak definition                      | Exists; rules may be loose (e.g. any activity). | "Active day" = full session (all 7 stages) OR ≥10 revision cards. Server‑side enforcement only. Not a login or partial session.                                            | 🟠 CRITICAL  |
-| Streak shield                          | Not implemented.                                | One shield per calendar month; auto‑activates on first missed day; resets 1st of month; student notified on use.                                                           | 🟡 IMPORTANT |
-| XP system & levels                     | Only basic mechanics.                           | `StudentXP`, `XPEvent`, `LevelConfig` with level 1–100, `(N-1)² × 50` XP thresholds. XP never decrements. Level‑up full-screen overlay (cannot be suppressed).             | 🟠 CRITICAL  |
-| Badge system                           | Not implemented.                                | `Badge`, `StudentBadge` models; event‑driven awarding; 5‑slot showcase on profile; overlay on earn.                                                                        | 🟡 IMPORTANT |
-| Session completion summary             | Minimal.                                        | XP animation → stats row (questions, duration, mastery delta) → AI personalised insight (GPT-4o-mini, session-specific) → 5-star rating → "Start next session" CTA.        | 🟠 CRITICAL  |
-| Session completion screen ticket       | Missing from v1.                                | Explicit component: `SessionCompletionScreen`. Includes `XPAnimation`, `SessionStatsRow`, `AIInsightCard`, `SessionRatingWidget`. Blocks XP system but not core AI loop.   | 🟠 CRITICAL  |
-| Student dashboard                      | Streaks + weak/upcoming topics exist.           | Dashboard shows: readiness per subject, revision cards due today, XP this week, Today's Plan — all within < 2s.                                                            | 🟠 CRITICAL  |
-| Streak break message — copy constraint | Not verified.                                   | Break message must NOT use: "broke", "missed", "failed", "lost". Must use forward-looking tone: "Start a new streak today — your best is still ahead."                     | 🟡 IMPORTANT |
-| Progress report screen                 | Not dedicated.                                  | `/progress` page: 30‑day sessions chart, mastery bars per chapter, test score history, study heatmap, AI narrative insight at top. PDF download optional. Never paywalled. | 🟡 IMPORTANT |
-| Exam crunch mode                       | Not implemented.                                | Dashboard mode auto-activates ≤ 14 days to exam: banner, countdown, focus CTA, non-essential UI minimised. Auto-deactivates post-exam.                                     | 🟡 IMPORTANT |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Streak definition | Exists; rules may be loose (e.g. any activity). | "Active day" = full session (all 7 stages) OR ≥10 revision cards. Server‑side enforcement only. Not a login or partial session. | 🟠 CRITICAL |
+| Streak shield | Not implemented. | One shield per calendar month; auto‑activates on first missed day; resets 1st of month; student notified on use. | 🟡 IMPORTANT |
+| XP system & levels | Only basic mechanics. | `StudentXP`, `XPEvent`, `LevelConfig` with level 1–100, `(N-1)² × 50` XP thresholds. XP never decrements. Level‑up full-screen overlay (cannot be suppressed). | 🟠 CRITICAL |
+| Badge system | Not implemented. | `Badge`, `StudentBadge` models; event‑driven awarding; 5‑slot showcase on profile; overlay on earn. | 🟡 IMPORTANT |
+| Session completion summary | Minimal. | XP animation → stats row (questions, duration, mastery delta) → AI personalised insight (GPT-4o-mini, session-specific) → 5-star rating → "Start next session" CTA. | 🟠 CRITICAL |
+| Session completion screen ticket | Missing from v1. | Explicit component: `SessionCompletionScreen`. Includes `XPAnimation`, `SessionStatsRow`, `AIInsightCard`, `SessionRatingWidget`. Blocks XP system but not core AI loop. | 🟠 CRITICAL |
+| Student dashboard | Streaks + weak/upcoming topics exist. | Dashboard shows: readiness per subject, revision cards due today, XP this week, Today's Plan — all within < 2s. | 🟠 CRITICAL |
+| Streak break message — copy constraint | Not verified. | Break message must NOT use: "broke", "missed", "failed", "lost". Must use forward-looking tone: "Start a new streak today — your best is still ahead." | 🟡 IMPORTANT |
+| Progress report screen | Not dedicated. | `/progress` page: 30‑day sessions chart, mastery bars per chapter, test score history, study heatmap, AI narrative insight at top. PDF download optional. Never paywalled. | 🟡 IMPORTANT |
+| Exam crunch mode | Not implemented. | Dashboard mode auto-activates ≤ 14 days to exam: banner, countdown, focus CTA, non-essential UI minimised. Auto-deactivates post-exam. | 🟡 IMPORTANT |
 
 #### 2.6 Subscriptions & Payments
 
-| Area                       | v1 State                                                  | v2 Requires                                                                                                                                                                                                        | Severity    |
-| -------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| Freemium session caps      | Free caps on `/api/chat`; not session‑level for AI tutor. | `FreeTierUsage` per subject per student per month; 3 AI tutor sessions/month/subject; cap checked server‑side **before** session start; never interrupts in-progress session.                                      | 🔴 BLOCKER  |
-| Freemium upgrade gate UI   | Not implemented.                                          | Full `FreemiumUpgradeGate` component: explains cap, shows sessions remaining, plan options, upgrade CTA. Must NOT reference referral programme (deferred).                                                         | 🟠 CRITICAL |
-| Full INR subscription flow | Payments exist; not aligned with v2 pricing UX.           | `PlanSelector` (Monthly/Quarterly/Annual + INR + GST breakdown), `PaymentMethodSelector` (UPI first), `PaymentConfirmation` (scroll-to-accept terms with IntersectionObserver), Razorpay order + verify endpoints. | 🟠 CRITICAL |
-| Referral programme         | Not implemented.                                          | Referral codes; referrer: 1 month free on friend's first payment; referred: 20% off first month; same-device/IP fraud detection. Launch copy must NOT reference referral until implemented.                        | 🟢 DEFER    |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Freemium session caps | Free caps on `/api/chat`; not session‑level for AI tutor. | `FreeTierUsage` per subject per student per month; 3 AI tutor sessions/month/subject; cap checked server‑side **before** session start; never interrupts in-progress session. | 🔴 BLOCKER |
+| Freemium upgrade gate UI | Not implemented. | Full `FreemiumUpgradeGate` component: explains cap, shows sessions remaining, plan options, upgrade CTA. Must NOT reference referral programme (deferred). | 🟠 CRITICAL |
+| Full INR subscription flow | Payments exist; not aligned with v2 pricing UX. | `PlanSelector` (Monthly/Quarterly/Annual + INR + GST breakdown), `PaymentMethodSelector` (UPI first), `PaymentConfirmation` (scroll-to-accept terms with IntersectionObserver), Razorpay order + verify endpoints. | 🟠 CRITICAL |
+| Referral programme | Not implemented. | Referral codes; referrer: 1 month free on friend's first payment; referred: 20% off first month; same-device/IP fraud detection. Launch copy must NOT reference referral until implemented. | 🟢 DEFER |
 
 ---
 
 ### DOMAIN 3 — PARENT ACTOR
 
-| Area                                     | v1 State                                 | v2 Requires                                                                                                                        | Severity     |
-| ---------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| Parent as distinct actor                 | Parent represented via fields on `User`. | Separate parent user type (`ParentProfile` or role field); can link up to 3 children; cannot access session chat/transcripts.      | 🟠 CRITICAL  |
-| Structured consent record                | OTP implies consent, no formal record.   | First‑class `Consent` model: purposes (data processing, AI interaction), timestamps, IP, withdrawal endpoint. DPDP Act compliance. | 🔴 BLOCKER   |
-| Parent progress dashboard                | No dedicated parent dashboard.           | Read‑only child view: sessions/time this week, streak, mastery cards per subject, readiness score, exam countdown.                 | 🟠 CRITICAL  |
-| Weekly digest                            | Not implemented.                         | Weekly auto-email: sessions completed, mastery change, readiness, AI narrative insight. Sunday 18:00 IST send via BullMQ.          | 🟡 IMPORTANT |
-| Milestone alerts                         | Not implemented.                         | Email/SMS on: chapter mastered, streak milestone, readiness drops >10 pts in a week.                                               | 🟡 IMPORTANT |
-| Distress detection → parent notification | Not present.                             | Distress flagged in session → parent email/SMS within SLA; integrated with `safety_event`. Gated on T43 sign-off.                  | 🔴 BLOCKER   |
-| Parent subscription management           | Student‑centric subscription.            | Parent‑centric screen: active plan, renewal date, invoices list, cancel CTA. Separate from student profile.                        | 🟡 IMPORTANT |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Parent as distinct actor | Parent represented via fields on `User`. | Separate parent user type (`ParentProfile` or role field); can link up to 3 children; cannot access session chat/transcripts. | 🟠 CRITICAL |
+| Structured consent record | OTP implies consent, no formal record. | First‑class `Consent` model: purposes (data processing, AI interaction), timestamps, IP, withdrawal endpoint. DPDP Act compliance. | 🔴 BLOCKER |
+| Parent progress dashboard | No dedicated parent dashboard. | Read‑only child view: sessions/time this week, streak, mastery cards per subject, readiness score, exam countdown. | 🟠 CRITICAL |
+| Weekly digest | Not implemented. | Weekly auto-email: sessions completed, mastery change, readiness, AI narrative insight. Sunday 18:00 IST send via BullMQ. | 🟡 IMPORTANT |
+| Milestone alerts | Not implemented. | Email/SMS on: chapter mastered, streak milestone, readiness drops >10 pts in a week. | 🟡 IMPORTANT |
+| Distress detection → parent notification | Not present. | Distress flagged in session → parent email/SMS within SLA; integrated with `safety_event`. Gated on T43 sign-off. | 🔴 BLOCKER |
+| Parent subscription management | Student‑centric subscription. | Parent‑centric screen: active plan, renewal date, invoices list, cancel CTA. Separate from student profile. | 🟡 IMPORTANT |
 
 ---
 
 ### DOMAIN 4 — ADMIN OPERATIONS
 
-| Area                          | v1 State                                                              | v2 Requires                                                                                                                                                                                                             | Severity     |
-| ----------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| Concept taxonomy completeness | Hierarchy exists; `irt_b`, bloom, prereqs, confusions may be missing. | Fully seeded taxonomy for CBSE Grade 10 Maths + Science before launch.                                                                                                                                                  | 🔴 BLOCKER   |
-| MVP content readiness         | Ingestion pipeline exists; tagging completeness unknown.              | For launch slice: all chunks ingested and tagged with `conceptIds[]`; ≥ 5 questions per concept; `irt_b` manually assigned.                                                                                             | 🔴 BLOCKER   |
-| `BoardChapterWeight`          | Not present.                                                          | Per‑chapter mark weightings seeded for CBSE Grade 10 Maths + Science; necessary for readiness score formula.                                                                                                            | 🟠 CRITICAL  |
-| Misconception library         | Not implemented.                                                      | Seeded misconceptions (20+ per subject) with regex patterns, contrastive explanations. Expert-reviewed and validated. Low false positive rate verified before launch.                                                   | 🟠 CRITICAL  |
-| Prompt evaluation harness     | Not implemented.                                                      | 20+ canonical test cases per major prompt layer; automated regression checks; wired into CI/CD as a required gate on any change to `lib/ai/tutor/promptAssembly.ts` or `lib/ai/prompts/**`. Failing eval blocks deploy. | 🟠 CRITICAL  |
-| AI tutor session sampling     | Ad‑hoc; content logs only.                                            | Random 5% of sessions reviewed weekly; quality checklist defined; minimum bar: % of sessions reaching CONSOLIDATION stage.                                                                                              | 🟡 IMPORTANT |
-| Per‑student AI feature flag   | Not present.                                                          | `StudentFeatureFlag` table; `ENABLE_AI_TUTOR` global kill switch; staged rollout by cohort (5% → 20% → 50% → 100%).                                                                                                     | 🟠 CRITICAL  |
-| LLM cost per session          | AIContentLog for content; not per session.                            | Using `AITutorTurnLog.costUsd`, compute daily `cost/session` aggregate; alert if > ₹0.25/session.                                                                                                                       | 🟡 IMPORTANT |
-| `safety_event` review queue   | Not implemented.                                                      | Admin query/view returning unresolved events by severity. Distress events must trigger immediate on-call notification (tested before go-live). On-call alias defined and owned by founder before launch.                | 🔴 BLOCKER   |
+| Area | v1 State | v2 Requires | Severity |
+| ---- | -------- | ----------- | -------- |
+| Concept taxonomy completeness | Hierarchy exists; `irt_b`, bloom, prereqs, confusions may be missing. | Fully seeded taxonomy for CBSE Grade 10 Maths + Science before launch. | 🔴 BLOCKER |
+| MVP content readiness | Ingestion pipeline exists; tagging completeness unknown. | For launch slice: all chunks ingested and tagged with `conceptIds[]`; ≥ 5 questions per concept; `irt_b` manually assigned. | 🔴 BLOCKER |
+| `BoardChapterWeight` | Not present. | Per‑chapter mark weightings seeded for CBSE Grade 10 Maths + Science; necessary for readiness score formula. | 🟠 CRITICAL |
+| Misconception library | Not implemented. | Seeded misconceptions (20+ per subject) with regex patterns, contrastive explanations. Expert-reviewed and validated. Low false positive rate verified before launch. | 🟠 CRITICAL |
+| Prompt evaluation harness | Not implemented. | 20+ canonical test cases per major prompt layer; automated regression checks; wired into CI/CD as a required gate on any change to `lib/ai/tutor/promptAssembly.ts` or `lib/ai/prompts/**`. Failing eval blocks deploy. | 🟠 CRITICAL |
+| AI tutor session sampling | Ad‑hoc; content logs only. | Random 5% of sessions reviewed weekly; quality checklist defined; minimum bar: % of sessions reaching CONSOLIDATION stage. | 🟡 IMPORTANT |
+| Per‑student AI feature flag | Not present. | `StudentFeatureFlag` table; `ENABLE_AI_TUTOR` global kill switch; staged rollout by cohort (5% → 20% → 50% → 100%). | 🟠 CRITICAL |
+| LLM cost per session | AIContentLog for content; not per session. | Using `AITutorTurnLog.costUsd`, compute daily `cost/session` aggregate; alert if > ₹0.25/session. | 🟡 IMPORTANT |
+| `safety_event` review queue | Not implemented. | Admin query/view returning unresolved events by severity. Distress events must trigger immediate on-call notification (tested before go-live). On-call alias defined and owned by founder before launch. | 🔴 BLOCKER |
 
 ---
 
 ### DOMAIN 5 — FRONTEND COMPONENTS
 
-> **Coverage note**: Domains 1–4 specify _what_ must exist and _why_. This domain specifies the _component contract_ — layout, states, mobile behaviour, and interaction rules — for every screen that must be built or significantly changed. Without this, a frontend engineer has no contract to build against.
+> **Coverage note**: Domains 1–4 specify *what* must exist and *why*. This domain specifies the *component contract* — layout, states, mobile behaviour, and interaction rules — for every screen that must be built or significantly changed. Without this, a frontend engineer has no contract to build against.
 
 #### 5.1 Component Inventory & States
 
@@ -224,150 +224,150 @@ Every component listed below must handle four states unless marked otherwise. Mi
 
 ---
 
-**`AITutorChatPanel`** — _Core session interaction surface_
+**`AITutorChatPanel`** — *Core session interaction surface*
 
-| Attribute           | Spec                                                                                                                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Route               | Embedded in `app/(student)/session/[sessionId]/page.tsx`                                                                                                                                         |
-| Replaces            | Existing PRACTICE + TEST phase UI                                                                                                                                                                |
-| Layout              | Full-height flex column: top = chat history (scrollable), bottom = input bar (sticky, never obscured by keyboard)                                                                                |
-| Mobile              | Input bar uses `position: sticky; bottom: 0` with `env(safe-area-inset-bottom)` padding for iOS. Keyboard-aware scroll — chat history scrolls up when keyboard opens. Min touch target: 44×44px. |
-| Chat history        | Alternating AI (left-aligned, light grey bubble) / Student (right-aligned, brand-coloured bubble). AI bubble max-width: 85% on mobile.                                                           |
-| AI typing indicator | Three animated dots while SSE stream is open but first token not yet received. Immediately replaced by streaming text on first token.                                                            |
-| Streaming           | `EventSource` or `fetch` + `ReadableStream`. Text appended character-by-character. Cursor blink at end of in-progress message.                                                                   |
-| Machine tags        | Stripped from display. `[QUESTION]`, `[STAGE_ADVANCE]` etc. never shown to student.                                                                                                              |
-| Hint bar            | Below input: "Hints: 0/3" counter. Tap "Get a Hint" to request. Button disabled after Tier 3 hint delivered. Entire hint bar hidden during EXPLANATION stages.                                   |
-| Inactivity timer    | After 90s of no student input: subtle pulsing prompt appears above input bar — "Still working on it? Want a hint?" — with Yes/No. Auto-dismisses if student starts typing.                       |
-| Error state         | If SSE connection drops: inline banner "Connection lost — reconnecting…" with spinner. On reconnect: re-deliver last AI message. Never lose student's typed-but-not-sent text.                   |
-| Feature flag        | Entire component renders only if `isAITutorEnabled`. Otherwise renders existing session UI unchanged.                                                                                            |
+| Attribute | Spec |
+|-----------|------|
+| Route | Embedded in `app/(student)/session/[sessionId]/page.tsx` |
+| Replaces | Existing PRACTICE + TEST phase UI |
+| Layout | Full-height flex column: top = chat history (scrollable), bottom = input bar (sticky, never obscured by keyboard) |
+| Mobile | Input bar uses `position: sticky; bottom: 0` with `env(safe-area-inset-bottom)` padding for iOS. Keyboard-aware scroll — chat history scrolls up when keyboard opens. Min touch target: 44×44px. |
+| Chat history | Alternating AI (left-aligned, light grey bubble) / Student (right-aligned, brand-coloured bubble). AI bubble max-width: 85% on mobile. |
+| AI typing indicator | Three animated dots while SSE stream is open but first token not yet received. Immediately replaced by streaming text on first token. |
+| Streaming | `EventSource` or `fetch` + `ReadableStream`. Text appended character-by-character. Cursor blink at end of in-progress message. |
+| Machine tags | Stripped from display. `[QUESTION]`, `[STAGE_ADVANCE]` etc. never shown to student. |
+| Hint bar | Below input: "Hints: 0/3" counter. Tap "Get a Hint" to request. Button disabled after Tier 3 hint delivered. Entire hint bar hidden during EXPLANATION stages. |
+| Inactivity timer | After 90s of no student input: subtle pulsing prompt appears above input bar — "Still working on it? Want a hint?" — with Yes/No. Auto-dismisses if student starts typing. |
+| Error state | If SSE connection drops: inline banner "Connection lost — reconnecting…" with spinner. On reconnect: re-deliver last AI message. Never lose student's typed-but-not-sent text. |
+| Feature flag | Entire component renders only if `isAITutorEnabled`. Otherwise renders existing session UI unchanged. |
 
 ---
 
-**`PreSessionScreen`** — _Gateway before session starts_
+**`PreSessionScreen`** — *Gateway before session starts*
 
-| Attribute           | Spec                                                                                                                                                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Route               | `app/(student)/session/pre/[conceptId]/page.tsx`                                                                                                                                      |
-| Layout              | Centred card (max-width 480px), vertically centred on desktop, full-screen on mobile                                                                                                  |
-| Content             | Topic name (large), subject badge, estimated duration chip, prerequisite status row                                                                                                   |
+| Attribute | Spec |
+|-----------|------|
+| Route | `app/(student)/session/pre/[conceptId]/page.tsx` |
+| Layout | Centred card (max-width 480px), vertically centred on desktop, full-screen on mobile |
+| Content | Topic name (large), subject badge, estimated duration chip, prerequisite status row |
 | Prerequisite status | Each prerequisite shown as a pill: green (mastered ≥70%), amber (partial 40–69%), red (not started <40%). If any red/amber: amber warning banner "Some prerequisites are incomplete." |
-| CTAs                | Primary: "Start Session". Secondary (if unmet prereqs): "Study Prerequisites First" (navigates to lowest-mastery prerequisite).                                                       |
-| Hook prefetch       | On mount: fire `POST /api/tutor/session/prefetch` to trigger Hook stage pre-generation in background. User sees CTAs immediately.                                                     |
-| Loading             | CTAs visible immediately from static data. Prerequisite pills load async — show skeleton pills until resolved. Never block CTAs on prereq load.                                       |
-| Mobile              | Full-screen. Large tap targets. No horizontal scroll.                                                                                                                                 |
+| CTAs | Primary: "Start Session". Secondary (if unmet prereqs): "Study Prerequisites First" (navigates to lowest-mastery prerequisite). |
+| Hook prefetch | On mount: fire `POST /api/tutor/session/prefetch` to trigger Hook stage pre-generation in background. User sees CTAs immediately. |
+| Loading | CTAs visible immediately from static data. Prerequisite pills load async — show skeleton pills until resolved. Never block CTAs on prereq load. |
+| Mobile | Full-screen. Large tap targets. No horizontal scroll. |
 
 ---
 
-**`InterruptedSessionSheet`** — _Bottom sheet on session resume_
+**`InterruptedSessionSheet`** — *Bottom sheet on session resume*
 
-| Attribute | Spec                                                                                                                                                                       |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Trigger   | Appears automatically when navigating to a session that has an incomplete Redis state < 24h old                                                                            |
-| Layout    | Bottom sheet (slides up). Not a modal — student can see context beneath.                                                                                                   |
-| Content   | "You were in stage N of 7, about X minutes in." Three options as large tappable rows: "Resume from where I left off", "Restart topic", "Skip this topic (defer to later)". |
-| Dismiss   | Tapping outside sheet does nothing — student must choose an option.                                                                                                        |
-| Mobile    | Sheet height: auto up to 60vh. Drag handle visible. Snap points: open / closed.                                                                                            |
-
----
-
-**`SessionCompletionScreen`** — _Post-session summary_
-
-| Attribute     | Spec                                                                                                                                                                       |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Route         | Replaces session UI after CONSOLIDATION stage `[STAGE_ADVANCE]` with no next stage                                                                                         |
-| Layout        | Full-screen, scrollable. Celebration top → stats → insight → rating → CTA                                                                                                  |
-| XP animation  | Lottie or CSS: XP counter ticks up from previous total to new total. If level-up: full-screen level-up card appears first (blocks summary until dismissed or 3s timeout).  |
-| Stats row     | 4 chips: "X concepts", "Y questions", "Z% correct", "N minutes".                                                                                                           |
-| Mastery delta | Per-concept: before/after mastery bar. Green if improved. Show only concepts touched in this session (max 5).                                                              |
-| AI insight    | GPT-4o-mini generated. Specific to this session ("You've improved significantly on quadratic formula substitution today…"). Loading skeleton for up to 3s while generated. |
-| Star rating   | 5-star tap widget. Optional. After tap: brief thank-you micro-animation. Submits via `POST /api/student/session/[id]/rating`.                                              |
-| CTA           | "Start Next Session" (primary, navigates to next `LearningPlanItem`). "Back to Dashboard" (secondary).                                                                     |
-| Mobile        | Fully scrollable. XP animation auto-plays. No pinch-zoom on completion screen.                                                                                             |
+| Attribute | Spec |
+|-----------|------|
+| Trigger | Appears automatically when navigating to a session that has an incomplete Redis state < 24h old |
+| Layout | Bottom sheet (slides up). Not a modal — student can see context beneath. |
+| Content | "You were in stage N of 7, about X minutes in." Three options as large tappable rows: "Resume from where I left off", "Restart topic", "Skip this topic (defer to later)". |
+| Dismiss | Tapping outside sheet does nothing — student must choose an option. |
+| Mobile | Sheet height: auto up to 60vh. Drag handle visible. Snap points: open / closed. |
 
 ---
 
-**`StudentDashboard`** — _Primary screen after login_
+**`SessionCompletionScreen`** — *Post-session summary*
 
-| Attribute            | Spec                                                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Route                | `app/(student)/dashboard/page.tsx`                                                                                                                                              |
-| Layout               | Single-column on mobile. Two-column on desktop (left: Today's Plan + CTA; right: readiness + revision cards).                                                                   |
-| Load strategy        | Server component with streaming. Render shell + CTA immediately from session cache. Stream readiness cards, revision queue, XP as they resolve. Total time to interactive < 2s. |
-| `TodaysLearningCard` | Top of page. Topic name, subject, estimated duration. Single large "Continue Learning" CTA. Fallback to `getNextAction` if no `LearningPlanItem` for today.                     |
-| Streak widget        | Fire emoji + count. "X day streak". Tap opens streak history (mini calendar).                                                                                                   |
-| Revision due         | "N cards due today" chip. Tapping opens inline revision queue. If 0 due: "You're all caught up today ✓" in green.                                                               |
-| XP widget            | "XP this week: NNN". Progress bar to next level. Level badge.                                                                                                                   |
-| Readiness            | One card per subject. Score ring (0–100), colour: red <40, amber 40–70, green >70. Tap navigates to subject detail.                                                             |
-| Exam crunch mode     | Auto-activates when `daysToExam ≤ 14`. Dashboard switches layout: countdown timer prominent top-center, non-revision widgets hidden, primary CTA changes to "Study for Exam".   |
-| Empty state          | New student with no data: onboarding checklist card instead of all widgets. Steps: "Complete profile", "Take diagnostic", "Start first session".                                |
-| Error state          | Each widget fails independently — a broken readiness card doesn't blank the whole dashboard. Each widget shows its own "Couldn't load — tap to retry" state.                    |
+| Attribute | Spec |
+|-----------|------|
+| Route | Replaces session UI after CONSOLIDATION stage `[STAGE_ADVANCE]` with no next stage |
+| Layout | Full-screen, scrollable. Celebration top → stats → insight → rating → CTA |
+| XP animation | Lottie or CSS: XP counter ticks up from previous total to new total. If level-up: full-screen level-up card appears first (blocks summary until dismissed or 3s timeout). |
+| Stats row | 4 chips: "X concepts", "Y questions", "Z% correct", "N minutes". |
+| Mastery delta | Per-concept: before/after mastery bar. Green if improved. Show only concepts touched in this session (max 5). |
+| AI insight | GPT-4o-mini generated. Specific to this session ("You've improved significantly on quadratic formula substitution today…"). Loading skeleton for up to 3s while generated. |
+| Star rating | 5-star tap widget. Optional. After tap: brief thank-you micro-animation. Submits via `POST /api/student/session/[id]/rating`. |
+| CTA | "Start Next Session" (primary, navigates to next `LearningPlanItem`). "Back to Dashboard" (secondary). |
+| Mobile | Fully scrollable. XP animation auto-plays. No pinch-zoom on completion screen. |
 
 ---
 
-**`DiagnosticFlow`** — _Adaptive baseline test_
+**`StudentDashboard`** — *Primary screen after login*
 
-| Attribute        | Spec                                                                                                                                                                       |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Route            | `app/(student)/diagnostic/[subjectId]/page.tsx`                                                                                                                            |
-| Layout           | Full-screen, distraction-free. No nav bar during active test. Progress bar at top showing question N of estimated total (range: 15–25).                                    |
-| Question render  | Question text, then answer options (MCQ) or text input (short answer). One question visible at a time.                                                                     |
-| Navigation       | No back button within active diagnostic — student can only go forward.                                                                                                     |
-| Timer            | Soft 30-minute timer shown in corner. At 28 minutes: gentle warning "2 minutes remaining". At 30 minutes: auto-save and submit partial.                                    |
-| Pause/resume     | "Save and continue later" button. State saved to Redis with 24h TTL. On resume: exactly where left off.                                                                    |
+| Attribute | Spec |
+|-----------|------|
+| Route | `app/(student)/dashboard/page.tsx` |
+| Layout | Single-column on mobile. Two-column on desktop (left: Today's Plan + CTA; right: readiness + revision cards). |
+| Load strategy | Server component with streaming. Render shell + CTA immediately from session cache. Stream readiness cards, revision queue, XP as they resolve. Total time to interactive < 2s. |
+| `TodaysLearningCard` | Top of page. Topic name, subject, estimated duration. Single large "Continue Learning" CTA. Fallback to `getNextAction` if no `LearningPlanItem` for today. |
+| Streak widget | Fire emoji + count. "X day streak". Tap opens streak history (mini calendar). |
+| Revision due | "N cards due today" chip. Tapping opens inline revision queue. If 0 due: "You're all caught up today ✓" in green. |
+| XP widget | "XP this week: NNN". Progress bar to next level. Level badge. |
+| Readiness | One card per subject. Score ring (0–100), colour: red <40, amber 40–70, green >70. Tap navigates to subject detail. |
+| Exam crunch mode | Auto-activates when `daysToExam ≤ 14`. Dashboard switches layout: countdown timer prominent top-center, non-revision widgets hidden, primary CTA changes to "Study for Exam". |
+| Empty state | New student with no data: onboarding checklist card instead of all widgets. Steps: "Complete profile", "Take diagnostic", "Start first session". |
+| Error state | Each widget fails independently — a broken readiness card doesn't blank the whole dashboard. Each widget shows its own "Couldn't load — tap to retry" state. |
+
+---
+
+**`DiagnosticFlow`** — *Adaptive baseline test*
+
+| Attribute | Spec |
+|-----------|------|
+| Route | `app/(student)/diagnostic/[subjectId]/page.tsx` |
+| Layout | Full-screen, distraction-free. No nav bar during active test. Progress bar at top showing question N of estimated total (range: 15–25). |
+| Question render | Question text, then answer options (MCQ) or text input (short answer). One question visible at a time. |
+| Navigation | No back button within active diagnostic — student can only go forward. |
+| Timer | Soft 30-minute timer shown in corner. At 28 minutes: gentle warning "2 minutes remaining". At 30 minutes: auto-save and submit partial. |
+| Pause/resume | "Save and continue later" button. State saved to Redis with 24h TTL. On resume: exactly where left off. |
 | Abandon recovery | If < 10 questions answered and session expires: submit partial; system assumes grade-level prior for unanswered concepts. UI shows "Partial diagnostic submitted" message. |
-| Results screen   | Visual knowledge map (not score). Colour-coded chapters: red/amber/green. "Here's where to start" recommended chapter highlighted. CTA: "Start Learning".                  |
-| Mobile           | Large tap targets for MCQ options (min 52px height). Text input uses numeric keyboard for math answers.                                                                    |
+| Results screen | Visual knowledge map (not score). Colour-coded chapters: red/amber/green. "Here's where to start" recommended chapter highlighted. CTA: "Start Learning". |
+| Mobile | Large tap targets for MCQ options (min 52px height). Text input uses numeric keyboard for math answers. |
 
 ---
 
-**`FreemiumUpgradeGate`** — _Session cap enforcement surface_
+**`FreemiumUpgradeGate`** — *Session cap enforcement surface*
 
-| Attribute    | Spec                                                                                                                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Trigger      | Shown instead of session start when `FreeTierUsage.count >= 3` for that subject this month. Never mid-session.                                                            |
-| Layout       | Full-card overlay (not toast). Cannot be dismissed without choosing an option.                                                                                            |
-| Content      | "You've used all 3 free sessions for [Subject] this month." Session counter ("3 of 3 used"). Plan preview: Monthly ₹399, Quarterly ₹267 (10% off), Annual ₹891 (25% off). |
-| CTAs         | "Upgrade Now" (primary). "Remind me later" (secondary — closes and shows a sticky upgrade banner on dashboard).                                                           |
-| Copy         | Must NOT reference referral programme until that feature is live.                                                                                                         |
-| Reset notice | "Your free sessions reset on [1st of next month]."                                                                                                                        |
-
----
-
-**`ProfileCompletionGate`** — _Blocking overlay for incomplete profile_
-
-| Attribute    | Spec                                                                                                                                |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Trigger      | Rendered in student layout when `isProfileComplete = false`. Overlays all routes in `app/(student)/**`.                             |
-| Layout       | Full-screen overlay (not modal). Cannot be bypassed via URL.                                                                        |
-| Content      | Checklist: Board (✓/✗), Grade (✓/✗), Medium of instruction (✓/✗), At least one subject (✓/✗). Progress bar showing N of 4 complete. |
-| CTA          | "Complete your profile" button → navigates to `/profile/setup`.                                                                     |
-| Cannot close | No X button. No click-outside dismiss. Gate lifted only when server-side `isProfileComplete` returns true.                          |
+| Attribute | Spec |
+|-----------|------|
+| Trigger | Shown instead of session start when `FreeTierUsage.count >= 3` for that subject this month. Never mid-session. |
+| Layout | Full-card overlay (not toast). Cannot be dismissed without choosing an option. |
+| Content | "You've used all 3 free sessions for [Subject] this month." Session counter ("3 of 3 used"). Plan preview: Monthly ₹399, Quarterly ₹267 (10% off), Annual ₹891 (25% off). |
+| CTAs | "Upgrade Now" (primary). "Remind me later" (secondary — closes and shows a sticky upgrade banner on dashboard). |
+| Copy | Must NOT reference referral programme until that feature is live. |
+| Reset notice | "Your free sessions reset on [1st of next month]." |
 
 ---
 
-**`ParentOTPGate`** — _Age-gate enforcement overlay_
+**`ProfileCompletionGate`** — *Blocking overlay for incomplete profile*
 
-| Attribute | Spec                                                                                                                 |
-| --------- | -------------------------------------------------------------------------------------------------------------------- |
-| Trigger   | Rendered in student layout when `accountStatus = PENDING_PARENT_VERIFY`. Only for students under 13.                 |
-| Layout    | Full-screen overlay. Priority over `ProfileCompletionGate` (check parent gate first).                                |
-| Content   | Explanation of why parent verification is needed. Mobile number input for parent. "Send OTP" → OTP input → "Verify". |
-| Success   | Overlay disappears immediately on successful verification. No page reload needed (update client state).              |
-| Resend    | "Resend OTP" available after 30s. Max 3 resend attempts per session before "contact support" message.                |
+| Attribute | Spec |
+|-----------|------|
+| Trigger | Rendered in student layout when `isProfileComplete = false`. Overlays all routes in `app/(student)/**`. |
+| Layout | Full-screen overlay (not modal). Cannot be bypassed via URL. |
+| Content | Checklist: Board (✓/✗), Grade (✓/✗), Medium of instruction (✓/✗), At least one subject (✓/✗). Progress bar showing N of 4 complete. |
+| CTA | "Complete your profile" button → navigates to `/profile/setup`. |
+| Cannot close | No X button. No click-outside dismiss. Gate lifted only when server-side `isProfileComplete` returns true. |
 
 ---
 
-**`ParentDashboard`** — _Read-only parent progress view_
+**`ParentOTPGate`** — *Age-gate enforcement overlay*
 
-| Attribute             | Spec                                                                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Route                 | `app/(parent)/dashboard/page.tsx`                                                                                              |
-| Layout                | Simple. One card per linked child. Tap child card to expand/navigate to child detail.                                          |
-| Child summary card    | Name, grade, board. Sessions this week. Current streak. Readiness score per subject (colour ring). Exam date countdown if set. |
-| Child detail          | Sessions list (last 7 days). Chapter mastery bars per subject. Readiness score breakdown. Recent test scores.                  |
-| Language              | Simplified language — written for low-digital-literacy parent. No jargon.                                                      |
-| Empty state           | No linked children: "Link your child's account to start monitoring their progress." with CTA.                                  |
-| Read-only enforcement | No edit controls visible. Cannot navigate to any student-facing route. Separate session/auth.                                  |
+| Attribute | Spec |
+|-----------|------|
+| Trigger | Rendered in student layout when `accountStatus = PENDING_PARENT_VERIFY`. Only for students under 13. |
+| Layout | Full-screen overlay. Priority over `ProfileCompletionGate` (check parent gate first). |
+| Content | Explanation of why parent verification is needed. Mobile number input for parent. "Send OTP" → OTP input → "Verify". |
+| Success | Overlay disappears immediately on successful verification. No page reload needed (update client state). |
+| Resend | "Resend OTP" available after 30s. Max 3 resend attempts per session before "contact support" message. |
+
+---
+
+**`ParentDashboard`** — *Read-only parent progress view*
+
+| Attribute | Spec |
+|-----------|------|
+| Route | `app/(parent)/dashboard/page.tsx` |
+| Layout | Simple. One card per linked child. Tap child card to expand/navigate to child detail. |
+| Child summary card | Name, grade, board. Sessions this week. Current streak. Readiness score per subject (colour ring). Exam date countdown if set. |
+| Child detail | Sessions list (last 7 days). Chapter mastery bars per subject. Readiness score breakdown. Recent test scores. |
+| Language | Simplified language — written for low-digital-literacy parent. No jargon. |
+| Empty state | No linked children: "Link your child's account to start monitoring their progress." with CTA. |
+| Read-only enforcement | No edit controls visible. Cannot navigate to any student-facing route. Separate session/auth. |
 
 ---
 
@@ -375,17 +375,17 @@ Every component listed below must handle four states unless marked otherwise. Mi
 
 These apply globally across the student shell. Any engineer touching FE must follow these:
 
-| Pattern                  | Rule                                                                                                                   |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Mobile-first breakpoints | Default styles target 360px. `sm:` = 640px. `md:` = 768px. `lg:` = 1024px. Never desktop-first.                        |
-| Minimum touch targets    | 44×44px on all interactive elements. Use Tailwind `min-h-[44px] min-w-[44px]`.                                         |
-| Loading skeletons        | All async data shows a skeleton (not spinner) that matches the populated layout's shape. Max 2s skeleton.              |
-| Error states             | Every async widget handles error independently. Never propagate a single error to blank a full page.                   |
-| Empty states             | Every list/feed has an empty state with a specific CTA. Never render an empty `<div>`.                                 |
-| Overlay vs redirect      | Use overlay-style gates (not full redirects) for profile/parent guards to avoid redirect loops and preserve URL state. |
-| Celebration animations   | Level-up, badge earn, streak milestones use CSS or Lottie animations. Cannot be auto-skipped (minimum 1.5s display).   |
-| Streak break copy        | Must not use "broke", "missed", "failed", "lost". Forward-looking only.                                                |
-| Dark mode                | All components must support `dark:` Tailwind variants. Test on dark mode before shipping.                              |
+| Pattern | Rule |
+|---------|------|
+| Mobile-first breakpoints | Default styles target 360px. `sm:` = 640px. `md:` = 768px. `lg:` = 1024px. Never desktop-first. |
+| Minimum touch targets | 44×44px on all interactive elements. Use Tailwind `min-h-[44px] min-w-[44px]`. |
+| Loading skeletons | All async data shows a skeleton (not spinner) that matches the populated layout's shape. Max 2s skeleton. |
+| Error states | Every async widget handles error independently. Never propagate a single error to blank a full page. |
+| Empty states | Every list/feed has an empty state with a specific CTA. Never render an empty `<div>`. |
+| Overlay vs redirect | Use overlay-style gates (not full redirects) for profile/parent guards to avoid redirect loops and preserve URL state. |
+| Celebration animations | Level-up, badge earn, streak milestones use CSS or Lottie animations. Cannot be auto-skipped (minimum 1.5s display). |
+| Streak break copy | Must not use "broke", "missed", "failed", "lost". Forward-looking only. |
+| Dark mode | All components must support `dark:` Tailwind variants. Test on dark mode before shipping. |
 
 ---
 
@@ -474,7 +474,6 @@ PreSessionScreen
 ```
 
 **Session crash/network drop recovery**:
-
 - Redis state auto-saves every turn.
 - On reconnect: reload last known state from Redis.
 - If `lastTurnCompleted = false`: roll back partial turn, re-display last complete AI message.
@@ -507,7 +506,6 @@ Student taps "Start Session" or "Continue Learning"
 ```
 
 **Subscription Purchase Flow**:
-
 ```
 PlanSelector (Monthly / Quarterly / Annual)
   │
@@ -555,33 +553,33 @@ Child linking
 
 Every screen below must have an empty state. This is exhaustive:
 
-| Screen                               | Empty State Content                                | CTA                           |
-| ------------------------------------ | -------------------------------------------------- | ----------------------------- |
-| StudentDashboard (new user)          | Onboarding checklist card                          | "Complete your profile"       |
-| StudentDashboard (no revision due)   | "You're all caught up today ✓"                     | None (positive reinforcement) |
-| DiagnosticResults                    | N/A — results always present after completion      | —                             |
-| LearningPlan (not generated yet)     | "Set your exam date to generate your plan"         | "Set exam date"               |
-| RevisionQueue (nothing due)          | "No revision due today" with green tick            | "Browse subjects"             |
-| ProgressReport (no sessions yet)     | "Complete your first session to see your progress" | "Start a session"             |
-| ParentDashboard (no linked children) | "Link your child's account"                        | "Link child"                  |
-| BadgeShowcase (no badges yet)        | "Complete sessions to earn badges"                 | "Start a session"             |
+| Screen | Empty State Content | CTA |
+|--------|---------------------|-----|
+| StudentDashboard (new user) | Onboarding checklist card | "Complete your profile" |
+| StudentDashboard (no revision due) | "You're all caught up today ✓" | None (positive reinforcement) |
+| DiagnosticResults | N/A — results always present after completion | — |
+| LearningPlan (not generated yet) | "Set your exam date to generate your plan" | "Set exam date" |
+| RevisionQueue (nothing due) | "No revision due today" with green tick | "Browse subjects" |
+| ProgressReport (no sessions yet) | "Complete your first session to see your progress" | "Start a session" |
+| ParentDashboard (no linked children) | "Link your child's account" | "Link child" |
+| BadgeShowcase (no badges yet) | "Complete sessions to earn badges" | "Start a session" |
 
 ---
 
 #### 6.6 Micro-Interactions & Animation Specs
 
-| Interaction              | Behaviour                                                                                | Duration       |
-| ------------------------ | ---------------------------------------------------------------------------------------- | -------------- |
-| XP counter tick-up       | Counter animates from old value to new value (easeOut)                                   | 800ms          |
-| Level-up overlay         | Full-screen, blocks until dismissed or 3s timeout. Cannot be auto-skipped.               | Min 1.5s       |
-| Badge earn overlay       | Slides up from bottom, auto-dismisses after 2.5s                                         | 2.5s           |
-| Streak milestone         | Confetti burst + counter enlarges                                                        | 1.5s           |
-| Chat message appear      | Fade-in from slightly below (translateY 8px → 0)                                         | 150ms          |
-| SSE streaming text       | Text appended in chunks. Cursor blink (500ms interval) while stream open.                | Continuous     |
-| Hint counter change      | Number scales up briefly (1.1x) on increment                                             | 200ms          |
-| Session stage transition | Subtle divider line + stage label appears briefly in chat (e.g. "Moving to Practice...") | 400ms fade     |
-| Prerequisite pill load   | Skeleton → pill with fade                                                                | 200ms per pill |
-| Plan CTA pulse           | Gentle pulse animation on "Continue Learning" if no interaction for 5s                   | Loop until tap |
+| Interaction | Behaviour | Duration |
+|-------------|-----------|----------|
+| XP counter tick-up | Counter animates from old value to new value (easeOut) | 800ms |
+| Level-up overlay | Full-screen, blocks until dismissed or 3s timeout. Cannot be auto-skipped. | Min 1.5s |
+| Badge earn overlay | Slides up from bottom, auto-dismisses after 2.5s | 2.5s |
+| Streak milestone | Confetti burst + counter enlarges | 1.5s |
+| Chat message appear | Fade-in from slightly below (translateY 8px → 0) | 150ms |
+| SSE streaming text | Text appended in chunks. Cursor blink (500ms interval) while stream open. | Continuous |
+| Hint counter change | Number scales up briefly (1.1x) on increment | 200ms |
+| Session stage transition | Subtle divider line + stage label appears briefly in chat (e.g. "Moving to Practice...") | 400ms fade |
+| Prerequisite pill load | Skeleton → pill with fade | 200ms per pill |
+| Plan CTA pulse | Gentle pulse animation on "Continue Learning" if no interaction for 5s | Loop until tap |
 
 ---
 
@@ -594,12 +592,11 @@ Every screen below must have an empty state. This is exhaustive:
 #### 7.1 `POST /api/tutor/turn`
 
 **Request**
-
 ```typescript
 {
-  sessionId: string; // UUID
-  studentMessage: string; // max 2000 chars, trimmed
-  turnNumber: number; // client-tracked, validated server-side
+  sessionId: string          // UUID
+  studentMessage: string     // max 2000 chars, trimmed
+  turnNumber: number         // client-tracked, validated server-side
 }
 ```
 
@@ -607,37 +604,27 @@ Every screen below must have an empty state. This is exhaustive:
 
 ```typescript
 // Token chunk (during streaming)
-event: token;
-data: {
-  chunk: string;
-}
+event: token
+data: { chunk: string }
 
 // Turn complete (after full response generated)
-event: complete;
+event: complete
 data: {
-  tag: 'QUESTION' |
-    'VALIDATE' |
-    'HINT_OFFER' |
-    'STAGE_ADVANCE' |
-    'PREREQ_FAIL' |
-    'STRUGGLE_DETECTED' |
-    'MASTERY_CONFIRMED';
-  stage: TutorStage;
-  hintsRemaining: number; // 0–3
-  turnNumber: number;
-  sessionComplete: boolean; // true when CONSOLIDATION stage ends
+  tag: 'QUESTION' | 'VALIDATE' | 'HINT_OFFER' | 'STAGE_ADVANCE'
+       | 'PREREQ_FAIL' | 'STRUGGLE_DETECTED' | 'MASTERY_CONFIRMED'
+  stage: TutorStage
+  hintsRemaining: number        // 0–3
+  turnNumber: number
+  sessionComplete: boolean      // true when CONSOLIDATION stage ends
 }
 
 // Error
-event: error;
+event: error
 data: {
-  code: 'RATE_LIMITED' |
-    'SESSION_NOT_FOUND' |
-    'AI_UNAVAILABLE' |
-    'SAFETY_BLOCK' |
-    'FEATURE_DISABLED';
-  message: string; // human-readable, safe to display
-  retryable: boolean;
+  code: 'RATE_LIMITED' | 'SESSION_NOT_FOUND' | 'AI_UNAVAILABLE'
+        | 'SAFETY_BLOCK' | 'FEATURE_DISABLED'
+  message: string               // human-readable, safe to display
+  retryable: boolean
 }
 ```
 
@@ -648,7 +635,6 @@ data: {
 #### 7.2 `POST /api/tutor/session/start`
 
 **Request**
-
 ```typescript
 {
   conceptId: string
@@ -658,7 +644,6 @@ data: {
 ```
 
 **Response**
-
 ```typescript
 {
   sessionId: string
@@ -694,23 +679,19 @@ data: {
 #### 7.3 `POST /api/tutor/session/prefetch`
 
 **Request**
-
 ```typescript
-{
-  conceptId: string;
-}
+{ conceptId: string }
 ```
 
 **Response**
-
 ```typescript
 {
-  prefetchId: string; // used by turn endpoint to retrieve cached Hook
-  estimatedReadyMs: number; // how long until Hook message is ready
+  prefetchId: string             // used by turn endpoint to retrieve cached Hook
+  estimatedReadyMs: number       // how long until Hook message is ready
 }
 ```
 
-_Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI dependency on response._
+*Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI dependency on response.*
 
 ---
 
@@ -719,7 +700,6 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 **Request**: None (authenticated, user from session)
 
 **Response**
-
 ```typescript
 {
   student: {
@@ -765,7 +745,6 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 #### 7.5 `GET /api/student/learning-plan/today`
 
 **Response**
-
 ```typescript
 {
   item: {
@@ -788,7 +767,6 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 #### 7.6 `POST /api/student/session/[sessionId]/complete`
 
 **Request**
-
 ```typescript
 {
   rating?: number                // 1–5, optional
@@ -797,7 +775,6 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 ```
 
 **Response**
-
 ```typescript
 {
   summary: {
@@ -833,20 +810,19 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 #### 7.7 `GET /api/student/revisions/due-today`
 
 **Response**
-
 ```typescript
 {
-  dueCount: number;
-  dailyCapMinutes: number; // always 20
-  estimatedMinutes: number;
+  dueCount: number
+  dailyCapMinutes: number        // always 20
+  estimatedMinutes: number
   concepts: Array<{
-    id: string;
-    name: string;
-    subjectName: string;
-    retentionPct: number; // predicted memory retention 0–100
-    stability: number; // SM-18 stability S
-    lastReviewedAt: string; // ISO date
-  }>;
+    id: string
+    name: string
+    subjectName: string
+    retentionPct: number         // predicted memory retention 0–100
+    stability: number            // SM-18 stability S
+    lastReviewedAt: string       // ISO date
+  }>
 }
 ```
 
@@ -855,24 +831,23 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 #### 7.8 `GET /api/student/readiness/[subjectId]`
 
 **Response**
-
 ```typescript
 {
-  subjectId: string;
-  subjectName: string;
-  overallScore: number; // 0–100
-  predictedScoreMin: number; // null until full formula live
-  predictedScoreMax: number; // null until full formula live
-  isCrunchMode: boolean;
+  subjectId: string
+  subjectName: string
+  overallScore: number           // 0–100
+  predictedScoreMin: number      // null until full formula live
+  predictedScoreMax: number      // null until full formula live
+  isCrunchMode: boolean
   chapters: Array<{
-    chapterId: string;
-    chapterName: string;
-    masteryScore: number; // 0.0–1.0
-    boardWeightPct: number; // % of marks in board exam
-    contribution: number; // masteryScore × boardWeightPct
-    status: 'critical' | 'needs_work' | 'on_track' | 'mastered';
-  }>;
-  lastUpdatedAt: string; // ISO datetime
+    chapterId: string
+    chapterName: string
+    masteryScore: number         // 0.0–1.0
+    boardWeightPct: number       // % of marks in board exam
+    contribution: number         // masteryScore × boardWeightPct
+    status: 'critical' | 'needs_work' | 'on_track' | 'mastered'
+  }>
+  lastUpdatedAt: string          // ISO datetime
 }
 ```
 
@@ -881,7 +856,6 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 #### 7.9 `POST /api/student/subscription/order`
 
 **Request**
-
 ```typescript
 {
   planId: 'monthly' | 'quarterly' | 'annual'
@@ -891,17 +865,16 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 ```
 
 **Response**
-
 ```typescript
 {
-  orderId: string; // Razorpay order ID
-  amount: number; // in paise (₹399 = 39900)
-  currency: 'INR';
-  planLabel: string; // "Monthly – ₹399/month"
-  gstAmount: number; // in paise
-  totalAmount: number; // amount + gstAmount
-  renewalDate: string; // ISO date (first renewal)
-  razorpayKeyId: string; // public key for checkout
+  orderId: string                // Razorpay order ID
+  amount: number                 // in paise (₹399 = 39900)
+  currency: 'INR'
+  planLabel: string              // "Monthly – ₹399/month"
+  gstAmount: number              // in paise
+  totalAmount: number            // amount + gstAmount
+  renewalDate: string            // ISO date (first renewal)
+  razorpayKeyId: string          // public key for checkout
 }
 ```
 
@@ -910,30 +883,29 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 #### 7.10 `GET /api/parent/progress`
 
 **Response**
-
 ```typescript
 {
   children: Array<{
-    studentId: string;
-    name: string;
-    grade: number;
-    board: string;
-    streakDays: number;
-    sessionsThisWeek: number;
-    studyTimeThisWeekMinutes: number;
+    studentId: string
+    name: string
+    grade: number
+    board: string
+    streakDays: number
+    sessionsThisWeek: number
+    studyTimeThisWeekMinutes: number
     subjects: Array<{
-      subjectId: string;
-      subjectName: string;
-      readinessScore: number;
-      daysToExam: number | null;
-      recentMasteryChange: number; // positive or negative delta over last 7 days
-    }>;
+      subjectId: string
+      subjectName: string
+      readinessScore: number
+      daysToExam: number | null
+      recentMasteryChange: number  // positive or negative delta over last 7 days
+    }>
     recentAlerts: Array<{
-      type: 'readiness_drop' | 'streak_break' | 'milestone';
-      message: string;
-      occurredAt: string;
-    }>;
-  }>;
+      type: 'readiness_drop' | 'streak_break' | 'milestone'
+      message: string
+      occurredAt: string
+    }>
+  }>
 }
 ```
 
@@ -943,55 +915,54 @@ _Note: Frontend fires this on `PreSessionScreen` mount. Silent — no UI depende
 
 All 43 tickets across Weeks 1–8. Every ticket has: ID, title, week, role(s), severity, and file targets. Use this table for sprint planning and role assignment.
 
-| ID   | Title                                       | Week | Role(s)                   | Severity  | Key Files / Targets                                                                                |
-| ---- | ------------------------------------------- | ---- | ------------------------- | --------- | -------------------------------------------------------------------------------------------------- |
-| T1   | Taxonomy & Content Readiness                | 1    | [DB] [CONTENT]            | BLOCKER   | `prisma/seeds/`, Neon console, question_bank rows                                                  |
-| T2   | Redis & Infra Guardrails                    | 1    | [INFRA]                   | BLOCKER   | Redis config (`redis.conf`), PM2 ecosystem file                                                    |
-| T3   | Feature Flags & Kill Switches               | 1    | [INFRA] [DB]              | BLOCKER   | `prisma/schema.prisma` (`StudentFeatureFlag`), `.env`                                              |
-| T4   | New Tutor Turn Endpoint                     | 2    | [BE] [DB]                 | BLOCKER   | `app/api/tutor/turn/route.ts` (new)                                                                |
-| T5   | Upgrade `callLLM` for Tutor                 | 2    | [AI] [DB]                 | BLOCKER   | `lib/callLLM.ts`, `AITutorTurnLog` Prisma model                                                    |
-| T6   | Prompt Assembly: `assembleSystemPrompt`     | 2    | [AI]                      | BLOCKER   | `lib/ai/tutor/promptAssembly.ts` (new)                                                             |
-| T7   | Tag Parser & Monitoring                     | 2    | [AI]                      | BLOCKER   | `lib/ai/tutor/tagParser.ts` (new)                                                                  |
-| T8   | Redis Session State Helpers                 | 2    | [BE]                      | BLOCKER   | `lib/redis/tutorSession.ts` (new)                                                                  |
-| T9   | Pedagogical State Machine                   | 2    | [AI]                      | BLOCKER   | `lib/ai/tutor/stateMachine.ts` (new), `tests/ai/tutor/stateMachine.test.ts`                        |
-| T10  | Chat Panel Integration                      | 2    | [FE]                      | CRITICAL  | `components/student/session/AITutorChatPanel.tsx` (new)                                            |
-| T10b | Session Completion Screen                   | 2    | [FE]                      | CRITICAL  | `components/student/session/SessionCompletionScreen.tsx` (new)                                     |
-| T11  | Frustration & Emotional Signals             | 2    | [AI]                      | IMPORTANT | `lib/ai/tutor/signals.ts` (new)                                                                    |
-| T12  | Safety: PII Redaction & Jailbreak           | 2    | [SAFETY]                  | BLOCKER   | `lib/ai/tutor/inputSafety.ts` (new)                                                                |
-| T13  | Safety: Age-Appropriate Output Filter       | 2    | [SAFETY]                  | BLOCKER   | `lib/ai/tutor/outputSafety.ts` (new)                                                               |
-| T14  | Safety Events Plumbing                      | 2    | [DB] [BE]                 | CRITICAL  | `prisma/schema.prisma` (`SafetyEvent`), `app/api/admin/safety-events/route.ts`                     |
-| T15  | Distress Detection & Parent Notification    | 2    | [SAFETY] [WORKER] [HUMAN] | BLOCKER   | `lib/ai/tutor/distress.ts`, `worker/services/notificationWorker.ts` — GATED on T43                 |
-| T16  | `StudentConceptState` & AnswerEvent (MVP)   | 3    | [DB]                      | BLOCKER   | `prisma/schema.prisma` (2 new models)                                                              |
-| T17  | Diagnostic → Concept Bootstrap              | 3    | [WORKER]                  | BLOCKER   | `worker/services/diagnosticBootstrapWorker.ts` (new)                                               |
-| T18  | Misconception Library (Slice)               | 3    | [CONTENT] [AI] [DB]       | CRITICAL  | `prisma/seeds/misconceptions-*.ts`, `lib/ai/tutor/misconceptionDetector.ts` (new)                  |
-| T19  | Basic RAG Hook for Tutor                    | 3    | [AI]                      | CRITICAL  | `lib/ai/tutor/rag.ts` (new), orchestrator wiring                                                   |
-| T20  | Freemium Session Cap (Server-Side)          | 3    | [BE] [DB]                 | BLOCKER   | `prisma/schema.prisma` (`FreeTierUsage`), `app/api/tutor/session/start/route.ts`                   |
-| T21  | Extend `StudentConceptState` to full schema | 4    | [DB]                      | BLOCKER   | `prisma/schema.prisma` (additive fields)                                                           |
-| T22  | AnswerEvent + IRT Update Worker             | 4    | [DB] [WORKER] [AI]        | BLOCKER   | `lib/ai/tutor/irt.ts` (new), `worker/services/irtWorker.ts` (new)                                  |
-| T23  | SM-18 Spaced Repetition Scheduler           | 4    | [WORKER] [DB] [FE]        | CRITICAL  | `worker/services/revisionSchedulerWorker.ts` (new), `app/api/student/revisions/due-today/route.ts` |
-| T24  | Backfill `conceptIds[]` on Chunks           | 5    | [CONTENT] [INFRA]         | BLOCKER   | Ingestion workers, Neon direct SQL backfill                                                        |
-| T25  | Per-Turn RAG Retrieval                      | 5    | [AI]                      | CRITICAL  | `lib/ai/tutor/rag.ts` (extend), orchestrator                                                       |
-| T26  | `doubt_kb` Table & Retrieval                | 5    | [DB] [BE]                 | CRITICAL  | `prisma/schema.prisma` (`DoubtKb`), `worker/services/doubtKbWorker.ts` (new)                       |
-| T27  | Misconception Seeding + Detector            | 5    | [CONTENT] [AI] [DB]       | CRITICAL  | `prisma/seeds/misconceptions-math10.ts`, `prisma/seeds/misconceptions-science10.ts`                |
-| T28  | Explanation Cache                           | 5    | [BE] [INFRA]              | IMPORTANT | `lib/redis/cache.ts` (new), orchestrator wiring                                                    |
-| T29  | Global Profile Completeness Guard           | 6    | [BE] [FE]                 | BLOCKER   | `lib/student/profileGuard.ts` (new), `app/(student)/layout.tsx`                                    |
-| T30  | Global Parent OTP Enforcement               | 6    | [BE] [FE]                 | BLOCKER   | `app/(student)/layout.tsx`, auth middleware                                                        |
-| T31  | Diagnostic Hard Gate on All Entrypoints     | 6    | [BE] [FE]                 | BLOCKER   | All `app/(student)/session/**` pages, `lib/student/diagnostic.ts`                                  |
-| T32  | Grade Immutability — Server-Side Strip      | 6    | [BE]                      | CRITICAL  | `app/api/user/onboarding/route.ts`, `app/api/student/profile/route.ts`                             |
-| T33  | Learning Plan Models & Generator            | 6    | [DB] [BE] [WORKER]        | CRITICAL  | `prisma/schema.prisma` (`LearningPlan`, `LearningPlanItem`), `lib/ai/learningPlan.ts` (new)        |
-| T34  | "Today's Plan" Widget                       | 6    | [FE] [BE]                 | CRITICAL  | `components/student/TodaysLearningCard.tsx`, `app/api/student/learning-plan/today/route.ts`        |
-| T35  | ExamReadinessScore Computation              | 6    | [WORKER] [BE] [FE]        | IMPORTANT | `lib/ai/readinessScore.ts` (new), `worker/services/readinessWorker.ts` (new)                       |
-| T36  | Prompt Evaluation Harness + CI Gate         | 6    | [AI] [INFRA]              | CRITICAL  | `tests/ai/tutor/*.test.ts`, CI pipeline config                                                     |
-| T37  | Structured Consent Record (DPDP)            | 7    | [DB] [BE] [HUMAN]         | BLOCKER   | `prisma/schema.prisma` (`Consent`), `app/api/parent/consent/route.ts` (new)                        |
-| T38  | Parent as Distinct Actor + Routing          | 7    | [DB] [BE] [FE]            | CRITICAL  | `prisma/schema.prisma` (`ParentProfile`), `app/(parent)/**` (new route group)                      |
-| T39  | Parent Read-Only Progress Dashboard         | 7    | [BE] [FE]                 | CRITICAL  | `app/(parent)/dashboard/page.tsx` (new), `app/api/parent/progress/route.ts` (new)                  |
-| T40  | Multi-Tier LLM Router + Circuit Breaker     | 8    | [AI] [INFRA]              | CRITICAL  | `lib/ai/tutor/modelRouter.ts` (new), Redis circuit breaker                                         |
-| T41  | Staged Rollout + Kill Switch Wiring         | 8    | [INFRA] [DB]              | CRITICAL  | `lib/features.ts` (new), tutor entrypoints                                                         |
-| T42  | Daily Cost Metric + Alert Process           | 8    | [INFRA] [WORKER]          | IMPORTANT | `worker/services/reportingWorker.ts` (new), `AITutorTurnLog` queries                               |
-| T43  | Distress Copy Review + Final Safety QA      | 8    | [HUMAN] [SAFETY]          | BLOCKER   | Safety prompt templates, `lib/ai/prompts/safety.ts` — GATES T15                                    |
+| ID | Title | Week | Role(s) | Severity | Key Files / Targets |
+|----|-------|------|---------|----------|---------------------|
+| T1 | Taxonomy & Content Readiness | 1 | [DB] [CONTENT] | BLOCKER | `prisma/seeds/`, Neon console, question_bank rows |
+| T2 | Redis & Infra Guardrails | 1 | [INFRA] | BLOCKER | Redis config (`redis.conf`), PM2 ecosystem file |
+| T3 | Feature Flags & Kill Switches | 1 | [INFRA] [DB] | BLOCKER | `prisma/schema.prisma` (`StudentFeatureFlag`), `.env` |
+| T4 | New Tutor Turn Endpoint | 2 | [BE] [DB] | BLOCKER | `app/api/tutor/turn/route.ts` (new) |
+| T5 | Upgrade `callLLM` for Tutor | 2 | [AI] [DB] | BLOCKER | `lib/callLLM.ts`, `AITutorTurnLog` Prisma model |
+| T6 | Prompt Assembly: `assembleSystemPrompt` | 2 | [AI] | BLOCKER | `lib/ai/tutor/promptAssembly.ts` (new) |
+| T7 | Tag Parser & Monitoring | 2 | [AI] | BLOCKER | `lib/ai/tutor/tagParser.ts` (new) |
+| T8 | Redis Session State Helpers | 2 | [BE] | BLOCKER | `lib/redis/tutorSession.ts` (new) |
+| T9 | Pedagogical State Machine | 2 | [AI] | BLOCKER | `lib/ai/tutor/stateMachine.ts` (new), `tests/ai/tutor/stateMachine.test.ts` |
+| T10 | Chat Panel Integration | 2 | [FE] | CRITICAL | `components/student/session/AITutorChatPanel.tsx` (new) |
+| T10b | Session Completion Screen | 2 | [FE] | CRITICAL | `components/student/session/SessionCompletionScreen.tsx` (new) |
+| T11 | Frustration & Emotional Signals | 2 | [AI] | IMPORTANT | `lib/ai/tutor/signals.ts` (new) |
+| T12 | Safety: PII Redaction & Jailbreak | 2 | [SAFETY] | BLOCKER | `lib/ai/tutor/inputSafety.ts` (new) |
+| T13 | Safety: Age-Appropriate Output Filter | 2 | [SAFETY] | BLOCKER | `lib/ai/tutor/outputSafety.ts` (new) |
+| T14 | Safety Events Plumbing | 2 | [DB] [BE] | CRITICAL | `prisma/schema.prisma` (`SafetyEvent`), `app/api/admin/safety-events/route.ts` |
+| T15 | Distress Detection & Parent Notification | 2 | [SAFETY] [WORKER] [HUMAN] | BLOCKER | `lib/ai/tutor/distress.ts`, `worker/services/notificationWorker.ts` — GATED on T43 |
+| T16 | `StudentConceptState` & AnswerEvent (MVP) | 3 | [DB] | BLOCKER | `prisma/schema.prisma` (2 new models) |
+| T17 | Diagnostic → Concept Bootstrap | 3 | [WORKER] | BLOCKER | `worker/services/diagnosticBootstrapWorker.ts` (new) |
+| T18 | Misconception Library (Slice) | 3 | [CONTENT] [AI] [DB] | CRITICAL | `prisma/seeds/misconceptions-*.ts`, `lib/ai/tutor/misconceptionDetector.ts` (new) |
+| T19 | Basic RAG Hook for Tutor | 3 | [AI] | CRITICAL | `lib/ai/tutor/rag.ts` (new), orchestrator wiring |
+| T20 | Freemium Session Cap (Server-Side) | 3 | [BE] [DB] | BLOCKER | `prisma/schema.prisma` (`FreeTierUsage`), `app/api/tutor/session/start/route.ts` |
+| T21 | Extend `StudentConceptState` to full schema | 4 | [DB] | BLOCKER | `prisma/schema.prisma` (additive fields) |
+| T22 | AnswerEvent + IRT Update Worker | 4 | [DB] [WORKER] [AI] | BLOCKER | `lib/ai/tutor/irt.ts` (new), `worker/services/irtWorker.ts` (new) |
+| T23 | SM-18 Spaced Repetition Scheduler | 4 | [WORKER] [DB] [FE] | CRITICAL | `worker/services/revisionSchedulerWorker.ts` (new), `app/api/student/revisions/due-today/route.ts` |
+| T24 | Backfill `conceptIds[]` on Chunks | 5 | [CONTENT] [INFRA] | BLOCKER | Ingestion workers, Neon direct SQL backfill |
+| T25 | Per-Turn RAG Retrieval | 5 | [AI] | CRITICAL | `lib/ai/tutor/rag.ts` (extend), orchestrator |
+| T26 | `doubt_kb` Table & Retrieval | 5 | [DB] [BE] | CRITICAL | `prisma/schema.prisma` (`DoubtKb`), `worker/services/doubtKbWorker.ts` (new) |
+| T27 | Misconception Seeding + Detector | 5 | [CONTENT] [AI] [DB] | CRITICAL | `prisma/seeds/misconceptions-math10.ts`, `prisma/seeds/misconceptions-science10.ts` |
+| T28 | Explanation Cache | 5 | [BE] [INFRA] | IMPORTANT | `lib/redis/cache.ts` (new), orchestrator wiring |
+| T29 | Global Profile Completeness Guard | 6 | [BE] [FE] | BLOCKER | `lib/student/profileGuard.ts` (new), `app/(student)/layout.tsx` |
+| T30 | Global Parent OTP Enforcement | 6 | [BE] [FE] | BLOCKER | `app/(student)/layout.tsx`, auth middleware |
+| T31 | Diagnostic Hard Gate on All Entrypoints | 6 | [BE] [FE] | BLOCKER | All `app/(student)/session/**` pages, `lib/student/diagnostic.ts` |
+| T32 | Grade Immutability — Server-Side Strip | 6 | [BE] | CRITICAL | `app/api/user/onboarding/route.ts`, `app/api/student/profile/route.ts` |
+| T33 | Learning Plan Models & Generator | 6 | [DB] [BE] [WORKER] | CRITICAL | `prisma/schema.prisma` (`LearningPlan`, `LearningPlanItem`), `lib/ai/learningPlan.ts` (new) |
+| T34 | "Today's Plan" Widget | 6 | [FE] [BE] | CRITICAL | `components/student/TodaysLearningCard.tsx`, `app/api/student/learning-plan/today/route.ts` |
+| T35 | ExamReadinessScore Computation | 6 | [WORKER] [BE] [FE] | IMPORTANT | `lib/ai/readinessScore.ts` (new), `worker/services/readinessWorker.ts` (new) |
+| T36 | Prompt Evaluation Harness + CI Gate | 6 | [AI] [INFRA] | CRITICAL | `tests/ai/tutor/*.test.ts`, CI pipeline config |
+| T37 | Structured Consent Record (DPDP) | 7 | [DB] [BE] [HUMAN] | BLOCKER | `prisma/schema.prisma` (`Consent`), `app/api/parent/consent/route.ts` (new) |
+| T38 | Parent as Distinct Actor + Routing | 7 | [DB] [BE] [FE] | CRITICAL | `prisma/schema.prisma` (`ParentProfile`), `app/(parent)/**` (new route group) |
+| T39 | Parent Read-Only Progress Dashboard | 7 | [BE] [FE] | CRITICAL | `app/(parent)/dashboard/page.tsx` (new), `app/api/parent/progress/route.ts` (new) |
+| T40 | Multi-Tier LLM Router + Circuit Breaker | 8 | [AI] [INFRA] | CRITICAL | `lib/ai/tutor/modelRouter.ts` (new), Redis circuit breaker |
+| T41 | Staged Rollout + Kill Switch Wiring | 8 | [INFRA] [DB] | CRITICAL | `lib/features.ts` (new), tutor entrypoints |
+| T42 | Daily Cost Metric + Alert Process | 8 | [INFRA] [WORKER] | IMPORTANT | `worker/services/reportingWorker.ts` (new), `AITutorTurnLog` queries |
+| T43 | Distress Copy Review + Final Safety QA | 8 | [HUMAN] [SAFETY] | BLOCKER | Safety prompt templates, `lib/ai/prompts/safety.ts` — GATES T15 |
 
 **Role filter guide** — filter this table by the `Role(s)` column to extract your personal ticket list:
-
 - Backend engineer: filter `[BE]`
 - AI/ML engineer: filter `[AI]`
 - Frontend engineer: filter `[FE]`
@@ -1002,7 +973,6 @@ All 43 tickets across Weeks 1–8. Every ticket has: ID, title, week, role(s), s
 - Human sign-off required: filter `[HUMAN]` — T15, T37, T43
 
 **Critical dependencies (cannot start until predecessor is done)**:
-
 - T4 (Turn Endpoint) requires T8 (Redis Helpers) and T6 (Prompt Assembly)
 - T10 (Chat Panel) requires T4 (Turn Endpoint)
 - T15 (Distress) is BLOCKED until T43 (counsellor sign-off) — enforce with `ENABLE_DISTRESS_DETECTION=false`
@@ -1063,7 +1033,8 @@ All 43 tickets across Weeks 1–8. Every ticket has: ID, title, week, role(s), s
 10. **Chat Panel Integration** 🎨 [FE]
     - `AITutorChatPanel` as specified in Domain 5 Section 5.1. SSE streaming, hint counter, inactivity timer. Feature-flag guarded. Replaces PRACTICE/TEST phase UI.
 
-10b. **Session Completion Screen** 🎨 [FE] - `SessionCompletionScreen` component as specified in Domain 5 Section 5.1. XP animation, mastery delta, AI insight skeleton, star rating, next session CTA.
+10b. **Session Completion Screen** 🎨 [FE]
+    - `SessionCompletionScreen` component as specified in Domain 5 Section 5.1. XP animation, mastery delta, AI insight skeleton, star rating, next session CTA.
 
 11. **Frustration & Emotional State Signals** 🧠 [AI]
     - `lib/ai/tutor/signals.ts`. Weighted formula. Output: `frustrationScore` + `emotionalState` enum. Injected into SESSION_STATE and STUDENT_PROFILE layers.

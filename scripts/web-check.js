@@ -3,9 +3,7 @@ const p = prisma;
 (async () => {
   try {
     console.log(JSON.stringify({ DATABASE_URL: process.env.DATABASE_URL }));
-    const boards = await p.board.findMany({
-      select: { id: true, name: true, slug: true, lifecycle: true },
-    });
+    const boards = await p.board.findMany({ select: { id: true, name: true, slug: true, lifecycle: true } });
     console.log(JSON.stringify({ boardsCount: boards.length, boards }, null, 2));
   } catch (e) {
     console.error('ERR', e);

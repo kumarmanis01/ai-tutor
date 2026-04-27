@@ -8,6 +8,8 @@ const logger = {
   error: (...args: unknown[]) => console.error('[ERROR]', ...args),
 };
 
+
+
 async function main() {
   const email = process.argv[2];
   if (!email) {

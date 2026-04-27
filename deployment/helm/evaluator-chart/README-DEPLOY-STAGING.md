@@ -33,11 +33,11 @@ helm upgrade --install evaluator deployment/helm/evaluator-chart -n staging -f d
 ```
 
 Notes:
-
 - Using the GitHub Actions workflow is recommended for reproducibility and automation. It avoids sharing kubeconfig locally.
 - For GitOps safety, consider migrating to ExternalSecrets/SealedSecrets/Vault as a next step.
 
-## Automating secret creation from local env files
+Automating secret creation from local env files
+------------------------------------------------
 
 If you want to avoid adding secrets via the GitHub UI, use the helper scripts to push secrets from your local `.env`/`.env.local` into GitHub repo secrets using the `gh` CLI:
 
@@ -45,12 +45,10 @@ If you want to avoid adding secrets via the GitHub UI, use the helper scripts to
 - PowerShell: `scripts\set-github-secrets.ps1 -Repo owner/repo -KubeconfigPath C:\path\to\kubeconfig`
 
 Requirements:
-
 - `gh` CLI installed and authenticated with a user that has `repo` admin permissions.
 - Your `.env` and `.env.local` present at the repo root with the required variables.
 
 The script will:
-
 - Read `.env` and `.env.local` (local wins) for the variable names listed in the "Secrets required" section.
 - Set them as repository secrets in the specified repo.
 - Base64-encode and set `KUBE_CONFIG_DATA` when `--kubeconfig` is provided so the deploy workflow can decode it.

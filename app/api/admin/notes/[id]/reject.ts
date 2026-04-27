@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 import { enqueueNotesHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
@@ -31,28 +31,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   await prisma.$transaction([
     prisma.topicNote.update({ where: { id }, data: { status: ApprovalStatus.Rejected } }),
-    prisma.auditLog.create({
-      data: {
-        adminId,
-        targetEntity: 'TopicNote',
-        targetId: id,
-        action: 'CONTENT_REJECT',
-        previousValue: { status: note.status },
-        newValue: { status: 'rejected' },
-        reason: reason ?? null,
-      },
-    }),
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'TopicNote', targetId: id, action: 'CONTENT_REJECT', previousValue: { status: note.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
   ]);
 
   // Auto-regenerate: enqueue a new notes hydration job for this topic
   if (note.topicId) {
     enqueueNotesHydration({ topicId: note.topicId, language: String(note.language) })
       .then((result) => {
-        logger.info('reject_note: auto-regeneration enqueued', {
-          noteId: id,
-          topicId: note.topicId,
-          ...result,
-        });
+        logger.info('reject_note: auto-regeneration enqueued', { noteId: id, topicId: note.topicId, ...result });
       })
       .catch((err) => {
         logger.error('reject_note: auto-regeneration failed', { noteId: id, error: String(err) });

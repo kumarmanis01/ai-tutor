@@ -89,7 +89,8 @@ EDIT LOG:
 
 - 3PL item response function (logistic form):
 
-  P_i(\theta) = c_i + (1 - c_i) / (1 + exp(-D _ a_i _ (\theta - b_i)))
+  P_i(\theta) = c_i + (1 - c_i) / (1 + exp(-D * a_i * (\theta - b_i)))
+
   - `a_i` discrimination (>0)
   - `b_i` difficulty (location)
   - `c_i` pseudo-guessing (0..0.35 typical)
@@ -97,7 +98,7 @@ EDIT LOG:
 
 - Fisher information for item i at \theta:
 
-  I_i(\theta) = (dP_i/d\theta)^2 / (P_i(\theta) \* (1 - P_i(\theta)))
+  I_i(\theta) = (dP_i/d\theta)^2 / (P_i(\theta) * (1 - P_i(\theta)))
 
   Use this to pick the most informative available item given current \theta.
 
@@ -365,3 +366,4 @@ Status key: ✅ Completed | 🔄 In-progress | ⏳ Pending
 
 Document author: senior-staff-engineer
 Last updated: 2026-04-06
+

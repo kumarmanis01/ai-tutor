@@ -90,25 +90,10 @@ export async function getWeakTopicsByTopic(opts: {
 
   const byTopic = new Map<
     string,
-    {
-      topicName: string;
-      chapterId: string;
-      chapterName: string;
-      subjectId: string;
-      subjectName: string;
-      count: number;
-    }
+    { topicName: string; chapterId: string; chapterName: string; subjectId: string; subjectName: string; count: number }
   >();
   for (const r of weakRows) {
-    const t = (
-      r as typeof r & {
-        topic: {
-          name: string;
-          chapterId: string;
-          chapter: { name: string; subject: { id: string; name: string } };
-        };
-      }
-    ).topic;
+    const t = (r as typeof r & { topic: { name: string; chapterId: string; chapter: { name: string; subject: { id: string; name: string } } } }).topic;
     if (!t?.chapter?.subject) continue;
     const key = r.topicId;
     const existing = byTopic.get(key);
@@ -133,10 +118,7 @@ export async function getWeakTopicsByTopic(opts: {
       chapterId: v.chapterId,
       chapterName: v.chapterName,
       studentCount: v.count,
-      severity: (v.count >= SEVERITY_HIGH_COUNT ? 'high' : v.count >= 5 ? 'medium' : 'low') as
-        | 'high'
-        | 'medium'
-        | 'low',
+      severity: (v.count >= SEVERITY_HIGH_COUNT ? 'high' : v.count >= 5 ? 'medium' : 'low') as 'high' | 'medium' | 'low',
     }))
     .sort((a, b) => b.studentCount - a.studentCount)
     .slice(0, limit);
@@ -171,14 +153,7 @@ export async function getWeakTopicsByStudent(opts: {
 
   const byStudent = new Map<
     string,
-    {
-      email: string | null;
-      name: string | null;
-      board: string | null;
-      grade: string | null;
-      topicIds: string[];
-      topicNames: string[];
-    }
+    { email: string | null; name: string | null; board: string | null; grade: string | null; topicIds: string[]; topicNames: string[] }
   >();
   for (const r of weakRows) {
     const existing = byStudent.get(r.studentId);
@@ -189,15 +164,7 @@ export async function getWeakTopicsByStudent(opts: {
     if (existing) {
       existing.topicIds.push(r.topicId);
       existing.topicNames.push(r.topic?.name ?? r.topicId);
-    } else
-      byStudent.set(r.studentId, {
-        email,
-        name,
-        board,
-        grade,
-        topicIds: [r.topicId],
-        topicNames: [r.topic?.name ?? r.topicId],
-      });
+    } else byStudent.set(r.studentId, { email, name, board, grade, topicIds: [r.topicId], topicNames: [r.topic?.name ?? r.topicId] });
   }
 
   let list = Array.from(byStudent.entries())
@@ -210,10 +177,7 @@ export async function getWeakTopicsByStudent(opts: {
       weakTopicCount: v.topicIds.length,
       topicIds: v.topicIds,
       topicNames: v.topicNames,
-      severity: (v.topicIds.length >= 5 ? 'high' : v.topicIds.length >= 2 ? 'medium' : 'low') as
-        | 'high'
-        | 'medium'
-        | 'low',
+      severity: (v.topicIds.length >= 5 ? 'high' : v.topicIds.length >= 2 ? 'medium' : 'low') as 'high' | 'medium' | 'low',
     }))
     .sort((a, b) => b.weakTopicCount - a.weakTopicCount)
     .slice(0, limit);

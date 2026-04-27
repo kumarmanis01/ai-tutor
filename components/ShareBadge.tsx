@@ -28,18 +28,11 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ badgeId }),
       });
-      const raw = await res.json().catch((e) => {
-        logger.warn('badges/share response.json failed', { component: 'ShareBadge', error: e });
-        return {} as unknown;
-      });
+      const raw = await res.json().catch((e) => { logger.warn('badges/share response.json failed', { component: 'ShareBadge', error: e }); return {} as unknown });
       const data = raw as ShareResponse;
       return data.shareUrl ?? url ?? window.location.href;
     } catch (err) {
-      logger.warn('recordAndGetShareUrl failed', {
-        component: 'ShareBadge',
-        methodName: 'recordAndGetShareUrl',
-        error: String(err),
-      });
+      logger.warn('recordAndGetShareUrl failed', { component: 'ShareBadge', methodName: 'recordAndGetShareUrl', error: String(err) });
       return url ?? window.location.href;
     } finally {
       setLoading(false);

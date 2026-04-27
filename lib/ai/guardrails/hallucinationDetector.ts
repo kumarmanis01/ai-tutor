@@ -112,13 +112,13 @@ export interface HallucinationContext {
  * Patterns indicating potential factual claims to verify
  */
 const FACTUAL_CLAIM_PATTERNS: RegExp[] = [
-  /\bin (\d{4})\b/i, // Year references
-  /\b(discovered|invented)\s+by\b/i, // Attribution claims
-  /\b(always|never|every|all|none)\b/i, // Absolute statements
-  /\bthe (first|only|largest|smallest)\b/i, // Superlative claims
-  /\bexactly\s+[\d.]+/i, // Exact number claims (allow decimals)
-  /\b(is|are)\s+known\s+as\b/i, // Definition claims
-  /\bscientists?\s+(say|believe|found)\b/i, // Authority claims
+  /\bin (\d{4})\b/i,                           // Year references
+  /\b(discovered|invented)\s+by\b/i,           // Attribution claims
+  /\b(always|never|every|all|none)\b/i,        // Absolute statements
+  /\bthe (first|only|largest|smallest)\b/i,    // Superlative claims
+  /\bexactly\s+[\d.]+/i,                      // Exact number claims (allow decimals)
+  /\b(is|are)\s+known\s+as\b/i,                // Definition claims
+  /\bscientists?\s+(say|believe|found)\b/i,    // Authority claims
 ];
 
 /**
@@ -178,21 +178,20 @@ const SAFETY_PATTERNS: RegExp[] = [
 /**
  * Expected complexity levels by grade
  */
-const GRADE_EXPECTATIONS: Record<number, { maxSentenceLength: number; maxWordComplexity: number }> =
-  {
-    1: { maxSentenceLength: 10, maxWordComplexity: 5 },
-    2: { maxSentenceLength: 12, maxWordComplexity: 6 },
-    3: { maxSentenceLength: 14, maxWordComplexity: 7 },
-    4: { maxSentenceLength: 16, maxWordComplexity: 8 },
-    5: { maxSentenceLength: 18, maxWordComplexity: 9 },
-    6: { maxSentenceLength: 20, maxWordComplexity: 10 },
-    7: { maxSentenceLength: 22, maxWordComplexity: 11 },
-    8: { maxSentenceLength: 25, maxWordComplexity: 12 },
-    9: { maxSentenceLength: 28, maxWordComplexity: 14 },
-    10: { maxSentenceLength: 30, maxWordComplexity: 15 },
-    11: { maxSentenceLength: 35, maxWordComplexity: 16 },
-    12: { maxSentenceLength: 40, maxWordComplexity: 18 },
-  };
+const GRADE_EXPECTATIONS: Record<number, { maxSentenceLength: number; maxWordComplexity: number }> = {
+  1: { maxSentenceLength: 10, maxWordComplexity: 5 },
+  2: { maxSentenceLength: 12, maxWordComplexity: 6 },
+  3: { maxSentenceLength: 14, maxWordComplexity: 7 },
+  4: { maxSentenceLength: 16, maxWordComplexity: 8 },
+  5: { maxSentenceLength: 18, maxWordComplexity: 9 },
+  6: { maxSentenceLength: 20, maxWordComplexity: 10 },
+  7: { maxSentenceLength: 22, maxWordComplexity: 11 },
+  8: { maxSentenceLength: 25, maxWordComplexity: 12 },
+  9: { maxSentenceLength: 28, maxWordComplexity: 14 },
+  10: { maxSentenceLength: 30, maxWordComplexity: 15 },
+  11: { maxSentenceLength: 35, maxWordComplexity: 16 },
+  12: { maxSentenceLength: 40, maxWordComplexity: 18 },
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -202,13 +201,13 @@ const GRADE_EXPECTATIONS: Record<number, { maxSentenceLength: number; maxWordCom
  * Calculate average sentence length
  */
 function calculateAvgSentenceLength(text: string): number {
-  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
   if (sentences.length === 0) return 0;
-
+  
   const totalWords = sentences.reduce((sum, sentence) => {
     return sum + sentence.trim().split(/\s+/).length;
   }, 0);
-
+  
   return totalWords / sentences.length;
 }
 
@@ -217,14 +216,14 @@ function calculateAvgSentenceLength(text: string): number {
  */
 function _findComplexWords(text: string, syllableThreshold: number): string[] {
   const words = text.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-
+  
   // Simple syllable estimation (vowel groups)
   const estimateSyllables = (word: string): number => {
     const vowelGroups = word.match(/[aeiouy]+/g) || [];
     return Math.max(1, vowelGroups.length);
   };
-
-  return words.filter((word) => estimateSyllables(word) > syllableThreshold);
+  
+  return words.filter(word => estimateSyllables(word) > syllableThreshold);
 }
 
 /**
@@ -232,13 +231,13 @@ function _findComplexWords(text: string, syllableThreshold: number): string[] {
  */
 function hasReasoningStructure(text: string): boolean {
   let reasoningScore = 0;
-
+  
   for (const pattern of REASONING_INDICATORS) {
     if (pattern.test(text)) {
       reasoningScore++;
     }
   }
-
+  
   // Need at least 2 reasoning indicators for acceptable structure
   return reasoningScore >= 2;
 }
@@ -248,7 +247,7 @@ function hasReasoningStructure(text: string): boolean {
  */
 function extractFactualClaims(text: string): string[] {
   const claims: string[] = [];
-
+  
   for (const pattern of FACTUAL_CLAIM_PATTERNS) {
     const matches = text.match(new RegExp(pattern.source, 'gi'));
     if (matches) {
@@ -261,7 +260,7 @@ function extractFactualClaims(text: string): string[] {
       }
     }
   }
-
+  
   return [...new Set(claims)]; // Remove duplicates
 }
 
@@ -271,7 +270,7 @@ function extractFactualClaims(text: string): string[] {
 
 /**
  * Check content for potential hallucinations and issues
- *
+ * 
  * @param content - AI-generated content to check
  * @param context - Context for the check
  * @returns HallucinationCheck result
@@ -287,31 +286,27 @@ export function checkForHallucinations(
   // Normalize context: support tests calling (content, grade, subject)
   let context: HallucinationContext;
   if (typeof contextOrGrade === 'number') {
-    context = {
-      grade: contextOrGrade,
-      board: 'generic' as any,
-      subject: subject || 'General',
-    } as HallucinationContext;
+    context = { grade: contextOrGrade, board: 'generic' as any, subject: subject || 'General' } as HallucinationContext;
   } else {
     context = contextOrGrade as HallucinationContext;
   }
-
+  
   // 1. Check for language complexity vs grade
   const gradeExpectations = GRADE_EXPECTATIONS[context.grade] || GRADE_EXPECTATIONS[6];
-
+  
   for (const { pattern, minGrade } of COMPLEX_LANGUAGE_PATTERNS) {
     if (context.grade < minGrade && pattern.test(content)) {
       const match = content.match(pattern);
-      issues.push({
-        type: HallucinationIssueType.COMPLEXITY_MISMATCH,
-        severity: 0.6,
-        description: `Content uses terminology typically introduced in Grade ${minGrade}+`,
-        excerpt: match?.[0],
-        suggestion: "Use simpler language appropriate for the student's grade level",
-      });
+        issues.push({
+          type: HallucinationIssueType.COMPLEXITY_MISMATCH,
+          severity: 0.6,
+          description: `Content uses terminology typically introduced in Grade ${minGrade}+`,
+          excerpt: match?.[0],
+          suggestion: 'Use simpler language appropriate for the student\'s grade level',
+        });
     }
   }
-
+  
   // Check sentence complexity
   const avgSentenceLength = calculateAvgSentenceLength(content);
   if (avgSentenceLength > gradeExpectations.maxSentenceLength * 1.5) {
@@ -323,7 +318,7 @@ export function checkForHallucinations(
     });
     suggestions.push('Consider using shorter sentences for better comprehension');
   }
-
+  
   // 2. Check for false certainty
   for (const pattern of FALSE_CERTAINTY_PATTERNS) {
     if (pattern.test(content)) {
@@ -337,7 +332,7 @@ export function checkForHallucinations(
       });
     }
   }
-
+  
   // 3. Check for potential factual claims
   const factualClaims = extractFactualClaims(content);
   if (factualClaims.length >= 1) {
@@ -349,7 +344,7 @@ export function checkForHallucinations(
     });
     suggestions.push('Factual claims detected - consider verification');
   }
-
+  
   // 4. Check for reasoning structure (especially for explanations)
   if (content.length > 200 && !hasReasoningStructure(content)) {
     issues.push({
@@ -360,7 +355,7 @@ export function checkForHallucinations(
     });
     suggestions.push('Add clearer step-by-step reasoning for better understanding');
   }
-
+  
   // 5. Check for safety concerns
   for (const pattern of SAFETY_PATTERNS) {
     if (pattern.test(content)) {
@@ -374,17 +369,15 @@ export function checkForHallucinations(
       });
     }
   }
-
+  
   // 6. Check for context consistency (if we have conversation history)
   if (context.conversationHistory && context.conversationHistory.length > 0) {
     // Simple check: make sure topic-related terms appear
     if (context.topic) {
       const topicWords = context.topic.toLowerCase().split(/\s+/);
       const contentLower = content.toLowerCase();
-      const topicMentioned = topicWords.some(
-        (word) => word.length > 3 && contentLower.includes(word)
-      );
-
+      const topicMentioned = topicWords.some(word => word.length > 3 && contentLower.includes(word));
+      
       if (!topicMentioned && content.length > 100) {
         issues.push({
           type: HallucinationIssueType.CONTEXT_INCONSISTENCY,
@@ -395,17 +388,16 @@ export function checkForHallucinations(
       }
     }
   }
-
+  
   // Calculate overall risk score
   const riskScore = calculateRiskScore(issues);
   const riskLevel = getRiskLevel(riskScore);
-
+  
   const result: HallucinationCheck = {
     riskScore,
     riskLevel,
     issues,
-    shouldBlock:
-      riskScore >= 0.8 || issues.some((i) => i.type === HallucinationIssueType.CONTENT_SAFETY),
+    shouldBlock: riskScore >= 0.8 || issues.some(i => i.type === HallucinationIssueType.CONTENT_SAFETY),
     needsReview: riskScore >= 0.5,
     suggestions,
   };
@@ -421,14 +413,14 @@ export function checkForHallucinations(
  */
 function calculateRiskScore(issues: HallucinationIssue[]): number {
   if (issues.length === 0) return 0;
-
+  
   // Weight by severity and count
   const totalSeverity = issues.reduce((sum, issue) => sum + issue.severity, 0);
   const avgSeverity = totalSeverity / issues.length;
-
+  
   // Scale by number of issues (more issues = higher risk)
   const countFactor = Math.min(issues.length / 5, 1); // Max out at 5 issues
-
+  
   return Math.min(avgSeverity * 0.7 + countFactor * 0.3, 1);
 }
 
@@ -445,12 +437,7 @@ function getRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
 /**
  * Quick check if content is safe (without full analysis)
  */
-export function isContentSafe(
-  content: string,
-  grade?: number,
-  subject?: string,
-  _confidence?: number
-): boolean {
+export function isContentSafe(content: string, grade?: number, subject?: string, _confidence?: number): boolean {
   // Quick safety pattern scan
   for (const pattern of SAFETY_PATTERNS) {
     if (pattern.test(content)) {
@@ -462,11 +449,7 @@ export function isContentSafe(
   if (typeof _confidence === 'number' && _confidence < 0.5) return false;
 
   // Build a context using provided grade/subject when available
-  const ctx: HallucinationContext = {
-    grade: grade ?? 6,
-    board: 'generic' as any,
-    subject: subject ?? 'General',
-  } as HallucinationContext;
+  const ctx: HallucinationContext = { grade: grade ?? 6, board: 'generic' as any, subject: subject ?? 'General' } as HallucinationContext;
 
   // Also run a lightweight hallucination check using the normalized context
   try {
@@ -487,15 +470,15 @@ export function isOnTopic(content: string, topic: string, subject: string): bool
   const contentLower = content.toLowerCase();
   const topicLower = topic.toLowerCase();
   const subjectLower = subject.toLowerCase();
-
+  
   // Check if topic words appear in content
-  const topicWords = topicLower.split(/\s+/).filter((w) => w.length > 3);
-  const topicMatch = topicWords.some((word) => contentLower.includes(word));
-
+  const topicWords = topicLower.split(/\s+/).filter(w => w.length > 3);
+  const topicMatch = topicWords.some(word => contentLower.includes(word));
+  
   // Check if subject-related terms appear
-  const subjectWords = subjectLower.split(/\s+/).filter((w) => w.length > 3);
-  const subjectMatch = subjectWords.some((word) => contentLower.includes(word));
-
+  const subjectWords = subjectLower.split(/\s+/).filter(w => w.length > 3);
+  const subjectMatch = subjectWords.some(word => contentLower.includes(word));
+  
   return topicMatch || subjectMatch;
 }
 
@@ -505,18 +488,14 @@ export function isOnTopic(content: string, topic: string, subject: string): bool
 export function estimateConfidence(check: HallucinationCheck): number {
   // Inverse of risk score, adjusted for issue types
   const baseConfidence = 1 - check.riskScore;
-
+  
   // Reduce confidence if certain issue types present
-  const hasFactualIssues = check.issues.some(
-    (i) => i.type === HallucinationIssueType.FACTUAL_CLAIM
-  );
-  const hasSafetyIssues = check.issues.some(
-    (i) => i.type === HallucinationIssueType.CONTENT_SAFETY
-  );
-
+  const hasFactualIssues = check.issues.some(i => i.type === HallucinationIssueType.FACTUAL_CLAIM);
+  const hasSafetyIssues = check.issues.some(i => i.type === HallucinationIssueType.CONTENT_SAFETY);
+  
   let confidence = baseConfidence;
   if (hasFactualIssues) confidence *= 0.8;
   if (hasSafetyIssues) confidence *= 0.5;
-
+  
   return Math.max(0, Math.min(confidence, 1));
 }

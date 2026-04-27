@@ -16,10 +16,7 @@ export async function POST(req: Request) {
     const sessions = await prisma.session.deleteMany({});
     const accounts = await prisma.account.deleteMany({});
 
-    return NextResponse.json({
-      ok: true,
-      deleted: { sessions: sessions.count, accounts: accounts.count },
-    });
+    return NextResponse.json({ ok: true, deleted: { sessions: sessions.count, accounts: accounts.count } });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: formatErrorForResponse(e) }, { status: 500 });
   }

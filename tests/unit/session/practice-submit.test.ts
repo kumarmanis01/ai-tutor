@@ -126,8 +126,8 @@ describe('POST /api/session/[sessionId]/practice/submit', () => {
   it('grades answers, stores result in meta, schedules mastery update', async () => {
     const body = {
       answers: [
-        { questionId: 'q-1', answer: 'Newton' }, // correct
-        { questionId: 'q-2', answer: 'Respiration' }, // wrong
+        { questionId: 'q-1', answer: 'Newton' },       // correct
+        { questionId: 'q-2', answer: 'Respiration' },  // wrong
       ],
     };
 
@@ -205,7 +205,7 @@ describe('POST /api/session/[sessionId]/practice/submit', () => {
   it('returns 409 when session is not in PRACTICE state and no cached result exists', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue({
       ...practiceSession,
-      state: 'TEST', // session has already advanced
+      state: 'TEST',            // session has already advanced
       meta: { phaseTimestamps: {} }, // no practiceResult
     });
 
@@ -246,7 +246,7 @@ describe('POST /api/session/[sessionId]/practice/submit', () => {
   // ── Case 6: Missing / empty answers ─────────────────────────────────────
 
   it('returns 400 when answers array is missing', async () => {
-    const body = {}; // no answers field
+    const body = {};   // no answers field
     const res = await POST(makeRequest(body), makeParams());
     expect(res.status).toBe(400);
   });
@@ -262,8 +262,8 @@ describe('POST /api/session/[sessionId]/practice/submit', () => {
   it('skips answers for unknown questionIds and only grades known ones', async () => {
     const body = {
       answers: [
-        { questionId: 'q-1', answer: 'Newton' }, // known — correct
-        { questionId: 'q-UNKNOWN', answer: 'X' }, // unknown — skipped
+        { questionId: 'q-1', answer: 'Newton' },    // known — correct
+        { questionId: 'q-UNKNOWN', answer: 'X' },   // unknown — skipped
       ],
     };
 
@@ -271,7 +271,7 @@ describe('POST /api/session/[sessionId]/practice/submit', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.totalAnswers).toBe(1); // only q-1 counted
+    expect(data.totalAnswers).toBe(1);    // only q-1 counted
     expect(data.correctAnswers).toBe(1);
     expect(data.results).toHaveLength(1);
   });

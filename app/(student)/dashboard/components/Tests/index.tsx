@@ -11,7 +11,7 @@
  * - 2026-02-03 | claude | use useProfileDefaults for auto-initialization
  */
 
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { TestsHeader } from './sections/TestsHeader';
@@ -83,19 +83,9 @@ function TestsFiltered() {
   );
 }
 
-function TestsContent({
-  subject,
-  grade,
-  board,
-}: {
-  subject: string;
-  grade?: string;
-  board?: string;
-}) {
+function TestsContent({ subject, grade, board }: { subject: string; grade?: string; board?: string }) {
   const { refresh } = useTests();
-  React.useEffect(() => {
-    refresh(subject, grade, board);
-  }, [refresh, subject, grade, board]);
+  React.useEffect(() => { refresh(subject, grade, board); }, [refresh, subject, grade, board]);
 
   // If the user navigated from Notes, Notes CTA sets `topicId` in query string.
   // Surface a small unobtrusive banner to indicate this cross-app transition.
@@ -132,9 +122,7 @@ function TestsContent({
             <span className="text-lg">🔁</span>
             <span>Continuing practice from Notes</span>
           </div>
-          <button onClick={dismissBanner} className="text-sm px-2 py-1 hover:bg-primary/20 rounded">
-            Dismiss
-          </button>
+          <button onClick={dismissBanner} className="text-sm px-2 py-1 hover:bg-primary/20 rounded">Dismiss</button>
         </div>
       )}
       <TestsHeader subject={subject} grade={grade} board={board} />
@@ -144,15 +132,7 @@ function TestsContent({
   );
 }
 
-export default function TestsTab({
-  subject,
-  grade,
-  board,
-}: {
-  subject: string;
-  grade?: string;
-  board?: string;
-}) {
+export default function TestsTab({ subject, grade, board }: { subject: string; grade?: string; board?: string }) {
   return (
     <TestsProvider>
       <TestsContent subject={subject} grade={grade} board={board} />

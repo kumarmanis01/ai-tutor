@@ -18,17 +18,15 @@
  *   node scripts/seed-board-chapter-weights.cjs --dry-run
  *   node scripts/seed-board-chapter-weights.cjs --force
  */
-'use strict';
+'use strict'
 
-const { spawn } = require('child_process');
-const path = require('path');
+const { spawn } = require('child_process')
+const path = require('path')
 
 // On Windows the executable is tsx.cmd; on POSIX it is tsx.
-const isWin = process.platform === 'win32';
-const tsxBin = path.join(process.cwd(), 'node_modules', '.bin', isWin ? 'tsx.cmd' : 'tsx');
+const isWin = process.platform === 'win32'
+const tsxBin = path.join(process.cwd(), 'node_modules', '.bin', isWin ? 'tsx.cmd' : 'tsx')
 
-const args = ['scripts/seed-board-chapter-weights.ts', ...process.argv.slice(2)];
-const child = spawn(tsxBin, args, { stdio: 'inherit', cwd: process.cwd(), shell: isWin });
-child.on('exit', (code) => {
-  process.exitCode = code ?? 0;
-});
+const args = ['scripts/seed-board-chapter-weights.ts', ...process.argv.slice(2)]
+const child = spawn(tsxBin, args, { stdio: 'inherit', cwd: process.cwd(), shell: isWin })
+child.on('exit', (code) => { process.exitCode = code ?? 0 })

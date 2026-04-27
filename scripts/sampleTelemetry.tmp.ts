@@ -27,10 +27,7 @@ function dimHash(dim: any) {
     const s = stableStringify(dim ?? {});
     return crypto.createHash('sha1').update(s).digest('hex');
   } catch {
-    return crypto
-      .createHash('sha1')
-      .update(String(dim ?? ''))
-      .digest('hex');
+    return crypto.createHash('sha1').update(String(dim ?? '')).digest('hex');
   }
 }
 
@@ -71,85 +68,43 @@ async function runOnce() {
 
   try {
     // Jobs: created per status in interval
-    const jobsCreated = (await prisma.$queryRaw`
+    const jobsCreated = await prisma.$queryRaw`
       SELECT "status", COUNT(*)::int as cnt
       FROM "ExecutionJob"
       WHERE "createdAt" >= ${intervalStart} AND "createdAt" < ${intervalEnd}
       GROUP BY "status"
-    `) as Array<{ status: string; cnt: number }>;
+    ` as Array<{ status: string; cnt: number }>;
 
     for (const jc of jobsCreated) {
       const key = `jobs.created.count`;
       const dims = { status: jc.status };
       const dh = dimHash(dims);
-      rowsToInsert.push({
-        id: crypto.randomUUID(),
-        key,
-        timestamp: bucketTs,
-        value: jc.cnt,
-        dimensions: dims,
-        meta: null,
-        dimensionHash: dh,
-      });
+      rowsToInsert.push({ id: crypto.randomUUID(), key, timestamp: bucketTs, value: jc.cnt, dimensions: dims, meta: null, dimensionHash: dh });
     }
 
     // Jobs failed in interval (explicit)
-    const jobsFailed = (await prisma.$queryRaw`
+    const jobsFailed = await prisma.$queryRaw`
       SELECT COUNT(*)::int as cnt
       FROM "ExecutionJob"
       WHERE "createdAt" >= ${intervalStart} AND "createdAt" < ${intervalEnd} AND "status" = 'failed'
-    `) as Array<{ cnt: number }>;
+    ` as Array<{ cnt: number }>;
     if (jobsFailed && jobsFailed[0]) {
       const key = `jobs.failed.count`;
       const dh = dimHash({});
-      rowsToInsert.push({
-        id: crypto.randomUUID(),
-        key,
-        timestamp: bucketTs,
-        value: jobsFailed[0].cnt,
-        dimensions: null,
-        meta: null,
-        dimensionHash: dh,
-      });
+      rowsToInsert.push({ id: crypto.randomUUID(), key, timestamp: bucketTs, value: jobsFailed[0].cnt, dimensions: null, meta: null, dimensionHash: dh });
     }
 
     // Jobs running (point-in-time)
     const jobsRunningCount = await prisma.executionJob.count({ where: { status: 'running' } });
-    rowsToInsert.push({
-      id: crypto.randomUUID(),
-      key: `jobs.running.count`,
-      timestamp: bucketTs,
-      value: jobsRunningCount,
-      dimensions: null,
-      meta: null,
-      dimensionHash: dimHash({}),
-    });
+    rowsToInsert.push({ id: crypto.randomUUID(), key: `jobs.running.count`, timestamp: bucketTs, value: jobsRunningCount, dimensions: null, meta: null, dimensionHash: dimHash({}) });
 
     // Workers: running and stale
     const workersRunning = await prisma.workerLifecycle.count({ where: { status: 'RUNNING' } });
     // stale: lastHeartbeatAt older than 60s for workers that should be heartbeating (exclude STOPPED/FAILED)
     const staleThreshold = new Date(Date.now() - 60 * 1000);
-    const workersStale = await prisma.workerLifecycle.count({
-      where: { status: { in: ['RUNNING', 'DRAINING'] }, lastHeartbeatAt: { lt: staleThreshold } },
-    });
-    rowsToInsert.push({
-      id: crypto.randomUUID(),
-      key: `workers.running.count`,
-      timestamp: bucketTs,
-      value: workersRunning,
-      dimensions: null,
-      meta: null,
-      dimensionHash: dimHash({}),
-    });
-    rowsToInsert.push({
-      id: crypto.randomUUID(),
-      key: `workers.stale.count`,
-      timestamp: bucketTs,
-      value: workersStale,
-      dimensions: null,
-      meta: null,
-      dimensionHash: dimHash({}),
-    });
+    const workersStale = await prisma.workerLifecycle.count({ where: { status: { in: ['RUNNING', 'DRAINING'] }, lastHeartbeatAt: { lt: staleThreshold } } });
+    rowsToInsert.push({ id: crypto.randomUUID(), key: `workers.running.count`, timestamp: bucketTs, value: workersRunning, dimensions: null, meta: null, dimensionHash: dimHash({}) });
+    rowsToInsert.push({ id: crypto.randomUUID(), key: `workers.stale.count`, timestamp: bucketTs, value: workersStale, dimensions: null, meta: null, dimensionHash: dimHash({}) });
 
     // Queue (BullMQ)
     let queueDepth = 0;
@@ -165,44 +120,16 @@ async function runOnce() {
         oldestJobAgeSec = Math.floor((Date.now() - ts) / 1000);
       }
     } catch (e) {
-      logger.warn('Queue metrics fetch failed; skipping queue metrics', {
-        method: 'runOnce',
-        err: e,
-      });
+      logger.warn('Queue metrics fetch failed; skipping queue metrics', { method: 'runOnce', err: e });
       queueDepth = 0;
       oldestJobAgeSec = null;
     }
-    rowsToInsert.push({
-      id: crypto.randomUUID(),
-      key: `queue.depth.value`,
-      timestamp: bucketTs,
-      value: queueDepth,
-      dimensions: null,
-      meta: null,
-      dimensionHash: dimHash({}),
-    });
-    if (oldestJobAgeSec !== null)
-      rowsToInsert.push({
-        id: crypto.randomUUID(),
-        key: `queue.oldest_age_sec.value`,
-        timestamp: bucketTs,
-        value: oldestJobAgeSec,
-        dimensions: null,
-        meta: null,
-        dimensionHash: dimHash({}),
-      });
+    rowsToInsert.push({ id: crypto.randomUUID(), key: `queue.depth.value`, timestamp: bucketTs, value: queueDepth, dimensions: null, meta: null, dimensionHash: dimHash({}) });
+    if (oldestJobAgeSec !== null) rowsToInsert.push({ id: crypto.randomUUID(), key: `queue.oldest_age_sec.value`, timestamp: bucketTs, value: oldestJobAgeSec, dimensions: null, meta: null, dimensionHash: dimHash({}) });
 
     // Alerts
     const alertsActive = await prisma.systemAlert.count({ where: { active: true } });
-    rowsToInsert.push({
-      id: crypto.randomUUID(),
-      key: `alerts.active.count`,
-      timestamp: bucketTs,
-      value: alertsActive,
-      dimensions: null,
-      meta: null,
-      dimensionHash: dimHash({}),
-    });
+    rowsToInsert.push({ id: crypto.randomUUID(), key: `alerts.active.count`, timestamp: bucketTs, value: alertsActive, dimensions: null, meta: null, dimensionHash: dimHash({}) });
 
     // Insert rows idempotently
     for (const r of rowsToInsert) {
@@ -219,10 +146,7 @@ async function runOnce() {
       }
     }
 
-    logger.info(`Telemetry sampler wrote ${rowsToInsert.length} rows`, {
-      method: 'runOnce',
-      bucket: bucketTs.toISOString(),
-    });
+    logger.info(`Telemetry sampler wrote ${rowsToInsert.length} rows`, { method: 'runOnce', bucket: bucketTs.toISOString() });
   } catch (err) {
     logger.error('Sampler run failed', { method: 'runOnce', err });
     process.exit(1);

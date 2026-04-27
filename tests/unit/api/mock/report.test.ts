@@ -20,13 +20,7 @@ jest.mock('@/lib/prisma', () => ({
 }));
 jest.mock('@/lib/session', () => ({ getServerSessionForHandlers: jest.fn() }));
 jest.mock('@/lib/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    logAPI: jest.fn(),
-  },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
 
 import { GET } from '@/app/api/mock/attempt/[attemptId]/report/route';

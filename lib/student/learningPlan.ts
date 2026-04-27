@@ -1,7 +1,7 @@
-import { prisma } from '@/lib/prisma';
-import { awardXP } from '@/lib/student/xp';
+import { prisma } from '@/lib/prisma'
+import { awardXP } from '@/lib/student/xp'
 
-const XP_PER_PLAN_ITEM_COMPLETE = 5;
+const XP_PER_PLAN_ITEM_COMPLETE = 5
 
 /**
  * Get the next concept the student should study.
@@ -9,11 +9,11 @@ const XP_PER_PLAN_ITEM_COMPLETE = 5;
  * Returns null if no plan or no items remaining.
  */
 export async function getNextConcept(studentId: string): Promise<{
-  conceptId: string;
-  conceptName: string;
-  chapterName: string;
-  subjectName: string;
-  masteryScore: number;
+  conceptId: string
+  conceptName: string
+  chapterName: string
+  subjectName: string
+  masteryScore: number
 } | null> {
   try {
     // Single query: plan + first UPCOMING item + concept + chapter + subject
@@ -37,16 +37,16 @@ export async function getNextConcept(studentId: string): Promise<{
           },
         },
       },
-    });
+    })
 
-    const item = plan?.items[0];
-    if (!item?.concept) return null;
+    const item = plan?.items[0]
+    if (!item?.concept) return null
 
     // Second query: mastery state (independent, run in parallel if more joins needed later)
     const state = await prisma.studentConceptState.findUnique({
       where: { studentId_conceptId: { studentId, conceptId: item.conceptId } },
       select: { masteryScore: true },
-    });
+    })
 
     return {
       conceptId: item.conceptId,
@@ -54,9 +54,9 @@ export async function getNextConcept(studentId: string): Promise<{
       chapterName: item.concept.topic?.chapter?.name ?? '',
       subjectName: item.concept.subject?.name ?? '',
       masteryScore: state?.masteryScore ?? 0,
-    };
+    }
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -69,24 +69,24 @@ export async function markConceptComplete(studentId: string, conceptId: string):
       where: { studentId },
       orderBy: { generatedAt: 'desc' },
       select: { id: true },
-    });
-    if (!plan) return;
+    })
+    if (!plan) return
 
     const item = await prisma.learningPlanItem.findFirst({
       where: { planId: plan.id, conceptId },
-    });
-    if (!item) return;
+    })
+    if (!item) return
 
     await prisma.learningPlanItem.update({
       where: { id: item.id },
       data: { status: 'COMPLETED', completedAt: new Date() },
-    });
+    })
 
     void awardXP({
       studentId,
       amount: XP_PER_PLAN_ITEM_COMPLETE,
       source: 'streak_bonus',
-    });
+    })
   } catch {
     // never throws
   }
@@ -98,11 +98,11 @@ export async function markConceptComplete(studentId: string, conceptId: string):
  */
 export async function buildLearningPlan(
   studentId: string,
-  subjectId: string
+  subjectId: string,
 ): Promise<{ planId: string; itemCount: number } | null> {
-  const { generateLearningPlan } = await import('@/lib/ai/learningPlan');
-  const planId = await generateLearningPlan(studentId, subjectId);
-  if (!planId) return null;
-  const itemCount = await prisma.learningPlanItem.count({ where: { planId } });
-  return { planId, itemCount };
+  const { generateLearningPlan } = await import('@/lib/ai/learningPlan')
+  const planId = await generateLearningPlan(studentId, subjectId)
+  if (!planId) return null
+  const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
+  return { planId, itemCount }
 }

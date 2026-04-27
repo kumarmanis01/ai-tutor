@@ -31,9 +31,7 @@ function walk(dir, cb) {
   }
 }
 
-function rel(p) {
-  return path.relative(ROOT, p).split(path.sep).join('/');
-}
+function rel(p) { return path.relative(ROOT, p).split(path.sep).join('/'); }
 
 if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 

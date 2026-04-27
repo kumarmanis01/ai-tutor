@@ -1,7 +1,7 @@
-import type { Job } from 'bullmq';
-import { prisma } from '@/lib/prisma.js';
-import { logger } from '@/lib/logger.js';
-import type { ReteachPlanJobData } from '@/jobs/reteachPlan';
+import type { Job } from 'bullmq'
+import { prisma } from '@/lib/prisma.js'
+import { logger } from '@/lib/logger.js'
+import type { ReteachPlanJobData } from '@/jobs/reteachPlan'
 
 /**
  * Inserts (or skips duplicate) UPCOMING LearningPlanItem for re-teach.
@@ -14,11 +14,11 @@ import type { ReteachPlanJobData } from '@/jobs/reteachPlan';
  * if none exists.
  */
 export async function processReteachPlan(job: Job<ReteachPlanJobData>): Promise<void> {
-  const { studentId, conceptId } = job.data;
+  const { studentId, conceptId } = job.data
 
   if (!studentId || !conceptId) {
-    logger.warn('[reteach-plan-worker] missing required fields', { jobId: job.id, data: job.data });
-    return;
+    logger.warn('[reteach-plan-worker] missing required fields', { jobId: job.id, data: job.data })
+    return
   }
 
   try {
@@ -26,10 +26,10 @@ export async function processReteachPlan(job: Job<ReteachPlanJobData>): Promise<
     const concept = await prisma.concept.findUnique({
       where: { id: conceptId },
       select: { subjectId: true },
-    });
+    })
     if (!concept) {
-      logger.warn('[reteach-plan-worker] concept not found', { conceptId });
-      return;
+      logger.warn('[reteach-plan-worker] concept not found', { conceptId })
+      return
     }
 
     // 2. Deduplicate: skip if UPCOMING item already exists for this concept
@@ -39,10 +39,10 @@ export async function processReteachPlan(job: Job<ReteachPlanJobData>): Promise<
         status: 'UPCOMING',
         plan: { studentId },
       },
-    });
+    })
     if (existing) {
-      logger.info('[reteach-plan-worker] item already exists, skipping', { studentId, conceptId });
-      return;
+      logger.info('[reteach-plan-worker] item already exists, skipping', { studentId, conceptId })
+      return
     }
 
     // 3. Find the student's active learning plan for this subject
@@ -55,17 +55,17 @@ export async function processReteachPlan(job: Job<ReteachPlanJobData>): Promise<
           take: 1,
         },
       },
-    });
+    })
 
     // 4. If no plan, create a minimal one (ensures item can be inserted)
     if (!plan) {
       plan = await prisma.learningPlan.create({
         data: { studentId, subjectId: concept.subjectId },
         include: { items: { where: { weekNumber: 1 }, orderBy: { orderInWeek: 'desc' }, take: 1 } },
-      });
+      })
     }
 
-    const maxOrder = plan.items[0]?.orderInWeek ?? -1;
+    const maxOrder = plan.items[0]?.orderInWeek ?? -1
 
     // 5. Insert the re-teach item at the end of week 1
     await prisma.learningPlanItem.create({
@@ -76,18 +76,18 @@ export async function processReteachPlan(job: Job<ReteachPlanJobData>): Promise<
         orderInWeek: maxOrder + 1,
         status: 'UPCOMING',
       },
-    });
+    })
 
     logger.info('[reteach-plan-worker] re-teach item inserted', {
       event: 'reteach_plan_item_inserted',
       context: { studentId, conceptId, planId: plan.id },
-    });
+    })
   } catch (err) {
     logger.error('[reteach-plan-worker] failed', {
       studentId,
       conceptId,
       error: String((err as any)?.message ?? err),
-    });
-    throw err; // Let BullMQ retry
+    })
+    throw err // Let BullMQ retry
   }
 }

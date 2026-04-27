@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ORIGINAL_EXISTS = fs.existsSync;
-const DEV_PREFIX = 'C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\';
+const DEV_PREFIX = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\";
 
 function normalizePath(p: fs.PathLike) {
   if (typeof p === 'string' && p.startsWith(DEV_PREFIX)) {
@@ -42,8 +42,8 @@ function normalizePath(p: fs.PathLike) {
     const normalized = normalizePath(p);
     return ORIGINAL_EXISTS.call(fs, normalized);
   } catch {
-    return ORIGINAL_EXISTS.call(fs, p);
-  }
+      return ORIGINAL_EXISTS.call(fs, p);
+    }
 };
 
 export {};

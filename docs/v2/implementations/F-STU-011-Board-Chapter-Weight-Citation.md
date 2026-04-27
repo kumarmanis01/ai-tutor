@@ -132,7 +132,6 @@ for the "same" topic without any schema change.
 Covers all active chapters across CBSE + ICSE, grades 6–12, all available subjects.
 
 **Default marks formula:**
-
 ```
 marks_per_chapter = round(80 / total_chapters_in_subject)
 minimum: 1 mark per chapter
@@ -155,7 +154,6 @@ node scripts/seed-board-chapter-weights.cjs --force
 ```
 
 **Sample output:**
-
 ```
 Board  Grade  Subject                 Chapters  Marks ea.  Created  Updated  Skipped
 ------------------------------------------------------------------------
@@ -243,7 +241,6 @@ The response should open with a sentence like:
 If the sentence is absent for a known-seeded chapter, check:
 
 1. Is there a `BoardChapterWeight` row for that chapter?
-
    ```bash
    bash scripts/db-exec.sh "
      SELECT bcw.\"weightMarks\", c.name
@@ -254,7 +251,6 @@ If the sentence is absent for a known-seeded chapter, check:
    ```
 
 2. Is the concept linked to a topic → chapter?
-
    ```bash
    bash scripts/db-exec.sh "
      SELECT con.name, t.name as topic, ch.name as chapter
@@ -274,25 +270,25 @@ If the sentence is absent for a known-seeded chapter, check:
 
 ## 7. What Requires No Action From You
 
-| Thing                                   | Status    |
-| --------------------------------------- | --------- |
+| Thing | Status |
+|-------|--------|
 | Code fetches weight from DB per session | Automatic |
-| Prompt injection in CORE_EXPLANATION    | Automatic |
-| Prompt injection in WORKED_EXAMPLE      | Automatic |
-| Prompt injection in CONSOLIDATION       | Automatic |
-| Graceful skip when weight is null       | Automatic |
-| Works across all grades (6-12)          | Automatic |
-| Works for CBSE and ICSE separately      | Automatic |
-| Works for all subjects                  | Automatic |
-| Unit tests (12 tests, all passing)      | Done      |
+| Prompt injection in CORE_EXPLANATION | Automatic |
+| Prompt injection in WORKED_EXAMPLE | Automatic |
+| Prompt injection in CONSOLIDATION | Automatic |
+| Graceful skip when weight is null | Automatic |
+| Works across all grades (6-12) | Automatic |
+| Works for CBSE and ICSE separately | Automatic |
+| Works for all subjects | Automatic |
+| Unit tests (12 tests, all passing) | Done |
 
 ---
 
 ## 8. Limitations and Future Work
 
-| Limitation                                                  | Impact                                                                                                          | Resolution                                                                                               |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Marks are equal-distribution defaults, not official figures | Vidya may cite slightly inaccurate marks for some chapters                                                      | Replace with official marking-scheme data (see 6c)                                                       |
-| No board column on `BoardChapterWeight`                     | CBSE and ICSE chapters share independent rows; no conflict today since chapters are separate rows in ChapterDef | No action needed unless a subject shares exact same ChapterDef across boards (not current design)        |
-| Only CBSE/ICSE boards seeded                                | Other boards (state boards) get null weight                                                                     | Add board slugs to the seed script's `where: { slug: { in: [...] } }` filter when state boards are added |
-| Marks figure is per-chapter, not per-topic                  | Vidya cites chapter-level marks even when the concept is a small sub-topic                                      | Acceptable for now; per-topic weight granularity is post-launch                                          |
+| Limitation | Impact | Resolution |
+|-----------|--------|------------|
+| Marks are equal-distribution defaults, not official figures | Vidya may cite slightly inaccurate marks for some chapters | Replace with official marking-scheme data (see 6c) |
+| No board column on `BoardChapterWeight` | CBSE and ICSE chapters share independent rows; no conflict today since chapters are separate rows in ChapterDef | No action needed unless a subject shares exact same ChapterDef across boards (not current design) |
+| Only CBSE/ICSE boards seeded | Other boards (state boards) get null weight | Add board slugs to the seed script's `where: { slug: { in: [...] } }` filter when state boards are added |
+| Marks figure is per-chapter, not per-topic | Vidya cites chapter-level marks even when the concept is a small sub-topic | Acceptable for now; per-topic weight granularity is post-launch |

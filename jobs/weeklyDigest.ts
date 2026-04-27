@@ -5,16 +5,16 @@
  * Follows the same pattern as jobs/sm18.ts.
  */
 
-import { Queue } from 'bullmq';
-import { getSharedConnection } from '@/lib/redis';
-import { logger } from '@/lib/logger';
+import { Queue } from 'bullmq'
+import { getSharedConnection } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 
-export const WEEKLY_DIGEST_QUEUE_NAME = 'weekly-parent-digest';
+export const WEEKLY_DIGEST_QUEUE_NAME = 'weekly-parent-digest'
 
 // Sunday 18:00 IST = Sunday 12:30 UTC
-const WEEKLY_CRON = '30 12 * * 0';
+const WEEKLY_CRON = '30 12 * * 0'
 
-let digestQueue: Queue | null = null;
+let digestQueue: Queue | null = null
 
 export function getWeeklyDigestQueue(): Queue {
   if (!digestQueue) {
@@ -26,9 +26,9 @@ export function getWeeklyDigestQueue(): Queue {
         removeOnComplete: 10,
         removeOnFail: 20,
       },
-    });
+    })
   }
-  return digestQueue;
+  return digestQueue
 }
 
 /**
@@ -36,20 +36,20 @@ export function getWeeklyDigestQueue(): Queue {
  */
 export async function registerWeeklyDigestJob(): Promise<void> {
   try {
-    const queue = getWeeklyDigestQueue();
-    const repeatable = await queue.getRepeatableJobs();
+    const queue = getWeeklyDigestQueue()
+    const repeatable = await queue.getRepeatableJobs()
     const already = repeatable.some(
-      (j) => j.pattern === WEEKLY_CRON && j.name === 'weekly-parent-digest'
-    );
+      (j) => j.pattern === WEEKLY_CRON && j.name === 'weekly-parent-digest',
+    )
     if (already) {
-      logger.info('[weeklyDigest] repeatable job already registered', { cron: WEEKLY_CRON });
-      return;
+      logger.info('[weeklyDigest] repeatable job already registered', { cron: WEEKLY_CRON })
+      return
     }
-    await queue.add('weekly-parent-digest', {}, { repeat: { pattern: WEEKLY_CRON } });
-    logger.info('[weeklyDigest] registered repeatable job', { cron: WEEKLY_CRON });
+    await queue.add('weekly-parent-digest', {}, { repeat: { pattern: WEEKLY_CRON } })
+    logger.info('[weeklyDigest] registered repeatable job', { cron: WEEKLY_CRON })
   } catch (err) {
     logger.error('[weeklyDigest] failed to register job', {
       error: err instanceof Error ? err.message : String(err),
-    });
+    })
   }
 }

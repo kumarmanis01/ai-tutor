@@ -17,7 +17,7 @@ export const diagnosticConfig = {
 
 // Feature flags (runtime-configurable via env vars for now)
 export const featureFlags = {
-  adaptiveDiagnostic: process.env.FEATURE_ADAPTIVE_DIAGNOSTIC === 'true' || false,
+  adaptiveDiagnostic: (process.env.FEATURE_ADAPTIVE_DIAGNOSTIC === 'true') || false,
 };
 
 export function computeDifficultyCounts(totalItems: number) {
@@ -30,3 +30,4 @@ export function computeDifficultyCounts(totalItems: number) {
 
 const Config = { diagnosticConfig, computeDifficultyCounts };
 export default Config;
+

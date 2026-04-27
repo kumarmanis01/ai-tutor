@@ -11,9 +11,7 @@
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
-jest.mock('@/lib/logger', () => ({
-  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-}));
+jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
 jest.mock('nanoid', () => ({ nanoid: () => 'mock-nanoid-123456' }));
 jest.mock('@/lib/metrics/hydrateMetrics', () => ({ incrementCreated: jest.fn() }));
 
@@ -37,16 +35,8 @@ describe('POST /api/admin/hydrateAll', () => {
     };
 
     prismaMock.board.findUnique.mockResolvedValue({ id: 'board-1', slug: 'cbse', name: 'CBSE' });
-    prismaMock.classLevel.findUnique.mockResolvedValue({
-      id: 'class-1',
-      boardId: 'board-1',
-      grade: 10,
-    });
-    prismaMock.subjectDef.findUnique.mockResolvedValue({
-      id: 'subj-1',
-      name: 'Math',
-      slug: 'math',
-    });
+    prismaMock.classLevel.findUnique.mockResolvedValue({ id: 'class-1', boardId: 'board-1', grade: 10 });
+    prismaMock.subjectDef.findUnique.mockResolvedValue({ id: 'subj-1', name: 'Math', slug: 'math' });
 
     prismaMock.$transaction.mockImplementation(async (callback: any) => {
       return await callback({
@@ -110,16 +100,8 @@ describe('POST /api/admin/hydrateAll', () => {
 
   it('should handle dry-run mode without creating job', async () => {
     prismaMock.board.findUnique.mockResolvedValue({ id: 'board-1', slug: 'cbse', name: 'CBSE' });
-    prismaMock.classLevel.findUnique.mockResolvedValue({
-      id: 'class-1',
-      boardId: 'board-1',
-      grade: 10,
-    });
-    prismaMock.subjectDef.findUnique.mockResolvedValue({
-      id: 'subj-1',
-      name: 'Math',
-      slug: 'math',
-    });
+    prismaMock.classLevel.findUnique.mockResolvedValue({ id: 'class-1', boardId: 'board-1', grade: 10 });
+    prismaMock.subjectDef.findUnique.mockResolvedValue({ id: 'subj-1', name: 'Math', slug: 'math' });
 
     const { POST } = await import('@/app/api/admin/hydrateAll/route');
     const request = new Request('http://localhost:3000/api/admin/hydrateAll', {
@@ -206,24 +188,13 @@ describe('GET /api/admin/hydrateAll/:jobId', () => {
       id: 'root-job',
       rootJobId: null,
       status: 'completed',
-      chaptersCompleted: 5,
-      chaptersExpected: 5,
-      topicsCompleted: 16,
-      topicsExpected: 16,
-      notesCompleted: 16,
-      notesExpected: 16,
-      questionsCompleted: 144,
-      questionsExpected: 144,
-      estimatedCostUsd: 10,
-      actualCostUsd: 8,
-      estimatedDurationMins: 60,
-      createdAt: new Date(),
-      lockedAt: new Date(),
-      completedAt: new Date(),
-      language: 'en',
-      board: 'CBSE',
-      grade: 10,
-      subject: 'Math',
+      chaptersCompleted: 5, chaptersExpected: 5,
+      topicsCompleted: 16, topicsExpected: 16,
+      notesCompleted: 16, notesExpected: 16,
+      questionsCompleted: 144, questionsExpected: 144,
+      estimatedCostUsd: 10, actualCostUsd: 8, estimatedDurationMins: 60,
+      createdAt: new Date(), lockedAt: new Date(), completedAt: new Date(),
+      language: 'en', board: 'CBSE', grade: 10, subject: 'Math',
       inputParams: {},
     };
 
@@ -256,9 +227,7 @@ describe('DELETE /api/admin/hydrateAll/:jobId', () => {
     prismaMock.jobExecutionLog.create.mockResolvedValue({ id: 'log-1' });
 
     const { DELETE } = await import('@/app/api/admin/hydrateAll/[jobId]/route');
-    const request = new Request('http://localhost:3000/api/admin/hydrateAll/job123', {
-      method: 'DELETE',
-    });
+    const request = new Request('http://localhost:3000/api/admin/hydrateAll/job123', { method: 'DELETE' });
     const response = await DELETE(request as any, { params: { jobId: 'job123' } });
     const data = await response.json();
 
@@ -270,9 +239,7 @@ describe('DELETE /api/admin/hydrateAll/:jobId', () => {
     prismaMock.hydrationJob.findUnique.mockResolvedValue({ id: 'job123', status: 'completed' });
 
     const { DELETE } = await import('@/app/api/admin/hydrateAll/[jobId]/route');
-    const request = new Request('http://localhost:3000/api/admin/hydrateAll/job123', {
-      method: 'DELETE',
-    });
+    const request = new Request('http://localhost:3000/api/admin/hydrateAll/job123', { method: 'DELETE' });
     const response = await DELETE(request as any, { params: { jobId: 'job123' } });
 
     expect(response.status).toBe(400);
@@ -282,9 +249,7 @@ describe('DELETE /api/admin/hydrateAll/:jobId', () => {
     prismaMock.hydrationJob.findUnique.mockResolvedValue(null);
 
     const { DELETE } = await import('@/app/api/admin/hydrateAll/[jobId]/route');
-    const request = new Request('http://localhost:3000/api/admin/hydrateAll/noexist', {
-      method: 'DELETE',
-    });
+    const request = new Request('http://localhost:3000/api/admin/hydrateAll/noexist', { method: 'DELETE' });
     const response = await DELETE(request as any, { params: { jobId: 'noexist' } });
 
     expect(response.status).toBe(404);

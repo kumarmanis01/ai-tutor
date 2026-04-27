@@ -20,13 +20,10 @@ type ChipVariant = 'ok' | 'warn' | 'err' | 'default';
 
 function Chip({ label, variant = 'default' }: { label: string; variant?: ChipVariant }) {
   const dotColor =
-    variant === 'ok'
-      ? 'bg-[#1D9E75]'
-      : variant === 'warn'
-        ? 'bg-[#BA7517]'
-        : variant === 'err'
-          ? 'bg-[#E24B4A]'
-          : 'bg-[#1D9E75]';
+    variant === 'ok' ? 'bg-[#1D9E75]' :
+    variant === 'warn' ? 'bg-[#BA7517]' :
+    variant === 'err' ? 'bg-[#E24B4A]' :
+    'bg-[#1D9E75]';
 
   return (
     <div className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -52,18 +49,11 @@ function RedisStatusChip() {
       .catch(() => {
         if (!cancelled) setStatus('down');
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   if (status === 'loading') return null;
-  return (
-    <Chip
-      label={status === 'ok' ? 'Redis OK' : 'Redis down'}
-      variant={status === 'ok' ? 'ok' : 'err'}
-    />
-  );
+  return <Chip label={status === 'ok' ? 'Redis OK' : 'Redis down'} variant={status === 'ok' ? 'ok' : 'err'} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,15 +67,9 @@ function WorkerStatusChip() {
     let cancelled = false;
     fetch('/api/admin/system/worker-status')
       .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setAlive(d.alive ?? false);
-      })
-      .catch(() => {
-        if (!cancelled) setAlive(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((d) => { if (!cancelled) setAlive(d.alive ?? false); })
+      .catch(() => { if (!cancelled) setAlive(false); });
+    return () => { cancelled = true; };
   }, []);
 
   if (alive === null) return null;
@@ -103,15 +87,9 @@ function RunningJobsChip() {
     let cancelled = false;
     fetch('/api/admin/jobs/active-count')
       .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setCount(d.count ?? 0);
-      })
-      .catch(() => {
-        if (!cancelled) setCount(0);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((d) => { if (!cancelled) setCount(d.count ?? 0); })
+      .catch(() => { if (!cancelled) setCount(0); });
+    return () => { cancelled = true; };
   }, []);
 
   if (count === 0) return null;
@@ -148,10 +126,7 @@ export function AdminTopbar({ title, runningJobs, children }: AdminTopbarProps) 
         {/* If caller passes runningJobs explicitly, use that; otherwise self-fetch */}
         {runningJobs !== undefined ? (
           runningJobs > 0 ? (
-            <Chip
-              label={`${runningJobs} job${runningJobs === 1 ? '' : 's'} running`}
-              variant="warn"
-            />
+            <Chip label={`${runningJobs} job${runningJobs === 1 ? '' : 's'} running`} variant="warn" />
           ) : null
         ) : (
           <RunningJobsChip />

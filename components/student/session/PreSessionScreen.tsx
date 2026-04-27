@@ -59,18 +59,21 @@ function prereqPillStyle(masteryScore: number): {
 } {
   if (masteryScore >= 0.7) {
     return {
-      className: 'bg-[#EAF3DE] text-[#1D9E75] dark:bg-[#1D9E75]/15 dark:text-green-300',
+      className:
+        'bg-[#EAF3DE] text-[#1D9E75] dark:bg-[#1D9E75]/15 dark:text-green-300',
       symbol: '✓',
     };
   }
   if (masteryScore >= 0.4) {
     return {
-      className: 'bg-[#FAEEDA] text-[#BA7517] dark:bg-[#BA7517]/15 dark:text-amber-300',
+      className:
+        'bg-[#FAEEDA] text-[#BA7517] dark:bg-[#BA7517]/15 dark:text-amber-300',
       symbol: '~',
     };
   }
   return {
-    className: 'bg-[#FCEBEB] text-[#E24B4A] dark:bg-[#E24B4A]/15 dark:text-red-300',
+    className:
+      'bg-[#FCEBEB] text-[#E24B4A] dark:bg-[#E24B4A]/15 dark:text-red-300',
     symbol: '✗',
   };
 }
@@ -130,9 +133,7 @@ export default function PreSessionScreen({
       .catch(() => {
         // best-effort -- fresh fetch will run on button click
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -197,6 +198,7 @@ export default function PreSessionScreen({
       {/* Pre-session screen */}
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex flex-col items-center px-4 py-8">
         <div className="w-full max-w-[480px] flex flex-col gap-5">
+
           {/* Header -- Vidya avatar */}
           <div className="flex justify-center">
             <Image
@@ -226,14 +228,7 @@ export default function PreSessionScreen({
           {/* Info chips row */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-slate-800 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-              <svg
-                className="w-3.5 h-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden
-              >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
@@ -285,11 +280,7 @@ export default function PreSessionScreen({
                     strokeWidth="2"
                     aria-hidden
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                   </svg>
                   <p className="text-xs text-[#BA7517] dark:text-amber-300 leading-relaxed">
                     Some prerequisites are incomplete. Teacher Vidya will help you catch up.

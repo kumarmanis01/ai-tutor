@@ -10,17 +10,7 @@ export default function AdminContentQualityPage() {
   const [to, setTo] = useState('');
   const [entityType, setEntityType] = useState('');
   const [entityId, setEntityId] = useState('');
-  const [historyData, setHistoryData] = useState<{
-    history: {
-      id: string;
-      entityType: string;
-      entityId: string;
-      fromStatus: string;
-      toStatus: string;
-      reason: string | null;
-      createdAt: string;
-    }[];
-  } | null>(null);
+  const [historyData, setHistoryData] = useState<{ history: { id: string; entityType: string; entityId: string; fromStatus: string; toStatus: string; reason: string | null; createdAt: string }[] } | null>(null);
 
   const summaryUrl = [from, to].some(Boolean)
     ? `/api/admin/content-quality/summary?${from ? `from=${encodeURIComponent(from)}` : ''}${to ? `&to=${encodeURIComponent(to)}` : ''}`
@@ -43,42 +33,27 @@ export default function AdminContentQualityPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-        Content Quality Monitoring
-      </h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Content Quality Monitoring</h1>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Approval/rejection summary from ApprovalAudit, pending draft counts, and per-entity
-        moderation history.
+        Approval/rejection summary from ApprovalAudit, pending draft counts, and per-entity moderation history.
       </p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Approved</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {summary?.approved ?? '--'}
-          </div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary?.approved ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Rejected</div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {summary?.rejected ?? '--'}
-          </div>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary?.rejected ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Total pending (draft)
-          </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {pending?.totalPending ?? '--'}
-          </div>
+          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total pending (draft)</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{pending?.totalPending ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Oldest pending</div>
-          <div className="text-sm">
-            {pending?.oldestPendingAt
-              ? new Date(pending.oldestPendingAt).toLocaleDateString()
-              : '--'}
-          </div>
+          <div className="text-sm">{pending?.oldestPendingAt ? new Date(pending.oldestPendingAt).toLocaleDateString() : '--'}</div>
         </div>
       </div>
 
@@ -111,11 +86,7 @@ export default function AdminContentQualityPage() {
             </thead>
             <tbody>
               {Object.entries(byType).length === 0 && (
-                <tr>
-                  <td colSpan={3} className="p-4 text-center text-gray-500">
-                    No data
-                  </td>
-                </tr>
+                <tr><td colSpan={3} className="p-4 text-center text-gray-500">No data</td></tr>
               )}
               {Object.entries(byType).map(([type, v]) => (
                 <tr key={type} className="border-t border-gray-200 dark:border-gray-700">
@@ -145,9 +116,7 @@ export default function AdminContentQualityPage() {
         <ul className="list-disc list-inside text-sm space-y-1">
           {rejectionReasons.length === 0 && <li className="text-gray-500">None</li>}
           {rejectionReasons.slice(0, 10).map((r: { reason: string; count: number }, i: number) => (
-            <li key={i}>
-              {r.reason} ({r.count})
-            </li>
+            <li key={i}>{r.reason} ({r.count})</li>
           ))}
         </ul>
       </section>
@@ -189,29 +158,15 @@ export default function AdminContentQualityPage() {
               </thead>
               <tbody>
                 {historyData.history?.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="p-4 text-center text-gray-500">
-                      No history
-                    </td>
+                  <tr><td colSpan={3} className="p-4 text-center text-gray-500">No history</td></tr>
+                )}
+                {historyData.history?.map((h: { id: string; fromStatus: string; toStatus: string; reason: string | null; createdAt: string }) => (
+                  <tr key={h.id} className="border-t border-gray-200 dark:border-gray-700">
+                    <td className="p-3">{h.fromStatus} → {h.toStatus}</td>
+                    <td className="p-3">{h.reason ?? '--'}</td>
+                    <td className="p-3">{new Date(h.createdAt).toLocaleString()}</td>
                   </tr>
-                )}
-                {historyData.history?.map(
-                  (h: {
-                    id: string;
-                    fromStatus: string;
-                    toStatus: string;
-                    reason: string | null;
-                    createdAt: string;
-                  }) => (
-                    <tr key={h.id} className="border-t border-gray-200 dark:border-gray-700">
-                      <td className="p-3">
-                        {h.fromStatus} → {h.toStatus}
-                      </td>
-                      <td className="p-3">{h.reason ?? '--'}</td>
-                      <td className="p-3">{new Date(h.createdAt).toLocaleString()}</td>
-                    </tr>
-                  )
-                )}
+                ))}
               </tbody>
             </table>
           </div>

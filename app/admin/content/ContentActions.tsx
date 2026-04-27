@@ -1,34 +1,34 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
+import { useState } from 'react'
 
 export interface IngestRun {
-  id: string;
-  runAt: string;
-  fileSource: string | null;
-  board: string | null;
-  chunksCreated: number;
-  embeddingsGenerated: number;
-  errors: number;
-  durationMs: number | null;
+  id: string
+  runAt: string
+  fileSource: string | null
+  board: string | null
+  chunksCreated: number
+  embeddingsGenerated: number
+  errors: number
+  durationMs: number | null
 }
 
 interface CoverageRow {
-  board: string;
-  boardSlug: string;
-  grade: number;
-  subject: string;
-  subjectId: string;
-  language: string;
-  questionCount: number;
-  curriculumChunkCount: number;
+  board: string
+  boardSlug: string
+  grade: number
+  subject: string
+  subjectId: string
+  language: string
+  questionCount: number
+  curriculumChunkCount: number
   latestJob: {
-    id: string;
-    status: string;
-    startedAt: string | null;
-    completedAt: string | null;
-    error: string | null;
-  } | null;
+    id: string
+    status: string
+    startedAt: string | null
+    completedAt: string | null
+    error: string | null
+  } | null
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -37,14 +37,14 @@ function StatusBadge({ status }: { status: string }) {
     running: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  };
+  }
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[status.toLowerCase()] ?? 'bg-gray-100 text-gray-700'}`}
     >
       {status}
     </span>
-  );
+  )
 }
 
 function QuestionCountCell({ count }: { count: number }) {
@@ -53,24 +53,24 @@ function QuestionCountCell({ count }: { count: number }) {
       ? 'text-red-600 dark:text-red-400'
       : count < 10
         ? 'text-amber-600 dark:text-amber-400'
-        : 'text-green-700 dark:text-green-400';
-  return <span className={`font-semibold tabular-nums ${colour}`}>{count}</span>;
+        : 'text-green-700 dark:text-green-400'
+  return <span className={`font-semibold tabular-nums ${colour}`}>{count}</span>
 }
 
 function RowActions({ row }: { row: CoverageRow }) {
-  const [hydrateState, setHydrateState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
-  const [ingestState, setIngestState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
-  const [msg, setMsg] = useState<string | null>(null);
-  const [showNoChunksWarning, setShowNoChunksWarning] = useState(false);
+  const [hydrateState, setHydrateState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [ingestState, setIngestState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [msg, setMsg] = useState<string | null>(null)
+  const [showNoChunksWarning, setShowNoChunksWarning] = useState(false)
 
   async function triggerHydrate() {
     if (row.curriculumChunkCount === 0 && !showNoChunksWarning) {
-      setShowNoChunksWarning(true);
-      return;
+      setShowNoChunksWarning(true)
+      return
     }
-    setShowNoChunksWarning(false);
-    setHydrateState('loading');
-    setMsg(null);
+    setShowNoChunksWarning(false)
+    setHydrateState('loading')
+    setMsg(null)
     try {
       const res = await fetch('/api/admin/content/hydrate', {
         method: 'POST',
@@ -81,29 +81,29 @@ function RowActions({ row }: { row: CoverageRow }) {
           grade: row.grade,
           language: row.language,
         }),
-      });
-      const data = await res.json();
+      })
+      const data = await res.json()
       if (res.status === 409) {
-        setHydrateState('error');
-        setMsg('A job is already running for this subject.');
-        return;
+        setHydrateState('error')
+        setMsg('A job is already running for this subject.')
+        return
       }
       if (!res.ok) {
-        setHydrateState('error');
-        setMsg(data.message ?? data.error ?? 'Hydration failed.');
-        return;
+        setHydrateState('error')
+        setMsg(data.message ?? data.error ?? 'Hydration failed.')
+        return
       }
-      setHydrateState('done');
-      setMsg(`Job created: ${data.jobId}`);
+      setHydrateState('done')
+      setMsg(`Job created: ${data.jobId}`)
     } catch {
-      setHydrateState('error');
-      setMsg('Network error -- try again.');
+      setHydrateState('error')
+      setMsg('Network error -- try again.')
     }
   }
 
   async function triggerIngest() {
-    setIngestState('loading');
-    setMsg(null);
+    setIngestState('loading')
+    setMsg(null)
     try {
       const res = await fetch('/api/admin/content/ingest-ncert', {
         method: 'POST',
@@ -114,24 +114,24 @@ function RowActions({ row }: { row: CoverageRow }) {
           grade: row.grade,
           language: row.language,
         }),
-      });
-      const data = await res.json();
+      })
+      const data = await res.json()
       if (!res.ok) {
-        setIngestState('error');
-        setMsg(data.message ?? data.error ?? 'Ingest failed.');
-        return;
+        setIngestState('error')
+        setMsg(data.message ?? data.error ?? 'Ingest failed.')
+        return
       }
-      setIngestState('done');
-      setMsg(data.message ?? 'Ingestion started.');
+      setIngestState('done')
+      setMsg(data.message ?? 'Ingestion started.')
     } catch {
-      setIngestState('error');
-      setMsg('Network error -- try again.');
+      setIngestState('error')
+      setMsg('Network error -- try again.')
     }
   }
 
   const isJobActive = ['pending', 'running', 'processing'].includes(
-    (row.latestJob?.status ?? '').toLowerCase()
-  );
+    (row.latestJob?.status ?? '').toLowerCase(),
+  )
 
   return (
     <div className="flex flex-col gap-1 min-w-[200px]">
@@ -154,18 +154,13 @@ function RowActions({ row }: { row: CoverageRow }) {
           disabled={ingestState === 'loading'}
           className="min-h-[44px] min-w-[44px] px-3 py-1 rounded text-xs font-medium bg-[#1D9E75] text-white hover:bg-[#157a5b] disabled:opacity-50 disabled:cursor-wait transition-colors"
         >
-          {ingestState === 'loading'
-            ? 'Starting...'
-            : ingestState === 'done'
-              ? '✓ Started'
-              : 'Ingest NCERT'}
+          {ingestState === 'loading' ? 'Starting...' : ingestState === 'done' ? '✓ Started' : 'Ingest NCERT'}
         </button>
       </div>
       {showNoChunksWarning && (
         <div className="mt-1 rounded border border-[#BA7517] bg-[#FAEEDA] dark:bg-amber-900/30 dark:border-amber-600 p-2">
           <p className="text-xs text-[#BA7517] dark:text-amber-300 font-medium">
-            No NCERT content ingested yet. Hydrating without NCERT grounding may produce inaccurate
-            chapters. Ingest NCERT first for best results.
+            No NCERT content ingested yet. Hydrating without NCERT grounding may produce inaccurate chapters. Ingest NCERT first for best results.
           </p>
           <div className="mt-1.5 flex gap-2">
             <button
@@ -191,7 +186,7 @@ function RowActions({ row }: { row: CoverageRow }) {
         </p>
       )}
     </div>
-  );
+  )
 }
 
 export function RecentIngestRuns({ runs }: { runs: IngestRun[] }) {
@@ -200,7 +195,7 @@ export function RecentIngestRuns({ runs }: { runs: IngestRun[] }) {
       <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
         No ingestion runs yet. Use the &quot;Ingest NCERT&quot; buttons above to start.
       </p>
-    );
+    )
   }
 
   return (
@@ -208,15 +203,7 @@ export function RecentIngestRuns({ runs }: { runs: IngestRun[] }) {
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            {[
-              'Run at',
-              'Source',
-              'Board',
-              'Chunks created',
-              'Embeddings',
-              'Errors',
-              'Duration',
-            ].map((h) => (
+            {['Run at', 'Source', 'Board', 'Chunks created', 'Embeddings', 'Errors', 'Duration'].map((h) => (
               <th
                 key={h}
                 className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide whitespace-nowrap"
@@ -237,10 +224,7 @@ export function RecentIngestRuns({ runs }: { runs: IngestRun[] }) {
                   minute: '2-digit',
                 })}
               </td>
-              <td
-                className="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-[180px] truncate"
-                title={run.fileSource ?? ''}
-              >
+              <td className="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-[180px] truncate" title={run.fileSource ?? ''}>
                 {run.fileSource ?? '--'}
               </td>
               <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
@@ -254,9 +238,7 @@ export function RecentIngestRuns({ runs }: { runs: IngestRun[] }) {
               </td>
               <td className="px-4 py-3 whitespace-nowrap tabular-nums">
                 {run.errors > 0 ? (
-                  <span className="text-[#E24B4A] dark:text-red-400 font-semibold">
-                    {run.errors}
-                  </span>
+                  <span className="text-[#E24B4A] dark:text-red-400 font-semibold">{run.errors}</span>
                 ) : (
                   <span className="text-[#1D9E75] dark:text-green-400">0</span>
                 )}
@@ -269,7 +251,7 @@ export function RecentIngestRuns({ runs }: { runs: IngestRun[] }) {
         </tbody>
       </table>
     </div>
-  );
+  )
 }
 
 export default function ContentTable({ rows }: { rows: CoverageRow[] }) {
@@ -278,7 +260,7 @@ export default function ContentTable({ rows }: { rows: CoverageRow[] }) {
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center text-gray-500 dark:text-gray-400">
         No subjects found. Seed ClassLevel + SubjectDef rows first.
       </div>
-    );
+    )
   }
 
   return (
@@ -286,24 +268,19 @@ export default function ContentTable({ rows }: { rows: CoverageRow[] }) {
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            {['Board', 'Grade', 'Subject', 'Questions', 'RAG Chunks', 'Latest Job', 'Actions'].map(
-              (h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide whitespace-nowrap"
-                >
-                  {h}
-                </th>
-              )
-            )}
+            {['Board', 'Grade', 'Subject', 'Questions', 'RAG Chunks', 'Latest Job', 'Actions'].map((h) => (
+              <th
+                key={h}
+                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide whitespace-nowrap"
+              >
+                {h}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
           {rows.map((row) => (
-            <tr
-              key={row.subjectId}
-              className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
+            <tr key={row.subjectId} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 dark:text-gray-100">
                 {row.board}
               </td>
@@ -360,5 +337,5 @@ export default function ContentTable({ rows }: { rows: CoverageRow[] }) {
         </tbody>
       </table>
     </div>
-  );
+  )
 }

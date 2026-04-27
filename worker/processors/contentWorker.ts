@@ -15,23 +15,23 @@
  * - 2026-01-22T02:35:00Z | copilot | Phase 3: Generalized to handle all job types
  */
 
-import { Worker, Job } from 'bullmq';
-import { redisConnection } from '@/lib/redis.js';
-import { prisma } from '@/lib/prisma.js';
-import { JobType as PrismaJobType, DifficultyLevel } from '@prisma/client';
-import { randomUUID } from 'crypto';
-import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
-import { JobStatus } from '@/lib/ai-engine/types';
+import { Worker, Job } from 'bullmq'
+import { redisConnection } from '@/lib/redis.js'
+import { prisma } from '@/lib/prisma.js'
+import { JobType as PrismaJobType, DifficultyLevel } from '@prisma/client'
+import { randomUUID } from 'crypto'
+import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
+import { JobStatus } from '@/lib/ai-engine/types'
 // Worker service handlers for different job types
-import { handleSyllabusJob } from '@/worker/services/syllabusWorker';
-import { handleNotesJob } from '@/worker/services/notesWorker';
-import { handleQuestionsJob } from '@/worker/services/questionsWorker';
-import { handleAssembleJob } from '@/worker/services/assembleWorker';
-import { processDiagnosticBootstrap } from '@/worker/services/diagnosticBootstrapWorker';
-import { logger } from '@/lib/logger.js';
-import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
-import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from '@/jobs/diagnosticBootstrap';
-import type { DiagnosticBootstrapJobData } from '@/worker/services/diagnosticBootstrapWorker';
+import { handleSyllabusJob } from '@/worker/services/syllabusWorker'
+import { handleNotesJob } from '@/worker/services/notesWorker'
+import { handleQuestionsJob } from '@/worker/services/questionsWorker'
+import { handleAssembleJob } from '@/worker/services/assembleWorker'
+import { processDiagnosticBootstrap } from '@/worker/services/diagnosticBootstrapWorker'
+import { logger } from '@/lib/logger.js'
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
+import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from '@/jobs/diagnosticBootstrap'
+import type { DiagnosticBootstrapJobData } from '@/worker/services/diagnosticBootstrapWorker'
 
 /**
  * Supported worker types and their handlers.
@@ -75,119 +75,89 @@ const WORKER_HANDLERS: Record<string, (jobId: string) => Promise<void>> = {
 export async function processContentJob(job: Job) {
   if (process.env.WORKER_DEBUG === '1') {
     try {
-      logger.info(
-        `[worker][DEBUG] received job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`
-      );
+      logger.info(`[worker][DEBUG] received job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
     } catch (e) {
       logger.error('[worker][DEBUG] received job (failed to stringify)', { error: e });
     }
   }
-  const paused = await prisma.systemSetting.findUnique({ where: { key: 'AI_PAUSED' } });
+  const paused = await prisma.systemSetting.findUnique({ where: { key: 'AI_PAUSED' } })
   if (isSystemSettingEnabled(paused?.value)) {
-    throw new Error('AI_PAUSED');
+    throw new Error('AI_PAUSED')
   }
 
   // Canonical execution job id in payload: `executionJobId` (fallback to legacy `jobId`)
   try {
-    const executionJobId =
-      job.data?.payload?.executionJobId ??
-      job.data?.payload?.jobId ??
-      job.data?.payload?.job_id ??
-      null;
+    const executionJobId = job.data?.payload?.executionJobId ?? job.data?.payload?.jobId ?? job.data?.payload?.job_id ?? null
     if (executionJobId) {
-      if (process.env.WORKER_DEBUG === '1')
-        logger.debug(`[worker][DEBUG] marking ExecutionJob ${executionJobId} as running`);
+      if (process.env.WORKER_DEBUG === '1') logger.debug(`[worker][DEBUG] marking ExecutionJob ${executionJobId} as running`)
 
       // Read prev status for log context
-      let prevStatus: string | null = null;
+      let prevStatus: string | null = null
       try {
-        const ex = await prisma.executionJob.findUnique({ where: { id: String(executionJobId) } });
-        prevStatus = ex?.status ?? null;
+        const ex = await prisma.executionJob.findUnique({ where: { id: String(executionJobId) } })
+        prevStatus = ex?.status ?? null
       } catch {
         // ignore read errors, proceed to update
       }
 
       // Emit STARTED log (do not mutate ExecutionJob; only write an audit log)
       try {
-        await prisma.jobExecutionLog.create({
-          data: {
-            jobId: String(executionJobId),
-            event: 'STARTED',
-            prevStatus: prevStatus,
-            newStatus: prevStatus,
-            meta: { bullJobId: job.id, workerPid: process.pid },
-          },
-        });
+        await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'STARTED', prevStatus: prevStatus, newStatus: prevStatus, meta: { bullJobId: job.id, workerPid: process.pid } } })
       } catch (e) {
-        logger?.warn?.('worker: failed to create JobExecutionLog STARTED', {
-          err: e,
-          jobId: executionJobId,
-        });
+        logger?.warn?.('worker: failed to create JobExecutionLog STARTED', { err: e, jobId: executionJobId })
       }
     }
   } catch (err) {
-    logger?.warn?.('worker: failed during ExecutionJob START handling', { err: err });
-    if (process.env.WORKER_DEBUG === '1')
-      logger.error('[worker][DEBUG] failed to mark ExecutionJob STARTED', { error: err });
+    logger?.warn?.('worker: failed during ExecutionJob START handling', { err: err })
+    if (process.env.WORKER_DEBUG === '1') logger.error('[worker][DEBUG] failed to mark ExecutionJob STARTED', { error: err })
   }
 
   // New contract: prefer HydrationJob-based payloads. The canonical Bull payload
   // for syllabus is: { type: 'SYLLABUS', payload: { jobId: <HydrationJob.id> } }
   // Legacy payloads that contain an ExecutionJob id will be handled with a
   // WARN and translated into a HydrationJob (one-time compatibility).
-  const payload = job.data?.payload ?? {};
+  const payload = job.data?.payload ?? {}
 
   // Prefer `hydrationJobId` from canonical payload (payload.jobId)
-  const incomingJobId = payload.jobId ?? payload.executionJobId ?? payload.job_id ?? null;
+  const incomingJobId = payload.jobId ?? payload.executionJobId ?? payload.job_id ?? null
 
   // Resolve to hydrationJobId (preferred) or attempt legacy ExecutionJob -> HydrationJob translation
-  let hydrationJobId: string | null = null;
-  let executionJobId: string | null = null;
+  let hydrationJobId: string | null = null
+  let executionJobId: string | null = null
 
   if (incomingJobId) {
     // First check if the incoming id corresponds to an existing HydrationJob
-    const possibleHydration = await prisma.hydrationJob.findUnique({
-      where: { id: String(incomingJobId) },
-    });
+    const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingJobId) } })
     if (possibleHydration) {
-      hydrationJobId = possibleHydration.id;
+      hydrationJobId = possibleHydration.id
     } else {
       // Treat as legacy ExecutionJob id
-      executionJobId = String(incomingJobId);
+      executionJobId = String(incomingJobId)
     }
   }
 
   if (!hydrationJobId && !executionJobId) {
     // No usable id provided -- hard error per contract
-    throw new Error('Missing required payload: hydration job id or execution job id');
+    throw new Error('Missing required payload: hydration job id or execution job id')
   }
 
   // If legacy ExecutionJob was provided, translate it to a HydrationJob
   if (!hydrationJobId && executionJobId) {
-    logger.warn('worker: received legacy ExecutionJob payload; creating HydrationJob', {
-      executionJobId,
-    });
-    const exec = await prisma.executionJob.findUnique({ where: { id: String(executionJobId) } });
-    if (!exec) throw new Error('ExecutionJob not found for legacy payload');
+    logger.warn('worker: received legacy ExecutionJob payload; creating HydrationJob', { executionJobId })
+    const exec = await prisma.executionJob.findUnique({ where: { id: String(executionJobId) } })
+    if (!exec) throw new Error('ExecutionJob not found for legacy payload')
 
     // ExecutionJob.payload is a Prisma.JsonValue (arbitrary JSON). The shape varies
     // across legacy job formats, so `any` is required to read dynamic keys safely.
-    const execPayload = exec.payload as any;
-    const resolvedMeta = execPayload?.resolvedMeta ?? execPayload ?? {};
+    const execPayload = exec.payload as any
+    const resolvedMeta = execPayload?.resolvedMeta ?? execPayload ?? {}
 
     // Determine subjectId (prefer ExecutionJob.entity when SUB JECT)
-    const subjectId =
-      exec.entityType === 'SUBJECT' ? exec.entityId : (resolvedMeta.subjectId ?? null);
-    if (!subjectId) throw new Error('Missing subjectId in ExecutionJob legacy payload');
+    const subjectId = exec.entityType === 'SUBJECT' ? exec.entityId : (resolvedMeta.subjectId ?? null)
+    if (!subjectId) throw new Error('Missing subjectId in ExecutionJob legacy payload')
 
     // Idempotent: reuse pending/running hydration for same subject/board/grade
-    let hydrate = await prisma.hydrationJob.findFirst({
-      where: {
-        jobType: 'syllabus',
-        subjectId: subjectId as string,
-        status: { in: [JobStatus.Pending, JobStatus.Running] },
-      },
-    });
+    let hydrate = await prisma.hydrationJob.findFirst({ where: { jobType: 'syllabus', subjectId: subjectId as string, status: { in: [JobStatus.Pending, JobStatus.Running] } } })
     if (!hydrate) {
       // jobData shape is dynamic -- typed at DB layer, safe to build as plain object
       const jobData = {
@@ -199,31 +169,23 @@ export async function processContentJob(job: Job) {
         subject: resolvedMeta.entityName ?? execPayload?.subject ?? null,
         difficulty: DifficultyLevel.medium,
         status: JobStatus.Pending,
-      };
+      }
       const generatedId = randomUUID();
-      hydrate = await prisma.hydrationJob.create({
-        data: { id: generatedId, rootJobId: generatedId, ...jobData },
-      });
+      hydrate = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, ...jobData } })
     }
-    hydrationJobId = hydrate.id;
+    hydrationJobId = hydrate.id
 
     // Persist link ExecutionJob -> HydrationJob for audit
     try {
       // exec.payload is Prisma.JsonValue -- spread via execPayload (typed as any above)
-      await prisma.executionJob.update({
-        where: { id: String(executionJobId) },
-        data: { payload: { ...(execPayload || {}), hydrationJobId } },
-      });
+      await prisma.executionJob.update({ where: { id: String(executionJobId) }, data: { payload: { ...(execPayload || {}), hydrationJobId } } })
     } catch (e) {
-      logger?.warn?.('worker: failed to attach hydrationJobId to ExecutionJob payload', {
-        err: e,
-        executionJobId,
-      });
+      logger?.warn?.('worker: failed to attach hydrationJobId to ExecutionJob payload', { err: e, executionJobId })
     }
   }
 
   // At this point we have a hydrationJobId to process
-  if (!hydrationJobId) throw new Error('Failed to resolve HydrationJob id');
+  if (!hydrationJobId) throw new Error('Failed to resolve HydrationJob id')
 
   // Determine the job type from Bull job data
   const workerType = job.data?.type ?? 'SYLLABUS'; // Default to SYLLABUS for backward compatibility
@@ -231,9 +193,7 @@ export async function processContentJob(job: Job) {
 
   // Admin kill-switches: global and per-job-type disables
   try {
-    const globalDisabled = await prisma.systemSetting.findUnique({
-      where: { key: 'HYDRATION_DISABLED' },
-    });
+    const globalDisabled = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_DISABLED' } });
     if (isSystemSettingEnabled(globalDisabled?.value)) {
       throw new Error('HYDRATION_DISABLED');
     }
@@ -253,13 +213,8 @@ export async function processContentJob(job: Job) {
     try {
       const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
       const le = formatLastError(FailureCode.PROMPT_INVALID, err.message);
-      await prisma.hydrationJob.update({
-        where: { id: hydrationJobId },
-        data: { status: JobStatus.Failed, lastError: le },
-      });
-    } catch {
-      /* ignore */
-    }
+      await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed, lastError: le } })
+    } catch { /* ignore */ }
     throw err;
   }
 
@@ -279,135 +234,92 @@ export async function processContentJob(job: Job) {
     await handler(hydrationJobId);
 
     // After handler returns, perform verification by reading the HydrationJob
-    const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: hydrationJobId } });
+    const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: hydrationJobId } })
     if (hydrateRow?.contentReady) {
-      return { success: true };
+      return { success: true }
     }
 
     // Type-specific completion verification
     if (workerType === 'SYLLABUS') {
       // For syllabus: verify at least one chapter was created
-      const subjectId = hydrateRow?.subjectId ?? null;
+      const subjectId = hydrateRow?.subjectId ?? null
       if (!subjectId) {
-        const err = new Error('HydrationJob missing subjectId after processing');
-        await prisma.hydrationJob
-          .update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } })
-          .catch(() => {});
-        throw err;
+        const err = new Error('HydrationJob missing subjectId after processing')
+        await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
+        throw err
       }
 
       // Short retry/backoff to tolerate small commit ordering races
-      let chapter = null;
-      const maxAttempts = 5;
-      let attempt = 0;
+      let chapter = null
+      const maxAttempts = 5
+      let attempt = 0
       while (attempt < maxAttempts) {
-        chapter = await prisma.chapterDef.findFirst({
-          where: { subjectId: subjectId as string, lifecycle: 'active' },
-        });
-        if (chapter) break;
-        const delay = Math.min(2000, 100 * 2 ** attempt);
-        await new Promise((r) => setTimeout(r, delay));
-        attempt += 1;
+        chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
+        if (chapter) break
+        const delay = Math.min(2000, 100 * 2 ** attempt)
+        await new Promise((r) => setTimeout(r, delay))
+        attempt += 1
       }
       if (!chapter) {
-        const err = new Error('Syllabus generation produced no chapters');
-        await prisma.hydrationJob
-          .update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } })
-          .catch(() => {});
-        throw err;
+        const err = new Error('Syllabus generation produced no chapters')
+        await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
+        throw err
       }
     } else if (workerType === 'NOTES') {
       // For notes: verify TopicNote was created
-      const topicId = hydrateRow?.topicId ?? null;
+      const topicId = hydrateRow?.topicId ?? null
       if (topicId) {
-        const note = await prisma.topicNote.findFirst({ where: { topicId } });
+        const note = await prisma.topicNote.findFirst({ where: { topicId } })
         if (!note) {
-          logger.warn('worker: notes handler completed but no TopicNote found', {
-            hydrationJobId,
-            topicId,
-          });
+          logger.warn('worker: notes handler completed but no TopicNote found', { hydrationJobId, topicId })
         }
       }
     } else if (workerType === 'QUESTIONS') {
       // For questions: verify GeneratedTest was created
-      const topicId = hydrateRow?.topicId ?? null;
+      const topicId = hydrateRow?.topicId ?? null
       if (topicId) {
-        const test = await prisma.generatedTest.findFirst({ where: { topicId } });
+        const test = await prisma.generatedTest.findFirst({ where: { topicId } })
         if (!test) {
-          logger.warn('worker: questions handler completed but no GeneratedTest found', {
-            hydrationJobId,
-            topicId,
-          });
+          logger.warn('worker: questions handler completed but no GeneratedTest found', { hydrationJobId, topicId })
         }
       }
     }
     // ASSEMBLE_TEST doesn't create new content, just approves existing
 
     // Mark HydrationJob completed (handler may already have done this; idempotent)
-    await prisma.hydrationJob.update({
-      where: { id: hydrationJobId },
-      data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true },
-    });
+    await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } })
 
     // Emit COMPLETED JobExecutionLog entries for any linked ExecutionJob but DO NOT mutate ExecutionJob
     if (executionJobId) {
       try {
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: String(executionJobId),
-              event: 'COMPLETED',
-              prevStatus: 'running',
-              newStatus: 'running',
-              meta: { hydrationJobId, bullJobId: job.id, workerType },
-            },
-          })
-          .catch(() => {});
+        await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'COMPLETED', prevStatus: 'running', newStatus: 'running', meta: { hydrationJobId, bullJobId: job.id, workerType } } }).catch(() => {})
       } catch {}
     } else {
       try {
-        const linkedExec = await prisma.executionJob.findFirst({
-          where: { payload: { path: ['hydrationJobId'], equals: hydrationJobId } },
-        });
+        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: hydrationJobId } } });
         if (linkedExec) {
-          await prisma.jobExecutionLog
-            .create({
-              data: {
-                jobId: String(linkedExec.id),
-                event: 'COMPLETED',
-                prevStatus: 'running',
-                newStatus: 'running',
-                meta: { hydrationJobId, bullJobId: job.id, workerType },
-              },
-            })
-            .catch(() => {});
+          await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'running', meta: { hydrationJobId, bullJobId: job.id, workerType } } }).catch(() => {})
         }
       } catch (e) {
-        logger?.warn?.(
-          'worker: failed to write COMPLETED JobExecutionLog for linked ExecutionJob',
-          { err: e, hydrationJobId }
-        );
+        logger?.warn?.('worker: failed to write COMPLETED JobExecutionLog for linked ExecutionJob', { err: e, hydrationJobId })
       }
     }
 
-    return { success: true };
+    return { success: true }
   } catch (err: any) {
     let thrownForRetry = false;
     try {
-      const { formatLastError, inferFailureCodeFromMessage, isTransientFailure } =
-        await import('@/lib/failureCodes');
+      const { formatLastError, inferFailureCodeFromMessage, isTransientFailure } = await import('@/lib/failureCodes');
       const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
       const le = formatLastError(code, String(err?.message ?? err));
 
       if (isTransientFailure(code)) {
         // Transient error (LLM_TIMEOUT / LLM_RATE_LIMIT): reset to pending and
         // re-throw so Bull can use its built-in retry/backoff logic.
-        await prisma.hydrationJob
-          .update({
-            where: { id: hydrationJobId },
-            data: { status: JobStatus.Pending, lockedAt: null, lastError: le },
-          })
-          .catch(() => {});
+        await prisma.hydrationJob.update({
+          where: { id: hydrationJobId },
+          data: { status: JobStatus.Pending, lockedAt: null, lastError: le },
+        }).catch(() => {});
         thrownForRetry = true;
       } else {
         // Permanent failure: mark the job failed and alert the admin immediately.
@@ -428,19 +340,15 @@ export async function processContentJob(job: Job) {
               responseBody: { error: String(err?.message ?? err) },
             },
           });
-        } catch {
-          /* observability only -- ignore */
-        }
+        } catch { /* observability only -- ignore */ }
 
         // Send admin alert for permanent failures (no retry scheduled).
         try {
           const { sendJobFailureAlert } = await import('@/lib/contentJobAlerts');
-          const row = await prisma.hydrationJob
-            .findUnique({
-              where: { id: hydrationJobId },
-              select: { subject: true, grade: true, board: true },
-            })
-            .catch(() => null);
+          const row = await prisma.hydrationJob.findUnique({
+            where: { id: hydrationJobId },
+            select: { subject: true, grade: true, board: true },
+          }).catch(() => null);
           await sendJobFailureAlert({
             hydrationJobId,
             lastError: le,
@@ -449,10 +357,7 @@ export async function processContentJob(job: Job) {
             board: row?.board ?? '',
           });
         } catch (alertErr) {
-          logger?.warn?.('worker: failed to send permanent-failure alert', {
-            err: alertErr,
-            hydrationJobId,
-          });
+          logger?.warn?.('worker: failed to send permanent-failure alert', { err: alertErr, hydrationJobId });
         }
       }
     } catch (e) {
@@ -465,23 +370,9 @@ export async function processContentJob(job: Job) {
         const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
         const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
         const le = formatLastError(code, String(err?.message ?? err));
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: String(executionJobId),
-              event: 'FAILED',
-              prevStatus: 'running',
-              newStatus: 'running',
-              message: le,
-              meta: { hydrationJobId, bullJobId: job.id, error: le },
-            },
-          })
-          .catch(() => {});
+        await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'FAILED', prevStatus: 'running', newStatus: 'running', message: le, meta: { hydrationJobId, bullJobId: job.id, error: le } } }).catch(() => {});
       } catch (e) {
-        logger?.warn?.('worker: failed to write failure JobExecutionLog for ExecutionJob', {
-          err: e,
-          jobId: executionJobId,
-        });
+        logger?.warn?.('worker: failed to write failure JobExecutionLog for ExecutionJob', { err: e, jobId: executionJobId });
       }
     }
 
@@ -490,191 +381,127 @@ export async function processContentJob(job: Job) {
       throw err;
     }
 
-    logger.error('handler failed; HydrationJob marked failed', {
-      hydrationJobId,
-      error: String(err?.message ?? err),
-    });
+    logger.error('handler failed; HydrationJob marked failed', { hydrationJobId, error: String(err?.message ?? err) });
     return { success: false };
   }
 }
 
 export function startContentWorker(opts?: { concurrency?: number }) {
-  const concurrency = opts?.concurrency ?? 3;
+  const concurrency = opts?.concurrency ?? 3
   const worker = new Worker(CONTENT_HYDRATION_QUEUE, (job: Job) => processContentJob(job), {
     connection: redisConnection,
     concurrency,
     settings: {
       backoffStrategy: (attemptsMade: number) => Math.min(60_000, 2 ** attemptsMade * 1000),
     },
-  });
+  })
 
   worker.on('failed', async (job, err) => {
-    logger.error(`[WORKER FAILED] jobId=${job?.id} type=${job?.data?.type}`, {
-      error: err?.message,
-    });
+    logger.error(`[WORKER FAILED] jobId=${job?.id} type=${job?.data?.type}`, { error: err?.message });
     try {
-      // Attempt to resolve whether the job payload refers to a HydrationJob
-      // (preferred) or an ExecutionJob (legacy). Emit audit logs but do NOT
-      // mutate ExecutionJob state from the worker process.
-      const incomingId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null;
-      if (!incomingId) return;
+        // Attempt to resolve whether the job payload refers to a HydrationJob
+        // (preferred) or an ExecutionJob (legacy). Emit audit logs but do NOT
+        // mutate ExecutionJob state from the worker process.
+        const incomingId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null
+        if (!incomingId) return
 
-      const possibleHydration = await prisma.hydrationJob.findUnique({
-        where: { id: String(incomingId) },
-      });
-      if (possibleHydration) {
-        const hydrationJob = possibleHydration;
+        const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
+        if (possibleHydration) {
+          const hydrationJob = possibleHydration;
 
-        // For transient errors that have exhausted all Bull attempts, schedule
-        // a 24h delayed auto-retry tracked in Redis (max MAX_AUTO_RETRIES times).
-        try {
-          const { inferFailureCodeFromMessage, isTransientFailure, formatLastError } =
-            await import('@/lib/failureCodes');
-          const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
-          if (isTransientFailure(code) && job) {
-            const le = formatLastError(code, String(err?.message ?? err));
-            const { scheduleAutoRetry, sendJobFailureAlert } =
-              await import('@/lib/contentJobAlerts');
-            const { scheduled, retryNumber } = await scheduleAutoRetry(
-              hydrationJob.id,
-              job,
-              hydrationJob.subject ?? 'Unknown',
-              hydrationJob.grade ?? 0,
-              le
-            );
-            const willRetryAt = scheduled ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined;
-            if (!scheduled) {
-              // Cap reached -- mark permanently failed before alerting.
-              await prisma.hydrationJob
-                .update({
+          // For transient errors that have exhausted all Bull attempts, schedule
+          // a 24h delayed auto-retry tracked in Redis (max MAX_AUTO_RETRIES times).
+          try {
+            const { inferFailureCodeFromMessage, isTransientFailure, formatLastError } = await import('@/lib/failureCodes');
+            const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
+            if (isTransientFailure(code) && job) {
+              const le = formatLastError(code, String(err?.message ?? err));
+              const { scheduleAutoRetry, sendJobFailureAlert } = await import('@/lib/contentJobAlerts');
+              const { scheduled, retryNumber } = await scheduleAutoRetry(
+                hydrationJob.id,
+                job,
+                hydrationJob.subject ?? 'Unknown',
+                hydrationJob.grade ?? 0,
+                le,
+              );
+              const willRetryAt = scheduled ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined;
+              if (!scheduled) {
+                // Cap reached -- mark permanently failed before alerting.
+                await prisma.hydrationJob.update({
                   where: { id: hydrationJob.id },
                   data: { status: JobStatus.Failed, lastError: le },
-                })
-                .catch(() => {});
+                }).catch(() => {});
+              }
+              await sendJobFailureAlert({
+                hydrationJobId: hydrationJob.id,
+                lastError: le,
+                subject: hydrationJob.subject ?? 'Unknown',
+                grade: hydrationJob.grade ?? 0,
+                board: hydrationJob.board ?? '',
+                willRetryAt,
+              });
+              logger.info('worker.failed: auto-retry decision', {
+                hydrationJobId: hydrationJob.id,
+                scheduled,
+                retryNumber,
+                willRetryAt,
+              });
             }
-            await sendJobFailureAlert({
-              hydrationJobId: hydrationJob.id,
-              lastError: le,
-              subject: hydrationJob.subject ?? 'Unknown',
-              grade: hydrationJob.grade ?? 0,
-              board: hydrationJob.board ?? '',
-              willRetryAt,
-            });
-            logger.info('worker.failed: auto-retry decision', {
-              hydrationJobId: hydrationJob.id,
-              scheduled,
-              retryNumber,
-              willRetryAt,
-            });
+          } catch (retryErr) {
+            logger?.warn?.('worker.failed: auto-retry scheduling error', { err: retryErr, hydrationJobId: hydrationJob.id });
           }
-        } catch (retryErr) {
-          logger?.warn?.('worker.failed: auto-retry scheduling error', {
-            err: retryErr,
-            hydrationJobId: hydrationJob.id,
-          });
-        }
 
-        // Find ExecutionJob that links to this hydration id and emit FAILED log
-        const linkedExec = await prisma.executionJob.findFirst({
-          where: { payload: { path: ['hydrationJobId'], equals: possibleHydration.id } },
-        });
-        if (linkedExec) {
+          // Find ExecutionJob that links to this hydration id and emit FAILED log
+          const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: possibleHydration.id } } })
+          if (linkedExec) {
+            try {
+              const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
+              const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
+              const le = formatLastError(code, String(err?.message ?? err));
+              await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: le, meta: { hydrationJobId: possibleHydration.id, bullJobId: job?.id, error: le } } })
+            } catch {
+              await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: String(err?.message ?? err), meta: { hydrationJobId: possibleHydration.id, bullJobId: job?.id, error: String(err?.message ?? err) } } })
+            }
+          }
+        } else {
+          const executionJobId = String(incomingId)
           try {
-            const { formatLastError, inferFailureCodeFromMessage } =
-              await import('@/lib/failureCodes');
+            const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
             const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
             const le = formatLastError(code, String(err?.message ?? err));
-            await prisma.jobExecutionLog.create({
-              data: {
-                jobId: String(linkedExec.id),
-                event: 'FAILED',
-                prevStatus: linkedExec.status,
-                newStatus: linkedExec.status,
-                message: le,
-                meta: { hydrationJobId: possibleHydration.id, bullJobId: job?.id, error: le },
-              },
-            });
+            // Emit FAILED log for legacy ExecutionJob id; do not update its state here.
+            await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'FAILED', prevStatus: 'running', newStatus: 'running', message: le, meta: { bullJobId: job?.id, error: le } } }).catch(() => {})
           } catch {
-            await prisma.jobExecutionLog.create({
-              data: {
-                jobId: String(linkedExec.id),
-                event: 'FAILED',
-                prevStatus: linkedExec.status,
-                newStatus: linkedExec.status,
-                message: String(err?.message ?? err),
-                meta: {
-                  hydrationJobId: possibleHydration.id,
-                  bullJobId: job?.id,
-                  error: String(err?.message ?? err),
-                },
-              },
-            });
+            await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'FAILED', prevStatus: 'running', newStatus: 'running', message: String(err?.message ?? err), meta: { bullJobId: job?.id, error: String(err?.message ?? err) } } }).catch(() => {})
           }
         }
-      } else {
-        const executionJobId = String(incomingId);
-        try {
-          const { formatLastError, inferFailureCodeFromMessage } =
-            await import('@/lib/failureCodes');
-          const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
-          const le = formatLastError(code, String(err?.message ?? err));
-          // Emit FAILED log for legacy ExecutionJob id; do not update its state here.
-          await prisma.jobExecutionLog
-            .create({
-              data: {
-                jobId: executionJobId,
-                event: 'FAILED',
-                prevStatus: 'running',
-                newStatus: 'running',
-                message: le,
-                meta: { bullJobId: job?.id, error: le },
-              },
-            })
-            .catch(() => {});
-        } catch {
-          await prisma.jobExecutionLog
-            .create({
-              data: {
-                jobId: executionJobId,
-                event: 'FAILED',
-                prevStatus: 'running',
-                newStatus: 'running',
-                message: String(err?.message ?? err),
-                meta: { bullJobId: job?.id, error: String(err?.message ?? err) },
-              },
-            })
-            .catch(() => {});
-        }
-      }
     } catch (e) {
-      logger?.warn?.('worker.failed: failed to write JobExecutionLog', { err: e });
+      logger?.warn?.('worker.failed: failed to write JobExecutionLog', { err: e })
     }
-  });
+  })
 
   worker.on('completed', async (job) => {
     logger.info(`[WORKER COMPLETED] jobId=${job.id} type=${job.data?.type}`);
     try {
-      const incomingId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null;
-      if (!incomingId) return;
+      const incomingId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null
+      if (!incomingId) return
 
       // Conservative completion: only mark ExecutionJob completed if we can
       // verify that actual syllabus content was produced. This avoids the
       // scenario where a legacy/incorrectly-enqueued Bull job causes the
       // ExecutionJob to advance despite missing HydrationJob rows or data.
-      const possibleHydration = await prisma.hydrationJob.findUnique({
-        where: { id: String(incomingId) },
-      });
-      let resolvedHydrationId: string | null = null;
+      const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
+      let resolvedHydrationId: string | null = null
 
       if (possibleHydration) {
-        resolvedHydrationId = possibleHydration.id;
+        resolvedHydrationId = possibleHydration.id
       } else {
         // If payload was an ExecutionJob id, try to read its payload.hydrationJobId
-        const execRow = await prisma.executionJob.findUnique({ where: { id: String(incomingId) } });
+        const execRow = await prisma.executionJob.findUnique({ where: { id: String(incomingId) } })
         // execRow.payload is Prisma.JsonValue -- cast to any to read dynamic hydrationJobId key
-        const execRowPayload = execRow?.payload as any;
+        const execRowPayload = execRow?.payload as any
         if (execRow && execRowPayload?.hydrationJobId) {
-          resolvedHydrationId = String(execRowPayload.hydrationJobId);
+          resolvedHydrationId = String(execRowPayload.hydrationJobId)
         }
       }
 
@@ -682,124 +509,52 @@ export function startContentWorker(opts?: { concurrency?: number }) {
         // No hydration linkage found; do not mark ExecutionJob completed.
         // Record an audit log so operators can investigate missing HydrationJobs.
         try {
-          await prisma.jobExecutionLog.create({
-            data: {
-              jobId: String(incomingId),
-              event: 'COMPLETION_SKIPPED',
-              prevStatus: 'running',
-              newStatus: 'running',
-              message: 'missing_hydration_job',
-              meta: { bullJobId: job.id },
-            },
-          });
+          await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'missing_hydration_job', meta: { bullJobId: job.id } } })
         } catch (e) {
-          logger?.warn?.('worker.completed: failed to write COMPLETION_SKIPPED log', {
-            err: e,
-            incomingId,
-          });
+          logger?.warn?.('worker.completed: failed to write COMPLETION_SKIPPED log', { err: e, incomingId })
         }
-        logger.warn('[worker][WARN] completion skipped: no HydrationJob linked', {
-          incomingId,
-          bullJobId: job.id,
-        });
-        return;
+        logger.warn('[worker][WARN] completion skipped: no HydrationJob linked', { incomingId, bullJobId: job.id })
+        return
       }
 
       // Verify that the hydration run produced at least one active chapter
-      const hydrateRow = await prisma.hydrationJob.findUnique({
-        where: { id: resolvedHydrationId },
-      });
-      const subjectId = hydrateRow?.subjectId ?? null;
+      const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: resolvedHydrationId } })
+      const subjectId = hydrateRow?.subjectId ?? null
       if (!subjectId) {
         // Missing subject linkage -- treat as incomplete and log
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: String(incomingId),
-              event: 'COMPLETION_SKIPPED',
-              prevStatus: 'running',
-              newStatus: 'running',
-              message: 'hydration_missing_subject',
-              meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id },
-            },
-          })
-          .catch(() => {});
-        logger.warn('[worker][WARN] completion skipped: hydration missing subject', {
-          hydrationJobId: resolvedHydrationId,
-          bullJobId: job.id,
-        });
-        return;
+        await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'hydration_missing_subject', meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
+        logger.warn('[worker][WARN] completion skipped: hydration missing subject', { hydrationJobId: resolvedHydrationId, bullJobId: job.id })
+        return
       }
 
-      const chapter = await prisma.chapterDef.findFirst({
-        where: { subjectId: subjectId as string, lifecycle: 'active' },
-      });
+      const chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
       if (!chapter) {
         // No generated content -- do not advance ExecutionJob automatically.
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: String(incomingId),
-              event: 'COMPLETION_SKIPPED',
-              prevStatus: 'running',
-              newStatus: 'running',
-              message: 'no_generated_content',
-              meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id },
-            },
-          })
-          .catch(() => {});
-        logger.warn('[worker][WARN] completion skipped: no generated chapters', {
-          hydrationJobId: resolvedHydrationId,
-          bullJobId: job.id,
-        });
-        return;
+        await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'no_generated_content', meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
+        logger.warn('[worker][WARN] completion skipped: no generated chapters', { hydrationJobId: resolvedHydrationId, bullJobId: job.id })
+        return
       }
 
       // Emit COMPLETED audit log for linked ExecutionJob if present. Do NOT
       // mutate ExecutionJob state here; a reconciler/operator should perform
       // the state transition based on audit signals.
-      const linkedExec = await prisma.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: resolvedHydrationId } },
-      });
+      const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: resolvedHydrationId } } })
       if (linkedExec) {
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: String(linkedExec.id),
-              event: 'COMPLETED',
-              prevStatus: linkedExec.status,
-              newStatus: linkedExec.status,
-              meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id },
-            },
-          })
-          .catch(() => {});
+        await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
       } else {
-        const executionJobId = String(incomingId);
-        await prisma.jobExecutionLog
-          .create({
-            data: {
-              jobId: executionJobId,
-              event: 'COMPLETED',
-              prevStatus: 'running',
-              newStatus: 'running',
-              meta: { bullJobId: job.id },
-            },
-          })
-          .catch(() => {});
+        const executionJobId = String(incomingId)
+        await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'COMPLETED', prevStatus: 'running', newStatus: 'running', meta: { bullJobId: job.id } } }).catch(() => {})
       }
     } catch (e) {
-      logger?.warn?.(
-        'worker.completed: failed to mark executionJob completed or write JobExecutionLog',
-        { err: e }
-      );
+      logger?.warn?.('worker.completed: failed to mark executionJob completed or write JobExecutionLog', { err: e })
     }
-  });
+  })
 
-  return worker;
+  return worker
 }
 
 export function startDiagnosticBootstrapWorker(opts?: { concurrency?: number }) {
-  const concurrency = opts?.concurrency ?? 1;
+  const concurrency = opts?.concurrency ?? 1
   const worker = new Worker(
     DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
     async (job: Job<DiagnosticBootstrapJobData>) => processDiagnosticBootstrap(job),
@@ -809,16 +564,16 @@ export function startDiagnosticBootstrapWorker(opts?: { concurrency?: number }) 
       settings: {
         backoffStrategy: (attemptsMade: number) => Math.min(60_000, 2 ** attemptsMade * 1000),
       },
-    }
-  );
+    },
+  )
 
   worker.on('failed', (job, err) => {
-    logger.error(`[DIAGNOSTIC_BOOTSTRAP WORKER FAILED] jobId=${job?.id}`, { error: err?.message });
-  });
+    logger.error(`[DIAGNOSTIC_BOOTSTRAP WORKER FAILED] jobId=${job?.id}`, { error: err?.message })
+  })
 
   worker.on('completed', (job) => {
-    logger.info(`[DIAGNOSTIC_BOOTSTRAP WORKER COMPLETED] jobId=${job?.id}`);
-  });
+    logger.info(`[DIAGNOSTIC_BOOTSTRAP WORKER COMPLETED] jobId=${job?.id}`)
+  })
 
-  return worker;
+  return worker
 }

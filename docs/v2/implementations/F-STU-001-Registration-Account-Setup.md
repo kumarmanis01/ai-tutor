@@ -46,22 +46,18 @@ Key implementation details:
 3. Parent verification pipeline: `PhoneOtp` model + `app/api/auth/parent/send-otp` and `app/api/auth/parent/verify-otp` endpoints implement OTP send/verify; `accountStatus` gating enforces verification for minors.
 
 Schema migrations applied (if any):
-
 - None applied by this commit; required schema fields already exist in `prisma/schema.prisma` (e.g., `welcomeEmailSent`, `PhoneOtp`, `parentPhone`, `parentPhoneVerifiedAt`).
 
 Tests passing (unit + integration):
-
 - Relevant tests run and passed: `tests/integration/student/signup.integration.test.ts`, `tests/integration/student/onboarding.test.ts`, `tests/unit/lib/student/profileGuard.test.ts`.
 
 Lint & type-check clean:
-
 - `npx tsc --noEmit` passed; `npm run lint` passed in the focused checks.
 
 Branch: `feat/f-stu-001-registration-account-setup`
 Files changed: 0 files modified, 1 file added
 
 Implementation summary:
-
 - Registration and onboarding flows implemented end-to-end: email/Google/OTP signups, profile onboarding, minor-parent OTP gating, idempotent welcome email, and downstream seeding (diagnostic bootstrap/learning-plan generation). Verified via code review and focused tests.
 
 No breaking changes introduced. All wired endpoints functional.

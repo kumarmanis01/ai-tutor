@@ -19,9 +19,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 // Mock next/navigation router used inside the component
 const pushMock = jest.fn();
 const refreshMock = jest.fn();
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock, refresh: refreshMock }),
-}));
+jest.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock, refresh: refreshMock }) }));
 jest.mock('@/lib/toast', () => ({ toast: jest.fn() }));
 
 // Component under test
@@ -63,9 +61,7 @@ describe('TodaysLearningCard (component)', () => {
       planItemId: 'lp-1',
     } as any;
 
-    (global as any).fetch = jest
-      .fn()
-      .mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
 
     render(<TodaysLearningCard type="start" recommendation={rec} />);
 
@@ -73,10 +69,7 @@ describe('TodaysLearningCard (component)', () => {
     fireEvent.click(down);
 
     await waitFor(() => expect((global as any).fetch).toHaveBeenCalled());
-    expect((global as any).fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/student/learning-plan/lp-1'),
-      expect.objectContaining({ method: 'PATCH' })
-    );
+    expect((global as any).fetch).toHaveBeenCalledWith(expect.stringContaining('/api/student/learning-plan/lp-1'), expect.objectContaining({ method: 'PATCH' }));
     await waitFor(() => expect(refreshMock).toHaveBeenCalled());
   });
 
@@ -90,9 +83,7 @@ describe('TodaysLearningCard (component)', () => {
       planItemId: 'lp-1',
     } as any;
 
-    (global as any).fetch = jest
-      .fn()
-      .mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
 
     render(<TodaysLearningCard type="start" recommendation={rec} />);
 
@@ -100,10 +91,7 @@ describe('TodaysLearningCard (component)', () => {
     fireEvent.click(up);
 
     await waitFor(() => expect((global as any).fetch).toHaveBeenCalled());
-    expect((global as any).fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/student/learning-plan/lp-1'),
-      expect.objectContaining({ method: 'PATCH' })
-    );
+    expect((global as any).fetch).toHaveBeenCalledWith(expect.stringContaining('/api/student/learning-plan/lp-1'), expect.objectContaining({ method: 'PATCH' }));
     await waitFor(() => expect(refreshMock).toHaveBeenCalled());
   });
 });

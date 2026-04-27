@@ -25,7 +25,10 @@ export function NotesFiltered() {
   const [filters, setFilters] = useState<CascadingFilterState>(createEmptyFilterState());
 
   // Fetch notes for selected topic
-  const { notes, loading: notesLoading } = useNotesForTopic(filters.topicId, filters.language);
+  const { notes, loading: notesLoading } = useNotesForTopic(
+    filters.topicId,
+    filters.language
+  );
 
   const handleNoteClick = (noteId: string) => {
     // Navigate to note viewer or open in modal
@@ -56,7 +59,9 @@ export function NotesFiltered() {
           Select a topic above to view available notes
         </div>
       ) : notesLoading ? (
-        <div className="text-sm text-muted-foreground animate-pulse">Loading notes...</div>
+        <div className="text-sm text-muted-foreground animate-pulse">
+          Loading notes...
+        </div>
       ) : notes.length === 0 ? (
         <div className="text-sm text-muted-foreground py-4 text-center">
           No notes available for this topic
@@ -78,8 +83,7 @@ export function NotesFiltered() {
                 <div>
                   <span className="font-medium">{note.title}</span>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {note.language === 'en' ? 'English' : 'Hindi'}
-                    {note.version ? ` • v${note.version}` : ''}
+                    {note.language === 'en' ? 'English' : 'Hindi'}{note.version ? ` • v${note.version}` : ''}
                   </div>
                 </div>
               </button>

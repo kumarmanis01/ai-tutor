@@ -202,28 +202,28 @@ export const INTENT_MODIFIERS: Record<SessionIntent, IntentPromptModifiers> = {
 export const SessionIntentSchema = z.object({
   /** Primary learning intent */
   intent: z.nativeEnum(SessionIntent),
-
+  
   /** Urgency level */
   urgency: z.nativeEnum(IntentUrgency).default(IntentUrgency.NORMAL),
-
+  
   /** Current mood (optional) */
   mood: z.nativeEnum(StudentMood).optional(),
-
+  
   /** Specific topic focus (optional) */
   topicFocus: z.string().max(200).optional(),
-
+  
   /** Upcoming exam/test date (optional) */
   examDate: z.string().datetime().optional(),
-
+  
   /** Time available for this session (minutes) */
   availableMinutes: z.number().int().min(5).max(180).optional(),
-
+  
   /** Student's self-reported confidence (1-5) */
   selfConfidence: z.number().int().min(1).max(5).optional(),
-
+  
   /** Captured at session start */
   capturedAt: z.string().datetime(),
-
+  
   /** Session ID (for tracking, not persistence) */
   sessionId: z.string(),
 });
@@ -258,7 +258,11 @@ export const GRADE_INTENT_CONFIG: Record<string, GradeIntentConfig> = {
     intentRequired: false, // Optional for young kids
     showPrompt: false, // Auto-detect instead
     defaultIntent: SessionIntent.LEARN_CONCEPT,
-    availableIntents: [SessionIntent.LEARN_CONCEPT, SessionIntent.PRACTICE, SessionIntent.EXPLORE],
+    availableIntents: [
+      SessionIntent.LEARN_CONCEPT,
+      SessionIntent.PRACTICE,
+      SessionIntent.EXPLORE,
+    ],
     promptStyle: 'visual',
   },
   middle: {

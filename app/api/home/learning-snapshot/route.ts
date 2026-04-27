@@ -138,7 +138,9 @@ export async function GET() {
     });
 
     const percentComplete =
-      subjectTotalTopics > 0 ? Math.round((subjectMasteredCount / subjectTotalTopics) * 100) : 0;
+      subjectTotalTopics > 0
+        ? Math.round((subjectMasteredCount / subjectTotalTopics) * 100)
+        : 0;
 
     // Mastery label: based on average accuracy across attempted topics
     let mastery: 'weak' | 'improving' | 'strong' = 'weak';

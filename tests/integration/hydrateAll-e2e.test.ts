@@ -59,7 +59,10 @@ describe('HydrateAll End-to-End Integration Test', () => {
     if (rootJobId) {
       await prisma.hydrationJob.deleteMany({
         where: {
-          OR: [{ id: rootJobId }, { rootJobId }],
+          OR: [
+            { id: rootJobId },
+            { rootJobId },
+          ],
         },
       });
     }
@@ -493,11 +496,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
     };
 
     const retryResult = validateOrThrow(validContent, {
-      jobType: 'notes',
-      language: 'en',
-      subject: 'Test Subject',
-      topic: 'Test Topic',
-      grade: 10,
+      jobType: 'notes', language: 'en', subject: 'Test Subject', topic: 'Test Topic', grade: 10,
     });
     expect(retryResult).toBe(true);
 
@@ -639,16 +638,13 @@ describe('HydrateAll End-to-End Integration Test', () => {
           question: 'What is the chemical formula for water?',
           options: ['H2O', 'CO2', 'NaCl', 'O2'],
           answer: 'H2O',
-          explanation:
-            'Water consists of two hydrogen atoms bonded to one oxygen atom, giving it the molecular formula H2O.',
+          explanation: 'Water consists of two hydrogen atoms bonded to one oxygen atom, giving it the molecular formula H2O.',
         },
         {
           type: 'short_answer',
           question: 'Explain the process of evaporation.',
-          answer:
-            'Evaporation is the process where liquid water changes to water vapor at the surface.',
-          explanation:
-            'When water molecules at the surface gain enough kinetic energy, they escape into the air as vapor. This occurs at temperatures below boiling point.',
+          answer: 'Evaporation is the process where liquid water changes to water vapor at the surface.',
+          explanation: 'When water molecules at the surface gain enough kinetic energy, they escape into the air as vapor. This occurs at temperatures below boiling point.',
         },
       ],
     };

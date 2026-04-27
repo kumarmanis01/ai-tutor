@@ -70,7 +70,6 @@ npm run ingest:seed-cbse-grade10
 ```
 
 Notes:
-
 - When invoking via npm script and you need to pass extra flags, use `--` after the script name. For example: `npm run ingest:cli -- --file ./book.pdf`.
 
 **What the retry does**

@@ -10,7 +10,6 @@
 **Problem**: Google OAuth login was not working on localhost development server
 
 **Root Cause**: Environment variable mismatch
-
 - `.env.production` had `NEXTAUTH_URL="https://gnosiva.com"` (production URL)
 - Dev server was running on `http://localhost:3000` (development URL)
 - Google OAuth callback URLs must match exactly
@@ -34,7 +33,6 @@ NEXTAUTH_SECRET=<your-nextauth-secret>
 ```
 
 **How `.env.local` works**:
-
 - Next.js loads `.env.local` first (if it exists)
 - It overrides values from `.env.production`
 - `.env.local` is gitignored (safe for local secrets)
@@ -51,7 +49,6 @@ npm run dev:fast
 ```
 
 **Verification**:
-
 ```
 ✓ Next.js 14.2.35
 - Local:        http://localhost:3000
@@ -87,7 +84,6 @@ For Google OAuth to work on localhost, you **MUST** add the localhost callback U
    - **IMPORTANT**: Port must match (`:3000`)
 
 4. **Existing Production URI** (should already be there):
-
    ```
    https://gnosiva.com/api/auth/callback/google
    ```
@@ -100,9 +96,9 @@ For Google OAuth to work on localhost, you **MUST** add the localhost callback U
 
 Your OAuth client should have **TWO** redirect URIs:
 
-| Environment | Redirect URI                                     |
-| ----------- | ------------------------------------------------ |
-| Production  | `https://gnosiva.com/api/auth/callback/google`   |
+| Environment | Redirect URI |
+|-------------|-------------|
+| Production  | `https://gnosiva.com/api/auth/callback/google` |
 | Development | `http://localhost:3000/api/auth/callback/google` |
 
 ---
@@ -152,7 +148,6 @@ Your OAuth client should have **TWO** redirect URIs:
 **Cause**: `.env.local` not loaded properly
 
 **Fix**:
-
 ```bash
 # Verify .env.local exists
 ls -la .env.local
@@ -168,7 +163,6 @@ npm run dev:fast
 **Symptom**: Login succeeds but immediately logged out on refresh
 
 **Possible Causes**:
-
 1. **Database connection issue** - Check `DATABASE_URL` in `.env.local`
 2. **Session table missing** - Run Prisma migrations:
    ```bash
@@ -177,7 +171,6 @@ npm run dev:fast
 3. **Cookie domain mismatch** - Clear browser cookies for localhost
 
 **Fix**:
-
 ```bash
 # Check database connection
 npx prisma studio
@@ -196,7 +189,6 @@ npx prisma migrate dev
 **Cause**: Browser cache or cookie issues
 
 **Fix**:
-
 1. Open DevTools (F12) → Application → Clear all cookies for localhost
 2. Hard refresh: Ctrl+Shift+R
 3. Try login again
@@ -235,7 +227,6 @@ Then restart dev server and check terminal output for detailed OAuth flow logs.
 If Google OAuth still doesn't work after following this guide:
 
 1. **Check Server Logs**:
-
    ```bash
    tail -50 C:\Users\STAREX~1\AppData\Local\Temp\claude\d--manish-code-ai-tutor\tasks\b48610d.output
    ```
@@ -246,23 +237,12 @@ If Google OAuth still doesn't work after following this guide:
    - Copy full error text
 
 3. **Test OAuth Endpoint Directly**:
-
    ```bash
    curl http://localhost:3000/api/auth/providers
    ```
-
    Should return:
-
    ```json
-   {
-     "google": {
-       "id": "google",
-       "name": "Google",
-       "type": "oauth",
-       "signinUrl": "http://localhost:3000/api/auth/signin/google",
-       "callbackUrl": "http://localhost:3000/api/auth/callback/google"
-     }
-   }
+   {"google":{"id":"google","name":"Google","type":"oauth","signinUrl":"http://localhost:3000/api/auth/signin/google","callbackUrl":"http://localhost:3000/api/auth/callback/google"}}
    ```
 
 4. **Verify Google Credentials**:

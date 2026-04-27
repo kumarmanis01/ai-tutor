@@ -140,12 +140,10 @@ export async function GET(_req: Request) {
       }),
 
       // 5. Learning profile for weekly goal
-      prisma.studentLearningProfile
-        .findFirst({
-          where: { studentId: userId },
-          select: { studyDaysPerWeek: true },
-        })
-        .catch(() => null),
+      prisma.studentLearningProfile.findFirst({
+        where: { studentId: userId },
+        select: { studyDaysPerWeek: true },
+      }).catch(() => null),
 
       // 6. Weak topics (max 2 shown on dashboard per UX spec)
       getWeakTopicsWithNames(userId).catch(() => []),
@@ -188,40 +186,22 @@ export async function GET(_req: Request) {
     }
 
     // Unwrap next action (API may return { action } wrapper or direct object)
-    const rawAction =
-      nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
-        ? (nextActionResult as { action: unknown }).action
-        : nextActionResult;
-    const recommendation =
-      rawAction && (rawAction as { topicId?: string }).topicId
-        ? (rawAction as {
-            topicId: string;
-            topicName?: string | null;
-            subject?: string | null;
-            chapter?: string | null;
-            estimatedTimeMin?: number;
-          })
-        : null;
+    const rawAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
+      ? (nextActionResult as { action: unknown }).action
+      : nextActionResult;
+    const recommendation = rawAction && (rawAction as { topicId?: string }).topicId
+      ? (rawAction as { topicId: string; topicName?: string | null; subject?: string | null; chapter?: string | null; estimatedTimeMin?: number })
+      : null;
 
     // ── Build upcoming topics (first 3 un-mastered, excluding current rec) ─
     const recTopicId = recommendation?.topicId;
     const masteredIds = new Set(
-      (
-        await prisma.studentTopicProgress.findMany({
-          where: { studentId: userId, mastery: { gte: 0.9 } },
-          select: { topicId: true },
-        })
-      ).map((r) => r.topicId)
+      (await prisma.studentTopicProgress.findMany({
+        where: { studentId: userId, mastery: { gte: 0.9 } },
+        select: { topicId: true },
+      })).map((r) => r.topicId),
     );
-    const upcomingTopics = (
-      orderedTopics as {
-        topicId?: string;
-        id?: string;
-        topicName?: string;
-        name?: string;
-        subject?: string;
-      }[]
-    )
+    const upcomingTopics = (orderedTopics as { topicId?: string; id?: string; topicName?: string; name?: string; subject?: string }[])
       .filter((t) => {
         const id = t.topicId ?? t.id;
         return id && id !== recTopicId && !masteredIds.has(id);

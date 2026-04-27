@@ -33,9 +33,7 @@ export function TutorTipPanel({ tipText }: TutorTipPanelProps) {
         className="flex-shrink-0 rounded-full mt-0.5 object-cover"
       />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-[#534AB7] dark:text-indigo-300 mb-0.5">
-          Teacher Vidya
-        </p>
+        <p className="text-xs font-semibold text-[#534AB7] dark:text-indigo-300 mb-0.5">Teacher Vidya</p>
         <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{tipText}</p>
       </div>
       <button

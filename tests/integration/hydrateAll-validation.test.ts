@@ -53,7 +53,7 @@ jest.mock('@/lib/prisma', () => {
         const row = _store[table]?.[id] ?? null;
         if (row && include?.topics) {
           const topics = Object.values(_store['topicDef'] || {}).filter(
-            (t: any) => t.chapterId === id
+            (t: any) => t.chapterId === id,
           );
           return Promise.resolve({ ...row, topics });
         }
@@ -99,9 +99,9 @@ jest.mock('@/lib/prisma', () => {
       hydrationJob: _makeModel('hydrationJob'),
       aIContentLog: _makeModel('aIContentLog'),
       $disconnect: jest.fn().mockResolvedValue(undefined),
-      $transaction: jest
-        .fn()
-        .mockImplementation((fn: any) => (typeof fn === 'function' ? fn({}) : Promise.resolve(fn))),
+      $transaction: jest.fn().mockImplementation((fn: any) =>
+        typeof fn === 'function' ? fn({}) : Promise.resolve(fn),
+      ),
     },
   };
 });
@@ -119,10 +119,7 @@ import {
   ContextMismatchError,
 } from '@/lib/aiOutputValidator';
 import { validateNotesShape, validateNotesShapeWithReport } from '@/worker/services/notesWorker';
-import {
-  validateQuestionsShape,
-  validateQuestionsShapeWithReport,
-} from '@/worker/services/questionsWorker';
+import { validateQuestionsShape, validateQuestionsShapeWithReport } from '@/worker/services/questionsWorker';
 
 // ============================================================
 // Test Fixtures: Realistic AI-generated content samples
@@ -150,12 +147,12 @@ const VALID_NOTES_SECTIONS = {
 };
 
 const VALID_NOTES_PARAGRAPHS = {
-  title: "Laws of Motion - Newton's Three Laws",
+  title: 'Laws of Motion - Newton\'s Three Laws',
   content: {
     paragraphs: [
-      "Newton's First Law of Motion, also known as the Law of Inertia, states that an object at rest stays at rest and an object in motion stays in motion with the same speed and in the same direction unless acted upon by an unbalanced external force. This fundamental principle helps explain everyday phenomena such as why passengers lurch forward when a bus suddenly stops.",
-      "Newton's Second Law of Motion establishes the relationship between force, mass, and acceleration. It can be expressed mathematically as F = ma, where F is the net force applied to an object, m is its mass, and a is the resulting acceleration. This law quantifies how the motion of an object changes when a force is applied and forms the basis for mechanics calculations.",
-      "Newton's Third Law of Motion states that for every action, there is an equal and opposite reaction. When one object exerts a force on a second object, the second object simultaneously exerts a force equal in magnitude but opposite in direction on the first object. This principle explains phenomena like rocket propulsion and swimming.",
+      'Newton\'s First Law of Motion, also known as the Law of Inertia, states that an object at rest stays at rest and an object in motion stays in motion with the same speed and in the same direction unless acted upon by an unbalanced external force. This fundamental principle helps explain everyday phenomena such as why passengers lurch forward when a bus suddenly stops.',
+      'Newton\'s Second Law of Motion establishes the relationship between force, mass, and acceleration. It can be expressed mathematically as F = ma, where F is the net force applied to an object, m is its mass, and a is the resulting acceleration. This law quantifies how the motion of an object changes when a force is applied and forms the basis for mechanics calculations.',
+      'Newton\'s Third Law of Motion states that for every action, there is an equal and opposite reaction. When one object exerts a force on a second object, the second object simultaneously exerts a force equal in magnitude but opposite in direction on the first object. This principle explains phenomena like rocket propulsion and swimming.',
     ],
   },
   audience: 'Grade 9 students studying physics',
@@ -164,8 +161,7 @@ const VALID_NOTES_PARAGRAPHS = {
 const VALID_NOTES_EXPLANATION = {
   title: 'Understanding Fractions',
   content: {
-    explanation:
-      'Fractions represent parts of a whole. When we divide something into equal parts and take some of those parts, we use fractions to describe how much we have. A fraction has two numbers: the numerator (top number) tells us how many parts we have, and the denominator (bottom number) tells us how many equal parts the whole was divided into. For example, 3/4 means we divided something into 4 equal parts and took 3 of them. Fractions are used in everyday life when we share food, measure ingredients for cooking, or calculate discounts at a store.',
+    explanation: 'Fractions represent parts of a whole. When we divide something into equal parts and take some of those parts, we use fractions to describe how much we have. A fraction has two numbers: the numerator (top number) tells us how many parts we have, and the denominator (bottom number) tells us how many equal parts the whole was divided into. For example, 3/4 means we divided something into 4 equal parts and took 3 of them. Fractions are used in everyday life when we share food, measure ingredients for cooking, or calculate discounts at a store.',
   },
   audience: 'Grade 5 students (age ~10 years)',
 };
@@ -178,24 +174,20 @@ const VALID_QUESTIONS_MCQ = {
       question: 'What is the primary pigment responsible for photosynthesis in plants?',
       options: ['Carotenoid', 'Chlorophyll', 'Xanthophyll', 'Anthocyanin'],
       answer: 'Chlorophyll',
-      explanation:
-        'Chlorophyll is the primary photosynthetic pigment found in chloroplasts. It absorbs light most efficiently in the blue and red wavelengths, reflecting green light which gives plants their characteristic color.',
+      explanation: 'Chlorophyll is the primary photosynthetic pigment found in chloroplasts. It absorbs light most efficiently in the blue and red wavelengths, reflecting green light which gives plants their characteristic color.',
     },
     {
       type: 'short_answer',
       question: 'Explain why plants appear green in color.',
-      answer:
-        'Plants appear green because chlorophyll absorbs red and blue wavelengths of light for photosynthesis and reflects green wavelengths back to our eyes.',
-      explanation:
-        'The visible spectrum contains multiple wavelengths. Chlorophyll molecules selectively absorb the wavelengths they need for energy conversion (primarily red at ~680nm and blue at ~440nm), while reflecting green wavelengths (~550nm) that our eyes perceive as the green color of plants.',
+      answer: 'Plants appear green because chlorophyll absorbs red and blue wavelengths of light for photosynthesis and reflects green wavelengths back to our eyes.',
+      explanation: 'The visible spectrum contains multiple wavelengths. Chlorophyll molecules selectively absorb the wavelengths they need for energy conversion (primarily red at ~680nm and blue at ~440nm), while reflecting green wavelengths (~550nm) that our eyes perceive as the green color of plants.',
     },
     {
       type: 'mcq',
       question: 'Which organelle is the primary site of photosynthesis?',
       options: ['Mitochondria', 'Chloroplast', 'Nucleus', 'Ribosome'],
       answer: 'Chloroplast',
-      explanation:
-        'Chloroplasts are specialized organelles found in plant cells and algae that contain chlorophyll and the molecular machinery needed for both the light-dependent and light-independent reactions of photosynthesis.',
+      explanation: 'Chloroplasts are specialized organelles found in plant cells and algae that contain chlorophyll and the molecular machinery needed for both the light-dependent and light-independent reactions of photosynthesis.',
     },
   ],
 };
@@ -238,83 +230,39 @@ const VALID_SYLLABUS = {
 
 const VALID_NOTE_NS = {
   title: 'Photosynthesis - The Process of Life',
-  concept:
-    'Photosynthesis is the biological process by which green plants convert light energy into chemical energy stored as glucose, occurring in chloroplasts using sunlight, water, and carbon dioxide.',
-  explanation:
-    'In the light-dependent reactions, chlorophyll absorbs sunlight and uses this energy to split water molecules, releasing oxygen and producing ATP and NADPH. The Calvin Cycle in the stroma then uses ATP and NADPH to fix carbon dioxide into a three-carbon sugar through a series of enzyme-catalyzed reactions, which is ultimately converted to glucose.',
-  example:
-    'A leaf submerged in water and placed under sunlight produces visible oxygen bubbles, directly demonstrating that water is split during the light-dependent reactions of photosynthesis.',
-  keyPoints: [
-    'Occurs in chloroplasts',
-    'Requires sunlight, water, and CO2',
-    'Produces glucose and oxygen',
-    'Two stages: light-dependent reactions and Calvin Cycle',
-  ],
-  commonMistakes: [
-    'Confusing photosynthesis with cellular respiration',
-    'Thinking only leaves can photosynthesize',
-  ],
+  concept: 'Photosynthesis is the biological process by which green plants convert light energy into chemical energy stored as glucose, occurring in chloroplasts using sunlight, water, and carbon dioxide.',
+  explanation: 'In the light-dependent reactions, chlorophyll absorbs sunlight and uses this energy to split water molecules, releasing oxygen and producing ATP and NADPH. The Calvin Cycle in the stroma then uses ATP and NADPH to fix carbon dioxide into a three-carbon sugar through a series of enzyme-catalyzed reactions, which is ultimately converted to glucose.',
+  example: 'A leaf submerged in water and placed under sunlight produces visible oxygen bubbles, directly demonstrating that water is split during the light-dependent reactions of photosynthesis.',
+  keyPoints: ['Occurs in chloroplasts', 'Requires sunlight, water, and CO2', 'Produces glucose and oxygen', 'Two stages: light-dependent reactions and Calvin Cycle'],
+  commonMistakes: ['Confusing photosynthesis with cellular respiration', 'Thinking only leaves can photosynthesize'],
 };
 
 const VALID_NOTE_NS_2 = {
   title: "Newton's Laws of Motion",
-  concept:
-    "Newton's three laws describe the fundamental relationships between forces and the motion of objects, forming the foundation of classical mechanics.",
-  explanation:
-    'The First Law (Inertia) states an object at rest stays at rest and an object in motion continues at constant velocity unless acted on by a net external force. The Second Law states F = ma, quantifying how force, mass, and acceleration relate. The Third Law states every action force has an equal and opposite reaction force acting on a different body.',
-  example:
-    "A book on a table remains stationary because gravity and the table's normal force balance (First Law). Pushing a lighter shopping cart accelerates it more than a heavier one with the same force (Second Law). A rocket rises as burning fuel expelled downward creates an equal upward thrust (Third Law).",
-  keyPoints: [
-    'Inertia: objects resist changes in motion',
-    'F = ma relates force, mass, and acceleration',
-    'Action-reaction forces are equal, opposite, on different bodies',
-    'Net force determines acceleration, not individual forces',
-  ],
-  commonMistakes: [
-    'Thinking heavier objects fall faster in a vacuum',
-    'Believing action-reaction force pairs cancel each other out',
-  ],
+  concept: "Newton's three laws describe the fundamental relationships between forces and the motion of objects, forming the foundation of classical mechanics.",
+  explanation: "The First Law (Inertia) states an object at rest stays at rest and an object in motion continues at constant velocity unless acted on by a net external force. The Second Law states F = ma, quantifying how force, mass, and acceleration relate. The Third Law states every action force has an equal and opposite reaction force acting on a different body.",
+  example: "A book on a table remains stationary because gravity and the table's normal force balance (First Law). Pushing a lighter shopping cart accelerates it more than a heavier one with the same force (Second Law). A rocket rises as burning fuel expelled downward creates an equal upward thrust (Third Law).",
+  keyPoints: ['Inertia: objects resist changes in motion', 'F = ma relates force, mass, and acceleration', 'Action-reaction forces are equal, opposite, on different bodies', 'Net force determines acceleration, not individual forces'],
+  commonMistakes: ['Thinking heavier objects fall faster in a vacuum', 'Believing action-reaction force pairs cancel each other out'],
 };
 
 const VALID_NOTE_NS_3 = {
   title: 'Understanding Fractions',
-  concept:
-    'A fraction represents a part of a whole, written as a numerator over a denominator, where the denominator is the number of equal parts and the numerator is how many parts are taken.',
-  explanation:
-    'Fractions can be proper (numerator less than denominator), improper (numerator greater than or equal), or mixed numbers. To add fractions with different denominators, first find the Least Common Denominator (LCD). To simplify, divide both numerator and denominator by their Greatest Common Divisor (GCD). Equivalent fractions represent the same value with different numbers.',
-  example:
-    'If a pizza is cut into 8 equal slices and you eat 3 slices, you ate 3/8 of the pizza. To add 1/2 + 1/4, convert to 2/4 + 1/4 = 3/4.',
-  keyPoints: [
-    'Numerator: how many parts you have',
-    'Denominator: total equal parts in the whole',
-    'Equivalent fractions represent the same value',
-    'Find LCD before adding or subtracting fractions',
-  ],
-  commonMistakes: [
-    'Adding numerators and denominators directly (e.g. 1/2 + 1/3 ≠ 2/5)',
-    'Forgetting to simplify the final answer to lowest terms',
-  ],
+  concept: 'A fraction represents a part of a whole, written as a numerator over a denominator, where the denominator is the number of equal parts and the numerator is how many parts are taken.',
+  explanation: 'Fractions can be proper (numerator less than denominator), improper (numerator greater than or equal), or mixed numbers. To add fractions with different denominators, first find the Least Common Denominator (LCD). To simplify, divide both numerator and denominator by their Greatest Common Divisor (GCD). Equivalent fractions represent the same value with different numbers.',
+  example: 'If a pizza is cut into 8 equal slices and you eat 3 slices, you ate 3/8 of the pizza. To add 1/2 + 1/4, convert to 2/4 + 1/4 = 3/4.',
+  keyPoints: ['Numerator: how many parts you have', 'Denominator: total equal parts in the whole', 'Equivalent fractions represent the same value', 'Find LCD before adding or subtracting fractions'],
+  commonMistakes: ["Adding numerators and denominators directly (e.g. 1/2 + 1/3 ≠ 2/5)", 'Forgetting to simplify the final answer to lowest terms'],
 };
 
 // NoteSchema-compatible placeholder (triggers PlaceholderContentError)
 const PLACEHOLDER_NOTE_NS = {
   title: 'Introduction to Genetics',
-  concept:
-    'Genetics is the study of heredity and genetic variation in living organisms, examining how traits are passed from parents to offspring.',
-  explanation:
-    'This topic will be discussed in detail in the upcoming classes. Content coming soon for this important unit covering genes, alleles, Mendelian inheritance, and modern genetic concepts.',
-  example:
-    'Examples will be provided once content is finalized to illustrate dominant and recessive traits.',
-  keyPoints: [
-    'DNA carries genetic information in sequences',
-    'Genes are segments of DNA encoding proteins',
-    'Alleles are different versions of the same gene',
-    'Heredity follows predictable patterns',
-  ],
-  commonMistakes: [
-    'Confusing genotype (genetic makeup) with phenotype (observable traits)',
-    'Assuming dominant traits are more common in a population',
-  ],
+  concept: 'Genetics is the study of heredity and genetic variation in living organisms, examining how traits are passed from parents to offspring.',
+  explanation: 'This topic will be discussed in detail in the upcoming classes. Content coming soon for this important unit covering genes, alleles, Mendelian inheritance, and modern genetic concepts.',
+  example: 'Examples will be provided once content is finalized to illustrate dominant and recessive traits.',
+  keyPoints: ['DNA carries genetic information in sequences', 'Genes are segments of DNA encoding proteins', 'Alleles are different versions of the same gene', 'Heredity follows predictable patterns'],
+  commonMistakes: ['Confusing genotype (genetic makeup) with phenotype (observable traits)', 'Assuming dominant traits are more common in a population'],
 };
 
 // NoteSchema-compatible thin content (triggers SemanticWeaknessError -- combined text well under 600 chars)
@@ -331,22 +279,11 @@ const THIN_CONTENT_NS = {
 const LANGUAGE_MISMATCH_NS = {
   title: 'Photosynthesis Notes',
   language: 'hi',
-  concept:
-    'Photosynthesis is the process by which green plants convert light energy into chemical energy stored as glucose in chloroplasts.',
-  explanation:
-    'Plants absorb sunlight using chlorophyll and use it to split water molecules, releasing oxygen and producing ATP and NADPH. The Calvin cycle then uses these energy carriers to fix carbon dioxide into glucose through enzyme-catalyzed reactions in the stroma of chloroplasts.',
-  example:
-    'Aquatic plants like Elodea placed in sunlight produce visible oxygen bubbles, demonstrating oxygen release during the light-dependent reactions of photosynthesis.',
-  keyPoints: [
-    'Chlorophyll absorbs light energy from the sun',
-    'Water molecules are split releasing oxygen',
-    'Carbon dioxide is fixed into glucose in Calvin Cycle',
-    'Two stages: light-dependent reactions and dark reactions',
-  ],
-  commonMistakes: [
-    'Confusing photosynthesis with cellular respiration',
-    'Thinking plants only perform photosynthesis and not respiration',
-  ],
+  concept: 'Photosynthesis is the process by which green plants convert light energy into chemical energy stored as glucose in chloroplasts.',
+  explanation: 'Plants absorb sunlight using chlorophyll and use it to split water molecules, releasing oxygen and producing ATP and NADPH. The Calvin cycle then uses these energy carriers to fix carbon dioxide into glucose through enzyme-catalyzed reactions in the stroma of chloroplasts.',
+  example: 'Aquatic plants like Elodea placed in sunlight produce visible oxygen bubbles, demonstrating oxygen release during the light-dependent reactions of photosynthesis.',
+  keyPoints: ['Chlorophyll absorbs light energy from the sun', 'Water molecules are split releasing oxygen', 'Carbon dioxide is fixed into glucose in Calvin Cycle', 'Two stages: light-dependent reactions and dark reactions'],
+  commonMistakes: ['Confusing photosynthesis with cellular respiration', 'Thinking plants only perform photosynthesis and not respiration'],
 };
 
 // ============================================================
@@ -576,9 +513,13 @@ describe('HydrateAll Content Validation (Container-based)', () => {
     });
 
     it('should reject null/empty responses', () => {
-      expect(() => validateOrThrow(null, { jobType: 'notes' })).toThrow(SchemaInvalidError);
+      expect(() =>
+        validateOrThrow(null, { jobType: 'notes' })
+      ).toThrow(SchemaInvalidError);
 
-      expect(() => validateOrThrow(undefined, { jobType: 'notes' })).toThrow(SchemaInvalidError);
+      expect(() =>
+        validateOrThrow(undefined, { jobType: 'notes' })
+      ).toThrow(SchemaInvalidError);
     });
 
     it('should detect language mismatch in notes', () => {
@@ -606,20 +547,14 @@ describe('HydrateAll Content Validation (Container-based)', () => {
     });
 
     it('should flag missing title in notes shape', () => {
-      const noTitle = {
-        content: { sections: [{ heading: 'H', body: 'Body text here long enough' }] },
-        audience: 'students',
-      };
+      const noTitle = { content: { sections: [{ heading: 'H', body: 'Body text here long enough' }] }, audience: 'students' };
       const { valid, report } = validateNotesShapeWithReport(noTitle);
       expect(valid).toBe(false);
       expect(report.issues).toContain('missing-title');
     });
 
     it('should flag missing audience in notes shape', () => {
-      const noAudience = {
-        title: 'Test',
-        content: { sections: [{ heading: 'H', body: 'Body text' }] },
-      };
+      const noAudience = { title: 'Test', content: { sections: [{ heading: 'H', body: 'Body text' }] } };
       const { valid, report } = validateNotesShapeWithReport(noAudience);
       expect(valid).toBe(false);
       expect(report.issues).toContain('missing-audience');
@@ -668,25 +603,19 @@ describe('HydrateAll Content Validation (Container-based)', () => {
 
     it('should reject empty questions array', () => {
       expect(() =>
-        validateOrThrow(
-          { questions: [] },
-          {
-            jobType: 'questions',
-            language: 'en',
-          }
-        )
+        validateOrThrow({ questions: [] }, {
+          jobType: 'questions',
+          language: 'en',
+        })
       ).toThrow(SchemaInvalidError);
     });
 
     it('should reject questions without schema-required fields', () => {
       expect(() =>
-        validateOrThrow(
-          { wrongField: 'data' },
-          {
-            jobType: 'questions',
-            language: 'en',
-          }
-        )
+        validateOrThrow({ wrongField: 'data' }, {
+          jobType: 'questions',
+          language: 'en',
+        })
       ).toThrow(SchemaInvalidError);
     });
 
@@ -700,13 +629,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
     it('should flag invalid MCQ options in questions report', () => {
       const badMcq = {
         questions: [
-          {
-            type: 'mcq',
-            question: 'Test?',
-            options: ['Only one'],
-            answer: 'Only one',
-            explanation: 'test explanation',
-          },
+          { type: 'mcq', question: 'Test?', options: ['Only one'], answer: 'Only one', explanation: 'test explanation' },
         ],
       };
       const { valid, report } = validateQuestionsShapeWithReport(badMcq, 'Science');
@@ -751,13 +674,8 @@ describe('HydrateAll Content Validation (Container-based)', () => {
           {
             type: 'short_answer',
             question: 'Why do plants need sunlight?',
-            answer: {
-              direct_answer: 'For photosynthesis',
-              scientific_explanation:
-                'Sunlight provides energy that chlorophyll absorbs to convert CO2 and H2O into glucose.',
-            },
-            explanation:
-              'Sunlight is essential for the light-dependent reactions of photosynthesis.',
+            answer: { direct_answer: 'For photosynthesis', scientific_explanation: 'Sunlight provides energy that chlorophyll absorbs to convert CO2 and H2O into glucose.' },
+            explanation: 'Sunlight is essential for the light-dependent reactions of photosynthesis.',
           },
         ],
       };
@@ -824,9 +742,9 @@ describe('HydrateAll Content Validation (Container-based)', () => {
 
   describe('Unknown Job Type Handling', () => {
     it('should reject unknown job types in central validator', () => {
-      expect(() => validateOrThrow(VALID_NOTES_SECTIONS, { jobType: 'unknown_type' })).toThrow(
-        SchemaInvalidError
-      );
+      expect(() =>
+        validateOrThrow(VALID_NOTES_SECTIONS, { jobType: 'unknown_type' })
+      ).toThrow(SchemaInvalidError);
     });
   });
 
@@ -924,8 +842,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
           // Zod optional() accepts undefined but not null; DB columns can be null
           options: q.options ?? undefined,
           answer: q.answer,
-          explanation:
-            'Chlorophyll absorbs red and blue wavelengths, reflecting green light that our eyes perceive as the characteristic color of plants.',
+          explanation: 'Chlorophyll absorbs red and blue wavelengths, reflecting green light that our eyes perceive as the characteristic color of plants.',
         })),
       };
 
@@ -1142,13 +1059,10 @@ describe('HydrateAll Content Validation (Container-based)', () => {
       });
 
       try {
-        validateOrThrow(
-          { random: 'data' },
-          {
-            jobType: 'notes',
-            language: 'en',
-          }
-        );
+        validateOrThrow({ random: 'data' }, {
+          jobType: 'notes',
+          language: 'en',
+        });
         expect(true).toBe(false);
       } catch (err: any) {
         expect(err).toBeInstanceOf(SchemaInvalidError);
@@ -1344,7 +1258,9 @@ describe('HydrateAll Content Validation (Container-based)', () => {
           })
         ),
         // Invalid: schema
-        Promise.resolve().then(() => validateOrThrow(null, { jobType: 'notes' })),
+        Promise.resolve().then(() =>
+          validateOrThrow(null, { jobType: 'notes' })
+        ),
       ]);
 
       expect(results[0].status).toBe('fulfilled');

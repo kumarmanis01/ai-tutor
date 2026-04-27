@@ -64,9 +64,7 @@ export default async function LearningPathPage() {
     fetch(`${process.env.NEXTAUTH_URL ?? 'http://localhost:3000'}/api/home/learning-snapshot`, {
       cache: 'no-store',
       headers: { Cookie: '' }, // will use server-side auth via getServerSessionForHandlers
-    })
-      .then((r) => r.json() as Promise<{ subjects?: SubjectSnapshot[] }>)
-      .catch(() => ({ subjects: [] })),
+    }).then((r) => r.json() as Promise<{ subjects?: SubjectSnapshot[] }>).catch(() => ({ subjects: [] })),
 
     // Topic-level mastery for qualitative labels
     prisma.studentTopicProgress.findMany({
@@ -81,35 +79,33 @@ export default async function LearningPathPage() {
     }),
 
     // AC-04: plan timeline data (first plan only; no second round-trip needed)
-    prisma.learningPlan
-      .findFirst({
-        where: { studentId: userId },
-        orderBy: { generatedAt: 'desc' },
-        select: {
-          id: true,
-          subjectId: true,
-          examDate: true,
-          weeklyGoal: true,
-          generatedAt: true,
-          items: {
-            orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-            select: {
-              id: true,
-              conceptId: true,
-              weekNumber: true,
-              orderInWeek: true,
-              status: true,
-              concept: {
-                select: {
-                  name: true,
-                  topic: {
-                    select: {
-                      chapter: {
-                        select: {
-                          id: true,
-                          name: true,
-                          boardChapterWeights: { select: { weightMarks: true }, take: 1 },
-                        },
+    prisma.learningPlan.findFirst({
+      where: { studentId: userId },
+      orderBy: { generatedAt: 'desc' },
+      select: {
+        id: true,
+        subjectId: true,
+        examDate: true,
+        weeklyGoal: true,
+        generatedAt: true,
+        items: {
+          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          select: {
+            id: true,
+            conceptId: true,
+            weekNumber: true,
+            orderInWeek: true,
+            status: true,
+            concept: {
+              select: {
+                name: true,
+                topic: {
+                  select: {
+                    chapter: {
+                      select: {
+                        id: true,
+                        name: true,
+                        boardChapterWeights: { select: { weightMarks: true }, take: 1 },
                       },
                     },
                   },
@@ -118,8 +114,8 @@ export default async function LearningPathPage() {
             },
           },
         },
-      })
-      .catch(() => null),
+      },
+    }).catch(() => null),
   ]);
 
   const masteryMap = new Map(masteryRows.map((r) => [r.topicId, r.mastery]));
@@ -130,10 +126,7 @@ export default async function LearningPathPage() {
   // AC-04: build timeline payload from Prisma plan data (use shared builder)
   let timelineData: TimelineResponse | null = null;
   if (rawPlanData) {
-    const subjectRecord = await prisma.subjectDef.findUnique({
-      where: { id: rawPlanData.subjectId },
-      select: { name: true },
-    });
+    const subjectRecord = await prisma.subjectDef.findUnique({ where: { id: rawPlanData.subjectId }, select: { name: true } });
     timelineData = buildTimeline(rawPlanData, undefined, subjectRecord?.name ?? '');
   }
 
@@ -143,11 +136,7 @@ export default async function LearningPathPage() {
   type CurriculumSubject = {
     subjectId: string;
     subjectName: string;
-    chapters: {
-      chapterId: string;
-      chapterName: string;
-      topics: { topicId: string; topicName: string }[];
-    }[];
+    chapters: { chapterId: string; chapterName: string; topics: { topicId: string; topicName: string }[] }[];
   };
   let curriculumFallback: CurriculumSubject[] = [];
   if (subjects.length === 0) {
@@ -158,13 +147,8 @@ export default async function LearningPathPage() {
     const enrolledSlugs: string[] = Array.isArray(studentProfile?.subjects)
       ? (studentProfile!.subjects as string[]).filter(Boolean)
       : typeof studentProfile?.subjects === 'string'
-        ? (studentProfile!.subjects as string)
-            .replace(/^\{/, '')
-            .replace(/\}$/, '')
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [];
+      ? (studentProfile!.subjects as string).replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
 
     if (studentProfile?.board && studentProfile?.grade && enrolledSlugs.length > 0) {
       const subjectDefs = await prisma.subjectDef.findMany({
@@ -220,7 +204,9 @@ export default async function LearningPathPage() {
             ← Dashboard
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Learning Path</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Your full curriculum -- topic by topic.</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Your full curriculum -- topic by topic.
+          </p>
         </div>
       </div>
 
@@ -235,9 +221,7 @@ export default async function LearningPathPage() {
       {timelineData && (
         <div className="flex items-center gap-3 mb-6">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">
-            Full curriculum map
-          </span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">Full curriculum map</span>
           <div className="flex-1 h-px bg-border" />
         </div>
       )}
@@ -245,9 +229,7 @@ export default async function LearningPathPage() {
       {subjects.length === 0 && curriculumFallback.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <p className="text-sm">Teacher Vidya is building your personalised plan.</p>
-          <p className="text-xs mt-1">
-            This usually takes a few minutes -- go back to the dashboard and refresh to check.
-          </p>
+          <p className="text-xs mt-1">This usually takes a few minutes -- go back to the dashboard and refresh to check.</p>
           <Link
             href="/dashboard"
             className="inline-flex min-h-[44px] items-center justify-center mt-4 rounded-xl border border-[#534AB7] text-[#534AB7] dark:text-indigo-300 px-5 text-sm font-semibold hover:bg-[#534AB7]/10 transition-colors"
@@ -282,32 +264,31 @@ export default async function LearningPathPage() {
           })}
 
           {/* Curriculum fallback: show full topic list when learning plan not yet generated */}
-          {subjects.length === 0 &&
-            curriculumFallback.map((subject) => {
-              const totalTopics = subject.chapters.reduce((n, ch) => n + ch.topics.length, 0);
-              const chapters = subject.chapters.map((ch) => ({
-                chapterId: ch.chapterId,
-                chapterName: ch.chapterName,
-                topics: ch.topics.map((t) => ({
-                  topicId: t.topicId,
-                  topicName: t.topicName,
-                  mastery: masteryMap.get(t.topicId) ?? null,
-                  isInProgress: inProgressMap.has(t.topicId),
-                  sessionId: inProgressMap.get(t.topicId),
-                })),
-              }));
+          {subjects.length === 0 && curriculumFallback.map((subject) => {
+            const totalTopics = subject.chapters.reduce((n, ch) => n + ch.topics.length, 0);
+            const chapters = subject.chapters.map((ch) => ({
+              chapterId: ch.chapterId,
+              chapterName: ch.chapterName,
+              topics: ch.topics.map((t) => ({
+                topicId: t.topicId,
+                topicName: t.topicName,
+                mastery: masteryMap.get(t.topicId) ?? null,
+                isInProgress: inProgressMap.has(t.topicId),
+                sessionId: inProgressMap.get(t.topicId),
+              })),
+            }));
 
-              return (
-                <SubjectSection
-                  key={subject.subjectId}
-                  subjectId={subject.subjectId}
-                  subjectName={subject.name}
-                  chapters={chapters}
-                  completedTopics={0}
-                  totalTopics={totalTopics}
-                />
-              );
-            })}
+            return (
+              <SubjectSection
+                key={subject.subjectId}
+                subjectId={subject.subjectId}
+                subjectName={subject.name}
+                chapters={chapters}
+                completedTopics={0}
+                totalTopics={totalTopics}
+              />
+            );
+          })}
         </div>
       )}
     </div>

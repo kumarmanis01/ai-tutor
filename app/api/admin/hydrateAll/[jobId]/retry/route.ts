@@ -13,10 +13,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { JobStatus } from '@/lib/ai-engine/types';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   try {
     const { jobId } = await params;
 

@@ -144,10 +144,10 @@ export default function CascadingFilters({
 }: CascadingFiltersProps) {
   // Single hierarchy fetch with session caching
   const { hierarchy, loading, helpers } = useAcademicHierarchy();
-
+  
   // User profile for auto-initialization (only fetched if useProfileDefaults is true)
   const { data: profile, loading: profileLoading } = useCurrentUser();
-
+  
   // Track if we've already initialized from profile to avoid re-initializing
   const hasInitializedFromProfile = useRef(false);
 
@@ -274,7 +274,7 @@ export default function CascadingFilters({
   useEffect(() => {
     if (!useProfileDefaults || profileLoading || hasInitializedFromProfile.current) return;
     if (!profile) return;
-
+    
     // Only initialize if no selections have been made yet
     const isEmpty = !value.language && !value.boardSlug && !value.boardId;
     if (!isEmpty) {
@@ -283,15 +283,13 @@ export default function CascadingFilters({
     }
 
     hasInitializedFromProfile.current = true;
-
+    
     // Initialize from profile
-    onChange(
-      createFilterStateFromProfile({
-        language: profile.language,
-        board: profile.board,
-        grade: profile.grade,
-      })
-    );
+    onChange(createFilterStateFromProfile({
+      language: profile.language,
+      board: profile.board,
+      grade: profile.grade,
+    }));
   }, [useProfileDefaults, profile, profileLoading, value, onChange]);
 
   // Auto-resolve IDs when hierarchy loads and we have slugs/numbers

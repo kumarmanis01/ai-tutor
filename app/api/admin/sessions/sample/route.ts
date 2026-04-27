@@ -1,35 +1,35 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSessionForHandlers } from '@/lib/session';
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSessionForHandlers } from '@/lib/session'
 
-const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000
 
 function getYesterdayIstBounds() {
-  const nowIst = new Date(Date.now() + IST_OFFSET_MS);
-  const todayMidnight = new Date(nowIst);
-  todayMidnight.setUTCHours(0, 0, 0, 0);
-  const yesterdayMidnight = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
+  const nowIst = new Date(Date.now() + IST_OFFSET_MS)
+  const todayMidnight = new Date(nowIst)
+  todayMidnight.setUTCHours(0, 0, 0, 0)
+  const yesterdayMidnight = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000)
   return {
     start: new Date(yesterdayMidnight.getTime() - IST_OFFSET_MS),
     end: new Date(todayMidnight.getTime() - IST_OFFSET_MS),
-  };
+  }
 }
 
 type SessionRow = {
-  id: string;
-  studentId: string;
-  startedAt: Date;
-  completedAt: Date | null;
-  turnCount: number;
-};
+  id: string
+  studentId: string
+  startedAt: Date
+  completedAt: Date | null
+  turnCount: number
+}
 
 export async function GET() {
-  const session = await getServerSessionForHandlers();
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { start, end } = getYesterdayIstBounds();
+  const { start, end } = getYesterdayIstBounds()
 
   const [rows, totalRow] = await Promise.all([
     prisma.$queryRaw<SessionRow[]>`
@@ -47,9 +47,9 @@ export async function GET() {
       JOIN "AITutorTurnLog" t ON t."sessionId" = s.id
       WHERE s."startedAt" >= ${start} AND s."startedAt" < ${end}
     `,
-  ]);
+  ])
 
-  const totalYesterday = Number(totalRow[0]?.count ?? 0);
+  const totalYesterday = Number(totalRow[0]?.count ?? 0)
 
   const sessions = await Promise.all(
     rows.map(async (row) => {
@@ -65,11 +65,11 @@ export async function GET() {
           qualityFlag: true,
           createdAt: true,
         },
-      });
-      return { ...row, turns };
-    })
-  );
+      })
+      return { ...row, turns }
+    }),
+  )
 
-  const date = start.toISOString().slice(0, 10);
-  return NextResponse.json({ sessions, date, totalYesterday });
+  const date = start.toISOString().slice(0, 10)
+  return NextResponse.json({ sessions, date, totalYesterday })
 }

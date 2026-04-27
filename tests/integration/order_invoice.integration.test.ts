@@ -63,9 +63,7 @@ describe('Order → Verify → Invoice integration', () => {
     }
 
     // Create a test user
-    const user = await prisma.user.create({
-      data: { name: 'Test Parent', email: 'parent-invoice@test.local', language: 'en' },
-    });
+    const user = await prisma.user.create({ data: { name: 'Test Parent', email: 'parent-invoice@test.local', language: 'en' } });
     userId = user.id;
 
     // Create a paymentOrder row
@@ -123,9 +121,7 @@ describe('Order → Verify → Invoice integration', () => {
     expect(payment).toBeTruthy();
 
     // Find invoice linked to the payment (use raw query to avoid Prisma schema vs DB drift)
-    const rows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT * FROM "Invoice" WHERE "paymentId" = '${payment!.id}' LIMIT 1`
-    );
+    const rows: any[] = await prisma.$queryRawUnsafe(`SELECT * FROM "Invoice" WHERE "paymentId" = '${payment!.id}' LIMIT 1`);
     const invoice = rows[0] ?? null;
 
     // Invoice creation may fail in some test DBs where migrations or optional

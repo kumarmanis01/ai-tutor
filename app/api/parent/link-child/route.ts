@@ -15,16 +15,16 @@
  * - 2026-04-12T12:00:00Z | copilot | use FAMILY_MAX_CHILDREN constant from billing constants
  */
 
-import { NextResponse } from 'next/server';
-import { getServerSessionForHandlers } from '@/lib/session';
-import { getRedis } from '@/lib/redis';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { sendMailSafe } from '@/lib/mailer';
-import { sendSms } from '@/lib/sms';
-import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants';
+import { NextResponse } from 'next/server'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { getRedis } from '@/lib/redis'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { sendMailSafe } from '@/lib/mailer'
+import { sendSms } from '@/lib/sms'
+import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/parent/link-child
@@ -37,65 +37,63 @@ export const dynamic = 'force-dynamic';
  * Returns: { linked: true, studentName }
  */
 export async function POST(req: Request) {
-  const start = Date.now();
-  const session = await getServerSessionForHandlers();
-  const parentId = (session?.user as { id?: string })?.id;
+  const start = Date.now()
+  const session = await getServerSessionForHandlers()
+  const parentId = (session?.user as { id?: string })?.id
   if (!parentId) {
-    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-    return res;
+    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+    return res
   }
 
-  let body: unknown;
+  let body: unknown
   try {
-    body = await req.json();
+    body = await req.json()
   } catch {
-    const res = NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-    return res;
+    const res = NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+    return res
   }
 
-  const inviteToken =
-    typeof (body as any)?.inviteToken === 'string' ? (body as any).inviteToken.trim() : '';
+  const inviteToken = typeof (body as any)?.inviteToken === 'string'
+    ? (body as any).inviteToken.trim()
+    : ''
   if (!inviteToken) {
-    const res = NextResponse.json({ error: 'inviteToken required' }, { status: 400 });
-    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-    return res;
+    const res = NextResponse.json({ error: 'inviteToken required' }, { status: 400 })
+    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+    return res
   }
 
-  const redis = getRedis();
+  const redis = getRedis()
   if (!redis) {
-    const res = NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
-    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-    return res;
+    const res = NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 })
+    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+    return res
   }
 
-  const key = `parent_invite:${inviteToken}`;
-  const studentId = await redis.get(key);
+  const key = `parent_invite:${inviteToken}`
+  const studentId = await redis.get(key)
 
   if (!studentId) {
-    const res = NextResponse.json(
-      { error: 'Invite link is invalid or has expired' },
-      { status: 404 }
-    );
-    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-    return res;
+    const res = NextResponse.json({ error: 'Invite link is invalid or has expired' }, { status: 404 })
+    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+    return res
   }
 
   if (studentId === parentId) {
-    const res = NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 });
-    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-    return res;
+    const res = NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 })
+    logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+    return res
   }
 
   // Burn the token (single-use)
-  await redis.del(key);
+  await redis.del(key)
 
   // Upsert ParentStudent row
   const existing = await prisma.parentStudent.findUnique({
     where: { parentId_studentId: { parentId, studentId } },
     select: { id: true, status: true },
-  });
+  })
 
   // Enforce server-side cap: max FAMILY_MAX_CHILDREN active child links per parent
   // If this link is already active, allow; otherwise, count other active links
@@ -105,15 +103,12 @@ export async function POST(req: Request) {
       studentId: { not: studentId },
       status: 'active',
     },
-  });
+  })
   if (!existing || existing.status === 'revoked') {
     if (activeCount >= FAMILY_MAX_CHILDREN) {
-      const res = NextResponse.json(
-        { error: `Parent already has maximum linked children (${FAMILY_MAX_CHILDREN})` },
-        { status: 409 }
-      );
-      logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-      return res;
+      const res = NextResponse.json({ error: `Parent already has maximum linked children (${FAMILY_MAX_CHILDREN})` }, { status: 409 })
+      logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+      return res
     }
   }
 
@@ -123,74 +118,70 @@ export async function POST(req: Request) {
     await prisma.parentStudent.update({
       where: { id: existing.id },
       data: { status: 'active' },
-    });
+    })
   } else if (!existing) {
     await prisma.parentStudent.create({
       data: { parentId, studentId, status: 'active' },
-    });
+    })
   }
 
   // Promote caller to parent role if they're still a regular user
   const parentUser = await prisma.user.findUnique({
     where: { id: parentId },
     select: { role: true, email: true, phone: true, name: true },
-  });
-  let promoted = false;
+  })
+  let promoted = false
   if (parentUser?.role === 'user') {
-    await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } });
-    promoted = true;
+    await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } })
+    promoted = true
   }
 
   if (promoted) {
-    logger.info('Promoted user to parent role', { className: 'LinkChildAPI', parentId });
+    logger.info('Promoted user to parent role', { className: 'LinkChildAPI', parentId })
   }
 
   // Fetch student name for response
   const student = await prisma.user.findUnique({
     where: { id: studentId },
     select: { name: true },
-  });
+  })
 
   // Audit log (non-fatal) -- best-effort, log failures
-  prisma.auditLog
-    .create({
-      data: {
-        adminId: parentId,
-        targetEntity: 'User',
-        targetId: studentId,
-        action: null,
-        details: { legacyAction: 'parent_link_student', parentId, method: 'redis_invite_token' },
-      },
-    })
-    .catch((err) =>
-      logger.debug('auditLog.create failed', { className: 'LinkChildAPI', error: String(err) })
-    );
+  prisma.auditLog.create({
+    data: {
+      adminId: parentId,
+      targetEntity: 'User',
+      targetId: studentId,
+      action: null,
+      details: { legacyAction: 'parent_link_student', parentId, method: 'redis_invite_token' },
+    },
+  }).catch((err) => logger.debug('auditLog.create failed', { className: 'LinkChildAPI', error: String(err) }))
 
   // Send welcome/confirmation notifications to the parent (best-effort)
   try {
-    const parentEmail = parentUser?.email;
-    const parentPhone = parentUser?.phone;
-    const parentName = parentUser?.name ?? 'Parent';
-    const studentName = student?.name ?? 'your child';
+    const parentEmail = parentUser?.email
+    const parentPhone = parentUser?.phone
+    const parentName = parentUser?.name ?? 'Parent'
+    const studentName = student?.name ?? 'your child'
     if (parentEmail) {
       await sendMailSafe({
         to: parentEmail,
         subject: `Welcome -- linked to ${studentName}`,
         html: `<p>Hi ${parentName},</p><p>You are now linked to ${studentName} on Spinzy.</p><p>If this wasn't you, contact support.</p>`,
-      });
+      })
     }
     if (parentPhone) {
-      await sendSms(parentPhone, `You're now linked to ${studentName} on Spinzy Academy.`);
+      await sendSms(parentPhone, `You're now linked to ${studentName} on Spinzy Academy.`)
     }
   } catch (err) {
     // best-effort only
-    logger.error('[link-child] welcome notification suppressed', { error: err });
+    logger.error('[link-child] welcome notification suppressed', { error: err })
   }
 
   const res = NextResponse.json(
     { linked: true, studentName: student?.name ?? 'Student' },
-    { status: 200 }
-  );
-  logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start);
-  return res;
+    { status: 200 },
+  )
+  logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+  return res
 }

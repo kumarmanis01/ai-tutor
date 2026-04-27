@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
-import { getServerSessionForHandlers } from '@/lib/session';
-import { prisma } from '@/lib/prisma';
-import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent';
-import { rankTopics } from '@/lib/recommendations/topicRanker';
-import { logger } from '@/lib/logger';
+import { NextResponse } from 'next/server'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent'
+import { rankTopics } from '@/lib/recommendations/topicRanker'
+import { logger } from '@/lib/logger'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/student/surprise-me
@@ -15,13 +15,13 @@ export const dynamic = 'force-dynamic';
  * practiceCount > 5). If none found, fallback to the TopicRanker top result.
  */
 export async function GET(req: Request) {
-  const start = Date.now();
-  const session = await getServerSessionForHandlers();
-  const userId = (session?.user as { id?: string })?.id;
+  const start = Date.now()
+  const session = await getServerSessionForHandlers()
+  const userId = (session?.user as { id?: string })?.id
   if (!userId) {
-    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start);
-    return res;
+    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
+    return res
   }
 
   try {
@@ -34,10 +34,10 @@ export async function GET(req: Request) {
           include: { chapter: { include: { subject: true } } },
         },
       },
-    });
+    })
 
     if (weak) {
-      const topic = weak.topic;
+      const topic = weak.topic
       const action = {
         topicId: topic.id,
         topicName: topic.name,
@@ -46,16 +46,16 @@ export async function GET(req: Request) {
         ruleId: 'surprise_me',
         reasonLabel: `Try strengthening ${topic.name}`,
         actionType: 'practice',
-      };
-      const res = NextResponse.json({ action, source: 'surprise_me' }, { status: 200 });
-      logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start);
-      return res;
+      }
+      const res = NextResponse.json({ action, source: 'surprise_me' }, { status: 200 })
+      logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
+      return res
     }
 
     // 2. Fallback: use TopicRanker (similar to P5 in getNextAction)
-    const ordered = await getOrderedTopicsForStudent(userId);
-    const scored = await rankTopics(userId, { preloadedOrderedTopics: ordered });
-    const best = scored?.[0];
+    const ordered = await getOrderedTopicsForStudent(userId)
+    const scored = await rankTopics(userId, { preloadedOrderedTopics: ordered })
+    const best = scored?.[0]
     if (best) {
       const action = {
         topicId: best.topicId,
@@ -65,19 +65,19 @@ export async function GET(req: Request) {
         ruleId: 'surprise_me_fallback',
         reasonLabel: `Try ${best.topicName}`,
         actionType: 'notes',
-      };
-      const res = NextResponse.json({ action, source: 'surprise_me' }, { status: 200 });
-      logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start);
-      return res;
+      }
+      const res = NextResponse.json({ action, source: 'surprise_me' }, { status: 200 })
+      logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
+      return res
     }
 
-    const res = NextResponse.json({ action: null, source: 'surprise_me' }, { status: 204 });
-    logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start);
-    return res;
+    const res = NextResponse.json({ action: null, source: 'surprise_me' }, { status: 204 })
+    logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
+    return res
   } catch (err) {
-    logger.error('[surprise-me] error', { userId, error: String((err as any)?.message ?? err) });
-    const res = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start);
-    return res;
+    logger.error('[surprise-me] error', { userId, error: String((err as any)?.message ?? err) })
+    const res = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
+    return res
   }
 }

@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const studyDaysRaw = Number(body.studyDaysPerWeek);
     const studyDaysPerWeek =
-      Number.isInteger(studyDaysRaw) && studyDaysRaw >= 1 && studyDaysRaw <= 7 ? studyDaysRaw : 5;
+      Number.isInteger(studyDaysRaw) && studyDaysRaw >= 1 && studyDaysRaw <= 7
+        ? studyDaysRaw
+        : 5;
 
     let examDate: Date | null = null;
     if (body.examDate && typeof body.examDate === 'string') {
@@ -229,13 +231,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({
-      ok: true,
-      firstSubjectId,
-      diagnosticReady,
-      belowMinimumHours,
-      weeklyMinutes,
-    });
+    const res = NextResponse.json({ ok: true, firstSubjectId, diagnosticReady, belowMinimumHours, weeklyMinutes });
     logger.logAPI(req, res, { className: 'GeneratePlanAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {

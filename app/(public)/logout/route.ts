@@ -13,10 +13,7 @@ export async function GET() {
   // NextAuth's /api/auth/signout?callbackUrl=/ handles cookie clearing.
   // Using a 302 redirect keeps the request cycle server-side.
   return NextResponse.redirect(
-    new URL(
-      '/api/auth/signout?callbackUrl=%2F',
-      process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
-    ),
-    { status: 302 }
+    new URL('/api/auth/signout?callbackUrl=%2F', process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
+    { status: 302 },
   );
 }

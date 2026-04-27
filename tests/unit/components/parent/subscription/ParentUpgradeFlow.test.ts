@@ -13,10 +13,10 @@
  * - 2026-04-13T05:00:00Z | copilot | add minimal import/test matching Jest testMatch
  */
 
-import ParentUpgradeFlow from '@/components/parent/subscription/ParentUpgradeFlow';
+import ParentUpgradeFlow from '@/components/parent/subscription/ParentUpgradeFlow'
 
 describe('ParentUpgradeFlow (sanity)', () => {
   it('exports a component function', () => {
-    expect(typeof ParentUpgradeFlow).toBe('function');
-  });
-});
+    expect(typeof ParentUpgradeFlow).toBe('function')
+  })
+})

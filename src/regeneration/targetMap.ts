@@ -1,1 +1,1 @@
-export * from '../../regeneration/targetMap';
+export * from '../../regeneration/targetMap'
