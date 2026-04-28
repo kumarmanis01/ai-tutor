@@ -1,6 +1,5 @@
 const { prisma } = require('../lib/prisma');
 
-
 async function main() {
   const boardsCount = await prisma.board.count();
   const classCount = await prisma.classLevel.count();
@@ -29,5 +28,10 @@ async function main() {
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

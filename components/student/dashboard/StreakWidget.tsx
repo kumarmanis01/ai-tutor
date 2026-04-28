@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 /**
  * StreakWidget -- Task 30
@@ -11,134 +11,141 @@
  * Forward-looking tone only.
  */
 
-import React, { useEffect, useRef } from 'react'
-import useSWR from 'swr'
-import { COSMETIC_ITEMS } from '@/lib/student/cosmetics'
+import React, { useEffect, useRef } from 'react';
+import useSWR from 'swr';
+import { COSMETIC_ITEMS } from '@/lib/student/cosmetics';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type TopbarStats = {
-  streak: number
-  longestStreak?: number
-  level: number
-  shieldAvailable: boolean
-  cosmeticUnlocks: string[]
-}
+  streak: number;
+  longestStreak?: number;
+  level: number;
+  shieldAvailable: boolean;
+  cosmeticUnlocks: string[];
+};
 
 /** Returns the last 7 calendar dates as YYYY-MM-DD strings, ending with today (UTC). */
 function lastSevenDays(now: Date): string[] {
-  const days: string[] = []
+  const days: string[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i))
-    days.push(d.toISOString().split('T')[0])
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+    days.push(d.toISOString().split('T')[0]);
   }
-  return days
+  return days;
 }
 
 /** Short day label (Mon-Sun) for a YYYY-MM-DD date string. */
 function dayLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00Z')
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()]
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()];
 }
 
 type ActivityData = {
-  activeDates: string[] // YYYY-MM-DD strings of days with a qualifying session
-}
+  activeDates: string[]; // YYYY-MM-DD strings of days with a qualifying session
+};
 
 type Props = {
   /** Called when the user taps outside or a close action fires */
-  onClose: () => void
-}
+  onClose: () => void;
+};
 
 export default function StreakWidget({ onClose }: Props) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLDivElement>(null);
 
   // Stats come from the same endpoint Topbar already fetches (60s SWR cache).
-  const { data: stats, error: statsError, mutate: mutateStats } = useSWR<TopbarStats>(
-    '/api/student/topbar-stats',
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  )
+  const {
+    data: stats,
+    error: statsError,
+    mutate: mutateStats,
+  } = useSWR<TopbarStats>('/api/student/topbar-stats', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
 
   // Lightweight endpoint: dates that had a qualifying session in the last 7 days.
-  const { data: activity, error: actError, mutate: mutateActivity } = useSWR<ActivityData>(
-    '/api/student/streak-activity',
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  )
+  const {
+    data: activity,
+    error: actError,
+    mutate: mutateActivity,
+  } = useSWR<ActivityData>('/api/student/streak-activity', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
 
   // Close on outside click
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose()
+        onClose();
       }
     }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [onClose])
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [onClose]);
 
   // Close on Escape
   useEffect(() => {
     function handle(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onClose();
     }
-    document.addEventListener('keydown', handle)
-    return () => document.removeEventListener('keydown', handle)
-  }, [onClose])
+    document.addEventListener('keydown', handle);
+    return () => document.removeEventListener('keydown', handle);
+  }, [onClose]);
 
   // Focus trap: keep focus inside the popover while open
   useEffect(() => {
-    const node = ref.current
-    if (!node) return
+    const node = ref.current;
+    if (!node) return;
 
-    const focusableSelector = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-    const focusable = Array.from(node.querySelectorAll<HTMLElement>(focusableSelector))
+    const focusableSelector =
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+    const focusable = Array.from(node.querySelectorAll<HTMLElement>(focusableSelector));
     if (focusable.length) {
       // move focus to the first focusable element inside the popover
       try {
-        focusable[0].focus()
+        focusable[0].focus();
       } catch {
         // ignore
       }
     }
 
     function handleKey(e: KeyboardEvent) {
-      if (e.key !== 'Tab') return
+      if (e.key !== 'Tab') return;
       if (focusable.length === 0) {
-        e.preventDefault()
-        return
+        e.preventDefault();
+        return;
       }
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
       if (e.shiftKey) {
         if (document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
+          e.preventDefault();
+          last.focus();
         }
       } else {
         if (document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
+          e.preventDefault();
+          first.focus();
         }
       }
     }
 
-    node.addEventListener('keydown', handleKey)
-    return () => node.removeEventListener('keydown', handleKey)
-  }, [ref])
+    node.addEventListener('keydown', handleKey);
+    return () => node.removeEventListener('keydown', handleKey);
+  }, [ref]);
 
-  const loading = !stats && !statsError
-  const error = !!statsError || !!actError
+  const loading = !stats && !statsError;
+  const error = !!statsError || !!actError;
 
-  const streak = stats?.streak ?? 0
-  const best = stats?.longestStreak ?? streak
-  const shieldAvailable = stats?.shieldAvailable ?? false
-  const unlockedKeys = new Set<string>(stats?.cosmeticUnlocks ?? [])
+  const streak = stats?.streak ?? 0;
+  const best = stats?.longestStreak ?? streak;
+  const shieldAvailable = stats?.shieldAvailable ?? false;
+  const unlockedKeys = new Set<string>(stats?.cosmeticUnlocks ?? []);
 
-  const todayStr = new Date().toISOString().split('T')[0]
-  const calendarDays = lastSevenDays(new Date())
-  const activeSet = new Set<string>(activity?.activeDates ?? [])
+  const todayStr = new Date().toISOString().split('T')[0];
+  const calendarDays = lastSevenDays(new Date());
+  const activeSet = new Set<string>(activity?.activeDates ?? []);
 
   // ── Loading skeleton ────────────────────────────────────────────────────────
   if (loading) {
@@ -151,16 +158,18 @@ export default function StreakWidget({ onClose }: Props) {
       >
         <div className="h-7 bg-gray-200 dark:bg-gray-700 rounded-lg w-1/2 mb-4" />
         <div className="flex gap-1.5 mb-4">
-          {Array(7).fill(0).map((_, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5" />
-              <div className="w-full aspect-square rounded-xl bg-gray-200 dark:bg-gray-700" />
-            </div>
-          ))}
+          {Array(7)
+            .fill(0)
+            .map((_, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5" />
+                <div className="w-full aspect-square rounded-xl bg-gray-200 dark:bg-gray-700" />
+              </div>
+            ))}
         </div>
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto" />
       </div>
-    )
+    );
   }
 
   // ── Error state ─────────────────────────────────────────────────────────────
@@ -175,12 +184,15 @@ export default function StreakWidget({ onClose }: Props) {
         </p>
         <button
           className="text-sm font-semibold text-[#534AB7] min-h-[44px] min-w-[44px] px-4"
-          onClick={() => { void mutateStats(); void mutateActivity() }}
+          onClick={() => {
+            void mutateStats();
+            void mutateActivity();
+          }}
         >
           Retry
         </button>
       </div>
-    )
+    );
   }
 
   // ── Empty state (streak = 0) ─────────────────────────────────────────────────
@@ -220,7 +232,7 @@ export default function StreakWidget({ onClose }: Props) {
           Start today&apos;s lesson
         </a>
       </div>
-    )
+    );
   }
 
   // ── Populated state ─────────────────────────────────────────────────────────
@@ -254,8 +266,8 @@ export default function StreakWidget({ onClose }: Props) {
       {/* 7-day mini calendar */}
       <div className="flex gap-1.5 mb-3">
         {calendarDays.map((date) => {
-          const isToday = date === todayStr
-          const isActive = activeSet.has(date)
+          const isToday = date === todayStr;
+          const isActive = activeSet.has(date);
           return (
             <div key={date} className="flex-1 flex flex-col items-center gap-1">
               <span
@@ -274,18 +286,19 @@ export default function StreakWidget({ onClose }: Props) {
                   isActive
                     ? 'bg-[#534AB7] dark:bg-[#534AB7]'
                     : isToday
-                    ? 'bg-gray-100 dark:bg-gray-800 ring-2 ring-[#1D9E75] ring-offset-1 ring-offset-white dark:ring-offset-gray-900'
-                    : 'bg-gray-100 dark:bg-gray-800',
+                      ? 'bg-gray-100 dark:bg-gray-800 ring-2 ring-[#1D9E75] ring-offset-1 ring-offset-white dark:ring-offset-gray-900'
+                      : 'bg-gray-100 dark:bg-gray-800',
                 ].join(' ')}
               />
             </div>
-          )
+          );
         })}
       </div>
 
       {/* Best streak */}
       <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-        Your best streak: <span className="font-semibold text-gray-700 dark:text-gray-200">{best} days</span>
+        Your best streak:{' '}
+        <span className="font-semibold text-gray-700 dark:text-gray-200">{best} days</span>
       </p>
 
       {/* Shield info */}
@@ -302,7 +315,7 @@ export default function StreakWidget({ onClose }: Props) {
         </p>
         <div className="flex gap-1.5">
           {COSMETIC_ITEMS.map((item) => {
-            const earned = unlockedKeys.has(item.key)
+            const earned = unlockedKeys.has(item.key);
             return (
               <div
                 key={item.key}
@@ -321,17 +334,21 @@ export default function StreakWidget({ onClose }: Props) {
                 >
                   {item.streakMilestone}
                 </div>
-                <span className={[
-                  'text-[9px] leading-none text-center',
-                  earned ? 'text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-slate-600',
-                ].join(' ')}>
+                <span
+                  className={[
+                    'text-[9px] leading-none text-center',
+                    earned
+                      ? 'text-gray-700 dark:text-gray-300'
+                      : 'text-gray-300 dark:text-slate-600',
+                  ].join(' ')}
+                >
                   {item.streakMilestone}d
                 </span>
               </div>
-            )
+            );
           })}
         </div>
       </div>
     </div>
-  )
+  );
 }

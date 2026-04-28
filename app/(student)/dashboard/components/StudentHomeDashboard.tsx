@@ -32,7 +32,9 @@ import { HomeTab } from './home';
 import { DoubtsTab } from './doubts';
 import { TestNudgeFloating } from '@/components/TestNudgePrompt';
 
-interface StudentHomeDashboardProps { [key: string]: unknown }
+interface StudentHomeDashboardProps {
+  [key: string]: unknown;
+}
 
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
@@ -58,11 +60,25 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   // Use global loader overlay while canonical profile is being fetched.
   useEffect(() => {
     if (loading && !profile) {
-      try { startLoading('Loading...'); } catch { /* ignore */ }
+      try {
+        startLoading('Loading...');
+      } catch {
+        /* ignore */
+      }
     } else {
-      try { stopLoading(); } catch { /* ignore */ }
+      try {
+        stopLoading();
+      } catch {
+        /* ignore */
+      }
     }
-    return () => { try { stopLoading(); } catch { /* ignore */ } };
+    return () => {
+      try {
+        stopLoading();
+      } catch {
+        /* ignore */
+      }
+    };
   }, [loading, profile, startLoading, stopLoading]);
 
   // Chat-related effects intentionally omitted from Home
@@ -70,7 +86,14 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   // Tab content renderer
   const renderTabContent = () => {
     if (activeTab === 'profile') return <ProfilePage />;
-    if (activeTab === 'tests') return <TestsTab subject={subject} grade={profile?.grade ?? undefined} board={profile?.board ?? undefined} />;
+    if (activeTab === 'tests')
+      return (
+        <TestsTab
+          subject={subject}
+          grade={profile?.grade ?? undefined}
+          board={profile?.board ?? undefined}
+        />
+      );
     if (activeTab === 'notes') return <NotesTab />;
     if (activeTab === 'doubts') return <DoubtsTab />;
 

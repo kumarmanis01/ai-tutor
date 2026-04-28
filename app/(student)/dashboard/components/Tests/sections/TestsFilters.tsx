@@ -32,7 +32,7 @@ export function TestsFilters() {
         refresh(slug, gradeNum ? String(gradeNum) : undefined, boardSlug ?? undefined);
       }
     },
-    [refresh, gradeNum, boardSlug],
+    [refresh, gradeNum, boardSlug]
   );
 
   return (

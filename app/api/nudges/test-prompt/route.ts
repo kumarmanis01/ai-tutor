@@ -26,12 +26,12 @@ const CLASS_NAME = 'TestNudgeAPI';
 /**
  * Nudge types for different learning milestones
  */
-export type NudgeType = 
+export type NudgeType =
   | 'lessons_completed' // Completed X lessons, time for a test
-  | 'topic_mastery'     // Finished all lessons in a topic
-  | 'weekly_review'     // Weekly review reminder
-  | 'streak_check'      // Check understanding after streak
-  | 'idle_return'       // Returning after period of inactivity
+  | 'topic_mastery' // Finished all lessons in a topic
+  | 'weekly_review' // Weekly review reminder
+  | 'streak_check' // Check understanding after streak
+  | 'idle_return'; // Returning after period of inactivity
 
 interface TestNudge {
   type: NudgeType;
@@ -113,12 +113,15 @@ export async function GET(req: NextRequest) {
 
     // 2. Weekly review nudge -- no test in last 5 days
     const lastTest = recentTestResults[0];
-    if (!lastTest || Date.now() - new Date(lastTest.createdAt).getTime() > 5 * 24 * 60 * 60 * 1000) {
+    if (
+      !lastTest ||
+      Date.now() - new Date(lastTest.createdAt).getTime() > 5 * 24 * 60 * 60 * 1000
+    ) {
       if (lessonProgress.length > 0) {
         nudges.push({
           type: 'weekly_review',
           title: 'Quick refresh?',
-          message: "A little revision goes a long way. Try a quick round to keep things fresh!",
+          message: 'A little revision goes a long way. Try a quick round to keep things fresh!',
           priority: 'medium',
           actionUrl: '/tests?type=review',
           dismissable: true,
@@ -162,7 +165,9 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.json({
       nudges: topNudges,
-      nextCheckAt: new Date(Date.now() + NUDGE_CONFIG.MIN_HOURS_BETWEEN_NUDGES * 60 * 60 * 1000).toISOString(),
+      nextCheckAt: new Date(
+        Date.now() + NUDGE_CONFIG.MIN_HOURS_BETWEEN_NUDGES * 60 * 60 * 1000
+      ).toISOString(),
     });
     logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
     return response;

@@ -40,12 +40,12 @@ To prevent:
 
 🧱 Phase 7 Sub-Phases (Execution Order)
 Phase 7
- ├─ 7.1 Lesson Schema
- ├─ 7.2 Lesson Generator
- ├─ 7.3 Quiz Schema + Generator
- ├─ 7.4 Project / Assignment Generator
- ├─ 7.5 Content Approval Workflow
- └─ 7.6 Content Packaging (Course View)
+├─ 7.1 Lesson Schema
+├─ 7.2 Lesson Generator
+├─ 7.3 Quiz Schema + Generator
+├─ 7.4 Project / Assignment Generator
+├─ 7.5 Content Approval Workflow
+└─ 7.6 Content Packaging (Course View)
 
 Each sub-phase is independently testable.
 
@@ -59,12 +59,12 @@ Lesson Schema Design
 Conceptual model
 
 Course
- └─ Module
-     └─ Lesson
-         ├─ Explanation
-         ├─ Examples
-         ├─ Key Takeaways
-         ├─ Practice Prompt
+└─ Module
+└─ Lesson
+├─ Explanation
+├─ Examples
+├─ Key Takeaways
+├─ Practice Prompt
 
 TypeScript Types
 
@@ -72,36 +72,36 @@ TypeScript Types
 
 ```ts
 export interface Lesson {
-  id: string
-  syllabusId: string
-  moduleId: string
-  lessonIndex: number
+  id: string;
+  syllabusId: string;
+  moduleId: string;
+  lessonIndex: number;
 
-  title: string
-  durationMinutes: number
+  title: string;
+  durationMinutes: number;
 
-  objectives: string[]
+  objectives: string[];
 
   explanation: {
-    overview: string
+    overview: string;
     concepts: {
-      title: string
-      explanation: string
-      example?: string
-    }[]
-  }
+      title: string;
+      explanation: string;
+      example?: string;
+    }[];
+  };
 
-  keyTakeaways: string[]
+  keyTakeaways: string[];
 
   practice: {
-    prompt: string
-    expectedOutcome: string
-  }
+    prompt: string;
+    expectedOutcome: string;
+  };
 
   metadata: {
-    level: "beginner" | "intermediate" | "advanced"
-    prerequisites?: string[]
-  }
+    level: 'beginner' | 'intermediate' | 'advanced';
+    prerequisites?: string[];
+  };
 }
 ```
 
@@ -110,7 +110,7 @@ Zod Schema
 📄 lib/content/lesson/schema.ts
 
 ```ts
-import { z } from "zod"
+import { z } from 'zod';
 
 export const LessonSchema = z.object({
   id: z.string(),
@@ -125,27 +125,29 @@ export const LessonSchema = z.object({
 
   explanation: z.object({
     overview: z.string().min(50),
-    concepts: z.array(
-      z.object({
-        title: z.string(),
-        explanation: z.string().min(50),
-        example: z.string().optional()
-      })
-    ).min(1)
+    concepts: z
+      .array(
+        z.object({
+          title: z.string(),
+          explanation: z.string().min(50),
+          example: z.string().optional(),
+        })
+      )
+      .min(1),
   }),
 
   keyTakeaways: z.array(z.string()).min(2),
 
   practice: z.object({
     prompt: z.string().min(30),
-    expectedOutcome: z.string().min(30)
+    expectedOutcome: z.string().min(30),
   }),
 
   metadata: z.object({
-    level: z.enum(["beginner", "intermediate", "advanced"]),
-    prerequisites: z.array(z.string()).optional()
-  })
-})
+    level: z.enum(['beginner', 'intermediate', 'advanced']),
+    prerequisites: z.array(z.string()).optional(),
+  }),
+});
 ```
 
 🟦 Phase 7.2 — Lesson Generator (Controlled AI)
@@ -196,7 +198,7 @@ Input:
 ${JSON.stringify(input, null, 2)}
 
 Return an array of Lesson objects.
-`
+`;
 }
 ```
 
@@ -205,13 +207,14 @@ Generator Logic
 📄 generator.ts
 
 ```ts
-const raw = await llm.generate(prompt)
-const parsed = JSON.parse(raw)
-const lessons = parsed.map(validateLesson)
-return lessons
+const raw = await llm.generate(prompt);
+const parsed = JSON.parse(raw);
+const lessons = parsed.map(validateLesson);
+return lessons;
 ```
 
 Notes:
+
 - Do not implement generation logic yet — this section is the contract and prompt guidance only.
 
 🟦 Phase 7.3 — Quiz Generator
@@ -224,17 +227,18 @@ Quiz Schema (Simple & Safe)
 
 ```ts
 export interface Quiz {
-  lessonId: string
+  lessonId: string;
   questions: {
-    question: string
-    options: string[]
-    correctIndex: number
-    explanation: string
-  }[]
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+  }[];
 }
 ```
 
 Zod enforces:
+
 1. 4 options
 2. correctIndex ∈ [0–3]
 
@@ -265,12 +269,12 @@ Projects must be:
 🧱 Phase 7.4 — Data Model
 Conceptual Structure
 Course
- └─ Module
-   └─ Project / Assignment
-     ├─ Problem Statement
-     ├─ Constraints
-     ├─ Deliverables
-     ├─ Evaluation Rubric
+└─ Module
+└─ Project / Assignment
+├─ Problem Statement
+├─ Constraints
+├─ Deliverables
+├─ Evaluation Rubric
 
 🔷 Phase 7.5 — Content Approval Workflow (Critical Gate)
 
@@ -279,16 +283,19 @@ Course
 Phase 7.5 is the safety gate.
 
 Nothing becomes:
+
 1. Publishable
 2. Persistent
 3. Visible to users
 
 Unless it is:
+
 1. Explicitly approved
 2. Audited
 3. Immutable after approval
 
 Notes:
+
 - Approval is an explicit admin action that records `approvedBy`, `approvedAt`, and an immutable snapshot of the content JSON.
 - All attempts to modify an `APPROVED` artifact must be rejected; retries should create new draft artifacts instead.
 - Every approval action must create an `AuditLog` entry that includes actor, timestamp, entity id, and a brief rationale.
@@ -302,27 +309,25 @@ Design Rules (Copilot must obey)
 - Approval requires: `approver`, `timestamp`, and an optional `note`.
 - All approval actions are audited (create `AuditLog` entries including actor, timestamp, entity id, and rationale).
 
-
-
 🟦 Phase 7.6 — Course Packaging
 
 Assemble:
 
 Course
- ├─ Syllabus
- ├─ Lessons
- ├─ Quizzes
- └─ Projects
+├─ Syllabus
+├─ Lessons
+├─ Quizzes
+└─ Projects
 
 No AI here — pure composition.
 
 🧠 Why This Prevents Rework & Tech Debt
-Risk	How Phase 7 avoids it
-AI hallucinations	Schema + validation
-Content drift	Versioning
-Inconsistent quality	Fixed prompt contracts
-Unreviewable output	Approval gates
-Cost explosions	Deterministic generation
+Risk How Phase 7 avoids it
+AI hallucinations Schema + validation
+Content drift Versioning
+Inconsistent quality Fixed prompt contracts
+Unreviewable output Approval gates
+Cost explosions Deterministic generation
 
 **Phase 7 Summary**
 
@@ -359,12 +364,12 @@ What you do NOT have yet (by design):
 This is correct.
 
 🔶 What Comes Next (High-Level Roadmap)
-Phase	Purpose
-7.6	Course Packaging (assemble approved content)
-8.0	Persistence + Versioning
-8.1	Publish API (read-only, immutable)
-8.2	Regeneration + diffing
-9.0	Delivery (UI, LMS, exports)
+Phase Purpose
+7.6 Course Packaging (assemble approved content)
+8.0 Persistence + Versioning
+8.1 Publish API (read-only, immutable)
+8.2 Regeneration + diffing
+9.0 Delivery (UI, LMS, exports)
 
 We now proceed one irreversible phase at a time.
 
@@ -387,11 +392,11 @@ No AI here. No generation. Only assembly.
 
 🧱 Conceptual Model
 Approved Syllabus
- + Approved Lessons
- + Approved Quizzes
- + Approved Projects
- --------------------------------
- → CoursePackage (versioned, frozen)
 
+- Approved Lessons
+- Approved Quizzes
+- Approved Projects
 
+---
 
+→ CoursePackage (versioned, frozen)

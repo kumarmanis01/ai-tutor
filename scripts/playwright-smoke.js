@@ -43,7 +43,9 @@ const { chromium } = require('playwright');
     process.exit(0);
   } catch (err) {
     console.error('Smoke run error', err);
-    try { await browser.close(); } catch {}
+    try {
+      await browser.close();
+    } catch {}
     process.exit(3);
   }
 })();

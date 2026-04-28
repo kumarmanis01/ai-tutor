@@ -2,14 +2,14 @@
 
 ## Claude Chat vs Claude Code
 
-| Use Claude Chat for | Use Claude Code for |
-|--------------------|---------------------|
-| RCA diagnosis from logs/DB output | Reading source files |
-| SQL queries to run on Neon | Writing + editing code |
-| Architecture decisions | Running build/test/lint |
-| Prompt templates | Git commits |
-| Handover docs | Deploying to VPS |
-| "What's wrong?" analysis | "Fix this file" tasks |
+| Use Claude Chat for               | Use Claude Code for     |
+| --------------------------------- | ----------------------- |
+| RCA diagnosis from logs/DB output | Reading source files    |
+| SQL queries to run on Neon        | Writing + editing code  |
+| Architecture decisions            | Running build/test/lint |
+| Prompt templates                  | Git commits             |
+| Handover docs                     | Deploying to VPS        |
+| "What's wrong?" analysis          | "Fix this file" tasks   |
 
 **Rule:** Chat diagnoses. Code fixes.
 Never paste 500 lines of source into Chat. Give Claude Code the file path.
@@ -19,18 +19,21 @@ Never paste 500 lines of source into Chat. Give Claude Code the file path.
 ## Session Structure
 
 ### Starting a new chat
+
 1. Paste the CONTEXT BLOCK from prompts.md
 2. Paste current-sprint.md -> Immediate Next Actions section
 3. State ONE specific task
 4. List 2-5 relevant files (not the content, just paths)
 
 ### During a session
+
 - One task per Claude Code prompt
 - Always end with: `python3 scripts/fix-smart-quotes.py && npx tsc --noEmit && npm run build`
 - Always commit before moving to next task
 - Never leave uncommitted changes overnight
 
 ### When to reset chat
+
 - After 3+ back-and-forth exchanges on same bug -> start fresh with diagnosis
 - After any successful feature completion
 - When context window feels "heavy" (responses slow/repetitive)
@@ -64,6 +67,7 @@ curl -I https://spinzyacademy.com # 200
 ```
 
 **Never deploy** without:
+
 - Passing build locally
 - Passing tests locally
 - Smart quotes fixed
@@ -174,6 +178,7 @@ Priority 4 (post-launch):
 ```
 
 Run NCERT scraper before each subject for accurate chapter names:
+
 ```bash
 npx tsx scripts/scrape-ncert.ts --grade 10 --subject mathematics --lang en
 ```

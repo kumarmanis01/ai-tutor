@@ -15,7 +15,7 @@ import { useNotes, NoteSubject } from '../context/NotesProvider';
 
 export function NotesBySubject() {
   const { subjects, loading } = useNotes();
-  
+
   const navigateToSubject = useCallback((subject: NoteSubject) => {
     const params = new URLSearchParams();
     params.set('subject', subject.name);
@@ -32,8 +32,8 @@ export function NotesBySubject() {
       ) : (
         <div className="space-y-2">
           {subjects.map((s) => (
-            <button 
-              key={s.name} 
+            <button
+              key={s.name}
               onClick={() => navigateToSubject(s)}
               className="w-full flex items-center justify-between px-3 py-2 border rounded hover:bg-muted/50 active:scale-[0.98] transition-transform"
             >

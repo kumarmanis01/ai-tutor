@@ -1,7 +1,10 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
 
-export type ParentModeStatus = { status: 'connected' | 'disconnected'; metrics?: { sessionsLastWeek?: number } };
+export type ParentModeStatus = {
+  status: 'connected' | 'disconnected';
+  metrics?: { sessionsLastWeek?: number };
+};
 
 export function useParentMode() {
   const [data, setData] = useState<ParentModeStatus>({ status: 'disconnected' });
@@ -18,7 +21,9 @@ export function useParentMode() {
     }
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
 
   return { data, loading, refresh };
 }

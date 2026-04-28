@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { assertNoStringFilters } from "@/lib/guards/noStringFilters";
-import { logger } from "@/lib/logger";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { assertNoStringFilters } from '@/lib/guards/noStringFilters';
+import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function GET(req: Request) {
@@ -14,15 +14,15 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const boardId = searchParams.get("boardId");
+    const boardId = searchParams.get('boardId');
 
     if (!boardId) {
-      return NextResponse.json({ error: "boardId required" }, { status: 400 });
+      return NextResponse.json({ error: 'boardId required' }, { status: 400 });
     }
 
     const classes = await prisma.classLevel.findMany({
       where: { boardId },
-      orderBy: { grade: "asc" },
+      orderBy: { grade: 'asc' },
     });
 
     return NextResponse.json(classes);
@@ -38,11 +38,11 @@ export async function POST(req: Request) {
 
     // Basic validation: require boardId and grade
     const { boardId, grade, slug } = body;
-    if (!boardId || typeof boardId !== "string") {
-      return NextResponse.json({ error: "boardId required" }, { status: 400 });
+    if (!boardId || typeof boardId !== 'string') {
+      return NextResponse.json({ error: 'boardId required' }, { status: 400 });
     }
-    if (grade === undefined || typeof grade !== "number") {
-      return NextResponse.json({ error: "grade (number) required" }, { status: 400 });
+    if (grade === undefined || typeof grade !== 'number') {
+      return NextResponse.json({ error: 'grade (number) required' }, { status: 400 });
     }
 
     const data: any = { boardId, grade, slug: slug || String(grade) };

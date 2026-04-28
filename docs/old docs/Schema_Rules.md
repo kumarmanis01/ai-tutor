@@ -41,25 +41,28 @@ This project uses a STRICTLY GUARDED academic + AI content schema.
 - Enums must be imported from `@prisma/client`
 - Local enum redefinitions are not allowed
 
-
 ## ENTITY RULES
 
 ### Board / Class / Subject
+
 - Created once
 - Never deleted
 - Seeded idempotently
 
 ### Chapter / Topic
+
 - Versioned
 - Approval-controlled
 - Rollback via parentId
 
 ### Notes / Tests
+
 - Read-only after generation
 - Edited only via regeneration
 - Teacher edits create new version
 
 ### Jobs
+
 - Status flow:
   pending → running → completed | failed | cancelled
 - No skipping states

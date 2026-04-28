@@ -68,7 +68,10 @@ export interface CurriculumGraphSnapshot {
  */
 async function buildGraph(): Promise<CurriculumGraphSnapshot> {
   const rawTopics = await prisma.topicDef.findMany({
-    where: { lifecycle: 'active', chapter: { lifecycle: 'active', subject: { lifecycle: 'active' } } },
+    where: {
+      lifecycle: 'active',
+      chapter: { lifecycle: 'active', subject: { lifecycle: 'active' } },
+    },
     include: {
       chapter: {
         select: {
@@ -79,10 +82,17 @@ async function buildGraph(): Promise<CurriculumGraphSnapshot> {
         },
       },
     },
-    orderBy: [{ chapter: { subject: { name: 'asc' } } }, { chapter: { order: 'asc' } }, { order: 'asc' }],
+    orderBy: [
+      { chapter: { subject: { name: 'asc' } } },
+      { chapter: { order: 'asc' } },
+      { order: 'asc' },
+    ],
   });
 
-  const topics: CurriculumTopic[] = rawTopics.map((t) => ({
+  // Narrow Prisma result for strict typing
+  const raw = rawTopics as Array<any>;
+
+  const topics: CurriculumTopic[] = raw.map((t: any) => ({
     topicId: t.id,
     topicName: t.name,
     chapterId: t.chapter.id,
@@ -131,7 +141,7 @@ async function buildGraph(): Promise<CurriculumGraphSnapshot> {
 
     // Sort chapters by order
     const sortedChapters = [...byChapter.entries()].sort(
-      ([, a], [, b]) => a[0].chapterOrder - b[0].chapterOrder,
+      ([, a], [, b]) => a[0].chapterOrder - b[0].chapterOrder
     );
 
     let prevChapterLastTopic: CurriculumTopic | null = null;
@@ -186,6 +196,7 @@ let inFlightBuild: Promise<CurriculumGraphSnapshot> | null = null;
 async function loadFromCache(): Promise<CurriculumGraphSnapshot | null> {
   try {
     const redis = getRedis();
+    if (!redis) return null;
     const raw = await redis.get(CACHE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as CurriculumGraphSnapshot;
@@ -198,6 +209,7 @@ async function loadFromCache(): Promise<CurriculumGraphSnapshot | null> {
 async function storeInCache(snapshot: CurriculumGraphSnapshot): Promise<void> {
   try {
     const redis = getRedis();
+    if (!redis) return;
     await redis.set(CACHE_KEY, JSON.stringify(snapshot), 'EX', CACHE_TTL_SECONDS);
     logger.debug('[CURRICULUM_GRAPH_CACHE] stored', { ttl: CACHE_TTL_SECONDS });
   } catch (err) {
@@ -261,10 +273,7 @@ export async function getDependents(topicId: string): Promise<string[]> {
  * Returns the set of topic IDs that must be mastered before this topic
  * (direct prerequisites plus their prerequisites, recursively).
  */
-function getTransitivePrerequisites(
-  topicId: string,
-  graph: CurriculumGraphSnapshot,
-): Set<string> {
+function getTransitivePrerequisites(topicId: string, graph: CurriculumGraphSnapshot): Set<string> {
   const result = new Set<string>();
   const queue: string[] = [...(graph.prerequisites[topicId] ?? [])];
   const visited = new Set<string>();
@@ -292,7 +301,7 @@ function getTransitivePrerequisites(
 export function arePrerequisitesMet(
   topicId: string,
   graph: CurriculumGraphSnapshot,
-  masteredTopicIds: Set<string>,
+  masteredTopicIds: Set<string>
 ): boolean {
   const transitivePrereqs = getTransitivePrerequisites(topicId, graph);
   return [...transitivePrereqs].every((prereqId) => masteredTopicIds.has(prereqId));
@@ -304,14 +313,12 @@ export function arePrerequisitesMet(
  */
 export function getUnlockedTopics(
   graph: CurriculumGraphSnapshot,
-  completedTopicIds: Set<string>,
+  completedTopicIds: Set<string>
 ): string[] {
   return graph.topics
     .map((t) => t.topicId)
     .filter(
-      (id) =>
-        !completedTopicIds.has(id) &&
-        arePrerequisitesMet(id, graph, completedTopicIds),
+      (id) => !completedTopicIds.has(id) && arePrerequisitesMet(id, graph, completedTopicIds)
     );
 }
 
@@ -321,7 +328,7 @@ export function getUnlockedTopics(
  */
 export function getCurriculumPath(
   graph: CurriculumGraphSnapshot,
-  subjectIds?: string[],
+  subjectIds?: string[]
 ): CurriculumTopic[] {
   if (!subjectIds || subjectIds.length === 0) return graph.topics;
   const idSet = new Set(subjectIds);
@@ -335,6 +342,7 @@ export function getCurriculumPath(
 export async function invalidateCurriculumGraph(): Promise<void> {
   try {
     const redis = getRedis();
+    if (!redis) return;
     await redis.del(CACHE_KEY);
     logger.info('[CURRICULUM_GRAPH_CACHE] invalidated');
   } catch (err) {

@@ -55,12 +55,14 @@ export async function persistRecommendationTrace(trace: RecommendationTraceInput
 /**
  * Persist a batch of recommendation traces. Fire-and-forget.
  */
-export async function persistRecommendationTraces(traces: RecommendationTraceInput[]): Promise<void> {
+export async function persistRecommendationTraces(
+  traces: RecommendationTraceInput[]
+): Promise<void> {
   if (!isTraceEnabled() || traces.length === 0) return;
 
   try {
     await prisma.recommendationTrace.createMany({
-      data: traces.map(t => ({
+      data: traces.map((t) => ({
         studentId: t.studentId,
         entityType: t.entityType,
         entityId: t.entityId,
@@ -69,7 +71,10 @@ export async function persistRecommendationTraces(traces: RecommendationTraceInp
         engineVersion: ENGINE_VERSION,
       })),
     });
-    logger.debug('[RECOMMENDATION_TRACE]', { count: traces.length, studentId: traces[0].studentId });
+    logger.debug('[RECOMMENDATION_TRACE]', {
+      count: traces.length,
+      studentId: traces[0].studentId,
+    });
   } catch (error) {
     logger.warn('[RECOMMENDATION_TRACE_ERROR]', {
       error: error instanceof Error ? error.message : String(error),

@@ -37,11 +37,11 @@ docker rm -f ai_tutor_test_pg
 ```
 
 Tips:
+
 - Use the `deployment/` snippets for quick systemd/Procfile/Helm deploy examples.
 - Add repo secrets (`DATABASE_URL`, `PUSHGATEWAY_URL`) for CI/staging to run full end-to-end tests.
- 
-Cross-platform Git commits
--------------------------
+
+## Cross-platform Git commits
 
 On Windows PowerShell the POSIX no-op `true` (or `; true`) is not available — this is why you may have seen the PowerShell error "true : The term 'true' is not recognized" when running commit commands copied from POSIX shells. Use one of the following:
 

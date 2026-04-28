@@ -11,7 +11,7 @@
 'use strict';
 
 const path = require('path');
-const fs   = require('fs');
+const fs = require('fs');
 
 // Resolve sharp from node_modules (may be nested under next/)
 let sharp;
@@ -21,15 +21,13 @@ try {
   try {
     sharp = require(path.join(process.cwd(), 'node_modules', 'sharp'));
   } catch {
-    sharp = require(
-      path.join(process.cwd(), 'node_modules', 'next', 'node_modules', 'sharp')
-    );
+    sharp = require(path.join(process.cwd(), 'node_modules', 'next', 'node_modules', 'sharp'));
   }
 }
 
-const SOURCE   = path.join(process.cwd(), 'public', 'icons', 'teacher-vidya-source.png');
-const OUT_DIR  = path.join(process.cwd(), 'public', 'icons');
-const SIZES    = [72, 96, 128, 144, 152, 192, 384, 512];
+const SOURCE = path.join(process.cwd(), 'public', 'icons', 'teacher-vidya-source.png');
+const OUT_DIR = path.join(process.cwd(), 'public', 'icons');
+const SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
 
 async function generateIcon(size) {
   const meta = await sharp(SOURCE).metadata();
@@ -39,11 +37,11 @@ async function generateIcon(size) {
   // Purple circle background SVG
   const circle = Buffer.from(
     `<svg width="${size}" height="${size}">` +
-    `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#534AB7"/>` +
-    `</svg>`
+      `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#534AB7"/>` +
+      `</svg>`
   );
 
-  const padding   = Math.floor(size * 0.05);
+  const padding = Math.floor(size * 0.05);
   const innerSize = size - padding * 2;
 
   const teacherResized = await sharp(SOURCE)

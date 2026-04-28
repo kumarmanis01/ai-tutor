@@ -4,6 +4,22 @@ set -euo pipefail
 # =============================================================================
 # Production deploy script for AlmaLinux + PM2
 #
+# FILE OBJECTIVE:
+# - Build, verify, and roll out web/worker/scheduler processes with strict runtime safety checks.
+#
+# LINKED UNIT TEST:
+# - tests/unit/scripts/deploy-and-run.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - /docs/COPILOT_GUARDRAILS.md
+# - .github/copilot-instructions.md
+#
+# EDIT LOG:
+# - 2026-04-26T00:00:00Z | copilot | add explicit devDependency prune verification and dist import-specifier deploy gate
+# - 2026-04-26T00:00:00Z | copilot | optimize build order to avoid redundant worker rebuild in happy-path
+# - 2026-04-26T00:00:00Z | copilot | add timestamped deploy logging, persistent log file, and global error trap for admin observability
+# - 2026-04-26T00:00:00Z | copilot | replace prune verification with prod-tree aware orphan check to prevent hoist/peer false positives
+#
 # Usage:
 #   ./scripts/deploy-and-run.sh                  # deploy current branch
 #   ./scripts/deploy-and-run.sh --branch main    # deploy specific branch
@@ -28,6 +44,66 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+RUN_STARTED_AT="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_STARTED_EPOCH="$(date +%s)"
+LOG_DIR="${REPO_ROOT}/logs"
+mkdir -p "${LOG_DIR}"
+DEPLOY_LOG="${LOG_DIR}/deploy-run-${RUN_STARTED_AT}.log"
+
+# Mirror all output to terminal and a persistent deploy log for admins.
+exec > >(tee -a "${DEPLOY_LOG}") 2>&1
+
+timestamp() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
+log_info() { echo "[$(timestamp)] [INFO] $*"; }
+log_warn() { echo "[$(timestamp)] [WARN] $*"; }
+log_error() { echo "[$(timestamp)] [ERROR] $*"; }
+
+format_duration() {
+  local total="$1"
+  local mins=$((total / 60))
+  local secs=$((total % 60))
+  printf '%sm %ss' "${mins}" "${secs}"
+}
+
+print_deploy_summary() {
+  local final_status="$1"
+  local ended_epoch
+  ended_epoch="$(date +%s)"
+  local elapsed=$((ended_epoch - RUN_STARTED_EPOCH))
+  local node_version="unknown"
+  local npm_version="unknown"
+  local pm2_version="unknown"
+
+  if command -v node >/dev/null 2>&1; then
+    node_version="$(node -v 2>/dev/null || echo unknown)"
+  fi
+  if command -v npm >/dev/null 2>&1; then
+    npm_version="$(npm -v 2>/dev/null || echo unknown)"
+  fi
+  if command -v pm2 >/dev/null 2>&1; then
+    pm2_version="$(pm2 -v 2>/dev/null || echo unknown)"
+  fi
+
+  log_info "===== DEPLOY SUMMARY ====="
+  log_info "Status: ${final_status}"
+  log_info "Started (UTC): ${RUN_STARTED_AT}"
+  log_info "Duration: $(format_duration "${elapsed}")"
+  log_info "Node: ${node_version} | npm: ${npm_version} | pm2: ${pm2_version}"
+  log_info "Deploy log: ${DEPLOY_LOG}"
+}
+
+on_error() {
+  local exit_code="$1"
+  local line_no="$2"
+  local failed_cmd="$3"
+  log_error "Deploy failed with exit=${exit_code} at line=${line_no}"
+  log_error "Failed command: ${failed_cmd}"
+  log_error "Deploy log: ${DEPLOY_LOG}"
+  print_deploy_summary "FAILED"
+}
+
+trap 'on_error $? $LINENO "${BASH_COMMAND}"' ERR
 
 BRANCH=""
 KILL_FLAG=0
@@ -55,7 +131,14 @@ done
 
 cd "${REPO_ROOT}"
 
-step() { echo; echo "=====> $1"; }
+step() {
+  echo
+  log_info "=====> $1"
+}
+
+log_info "Deploy script started"
+log_info "Repository root: ${REPO_ROOT}"
+log_info "Deploy log file: ${DEPLOY_LOG}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. GIT PULL
@@ -69,7 +152,7 @@ fi
 
 git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
-echo "On branch ${BRANCH} at $(git rev-parse --short HEAD)"
+log_info "On branch ${BRANCH} at $(git rev-parse --short HEAD)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. EXPORT .env.production
@@ -110,8 +193,8 @@ while IFS= read -r line || [ -n "$line" ]; do
   esac
 done < "${REPO_ROOT}/.env.production"
 
-echo "DATABASE_URL set: $([ -n "${DATABASE_URL:-}" ] && echo 'YES' || echo 'NO')"
-echo "REDIS_URL set:    $([ -n "${REDIS_URL:-}" ] && echo 'YES' || echo 'NO')"
+log_info "DATABASE_URL set: $([ -n "${DATABASE_URL:-}" ] && echo 'YES' || echo 'NO')"
+log_info "REDIS_URL set: $([ -n "${REDIS_URL:-}" ] && echo 'YES' || echo 'NO')"
 
 # Fail fast if DATABASE_URL points to localhost (never deploy against local DB)
 if [ -z "${DATABASE_URL:-}" ]; then
@@ -122,7 +205,7 @@ if echo "${DATABASE_URL}" | grep -qiE 'localhost|127\.0\.0\.1'; then
   echo "FATAL: DATABASE_URL points to localhost. Use Neon production URL." >&2
   exit 1
 fi
-echo "DATABASE_URL host: $(echo "${DATABASE_URL}" | sed 's|.*@||' | cut -d'/' -f1)"
+log_info "DATABASE_URL host: $(echo "${DATABASE_URL}" | sed 's|.*@||' | cut -d'/' -f1)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. INSTALL DEPENDENCIES
@@ -131,17 +214,23 @@ step "3/11 — Install dependencies"
 # Full install including devDeps (needed for tsc, next build, jest, prisma CLI).
 # devDeps will be pruned after tests pass, before the app starts (see step 6e).
 npm ci --include=dev
+log_info "Dependencies installed via npm ci --include=dev"
+log_info "Node version: $(node -v)"
+log_info "NPM version: $(npm -v)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. PRISMA GENERATE + MIGRATE
 # ─────────────────────────────────────────────────────────────────────────────
 step "4/11 — Prisma generate + migrate"
 ./node_modules/.bin/prisma generate
+log_info "Prisma client generation complete"
 
 if [ -f "${SCRIPT_DIR}/run-migrate.sh" ]; then
   bash "${SCRIPT_DIR}/run-migrate.sh"
+  log_info "Migrations applied via run-migrate.sh"
 else
   ./node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma
+  log_info "Migrations applied via prisma migrate deploy"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -150,7 +239,7 @@ fi
 step "5/11 — Clean old build artifacts"
 rm -rf "${REPO_ROOT}/.next" || true
 rm -rf "${REPO_ROOT}/dist" || true
-echo "Removed .next/ and dist/"
+log_info "Removed .next/ and dist/"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5b. PRE-FLIGHT CHECKS (fast — fail before spending time on a full build)
@@ -176,7 +265,7 @@ if command -v python3 >/dev/null 2>&1; then
 else
   echo "  python3 not found — skipping smart-quote preflight"
 fi
-echo "✅ Smart quote preflight finished"
+log_info "Smart quote preflight finished"
 
 step "5c — Pre-flight: TypeScript type check"
 npx tsc --noEmit --project tsconfig.json
@@ -184,7 +273,7 @@ if [ $? -ne 0 ]; then
   echo "❌ TypeScript errors found. Fix before deploying."
   exit 1
 fi
-echo "✅ TypeScript clean"
+log_info "TypeScript preflight passed"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. BUILD
@@ -197,10 +286,10 @@ LOG_DIR="${REPO_ROOT}/logs"
 mkdir -p "${LOG_DIR}"
 BUILD_LOG="${LOG_DIR}/deploy-build-$(date -u +%Y%m%dT%H%M%SZ).log"
 
-if npm run build:prod >>"${BUILD_LOG}" 2>&1; then
-  echo "Next.js build succeeded (log: ${BUILD_LOG})"
-elif npm run build >>"${BUILD_LOG}" 2>&1; then
-  echo "Next.js build succeeded via fallback (log: ${BUILD_LOG})"
+if npm run build >>"${BUILD_LOG}" 2>&1; then
+  log_info "Next.js build succeeded (log: ${BUILD_LOG})"
+elif npm run build:prod >>"${BUILD_LOG}" 2>&1; then
+  log_warn "Primary build command failed; fallback build:prod succeeded (log: ${BUILD_LOG})"
 else
   echo "FATAL: Next.js build failed. Last 100 lines:" >&2
   tail -n 100 "${BUILD_LOG}" >&2 || true
@@ -210,7 +299,7 @@ fi
 # 6b. Prompt eval gate (hard deploy gate for tutor prompt)
 step "6b — Prompt eval gate (must pass before deploy)"
 if npx tsx scripts/run-prompt-eval.ts; then
-  echo "Prompt eval: all assertions passed"
+  log_info "Prompt eval assertions passed"
 else
   echo "FATAL: Prompt eval failed. Deploy blocked." >&2
   exit 1
@@ -233,7 +322,69 @@ fi
 # 6e. Prune devDependencies — builds and tests are done, keep prod runtime lean
 step "6e — Prune devDependencies"
 npm prune --omit=dev
-echo "devDependencies pruned"
+log_info "npm prune --omit=dev completed"
+
+# Hard verification: fail deploy if any direct devDependency (not also prod) remains installed.
+node <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const cp = require('child_process');
+
+const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+const devDeps = Object.keys(pkg.devDependencies || {});
+const prodDeps = new Set([
+  ...Object.keys(pkg.dependencies || {}),
+  ...Object.keys(pkg.optionalDependencies || {}),
+  ...Object.keys(pkg.peerDependencies || {}),
+]);
+
+// Build the resolved production dependency tree after prune.
+// This avoids false positives from npm hoisting/peer resolution behavior.
+let prodTree = {};
+try {
+  const raw = cp.execSync('npm ls --omit=dev --all --json', {
+    cwd: process.cwd(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+  });
+  prodTree = JSON.parse(raw);
+} catch (err) {
+  const stdout = err && err.stdout ? String(err.stdout) : '{}';
+  try {
+    prodTree = JSON.parse(stdout);
+  } catch {
+    console.error('FATAL: Unable to parse npm production tree for prune verification.');
+    process.exit(1);
+  }
+}
+
+const prodTreeNames = new Set();
+function collectNames(node) {
+  if (!node || typeof node !== 'object') return;
+  const deps = node.dependencies || {};
+  for (const [name, child] of Object.entries(deps)) {
+    prodTreeNames.add(name);
+    collectNames(child);
+  }
+}
+collectNames(prodTree);
+
+const orphaned = devDeps.filter((dep) => {
+  if (prodDeps.has(dep)) return false;
+  const presentOnDisk = fs.existsSync(path.join(process.cwd(), 'node_modules', dep));
+  if (!presentOnDisk) return false;
+  const usedByProdTree = prodTreeNames.has(dep);
+  return !usedByProdTree;
+});
+
+if (orphaned.length > 0) {
+  console.error(`FATAL: orphaned devDependencies remain after prune (${orphaned.length}).`);
+  console.error(`Examples: ${orphaned.slice(0, 20).join(', ')}`);
+  process.exit(1);
+}
+
+console.log(`✅ Verified devDependencies pruned (prod-tree aware): ${devDeps.length - orphaned.length} checked`);
+NODE
 
 # 6c. Verify worker dist
 step "6c — Verify worker dist"
@@ -241,7 +392,7 @@ if [ ! -f "${REPO_ROOT}/dist/worker/bootstrap.js" ]; then
   echo "FATAL: dist/worker/bootstrap.js not found. build:workers may have failed." >&2
   exit 1
 fi
-echo "Worker dist: OK ($(du -sh "${REPO_ROOT}/dist/worker/bootstrap.js" | cut -f1))"
+log_info "Worker dist verified: $(du -sh "${REPO_ROOT}/dist/worker/bootstrap.js" | cut -f1)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7. VERIFY DIST
@@ -250,8 +401,62 @@ step "7/11 — Verify dist is production-clean"
 if [ -f "${SCRIPT_DIR}/verify-dist.sh" ]; then
   bash "${SCRIPT_DIR}/verify-dist.sh"
 else
-  echo "verify-dist.sh not found, skipping"
+  log_warn "verify-dist.sh not found, skipping"
 fi
+
+# Additional runtime gate: all relative imports in dist JS must be explicit (.js or /index.js).
+step "7b — Verify dist import specifiers"
+node <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const root = path.resolve(process.cwd(), 'dist');
+if (!fs.existsSync(root)) {
+  console.error('FATAL: dist directory missing before import-specifier verification.');
+  process.exit(1);
+}
+
+const files = [];
+function walk(dir) {
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    const stat = fs.statSync(full);
+    if (stat.isDirectory()) walk(full);
+    else if (stat.isFile() && full.endsWith('.js')) files.push(full);
+  }
+}
+walk(root);
+
+const staticRe = /from\s+['"](\.\.?\/[^'"\n]+)['"]/g;
+const dynamicRe = /import\s*\(\s*['"](\.\.?\/[^'"\n]+)['"]\s*\)/g;
+const invalid = [];
+
+for (const file of files) {
+  const src = fs.readFileSync(file, 'utf8');
+  for (const re of [staticRe, dynamicRe]) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const spec = m[1];
+      const explicit = /\.(js|mjs|cjs)$/.test(spec) || /\/index\.js$/.test(spec);
+      if (!explicit) {
+        invalid.push(`${path.relative(process.cwd(), file)} -> ${spec}`);
+        if (invalid.length >= 25) break;
+      }
+    }
+    if (invalid.length >= 25) break;
+  }
+  if (invalid.length >= 25) break;
+}
+
+if (invalid.length > 0) {
+  console.error('FATAL: Found extensionless relative imports in dist output.');
+  for (const line of invalid) console.error(` - ${line}`);
+  process.exit(1);
+}
+
+console.log(`✅ dist import-specifier verification passed (${files.length} JS files scanned)`);
+NODE
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 8. ENSURE LOGS, PERMS, EXECUTABILITY
@@ -317,9 +522,10 @@ if [ -n "$MISSING" ]; then
   echo "   Run: set -o allexport; source .env.production; set +o allexport"
   exit 1
 fi
-echo "✅ All required env vars present"
+log_info "All required runtime env vars present"
 
 pm2 start ecosystem.config.cjs --env production --update-env
+log_info "PM2 start command completed"
 
 # 9b. Redis hardening (idempotent; safe to re-run)
 step "9b — Redis hardening (idempotent)"
@@ -425,7 +631,7 @@ bash "${SCRIPT_DIR}/db-exec.sh" "
     LIMIT 1
   );
 "
-echo "OK: Stale worker records cleaned"
+log_info "Stale worker records cleaned"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 11. SEED SCRIPTS (optional, --seed flag)
@@ -518,10 +724,12 @@ pm2 status
 if [ ${FAILED} -gt 0 ]; then
   echo ""
   echo "WARNING: ${FAILED} check(s) failed. Review logs above."
+  print_deploy_summary "FAILED_HEALTHCHECK"
   exit 1
 else
   echo ""
-  echo "All checks passed. Deploy complete ✓"
+  log_info "All checks passed. Deploy complete"
+  print_deploy_summary "SUCCESS"
 fi
 
 echo

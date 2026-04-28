@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 /**
  * FILE OBJECTIVE:
@@ -93,21 +93,24 @@ export async function GET() {
 
     // Calculate metrics
     const testsCompleted = testResults.length;
-    
+
     // Calculate average score (only from completed tests with scores)
     const scoresWithValues = testResults
       .filter((r: { score: number | null }) => typeof r.score === 'number')
       .map((r: { score: number | null }) => r.score as number);
-    const averageScore = scoresWithValues.length > 0
-      ? Math.round(scoresWithValues.reduce((a: number, b: number) => a + b, 0) / scoresWithValues.length)
-      : 0;
-    
+    const averageScore =
+      scoresWithValues.length > 0
+        ? Math.round(
+            scoresWithValues.reduce((a: number, b: number) => a + b, 0) / scoresWithValues.length
+          )
+        : 0;
+
     // Count unique subjects
     const subjectsStudied = new Set([
       ...subjectsFromTests.map((t: { testId: string }) => t.testId),
       ...subjectsFromSessions.map((s: { activityType: string }) => s.activityType),
     ]).size;
-    
+
     // Weekly progress (sessions completed this week vs goal of 10)
     const weeklyGoal = 10;
     const weeklyProgress = Math.min(Math.round((weeklySessionsCount / weeklyGoal) * 100), 100);

@@ -1,2 +1,2 @@
 /** @jest-environment jsdom */
-import './AITutorChatPanel.spec.tsx'
+import './AITutorChatPanel.spec.tsx';

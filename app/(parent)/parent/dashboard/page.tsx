@@ -12,39 +12,39 @@
  *   2026-04-09 | copilot | pass parent/student timezones to ParentDashboard for dual-display
  */
 
-import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import type { AppSession } from '@/lib/types/auth'
-import { prisma } from '@/lib/prisma'
-import { computeReadinessScore } from '@/lib/student/examReadiness'
-import ParentDashboard from '@/components/parent/ParentDashboard'
+import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import type { AppSession } from '@/lib/types/auth';
+import { prisma } from '@/lib/prisma';
+import { computeReadinessScore } from '@/lib/student/examReadiness';
+import ParentDashboard from '@/components/parent/ParentDashboard';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "My Children's Progress | Spinzy",
-  description: "See how your children are progressing on Spinzy.",
-}
+  description: 'See how your children are progressing on Spinzy.',
+};
 
 function weekStart(): Date {
-  const now = new Date()
-  const dow = now.getUTCDay()
-  const distToMonday = dow === 0 ? 6 : dow - 1
-  const monday = new Date(now)
-  monday.setUTCDate(now.getUTCDate() - distToMonday)
-  monday.setUTCHours(0, 0, 0, 0)
-  return monday
+  const now = new Date();
+  const dow = now.getUTCDay();
+  const distToMonday = dow === 0 ? 6 : dow - 1;
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() - distToMonday);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
 }
 
 export default async function ParentDashboardPage() {
-  const session = (await getServerSession(authOptions)) as AppSession | null
-  if (!session?.user?.id) redirect('/login')
-  if (session.user.role !== 'parent') redirect('/dashboard')
+  const session = (await getServerSession(authOptions)) as AppSession | null;
+  if (!session?.user?.id) redirect('/login');
+  if (session.user.role !== 'parent') redirect('/dashboard');
 
-  const parentId = session.user.id
-  const monday = weekStart()
+  const parentId = session.user.id;
+  const monday = weekStart();
 
   // 1. Load all active child links + parent timezone in parallel
   const [links, parent] = await Promise.all([
@@ -53,9 +53,9 @@ export default async function ParentDashboardPage() {
       select: { studentId: true },
     }),
     prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } }),
-  ])
+  ]);
 
-  const studentIds = links.map((l) => l.studentId)
+  const studentIds = links.map((l) => l.studentId);
 
   // 2. Batch-load all student profiles, streaks, and session counts in parallel
   const [students, streaks, sessionCounts] = await Promise.all([
@@ -72,19 +72,17 @@ export default async function ParentDashboardPage() {
       where: { studentId: { in: studentIds }, startedAt: { gte: monday } },
       _count: { _all: true },
     }),
-  ])
+  ]);
 
   // Build lookup maps
-  const studentMap = new Map(students.map((s) => [s.id, s]))
-  const streakMap = new Map(streaks.map((s) => [s.studentId, s.current]))
-  const sessionCountMap = new Map(sessionCounts.map((r) => [r.studentId, r._count._all]))
+  const studentMap = new Map(students.map((s) => [s.id, s]));
+  const streakMap = new Map(streaks.map((s) => [s.studentId, s.current]));
+  const sessionCountMap = new Map(sessionCounts.map((r) => [r.studentId, r._count._all]));
 
   // 3. Resolve all unique subject names → SubjectDef IDs in one query
   const allSubjectNames = [
-    ...new Set(
-      students.flatMap((s) => (s.subjects as string[]).filter(Boolean))
-    ),
-  ]
+    ...new Set(students.flatMap((s) => (s.subjects as string[]).filter(Boolean))),
+  ];
   const subjectDefs = allSubjectNames.length
     ? await prisma.subjectDef.findMany({
         where: {
@@ -93,39 +91,39 @@ export default async function ParentDashboardPage() {
         },
         select: { id: true, name: true, slug: true },
       })
-    : []
+    : [];
 
   // Build name/slug → subjectDef map
-  const subjectDefByKey = new Map<string, { id: string; name: string }>()
+  const subjectDefByKey = new Map<string, { id: string; name: string }>();
   for (const sd of subjectDefs) {
-    subjectDefByKey.set(sd.name, { id: sd.id, name: sd.name })
-    if (sd.slug) subjectDefByKey.set(sd.slug, { id: sd.id, name: sd.name })
+    subjectDefByKey.set(sd.name, { id: sd.id, name: sd.name });
+    if (sd.slug) subjectDefByKey.set(sd.slug, { id: sd.id, name: sd.name });
   }
 
   // 4. Compute readiness per child sequentially to avoid DB connection bursts
   const children: Array<{
-    studentId: string
-    name: string
-    grade: string
-    board: string
-    timezone: string | null
-    streak: number
-    sessionsThisWeek: number
-    readiness: Array<{ subjectId: string; subjectName: string; score: number }>
-  }> = []
+    studentId: string;
+    name: string;
+    grade: string;
+    board: string;
+    timezone: string | null;
+    streak: number;
+    sessionsThisWeek: number;
+    readiness: Array<{ subjectId: string; subjectName: string; score: number }>;
+  }> = [];
   for (const studentId of studentIds) {
-    const student = studentMap.get(studentId)
-    if (!student) continue
+    const student = studentMap.get(studentId);
+    if (!student) continue;
 
-    const subjectNames = (student.subjects as string[]).filter(Boolean)
+    const subjectNames = (student.subjects as string[]).filter(Boolean);
     const resolvedDefs = subjectNames
       .map((n) => subjectDefByKey.get(n))
-      .filter((sd): sd is { id: string; name: string } => sd !== undefined)
+      .filter((sd): sd is { id: string; name: string } => sd !== undefined);
 
-    const readiness: Array<{ subjectId: string; subjectName: string; score: number }> = []
+    const readiness: Array<{ subjectId: string; subjectName: string; score: number }> = [];
     for (const sd of resolvedDefs) {
-      const result = await computeReadinessScore(studentId, sd.id).catch(() => null)
-      readiness.push({ subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 })
+      const result = await computeReadinessScore(studentId, sd.id).catch(() => null);
+      readiness.push({ subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 });
     }
 
     children.push({
@@ -137,14 +135,12 @@ export default async function ParentDashboardPage() {
       streak: streakMap.get(studentId) ?? 0,
       sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
       readiness,
-    })
+    });
   }
 
-  const validChildren = children.filter(
-    (c): c is NonNullable<typeof c> => c !== null,
-  )
+  const validChildren = children.filter((c): c is NonNullable<typeof c> => c !== null);
 
-  const parentTimezone = parent?.timezone ?? null
+  const parentTimezone = parent?.timezone ?? null;
 
-  return <ParentDashboard parentTimezone={parentTimezone} childrenData={validChildren} />
+  return <ParentDashboard parentTimezone={parentTimezone} childrenData={validChildren} />;
 }

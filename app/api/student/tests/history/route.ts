@@ -43,10 +43,10 @@ export async function GET(req: Request) {
             },
           }
         : chapter
-        ? { question: { chapter: { equals: chapter, mode: 'insensitive' as const } } }
-        : subject
-        ? { question: { subject: { equals: subject, mode: 'insensitive' as const } } }
-        : { question: { chapter: { not: null } } };
+          ? { question: { chapter: { equals: chapter, mode: 'insensitive' as const } } }
+          : subject
+            ? { question: { subject: { equals: subject, mode: 'insensitive' as const } } }
+            : { question: { chapter: { not: null } } };
 
     const [totalCount, rows] = await Promise.all([
       prisma.testResult.count({
@@ -71,7 +71,10 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    const data = rows.map((r) => ({ date: r.finishedAt!.toISOString(), score: Math.round(r.score!) }));
+    const data = rows.map((r) => ({
+      date: r.finishedAt!.toISOString(),
+      score: Math.round(r.score!),
+    }));
 
     res = NextResponse.json({ data, totalCount, limit, offset });
     logger.logAPI(req, res, { className: 'TestsHistoryAPI', methodName: 'GET' }, start);

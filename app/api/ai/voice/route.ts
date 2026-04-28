@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       input: text,
     });
 
-    const buffer = Buffer.from(await mp3.arrayBuffer())
+    const buffer = Buffer.from(await mp3.arrayBuffer());
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
@@ -27,7 +27,11 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    logger.error('ai/voice route error', { className: 'api.ai.voice', methodName: 'POST', error: err });
+    logger.error('ai/voice route error', {
+      className: 'api.ai.voice',
+      methodName: 'POST',
+      error: err,
+    });
     return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

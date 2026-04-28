@@ -5,7 +5,7 @@ describe('notes validation', () => {
     const sample = {
       title: 'Intro to Gravity',
       content: { sections: [{ heading: 'What is gravity?', body: 'Gravity is...' }] },
-      audience: 'Class 6 students'
+      audience: 'Class 6 students',
     };
     const { valid, report } = validateNotesShapeWithReport(sample as any);
     expect(valid).toBe(true);

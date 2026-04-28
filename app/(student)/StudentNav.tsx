@@ -45,7 +45,6 @@ export default function StudentNav({ studentName }: StudentNavProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-border/30 h-14">
       <div className="max-w-5xl mx-auto px-4 h-full flex items-center justify-between gap-4">
-
         {/* Brand + greeting */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -81,12 +80,24 @@ export default function StudentNav({ studentName }: StudentNavProps) {
             className="w-8 h-8 rounded-full bg-muted/60 dark:bg-slate-800/80 flex items-center justify-center transition-transform active:scale-95"
           >
             {theme === 'dark' ? (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <circle cx="12" cy="12" r="5" />
                 <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
               </svg>
             ) : (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             )}

@@ -14,33 +14,33 @@
  * - 2026-04-18T18:00:00Z | copilot | remove client=null on close; resetting the singleton on every disconnect caused two clients to reconnect simultaneously (ERR max clients)
  */
 
-import Redis from 'ioredis'
-import { logger } from '@/lib/logger'
+import Redis from 'ioredis';
+import { logger } from '@/lib/logger';
 
-let client: Redis | null = null
+let client: Redis | null = null;
 
 export function getRedis(): Redis {
-  if (client) return client
+  if (client) return client;
 
-  const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379'
+  const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
   client = new Redis(url, {
     // defensive defaults to reduce resource pressure in CI
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
     connectTimeout: 10000,
-  } as any)
+  } as any);
 
   client.on('error', (err: Error) => {
     try {
-      logger.error('[redis] error', { error: err?.message ?? String(err) })
+      logger.error('[redis] error', { error: err?.message ?? String(err) });
     } catch {
       // swallow logging errors
     }
-  })
+  });
 
   client.on('close', () => {
     try {
-      logger.info('[redis] connection closed -- ioredis will reconnect automatically')
+      logger.info('[redis] connection closed -- ioredis will reconnect automatically');
     } catch {}
     // DO NOT reset client to null here. Setting client = null on close would
     // destroy the singleton on every TCP drop: getRedis() would then create a
@@ -48,24 +48,24 @@ export function getRedis(): Redis {
     // new one would compete to reconnect -- doubling open connection attempts and
     // triggering ERR max number of clients reached under Redis load.
     // IORedis handles reconnection transparently; the singleton stays valid.
-  })
+  });
 
-  return client
+  return client;
 }
 
 export async function disconnectRedis(): Promise<void> {
-  if (!client) return
+  if (!client) return;
   try {
-    await client.quit()
+    await client.quit();
   } catch {
     try {
-      client.disconnect()
+      client.disconnect();
     } catch {
       /* swallow */
     }
   } finally {
-    client = null
+    client = null;
   }
 }
 
-export default getRedis
+export default getRedis;

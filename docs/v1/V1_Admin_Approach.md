@@ -12,11 +12,13 @@ Stack: Node.js + TS + Prisma + Neon + BullMQ + Redis, admin via Prisma Studio / 
 1. Overview
 
 In v1, the Admin role is heavily shaped by the **AI Content Engine** architecture:
+
 - Content hydration pipelines driven by BullMQ workers.
 - `AIContentLog`, `HydrationJob`, `ExecutionJob`, and related schemas for AI workloads.
 - Multiple internal architecture docs under `Docs/AI_*` guiding execution and guardrails.
 
 Admin operations are performed primarily via:
+
 - Prisma Studio and Neon SQL console.
 - Command-line scripts and worker tools (e.g. ingestion, requeueing jobs).
 
@@ -26,11 +28,11 @@ There is **no dedicated admin UI** beyond the generic DB tools, which is aligned
 
 1.1 Admin Roles (v1 reality)
 
-Role | Responsibilities | Access Level
----- | ---------------- | -----------
-Founder / Product Admin | Business metrics, subscription and growth decisions, user escalations | Full DB + infra access (informal)
-Content / Tech Admin | Curriculum ingestion, question bank and notes generation, monitoring AI logs | Access to content / jobs / AI logs schemas
-AI Quality Analyst (implicit) | Inspect AI outputs via AIContentLog and tests, debug failures | Read-only over AI logs, some job control via scripts
+| Role                          | Responsibilities                                                             | Access Level                                         |
+| ----------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Founder / Product Admin       | Business metrics, subscription and growth decisions, user escalations        | Full DB + infra access (informal)                    |
+| Content / Tech Admin          | Curriculum ingestion, question bank and notes generation, monitoring AI logs | Access to content / jobs / AI logs schemas           |
+| AI Quality Analyst (implicit) | Inspect AI outputs via AIContentLog and tests, debug failures                | Read-only over AI logs, some job control via scripts |
 
 ---
 
@@ -46,6 +48,7 @@ F-ADM-V1-001 — AI Content Engine & Hydration
   - `lib/callLLM.ts` as a central gateway to LLMs with cost logging and retries.
 
 Principles (implemented in v1):
+
 - **APIs/UI never call LLMs directly** — all AI execution happens in workers.
 - Every LLM call is logged to `AIContentLog` with model, promptType, cost, and contextual metadata.
 - Jobs have statuses, retries, and dead-letter handling (`OutboxDeadLetter`).
@@ -129,4 +132,3 @@ F-ADM-V1-013 — Safety & Hallucination Review
   - Safety/hallucination review is performed by spot-checking outputs or user feedback, not via a dedicated pipeline.
 
 Status: **Implemented at a basic level**; v2’s explicit safety event pipeline is not present.
-

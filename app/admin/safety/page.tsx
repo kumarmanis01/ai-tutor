@@ -4,60 +4,66 @@
  * Server component. Fetches unresolved SafetyEvents (distress/jailbreak/unsafe)
  * and pending QuestionFlags. Passes to SafetyAlertList for client actions.
  */
-import React from 'react'
-import { prisma } from '@/lib/prisma'
-import { AdminTopbar } from '../../../components/admin/AdminTopbar'
-import { SafetyAlertList, type SafetyAlertData } from './SafetyAlertList'
+import React from 'react';
+import { prisma } from '@/lib/prisma';
+import { AdminTopbar } from '../../../components/admin/AdminTopbar';
+import { SafetyAlertList, type SafetyAlertData } from './SafetyAlertList';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export default async function SafetyPage() {
-  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [safetyEvents, flaggedQuestions, resolvedThisWeek, totalFlags] = await Promise.all([
-    prisma.safetyEvent.findMany({
-      where: { resolvedAt: null },
-      orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
-      take: 30,
-      select: {
-        id: true,
-        triggerType: true,
-        severity: true,
-        studentId: true,
-        sessionId: true,
-        inputPreview: true,
-        createdAt: true,
-      },
-    }).catch(() => []),
+    prisma.safetyEvent
+      .findMany({
+        where: { resolvedAt: null },
+        orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
+        take: 30,
+        select: {
+          id: true,
+          triggerType: true,
+          severity: true,
+          studentId: true,
+          sessionId: true,
+          inputPreview: true,
+          createdAt: true,
+        },
+      })
+      .catch(() => []),
 
-    prisma.questionFlag.findMany({
-      where: { status: 'pending' },
-      orderBy: { flaggedAt: 'desc' },
-      take: 20,
-      select: {
-        id: true,
-        flagType: true,
-        severity: true,
-        questionId: true,
-        flaggedAt: true,
-        reviewerNotes: true,
-      },
-    }).catch(() => []),
+    prisma.questionFlag
+      .findMany({
+        where: { status: 'pending' },
+        orderBy: { flaggedAt: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          flagType: true,
+          severity: true,
+          questionId: true,
+          flaggedAt: true,
+          reviewerNotes: true,
+        },
+      })
+      .catch(() => []),
 
-    prisma.safetyEvent.count({
-      where: { resolvedAt: { gte: since7d } },
-    }).catch(() => 0),
+    prisma.safetyEvent
+      .count({
+        where: { resolvedAt: { gte: since7d } },
+      })
+      .catch(() => 0),
 
     prisma.questionFlag.count({ where: { status: 'pending' } }).catch(() => 0),
-  ])
+  ]);
 
-  const unresolvedCount = safetyEvents.length
+  const unresolvedCount = safetyEvents.length;
   const _highSeverityCount = safetyEvents.filter(
-    e => e.severity === 'HIGH' || e.severity === 'CRITICAL'
-  ).length
+    (e) => e.severity === 'HIGH' || e.severity === 'CRITICAL'
+  ).length;
 
   const alerts: SafetyAlertData[] = [
-    ...safetyEvents.map(e => ({
+    ...safetyEvents.map((e) => ({
       id: e.id,
       kind: 'distress' as const,
       triggerType: e.triggerType,
@@ -67,7 +73,7 @@ export default async function SafetyPage() {
       inputPreview: e.inputPreview ?? null,
       createdAt: e.createdAt.toISOString(),
     })),
-    ...flaggedQuestions.map(q => ({
+    ...flaggedQuestions.map((q) => ({
       id: q.id,
       kind: 'flag' as const,
       triggerType: q.flagType,
@@ -77,7 +83,7 @@ export default async function SafetyPage() {
       inputPreview: q.reviewerNotes ?? null,
       createdAt: q.flaggedAt.toISOString(),
     })),
-  ]
+  ];
 
   return (
     <>
@@ -91,11 +97,7 @@ export default async function SafetyPage() {
             value={unresolvedCount}
             variant={unresolvedCount > 0 ? 'red' : 'default'}
           />
-          <StatCard
-            label="Resolved this week"
-            value={resolvedThisWeek}
-            variant="green"
-          />
+          <StatCard label="Resolved this week" value={resolvedThisWeek} variant="green" />
           <StatCard
             label="Questions flagged"
             value={totalFlags}
@@ -111,7 +113,7 @@ export default async function SafetyPage() {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function StatCard({
@@ -119,20 +121,22 @@ function StatCard({
   value,
   variant = 'default',
 }: {
-  label: string
-  value: number
-  variant?: 'red' | 'green' | 'amber' | 'default'
+  label: string;
+  value: number;
+  variant?: 'red' | 'green' | 'amber' | 'default';
 }) {
   const textCls = {
-    red:     'text-[#791F1F]',
-    green:   'text-[#27500A]',
-    amber:   'text-[#633806]',
+    red: 'text-[#791F1F]',
+    green: 'text-[#27500A]',
+    amber: 'text-[#633806]',
     default: 'text-gray-900 dark:text-white',
-  }[variant]
+  }[variant];
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
-      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        {label}
+      </p>
       <p className={`text-2xl font-semibold mt-1 ${textCls}`}>{value}</p>
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * FILE OBJECTIVE:
@@ -77,12 +77,21 @@ function tryParseShapes(hint: string): Shape[] | null {
   return shapes.length ? shapes : null;
 }
 
-export default function VisualHintRenderer({ hint, width: _width = 320, height = 160, className = '' }: VisualHintRendererProps) {
+export default function VisualHintRenderer({
+  hint,
+  width: _width = 320,
+  height = 160,
+  className = '',
+}: VisualHintRendererProps) {
   const shapes = tryParseShapes(hint);
   if (!shapes) {
     return (
-      <div className={`rounded-sm border border-gray-200 dark:border-slate-700 p-2 text-xs text-gray-700 dark:text-gray-100 ${className}`}>
-        <div className="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">Visual hint</div>
+      <div
+        className={`rounded-sm border border-gray-200 dark:border-slate-700 p-2 text-xs text-gray-700 dark:text-gray-100 ${className}`}
+      >
+        <div className="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+          Visual hint
+        </div>
         <pre className="whitespace-pre-wrap break-words">{hint}</pre>
       </div>
     );
@@ -120,7 +129,13 @@ export default function VisualHintRenderer({ hint, width: _width = 320, height =
             <g key={i}>
               <rect x={x} y={y} width={w} height={h} fill="#EAF3DE" stroke="#1D9E75" />
               {label && (
-                <text x={x + w / 2} y={y + h / 2 + 2} fontSize={3.5} textAnchor="middle" fill="#1D9E75">
+                <text
+                  x={x + w / 2}
+                  y={y + h / 2 + 2}
+                  fontSize={3.5}
+                  textAnchor="middle"
+                  fill="#1D9E75"
+                >
                   {label}
                 </text>
               )}
@@ -129,7 +144,9 @@ export default function VisualHintRenderer({ hint, width: _width = 320, height =
         }
         if (s.type === 'line') {
           const { x1, y1, x2, y2 } = s;
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#BA7517" strokeWidth={1.2} />;
+          return (
+            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#BA7517" strokeWidth={1.2} />
+          );
         }
         if (s.type === 'text') {
           return (

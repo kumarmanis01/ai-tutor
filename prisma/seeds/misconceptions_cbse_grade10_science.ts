@@ -1,5 +1,5 @@
-import type { PrismaClient } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import type { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma';
 
 export const MISCONCEPTIONS_SCIENCE_GRADE10 = [
   {
@@ -7,9 +7,10 @@ export const MISCONCEPTIONS_SCIENCE_GRADE10 = [
     subjectId: 'CBSE-SCI-10',
     conceptId: 'CBSE-SCI10-CH01-C001',
     name: 'Forces vs Motion Mix-up',
-    description: 'Confuse force direction and motion direction; think force always in direction of motion.',
+    description:
+      'Confuse force direction and motion direction; think force always in direction of motion.',
     triggerPatterns: ['force always same direction as motion', 'ignores inertia'],
-    correction: 'Explain Newton\'s first law with examples of balanced forces and inertia.',
+    correction: "Explain Newton's first law with examples of balanced forces and inertia.",
   },
   {
     id: 'CBSE-SCI10-MIS-002',
@@ -34,7 +35,8 @@ export const MISCONCEPTIONS_SCIENCE_GRADE10 = [
     subjectId: 'CBSE-SCI-10',
     conceptId: 'CBSE-SCI10-CH02-C004',
     name: 'Conservation Mistakes',
-    description: 'Assume energy/mass created or lost in closed system without accounting for forms.',
+    description:
+      'Assume energy/mass created or lost in closed system without accounting for forms.',
     triggerPatterns: ['adds energy arbitrarily', 'forgets chemical to heat conversion'],
     correction: 'Frame problems with energy flow diagrams and balance accounts.',
   },
@@ -53,7 +55,10 @@ export const MISCONCEPTIONS_SCIENCE_GRADE10 = [
     conceptId: 'CBSE-SCI10-CH03-C002',
     name: 'Respiration vs Breathing',
     description: 'Treat breathing and cellular respiration as identical processes.',
-    triggerPatterns: ['says breathing produces ATP', 'uses respiration interchangeably with breathing'],
+    triggerPatterns: [
+      'says breathing produces ATP',
+      'uses respiration interchangeably with breathing',
+    ],
     correction: 'Clarify physiological scales and show cellular pathways (glycolysis overview).',
   },
   {
@@ -170,7 +175,10 @@ export const MISCONCEPTIONS_SCIENCE_GRADE10 = [
     conceptId: 'CBSE-SCI10-CH11-C001',
     name: 'Chemical Bonding Misunderstanding',
     description: 'Confuse ionic and covalent bonding characteristics and electron behaviour.',
-    triggerPatterns: ['thinks covalent transfers electrons', 'assumes ionic compounds are always solid only'],
+    triggerPatterns: [
+      'thinks covalent transfers electrons',
+      'assumes ionic compounds are always solid only',
+    ],
     correction: 'Contrast electron-sharing vs transfer and show property differences.',
   },
   {
@@ -178,15 +186,16 @@ export const MISCONCEPTIONS_SCIENCE_GRADE10 = [
     subjectId: 'CBSE-SCI-10',
     conceptId: 'CBSE-SCI10-CH12-C003',
     name: 'Environmental Impact Attribution',
-    description: 'Attribute ecosystem changes to single causes ignoring multiple interacting factors.',
+    description:
+      'Attribute ecosystem changes to single causes ignoring multiple interacting factors.',
     triggerPatterns: ['attributes decline to single pollutant', 'ignores habitat loss factor'],
     correction: 'Use multi-cause case studies and causal-mapping exercises.',
   },
-]
+];
 
 export async function seedMisconceptions(prisma: PrismaClient, opts?: { dryRun?: boolean }) {
   for (const m of MISCONCEPTIONS_SCIENCE_GRADE10) {
-    if (opts?.dryRun) continue
+    if (opts?.dryRun) continue;
     await prisma.misconception.upsert({
       where: { id: m.id },
       update: {
@@ -208,20 +217,22 @@ export async function seedMisconceptions(prisma: PrismaClient, opts?: { dryRun?:
         conceptId: m.conceptId,
         prevalenceRate: 0,
       },
-    })
+    });
   }
 }
 
 if (require.main === module) {
-  ;(async () => {
+  (async () => {
     try {
-      await seedMisconceptions(prisma)
-      console.log('Seeded science misconceptions')
+      await seedMisconceptions(prisma);
+      console.log('Seeded science misconceptions');
     } catch (err) {
-      console.error('Seed failed', err)
-      process.exit(1)
+      console.error('Seed failed', err);
+      process.exit(1);
     } finally {
-      try { await prisma.$disconnect() } catch {}
+      try {
+        await prisma.$disconnect();
+      } catch {}
     }
-  })()
+  })();
 }

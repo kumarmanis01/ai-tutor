@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -11,37 +11,41 @@ export type AudienceKey =
   | 'inactive_7d'
   | 'grade_10'
   | 'no_diagnostic'
-  | 'paid_subscribers'
+  | 'paid_subscribers';
 
 export interface AudienceCounts {
-  all_students: number
-  inactive_7d: number
-  grade_10: number
-  no_diagnostic: number
-  paid_subscribers: number
+  all_students: number;
+  inactive_7d: number;
+  grade_10: number;
+  no_diagnostic: number;
+  paid_subscribers: number;
 }
 
-type ChannelType = 'push' | 'email' | 'whatsapp'
+type ChannelType = 'push' | 'email' | 'whatsapp';
 
 const AUDIENCE_LABELS: Record<AudienceKey, string> = {
-  all_students:    'All students',
-  inactive_7d:     'Inactive 7+ days',
-  grade_10:        'Grade 10 students',
-  no_diagnostic:   'No diagnostic yet',
+  all_students: 'All students',
+  inactive_7d: 'Inactive 7+ days',
+  grade_10: 'Grade 10 students',
+  no_diagnostic: 'No diagnostic yet',
   paid_subscribers: 'Paid subscribers',
-}
+};
 
 const CHANNEL_META: Record<ChannelType, { label: string; icon: string; note: string }> = {
-  push:     { label: 'Push',     icon: '🔔', note: 'Requires app installed + notifications enabled' },
-  email:    { label: 'Email',    icon: '✉️',  note: 'Delivered to registered email address' },
-  whatsapp: { label: 'WhatsApp', icon: '💬', note: 'Delivered to WhatsApp number collected at onboarding' },
-}
+  push: { label: 'Push', icon: '🔔', note: 'Requires app installed + notifications enabled' },
+  email: { label: 'Email', icon: '✉️', note: 'Delivered to registered email address' },
+  whatsapp: {
+    label: 'WhatsApp',
+    icon: '💬',
+    note: 'Delivered to WhatsApp number collected at onboarding',
+  },
+};
 
 // Maps our named audiences to the existing broadcast API format
 function audienceToApiPayload(audience: AudienceKey) {
-  if (audience === 'inactive_7d') return { type: 'inactive', days: 7 }
-  if (audience === 'grade_10')    return { type: 'grade', grade: 10 }
-  return { type: 'all' }
+  if (audience === 'inactive_7d') return { type: 'inactive', days: 7 };
+  if (audience === 'grade_10') return { type: 'grade', grade: 10 };
+  return { type: 'all' };
 }
 
 // ---------------------------------------------------------------------------
@@ -49,22 +53,22 @@ function audienceToApiPayload(audience: AudienceKey) {
 // ---------------------------------------------------------------------------
 
 export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
-  const [audience, setAudience] = useState<AudienceKey>('all_students')
-  const [channel, setChannel] = useState<ChannelType>('email')
-  const [title, setTitle] = useState('')
-  const [message, setMessage] = useState('')
-  const [preview, setPreview] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<{ queued: number } | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const [audience, setAudience] = useState<AudienceKey>('all_students');
+  const [channel, setChannel] = useState<ChannelType>('email');
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [preview, setPreview] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ queued: number } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  const recipientCount = counts[audience]
+  const recipientCount = counts[audience];
 
   async function send() {
-    if (!title.trim() || !message.trim()) return
-    setBusy(true)
-    setErr(null)
-    setResult(null)
+    if (!title.trim() || !message.trim()) return;
+    setBusy(true);
+    setErr(null);
+    setResult(null);
     try {
       const r = await fetch('/api/admin/notifications/broadcast', {
         method: 'POST',
@@ -75,19 +79,19 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
           title,
           body: message,
         }),
-      })
-      const data = await r.json().catch(() => ({}))
+      });
+      const data = await r.json().catch(() => ({}));
       if (r.ok) {
-        setResult({ queued: data.queued ?? recipientCount })
-        setTitle('')
-        setMessage('')
+        setResult({ queued: data.queued ?? recipientCount });
+        setTitle('');
+        setMessage('');
       } else {
-        setErr(data.message ?? 'Failed to send')
+        setErr(data.message ?? 'Failed to send');
       }
     } catch {
-      setErr('Network error')
+      setErr('Network error');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
@@ -100,10 +104,10 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
         </label>
         <select
           value={audience}
-          onChange={e => setAudience(e.target.value as AudienceKey)}
+          onChange={(e) => setAudience(e.target.value as AudienceKey)}
           className="w-full text-[12px] px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#534AB7]"
         >
-          {(Object.keys(AUDIENCE_LABELS) as AudienceKey[]).map(k => (
+          {(Object.keys(AUDIENCE_LABELS) as AudienceKey[]).map((k) => (
             <option key={k} value={k}>
               {AUDIENCE_LABELS[k]} ({counts[k]} students)
             </option>
@@ -117,7 +121,7 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
           Channel
         </label>
         <div className="flex gap-2">
-          {(Object.keys(CHANNEL_META) as ChannelType[]).map(c => (
+          {(Object.keys(CHANNEL_META) as ChannelType[]).map((c) => (
             <button
               key={c}
               onClick={() => setChannel(c)}
@@ -138,9 +142,10 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
         {channel === 'whatsapp' && (
           <div className="mt-2 rounded-lg bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-3 py-2">
             <p className="text-[10px] text-[#27500A] dark:text-green-400 font-medium">
-              WhatsApp reaches only users who provided a number at onboarding.
-              Admin broadcasts are sent as free-form text messages and typically deliver only within WhatsApp&apos;s
-              24-hour customer-service window. Outside that window, a pre-approved template message is required.
+              WhatsApp reaches only users who provided a number at onboarding. Admin broadcasts are
+              sent as free-form text messages and typically deliver only within WhatsApp&apos;s
+              24-hour customer-service window. Outside that window, a pre-approved template message
+              is required.
             </p>
           </div>
         )}
@@ -149,11 +154,14 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
       {/* Title */}
       <div>
         <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-          Title {channel === 'whatsapp' && <span className="text-gray-400">(used as message heading on WhatsApp)</span>}
+          Title{' '}
+          {channel === 'whatsapp' && (
+            <span className="text-gray-400">(used as message heading on WhatsApp)</span>
+          )}
         </label>
         <input
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="Notification title"
           maxLength={200}
           className="w-full text-[12px] px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#534AB7]"
@@ -167,7 +175,7 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
         </label>
         <textarea
           value={message}
-          onChange={e => setMessage(e.target.value)}
+          onChange={(e) => setMessage(e.target.value)}
           placeholder="Message body"
           rows={3}
           maxLength={1000}
@@ -185,7 +193,9 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
             <>
               <p className="text-[12px] font-semibold text-gray-800">{title}</p>
               <p className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{message}</p>
-              <p className="text-[10px] text-gray-400 mt-2">Wrapped in Spinzy brand email template on delivery.</p>
+              <p className="text-[10px] text-gray-400 mt-2">
+                Wrapped in Spinzy brand email template on delivery.
+              </p>
             </>
           ) : channel === 'whatsapp' ? (
             <div className="bg-white rounded-lg p-3 text-[12px] font-sans">
@@ -213,7 +223,7 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
       {/* Actions */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => setPreview(p => !p)}
+          onClick={() => setPreview((p) => !p)}
           className="text-[11px] px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 min-h-[36px] transition-colors"
         >
           {preview ? 'Hide preview' : 'Preview'}
@@ -227,5 +237,5 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
         </button>
       </div>
     </div>
-  )
+  );
 }

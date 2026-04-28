@@ -12,6 +12,7 @@ Stack: Shared with student app (Next.js + React + Node.js + TS + Prisma + Postgr
 1. Overview
 
 In v1, the parent actor is only partially implemented. The main parent-related capabilities are:
+
 - Under-13 parent mobile verification (OTP) during/after student onboarding.
 - Limited parent-facing surfaces (if any) and basic email/SMS notifications.
 - Subscription and paywall behaviour that is primarily student-centric rather than parent-first.
@@ -22,13 +23,13 @@ There is no full-fledged parent dashboard comparable to the v2 Parent document; 
 
 1.1 Parent Journey Stages (v1)
 
-Stage | Features | Status
------ | -------- | ------
-Account Setup | Parent mobile OTP, linkage from student account | Partially implemented
-Monitoring | Limited or no dedicated parent dashboard | Not fully implemented
-Trust Building | Occasional notifications, no narrative weekly digest | Not implemented
-Payment | Subscription purchase handled from student side, not parent-centric | Partially implemented
-Active Communication | No WhatsApp 2-way or parent chatbot | Not implemented
+| Stage                | Features                                                            | Status                |
+| -------------------- | ------------------------------------------------------------------- | --------------------- |
+| Account Setup        | Parent mobile OTP, linkage from student account                     | Partially implemented |
+| Monitoring           | Limited or no dedicated parent dashboard                            | Not fully implemented |
+| Trust Building       | Occasional notifications, no narrative weekly digest                | Not implemented       |
+| Payment              | Subscription purchase handled from student side, not parent-centric | Partially implemented |
+| Active Communication | No WhatsApp 2-way or parent chatbot                                 | Not implemented       |
 
 ---
 
@@ -36,13 +37,13 @@ Active Communication | No WhatsApp 2-way or parent chatbot | Not implemented
 
 F-PAR-V1-001 — Parent Mobile Verification & Linkage
 
-AC# | Acceptance Criterion | Status
---- | -------------------- | ------
-AC-01 | Student under an age/grade threshold is required to provide parent mobile and request OTP | Partially implemented (age/grade heuristic; not fully aligned to v2 age logic)
-AC-02 | `/api/auth/parent/send-otp` issues OTP with DB + rate limiting and phone normalisation | Implemented
-AC-03 | `/api/auth/parent/verify-otp` verifies OTP, marks parentVerified / updates accountStatus | Implemented
-AC-04 | Parent account is not yet a distinct user type; linkage is primarily fields on `User` | Current reality
-AC-05 | Multiple children per parent (family plan) is not explicitly modelled | Not implemented
+| AC#   | Acceptance Criterion                                                                      | Status                                                                         |
+| ----- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| AC-01 | Student under an age/grade threshold is required to provide parent mobile and request OTP | Partially implemented (age/grade heuristic; not fully aligned to v2 age logic) |
+| AC-02 | `/api/auth/parent/send-otp` issues OTP with DB + rate limiting and phone normalisation    | Implemented                                                                    |
+| AC-03 | `/api/auth/parent/verify-otp` verifies OTP, marks parentVerified / updates accountStatus  | Implemented                                                                    |
+| AC-04 | Parent account is not yet a distinct user type; linkage is primarily fields on `User`     | Current reality                                                                |
+| AC-05 | Multiple children per parent (family plan) is not explicitly modelled                     | Not implemented                                                                |
 
 ---
 
@@ -117,4 +118,3 @@ F-PAR-V1-050 — Notifications & Messaging
   - Explicit parent “nudges” (e.g., exam approaching, low readiness).
 
 Status: **Implemented at a basic transactional level**, but not aligned yet with the richer v2 parent communication model.
-

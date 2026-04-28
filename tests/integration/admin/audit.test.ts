@@ -315,7 +315,7 @@ describe('Doubt escalation', () => {
     redisMock.incr.mockResolvedValueOnce(2);
     redisMock.expire.mockResolvedValueOnce(1);
     redisMock.get.mockResolvedValueOnce(
-      JSON.stringify([{ turnId: 'turn-1', aiResponse: 'Previous answer' }]),
+      JSON.stringify([{ turnId: 'turn-1', aiResponse: 'Previous answer' }])
     );
     redisMock.set.mockResolvedValueOnce('OK');
 
@@ -337,7 +337,7 @@ describe('Doubt escalation', () => {
         { turnId: 't1', aiResponse: 'r1' },
         { turnId: 't2', aiResponse: 'r2' },
         { turnId: 't3', aiResponse: 'r3' },
-      ]),
+      ])
     );
     redisMock.set.mockResolvedValueOnce('OK');
 
@@ -406,7 +406,7 @@ describe('DPDP erasure phases', () => {
       expect.objectContaining({
         where: { id: requestId },
         data: expect.objectContaining({ pseudonymisedAt: expect.any(Date) }),
-      }),
+      })
     );
   });
 
@@ -438,15 +438,13 @@ describe('DPDP erasure phases', () => {
     const requestId = 'del-req-purge';
     const userId = 'user-to-purge-2';
 
-    prismaMock.deletionRequest.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: requestId,
-          userId,
-          pseudonymisedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
-        },
-      ]);
+    prismaMock.deletionRequest.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: requestId,
+        userId,
+        pseudonymisedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+      },
+    ]);
 
     await runDataDeletionCycle();
 
@@ -454,20 +452,18 @@ describe('DPDP erasure phases', () => {
       expect.objectContaining({
         where: { id: requestId },
         data: expect.objectContaining({ purgedAt: expect.any(Date) }),
-      }),
+      })
     );
   });
 
   it('Phase 2: does NOT delete AuditLog rows (required for 7yr legal compliance)', async () => {
-    prismaMock.deletionRequest.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: 'del-req-audit',
-          userId: 'user-audit',
-          pseudonymisedAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000),
-        },
-      ]);
+    prismaMock.deletionRequest.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: 'del-req-audit',
+        userId: 'user-audit',
+        pseudonymisedAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000),
+      },
+    ]);
 
     await runDataDeletionCycle();
 
@@ -478,8 +474,16 @@ describe('DPDP erasure phases', () => {
   it('handles errors per-request and continues to next (never throws)', async () => {
     prismaMock.deletionRequest.findMany
       .mockResolvedValueOnce([
-        { id: 'fail-req', userId: 'user-fail', requestedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
-        { id: 'ok-req', userId: 'user-ok', requestedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000) },
+        {
+          id: 'fail-req',
+          userId: 'user-fail',
+          requestedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        },
+        {
+          id: 'ok-req',
+          userId: 'user-ok',
+          requestedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+        },
       ])
       .mockResolvedValueOnce([]);
 

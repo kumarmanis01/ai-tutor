@@ -32,9 +32,7 @@ export interface MomentumResult {
  * - `homeworkCompletionRate`: (GRADED + SUBMITTED) / total homework assigned
  * - `practiceIntensity`:     total practiceCount across all topics / PRACTICE_CAP (50)
  */
-export async function computeMomentumScore(
-  studentId: string,
-): Promise<MomentumResult> {
+export async function computeMomentumScore(studentId: string): Promise<MomentumResult> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [sessionsLast7, homeworkStats, practiceAgg] = await Promise.all([
@@ -65,17 +63,13 @@ export async function computeMomentumScore(
       completedHomework += count;
     }
   }
-  const homeworkCompletionRate = totalHomework > 0
-    ? clamp(completedHomework / totalHomework)
-    : 0;
+  const homeworkCompletionRate = totalHomework > 0 ? clamp(completedHomework / totalHomework) : 0;
 
   const totalPractice = practiceAgg._sum.practiceCount ?? 0;
   const practiceIntensity = clamp(totalPractice / PRACTICE_CAP);
 
   const score = clamp(
-    sessionFrequency * 0.4 +
-    homeworkCompletionRate * 0.4 +
-    practiceIntensity * 0.2,
+    sessionFrequency * 0.4 + homeworkCompletionRate * 0.4 + practiceIntensity * 0.2
   );
 
   logger.debug('[MOMENTUM_SCORE]', {

@@ -8,15 +8,23 @@
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/redis', () => ({ getRedis: () => mockRedis }));
-jest.mock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: jest.fn().mockResolvedValue({ sent: true }) }));
-jest.mock('@/lib/parent/signedLink', () => ({ generateMuteToken: jest.fn().mockReturnValue('token123') }));
+jest.mock('@/lib/notifications/delivery', () => ({
+  sendParentMilestoneNotification: jest.fn().mockResolvedValue({ sent: true }),
+}));
+jest.mock('@/lib/parent/signedLink', () => ({
+  generateMuteToken: jest.fn().mockReturnValue('token123'),
+}));
 jest.mock('@/lib/engagement/timezone', () => ({
   getLocalDateString: jest.fn((_d: Date, _tz: any) => _d.toISOString().slice(0, 10)),
   startOfLocalDayUtc: jest.fn((_s: string, _tz: any) => new Date()),
 }));
 jest.mock('@/lib/i18n', () => ({ t: jest.fn((_key: string, _ctx: any) => 'test message') }));
-jest.mock('@/lib/notifications/policy', () => ({ canSendNotification: jest.fn().mockResolvedValue({ allowed: true }) }));
-jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/notifications/policy', () => ({
+  canSendNotification: jest.fn().mockResolvedValue({ allowed: true }),
+}));
+jest.mock('@/lib/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
@@ -30,7 +38,12 @@ const mockRedis = {
 };
 
 function makeStudent(lastSessionDate: string | null) {
-  return { id: 'stu-1', name: 'Priya', timezone: 'Asia/Kolkata', lastSessionDate: lastSessionDate ? new Date(lastSessionDate) : null };
+  return {
+    id: 'stu-1',
+    name: 'Priya',
+    timezone: 'Asia/Kolkata',
+    lastSessionDate: lastSessionDate ? new Date(lastSessionDate) : null,
+  };
 }
 
 function makeLink(thresholdDays: number | null) {

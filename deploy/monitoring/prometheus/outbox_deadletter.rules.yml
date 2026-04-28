@@ -8,7 +8,7 @@ groups:
           severity: page
           team: content-engineering
         annotations:
-          summary: "Outbox dead-letter(s) detected for {{ $labels.queue }} (reason={{ $labels.reason }})"
+          summary: 'Outbox dead-letter(s) detected for {{ $labels.queue }} (reason={{ $labels.reason }})'
           description: |
             Prometheus detected {{ $value }} outbox dead-letter events in the last 5 minutes for
             queue={{ $labels.queue }}, reason={{ $labels.reason }}.

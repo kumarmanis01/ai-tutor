@@ -32,13 +32,13 @@ interface HydrateAllRequest {
 
 /**
  * POST /api/admin/content-engine/hydrate-all
- * 
+ *
  * Submits a master job that will cascade through all content generation steps:
  * 1. Generate syllabus (chapters + topics) for the subject
  * 2. Generate notes for each topic
  * 3. Generate questions for each topic (all difficulties)
  * 4. Assemble tests for each topic (all difficulties)
- * 
+ *
  * The syllabus worker will automatically create HydrationJobs for downstream content
  * when the syllabus completes. This endpoint just kicks off the syllabus generation.
  */
@@ -60,7 +60,13 @@ export async function POST(req: Request) {
 
   try {
     const body: HydrateAllRequest = await req.json();
-    const { boardId, classId, subjectId, language, difficulties = ['easy', 'medium', 'hard'] } = body;
+    const {
+      boardId,
+      classId,
+      subjectId,
+      language,
+      difficulties = ['easy', 'medium', 'hard'],
+    } = body;
 
     // Validate required fields
     if (!boardId || !classId || !subjectId || !language) {
@@ -72,10 +78,7 @@ export async function POST(req: Request) {
 
     // Validate language
     if (!['en', 'hi'].includes(language)) {
-      return NextResponse.json(
-        { error: 'Invalid language. Supported: en, hi' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid language. Supported: en, hi' }, { status: 400 });
     }
 
     // Fetch the subject with its hierarchy for validation and logging
@@ -237,9 +240,6 @@ export async function GET() {
     });
   } catch (error) {
     logger.error('[hydrate-all] Failed to fetch hierarchy', { error });
-    return NextResponse.json(
-      { error: 'Failed to fetch hierarchy' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch hierarchy' }, { status: 500 });
   }
 }

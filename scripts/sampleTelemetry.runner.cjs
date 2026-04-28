@@ -10,8 +10,6 @@ const { prisma } = require('../lib/prisma');
 const IORedis = require('ioredis');
 const { Queue } = require('bullmq');
 
-
-
 function startOfMinute(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), 0, 0);
 }
@@ -31,7 +29,10 @@ function dimHash(dim) {
     const s = stableStringify(dim ?? {});
     return crypto.createHash('sha1').update(s).digest('hex');
   } catch {
-    return crypto.createHash('sha1').update(String(dim ?? '')).digest('hex');
+    return crypto
+      .createHash('sha1')
+      .update(String(dim ?? ''))
+      .digest('hex');
   }
 }
 
@@ -71,7 +72,15 @@ async function runOnce() {
       const key = `jobs.created.count`;
       const dims = { status: jc.status };
       const dh = dimHash(dims);
-      rowsToInsert.push({ id: crypto.randomUUID(), key, timestamp: bucketTs, value: jc.cnt, dimensions: dims, meta: null, dimensionHash: dh });
+      rowsToInsert.push({
+        id: crypto.randomUUID(),
+        key,
+        timestamp: bucketTs,
+        value: jc.cnt,
+        dimensions: dims,
+        meta: null,
+        dimensionHash: dh,
+      });
     }
 
     const jobsFailed = await prisma.$queryRaw`
@@ -82,17 +91,51 @@ async function runOnce() {
     if (jobsFailed && jobsFailed[0]) {
       const key = `jobs.failed.count`;
       const dh = dimHash({});
-      rowsToInsert.push({ id: crypto.randomUUID(), key, timestamp: bucketTs, value: jobsFailed[0].cnt, dimensions: null, meta: null, dimensionHash: dh });
+      rowsToInsert.push({
+        id: crypto.randomUUID(),
+        key,
+        timestamp: bucketTs,
+        value: jobsFailed[0].cnt,
+        dimensions: null,
+        meta: null,
+        dimensionHash: dh,
+      });
     }
 
     const jobsRunningCount = await prisma.executionJob.count({ where: { status: 'running' } });
-    rowsToInsert.push({ id: crypto.randomUUID(), key: `jobs.running.count`, timestamp: bucketTs, value: jobsRunningCount, dimensions: null, meta: null, dimensionHash: dimHash({}) });
+    rowsToInsert.push({
+      id: crypto.randomUUID(),
+      key: `jobs.running.count`,
+      timestamp: bucketTs,
+      value: jobsRunningCount,
+      dimensions: null,
+      meta: null,
+      dimensionHash: dimHash({}),
+    });
 
     const workersRunning = await prisma.workerLifecycle.count({ where: { status: 'RUNNING' } });
     const staleThreshold = new Date(Date.now() - 60 * 1000);
-    const workersStale = await prisma.workerLifecycle.count({ where: { status: { in: ['RUNNING', 'DRAINING'] }, lastHeartbeatAt: { lt: staleThreshold } } });
-    rowsToInsert.push({ id: crypto.randomUUID(), key: `workers.running.count`, timestamp: bucketTs, value: workersRunning, dimensions: null, meta: null, dimensionHash: dimHash({}) });
-    rowsToInsert.push({ id: crypto.randomUUID(), key: `workers.stale.count`, timestamp: bucketTs, value: workersStale, dimensions: null, meta: null, dimensionHash: dimHash({}) });
+    const workersStale = await prisma.workerLifecycle.count({
+      where: { status: { in: ['RUNNING', 'DRAINING'] }, lastHeartbeatAt: { lt: staleThreshold } },
+    });
+    rowsToInsert.push({
+      id: crypto.randomUUID(),
+      key: `workers.running.count`,
+      timestamp: bucketTs,
+      value: workersRunning,
+      dimensions: null,
+      meta: null,
+      dimensionHash: dimHash({}),
+    });
+    rowsToInsert.push({
+      id: crypto.randomUUID(),
+      key: `workers.stale.count`,
+      timestamp: bucketTs,
+      value: workersStale,
+      dimensions: null,
+      meta: null,
+      dimensionHash: dimHash({}),
+    });
 
     // Queue
     let queueDepth = 0;
@@ -106,7 +149,7 @@ async function runOnce() {
       const jobs = await queue.getJobs(['waiting', 'active'], 0, 0, true);
       if (jobs && jobs.length > 0) {
         const job = jobs[0];
-        const ts = (job.timestamp || job['timestamp'] || Date.now());
+        const ts = job.timestamp || job['timestamp'] || Date.now();
         oldestJobAgeSec = Math.floor((Date.now() - ts) / 1000);
       }
       await connection.quit();
@@ -115,11 +158,36 @@ async function runOnce() {
       queueDepth = 0;
       oldestJobAgeSec = null;
     }
-    rowsToInsert.push({ id: crypto.randomUUID(), key: `queue.depth.value`, timestamp: bucketTs, value: queueDepth, dimensions: null, meta: null, dimensionHash: dimHash({}) });
-    if (oldestJobAgeSec !== null) rowsToInsert.push({ id: crypto.randomUUID(), key: `queue.oldest_age_sec.value`, timestamp: bucketTs, value: oldestJobAgeSec, dimensions: null, meta: null, dimensionHash: dimHash({}) });
+    rowsToInsert.push({
+      id: crypto.randomUUID(),
+      key: `queue.depth.value`,
+      timestamp: bucketTs,
+      value: queueDepth,
+      dimensions: null,
+      meta: null,
+      dimensionHash: dimHash({}),
+    });
+    if (oldestJobAgeSec !== null)
+      rowsToInsert.push({
+        id: crypto.randomUUID(),
+        key: `queue.oldest_age_sec.value`,
+        timestamp: bucketTs,
+        value: oldestJobAgeSec,
+        dimensions: null,
+        meta: null,
+        dimensionHash: dimHash({}),
+      });
 
-    const alertsActive = await prisma.systemAlert.count({ where: { active: true } }).catch(()=>0);
-    rowsToInsert.push({ id: crypto.randomUUID(), key: `alerts.active.count`, timestamp: bucketTs, value: alertsActive, dimensions: null, meta: null, dimensionHash: dimHash({}) });
+    const alertsActive = await prisma.systemAlert.count({ where: { active: true } }).catch(() => 0);
+    rowsToInsert.push({
+      id: crypto.randomUUID(),
+      key: `alerts.active.count`,
+      timestamp: bucketTs,
+      value: alertsActive,
+      dimensions: null,
+      meta: null,
+      dimensionHash: dimHash({}),
+    });
 
     for (const r of rowsToInsert) {
       try {
@@ -141,4 +209,9 @@ async function runOnce() {
   }
 }
 
-runOnce().then(()=> process.exit(0)).catch(e=>{ console.error(e); process.exit(1); });
+runOnce()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

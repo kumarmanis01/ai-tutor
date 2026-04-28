@@ -52,15 +52,10 @@ function subjectAdvisoryLockKey(subjectId: string): bigint {
   return h;
 }
 
-type TxOutcome =
-  | { outcome: 'job_running'; jobId: string }
-  | { outcome: 'subject_not_found' }
-  | { outcome: 'created'; jobId: string; boardSlug: string; grade: number; subjectSlug: string };
-
 export async function enqueueSubjectHydration(
   subjectId: string,
   language: LanguageCode,
-  triggeredBy = 'system',
+  triggeredBy = 'system'
 ): Promise<HydrationEnqueueResult> {
   // Rule 1: fast path -- skip when topics already exist (no transaction needed).
   const topicCount = await prisma.topicDef.count({

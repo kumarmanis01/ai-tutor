@@ -61,12 +61,12 @@ The system does **not** change the recommendation engine (P0–P5 rules) or sess
 
 The feature is implemented as a single logical service: the **engagement** module. It does not introduce a new microservice; it lives in the same app as Prisma, session engine, and API routes.
 
-| Layer | Responsibility |
-|-------|----------------|
-| **engagementService** | Orchestrates reads (today, streak, weekly) and the single write (recordSessionCompletion). Uses Prisma and engagement queries; applies student timezone for all date logic. |
-| **engagementQueries** | Pure query helpers: unique study days, streak computation from study days, weekly activity window, count completions in range. No side effects. |
-| **timezone** | Converts UTC ↔ student local date (IANA timezone): “today,” start/end of local day in UTC for DB range queries. |
-| **Session event listener** | Subscribes to `SESSION_COMPLETED`; calls `recordSessionCompletion(studentId, sessionId)`. Fire-and-forget; failures are logged and do not block the session response. |
+| Layer                      | Responsibility                                                                                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **engagementService**      | Orchestrates reads (today, streak, weekly) and the single write (recordSessionCompletion). Uses Prisma and engagement queries; applies student timezone for all date logic. |
+| **engagementQueries**      | Pure query helpers: unique study days, streak computation from study days, weekly activity window, count completions in range. No side effects.                             |
+| **timezone**               | Converts UTC ↔ student local date (IANA timezone): “today,” start/end of local day in UTC for DB range queries.                                                             |
+| **Session event listener** | Subscribes to `SESSION_COMPLETED`; calls `recordSessionCompletion(studentId, sessionId)`. Fire-and-forget; failures are logged and do not block the session response.       |
 
 **Source of truth for “did the student complete a session?”:** `StructuredSession.state = 'COMPLETE'` and `StructuredSession.completedAt`. All engagement reads derive from this. The cache table (`StudentEngagementStats`) is a materialized view for performance and for storing “longest streak ever”; it is updated on each completion and can be rebuilt from sessions if needed.
 
@@ -74,23 +74,23 @@ The feature is implemented as a single logical service: the **engagement** modul
 
 **File:** `lib/engagement/engagementService.ts`
 
-| Function | Purpose |
-|----------|---------|
-| `getTodayCompletion(studentId)` | Returns `{ state, completedAt? }` for “today” in student timezone. Uses `countCompletionsInRange` and, if count ≥ 1, the latest `completedAt` in that range. |
-| `getCurrentStreak(studentId)` | Loads user timezone; gets unique study days (e.g. limit 365); runs `computeStreakFromStudyDays`; merges longest with `StudentEngagementStats.longestStreak` and returns `{ current, longest }`. |
-| `getWeeklyActivity(studentId)` | Delegates to `engagementQueries.getWeeklyActivity(studentId, user.timezone)`; returns last 7 days with `{ date, completed }`. |
+| Function                                        | Purpose                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `getTodayCompletion(studentId)`                 | Returns `{ state, completedAt? }` for “today” in student timezone. Uses `countCompletionsInRange` and, if count ≥ 1, the latest `completedAt` in that range.                                                                                                                                                                                                       |
+| `getCurrentStreak(studentId)`                   | Loads user timezone; gets unique study days (e.g. limit 365); runs `computeStreakFromStudyDays`; merges longest with `StudentEngagementStats.longestStreak` and returns `{ current, longest }`.                                                                                                                                                                    |
+| `getWeeklyActivity(studentId)`                  | Delegates to `engagementQueries.getWeeklyActivity(studentId, user.timezone)`; returns last 7 days with `{ date, completed }`.                                                                                                                                                                                                                                      |
 | `recordSessionCompletion(studentId, sessionId)` | Idempotent write: if session already in `EngagementProcessedSession`, return. Else load session (must be COMPLETE), compute completion date in student TZ, recompute streak from study days, then in one transaction: insert processed row, increment `User.points` by 25, upsert `StudentEngagementStats` (totals, lastActiveDate, currentStreak, longestStreak). |
 
 Constants: `LEARNING_POINTS_PER_SESSION = 25`, `TZ_DEFAULT = 'UTC'`.
 
 ### API endpoints
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|--------|
-| GET | `/api/engagement` | Session required | **Combined:** `{ today, streak, weekly }` — preferred for dashboard (single round-trip). |
-| GET | `/api/engagement/today-goal` | Session required | Today’s completion state only. |
-| GET | `/api/engagement/streak` | Session required | Current and longest streak. |
-| GET | `/api/engagement/weekly` | Session required | Weekly activity (last 7 days). |
+| Method | Path                         | Auth             | Purpose                                                                                  |
+| ------ | ---------------------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| GET    | `/api/engagement`            | Session required | **Combined:** `{ today, streak, weekly }` — preferred for dashboard (single round-trip). |
+| GET    | `/api/engagement/today-goal` | Session required | Today’s completion state only.                                                           |
+| GET    | `/api/engagement/streak`     | Session required | Current and longest streak.                                                              |
+| GET    | `/api/engagement/weekly`     | Session required | Weekly activity (last 7 days).                                                           |
 
 - **Auth:** All use `getServerSessionForHandlers()`. No session → `401 Unauthorized`.
 - **Success:** JSON with the shapes described in Section 2; `Cache-Control: private, max-age=60, stale-while-revalidate=120`.
@@ -114,27 +114,27 @@ Engagement **reads** use only completed sessions:
 
 **Purpose:** Cache for fast reads and for storing “longest streak ever.” Authoritative completion data remains `StructuredSession.completedAt`.
 
-| Field | Type | Meaning |
-|-------|------|---------|
-| id | String (cuid) | Primary key. |
-| studentId | String (unique) | FK to User. |
-| currentStreak | Int | Consecutive days with ≥1 completion (as of last write). |
-| longestStreak | Int | Maximum of (current computation, previous longest). |
-| lastActiveDate | DateTime? | UTC midnight of the last calendar day with ≥1 completion. |
-| totalSessionsCompleted | Int | Total completions ever processed. |
-| learningPoints | Int | Total learning points awarded (e.g. 25 × sessions). |
-| updatedAt | DateTime | Last update. |
+| Field                  | Type            | Meaning                                                   |
+| ---------------------- | --------------- | --------------------------------------------------------- |
+| id                     | String (cuid)   | Primary key.                                              |
+| studentId              | String (unique) | FK to User.                                               |
+| currentStreak          | Int             | Consecutive days with ≥1 completion (as of last write).   |
+| longestStreak          | Int             | Maximum of (current computation, previous longest).       |
+| lastActiveDate         | DateTime?       | UTC midnight of the last calendar day with ≥1 completion. |
+| totalSessionsCompleted | Int             | Total completions ever processed.                         |
+| learningPoints         | Int             | Total learning points awarded (e.g. 25 × sessions).       |
+| updatedAt              | DateTime        | Last update.                                              |
 
 **Updated when:** `recordSessionCompletion` runs (after a new completion). One upsert per student per completion; `longestStreak` is set to `max(computed longest, existing longest)` so it never decreases.
 
 ### EngagementProcessedSession (idempotency)
 
-| Field | Type | Meaning |
-|-------|------|---------|
-| id | String (cuid) | Primary key. |
-| sessionId | String (unique) | Idempotency key: one row per session ever processed. |
-| studentId | String | FK to User. |
-| processedAt | DateTime | When the completion was recorded. |
+| Field       | Type            | Meaning                                              |
+| ----------- | --------------- | ---------------------------------------------------- |
+| id          | String (cuid)   | Primary key.                                         |
+| sessionId   | String (unique) | Idempotency key: one row per session ever processed. |
+| studentId   | String          | FK to User.                                          |
+| processedAt | DateTime        | When the completion was recorded.                    |
 
 **Purpose:** Ensure each session is counted at most once. Before applying points or updating stats, the service checks for an existing row with the same `sessionId`; if found, it returns without writing.
 
@@ -162,8 +162,8 @@ Algorithm (implemented in `engagementQueries.computeStreakFromStudyDays` and use
 
 2. **Longest run (any window):** Walk the sorted dates; if the next date is the day after the previous, extend the run; otherwise reset run to 1. Track the maximum run length → `longest`.
 
-3. **Current streak (ending at “today” or last completed day):**  
-   - Start from `todayLocal`. If today is in `studyDays`, count today and walk backward day-by-day while the previous day is in `studyDays`; stop at first gap. → `current`.  
+3. **Current streak (ending at “today” or last completed day):**
+   - Start from `todayLocal`. If today is in `studyDays`, count today and walk backward day-by-day while the previous day is in `studyDays`; stop at first gap. → `current`.
    - If today is not in `studyDays`, optionally define “current” as the run ending at the most recent completed day (same backward walk from that day). The implementation walks backward from today first; if count is 0 and there is a `latestDay`, it walks backward from `latestDay` so “current” is the consecutive run up to (but not including) today.
 
 4. **Merge with stored longest:** Return `current` and `longest = max(computed longest, StudentEngagementStats.longestStreak)` so the displayed “longest” never decreases after a completion.
@@ -180,12 +180,12 @@ The engagement block is the **top section** of the student dashboard (above Prim
 
 ### Components
 
-| Component | Type | Responsibility |
-|-----------|------|----------------|
-| **EngagementSection** | Client | Fetches `GET /api/engagement` once on mount; parses combined response; handles loading and errors with safe fallbacks; renders DailyGoalCard, StreakIndicator, WeeklyActivityCalendar. Receives `nextTopicId` from server. |
-| **DailyGoalCard** | Presentational | Shows “Today’s Learning Goal,” “Complete 1 session,” state (NOT_STARTED / IN_PROGRESS / COMPLETED), and “Start Today’s Session” (or “Done for today.”). Uses `nextTopicId` for the button href. Loading skeleton when `loading` is true. |
-| **StreakIndicator** | Presentational | Shows “N Day Streak” and “Keep it going tomorrow.” Renders nothing when `current === 0`. Loading skeleton when `loading` is true. |
-| **WeeklyActivityCalendar** | Presentational | Seven columns (Mon–Sun); maps last 7 days to weekdays; shows ● (completed) or ○ (not completed). Loading skeleton when `loading` is true. |
+| Component                  | Type           | Responsibility                                                                                                                                                                                                                           |
+| -------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **EngagementSection**      | Client         | Fetches `GET /api/engagement` once on mount; parses combined response; handles loading and errors with safe fallbacks; renders DailyGoalCard, StreakIndicator, WeeklyActivityCalendar. Receives `nextTopicId` from server.               |
+| **DailyGoalCard**          | Presentational | Shows “Today’s Learning Goal,” “Complete 1 session,” state (NOT_STARTED / IN_PROGRESS / COMPLETED), and “Start Today’s Session” (or “Done for today.”). Uses `nextTopicId` for the button href. Loading skeleton when `loading` is true. |
+| **StreakIndicator**        | Presentational | Shows “N Day Streak” and “Keep it going tomorrow.” Renders nothing when `current === 0`. Loading skeleton when `loading` is true.                                                                                                        |
+| **WeeklyActivityCalendar** | Presentational | Seven columns (Mon–Sun); maps last 7 days to weekdays; shows ● (completed) or ○ (not completed). Loading skeleton when `loading` is true.                                                                                                |
 
 **Data flow:** Server → `EngagementSection(nextTopicId)`. Client → `fetch('/api/engagement')` → `parseCombined` → state → three child components. No engagement state is lifted to the rest of the dashboard; the section is self-contained.
 
@@ -201,10 +201,10 @@ The engagement block is the **top section** of the student dashboard (above Prim
 
 1. **Completion:** User finishes a session; client calls `POST /api/session/next` (or equivalent) with the final advance. Session engine transitions the session to `COMPLETE`, sets `completedAt`, persists to DB, then emits `SESSION_COMPLETED { studentId, sessionId }` (fire-and-forget).
 
-2. **Engagement update:** `sessionEventListeners` subscribes to `SESSION_COMPLETED` and calls `recordSessionCompletion(studentId, sessionId)`.  
-   - Check `EngagementProcessedSession` by `sessionId`; if exists, return (idempotent).  
-   - Load session (must be COMPLETE, with `completedAt`).  
-   - Get user timezone; compute completion date in that TZ; get unique study days; compute current/longest streak.  
+2. **Engagement update:** `sessionEventListeners` subscribes to `SESSION_COMPLETED` and calls `recordSessionCompletion(studentId, sessionId)`.
+   - Check `EngagementProcessedSession` by `sessionId`; if exists, return (idempotent).
+   - Load session (must be COMPLETE, with `completedAt`).
+   - Get user timezone; compute completion date in that TZ; get unique study days; compute current/longest streak.
    - In one transaction: insert `EngagementProcessedSession`, increment `User.points`, upsert `StudentEngagementStats`.
 
 3. **Dashboard update:** Dashboard does not refetch automatically on session complete. On next load (or when the user returns to the dashboard), the client fetches `GET /api/engagement`, which reads from `engagementService` (today from `StructuredSession` + timezone, streak from study days + stats, weekly from study days). Responses are cached by the browser (e.g. 60s); after that, the next full page load or refetch shows the updated goal, streak, and weekly calendar.
@@ -254,4 +254,4 @@ The engagement block is the **top section** of the student dashboard (above Prim
 
 ---
 
-*Document version: 1.0. Audience: product, backend, frontend, maintainers. For implementation details see also: `docs/daily-habit-integration.md`, `docs/engagement-implementation.md`, `docs/daily-habit-ui.md`.*
+_Document version: 1.0. Audience: product, backend, frontend, maintainers. For implementation details see also: `docs/daily-habit-integration.md`, `docs/engagement-implementation.md`, `docs/daily-habit-ui.md`._

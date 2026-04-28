@@ -1,4 +1,10 @@
-export { DotPulseLoader, SpinnerLoader, BookLoader, ProgressLoader, MascotLoader } from './LoaderVariants';
+export {
+  DotPulseLoader,
+  SpinnerLoader,
+  BookLoader,
+  ProgressLoader,
+  MascotLoader,
+} from './LoaderVariants';
 export { LessonSkeleton, CardSkeleton, ListSkeleton, QuestionSkeleton } from './SkeletonLoaders';
 export { FullScreenLoader } from './FullScreenLoader';
 export { useLoading } from './useLoading';

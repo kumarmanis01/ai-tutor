@@ -2,36 +2,41 @@
 
 - Overview: The chat now supports conversation threading via a `conversationId` (topic).
 - Server (`app/api/ask/route.ts`):
-	- Accepts `conversationId` in the request. Generates one if missing (`conv_<uuid-like>`).
-	- Persists user/assistant messages with `Chat.subject = conversationId` to group turns per topic.
-	- Loads recent history filtered by `userId` and `subject` for context-aware follow-ups.
-	- Returns `{ conversationId, topic }` so the client reuses the same ID across turns.
+  - Accepts `conversationId` in the request. Generates one if missing (`conv_<uuid-like>`).
+  - Persists user/assistant messages with `Chat.subject = conversationId` to group turns per topic.
+  - Loads recent history filtered by `userId` and `subject` for context-aware follow-ups.
+  - Returns `{ conversationId, topic }` so the client reuses the same ID across turns.
 - Client (`app/dashboard/components/QuickInputBox.tsx`):
-	- Stores `conversationId` in component state.
-	- Sends it with `/api/ask` requests and updates it from the server response.
+  - Stores `conversationId` in component state.
+  - Sends it with `/api/ask` requests and updates it from the server response.
 - Database (`prisma/schema.prisma`):
-	- Added indexes: `@@index([subject])` and `@@index([userId, subject])` on `Chat` for efficient per-topic queries.
-	- Apply with: `npx prisma migrate dev -n add-chat-topic-indexes`.
+  - Added indexes: `@@index([subject])` and `@@index([userId, subject])` on `Chat` for efficient per-topic queries.
+  - Apply with: `npx prisma migrate dev -n add-chat-topic-indexes`.
 
 ### Scaling to Multiple Conversations
+
 - Use distinct `conversationId` values per chat/thread (tests, notes, topics, rooms).
 - No schema change required immediately; `Chat.subject` acts as the topic key.
 - Future migration can introduce a dedicated `Conversation` table and OpenAI Conversations/Responses API, keeping `conversationId` contract intact.
 
 ### Suggestion Auto-Submit UX
+
 - Clicking a suggestion now auto-submits the query.
 - Guarded: Submission is blocked if images are still uploading; a toast is shown.
 - The “Suggestion inserted…” hint is cleared on submit.
 
 ### Run & Verify
+
 1. Install deps: `npm install`
 2. Migrate DB indexes: `npx prisma migrate dev -n add-chat-topic-indexes`
 3. Start dev: `npm run dev`
 4. Open chat: ask a question, click a suggestion, then ask a follow-up — the assistant should retain context.
 
 ### Notes
+
 - If `OPENAI_API_KEY` is missing, `/api/ask` returns an error.
 - Image analysis requires user consent and uses presigned uploads; ensure S3 CORS and env vars are set.
+
 # Spinzy Academy — Phase 2 (MVP)
 
 ## Quick start
@@ -54,20 +59,21 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 The Tests feature is modular and lives under `components/Test/` with server APIs under `app/api/tests/*`.
 
 - Components:
-	- `TestHome`: Composes the entire test journey (Quick Practice, Chapter Tests, Test History, Weekly Challenge) and is rendered inside the Dashboard Tests tab and `/tests` page.
-	- `QuickPractice`, `ChapterTests`, `WeeklyChallenge`, `AttemptRunner`, `Scorecard`, `TestHistory` are small, reusable widgets.
+  - `TestHome`: Composes the entire test journey (Quick Practice, Chapter Tests, Test History, Weekly Challenge) and is rendered inside the Dashboard Tests tab and `/tests` page.
+  - `QuickPractice`, `ChapterTests`, `WeeklyChallenge`, `AttemptRunner`, `Scorecard`, `TestHistory` are small, reusable widgets.
 
 - APIs:
-	- `POST /api/tests/start` → creates a `TestResult` attempt and persists ordered `AttemptQuestion` rows.
-	- `GET /api/tests/questions?attemptId=...` → fetches ordered questions for an attempt.
-	- `POST /api/tests/submit` → auto-grades answers, stores `Answer` rows, returns a scorecard.
-	- `GET /api/tests/history` → recent attempts for the current user.
-	- `GET /api/tests/attempt/:id` → attempt details with per-question breakdown.
+  - `POST /api/tests/start` → creates a `TestResult` attempt and persists ordered `AttemptQuestion` rows.
+  - `GET /api/tests/questions?attemptId=...` → fetches ordered questions for an attempt.
+  - `POST /api/tests/submit` → auto-grades answers, stores `Answer` rows, returns a scorecard.
+  - `GET /api/tests/history` → recent attempts for the current user.
+  - `GET /api/tests/attempt/:id` → attempt details with per-question breakdown.
 
 - Prisma models:
-	- `Question` (bank), `AttemptQuestion` (per-attempt items), `Answer` (user response + score), and back-relation on `TestResult`.
+  - `Question` (bank), `AttemptQuestion` (per-attempt items), `Answer` (user response + score), and back-relation on `TestResult`.
 
 - Setup:
+
 ```bash
 npx prisma generate
 npx prisma migrate dev -n add_test_models
@@ -76,7 +82,7 @@ npx ts-node prisma/seed.ts
 ```
 
 - Leaderboard:
-	- `/api/leaderboard?by=tests&grade=&board=&subject=&period=weekly|all` ranks by best attempt score with optional scope filters.
+  - `/api/leaderboard?by=tests&grade=&board=&subject=&period=weekly|all` ranks by best attempt score with optional scope filters.
 
 Note: `lib/aiContext.ts` exports a stub `createAIClient()` used by test generation hooks; replace with your LLM provider for production.
 
@@ -125,10 +131,12 @@ npm run db:deploy
 ```
 
 Tips:
+
 - If Windows locks Prisma DLLs, run `npm run db:kill-node` and retry.
 - Use `npm run db:reset:dev` only against local dev DB; never against production.
 
 ### Migration Recovery (Production)
+
 - If a production migration fails and blocks deploys, use `migrate resolve` to recover the state, then re-deploy.
 - Example commands:
 
@@ -144,27 +152,29 @@ npx prisma migrate deploy
 ```
 
 - Notes:
-	- Keep production migrations minimal and idempotent (use `IF NOT EXISTS` for indexes where possible).
-	- Avoid full-schema “init” migrations on an already populated database.
+  - Keep production migrations minimal and idempotent (use `IF NOT EXISTS` for indexes where possible).
+  - Avoid full-schema “init” migrations on an already populated database.
 
 ### Copilot Playbook: Resolving Failed Prisma Migrations
+
 - Context: A migration failed due to full-schema SQL on an already populated prod DB, causing `P3009` blocks.
 - Steps Copilot used to recover safely:
-	- Remove the erroneous full-schema init migration folder to prevent conflicts:
-		- `Remove-Item -Recurse -Force prisma\migrations\20251210_init`
-	- Edit the failed migration to be minimal and idempotent (indexes only):
-		- In `prisma/migrations/20251210075123_add_chat_topic_indexes/migration.sql` keep only:
-			- `CREATE INDEX IF NOT EXISTS "Chat_subject_idx" ON "Chat"("subject");`
-			- `CREATE INDEX IF NOT EXISTS "Chat_userId_subject_idx" ON "Chat"("userId", "subject");`
-	- Clear failed state, then mark applied:
-		- `npx prisma migrate resolve --rolled-back 20251210075123_add_chat_topic_indexes`
-		- `npx prisma migrate resolve --applied 20251210075123_add_chat_topic_indexes`
-	- Verify:
-		- `npx prisma migrate status`
-	- Deploy if any new migrations exist:
-		- `npx prisma migrate deploy`
+  - Remove the erroneous full-schema init migration folder to prevent conflicts:
+    - `Remove-Item -Recurse -Force prisma\migrations\20251210_init`
+  - Edit the failed migration to be minimal and idempotent (indexes only):
+    - In `prisma/migrations/20251210075123_add_chat_topic_indexes/migration.sql` keep only:
+      - `CREATE INDEX IF NOT EXISTS "Chat_subject_idx" ON "Chat"("subject");`
+      - `CREATE INDEX IF NOT EXISTS "Chat_userId_subject_idx" ON "Chat"("userId", "subject");`
+  - Clear failed state, then mark applied:
+    - `npx prisma migrate resolve --rolled-back 20251210075123_add_chat_topic_indexes`
+    - `npx prisma migrate resolve --applied 20251210075123_add_chat_topic_indexes`
+  - Verify:
+    - `npx prisma migrate status`
+  - Deploy if any new migrations exist:
+    - `npx prisma migrate deploy`
 
 Tips:
+
 - Prefer `migrate diff` to generate targeted SQL (`--from-schema-datasource` → `--to-schema-datamodel --script`) for incremental, non-destructive changes.
 - For Windows CMD, escape `&` in URLs with `^` when setting `DATABASE_URL` inline.
 
@@ -257,8 +267,6 @@ chown <deploy-user>:<deploy-user> .env.production
 
 - The `deploy-and-run.sh` script invokes `ensure-env-perms.sh` before any PM2 actions. Keep `.env.production` in your deployment secrets store and do not commit it.
 
-
-
 ## Deployment / Required Environment Variables
 
 The evaluator and application require runtime environment variables in production. Add these to your Vercel project (Preview & Production) via the Vercel UI or CLI.
@@ -271,6 +279,7 @@ Minimum required runtime vars for production:
 - `OPENAI_API_KEY` — OpenAI API key (if used in production features).
 
 How to add (Vercel UI)
+
 - Project → Settings → Environment Variables → Add variable (key/value) and select Target (Preview/Production/Development).
 
 How to add (Vercel CLI)
@@ -302,9 +311,9 @@ vercel env add OPENAI_API_KEY development
 ```
 
 Notes:
+
 - Do not commit secrets to the repository.
 - GitHub Actions CI uses its own environment and service containers; it does not automatically add runtime vars to Vercel.
-
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
@@ -337,14 +346,16 @@ logger.debug('Speech settings', { lang, micEnabled });
 ```
 
 Notes:
+
 - Avoid `console.*`; route all logs through `logger`.
 - In production, prefer `LOG_LEVEL=error` and `NEXT_PUBLIC_DEBUG_MODE=false`.
 
 ## Alerts (Unified Modal)
+
 - Use the unified alert system to show modal dialogs instead of `alert()`:
-	- Emit: `showAlert({ title: 'Heads up', message: 'Something happened', variant: 'warning' })`
-	- File: `lib/alerts.ts` (`showAlert`) and `components/UI/AlertModal.tsx` (listener + UI)
-	- Global: `AlertModal` is mounted in `app/providers.tsx`.
+  - Emit: `showAlert({ title: 'Heads up', message: 'Something happened', variant: 'warning' })`
+  - File: `lib/alerts.ts` (`showAlert`) and `components/UI/AlertModal.tsx` (listener + UI)
+  - Global: `AlertModal` is mounted in `app/providers.tsx`.
 - This replaces any usage of `window.dispatchEvent` with the named event `app-alert` and a typed payload.
 
 # Spinzy Academy: Setup, Migration, and Staging Guide
@@ -368,6 +379,7 @@ Notes:
 ## Database Migration Workflow
 
 ### Safe Migration Principles
+
 - **Never use `prisma migrate reset` or `db push` on production.**
 - **Always use incremental migrations:**
   ```cmd
@@ -444,6 +456,7 @@ Notes:
    ```
 
 ## Best Practices
+
 - **Never run destructive commands on production.**
 - **Always test migrations and seeds on staging first.**
 - **Keep `.env` files for each environment.**
@@ -451,6 +464,7 @@ Notes:
 - **Review migration SQL for breaking changes.**
 
 ## Troubleshooting
+
 - If you see drift or migration errors, resolve them on staging first.
 - For complex changes, write custom SQL migrations and test on staging.
 - Use `npx prisma migrate resolve --applied <migration_name>` to mark manual migrations as applied.

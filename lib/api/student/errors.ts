@@ -76,12 +76,7 @@ export class NotFoundError extends ApiException {
  */
 export class ValidationError extends ApiException {
   constructor(errors: Record<string, string>) {
-    super(
-      ERROR_CODES.VALIDATION_ERROR,
-      'Validation failed',
-      400,
-      { errors }
-    );
+    super(ERROR_CODES.VALIDATION_ERROR, 'Validation failed', 400, { errors });
   }
 }
 
@@ -90,12 +85,7 @@ export class ValidationError extends ApiException {
  */
 export class RateLimitError extends ApiException {
   constructor(retryAfter: number) {
-    super(
-      ERROR_CODES.RATE_LIMITED,
-      'Too many requests',
-      429,
-      { retryAfter }
-    );
+    super(ERROR_CODES.RATE_LIMITED, 'Too many requests', 429, { retryAfter });
   }
 }
 
@@ -104,12 +94,9 @@ export class RateLimitError extends ApiException {
  */
 export class SubscriptionRequiredError extends ApiException {
   constructor(requiredPlan: string) {
-    super(
-      ERROR_CODES.SUBSCRIPTION_REQUIRED,
-      `Subscription required: ${requiredPlan}`,
-      402,
-      { requiredPlan }
-    );
+    super(ERROR_CODES.SUBSCRIPTION_REQUIRED, `Subscription required: ${requiredPlan}`, 402, {
+      requiredPlan,
+    });
   }
 }
 
@@ -202,11 +189,13 @@ export function buildSuccessResponse<T>(
     requestId: requestId || generateRequestId(),
     version: 'v1',
     timestamp: new Date().toISOString(),
-    cache: cache ? {
-      ttl: cache.ttl,
-      etag: cache.etag,
-      cacheable: cache.ttl > 0,
-    } : undefined,
+    cache: cache
+      ? {
+          ttl: cache.ttl,
+          etag: cache.etag,
+          cacheable: cache.ttl > 0,
+        }
+      : undefined,
   };
 
   return {
@@ -233,12 +222,7 @@ export function handleError<T>(
 ): { response: ApiResponse<T>; statusCode: number } {
   if (error instanceof ApiException) {
     return {
-      response: buildErrorResponse<T>(
-        error.code,
-        error.message,
-        error.details,
-        requestId
-      ),
+      response: buildErrorResponse<T>(error.code, error.message, error.details, requestId),
       statusCode: error.statusCode,
     };
   }
@@ -291,5 +275,5 @@ export function isApiError(error: unknown, code: ErrorCode): boolean {
  * Extract error code from response
  */
 export function getErrorCode<T>(response: ApiResponse<T>): ErrorCode | null {
-  return response.error?.code as ErrorCode || null;
+  return (response.error?.code as ErrorCode) || null;
 }

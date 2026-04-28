@@ -14,8 +14,12 @@ export async function sampleSystemHealth() {
     data: {
       overall: health.overall,
       timestamp: new Date(health.timestamp),
-      dbLatencyMs: health.dependencies.database.latencyMs ? Math.round(health.dependencies.database.latencyMs) : undefined,
-      redisLatencyMs: health.dependencies.redis.latencyMs ? Math.round(health.dependencies.redis.latencyMs) : undefined,
+      dbLatencyMs: health.dependencies.database.latencyMs
+        ? Math.round(health.dependencies.database.latencyMs)
+        : undefined,
+      redisLatencyMs: health.dependencies.redis.latencyMs
+        ? Math.round(health.dependencies.redis.latencyMs)
+        : undefined,
       workersRunning: health.workers.running,
       workersStale: health.workers.stale,
       workersFailed: health.workers.failed,
@@ -32,6 +36,9 @@ export async function sampleSystemHealth() {
 
 export async function queryMetricSamples(from: Date, to: Date) {
   // Query samples within range; return as-is for now -- aggregation can be done in the API layer
-  const rows = await prisma.systemMetricSample.findMany({ where: { timestamp: { gte: from, lte: to } }, orderBy: { timestamp: 'asc' } });
+  const rows = await prisma.systemMetricSample.findMany({
+    where: { timestamp: { gte: from, lte: to } },
+    orderBy: { timestamp: 'asc' },
+  });
   return rows;
 }

@@ -40,7 +40,8 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
     resetPrismaMock();
     getServerSessionForHandlers = require('@/lib/session').getServerSessionForHandlers;
     getServerSessionForHandlers.mockResolvedValue({ user: { id: USER_ID } });
-    enqueueSubjectHydration = require('@/lib/diagnostics/enqueueSubjectHydration').enqueueSubjectHydration;
+    enqueueSubjectHydration =
+      require('@/lib/diagnostics/enqueueSubjectHydration').enqueueSubjectHydration;
     enqueueSubjectHydration.mockReset();
   });
 
@@ -60,7 +61,11 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
 
   it('should return phase "questions" when helper returns topics_exist', async () => {
     prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
-    enqueueSubjectHydration.mockResolvedValue({ triggered: false, jobId: null, reason: 'topics_exist' });
+    enqueueSubjectHydration.mockResolvedValue({
+      triggered: false,
+      jobId: null,
+      reason: 'topics_exist',
+    });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(200);
@@ -70,7 +75,11 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
 
   it('should return triggered:true with jobId when helper creates a new job', async () => {
     prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
-    enqueueSubjectHydration.mockResolvedValue({ triggered: true, jobId: 'new-job-1', reason: 'created' });
+    enqueueSubjectHydration.mockResolvedValue({
+      triggered: true,
+      jobId: 'new-job-1',
+      reason: 'created',
+    });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(200);
@@ -81,7 +90,11 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
 
   it('should return triggered:false with existing jobId when a job is already running', async () => {
     prismaMock.user.findUnique.mockResolvedValue({ language: 'hi' });
-    enqueueSubjectHydration.mockResolvedValue({ triggered: false, jobId: 'existing-job-1', reason: 'job_running' });
+    enqueueSubjectHydration.mockResolvedValue({
+      triggered: false,
+      jobId: 'existing-job-1',
+      reason: 'job_running',
+    });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(200);
@@ -91,7 +104,11 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
 
   it('should return 404 when helper finds no SubjectDef', async () => {
     prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
-    enqueueSubjectHydration.mockResolvedValue({ triggered: false, jobId: null, reason: 'subject_not_found' });
+    enqueueSubjectHydration.mockResolvedValue({
+      triggered: false,
+      jobId: null,
+      reason: 'subject_not_found',
+    });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(404);
@@ -99,7 +116,11 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
 
   it('should default language to en when student has no language set', async () => {
     prismaMock.user.findUnique.mockResolvedValue({ language: null });
-    enqueueSubjectHydration.mockResolvedValue({ triggered: true, jobId: 'job-x', reason: 'created' });
+    enqueueSubjectHydration.mockResolvedValue({
+      triggered: true,
+      jobId: 'job-x',
+      reason: 'created',
+    });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(enqueueSubjectHydration).toHaveBeenCalledWith(SUBJECT_ID, 'en', 'student_on_demand');

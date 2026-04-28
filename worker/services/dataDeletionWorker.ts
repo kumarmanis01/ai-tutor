@@ -8,26 +8,28 @@
  * Never throws -- logs all errors and continues to next request.
  */
 
-import { prisma } from '@/lib/prisma.js'
-import { logger } from '@/lib/logger.js'
-import { AdminActionType } from '@prisma/client'
+import { prisma } from '@/lib/prisma.js';
+import { logger } from '@/lib/logger.js';
+import { AdminActionType } from '@prisma/client';
 
-const PSEUDONYMISE_AFTER_DAYS = 7
-const PURGE_AFTER_DAYS = 30
+const PSEUDONYMISE_AFTER_DAYS = 7;
+const PURGE_AFTER_DAYS = 30;
 
 export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; purged: number }> {
-  const now = new Date()
-  const pseudonymiseThreshold = new Date(now.getTime() - PSEUDONYMISE_AFTER_DAYS * 24 * 60 * 60 * 1000)
-  const purgeThreshold = new Date(now.getTime() - PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000)
+  const now = new Date();
+  const pseudonymiseThreshold = new Date(
+    now.getTime() - PSEUDONYMISE_AFTER_DAYS * 24 * 60 * 60 * 1000
+  );
+  const purgeThreshold = new Date(now.getTime() - PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000);
 
-  let pseudonymised = 0
-  let purged = 0
+  let pseudonymised = 0;
+  let purged = 0;
 
   // ── Phase 1: Pseudonymise ───────────────────────────────────────────────────
   const phase1Requests = await prisma.deletionRequest.findMany({
     where: { requestedAt: { lt: pseudonymiseThreshold }, pseudonymisedAt: null },
     take: 50, // batch cap per run
-  })
+  });
 
   for (const req of phase1Requests) {
     try {
@@ -54,14 +56,14 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
             action: AdminActionType.ERASURE_PSEUDONYMISE,
           },
         }),
-      ])
-      pseudonymised++
-      logger.info('dataDeletionWorker.pseudonymised', { requestId: req.id })
+      ]);
+      pseudonymised++;
+      logger.info('dataDeletionWorker.pseudonymised', { requestId: req.id });
     } catch (err) {
       logger.error('dataDeletionWorker.pseudonymiseFailed', {
         requestId: req.id,
         error: err instanceof Error ? err.message : String(err),
-      })
+      });
     }
   }
 
@@ -69,7 +71,7 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
   const phase2Requests = await prisma.deletionRequest.findMany({
     where: { pseudonymisedAt: { lt: purgeThreshold }, purgedAt: null },
     take: 50,
-  })
+  });
 
   for (const req of phase2Requests) {
     try {
@@ -77,8 +79,8 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
       const sessions = await prisma.structuredSession.findMany({
         where: { studentId: req.userId },
         select: { id: true },
-      })
-      const sessionIds = sessions.map((s) => s.id)
+      });
+      const sessionIds = sessions.map((s: { id: string }) => s.id);
 
       await prisma.$transaction([
         // Delete safety events
@@ -100,21 +102,21 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
             action: AdminActionType.ERASURE_PURGE,
           },
         }),
-      ])
+      ]);
 
       // AITutorTurnLog: no studentMessage/rawInput fields in current schema -- skip
-      void sessionIds // suppress unused var warning
+      void sessionIds; // suppress unused var warning
 
-      purged++
-      logger.info('dataDeletionWorker.purged', { requestId: req.id, purgedAt: now.toISOString() })
+      purged++;
+      logger.info('dataDeletionWorker.purged', { requestId: req.id, purgedAt: now.toISOString() });
     } catch (err) {
       logger.error('dataDeletionWorker.purgeFailed', {
         requestId: req.id,
         error: err instanceof Error ? err.message : String(err),
-      })
+      });
     }
   }
 
-  logger.info('dataDeletionWorker.cycleComplete', { pseudonymised, purged })
-  return { pseudonymised, purged }
+  logger.info('dataDeletionWorker.cycleComplete', { pseudonymised, purged });
+  return { pseudonymised, purged };
 }

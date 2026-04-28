@@ -1,23 +1,25 @@
-import type { Job } from 'bullmq'
-import { prisma } from '@/lib/prisma.js'
-import { logger } from '@/lib/logger.js'
-import { generateLearningPlan } from '@/lib/ai/learningPlan.js'
+import type { Job } from 'bullmq';
+import { prisma } from '@/lib/prisma.js';
+import { logger } from '@/lib/logger.js';
+import { generateLearningPlan } from '@/lib/ai/learningPlan.js';
 import { diagnosticConfig } from '@/lib/config';
 
 export interface DiagnosticBootstrapJobData {
-  studentId: string
-  diagnosticSessionId: string
-  chapterIds: string[]
-  boardId: string
-  gradeId: string
+  studentId: string;
+  diagnosticSessionId: string;
+  chapterIds: string[];
+  boardId: string;
+  gradeId: string;
 }
 
-export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJobData>): Promise<void> {
-  const { studentId, diagnosticSessionId, chapterIds } = job.data
+export async function processDiagnosticBootstrap(
+  job: Job<DiagnosticBootstrapJobData>
+): Promise<void> {
+  const { studentId, diagnosticSessionId, chapterIds } = job.data;
 
   if (!studentId || !diagnosticSessionId || !Array.isArray(chapterIds) || chapterIds.length === 0) {
-    logger.warn('[diagnostic-bootstrap] invalid job data', { jobId: job.id, data: job.data })
-    return
+    logger.warn('[diagnostic-bootstrap] invalid job data', { jobId: job.id, data: job.data });
+    return;
   }
 
   try {
@@ -32,15 +34,15 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
         irt_b: true,
         bloomLevel: true,
       },
-    })
+    });
 
     if (concepts.length === 0) {
       logger.warn('[diagnostic-bootstrap] no concepts found for chapters', {
         jobId: job.id,
         studentId,
         chapterIds,
-      })
-      return
+      });
+      return;
     }
 
     const answers = await prisma.answerEvent.findMany({
@@ -52,18 +54,18 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
         conceptId: true,
         isCorrect: true,
       },
-    })
+    });
 
-    const answerByConcept = new Map<string, boolean>()
+    const answerByConcept = new Map<string, boolean>();
     for (const a of answers) {
-      if (!a.conceptId) continue
+      if (!a.conceptId) continue;
       // If multiple answers exist for a concept, last one wins.
-      answerByConcept.set(a.conceptId, a.isCorrect)
+      answerByConcept.set(a.conceptId, a.isCorrect);
     }
 
-    const providedAnswersCount = answerByConcept.size
-    const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10)
-    const isPartialAbandon = providedAnswersCount < minValid
+    const providedAnswersCount = answerByConcept.size;
+    const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10);
+    const isPartialAbandon = providedAnswersCount < minValid;
     if (isPartialAbandon) {
       logger.info('[diagnostic-bootstrap] partial_abandon_detected', {
         jobId: job.id,
@@ -71,35 +73,35 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
         diagnosticSessionId,
         providedAnswersCount,
         minValid,
-      })
+      });
     }
 
-    let seeded = 0
-    let skipped = 0
+    let seeded = 0;
+    let skipped = 0;
 
     for (const concept of concepts) {
-      const answered = answerByConcept.has(concept.id)
-      const isCorrect = answered ? answerByConcept.get(concept.id) === true : null
+      const answered = answerByConcept.has(concept.id);
+      const isCorrect = answered ? answerByConcept.get(concept.id) === true : null;
 
-      let masteryScore = 0.3
-      let attemptCount = 0
+      let masteryScore = 0.3;
+      let attemptCount = 0;
 
       if (!answered) {
         if (isPartialAbandon) {
           // If the diagnostic is deemed a partial/abandoned run, assume grade-level start
           // for unanswered concepts but mark them as higher-uncertainty using masteryVariance.
-          masteryScore = 0.5
-          attemptCount = 0
+          masteryScore = 0.5;
+          attemptCount = 0;
         } else {
-          masteryScore = 0.3
-          attemptCount = 0
+          masteryScore = 0.3;
+          attemptCount = 0;
         }
       } else if (isCorrect) {
-        masteryScore = 0.6
-        attemptCount = 1
+        masteryScore = 0.6;
+        attemptCount = 1;
       } else {
-        masteryScore = 0.15
-        attemptCount = 1
+        masteryScore = 0.15;
+        attemptCount = 1;
       }
 
       try {
@@ -110,9 +112,9 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
               conceptId: concept.id,
             },
           },
-        })
+        });
 
-        const now = new Date()
+        const now = new Date();
 
         if (!existing) {
           await prisma.studentConceptState.create({
@@ -123,10 +125,10 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
               lastInteraction: now,
               attemptCount,
               masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
-              memoryStrength: Math.round((masteryScore * 1.0) * 1000) / 1000,
+              memoryStrength: Math.round(masteryScore * 1.0 * 1000) / 1000,
             },
-          })
-          seeded += 1
+          });
+          seeded += 1;
         } else if (existing.masteryScore < masteryScore) {
           await prisma.studentConceptState.update({
             where: {
@@ -140,12 +142,12 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
               lastInteraction: now,
               attemptCount: existing.attemptCount + attemptCount,
               masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
-              memoryStrength: Math.round((masteryScore * (existing.retention ?? 1)) * 1000) / 1000,
+              memoryStrength: Math.round(masteryScore * (existing.retention ?? 1) * 1000) / 1000,
             },
-          })
-          seeded += 1
+          });
+          seeded += 1;
         } else {
-          skipped += 1
+          skipped += 1;
         }
       } catch (err) {
         logger.error('[diagnostic-bootstrap] failed to upsert StudentConceptState', {
@@ -153,7 +155,7 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
           studentId,
           conceptId: concept.id,
           error: String((err as any)?.message ?? err),
-        })
+        });
         // continue with next concept
       }
     }
@@ -163,22 +165,22 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       diagnosticSessionId,
       conceptsSeeded: seeded,
       conceptsSkipped: skipped,
-    })
+    });
 
     const firstChapter = await prisma.chapterDef.findUnique({
       where: { id: chapterIds[0] },
       select: { subjectId: true },
-    })
-    const primarySubjectId = firstChapter?.subjectId
+    });
+    const primarySubjectId = firstChapter?.subjectId;
     if (primarySubjectId) {
-      const planId = await generateLearningPlan(studentId, primarySubjectId)
+      const planId = await generateLearningPlan(studentId, primarySubjectId);
       if (planId) {
-        const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
+        const itemCount = await prisma.learningPlanItem.count({ where: { planId } });
         logger.info('[diagnostic-bootstrap] learning plan generated', {
           studentId,
           planId,
           itemCount,
-        })
+        });
       }
     }
   } catch (err) {
@@ -187,7 +189,6 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       studentId,
       diagnosticSessionId,
       error: String((err as any)?.message ?? err),
-    })
+    });
   }
 }
-

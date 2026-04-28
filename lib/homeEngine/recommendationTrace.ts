@@ -123,6 +123,14 @@ const TRACE_TTL_SECONDS = 10 * 60;
 export async function persistRecTrace(trace: RecommendationTrace): Promise<void> {
   try {
     const redis = getRedis();
+    if (!redis) {
+      logger.warn('rec-trace.write_failed', {
+        traceId: trace.traceId,
+        studentId: trace.studentId,
+        error: 'Redis unavailable',
+      });
+      return;
+    }
     const key = `${TRACE_KEY_PREFIX}${trace.studentId}`;
     // Overwrites any previous trace for this student (only latest is kept).
     const payload = JSON.stringify(trace, replaceDates);
@@ -163,6 +171,10 @@ export async function persistRecTrace(trace: RecommendationTrace): Promise<void>
 export async function readRecTrace(studentId: string): Promise<RecommendationTrace | null> {
   try {
     const redis = getRedis();
+    if (!redis) {
+      logger.warn('rec-trace.read_failed', { studentId, error: 'Redis unavailable' });
+      return null;
+    }
     const raw = await redis.get(`${TRACE_KEY_PREFIX}${studentId}`);
     if (!raw) return null;
     return JSON.parse(raw) as RecommendationTrace;

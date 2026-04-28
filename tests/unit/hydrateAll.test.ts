@@ -1,18 +1,22 @@
 jest.mock('@/hydrators/hydrateSyllabus', () => ({
-  enqueueSyllabusHydration: jest.fn().mockResolvedValue({ created: true })
+  enqueueSyllabusHydration: jest.fn().mockResolvedValue({ created: true }),
 }));
-jest.mock('@/hydrators/hydrateNotes', () => ({ hydrateNotes: jest.fn().mockResolvedValue({ created: true }) }));
-jest.mock('@/hydrators/hydrateQuestions', () => ({ hydrateQuestions: jest.fn().mockResolvedValue({ created: true }) }));
+jest.mock('@/hydrators/hydrateNotes', () => ({
+  hydrateNotes: jest.fn().mockResolvedValue({ created: true }),
+}));
+jest.mock('@/hydrators/hydrateQuestions', () => ({
+  hydrateQuestions: jest.fn().mockResolvedValue({ created: true }),
+}));
 
 const mockedPrisma = {
   subjectDef: { findMany: jest.fn() },
-  topicDef: { findMany: jest.fn() }
+  topicDef: { findMany: jest.fn() },
 };
 
 jest.mock('@/lib/prisma', () => ({ prisma: mockedPrisma }));
 
 // import after mocks so imports of hydrateAll pick up mocked prisma
-import runHydrateAll from '@/scripts/hydrateAll'
+import runHydrateAll from '@/scripts/hydrateAll';
 
 describe('runHydrateAll', () => {
   beforeEach(() => {
@@ -20,8 +24,8 @@ describe('runHydrateAll', () => {
   });
 
   it('enqueues syllabus for each subject and hydrates topics', async () => {
-    const subjects = [ { id: 's1', name: 'Math', class: { grade: 5, board: { name: 'CBSE' } } } ];
-    const topics = [ { id: 't1' }, { id: 't2' } ];
+    const subjects = [{ id: 's1', name: 'Math', class: { grade: 5, board: { name: 'CBSE' } } }];
+    const topics = [{ id: 't1' }, { id: 't2' }];
 
     mockedPrisma.subjectDef.findMany.mockResolvedValue(subjects);
     mockedPrisma.topicDef.findMany.mockResolvedValue(topics);

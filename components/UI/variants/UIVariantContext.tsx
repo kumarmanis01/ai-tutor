@@ -17,12 +17,7 @@
 
 'use client';
 
-import React, {
-  createContext,
-  useContext,
-  useMemo,
-  type ReactNode,
-} from 'react';
+import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
 
 import type { Grade } from '@/lib/ai/prompts/schemas';
 import {
@@ -33,11 +28,7 @@ import {
   getGradeBand,
   isFeatureEnabled,
 } from './ageVariants';
-import {
-  type CSSVariables,
-  generateVariablesForGrade,
-  getThemeClassName,
-} from './designTokens';
+import { type CSSVariables, generateVariablesForGrade, getThemeClassName } from './designTokens';
 
 // ============================================================================
 // CONTEXT TYPE
@@ -62,9 +53,7 @@ interface UIVariantContextValue {
     feature: 'celebrations' | 'timer' | 'hints' | 'descriptions' | 'speechHints'
   ) => boolean;
   /** Get component configuration */
-  readonly getComponent: <K extends keyof ComponentConfig>(
-    component: K
-  ) => ComponentConfig[K];
+  readonly getComponent: <K extends keyof ComponentConfig>(component: K) => ComponentConfig[K];
 }
 
 // ============================================================================
@@ -86,7 +75,7 @@ interface UIVariantProviderProps {
 
 /**
  * Provider component that supplies UI variant configuration to all children.
- * 
+ *
  * @example
  * ```tsx
  * <UIVariantProvider grade={studentGrade}>
@@ -94,16 +83,13 @@ interface UIVariantProviderProps {
  * </UIVariantProvider>
  * ```
  */
-export function UIVariantProvider({
-  grade,
-  children,
-}: UIVariantProviderProps): JSX.Element {
+export function UIVariantProvider({ grade, children }: UIVariantProviderProps): JSX.Element {
   const value = useMemo<UIVariantContextValue>(() => {
     const config = getUIVariant(grade);
     const gradeBand = getGradeBand(grade);
     const cssVariables = generateVariablesForGrade(grade);
     const themeClassName = getThemeClassName(grade);
-    
+
     return {
       grade,
       gradeBand,
@@ -111,16 +97,11 @@ export function UIVariantProvider({
       cssVariables,
       themeClassName,
       isEnabled: (feature) => isFeatureEnabled(grade, feature),
-      getComponent: <K extends keyof ComponentConfig>(component: K) =>
-        config.components[component],
+      getComponent: <K extends keyof ComponentConfig>(component: K) => config.components[component],
     };
   }, [grade]);
-  
-  return (
-    <UIVariantContext.Provider value={value}>
-      {children}
-    </UIVariantContext.Provider>
-  );
+
+  return <UIVariantContext.Provider value={value}>{children}</UIVariantContext.Provider>;
 }
 
 // ============================================================================
@@ -129,14 +110,14 @@ export function UIVariantProvider({
 
 /**
  * Hook to access the UI variant context
- * 
+ *
  * @throws Error if used outside of UIVariantProvider
- * 
+ *
  * @example
  * ```tsx
  * function MyComponent() {
  *   const { config, isEnabled } = useUIVariant();
- *   
+ *
  *   return (
  *     <div>
  *       {isEnabled('celebrations') && <Confetti />}
@@ -147,14 +128,14 @@ export function UIVariantProvider({
  */
 export function useUIVariant(): UIVariantContextValue {
   const context = useContext(UIVariantContext);
-  
+
   if (!context) {
     throw new Error(
       'useUIVariant must be used within a UIVariantProvider. ' +
-      'Wrap your component tree with <UIVariantProvider grade={studentGrade}>'
+        'Wrap your component tree with <UIVariantProvider grade={studentGrade}>'
     );
   }
-  
+
   return context;
 }
 
@@ -238,7 +219,7 @@ interface ThemeWrapperProps {
 
 /**
  * Component that applies theme class and CSS variables to its children
- * 
+ *
  * @example
  * ```tsx
  * <UIVariantProvider grade={3}>
@@ -248,21 +229,15 @@ interface ThemeWrapperProps {
  * </UIVariantProvider>
  * ```
  */
-export function ThemeWrapper({
-  children,
-  className = '',
-}: ThemeWrapperProps): JSX.Element {
+export function ThemeWrapper({ children, className = '' }: ThemeWrapperProps): JSX.Element {
   const { themeClassName, cssVariables } = useUIVariant();
-  
+
   // Convert CSS variables to inline styles
-  const style = Object.entries(cssVariables).reduce(
-    (acc, [key, value]) => {
-      acc[key as keyof React.CSSProperties] = value;
-      return acc;
-    },
-    {} as React.CSSProperties
-  );
-  
+  const style = Object.entries(cssVariables).reduce((acc, [key, value]) => {
+    acc[key as keyof React.CSSProperties] = value;
+    return acc;
+  }, {} as React.CSSProperties);
+
   return (
     <div className={`${themeClassName} ${className}`.trim()} style={style}>
       {children}

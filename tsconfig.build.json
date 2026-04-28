@@ -12,15 +12,13 @@
     "sourceMap": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
     }
   },
-  "include": [
-    "worker/**/*.ts",
-    "lib/**/*.ts"
-  ],
+  "include": ["worker/**/*.ts", "worker/**/*.tsx", "lib/**/*.ts", "lib/**/*.tsx", "server.ts"],
   "exclude": [
     "node_modules",
     "dist",

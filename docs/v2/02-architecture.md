@@ -6,45 +6,46 @@
 
 ## Infrastructure
 
-| Layer | Technology |
-|-------|-----------|
-| VPS | AlmaLinux, path: `/home/gnosiva/apps/content-engine/ai-tutor/` |
-| Process manager | PM2 — 3 processes (see below) |
-| DNS + SSL | Cloudflare — Full (strict) |
-| Database | Neon PostgreSQL (pgvector enabled, 24+ migrations applied) |
-| Cache + Queue | Redis (local) + BullMQ |
-| File storage | Cloudflare R2 |
-| Deploy script | `scripts/deploy-and-run.sh` |
+| Layer           | Technology                                                     |
+| --------------- | -------------------------------------------------------------- |
+| VPS             | AlmaLinux, path: `/home/gnosiva/apps/content-engine/ai-tutor/` |
+| Process manager | PM2 — 3 processes (see below)                                  |
+| DNS + SSL       | Cloudflare — Full (strict)                                     |
+| Database        | Neon PostgreSQL (pgvector enabled, 24+ migrations applied)     |
+| Cache + Queue   | Redis (local) + BullMQ                                         |
+| File storage    | Cloudflare R2                                                  |
+| Deploy script   | `scripts/deploy-and-run.sh`                                    |
 
 ### PM2 Processes
 
 All three are defined in `ecosystem.config.cjs` and started with:
+
 ```
 pm2 start ecosystem.config.cjs --env production --update-env
 ```
 
-| Process | Script | Purpose |
-|---------|--------|---------|
-| `ai-tutor-web` | `npm start` (Next.js) | Serves the web app and all API routes |
-| `content-engine-worker` | `scripts/run-worker.sh` | BullMQ consumer for content hydration jobs |
-| `ai-tutor-scheduler` | `scripts/run-scheduler.sh` | Cron jobs + hydration reconciler |
+| Process                 | Script                     | Purpose                                    |
+| ----------------------- | -------------------------- | ------------------------------------------ |
+| `ai-tutor-web`          | `npm start` (Next.js)      | Serves the web app and all API routes      |
+| `content-engine-worker` | `scripts/run-worker.sh`    | BullMQ consumer for content hydration jobs |
+| `ai-tutor-scheduler`    | `scripts/run-scheduler.sh` | Cron jobs + hydration reconciler           |
 
 ---
 
 ## Application Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16, App Router, TypeScript strict |
-| Styling | TailwindCSS (mobile-first, 360px base) |
-| Auth | NextAuth v5 — Google OAuth + email magic link |
-| ORM | Prisma 6.19.1 (locked — do not upgrade to v7) |
-| Database client | `@prisma/client` generated from `prisma/schema.prisma` |
-| AI (teaching) | OpenAI GPT-4o |
-| AI (content gen) | OpenAI GPT-4o-mini |
-| AI (failover) | Anthropic claude-haiku-4-5 |
-| Embeddings | `text-embedding-3-small` → pgvector (1536 dims) |
-| Queue | BullMQ on Redis |
+| Layer            | Technology                                             |
+| ---------------- | ------------------------------------------------------ |
+| Framework        | Next.js 16, App Router, TypeScript strict              |
+| Styling          | TailwindCSS (mobile-first, 360px base)                 |
+| Auth             | NextAuth v5 — Google OAuth + email magic link          |
+| ORM              | Prisma 6.19.1 (locked — do not upgrade to v7)          |
+| Database client  | `@prisma/client` generated from `prisma/schema.prisma` |
+| AI (teaching)    | OpenAI GPT-4o                                          |
+| AI (content gen) | OpenAI GPT-4o-mini                                     |
+| AI (failover)    | Anthropic claude-haiku-4-5                             |
+| Embeddings       | `text-embedding-3-small` → pgvector (1536 dims)        |
+| Queue            | BullMQ on Redis                                        |
 
 ---
 
@@ -52,38 +53,42 @@ pm2 start ecosystem.config.cjs --env production --update-env
 
 The Next.js App Router uses four route groups:
 
-| Group | Path prefix | Who uses it |
-|-------|-------------|-------------|
-| `(public)` | `/`, `/login`, `/signup` | Unauthenticated visitors |
-| `(student)` | `/dashboard`, `/diagnostic/*`, `/session/*` | Authenticated students |
-| `(parent)` | `/parent/*` | Authenticated parents |
-| `(admin)` | `/admin/*` | Internal staff only |
+| Group       | Path prefix                                 | Who uses it              |
+| ----------- | ------------------------------------------- | ------------------------ |
+| `(public)`  | `/`, `/login`, `/signup`                    | Unauthenticated visitors |
+| `(student)` | `/dashboard`, `/diagnostic/*`, `/session/*` | Authenticated students   |
+| `(parent)`  | `/parent/*`                                 | Authenticated parents    |
+| `(admin)`   | `/admin/*`                                  | Internal staff only      |
 
 ---
 
 ## Key API Routes
 
 ### Student-facing
-| Route | Purpose |
-|-------|---------|
-| `POST /api/user/onboarding` | Save board/grade/subjects after OAuth sign-in |
-| `POST /api/tutor/session/start` | Create or resume a `StructuredSession` |
-| `POST /api/tutor/turn` | Send a student message, receive Vidya's response (streaming) |
+
+| Route                           | Purpose                                                      |
+| ------------------------------- | ------------------------------------------------------------ |
+| `POST /api/user/onboarding`     | Save board/grade/subjects after OAuth sign-in                |
+| `POST /api/tutor/session/start` | Create or resume a `StructuredSession`                       |
+| `POST /api/tutor/turn`          | Send a student message, receive Vidya's response (streaming) |
 
 ### Admin — Content Engine
-| Route | Purpose |
-|-------|---------|
-| `POST /api/admin/hydrateAll` | Trigger HydrateAll pipeline for a board+grade+subject |
-| `GET /api/admin/hydrateAll/stats` | Pipeline progress stats |
-| `GET /api/admin/hydrateAll/[jobId]` | Individual job detail |
-| `POST /api/admin/hydrateAll/[jobId]/retry` | Retry a failed job |
-| `GET /api/admin/content-engine/jobs` | List all hydration jobs |
-| `GET /api/admin/content-engine/queue` | BullMQ queue depth |
-| `GET /api/admin/content-engine/workers` | Worker process health |
-| `GET /api/admin/content-engine/summary` | System summary for dashboard |
+
+| Route                                      | Purpose                                               |
+| ------------------------------------------ | ----------------------------------------------------- |
+| `POST /api/admin/hydrateAll`               | Trigger HydrateAll pipeline for a board+grade+subject |
+| `GET /api/admin/hydrateAll/stats`          | Pipeline progress stats                               |
+| `GET /api/admin/hydrateAll/[jobId]`        | Individual job detail                                 |
+| `POST /api/admin/hydrateAll/[jobId]/retry` | Retry a failed job                                    |
+| `GET /api/admin/content-engine/jobs`       | List all hydration jobs                               |
+| `GET /api/admin/content-engine/queue`      | BullMQ queue depth                                    |
+| `GET /api/admin/content-engine/workers`    | Worker process health                                 |
+| `GET /api/admin/content-engine/summary`    | System summary for dashboard                          |
 
 ### Admin — UI Pages
+
 Main content-engine UI lives at `/admin/content-engine/`:
+
 - `/admin/content-engine/hydrateAll` — trigger + monitor hydration
 - `/admin/content-engine/jobs` and `/admin/content-engine/jobs/[id]` — job detail
 - `/admin/content-engine/moderation` — content approval queue
@@ -94,12 +99,12 @@ Main content-engine UI lives at `/admin/content-engine/`:
 
 ## BullMQ Queues
 
-| Queue name | Producer | Consumer | Purpose |
-|------------|---------|---------|---------|
-| `content-hydration` | `POST /api/admin/hydrateAll` + Outbox reconciler | `content-engine-worker` | HydrateAll pipeline (syllabus → notes → questions) |
-| `diagnostic-bootstrap` | `POST /api/user/onboarding` (non-blocking) | `content-engine-worker` | Seed baseline `StudentConceptState` after onboarding |
-| `distress-notification` | AI tutor safety layer | `content-engine-worker` | Safety alerts — currently gated (`ENABLE_DISTRESS_DETECTION=false`) |
-| `weekly-digest` | `ai-tutor-scheduler` (Sunday 18:00 IST) | `ai-tutor-scheduler` | Parent weekly digest emails |
+| Queue name              | Producer                                         | Consumer                | Purpose                                                             |
+| ----------------------- | ------------------------------------------------ | ----------------------- | ------------------------------------------------------------------- |
+| `content-hydration`     | `POST /api/admin/hydrateAll` + Outbox reconciler | `content-engine-worker` | HydrateAll pipeline (syllabus → notes → questions)                  |
+| `diagnostic-bootstrap`  | `POST /api/user/onboarding` (non-blocking)       | `content-engine-worker` | Seed baseline `StudentConceptState` after onboarding                |
+| `distress-notification` | AI tutor safety layer                            | `content-engine-worker` | Safety alerts — currently gated (`ENABLE_DISTRESS_DETECTION=false`) |
+| `weekly-digest`         | `ai-tutor-scheduler` (Sunday 18:00 IST)          | `ai-tutor-scheduler`    | Parent weekly digest emails                                         |
 
 ---
 
@@ -107,16 +112,16 @@ Main content-engine UI lives at `/admin/content-engine/`:
 
 Defined in `worker/scheduler.ts`. All run in the `ai-tutor-scheduler` PM2 process.
 
-| Job | Interval | Function |
-|-----|----------|---------|
+| Job                   | Interval  | Function                                                          |
+| --------------------- | --------- | ----------------------------------------------------------------- |
 | `hydrationReconciler` | 2 minutes | Polls `Outbox` table, dispatches pending hydration jobs to BullMQ |
-| `markIgnored` | 24 hours | Marks stale `ContentRecommendation` rows as ignored |
-| `weeklyParent` | 7 days | Aggregates `WeeklyStudentSummary` + sends parent digest |
-| `readinessPrecompute` | 24 hours | Precomputes `ReadinessStatus` per student × subject |
-| `costReport` | 24 hours | Writes `DailyCostMetric` from `AITutorTurnLog` totals |
-| `dailyMaintenance` | 24 hours | Cleanup stale sessions, expired locks |
-| `cleanup` | 7 days | Purge old telemetry, dead-letter rows |
-| `dataDeletion` | 24 hours | Process `DeletionRequest` rows (DPDP erasure) |
+| `markIgnored`         | 24 hours  | Marks stale `ContentRecommendation` rows as ignored               |
+| `weeklyParent`        | 7 days    | Aggregates `WeeklyStudentSummary` + sends parent digest           |
+| `readinessPrecompute` | 24 hours  | Precomputes `ReadinessStatus` per student × subject               |
+| `costReport`          | 24 hours  | Writes `DailyCostMetric` from `AITutorTurnLog` totals             |
+| `dailyMaintenance`    | 24 hours  | Cleanup stale sessions, expired locks                             |
+| `cleanup`             | 7 days    | Purge old telemetry, dead-letter rows                             |
+| `dataDeletion`        | 24 hours  | Process `DeletionRequest` rows (DPDP erasure)                     |
 
 ---
 
@@ -183,13 +188,13 @@ scripts/scrape-ncert.ts --grade 10 --subject mathematics --lang en
 
 ## Observability
 
-| Signal | Where |
-|--------|-------|
-| Per-turn cost + latency | `AITutorTurnLog` |
-| Daily cost summary | `DailyCostMetric` |
-| Content gen cost | `AIContentLog` |
+| Signal                  | Where                |
+| ----------------------- | -------------------- |
+| Per-turn cost + latency | `AITutorTurnLog`     |
+| Daily cost summary      | `DailyCostMetric`    |
+| Content gen cost        | `AIContentLog`       |
 | System health snapshots | `SystemMetricSample` |
-| Active alerts | `SystemAlert` |
-| Flexible telemetry | `TelemetrySample` |
-| Admin actions | `AuditLog` |
-| Safety events | `SafetyEvent` |
+| Active alerts           | `SystemAlert`        |
+| Flexible telemetry      | `TelemetrySample`    |
+| Admin actions           | `AuditLog`           |
+| Safety events           | `SafetyEvent`        |

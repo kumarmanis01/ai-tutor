@@ -12,8 +12,8 @@ module.exports = {
       env: {
         EVALUATOR_DRY_RUN: '1',
         EVALUATOR_INTERVAL_SEC: '60',
-        EVALUATOR_MAX_MS: '10000'
-      }
-    }
-  ]
+        EVALUATOR_MAX_MS: '10000',
+      },
+    },
+  ],
 };

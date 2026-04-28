@@ -24,12 +24,10 @@ const nextConfig: NextConfig = {
   },
   // Disable static optimization
   generateBuildId: async () => {
-    return 'build-' + Date.now()
+    return 'build-' + Date.now();
   },
   async rewrites() {
-    return [
-      { source: '/landing-page', destination: '/' },
-    ];
+    return [{ source: '/landing-page', destination: '/' }];
   },
   async redirects() {
     return [
@@ -41,10 +39,7 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
-localPatterns: [
-    { pathname: '/logos/**' },
-    { pathname: '/images/**' },
-  ],
+    localPatterns: [{ pathname: '/logos/**' }, { pathname: '/images/**' }],
     domains: [
       'lh3.googleusercontent.com',
       'i.pravatar.cc',

@@ -25,7 +25,10 @@ export async function acquireJobLock(jobName: string, ttlMs: number): Promise<Ac
   } catch {
     // Create failed (likely due to existing row). Try conditional update: only update when the existing lock is expired.
     try {
-      const res = await db.jobLock.updateMany({ where: { jobName, lockedUntil: { lt: now } }, data: { lockedUntil: until } });
+      const res = await db.jobLock.updateMany({
+        where: { jobName, lockedUntil: { lt: now } },
+        data: { lockedUntil: until },
+      });
       if (res.count && res.count > 0) {
         // We updated the expired lock and acquired ownership.
         return { acquired: true };

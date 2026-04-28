@@ -33,12 +33,15 @@ This document describes the background jobs, how to run them manually, expected 
   - Failure behavior: Failures are logged and alerted. The job only deletes raw analytics events and does not delete aggregates, signals, suggestions, outputs, or audit logs.
 
 Notes
+
 - All jobs emit structured audit events and metrics. Alerts for failures are rate-limited and de-duplicated by the alerting router.
 - Use `JOB_DRY_RUN=1` environment variable to log job execution without performing work in non-destructive test runs.
 - For operational concerns (scheduling, expected windows, runbooks for incident response), refer to the incident and retention runbooks.
+
 # AI Content Engine – Job System
 
 ## Purpose
+
 The Job system powers **all AI content generation** in the platform. It is intentionally designed to be **simple, auditable, and failure-tolerant**.
 
 This document is a **hard architectural contract**. Any future changes must preserve the guarantees listed below.
@@ -48,6 +51,7 @@ This document is a **hard architectural contract**. Any future changes must pres
 ## Core Principles (Non‑Negotiable)
 
 ### 1. Job‑Based Execution Only
+
 - Every AI operation runs as a **Job**
 - No inline or synchronous AI calls from UI or API routes
 - Jobs are persisted before execution
@@ -57,6 +61,7 @@ This document is a **hard architectural contract**. Any future changes must pres
 ---
 
 ### 2. Jobs Are Atomic
+
 - A Job is a **single, indivisible execution**
 - Partial progress is never exposed
 - A Job either:
@@ -68,6 +73,7 @@ There is **no concept of partial completion**.
 ---
 
 ### 3. No Pause / Resume (By Design)
+
 - Jobs **cannot** be paused
 - Jobs **cannot** be resumed
 - This is intentional and enforced at:
@@ -76,6 +82,7 @@ There is **no concept of partial completion**.
   - documentation
 
 Reasoning:
+
 - AI provider calls are atomic
 - Streaming introduces state complexity and corruption risk
 - Retry is safer than resume
@@ -85,12 +92,14 @@ Reasoning:
 ---
 
 ### 4. Retry = New Execution Attempt
+
 - Retrying a Job:
   - does NOT resume the old execution
   - creates a **new execution attempt**
   - increments retry count
 
 Old attempts remain:
+
 - stored
 - auditable
 - immutable
@@ -106,6 +115,7 @@ queued → running → completed
 ```
 
 Valid statuses:
+
 - `queued`
 - `running`
 - `completed`
@@ -120,15 +130,16 @@ No other states are allowed.
 
 ### Allowed Actions
 
-| Status     | Retry | Cancel |
-|----------|-------|--------|
-| queued   | ❌    | ✅     |
-| running  | ❌    | ❌     |
-| failed   | ✅    | ✅     |
-| completed| ❌    | ❌     |
-| cancelled| ❌    | ❌     |
+| Status    | Retry | Cancel |
+| --------- | ----- | ------ |
+| queued    | ❌    | ✅     |
+| running   | ❌    | ❌     |
+| failed    | ✅    | ✅     |
+| completed | ❌    | ❌     |
+| cancelled | ❌    | ❌     |
 
 These rules must be enforced in:
+
 - UI buttons
 - API handlers
 - backend validation
@@ -136,6 +147,7 @@ These rules must be enforced in:
 ---
 
 ### What Admins Can See
+
 - Job metadata (type, entity, language, board, class)
 - Status + retries
 - Error message (if failed)
@@ -143,6 +155,7 @@ These rules must be enforced in:
 - Audit trail link
 
 Admins **cannot**:
+
 - edit jobs
 - modify prompts
 - intervene mid‑execution
@@ -159,6 +172,7 @@ Admins **cannot**:
 - Errors are immutable once recorded
 
 Admins are encouraged to:
+
 - inspect audit logs
 - retry the job if appropriate
 
@@ -167,6 +181,7 @@ Admins are encouraged to:
 ## Audit & Compliance
 
 Every job action is logged:
+
 - creation
 - execution start
 - completion / failure
@@ -174,6 +189,7 @@ Every job action is logged:
 - cancellation
 
 Audit logs are:
+
 - append‑only
 - queryable by jobId
 - never deleted
@@ -190,6 +206,7 @@ Audit logs are:
   - rollback
 
 This separation ensures:
+
 - safety
 - quality control
 - regulatory compliance
@@ -199,12 +216,14 @@ This separation ensures:
 ## Copilot Guardrails
 
 Copilot **must not**:
+
 - add pause/resume
 - add streaming/progress bars
 - introduce new job states
 - auto‑approve content
 
 Copilot **may**:
+
 - add new job types
 - improve logging
 - add observability
@@ -216,6 +235,7 @@ If Copilot suggests violating these rules, **reject the change**.
 ## When to Change This Document
 
 Only update this document if:
+
 - a fundamental AI execution model changes
 - streaming is adopted platform‑wide
 - regulatory requirements change
@@ -229,10 +249,10 @@ Any such change requires **explicit architectural approval**.
 The Job system is intentionally boring.
 
 That boredom is what makes it:
+
 - reliable
 - scalable
 - auditable
 - safe
 
 **Do not optimize away the boring parts.**
-

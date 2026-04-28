@@ -27,12 +27,12 @@ import {
 
 /**
  * Day-1 Celebration Screen
- * 
+ *
  * UX Rules (FROZEN):
  * - Animation <2 seconds
  * - No streak pressure
  * - No competitive language
- * 
+ *
  * Goal: Leave student calm, not hyper
  */
 export function CelebrationScreen({
@@ -61,7 +61,7 @@ export function CelebrationScreen({
   }, [onFinish]);
 
   return (
-    <div 
+    <div
       className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-yellow-50 to-white relative overflow-hidden"
       role="main"
       aria-label="Celebration"
@@ -75,12 +75,12 @@ export function CelebrationScreen({
               key={i}
               className="absolute animate-confetti"
               style={{
-                left: `${(i * 8) + 4}%`,
+                left: `${i * 8 + 4}%`,
                 top: '-10px',
                 animationDelay: `${i * 0.1}s`,
               }}
             >
-              <div 
+              <div
                 className={`w-3 h-3 rounded-full ${
                   ['bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-pink-400'][i % 4]
                 }`}
@@ -91,9 +91,7 @@ export function CelebrationScreen({
       )}
 
       {/* Celebration emoji - Simple, not over the top */}
-      <div className="text-7xl mb-6 animate-bounce-gentle">
-        🎉
-      </div>
+      <div className="text-7xl mb-6 animate-bounce-gentle">🎉</div>
 
       {/* Title - Calm victory */}
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4 text-center">
@@ -101,9 +99,7 @@ export function CelebrationScreen({
       </h1>
 
       {/* Subtitle - Gentle farewell */}
-      <p className="text-lg text-gray-500 text-center">
-        {copy.subtitle}
-      </p>
+      <p className="text-lg text-gray-500 text-center">{copy.subtitle}</p>
 
       {/* NO STREAK COUNTER - Intentionally absent on Day-1 */}
       {/* NO LEADERBOARD - Intentionally absent */}

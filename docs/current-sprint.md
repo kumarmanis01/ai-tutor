@@ -1,6 +1,7 @@
 # Current Sprint — MVP Bug Fix
 
 ## Goal
+
 First student can: sign up -> onboard -> take diagnostic -> start AI session.
 
 ## Status: Blocked on content generation
@@ -10,6 +11,7 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 ## Checklist
 
 ### Infrastructure
+
 - [x] VPS running (3 PM2 processes online)
 - [x] Redis running (redis-cli ping -> PONG)
 - [x] Migrations applied (20 migrations clean)
@@ -19,6 +21,7 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 - [ ] NCERT scraper run for Gr10 Maths + Science
 
 ### Content Pipeline
+
 - [x] SyllabusWorker error tolerance (per-chapter try/catch)
 - [x] NotesWorker retry on validation failure
 - [x] aiOutputValidator min length reduced (200->80 chars)
@@ -30,6 +33,7 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 - [ ] Diagnostic gate unlocked for both subjects
 
 ### Student Flow
+
 - [x] Profile gate fixed (subjects array parsing)
 - [x] Parent email conditional (age < 13 only)
 - [x] Diagnostic page no-redirect (shows "Vidya is getting ready")
@@ -42,6 +46,7 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 - [ ] AI tutor session starts after knowledge map
 
 ### Admin Panel
+
 - [x] Sidebar 11 sections, 0 broken links
 - [x] Dashboard real KPI data
 - [x] Coverage & Hydrate with Notes column
@@ -58,11 +63,13 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 ## Immediate Next Actions (in order)
 
 1. Deploy latest commits to VPS
+
    ```
    git pull origin master && ./scripts/deploy-and-run.sh
    ```
 
 2. Re-seed taxonomy (idempotent)
+
    ```
    set -a && source .env.production && set +a
    node scripts/seed-taxonomy.cjs
@@ -72,6 +79,7 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
    -> /admin/content -> [Generate all]
 
 4. Monitor cascade on Neon (run every 5 min):
+
    ```sql
    SELECT sd.name, COUNT(DISTINCT cd.id) chapters,
      COUNT(DISTINCT td.id) topics, COUNT(DISTINCT tn.id) notes,
@@ -93,14 +101,16 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 ---
 
 ## Blockers
-| Blocker | Owner | Notes |
-|---------|-------|-------|
-| Content not generated | Pipeline | Trigger Generate all from admin |
+
+| Blocker                                   | Owner       | Notes                                                |
+| ----------------------------------------- | ----------- | ---------------------------------------------------- |
+| Content not generated                     | Pipeline    | Trigger Generate all from admin                      |
 | Language selector missing from onboarding | Claude Code | Resolved -- ProfileCompletionGate.tsx has en/hi step |
 
 ---
 
 ## Definition of Done (Phase 1)
+
 - New student signs up -> onboards -> takes Gr10 Maths diagnostic
 - Sees knowledge map -> starts AI tutor session
 - Admin can see: student in /admin/users, session in /admin/sessions

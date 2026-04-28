@@ -239,7 +239,7 @@ Wrap only the code that can throw, not an entire function body. This makes it cl
 async function processOrder(orderId: string): Promise<void> {
   try {
     const order = await fetchOrder(orderId);
-    const enriched = transformData(order);  // logic bug here gets swallowed
+    const enriched = transformData(order); // logic bug here gets swallowed
     await saveOrder(enriched);
   } catch (err) {
     logger.error('order.process.failed', { orderId, error: (err as Error).message });
@@ -427,25 +427,25 @@ if (user.totalXp > XP_LEVEL_CAP) { ... }
 
 ### 5.1 Quick Reference Table
 
-| Construct | Convention | Example |
-|-----------|-----------|---------|
-| TypeScript file | `kebab-case.ts` | `difficulty-tuning.ts` |
-| React component file | `PascalCase.tsx` | `StreakWidget.tsx` |
-| Class | PascalCase | `ExplanationCache` |
-| Interface / Type | PascalCase | `UserProfile`, `ApiResponse<T>` |
-| Enum | PascalCase (type), SCREAMING_SNAKE_CASE (values) | `JobStatus.IN_PROGRESS` |
-| Function | `camelCase` verb | `computeReadinessScore()` |
-| React component | PascalCase noun | `TopicCard` |
-| Variable / param | `camelCase` | `sessionUserId` |
-| Boolean variable | `is` / `has` / `can` prefix | `isSubscribed`, `hasCompletedProfile` |
-| Constant (module-level) | `SCREAMING_SNAKE_CASE` | `MAX_RETRY_ATTEMPTS` |
-| Prisma model | PascalCase singular | `LearningSession` |
-| Prisma field | `camelCase` | `createdAt` |
-| DB column (via Prisma `@map`) | `snake_case` | `@map("created_at")` |
-| BullMQ queue name | `kebab-case` | `"ai-explanation-queue"` |
-| Logger event | `domain.action` | `"session.completed"` |
-| Test file | mirrors source + `.spec.ts` | `difficulty-tuning.spec.ts` |
-| Test name | `should [behaviour] when [condition]` | `should return fallback when OpenAI times out` |
+| Construct                     | Convention                                       | Example                                        |
+| ----------------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| TypeScript file               | `kebab-case.ts`                                  | `difficulty-tuning.ts`                         |
+| React component file          | `PascalCase.tsx`                                 | `StreakWidget.tsx`                             |
+| Class                         | PascalCase                                       | `ExplanationCache`                             |
+| Interface / Type              | PascalCase                                       | `UserProfile`, `ApiResponse<T>`                |
+| Enum                          | PascalCase (type), SCREAMING_SNAKE_CASE (values) | `JobStatus.IN_PROGRESS`                        |
+| Function                      | `camelCase` verb                                 | `computeReadinessScore()`                      |
+| React component               | PascalCase noun                                  | `TopicCard`                                    |
+| Variable / param              | `camelCase`                                      | `sessionUserId`                                |
+| Boolean variable              | `is` / `has` / `can` prefix                      | `isSubscribed`, `hasCompletedProfile`          |
+| Constant (module-level)       | `SCREAMING_SNAKE_CASE`                           | `MAX_RETRY_ATTEMPTS`                           |
+| Prisma model                  | PascalCase singular                              | `LearningSession`                              |
+| Prisma field                  | `camelCase`                                      | `createdAt`                                    |
+| DB column (via Prisma `@map`) | `snake_case`                                     | `@map("created_at")`                           |
+| BullMQ queue name             | `kebab-case`                                     | `"ai-explanation-queue"`                       |
+| Logger event                  | `domain.action`                                  | `"session.completed"`                          |
+| Test file                     | mirrors source + `.spec.ts`                      | `difficulty-tuning.spec.ts`                    |
+| Test name                     | `should [behaviour] when [condition]`            | `should return fallback when OpenAI times out` |
 
 ### 5.2 Descriptive over Terse
 
@@ -489,12 +489,13 @@ const canAccessContent = isPremium || freeQuotaRemaining > 0;
 
 ### 6.1 Principle: Code Communicates Intent, Comments Communicate Why
 
-Well-named code needs no comment to explain *what* it does. Comments exist to explain:
+Well-named code needs no comment to explain _what_ it does. Comments exist to explain:
+
 - **Why** a non-obvious decision was made
 - **What constraint** forced an unusual pattern
 - **What the gotcha** is for the next developer
 
-If a comment describes *what* the code does and the code is readable, delete the comment.
+If a comment describes _what_ the code does and the code is readable, delete the comment.
 
 ```ts
 // BAD — restates the code
@@ -510,19 +511,20 @@ counter++;
 
 These locations **must** have a comment, no exceptions:
 
-| Location | Required comment |
-|----------|-----------------|
-| Every `eslint-disable-next-line` | Reason + EDIT LOG reference |
-| Every `as SomeType` cast | Why the type cannot be inferred |
-| Every `any` usage | Why it cannot be properly typed |
-| Every `// TODO` (not in committed code) | Blocked by what; link to backlog item |
-| Every `@default` on a schema field | What the value means in business terms |
-| Every environment feature flag check | What the flag controls and who can flip it |
-| Every `@@index` in Prisma schema | The query pattern it supports |
+| Location                                | Required comment                           |
+| --------------------------------------- | ------------------------------------------ |
+| Every `eslint-disable-next-line`        | Reason + EDIT LOG reference                |
+| Every `as SomeType` cast                | Why the type cannot be inferred            |
+| Every `any` usage                       | Why it cannot be properly typed            |
+| Every `// TODO` (not in committed code) | Blocked by what; link to backlog item      |
+| Every `@default` on a schema field      | What the value means in business terms     |
+| Every environment feature flag check    | What the flag controls and who can flip it |
+| Every `@@index` in Prisma schema        | The query pattern it supports              |
 
 ### 6.3 JSDoc for Public API Functions
 
 Every exported function in `lib/` must have a JSDoc block covering:
+
 - A one-line description of what it does
 - `@param` for each non-obvious parameter
 - `@returns` describing the return value and its meaning
@@ -617,18 +619,18 @@ Use this checklist before marking a PR ready for review and during review.
 
 ### 7.3 Blocking vs Non-Blocking Review Comments
 
-| Category | Blocking? |
-|----------|-----------|
-| Security (PII logging, unguarded API route, exposed error) | Yes — must fix before merge |
-| Silent error swallow | Yes |
-| Missing auth guard | Yes |
-| Missing unit test | Yes |
-| `any` without justification | Yes |
-| `console.*` in production code | Yes |
-| Missing file header / EDIT LOG | Yes |
-| Naming style inconsistency | No — leave comment, author decides |
-| Minor readability improvement | No |
-| Performance optimisation (non-critical path) | No |
+| Category                                                   | Blocking?                          |
+| ---------------------------------------------------------- | ---------------------------------- |
+| Security (PII logging, unguarded API route, exposed error) | Yes — must fix before merge        |
+| Silent error swallow                                       | Yes                                |
+| Missing auth guard                                         | Yes                                |
+| Missing unit test                                          | Yes                                |
+| `any` without justification                                | Yes                                |
+| `console.*` in production code                             | Yes                                |
+| Missing file header / EDIT LOG                             | Yes                                |
+| Naming style inconsistency                                 | No — leave comment, author decides |
+| Minor readability improvement                              | No                                 |
+| Performance optimisation (non-critical path)               | No                                 |
 
 ---
 
@@ -718,14 +720,15 @@ All six must exit `0` before you run `git commit`. If any step fails, fix it —
 
 ### 9.2 Lint
 
-| Command | When to use |
-|---------|-------------|
-| `npm run lint` | Day-to-day: scopes to `app/`, `components/`, `lib/`, `src/` |
-| `npm run lint:orig` | Pre-commit and CI gate: runs `eslint . --max-warnings=0` (whole repo, no warnings tolerated) |
-| `npm run lint:fix` | Auto-fix safe violations before committing |
-| `npm run lint:quotes` | Check for smart quotes / Unicode chars in source files |
+| Command               | When to use                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| `npm run lint`        | Day-to-day: scopes to `app/`, `components/`, `lib/`, `src/`                                  |
+| `npm run lint:orig`   | Pre-commit and CI gate: runs `eslint . --max-warnings=0` (whole repo, no warnings tolerated) |
+| `npm run lint:fix`    | Auto-fix safe violations before committing                                                   |
+| `npm run lint:quotes` | Check for smart quotes / Unicode chars in source files                                       |
 
 Key ESLint rules enforced:
+
 - `no-console` — use `@/lib/logger` exclusively
 - `@typescript-eslint/no-explicit-any` — every `any` needs an inline justification
 - `@typescript-eslint/no-unused-vars` — prefix intentional non-use with `_`
@@ -759,6 +762,7 @@ npm run ci:unit
 ```
 
 **Requirements for every PR:**
+
 - Every new or modified source file must have a corresponding test file update.
 - New functions: happy path + at least one error path + boundary/edge case.
 - New API routes: auth-missing case + validation-failure case + success case.
@@ -766,6 +770,7 @@ npm run ci:unit
 - New UI components: renders without crash + loading state + error state.
 
 **Test naming convention:**
+
 ```ts
 // Format: should [expected behaviour] when [condition]
 it('should return 0 when no attempt history exists', () => { ... });
@@ -773,6 +778,7 @@ it('should throw ReadinessComputationError when data is corrupt', () => { ... })
 ```
 
 **What tests must NOT do:**
+
 - Do not call real DB, Redis, or OpenAI in unit tests — mock all I/O.
 - Do not test implementation details — test observable behaviour.
 - Do not use `any` in test assertions — type the expected values.
@@ -783,6 +789,7 @@ it('should throw ReadinessComputationError when data is corrupt', () => { ... })
 **Location:** `tests/integration/` — excluded from the default Jest run.
 
 Integration tests require a live PostgreSQL database and Redis instance. They are:
+
 - Excluded from CI by default (`testPathIgnorePatterns` in `jest.config.cjs`).
 - Run manually on the VPS or in a local Docker environment.
 - Documented as manual-only — safe to skip in automated CI pipelines.
@@ -793,6 +800,7 @@ npx jest --config jest.integration.config.cjs
 ```
 
 Integration tests must cover:
+
 - Database migration correctness (new columns, defaults, constraints).
 - BullMQ job enqueue → worker process → result persistence flow.
 - API routes end-to-end (real session, real DB, mocked external APIs).
@@ -801,14 +809,15 @@ Integration tests must cover:
 
 Coverage is enforced by `jest.config.cjs`. Current **minimum** thresholds:
 
-| Metric | Global minimum | Critical modules |
-|--------|---------------|------------------|
-| Branches | 60% | 100% |
-| Functions | 50% | 100% |
-| Lines | 60% | 100% |
-| Statements | 60% | 100% |
+| Metric     | Global minimum | Critical modules |
+| ---------- | -------------- | ---------------- |
+| Branches   | 60%            | 100%             |
+| Functions  | 50%            | 100%             |
+| Lines      | 60%            | 100%             |
+| Statements | 60%            | 100%             |
 
 **Critical modules** (must maintain 100% coverage):
+
 - `lib/ai/` — all AI guardrail, prompt, and orchestration code
 - `lib/jobs/` — all BullMQ job processors
 - `lib/moderation/` — content safety and hallucination detection
@@ -823,19 +832,19 @@ Coverage is enforced by `jest.config.cjs`. Current **minimum** thresholds:
 The pre-commit hook runs `python scripts/fix-smart-quotes.py` automatically and re-stages the file.
 Do not wait for the hook — write correct ASCII from the start:
 
-| Wrong (Unicode) | Correct (ASCII) |
-|----------------|----------------|
-| `'` `'` (smart single quotes) | `'` |
-| `"` `"` (smart double quotes) | `"` |
-| `–` (en dash) | `-` |
-| `—` (em dash) | `--` |
-| `…` (ellipsis) | `...` |
+| Wrong (Unicode)               | Correct (ASCII) |
+| ----------------------------- | --------------- |
+| `'` `'` (smart single quotes) | `'`             |
+| `"` `"` (smart double quotes) | `"`             |
+| `–` (en dash)                 | `-`             |
+| `—` (em dash)                 | `--`            |
+| `…` (ellipsis)                | `...`           |
 
 Strings containing apostrophes must use template literals or double-quotes — never escaped single-quotes:
 
 ```ts
 // BAD
-const msg = 'It\'s not working';
+const msg = "It's not working";
 
 // GOOD
 const msg = `It's not working`;
@@ -873,16 +882,16 @@ These are the **minimum** automated gates. The full §9.1 sequence is your respo
 
 The CI pipeline (GitHub Actions) blocks merges on:
 
-| Check | Command | Fail = block merge? |
-|-------|---------|---------------------|
-| Smart quote check | `npm run lint:quotes` | Yes |
-| ESLint (zero warnings) | `npm run lint:orig` | Yes |
-| Type-check | `npm run type-check:orig` | Yes |
-| Unit tests + coverage | `npm run ci:unit` | Yes |
-| Worker build | `npm run build:workers` | Yes |
-| Next.js build | `npm run build` | Yes |
-| Missing unit test for changed file | CI lint rule | Yes |
-| Missing EDIT LOG update | CI lint rule | Yes |
+| Check                              | Command                   | Fail = block merge? |
+| ---------------------------------- | ------------------------- | ------------------- |
+| Smart quote check                  | `npm run lint:quotes`     | Yes                 |
+| ESLint (zero warnings)             | `npm run lint:orig`       | Yes                 |
+| Type-check                         | `npm run type-check:orig` | Yes                 |
+| Unit tests + coverage              | `npm run ci:unit`         | Yes                 |
+| Worker build                       | `npm run build:workers`   | Yes                 |
+| Next.js build                      | `npm run build`           | Yes                 |
+| Missing unit test for changed file | CI lint rule              | Yes                 |
+| Missing EDIT LOG update            | CI lint rule              | Yes                 |
 
 ---
 
@@ -896,4 +905,4 @@ The CI pipeline (GitHub Actions) blocks merges on:
 
 ---
 
-*Last updated: 2026-04-18 by Principal Staff Engineer — Spinzy AI Tutor*
+_Last updated: 2026-04-18 by Principal Staff Engineer — Spinzy AI Tutor_

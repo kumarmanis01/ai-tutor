@@ -27,7 +27,10 @@ const BASE_URL = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com';
 const KEY_PATTERN = 'diagnostic:notify:*';
 const SCAN_COUNT = 100;
 
-export async function runDiagnosticReadinessCheck(): Promise<{ checked: number; notified: number }> {
+export async function runDiagnosticReadinessCheck(): Promise<{
+  checked: number;
+  notified: number;
+}> {
   let checked = 0;
   let notified = 0;
 
@@ -48,7 +51,7 @@ export async function runDiagnosticReadinessCheck(): Promise<{ checked: number; 
         'MATCH',
         KEY_PATTERN,
         'COUNT',
-        SCAN_COUNT,
+        SCAN_COUNT
       );
       cursor = nextCursor;
 
@@ -106,10 +109,13 @@ export async function runDiagnosticReadinessCheck(): Promise<{ checked: number; 
             });
           } catch (mailErr) {
             // Leave the key intact so the next daily run retries.
-            logger.error('[diagnosticReadinessCheck] email send failed -- key preserved for retry', {
-              event: 'diagnostic.ready_notification.email_failed',
-              context: { studentId: userId, subjectId, error: String(mailErr) },
-            });
+            logger.error(
+              '[diagnosticReadinessCheck] email send failed -- key preserved for retry',
+              {
+                event: 'diagnostic.ready_notification.email_failed',
+                context: { studentId: userId, subjectId, error: String(mailErr) },
+              }
+            );
           }
         } catch (keyErr) {
           logger.error('[diagnosticReadinessCheck] error processing key', {
@@ -136,7 +142,7 @@ async function isDiagnosticReady(subjectId: string): Promise<boolean> {
         where: { chapter: { subjectId, lifecycle: 'active' }, lifecycle: 'active' },
         select: { id: true },
       })
-      .then((rows) => rows.map((r) => r.id));
+      .then((rows: Array<{ id: string }>) => rows.map((r) => r.id));
 
     if (topicIds.length === 0) return false;
 
@@ -155,10 +161,13 @@ async function isDiagnosticReady(subjectId: string): Promise<boolean> {
     });
     return gqCount > 0;
   } catch (error) {
-    logger.warn('[diagnosticReadinessCheck] isDiagnosticReady check failed -- treating as not ready', {
-      event: 'diagnostic.ready_notification.readiness_check_error',
-      context: { subjectId, error: String(error) },
-    });
+    logger.warn(
+      '[diagnosticReadinessCheck] isDiagnosticReady check failed -- treating as not ready',
+      {
+        event: 'diagnostic.ready_notification.readiness_check_error',
+        context: { subjectId, error: String(error) },
+      }
+    );
     return false;
   }
 }

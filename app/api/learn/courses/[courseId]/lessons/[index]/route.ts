@@ -14,10 +14,10 @@
  * - 2026-01-22 | copilot | fetch TopicNote content for real lesson content instead of placeholders
  * - 2026-01-23 | copilot | updated transformer to handle enhanced schema (sections, keyTerms, practiceQuestions, etc.)
  */
-import { NextResponse } from 'next/server'
-import { getServerSessionForHandlers } from '@/lib/session'
-import { logger } from '@/lib/logger'
-import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress'
+import { NextResponse } from 'next/server';
+import { getServerSessionForHandlers } from '@/lib/session';
+import { logger } from '@/lib/logger';
+import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 
 /**
  * Enhanced content type for new schema
@@ -25,7 +25,12 @@ import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress'
 interface EnhancedNoteContent {
   introduction?: string;
   learningObjectives?: string[];
-  sections?: { heading: string; explanation: string; keyTakeaway?: string; visualSuggestion?: string }[];
+  sections?: {
+    heading: string;
+    explanation: string;
+    keyTakeaway?: string;
+    visualSuggestion?: string;
+  }[];
   keyTerms?: { term: string; definition: string; example?: string }[];
   realWorldExamples?: { scenario: string; connection: string }[];
   practiceQuestions?: { question: string; type?: string; hint?: string; answer: string }[];
@@ -51,68 +56,80 @@ function transformNoteToLesson(
   topicName: string
 ) {
   // Support both wrapped { content: { summary, sections, ... } } and flat { summary, sections, ... }
-  const content: EnhancedNoteContent = noteContent?.content && typeof noteContent.content === 'object'
-    ? noteContent.content
-    : (noteContent as EnhancedNoteContent) ?? {}
-  
+  const content: EnhancedNoteContent =
+    noteContent?.content && typeof noteContent.content === 'object'
+      ? noteContent.content
+      : ((noteContent as EnhancedNoteContent) ?? {});
+
   // Detect if using new enhanced schema (has 'sections' or 'introduction')
-  const isEnhancedSchema = !!(content.sections || content.introduction)
-  
+  const isEnhancedSchema = !!(content.sections || content.introduction);
+
   if (isEnhancedSchema) {
-    return transformEnhancedNote(content, chapterName, topicName)
+    return transformEnhancedNote(content, chapterName, topicName);
   }
-  
+
   // Legacy schema transformation
-  return transformLegacyNote(content, chapterName, topicName)
+  return transformLegacyNote(content, chapterName, topicName);
 }
 
 /**
  * Transform new enhanced schema to lesson format
  */
-function transformEnhancedNote(content: EnhancedNoteContent, chapterName: string, topicName: string) {
-  const concepts: { title: string; explanation: string; example?: string; keyTakeaway?: string; visualSuggestion?: string }[] = []
-  
+function transformEnhancedNote(
+  content: EnhancedNoteContent,
+  chapterName: string,
+  topicName: string
+) {
+  const concepts: {
+    title: string;
+    explanation: string;
+    example?: string;
+    keyTakeaway?: string;
+    visualSuggestion?: string;
+  }[] = [];
+
   // Add sections as main concepts
   if (content.sections && content.sections.length > 0) {
-    content.sections.forEach(section => {
+    content.sections.forEach((section) => {
       concepts.push({
         title: section.heading,
         explanation: section.explanation,
         keyTakeaway: section.keyTakeaway,
-        visualSuggestion: section.visualSuggestion
-      })
-    })
+        visualSuggestion: section.visualSuggestion,
+      });
+    });
   }
-  
+
   // Add key terms as vocabulary concepts
   if (content.keyTerms && content.keyTerms.length > 0) {
-    content.keyTerms.forEach(term => {
+    content.keyTerms.forEach((term) => {
       concepts.push({
         title: `📖 ${term.term}`,
         explanation: term.definition,
-        example: term.example
-      })
-    })
+        example: term.example,
+      });
+    });
   }
-  
+
   // Add real-world examples
   if (content.realWorldExamples && content.realWorldExamples.length > 0) {
     content.realWorldExamples.forEach((ex, i) => {
       concepts.push({
         title: `🌍 Real World Example ${i + 1}`,
-        explanation: `${ex.scenario}\n\n**Connection:** ${ex.connection}`
-      })
-    })
+        explanation: `${ex.scenario}\n\n**Connection:** ${ex.connection}`,
+      });
+    });
   }
-  
+
   // Fallback if no concepts
   if (concepts.length === 0) {
     concepts.push({
       title: `Introduction to ${topicName}`,
-      explanation: content.introduction || content.summary || `Learn about ${topicName} in ${chapterName}.`
-    })
+      explanation:
+        content.introduction || content.summary || `Learn about ${topicName} in ${chapterName}.`,
+    });
   }
-  
+
   return {
     overview: content.introduction || content.summary || `Welcome to ${topicName}!`,
     learningObjectives: content.learningObjectives || [],
@@ -122,112 +139,116 @@ function transformEnhancedNote(content: EnhancedNoteContent, chapterName: string
     summary: content.summary,
     funFact: content.funFact,
     relatedTopics: content.relatedTopics || [],
-    studyTips: content.studyTips || []
-  }
+    studyTips: content.studyTips || [],
+  };
 }
 
 /**
  * Transform legacy schema (summary/keyPoints/definitions/examples)
  */
 function transformLegacyNote(content: EnhancedNoteContent, chapterName: string, topicName: string) {
-  const summary = content.summary || `Learn about ${topicName} in ${chapterName}.`
-  const keyPoints = content.keyPoints || []
-  const definitions = content.definitions || []
-  const examples = content.examples || []
+  const summary = content.summary || `Learn about ${topicName} in ${chapterName}.`;
+  const keyPoints = content.keyPoints || [];
+  const definitions = content.definitions || [];
+  const examples = content.examples || [];
 
-  const concepts: { title: string; explanation: string; example?: string }[] = []
+  const concepts: { title: string; explanation: string; example?: string }[] = [];
 
   // Add key points as concepts
   keyPoints.forEach((point, i) => {
     concepts.push({
       title: `Key Concept ${i + 1}`,
-      explanation: point
-    })
-  })
+      explanation: point,
+    });
+  });
 
   // Add definitions as concepts
-  definitions.forEach(def => {
+  definitions.forEach((def) => {
     concepts.push({
       title: def.term,
-      explanation: def.definition
-    })
-  })
+      explanation: def.definition,
+    });
+  });
 
   // If we have examples, add them to concepts
   examples.forEach((ex, i) => {
     if (concepts[i]) {
-      concepts[i].example = ex
+      concepts[i].example = ex;
     } else {
       concepts.push({
         title: `Example ${i + 1}`,
-        explanation: ex
-      })
+        explanation: ex,
+      });
     }
-  })
+  });
 
   // Ensure at least one concept
   if (concepts.length === 0) {
     concepts.push({
       title: `Introduction to ${topicName}`,
-      explanation: summary
-    })
+      explanation: summary,
+    });
   }
 
   return {
     overview: summary,
-    concepts
-  }
+    concepts,
+  };
 }
 
-export async function GET(req: Request, { params }: { params: Promise<{ courseId: string; index: string }> }) {
-  const { courseId, index } = await params
-  const idx = Number(index)
-  if (Number.isNaN(idx)) return NextResponse.json({ error: 'Invalid index' }, { status: 400 })
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string; index: string }> }
+) {
+  const { courseId, index } = await params;
+  const idx = Number(index);
+  if (Number.isNaN(idx)) return NextResponse.json({ error: 'Invalid index' }, { status: 400 });
 
-  const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
+  const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma;
 
-  const session = await getServerSessionForHandlers()
-  const userId = session?.user?.id ?? null
+  const session = await getServerSessionForHandlers();
+  const userId = session?.user?.id ?? null;
 
   // First try CoursePackage
   const row = await db.coursePackage.findFirst({
-     where: { syllabusId: courseId, status: 'PUBLISHED' },
-     orderBy: { version: 'desc' }
-  })
+    where: { syllabusId: courseId, status: 'PUBLISHED' },
+    orderBy: { version: 'desc' },
+  });
 
   if (row) {
-    const { hasLearnerAccess } = await import('../../../../../../../lib/guards/access')
-    const allowed = await hasLearnerAccess(db, userId, courseId, session?.user?.tenantId ?? null)
-    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const { hasLearnerAccess } = await import('../../../../../../../lib/guards/access');
+    const allowed = await hasLearnerAccess(db, userId, courseId, session?.user?.tenantId ?? null);
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const pkg = row.json as any
-    const lessons: any[] = []
+    const pkg = row.json as any;
+    const lessons: any[] = [];
     if (Array.isArray(pkg.modules)) {
       for (const m of pkg.modules) {
         if (Array.isArray(m.lessons)) {
-          for (const l of m.lessons) lessons.push(l)
+          for (const l of m.lessons) lessons.push(l);
         }
       }
     }
 
     // Treat index as 1-based lessonIndex match first, else as array index (0-based)
-    let found = lessons.find((l: any) => Number(l.lessonIndex) === idx)
-    if (!found) found = lessons[idx]
+    let found = lessons.find((l: any) => Number(l.lessonIndex) === idx);
+    if (!found) found = lessons[idx];
 
-    if (!found) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+    if (!found) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
 
     // Learners must only see the promoted PublishedOutput. If none exists,
     // return 404 (not published).
     try {
-      const { resolvePublishedOutputForScope } = await import('../../../../../../../lib/promotion/reader')
-      const scopeRefIdCandidate = found.id ?? `${courseId}:${found.lessonIndex ?? idx}`
-      const resolved = await resolvePublishedOutputForScope(db, 'LESSON', scopeRefIdCandidate)
+      const { resolvePublishedOutputForScope } =
+        await import('../../../../../../../lib/promotion/reader');
+      const scopeRefIdCandidate = found.id ?? `${courseId}:${found.lessonIndex ?? idx}`;
+      const resolved = await resolvePublishedOutputForScope(db, 'LESSON', scopeRefIdCandidate);
       if (resolved && resolved.output && resolved.output.contentJson) {
-        return NextResponse.json(resolved.output.contentJson)
+        return NextResponse.json(resolved.output.contentJson);
       }
-      return NextResponse.json({ error: 'Lesson not published' }, { status: 404 })
+      return NextResponse.json({ error: 'Lesson not published' }, { status: 404 });
     } catch {
-      return NextResponse.json({ error: 'Lesson not published' }, { status: 404 })
+      return NextResponse.json({ error: 'Lesson not published' }, { status: 404 });
     }
   }
 
@@ -244,55 +265,63 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
             orderBy: { order: 'asc' },
             include: {
               notes: {
-                where: { 
+                where: {
                   OR: [
                     { status: 'approved' },
-                    { status: 'draft' } // Fall back to draft if no approved
-                  ]
+                    { status: 'draft' }, // Fall back to draft if no approved
+                  ],
                 },
                 orderBy: [
                   { status: 'asc' }, // 'approved' comes before 'draft'
-                  { version: 'desc' }
+                  { version: 'desc' },
                 ],
-                take: 1
-              }
-            }
-          }
-        }
-      }
-    }
-  })
+                take: 1,
+              },
+            },
+          },
+        },
+      },
+    },
+  });
 
   if (subject && subject.chapters && subject.chapters.length > idx) {
-    const chapter = subject.chapters[idx]
-    
+    const chapter = subject.chapters[idx];
+
     // Collect all topics with notes for this chapter
     const topicsWithContent = chapter.topics.filter(
       (t: { notes?: { contentJson?: unknown }[] }) => t.notes && t.notes.length > 0
-    )
+    );
 
     // If we have generated content, use it
     if (topicsWithContent.length > 0) {
       // Combine all topic notes into a comprehensive lesson
-      const allConcepts: { title: string; explanation: string; example?: string }[] = []
-      const overviewParts: string[] = []
+      const allConcepts: { title: string; explanation: string; example?: string }[] = [];
+      const overviewParts: string[] = [];
 
       for (const topic of topicsWithContent) {
-        const note = topic.notes[0]
+        const note = topic.notes[0];
         if (note && note.contentJson) {
           const transformed = transformNoteToLesson(
-            note.contentJson as { title?: string; content?: { summary?: string; keyPoints?: string[]; definitions?: { term: string; definition: string }[]; examples?: string[] } },
+            note.contentJson as {
+              title?: string;
+              content?: {
+                summary?: string;
+                keyPoints?: string[];
+                definitions?: { term: string; definition: string }[];
+                examples?: string[];
+              };
+            },
             chapter.name,
             topic.name
-          )
-          overviewParts.push(transformed.overview)
-          allConcepts.push(...transformed.concepts)
+          );
+          overviewParts.push(transformed.overview);
+          allConcepts.push(...transformed.concepts);
         }
       }
 
       // Non-blocking: update lastStudiedAt for each topic the student is viewing
       if (userId) {
-        const topicIds = topicsWithContent.map((t: { id: string }) => t.id)
+        const topicIds = topicsWithContent.map((t: { id: string }) => t.id);
         Promise.all(
           topicIds.map((tid: string) =>
             updateStudentTopicProgress({
@@ -303,7 +332,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
               activityType: 'STUDY',
             })
           )
-        ).catch((err: unknown) => logger.error('lesson.trackStudy', { userId, error: err }))
+        ).catch((err: unknown) => logger.error('lesson.trackStudy', { userId, error: err }));
       }
 
       return NextResponse.json({
@@ -313,19 +342,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
         slug: chapter.slug,
         objectives: topicsWithContent.map((t: { name: string }) => `Understand ${t.name}`),
         explanation: {
-          overview: overviewParts.join('\n\n') || `Welcome to ${chapter.name}! This chapter is part of ${subject.name}.`,
-          concepts: allConcepts.length > 0 ? allConcepts : [{
-            title: `Introduction to ${chapter.name}`,
-            explanation: `This chapter covers key concepts in ${chapter.name.toLowerCase()}.`
-          }]
+          overview:
+            overviewParts.join('\n\n') ||
+            `Welcome to ${chapter.name}! This chapter is part of ${subject.name}.`,
+          concepts:
+            allConcepts.length > 0
+              ? allConcepts
+              : [
+                  {
+                    title: `Introduction to ${chapter.name}`,
+                    explanation: `This chapter covers key concepts in ${chapter.name.toLowerCase()}.`,
+                  },
+                ],
         },
         metadata: {
           topicCount: chapter.topics.length,
-          contentSource: 'hydrated'
-        }
-      })
+          contentSource: 'hydrated',
+        },
+      });
     }
-    
+
     // No generated content yet - return informative placeholder
     return NextResponse.json({
       id: chapter.id,
@@ -338,19 +374,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
         concepts: [
           {
             title: `${chapter.name} Overview`,
-            explanation: `This chapter covers ${chapter.topics?.length || 0} topics. Content is being generated by our AI tutors. Please check back soon or contact your administrator to run the content hydration process.`
-          }
-        ]
+            explanation: `This chapter covers ${chapter.topics?.length || 0} topics. Content is being generated by our AI tutors. Please check back soon or contact your administrator to run the content hydration process.`,
+          },
+        ],
       },
       metadata: {
         topicCount: chapter.topics?.length || 0,
         contentSource: 'pending',
-        hint: 'Run HydrateAll from admin panel to generate content'
-      }
-    })
+        hint: 'Run HydrateAll from admin panel to generate content',
+      },
+    });
   }
 
-  return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
+  return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
 }
 
-export default GET
+export default GET;

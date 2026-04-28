@@ -40,7 +40,7 @@ export async function validatePhaseCompletion(
   currentPhase: SessionPhase,
   session: SessionWithMeta,
   sessionId: string,
-  studentId: string,
+  studentId: string
 ): Promise<PhaseCompletionResult> {
   switch (currentPhase) {
     case 'OVERVIEW':
@@ -62,9 +62,7 @@ export async function validatePhaseCompletion(
 
     case 'PRACTICE': {
       const meta = (session.meta as Record<string, unknown>) ?? {};
-      const practiceResult = meta.practiceResult as
-        | { totalAnswers?: number }
-        | undefined;
+      const practiceResult = meta.practiceResult as { totalAnswers?: number } | undefined;
       const totalAnswers = practiceResult?.totalAnswers ?? 0;
       if (totalAnswers < 1) {
         return {
@@ -93,8 +91,7 @@ export async function validatePhaseCompletion(
         orderBy: { createdAt: 'desc' },
         select: { status: true },
       });
-      const submitted =
-        hw?.status === 'SUBMITTED' || hw?.status === 'GRADED';
+      const submitted = hw?.status === 'SUBMITTED' || hw?.status === 'GRADED';
       if (!submitted) {
         return {
           valid: false,

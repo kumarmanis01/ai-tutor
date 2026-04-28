@@ -13,7 +13,6 @@ let RedisDeduper: any;
 let SinkWrapper: any;
 let sendEmail: any;
 
-
 const LOCK_KEY = Number(process.env.EVALUATOR_PG_LOCK_KEY || '987654321');
 const INTERVAL_SEC = Number(process.env.EVALUATOR_INTERVAL_SEC || '60');
 const MAX_MS = Number(process.env.EVALUATOR_MAX_MS || '10000');
@@ -72,12 +71,13 @@ async function runOnce() {
     }
   }
   return true;
-
 }
 
 async function tryAcquireLock() {
   try {
-    const res = await prisma.$queryRaw(Prisma.sql`SELECT pg_try_advisory_lock(${LOCK_KEY}) as ok`) as unknown as Array<{ ok: boolean | number }>;
+    const res = (await prisma.$queryRaw(
+      Prisma.sql`SELECT pg_try_advisory_lock(${LOCK_KEY}) as ok`
+    )) as unknown as Array<{ ok: boolean | number }>;
     const ok = !!(res && res[0] && (res[0].ok === true || res[0].ok === 1));
     return ok;
   } catch (e) {
@@ -106,7 +106,8 @@ async function main() {
   // under different Node/ts-node invocation modes (register vs ESM loader).
   try {
     const mod = await import('../lib/alertEvaluator.js');
-    evaluateAlerts = mod && (mod.default || mod.evaluateAlerts) ? (mod.default || mod.evaluateAlerts) : mod;
+    evaluateAlerts =
+      mod && (mod.default || mod.evaluateAlerts) ? mod.default || mod.evaluateAlerts : mod;
   } catch (e) {
     console.error('Failed to import alertEvaluator dynamically', String(e));
     process.exit(1);
@@ -115,7 +116,19 @@ async function main() {
   // Dynamically load alerting infra modules so this script can run under
   // different node/ts-node loader modes without ESM resolution failures.
   try {
-    const [mRouter, mDry, mSlack, mWebhook, mEmail, mInMemRL, mInMemDed, mRedisRL, mRedisDed, mSinkWrap, mMailer] = await Promise.all([
+    const [
+      mRouter,
+      mDry,
+      mSlack,
+      mWebhook,
+      mEmail,
+      mInMemRL,
+      mInMemDed,
+      mRedisRL,
+      mRedisDed,
+      mSinkWrap,
+      mMailer,
+    ] = await Promise.all([
       import('../lib/alerts/router.js'),
       import('../lib/alerts/sinks/dryRun.js'),
       import('../lib/alerts/sinks/slack.js'),
@@ -134,11 +147,16 @@ async function main() {
     SlackSink = (mSlack as any).SlackSink ?? (mSlack as any).default ?? (mSlack as any);
     WebhookSink = (mWebhook as any).WebhookSink ?? (mWebhook as any).default ?? (mWebhook as any);
     EmailSink = (mEmail as any).EmailSink ?? (mEmail as any).default ?? (mEmail as any);
-    InMemoryRateLimiter = (mInMemRL as any).InMemoryRateLimiter ?? (mInMemRL as any).default ?? (mInMemRL as any);
-    InMemoryDeduper = (mInMemDed as any).InMemoryDeduper ?? (mInMemDed as any).default ?? (mInMemDed as any);
-    RedisRateLimiter = (mRedisRL as any).RedisRateLimiter ?? (mRedisRL as any).default ?? (mRedisRL as any);
-    RedisDeduper = (mRedisDed as any).RedisDeduper ?? (mRedisDed as any).default ?? (mRedisDed as any);
-    SinkWrapper = (mSinkWrap as any).SinkWrapper ?? (mSinkWrap as any).default ?? (mSinkWrap as any);
+    InMemoryRateLimiter =
+      (mInMemRL as any).InMemoryRateLimiter ?? (mInMemRL as any).default ?? (mInMemRL as any);
+    InMemoryDeduper =
+      (mInMemDed as any).InMemoryDeduper ?? (mInMemDed as any).default ?? (mInMemDed as any);
+    RedisRateLimiter =
+      (mRedisRL as any).RedisRateLimiter ?? (mRedisRL as any).default ?? (mRedisRL as any);
+    RedisDeduper =
+      (mRedisDed as any).RedisDeduper ?? (mRedisDed as any).default ?? (mRedisDed as any);
+    SinkWrapper =
+      (mSinkWrap as any).SinkWrapper ?? (mSinkWrap as any).default ?? (mSinkWrap as any);
     sendEmail = (mMailer as any).sendEmail ?? (mMailer as any).default ?? (mMailer as any);
   } catch (e) {
     console.error('Failed to dynamically import alerting modules', String(e));
@@ -149,17 +167,37 @@ async function main() {
   try {
     const sinks: any[] = [];
 
-    const enableRealSinks = !DRY_RUN && (process.env.SLACK_WEBHOOK || process.env.PAGER_WEBHOOK || process.env.OPS_EMAIL);
+    const enableRealSinks =
+      !DRY_RUN && (process.env.SLACK_WEBHOOK || process.env.PAGER_WEBHOOK || process.env.OPS_EMAIL);
 
     if (enableRealSinks) {
       if (process.env.SLACK_WEBHOOK) {
-        sinks.push(new SinkWrapper(new SlackSink({ webhookUrl: process.env.SLACK_WEBHOOK!, channel: process.env.SLACK_CHANNEL, username: process.env.SLACK_USERNAME }), { retries: 3, backoffMs: 200 }));
+        sinks.push(
+          new SinkWrapper(
+            new SlackSink({
+              webhookUrl: process.env.SLACK_WEBHOOK!,
+              channel: process.env.SLACK_CHANNEL,
+              username: process.env.SLACK_USERNAME,
+            }),
+            { retries: 3, backoffMs: 200 }
+          )
+        );
       }
       if (process.env.PAGER_WEBHOOK) {
-        sinks.push(new SinkWrapper(new WebhookSink({ url: process.env.PAGER_WEBHOOK! }), { retries: 2, backoffMs: 200 }));
+        sinks.push(
+          new SinkWrapper(new WebhookSink({ url: process.env.PAGER_WEBHOOK! }), {
+            retries: 2,
+            backoffMs: 200,
+          })
+        );
       }
       if (process.env.OPS_EMAIL) {
-        sinks.push(new SinkWrapper(new EmailSink({ to: process.env.OPS_EMAIL!, sendMail: sendEmail }), { retries: 1, backoffMs: 300 }));
+        sinks.push(
+          new SinkWrapper(new EmailSink({ to: process.env.OPS_EMAIL!, sendMail: sendEmail }), {
+            retries: 1,
+            backoffMs: 300,
+          })
+        );
       }
     }
 
@@ -170,40 +208,84 @@ async function main() {
     let rateLimiter: any;
     let deduper: any;
     if (process.env.REDIS_URL) {
-      rateLimiter = new RedisRateLimiter({ capacity: Number(process.env.ALERT_RL_CAPACITY) || 10, windowSeconds: Number(process.env.ALERT_RL_WINDOW) || 60 });
+      rateLimiter = new RedisRateLimiter({
+        capacity: Number(process.env.ALERT_RL_CAPACITY) || 10,
+        windowSeconds: Number(process.env.ALERT_RL_WINDOW) || 60,
+      });
       deduper = new RedisDeduper({ ttlSeconds: Number(process.env.ALERT_DEDUPE_TTL) || 60 * 10 });
     } else {
-      rateLimiter = new InMemoryRateLimiter(Number(process.env.ALERT_RL_CAPACITY) || 5, Number(process.env.ALERT_RL_REFILL) || 0.2);
+      rateLimiter = new InMemoryRateLimiter(
+        Number(process.env.ALERT_RL_CAPACITY) || 5,
+        Number(process.env.ALERT_RL_REFILL) || 0.2
+      );
       deduper = new InMemoryDeduper(Number(process.env.ALERT_DEDUPE_TTL) || 60 * 10);
     }
 
     const router = new AlertRouter({ sinks, rateLimiter, deduper });
     (global as any).alertRouter = router;
-    console.log(JSON.stringify({ event: 'alert_router_initialized', sinks: sinks.map((s: any) => s.name), dryRun: DRY_RUN }));
+    console.log(
+      JSON.stringify({
+        event: 'alert_router_initialized',
+        sinks: sinks.map((s: any) => s.name),
+        dryRun: DRY_RUN,
+      })
+    );
   } catch {
     console.error('alert-router-init-failed');
   }
 
   async function singleRun() {
-    const runId = (global as any).runId || (typeof crypto !== 'undefined' && (crypto as any).randomUUID ? (crypto as any).randomUUID() : String(Date.now()));
+    const runId =
+      (global as any).runId ||
+      (typeof crypto !== 'undefined' && (crypto as any).randomUUID
+        ? (crypto as any).randomUUID()
+        : String(Date.now()));
     const started = Date.now();
 
     const locked = await tryAcquireLock();
     if (!locked) {
-      console.log(JSON.stringify({ event: 'skipping_run', reason: 'lock held', runId, timestamp: new Date().toISOString() }));
+      console.log(
+        JSON.stringify({
+          event: 'skipping_run',
+          reason: 'lock held',
+          runId,
+          timestamp: new Date().toISOString(),
+        })
+      );
       return;
     }
 
     try {
-        const exec = Promise.resolve().then(() => runOnce());
-      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('evaluator-timeout')), MAX_MS));
+      const exec = Promise.resolve().then(() => runOnce());
+      const timeout = new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('evaluator-timeout')), MAX_MS)
+      );
       await Promise.race([exec, timeout]);
       const duration = Date.now() - started;
-      console.log(JSON.stringify({ event: 'run_complete', runId, duration_ms: duration, dryRun: DRY_RUN, timestamp: new Date().toISOString() }));
+      console.log(
+        JSON.stringify({
+          event: 'run_complete',
+          runId,
+          duration_ms: duration,
+          dryRun: DRY_RUN,
+          timestamp: new Date().toISOString(),
+        })
+      );
     } catch (err) {
-      console.error(JSON.stringify({ event: 'run_error', runId, error: String(err), dryRun: DRY_RUN, timestamp: new Date().toISOString() }));
+      console.error(
+        JSON.stringify({
+          event: 'run_error',
+          runId,
+          error: String(err),
+          dryRun: DRY_RUN,
+          timestamp: new Date().toISOString(),
+        })
+      );
       // If DB connectivity is lost, exit non-zero to let orchestrator restart and surface failure
-      if (String(err).toLowerCase().includes('connect') || String(err).toLowerCase().includes('econnrefused')) {
+      if (
+        String(err).toLowerCase().includes('connect') ||
+        String(err).toLowerCase().includes('econnrefused')
+      ) {
         await releaseLock();
         process.exit(1);
       }
@@ -221,7 +303,14 @@ async function main() {
     process.exit(0);
   }
 
-  console.log(JSON.stringify({ event: 'evaluator_starting', interval_sec: INTERVAL_SEC, max_ms: MAX_MS, dryRun: DRY_RUN }));
+  console.log(
+    JSON.stringify({
+      event: 'evaluator_starting',
+      interval_sec: INTERVAL_SEC,
+      max_ms: MAX_MS,
+      dryRun: DRY_RUN,
+    })
+  );
 
   // Graceful shutdown handling
   let shuttingDown = false;
@@ -236,7 +325,10 @@ async function main() {
     const waitMs = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
     if (currentRun) {
       try {
-        await Promise.race([currentRun, new Promise((_, rej) => setTimeout(() => rej(new Error('shutdown-timeout')), waitMs))]);
+        await Promise.race([
+          currentRun,
+          new Promise((_, rej) => setTimeout(() => rej(new Error('shutdown-timeout')), waitMs)),
+        ]);
       } catch (e) {
         console.error('shutdown: wait current run error', String(e));
       }
@@ -257,8 +349,12 @@ async function main() {
     try {
       const router = (global as any).alertRouter;
       if (router) {
-        const rl = (router as any).opts?.rateLimiter ?? (router as any).rateLimiter ?? (router as any).opts?.rateLimiter;
-        const dd = (router as any).opts?.deduper ?? (router as any).deduper ?? (router as any).opts?.deduper;
+        const rl =
+          (router as any).opts?.rateLimiter ??
+          (router as any).rateLimiter ??
+          (router as any).opts?.rateLimiter;
+        const dd =
+          (router as any).opts?.deduper ?? (router as any).deduper ?? (router as any).opts?.deduper;
         if (rl && typeof rl.disconnect === 'function') {
           await rl.disconnect().catch(() => {});
         }
@@ -282,11 +378,25 @@ async function main() {
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('uncaughtException', (err) => { console.error('uncaughtException', String(err)); shutdown('uncaughtException'); });
+  process.on('uncaughtException', (err) => {
+    console.error('uncaughtException', String(err));
+    shutdown('uncaughtException');
+  });
 
   // Run immediately then schedule
-  currentRun = (async () => { await singleRun(); currentRun = null; })();
-  setInterval(() => { currentRun = (async () => { await singleRun(); currentRun = null; })(); }, INTERVAL_SEC * 1000);
+  currentRun = (async () => {
+    await singleRun();
+    currentRun = null;
+  })();
+  setInterval(() => {
+    currentRun = (async () => {
+      await singleRun();
+      currentRun = null;
+    })();
+  }, INTERVAL_SEC * 1000);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

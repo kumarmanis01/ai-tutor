@@ -1,17 +1,27 @@
 const { prisma } = require('../lib/prisma');
 
-(async function main(){
-  
-  try{
-    const rows = await prisma.hydrationJob.findMany({ where: { status: 'failed' }, orderBy: { updatedAt: 'desc' }, take: 20 });
-    for(const r of rows){
+(async function main() {
+  try {
+    const rows = await prisma.hydrationJob.findMany({
+      where: { status: 'failed' },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+    });
+    for (const r of rows) {
       console.log('---');
-      console.log({ id: r.id, jobType: r.jobType, topicId: r.topicId, attempts: r.attempts, lastError: r.lastError, updatedAt: r.updatedAt });
+      console.log({
+        id: r.id,
+        jobType: r.jobType,
+        topicId: r.topicId,
+        attempts: r.attempts,
+        lastError: r.lastError,
+        updatedAt: r.updatedAt,
+      });
     }
-  }catch(e){
+  } catch (e) {
     console.error('Error:', e && e.message ? e.message : e);
     process.exit(1);
-  }finally{
+  } finally {
     await prisma.$disconnect();
   }
 })();

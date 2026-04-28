@@ -147,24 +147,23 @@ export async function GET() {
         slug: cls.slug,
         // Deduplicate by name -- prevents duplicate subject names in the subject picker
         // when SubjectDef rows share the same name but have different slugs for the same classId
-        subjects: [...new Map(cls.subjects.map((sub) => [sub.name, sub])).values()]
-          .map((sub) => ({
-            id: sub.id,
-            name: sub.name,
-            slug: sub.slug,
-            chapters: sub.chapters.map((ch) => ({
-              id: ch.id,
-              name: ch.name,
-              slug: ch.slug,
-              order: ch.order,
-              topics: ch.topics.map((tp) => ({
-                id: tp.id,
-                name: tp.name,
-                slug: tp.slug,
-                order: tp.order,
-              })),
+        subjects: [...new Map(cls.subjects.map((sub) => [sub.name, sub])).values()].map((sub) => ({
+          id: sub.id,
+          name: sub.name,
+          slug: sub.slug,
+          chapters: sub.chapters.map((ch) => ({
+            id: ch.id,
+            name: ch.name,
+            slug: ch.slug,
+            order: ch.order,
+            topics: ch.topics.map((tp) => ({
+              id: tp.id,
+              name: tp.name,
+              slug: tp.slug,
+              order: tp.order,
             })),
           })),
+        })),
       })),
     }));
 
@@ -191,9 +190,6 @@ export async function GET() {
     });
   } catch (error) {
     logger.error('[academic-hierarchy] Failed to fetch hierarchy', { error });
-    return NextResponse.json(
-      { error: 'Failed to fetch academic hierarchy' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch academic hierarchy' }, { status: 500 });
   }
 }

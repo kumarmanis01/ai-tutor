@@ -22,12 +22,40 @@ export interface TodaysLearningCardProps {
   onStartLearning?: (topicId: string) => void;
 }
 
-const TASK_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string; cta: string }> = {
-  learn: { label: 'Learn', color: 'bg-[#534AB7]/15 text-[#534AB7]', icon: '📖', cta: 'Start New Topic' },
-  practice: { label: 'Practice', color: 'bg-green-500/15 text-green-600', icon: '🎯', cta: 'Practice Now' },
-  revise: { label: 'Revise', color: 'bg-amber-500/15 text-amber-600', icon: '🔄', cta: 'Quick Revision' },
-  fix_gap: { label: 'Build Up', color: 'bg-orange-500/15 text-orange-600', icon: '💪', cta: 'Strengthen Topic' },
-  confidence: { label: 'Show Off', color: 'bg-pink-500/15 text-pink-600', icon: '⭐', cta: 'Continue Session' },
+const TASK_TYPE_CONFIG: Record<
+  string,
+  { label: string; color: string; icon: string; cta: string }
+> = {
+  learn: {
+    label: 'Learn',
+    color: 'bg-[#534AB7]/15 text-[#534AB7]',
+    icon: '📖',
+    cta: 'Start New Topic',
+  },
+  practice: {
+    label: 'Practice',
+    color: 'bg-green-500/15 text-green-600',
+    icon: '🎯',
+    cta: 'Practice Now',
+  },
+  revise: {
+    label: 'Revise',
+    color: 'bg-amber-500/15 text-amber-600',
+    icon: '🔄',
+    cta: 'Quick Revision',
+  },
+  fix_gap: {
+    label: 'Build Up',
+    color: 'bg-orange-500/15 text-orange-600',
+    icon: '💪',
+    cta: 'Strengthen Topic',
+  },
+  confidence: {
+    label: 'Show Off',
+    color: 'bg-pink-500/15 text-pink-600',
+    icon: '⭐',
+    cta: 'Continue Session',
+  },
 };
 
 export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps) {
@@ -150,11 +178,7 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
         <span className={`px-3 py-1 text-xs font-medium rounded-full ${config.color}`}>
           {config.icon} {config.label}
         </span>
-        {task.subject && (
-          <span className="text-xs text-muted-foreground">
-            {task.subject}
-          </span>
-        )}
+        {task.subject && <span className="text-xs text-muted-foreground">{task.subject}</span>}
         {task.isRecoveryTask && (
           <span className="px-2 py-0.5 bg-amber-500/15 text-amber-600 text-xs rounded-full">
             Welcome Back
@@ -163,16 +187,10 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
       </div>
 
       {/* Title */}
-      <h2 className="text-xl font-bold text-foreground mb-1">
-        {task.title}
-      </h2>
+      <h2 className="text-xl font-bold text-foreground mb-1">{task.title}</h2>
 
       {/* Description */}
-      {task.description && (
-        <p className="text-sm text-muted-foreground mb-4">
-          {task.description}
-        </p>
-      )}
+      {task.description && <p className="text-sm text-muted-foreground mb-4">{task.description}</p>}
 
       {/* Steps Preview */}
       {steps.length > 0 && (
@@ -190,7 +208,13 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
 
       {/* Estimated Time */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className="w-4 h-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <circle cx="12" cy="12" r="10" />
           <path d="M12 6v6l4 2" />
         </svg>
@@ -209,7 +233,13 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
         className="w-full py-4 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
       >
         <span>{config.cta}</span>
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M5 12h14M12 5l7 7-7 7" />
         </svg>
       </button>

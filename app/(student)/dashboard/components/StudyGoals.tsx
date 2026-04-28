@@ -15,9 +15,9 @@ import { useStreaksAndGoals } from '@/hooks/useStreaksAndGoals';
 
 const StudyGoals: React.FC = () => {
   const { streaks, progress, loading } = useStreaksAndGoals();
-  const daily = streaks.find(s => s.kind === 'daily_study');
+  const daily = streaks.find((s) => s.kind === 'daily_study');
   const streakDays = daily?.current ?? 0;
-  
+
   // Use actual progress data
   const weeklyProgress = progress.weeklyProgress;
   const testsCompleted = progress.testsCompleted;
@@ -47,7 +47,7 @@ const StudyGoals: React.FC = () => {
           <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center text-white shadow-lg">
             <span className="text-2xl">🔥</span>
           </div>
-          
+
           <div className="flex-1">
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-bold text-foreground">{streakDays}</span>
@@ -55,7 +55,7 @@ const StudyGoals: React.FC = () => {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full transition-all"
                   style={{ width: `${weeklyProgress}%` }}
                 />

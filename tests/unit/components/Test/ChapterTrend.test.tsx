@@ -23,11 +23,19 @@ describe('ChapterTrend (ChapterTests integration)', () => {
       const url = typeof input === 'string' ? input : String(input?.url ?? input);
       // Sparklines endpoint returns a chapter->points map
       if (url.includes('/api/student/tests/trends')) {
-        return Promise.resolve({ ok: true, json: async () => ({ data: { 'Chapter One': [{ date: '2026-04-01T00:00:00Z', score: 80 }] } }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: { 'Chapter One': [{ date: '2026-04-01T00:00:00Z', score: 80 }] },
+          }),
+        });
       }
       // Single-chapter trend endpoint returns an array of points
       if (url.includes('/api/student/tests/trend')) {
-        return Promise.resolve({ ok: true, json: async () => ({ data: [{ date: '2026-04-01T00:00:00Z', score: 80 }] }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: [{ date: '2026-04-01T00:00:00Z', score: 80 }] }),
+        });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -42,7 +50,7 @@ describe('ChapterTrend (ChapterTests integration)', () => {
         grade="10"
         board="CBSE"
         chapters={[{ id: 'ch1', name: 'Chapter One' }]}
-      />,
+      />
     );
 
     // Click the Trend button
@@ -55,7 +63,9 @@ describe('ChapterTrend (ChapterTests integration)', () => {
     // Ensure fetch was called to the trend endpoint
     // @ts-expect-error TODO: fix types
     const calls = (global.fetch as jest.Mock).mock.calls;
-    const calledTrend = calls.some((c: any[]) => typeof c[0] === 'string' && c[0].includes('/api/student/tests/trend'));
+    const calledTrend = calls.some(
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('/api/student/tests/trend')
+    );
     expect(calledTrend).toBeTruthy();
   });
 });

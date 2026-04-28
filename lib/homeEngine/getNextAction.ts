@@ -1,22 +1,16 @@
 /**
  * FILE OBJECTIVE:
- * - Deterministic Home Tutor Engine.
- * - Returns a single, rule-prioritised next action for the student.
- * - ZERO AI calls. Prisma only. Target latency: <150 ms.
+ * - Deterministic Home Tutor Engine. Returns a single, rule-prioritised next action for the student. ZERO AI calls. Prisma only. Target latency: <150 ms.
  *
- * Priority order (short-circuits at first match):
- *   P0   - Homework pending/overdue with dueDate <= NOW + 48h (hard block)
- *   P1   - Resume active StructuredSession or LearningSession (legacy)
- *   P2   - Weak topic: StudentTopicProgress mastery < 0.4 AND practiceCount > 5
- *   P3   - Spaced revision: mastery 0.4-0.85, not studied in 7+ days
- *   P4   - Inactive return: no study activity in 3+ days
- *   P5   - Scored next topic via TopicRanker
- *   P6   - All topics complete
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/homeEngine/getNextAction.spec.ts
  *
- * DO NOT modify the existing recommendation engine.
- * DO NOT change the Prisma schema.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
  * - 2026-02-21 | claude | created deterministic tutor engine per architectural spec
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
  * - 2026-03-07 | claude | added StructuredSession lock (LOCK rule) -- prevents P3-P5
@@ -74,13 +68,13 @@ import {
  * short-circuit behaviour explicit rather than implicit.
  */
 const ALL_RULE_IDS: string[] = [
-  'homework_pending',   // P0
-  'resume_session',     // P1
-  'weak_topic_urgent',  // P2
-  'spaced_revision',    // P3
-  'inactive_return',    // P4
-  'next_new_topic',     // P5
-  'all_topics_complete',// P6 fallback
+  'homework_pending', // P0
+  'resume_session', // P1
+  'weak_topic_urgent', // P2
+  'spaced_revision', // P3
+  'inactive_return', // P4
+  'next_new_topic', // P5
+  'all_topics_complete', // P6 fallback
 ];
 
 // In-memory recent decision store used to detect possible engine loops in dev.
@@ -212,20 +206,26 @@ async function enrichTopic(
   topicId: string | null,
   fallback: TopicEnrichment
 ): Promise<TopicEnrichment> {
-  if (!topicId) return { topicName: null, ...fallback };
+  if (!topicId) return { ...fallback, topicName: null };
 
-  const topic = await prisma.topicDef.findUnique({
+  // Local row type for topicDef with chapter/subject join
+  type TopicDefRow = {
+    name: string;
+    chapter: { name: string; subject: { name: string } };
+  } | null;
+  const topic = (await prisma.topicDef.findUnique({
     where: { id: topicId },
     include: {
       chapter: {
         include: { subject: true },
       },
     },
-  });
+  })) as TopicDefRow;
 
-  if (!topic) return { topicName: null, ...fallback };
+  if (!topic) return { ...fallback, topicName: null };
 
   return {
+    ...fallback,
     topicName: topic.name,
     chapter: topic.chapter.name,
     subject: topic.chapter.subject.name,
@@ -287,7 +287,13 @@ function floorDays(ms: number): number {
 async function p0_homeworkBlocker(studentId: string): Promise<NextAction | null> {
   const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
-  const hw = await prisma.homeworkAssignment.findFirst({
+  // Local row type for homeworkAssignment
+  type HomeworkAssignmentRow = {
+    id: string;
+    topicId: string;
+    topic: { name: string; chapter: { name: string; subject: { name: string } } };
+  } | null;
+  const hw = (await prisma.homeworkAssignment.findFirst({
     where: {
       studentId,
       status: { in: ['PENDING', 'OVERDUE'] },
@@ -309,7 +315,7 @@ async function p0_homeworkBlocker(studentId: string): Promise<NextAction | null>
         },
       },
     },
-  });
+  })) as HomeworkAssignmentRow;
 
   if (!hw) return null;
 
@@ -354,7 +360,15 @@ function structuredPhaseToAction(phase: SessionPhase): ActionType {
  */
 async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
   // ── 1a. StructuredSession -- primary path for new-engine students ──────────
-  const structured = await prisma.structuredSession.findFirst({
+
+  // Local row type for structuredSession
+  type StructuredSessionRow = {
+    id: string;
+    topicId: string;
+    state: string;
+    topic: { name: string; chapter: { name: string; subject: { name: string } } };
+  } | null;
+  const structured = (await prisma.structuredSession.findFirst({
     where: {
       studentId,
       state: { notIn: ['COMPLETE', 'EXPIRED'] },
@@ -376,7 +390,7 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
         },
       },
     },
-  });
+  })) as StructuredSessionRow;
 
   if (structured) {
     // state is guaranteed to be one of the SessionPhase values -- COMPLETE and EXPIRED
@@ -397,7 +411,14 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
 
   // ── 1b. LearningSession -- legacy fallback for pre-StructuredSession students ─
   // Only runs when no active StructuredSession was found above.
-  const legacy = await prisma.learningSession.findFirst({
+  // Local row type for learningSession
+  type LearningSessionRow = {
+    id: string;
+    activityType: string;
+    activityRef: string | null;
+    meta: unknown;
+  } | null;
+  const legacy = (await prisma.learningSession.findFirst({
     where: { studentId, isCompleted: false },
     orderBy: { lastAccessed: 'desc' },
     select: {
@@ -406,7 +427,7 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
       activityRef: true,
       meta: true,
     },
-  });
+  })) as LearningSessionRow;
   if (!legacy) return null;
 
   const meta = safeObj(legacy.meta);
@@ -446,10 +467,17 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
 async function p2_weakTopicUrgent(rows: ProgressRow[]): Promise<NextAction | null> {
   const best = rows
     .filter((r) => r.mastery < 0.4 && r.practiceCount > 5)
-    .reduce<ProgressRow | null>((min, r) => (min === null || r.mastery < min.mastery ? r : min), null);
+    .reduce<ProgressRow | null>(
+      (min, r) => (min === null || r.mastery < min.mastery ? r : min),
+      null
+    );
   if (!best) return null;
 
-  const enriched = await enrichTopic(best.topicId, { topicName: null, subject: null, chapter: null });
+  const enriched = await enrichTopic(best.topicId, {
+    topicName: null,
+    subject: null,
+    chapter: null,
+  });
   return {
     topicId: best.topicId,
     topicName: enriched.topicName,
@@ -497,7 +525,11 @@ async function p3_spacedRevision(rows: ProgressRow[]): Promise<NextAction | null
   const best = candidates.reduce((max, c) => (c.overdueDays > max.overdueDays ? c : max));
   const days = best.daysSince; // already a whole number (calendar-day ordinal diff)
 
-  const enriched = await enrichTopic(best.topicId, { topicName: null, subject: null, chapter: null });
+  const enriched = await enrichTopic(best.topicId, {
+    topicName: null,
+    subject: null,
+    chapter: null,
+  });
   return {
     topicId: best.topicId,
     topicName: enriched.topicName,
@@ -524,13 +556,17 @@ async function p4_inactiveReturn(rows: ProgressRow[]): Promise<NextAction | null
 
   // Most-recently studied topic across all curriculum rows
   const lastStudied = rows.reduce((max, r) =>
-    r.lastStudiedAt.getTime() > max.lastStudiedAt.getTime() ? r : max,
+    r.lastStudiedAt.getTime() > max.lastStudiedAt.getTime() ? r : max
   );
 
   // Student is active (studied within 3 days) or no history → skip
   if (lastStudied.lastStudiedAt.getTime() >= threeDaysAgo) return null;
 
-  const enriched = await enrichTopic(lastStudied.topicId, { topicName: null, subject: null, chapter: null });
+  const enriched = await enrichTopic(lastStudied.topicId, {
+    topicName: null,
+    subject: null,
+    chapter: null,
+  });
   return {
     topicId: lastStudied.topicId,
     topicName: enriched.topicName,
@@ -568,7 +604,7 @@ async function p4_inactiveReturn(rows: ProgressRow[]): Promise<NextAction | null
  */
 async function p5_scoredTopic(
   studentId: string,
-  orderedTopics: OrderedTopic[],
+  orderedTopics: OrderedTopic[]
 ): Promise<{ action: NextAction | null; scoredTopics: ScoredTopic[] }> {
   if (orderedTopics.length === 0) return { action: null, scoredTopics: [] };
 
@@ -640,7 +676,7 @@ export type GetNextActionReturn =
  */
 export async function getNextAction(
   studentId: string,
-  options: GetNextActionOptions = {},
+  options: GetNextActionOptions = {}
 ): Promise<GetNextActionReturn> {
   const traceId = randomUUID();
   const startMs = Date.now();
@@ -661,7 +697,12 @@ export async function getNextAction(
   trace.rulesEvaluated.push('P0');
   const p0Start = Date.now();
   const p0 = await p0_homeworkBlocker(studentId);
-  ruleEntries.push({ ruleId: 'homework_pending', evaluated: true, matched: p0 !== null, durationMs: Date.now() - p0Start });
+  ruleEntries.push({
+    ruleId: 'homework_pending',
+    evaluated: true,
+    matched: p0 !== null,
+    durationMs: Date.now() - p0Start,
+  });
   if (p0) {
     trace.matchedRule = 'homework_pending';
     trace.finalDecision = 'homework_pending';
@@ -675,7 +716,12 @@ export async function getNextAction(
   trace.rulesEvaluated.push('P1');
   const p1Start = Date.now();
   const p1 = await p1_resumeSession(studentId);
-  ruleEntries.push({ ruleId: 'resume_session', evaluated: true, matched: p1 !== null, durationMs: Date.now() - p1Start });
+  ruleEntries.push({
+    ruleId: 'resume_session',
+    evaluated: true,
+    matched: p1 !== null,
+    durationMs: Date.now() - p1Start,
+  });
   if (p1) {
     trace.matchedRule = 'resume_session';
     trace.finalDecision = 'resume_session';
@@ -690,16 +736,24 @@ export async function getNextAction(
   // duplicate curriculum fetch). Fall back to a fresh query otherwise.
   const orderedTopics =
     options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
-  const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
+  const allowedTopicIds = new Set(orderedTopics.map((t: OrderedTopic) => t.id));
 
+  // Local row type for studentTopicProgress
+  type ProgressRowStrict = {
+    topicId: string;
+    mastery: number;
+    practiceCount: number;
+    lastStudiedAt: Date;
+  };
   // Single shared progress fetch for P2 + P3 + P4 -- one round-trip covers all three rules.
   // Scoped to the student's curriculum (allowedTopicIds) to exclude stale/cross-grade rows.
-  const progressRows: ProgressRow[] = allowedTopicIds.size > 0
-    ? await prisma.studentTopicProgress.findMany({
-        where: { studentId, topicId: { in: [...allowedTopicIds] } },
-        select: { topicId: true, mastery: true, practiceCount: true, lastStudiedAt: true },
-      })
-    : [];
+  const progressRows: ProgressRowStrict[] =
+    allowedTopicIds.size > 0
+      ? ((await prisma.studentTopicProgress.findMany({
+          where: { studentId, topicId: { in: [...allowedTopicIds] } },
+          select: { topicId: true, mastery: true, practiceCount: true, lastStudiedAt: true },
+        })) as ProgressRowStrict[])
+      : [];
 
   let action: NextAction | null;
 
@@ -707,7 +761,12 @@ export async function getNextAction(
   trace.rulesEvaluated.push('P2');
   const p2Start = Date.now();
   action = await p2_weakTopicUrgent(progressRows);
-  ruleEntries.push({ ruleId: 'weak_topic_urgent', evaluated: true, matched: action !== null, durationMs: Date.now() - p2Start });
+  ruleEntries.push({
+    ruleId: 'weak_topic_urgent',
+    evaluated: true,
+    matched: action !== null,
+    durationMs: Date.now() - p2Start,
+  });
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
@@ -718,7 +777,12 @@ export async function getNextAction(
   trace.rulesEvaluated.push('P3');
   const p3Start = Date.now();
   action = await p3_spacedRevision(progressRows);
-  ruleEntries.push({ ruleId: 'spaced_revision', evaluated: true, matched: action !== null, durationMs: Date.now() - p3Start });
+  ruleEntries.push({
+    ruleId: 'spaced_revision',
+    evaluated: true,
+    matched: action !== null,
+    durationMs: Date.now() - p3Start,
+  });
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
@@ -729,7 +793,12 @@ export async function getNextAction(
   trace.rulesEvaluated.push('P4');
   const p4Start = Date.now();
   action = await p4_inactiveReturn(progressRows);
-  ruleEntries.push({ ruleId: 'inactive_return', evaluated: true, matched: action !== null, durationMs: Date.now() - p4Start });
+  ruleEntries.push({
+    ruleId: 'inactive_return',
+    evaluated: true,
+    matched: action !== null,
+    durationMs: Date.now() - p4Start,
+  });
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
@@ -742,7 +811,12 @@ export async function getNextAction(
   const p5Result = await p5_scoredTopic(studentId, orderedTopics);
   action = p5Result.action;
   scoredTopicsForTrace = p5Result.scoredTopics;
-  ruleEntries.push({ ruleId: 'next_new_topic', evaluated: true, matched: action !== null, durationMs: Date.now() - p5Start });
+  ruleEntries.push({
+    ruleId: 'next_new_topic',
+    evaluated: true,
+    matched: action !== null,
+    durationMs: Date.now() - p5Start,
+  });
 
   // Fallback: if the student has a curriculum but all topics are attempted,
   // return a stable revision action so the UI can render a friendly CTA.
@@ -758,7 +832,12 @@ export async function getNextAction(
       actionType: 'revision',
       estimatedTimeMin: 20,
     };
-    ruleEntries.push({ ruleId: 'all_topics_complete', evaluated: true, matched: true, durationMs: 0 });
+    ruleEntries.push({
+      ruleId: 'all_topics_complete',
+      evaluated: true,
+      matched: true,
+      durationMs: 0,
+    });
   }
   trace.matchedRule = action.ruleId;
   trace.finalDecision = action.ruleId;
@@ -793,7 +872,7 @@ function finalise(
   action: NextAction,
   traceId: string,
   studentId: string,
-  opts?: FinaliseOptions,
+  opts?: FinaliseOptions
 ): GetNextActionReturn {
   if (opts?.trace && opts.startMs !== undefined) {
     opts.trace.latencyMs = Date.now() - opts.startMs;

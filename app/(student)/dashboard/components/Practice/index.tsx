@@ -48,16 +48,16 @@ type SectionId = 'recommended' | 'weak' | 'chapter' | 'custom';
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'recommended', label: 'Recommended' },
-  { id: 'weak',        label: 'Weak Topics' },
-  { id: 'chapter',     label: 'Chapter' },
-  { id: 'custom',      label: 'Custom Test' },
+  { id: 'weak', label: 'Weak Topics' },
+  { id: 'chapter', label: 'Chapter' },
+  { id: 'custom', label: 'Custom Test' },
 ];
 
 const DIFFICULTIES = [
-  { value: '',       label: 'Any' },
-  { value: 'easy',   label: 'Easy' },
+  { value: '', label: 'Any' },
+  { value: 'easy', label: 'Easy' },
   { value: 'medium', label: 'Medium' },
-  { value: 'hard',   label: 'Hard' },
+  { value: 'hard', label: 'Hard' },
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -87,10 +87,17 @@ export default function PracticeTab() {
         setWeakTopics(data?.weakTopics ?? []);
       })
       .catch(() => {
-        if (!cancelled) { setRecommended(null); setWeakTopics([]); }
+        if (!cancelled) {
+          setRecommended(null);
+          setWeakTopics([]);
+        }
       })
-      .finally(() => { if (!cancelled) setOverviewLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setOverviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const practiceHref = useCallback((topicId: string, difficulty?: string) => {

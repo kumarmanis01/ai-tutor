@@ -14,11 +14,11 @@
  * - 2026-04-15T00:00:00Z | copilot | add unit tests for safeSwapOrderInWeek
  */
 
-import { safeSwapOrderInWeek } from '@/lib/learningPlan/safeSwapOrder'
+import { safeSwapOrderInWeek } from '@/lib/learningPlan/safeSwapOrder';
 
 describe('safeSwapOrderInWeek', () => {
   it('calls tx.$executeRaw once on happy path', async () => {
-    const tx = { $executeRaw: jest.fn().mockResolvedValue(undefined) } as any
+    const tx = { $executeRaw: jest.fn().mockResolvedValue(undefined) } as any;
     await expect(
       safeSwapOrderInWeek(tx, {
         planId: 'plan-1',
@@ -27,14 +27,14 @@ describe('safeSwapOrderInWeek', () => {
         tgtId: 'tgt-1',
         srcOrder: 1,
         tgtOrder: 2,
-      }),
-    ).resolves.toBeUndefined()
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(1)
-  })
+      })
+    ).resolves.toBeUndefined();
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+  });
 
   it('propagates errors from the transaction and does not swallow them', async () => {
-    const boom = new Error('db failure')
-    const tx = { $executeRaw: jest.fn().mockRejectedValue(boom) } as any
+    const boom = new Error('db failure');
+    const tx = { $executeRaw: jest.fn().mockRejectedValue(boom) } as any;
     await expect(
       safeSwapOrderInWeek(tx, {
         planId: 'plan-1',
@@ -43,8 +43,8 @@ describe('safeSwapOrderInWeek', () => {
         tgtId: 'tgt-1',
         srcOrder: 1,
         tgtOrder: 2,
-      }),
-    ).rejects.toThrow(boom)
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(1)
-  })
-})
+      })
+    ).rejects.toThrow(boom);
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+  });
+});

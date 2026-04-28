@@ -1,46 +1,69 @@
+/**
+ * FILE OBJECTIVE:
+ * - LP-9.1 final conversion section with primary Google sign-in CTA and secondary team contact link.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(public)/landing-page/components/FinalCTA.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | initial FinalCTA with Teacher Vidya headline
+ * - 2026-04-27T00:00:00Z | copilot | v3: student-focused bilingual headline, updated CTA link
+ * - 2026-04-27T14:30:00Z | copilot | LP-9.1: update title/subtitle/button/link copy and gradient styling
+ */
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
-import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
 
 const FinalCTA = () => {
   return (
-    <section className="py-12 md:py-16 bg-gradient-to-br from-primary via-accent to-secondary">
-      <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-3xl">
-        <div className="text-center text-white space-y-6 md:space-y-8">
-          <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl">
-            Start learning with Teacher Vidya today
+    <section className="relative overflow-hidden py-12 md:py-16 bg-gradient-to-br from-[#EEEDFE] via-white to-[#FAEEDA]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#FF6B35]/15 blur-2xl"
+      />
+      <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-4xl">
+        <div className="text-center space-y-5 md:space-y-6 rounded-3xl border border-[#534AB7]/15 bg-white/80 backdrop-blur-sm px-5 py-8 md:px-10 md:py-10 shadow-lg">
+          <p className="text-4xl" aria-hidden="true">
+            📚
+          </p>
+
+          <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary">
+            Ready to transform your child's learning?
           </h2>
 
-          <p className="font-accent text-xl md:text-2xl">
-            आज ही Teacher Vidya के साथ सीखना शुरू करें
+          <p className="font-body text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            Join 10,000+ Indian parents who&apos;ve switched to smarter tutoring.
           </p>
 
-          <p className="font-body text-lg md:text-xl opacity-90 max-w-2xl mx-auto">
-            {FREE_SESSIONS_TEXT}. No credit card. 7-day refund policy.
-          </p>
-
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-4">
             <Link
-              href="/auth/signup"
-              className="inline-flex items-center gap-2 px-8 py-4 md:px-10 md:py-5 min-h-[44px] bg-white text-[#534AB7] font-cta font-bold rounded-lg hover:bg-white/90 transition-all text-lg md:text-xl shadow-xl"
+              href="https://app.spinzyacademy.com/register"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 md:px-10 md:py-5 min-h-[48px] w-full sm:w-auto bg-[#FF6B35] text-white font-cta font-bold rounded-xl hover:bg-[#e85f2d] transition-all text-base md:text-lg shadow-xl"
             >
               <Icon name="SparklesIcon" size={24} variant="solid" />
-                Get started -- it takes 2 minutes
+              Start Free -- Sign in with Google
             </Link>
+
+            <a
+              href="mailto:hello@spinzyacademy.com"
+              className="text-sm md:text-base font-semibold text-[#534AB7] hover:underline"
+            >
+              Talk to our team
+            </a>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm opacity-90">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Icon name="CheckCircleIcon" size={16} variant="solid" />
-              CBSE &amp; ICSE aligned
+              3 free sessions every month
             </span>
             <span className="flex items-center gap-1.5">
               <Icon name="CheckCircleIcon" size={16} variant="solid" />
-              Class 1-12
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Icon name="CheckCircleIcon" size={16} variant="solid" />
-              Hindi &amp; English
+              No credit card required
             </span>
           </div>
         </div>

@@ -75,9 +75,7 @@ const ContinueLearning: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{title}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {a.subject || display.label}
-              </p>
+              <p className="text-xs text-muted-foreground truncate">{a.subject || display.label}</p>
               {progress > 0 && (
                 <div className="mt-1 flex items-center gap-2">
                   <div className="flex-1 bg-muted rounded-full h-1.5">
@@ -92,7 +90,11 @@ const ContinueLearning: React.FC = () => {
                 </div>
               )}
             </div>
-            <svg className="w-4 h-4 text-muted-foreground flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <svg
+              className="w-4 h-4 text-muted-foreground flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
               <path d="M8 5v14l11-7z" />
             </svg>
           </button>

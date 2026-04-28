@@ -10,8 +10,8 @@
  * - /docs/COPILOT_GUARDRAILS.md
  */
 
-import React from 'react'
-import { prisma } from '@/lib/prisma'
+import React from 'react';
+import { prisma } from '@/lib/prisma';
 
 async function fetchCurrentMetrics() {
   const sql = `
@@ -56,24 +56,24 @@ SELECT
     ELSE ((CASE WHEN mrr.active_subscriptions = 0 THEN 0 ELSE (mrr.mrr_paise::numeric / NULLIF(mrr.active_subscriptions,0)) END) * 12.0) / (marketing.marketing_spend_paise::numeric / NULLIF(nc.new_customers,0))
   END AS ltv_cac_ratio
 FROM mrr CROSS JOIN marketing CROSS JOIN nc;
-  `
+  `;
 
-  const res: any = await (prisma as any).$queryRaw(sql)
-  return Array.isArray(res) ? res[0] ?? {} : res
+  const res: any = await (prisma as any).$queryRaw(sql);
+  return Array.isArray(res) ? (res[0] ?? {}) : res;
 }
 
 async function fetchSnapshots(limit = 30) {
-  return prisma.ltvSnapshot.findMany({ orderBy: { snapshotAt: 'desc' }, take: limit })
+  return prisma.ltvSnapshot.findMany({ orderBy: { snapshotAt: 'desc' }, take: limit });
 }
 
 export default async function Page() {
-  const metrics = await fetchCurrentMetrics()
-  const snapshots = await fetchSnapshots(30)
+  const metrics = await fetchCurrentMetrics();
+  const snapshots = await fetchSnapshots(30);
 
   const formatINR = (paise: number | null | undefined) => {
-    if (paise == null) return '--'
-    return `₹${(paise/100).toFixed(2)}`
-  }
+    if (paise == null) return '--';
+    return `₹${(paise / 100).toFixed(2)}`;
+  };
 
   return (
     <div className="p-6">
@@ -85,11 +85,15 @@ export default async function Page() {
         </div>
         <div className="p-4 border rounded bg-white dark:bg-gray-800">
           <div className="text-sm text-gray-500">Marketing Spend (MTD)</div>
-          <div className="text-xl font-bold">{formatINR(Number(metrics.marketing_spend_paise ?? 0))}</div>
+          <div className="text-xl font-bold">
+            {formatINR(Number(metrics.marketing_spend_paise ?? 0))}
+          </div>
         </div>
         <div className="p-4 border rounded bg-white dark:bg-gray-800">
           <div className="text-sm text-gray-500">LTV / CAC Ratio</div>
-          <div className="text-xl font-bold">{metrics.ltv_cac_ratio == null ? '--' : Number(metrics.ltv_cac_ratio).toFixed(2)}</div>
+          <div className="text-xl font-bold">
+            {metrics.ltv_cac_ratio == null ? '--' : Number(metrics.ltv_cac_ratio).toFixed(2)}
+          </div>
         </div>
       </div>
 
@@ -121,5 +125,5 @@ export default async function Page() {
         </table>
       </div>
     </div>
-  )
+  );
 }

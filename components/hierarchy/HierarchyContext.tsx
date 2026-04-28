@@ -7,9 +7,9 @@
  * - Content requires admin approval
  */
 
-"use client";
-import React, { createContext, useContext, useState, useEffect } from "react";
-import useSWR from "swr";
+'use client';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import useSWR from 'swr';
 
 // Lightweight fetcher used across hierarchy components
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -38,7 +38,10 @@ const HierarchyContext = createContext<ContextShape | null>(null);
 
 export const HierarchyProvider: React.FC<React.PropsWithChildren<unknown>> = ({ children }) => {
   // Fetch canonical hierarchy once -- include chapters and topics so selector shows generated content
-  const { data, error, isLoading } = useSWR<HierarchyData>("/api/hierarchy?include=subjects,chapters,topics", fetcher);
+  const { data, error, isLoading } = useSWR<HierarchyData>(
+    '/api/hierarchy?include=subjects,chapters,topics',
+    fetcher
+  );
 
   const [selection, setSelection] = useState<Selection>({});
 
@@ -47,11 +50,18 @@ export const HierarchyProvider: React.FC<React.PropsWithChildren<unknown>> = ({ 
     // noop for now
   }, []);
 
-  const languages = (data && (data.languages || data.availableLanguages)) ?? ["English", "Hindi"];
+  const languages = (data && (data.languages || data.availableLanguages)) ?? ['English', 'Hindi'];
 
   return (
     <HierarchyContext.Provider
-      value={{ hierarchy: data ?? null, selection, setSelection, loading: !!isLoading, error, languages }}
+      value={{
+        hierarchy: data ?? null,
+        selection,
+        setSelection,
+        loading: !!isLoading,
+        error,
+        languages,
+      }}
     >
       {children}
     </HierarchyContext.Provider>
@@ -60,7 +70,7 @@ export const HierarchyProvider: React.FC<React.PropsWithChildren<unknown>> = ({ 
 
 export function useHierarchy() {
   const ctx = useContext(HierarchyContext);
-  if (!ctx) throw new Error("useHierarchy must be used inside a HierarchyProvider");
+  if (!ctx) throw new Error('useHierarchy must be used inside a HierarchyProvider');
   return ctx;
 }
 

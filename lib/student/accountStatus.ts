@@ -1,7 +1,7 @@
-import { prisma } from '@/lib/prisma'
-import { DPDP_MINOR_AGE } from '@/lib/constants/age'
+import { prisma } from '@/lib/prisma';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 
-export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | 'DEACTIVATED'
+export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | 'DEACTIVATED';
 
 /**
  * Check if the student's account requires parent OTP gate.
@@ -16,17 +16,15 @@ export async function requiresParentOTPGate(studentId: string): Promise<boolean>
     const user = await prisma.user.findUnique({
       where: { id: studentId },
       select: { accountStatus: true, age: true },
-    })
-    if (!user) return false
+    });
+    if (!user) return false;
 
     return (
       user.accountStatus === 'pending_parent_verification' &&
       user.age !== null &&
       user.age < DPDP_MINOR_AGE
-    )
+    );
   } catch {
-    return false
+    return false;
   }
 }
-
-

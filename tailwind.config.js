@@ -18,7 +18,11 @@ const config = {
   // Exclude API route files from Tailwind content scanning to avoid
   // stat() errors when API route files are removed during refactors.
   // Negated patterns are supported by fast-glob which Tailwind uses.
-  content: ['./app/**/*.{js,ts,jsx,tsx}', '!./app/api/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
+  content: [
+    './app/**/*.{js,ts,jsx,tsx}',
+    '!./app/api/**/*.{js,ts,jsx,tsx}',
+    './components/**/*.{js,ts,jsx,tsx}',
+  ],
   theme: {
     extend: {
       fontFamily: {
@@ -59,6 +63,6 @@ const config = {
     },
   },
   plugins: [],
-}
+};
 
-export default config
+export default config;

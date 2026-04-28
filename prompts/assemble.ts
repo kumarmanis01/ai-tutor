@@ -14,13 +14,13 @@
  */
 
 export type AssembleParams = {
-  topicName: string
-  grade: number
-  version?: string
-}
+  topicName: string;
+  grade: number;
+  version?: string;
+};
 
 export function assemblePrompt(params: AssembleParams): string {
-  const version = params.version ?? 'v1'
+  const version = params.version ?? 'v1';
   return `Role: You are an assembler that merges validated content pieces into a final, versioned content record.
 
 Task: Produce a single JSON object with stable fields for storage.
@@ -44,5 +44,5 @@ Constraints:
 - Keep metadata minimal and deterministic.
 - Return ONLY valid JSON matching the schema.
 
-Strict Output Instruction: Return ONLY the single JSON object described above with no extra commentary.`
+Strict Output Instruction: Return ONLY the single JSON object described above with no extra commentary.`;
 }

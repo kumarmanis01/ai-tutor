@@ -1,0 +1,32 @@
+# FILE OBJECTIVE:
+# - Shared development image for the local Docker stack with bind-mounted source and hot reload support.
+#
+# LINKED UNIT TEST:
+# - tests/unit/docs/docker_dev_file.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - /docs/ENGINEERING_PRACTICES.md
+# - .github/copilot-instructions.md
+#
+# EDIT LOG:
+# - 2026-04-26T00:00:00Z | copilot | replace per-service dev Dockerfiles with one shared hot-reload image
+
+FROM node:20-bullseye-slim AS dev
+WORKDIR /workspace
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    curl \
+    git \
+    python3 \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+RUN HUSKY=0 HUSKY_SKIP_INSTALL=1 npm ci --prefer-offline
+
+CMD ["npm", "run", "dev"]

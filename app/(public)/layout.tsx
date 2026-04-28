@@ -1,6 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Public root layout for marketing routes, including the shared navbar,
+ *   providers, and landing-page font configuration.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/next.config.ts.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | copilot | LP-1.1: switch public shell to Roboto and Noto Sans Devanagari via next/font/google
+ */
 import React, { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
-import localFont from 'next/font/local';
+import { Noto_Sans_Devanagari, Roboto } from 'next/font/google';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import Providers from '@/app/providers';
@@ -10,9 +26,19 @@ import ToastHost from '@/components/ToastHost';
 import StickyHeader from '@/components/StickyHeader';
 import '@/styles/index.css';
 
-// Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
-const inter = localFont({ src: '../../public/fonts/inter-latin-variable.woff2', variable: '--font-inter', display: 'swap' });
-const nunito = localFont({ src: '../../public/fonts/nunito-variable-latin.woff2', variable: '--font-nunito', display: 'swap' });
+const roboto = Roboto({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-roboto',
+  display: 'swap',
+});
+
+const notoSansDevanagari = Noto_Sans_Devanagari({
+  subsets: ['devanagari'],
+  weight: ['400', '500', '700'],
+  variable: '--font-noto-sans-devanagari',
+  display: 'swap',
+});
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -23,7 +49,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Spinzy AI Tutor -- Teacher Vidya, Your Child\'s AI Home Tutor',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com'),
+  title: "Spinzy AI Tutor -- Teacher Vidya, Your Child's AI Home Tutor",
   description:
     'Turn doubts into confidence with Spinzy AI Tutor. Adaptive practice, mastery checks, and guided hints for Class 1-12 students. CBSE, ICSE & State Boards.',
   manifest: '/manifest.json',
@@ -61,7 +88,7 @@ export const metadata: Metadata = {
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+    <html lang="en" className={`h-full ${roboto.variable} ${notoSansDevanagari.variable}`}>
       <body className="font-sans antialiased min-h-screen h-full">
         <Providers>
           <GlobalLoaderProvider>
@@ -72,9 +99,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <AppModalClient />
             {/* Single public navbar -- StickyHeader is h-16 mobile / h-[72px] desktop */}
             <StickyHeader />
-            <div className="pt-16 md:pt-[72px]">
-              {children}
-            </div>
+            <div className="pt-16 md:pt-[72px]">{children}</div>
             <ToastHost />
           </GlobalLoaderProvider>
         </Providers>

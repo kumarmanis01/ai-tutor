@@ -25,7 +25,7 @@ export function useWeakTopics() {
   const { data, error, isLoading } = useSWR<{ topics: WeakTopic[] }>(
     '/api/home/weak-topics',
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 
   return {

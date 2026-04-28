@@ -1,2 +1,2 @@
-export * from '../../auth/adminGuard'
-export { default } from '../../auth/adminGuard'
+export * from '../../auth/adminGuard';
+export { default } from '../../auth/adminGuard';

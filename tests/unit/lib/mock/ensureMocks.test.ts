@@ -2,7 +2,9 @@
  * Unit tests for lib/mock/ensureMocks.ts
  */
 
-jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/logger', () => ({
+  logger: { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
 
 // Controlled counters for mock behaviours
 let createdSoFar = 0;
@@ -29,7 +31,10 @@ jest.mock('@/lib/prisma', () => {
       }),
     },
     mockExamSection: {
-      create: jest.fn(async ({ data }) => ({ id: `sec-${Math.random().toString(36).slice(2, 7)}`, ...data })),
+      create: jest.fn(async ({ data }) => ({
+        id: `sec-${Math.random().toString(36).slice(2, 7)}`,
+        ...data,
+      })),
     },
     mockExamQuestion: {
       createMany: jest.fn(async ({ data }) => ({ count: data.length })),
@@ -58,9 +63,13 @@ jest.mock('@/lib/mock/selectMockQuestions', () => ({
 }));
 
 jest.mock('@/lib/tests', () => ({
-  ensureQuestions: jest.fn().mockImplementation((filters: any, count: number) =>
-    Promise.resolve(Array.from({ length: count }, (_, i) => ({ id: `q-${filters.type}-${i + 1}` })))
-  ),
+  ensureQuestions: jest
+    .fn()
+    .mockImplementation((filters: any, count: number) =>
+      Promise.resolve(
+        Array.from({ length: count }, (_, i) => ({ id: `q-${filters.type}-${i + 1}` }))
+      )
+    ),
 }));
 
 describe('ensureMinimumMocks', () => {

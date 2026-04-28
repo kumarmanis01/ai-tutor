@@ -488,7 +488,9 @@ export default function RoomsPage() {
                       disabled={requestingRoomId === room.id}
                     >
                       <span className="flex items-center gap-2">
-                        {requestingRoomId === room.id && <SpinnerLoader size="small" color="#ffffff" />}
+                        {requestingRoomId === room.id && (
+                          <SpinnerLoader size="small" color="#ffffff" />
+                        )}
                         {requestingRoomId === room.id ? 'Requesting...' : 'Request to Join'}
                       </span>
                     </button>

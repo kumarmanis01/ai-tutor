@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-describe('exists middleware.ts', () => {
+describe('exists proxy.ts', () => {
   it('source file exists on disk', () => {
-    const p = path.join(process.cwd(), 'middleware.ts');
+    const p = path.join(process.cwd(), 'proxy.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

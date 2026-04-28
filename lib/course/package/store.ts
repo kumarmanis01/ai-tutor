@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
-import validateCoursePackage from './schema'
-import type { CoursePackage as CP } from './types'
+import { PrismaClient } from '@prisma/client';
+import validateCoursePackage from './schema';
+import type { CoursePackage as CP } from './types';
 
 /**
  * Persist a CoursePackage as an insert-only row.
@@ -8,24 +8,24 @@ import type { CoursePackage as CP } from './types'
  */
 export async function saveCoursePackage(prisma: PrismaClient, pkg: CP) {
   // validate shape before persisting
-  validateCoursePackage(pkg)
+  validateCoursePackage(pkg);
 
   return prisma.coursePackage.create({
     data: {
       syllabusId: pkg.syllabusId,
       version: pkg.version,
-      json: pkg as any
-    }
-  })
+      json: pkg as any,
+    },
+  });
 }
 
 export async function getCoursePackagesBySyllabus(prisma: PrismaClient, syllabusId: string) {
   return prisma.coursePackage.findMany({
     where: { syllabusId },
-    orderBy: { version: 'desc' }
-  })
+    orderBy: { version: 'desc' },
+  });
 }
 
-const CoursePackageStore = { saveCoursePackage, getCoursePackagesBySyllabus }
-export { CoursePackageStore }
-export default CoursePackageStore
+const CoursePackageStore = { saveCoursePackage, getCoursePackagesBySyllabus };
+export { CoursePackageStore };
+export default CoursePackageStore;

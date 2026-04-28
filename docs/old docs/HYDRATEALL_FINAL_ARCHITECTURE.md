@@ -6,7 +6,7 @@ This document provides a **comprehensive analysis** of your current schema and t
 
 ✅ **Your Current Approach**: Outbox pattern, short transactions, atomic claims, reconciler  
 ✅ **Enhanced Capabilities**: Hierarchical tracking, progress monitoring, validation pipeline, complete answer requirements  
-✅ **Minimal Schema Changes**: Builds on existing models, adds only essential new tables  
+✅ **Minimal Schema Changes**: Builds on existing models, adds only essential new tables
 
 ---
 
@@ -14,17 +14,17 @@ This document provides a **comprehensive analysis** of your current schema and t
 
 ### ✅ **What You Already Have (KEEP)**
 
-| Model | Purpose | Status |
-|-------|---------|--------|
-| `User` | User management with roles | ✅ Keep as-is |
-| `JobStatus` enum | pending, running, failed, completed, cancelled | ✅ Perfect - keep |
-| `JobType` enum | syllabus, notes, questions, tests | ✅ Extend with new types |
-| `WorkerLifecycle` | Worker state tracking | ✅ Keep for monitoring |
-| `JobLock` | Prevent overlapping executions | ✅ Keep for reconciler |
-| `RegenerationJob` | Existing job infrastructure | 🔄 Analyze for reuse |
-| `LanguageCode` enum | en, hi | ✅ Keep |
-| `DifficultyLevel` enum | easy, medium, hard | ✅ Keep |
-| `ApprovalStatus` enum | draft, pending, approved, rejected | ✅ Keep |
+| Model                  | Purpose                                        | Status                   |
+| ---------------------- | ---------------------------------------------- | ------------------------ |
+| `User`                 | User management with roles                     | ✅ Keep as-is            |
+| `JobStatus` enum       | pending, running, failed, completed, cancelled | ✅ Perfect - keep        |
+| `JobType` enum         | syllabus, notes, questions, tests              | ✅ Extend with new types |
+| `WorkerLifecycle`      | Worker state tracking                          | ✅ Keep for monitoring   |
+| `JobLock`              | Prevent overlapping executions                 | ✅ Keep for reconciler   |
+| `RegenerationJob`      | Existing job infrastructure                    | 🔄 Analyze for reuse     |
+| `LanguageCode` enum    | en, hi                                         | ✅ Keep                  |
+| `DifficultyLevel` enum | easy, medium, hard                             | ✅ Keep                  |
+| `ApprovalStatus` enum  | draft, pending, approved, rejected             | ✅ Keep                  |
 
 ### ⚠️ **What's Missing for HydrateAll**
 
@@ -84,9 +84,9 @@ model Board {
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
-  
+
   subjects Subject[]
-  
+
   @@index([code])
   @@index([isActive])
 }
@@ -101,11 +101,11 @@ model Subject {
   description String?
   iconUrl     String?
   createdAt   DateTime @default(now())
-  
+
   board    Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
   chapters Chapter[]
   hydrationJobs HydrationJob[]
-  
+
   @@unique([boardId, code, grade, language])
   @@index([boardId])
   @@index([grade])
@@ -125,10 +125,10 @@ model Chapter {
   generationStatus    GenerationStatus @default(PENDING)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-  
+
   subject Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   topics  Topic[]
-  
+
   @@unique([subjectId, chapterNumber])
   @@index([subjectId])
   @@index([generationStatus])
@@ -149,11 +149,11 @@ model Topic {
   generationStatus      GenerationStatus @default(PENDING)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  
+
   chapter   Chapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   notes     TopicNote[]
   questions TopicQuestion[]
-  
+
   @@unique([chapterId, topicNumber])
   @@index([chapterId])
   @@index([difficultyLevel])
@@ -185,10 +185,10 @@ model TopicNote {
   updatedAt         DateTime @updatedAt
   createdBy         String?
   isAiGenerated     Boolean  @default(true)
-  
+
   topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
   creator User?  @relation(fields: [createdBy], references: [id])
-  
+
   @@index([topicId])
   @@index([validationStatus])
   @@index([qualityScore])
@@ -220,10 +220,10 @@ model TopicQuestion {
   updatedAt            DateTime @updatedAt
   createdBy            String?
   isAiGenerated        Boolean  @default(true)
-  
+
   topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
   creator User?  @relation(fields: [createdBy], references: [id])
-  
+
   @@index([topicId])
   @@index([difficultyLevel])
   @@index([questionType])
@@ -244,31 +244,31 @@ model HydrationJob {
   id              String   @id @default(cuid())
   rootJobId       String?  // null if this IS the root
   parentJobId     String?  // immediate parent in hierarchy
-  
+
   // Target
   targetType      HydrationTargetType
   targetId        String?  // subject/chapter/topic ID
-  
+
   // Hierarchy tracking
   hierarchyLevel  Int?     // 0=root, 1=chapters, 2=topics, 3=notes, 4=questions
-  
+
   // Status (using your existing JobStatus enum)
   status          JobStatus @default(pending)
   attempts        Int       @default(0)
   maxRetries      Int       @default(3)
-  
+
   // Timing
   lockedAt        DateTime? @db.Timestamp(6)
   startedAt       DateTime? @db.Timestamp(6)
   finishedAt      DateTime? @db.Timestamp(6)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+
   // Metadata
   inputParams     Json      // All generation parameters
   resultMetadata  Json?     // Short summary
   errorMessage    String?   @db.Text
-  
+
   // Progress tracking (for root jobs only)
   overallProgress Float     @default(0)
   chaptersExpected Int      @default(0)
@@ -279,31 +279,31 @@ model HydrationJob {
   notesCompleted   Int      @default(0)
   questionsExpected Int     @default(0)
   questionsCompleted Int    @default(0)
-  
+
   // Cost tracking
   estimatedCostUsd Float?
   actualCostUsd    Float?
   estimatedDurationMins Int?
   actualDurationMins    Int?
-  
+
   // Audit
   createdBy       String
   traceId         String?  // Distributed tracing
-  
+
   // Relations
   creator         User      @relation("HydrationJobCreator", fields: [createdBy], references: [id])
   subject         Subject?  @relation(fields: [targetId], references: [id])
-  
+
   rootJob         HydrationJob?  @relation("JobHierarchy", fields: [rootJobId], references: [id])
   childJobs       HydrationJob[] @relation("JobHierarchy")
-  
+
   parentJob       HydrationJob?  @relation("ParentChild", fields: [parentJobId], references: [id])
   children        HydrationJob[] @relation("ParentChild")
-  
+
   executionLogs   JobExecutionLog[]
   aiContentLogs   AIContentLog[]
   outboxEntries   Outbox[]
-  
+
   @@index([rootJobId])
   @@index([parentJobId])
   @@index([status])
@@ -330,9 +330,9 @@ model Outbox {
   sentAt    DateTime?
   attempts  Int      @default(0)
   createdAt DateTime @default(now())
-  
+
   job HydrationJob? @relation(fields: [jobId], references: [id])
-  
+
   @@index([sentAt])
   @@index([jobId])
   @@index([kind])
@@ -355,9 +355,9 @@ model JobExecutionLog {
   message   String?  @db.Text
   severity  LogSeverity @default(INFO)
   createdAt DateTime @default(now())
-  
+
   job HydrationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+
   @@index([jobId, createdAt])
   @@index([phase])
   @@index([severity])
@@ -378,9 +378,9 @@ model AIContentLog {
   modelUsed   String?
   metadata    Json?
   createdAt   DateTime @default(now())
-  
+
   job HydrationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+
   @@index([jobId])
   @@index([contentRef])
   @@index([contentType])
@@ -405,7 +405,7 @@ model ValidationRule {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  
+
   @@index([contentType, difficultyLevel])
   @@index([isActive])
 }
@@ -420,7 +420,7 @@ model ContentCache {
   lastAccessedAt DateTime @default(now())
   expiresAt     DateTime?
   createdAt     DateTime @default(now())
-  
+
   @@index([cacheKey])
   @@index([contentType])
   @@index([expiresAt])
@@ -537,7 +537,7 @@ enum JobType {
 // Update User model to add relations
 model User {
   // ... existing fields ...
-  
+
   // ADD THESE RELATIONS:
   hydrationJobsCreated HydrationJob[] @relation("HydrationJobCreator")
   topicNotesCreated    TopicNote[]
@@ -555,13 +555,14 @@ model User {
 ✅ `JobStatus` enum - Perfect for hydration jobs  
 ✅ `DifficultyLevel` enum - Reuse for questions  
 ✅ `LanguageCode` enum - Reuse for content  
-✅ Existing analytics/event models - Keep for metrics  
+✅ Existing analytics/event models - Keep for metrics
 
 ---
 
 ## 3. MIGRATION STRATEGY
 
 ### **Phase 1: Core Infrastructure (Week 1)**
+
 ```bash
 # Step 1: Add new enums
 npx prisma migrate dev --name add_hydration_enums
@@ -574,6 +575,7 @@ npx prisma migrate dev --name add_content_models
 ```
 
 ### **Phase 2: Job System (Week 1)**
+
 ```bash
 # Step 4: Add HydrationJob + Outbox
 npx prisma migrate dev --name add_hydration_job_system
@@ -583,12 +585,14 @@ npx prisma migrate dev --name add_execution_logging
 ```
 
 ### **Phase 3: Validation (Week 2)**
+
 ```bash
 # Step 6: Add validation system
 npx prisma migrate dev --name add_validation_system
 ```
 
 ### **Phase 4: Seed Data (Week 2)**
+
 ```bash
 # Step 7: Seed boards, subjects
 npx prisma db seed
@@ -684,7 +688,7 @@ npx prisma db seed
 async claimJob(jobId: string): Promise<HydrationJob | null> {
   const result = await prisma.$executeRaw`
     UPDATE "HydrationJob"
-    SET 
+    SET
       status = 'running'::"JobStatus",
       "lockedAt" = NOW(),
       attempts = attempts + 1,
@@ -694,7 +698,7 @@ async claimJob(jobId: string): Promise<HydrationJob | null> {
   `;
 
   if (result === 0) return null; // Already claimed
-  
+
   return await prisma.hydrationJob.findUnique({ where: { id: jobId } });
 }
 ```
@@ -799,7 +803,7 @@ async reconcile() {
 async reconcileRootJob(rootJob: HydrationJob) {
   // Check if Level 1 (chapters) complete
   const level1Status = await this.checkLevelStatus(rootJob.id, 1);
-  
+
   if (level1Status.allComplete && !level1Status.level2Created) {
     // Create Level 2 jobs (topics) for each chapter
     await this.createLevel2Jobs(rootJob.id);
@@ -874,12 +878,14 @@ export class AnswerCompletenessValidator {
           'direct_answer',
           'scientific_explanation' || 'solution_steps',
           'final_answer',
-          'discussion' || 'key_takeaway'
+          'discussion' || 'key_takeaway',
         ];
 
         for (const field of required) {
           if (!q.correctAnswer[field]) {
-            issues.push(`Question ${index + 1}: Missing required field '${field}' for HARD question`);
+            issues.push(
+              `Question ${index + 1}: Missing required field '${field}' for HARD question`
+            );
           }
         }
       }
@@ -901,7 +907,7 @@ export class AnswerCompletenessValidator {
 
     return {
       status: issues.length === 0 ? 'PASS' : 'FAIL',
-      issues
+      issues,
     };
   }
 }
@@ -927,7 +933,7 @@ router.post('/hydrateAll', async (req, res) => {
     const traceId = req.headers['x-trace-id'] || generateTraceId();
 
     const submitter = new HydrationSubmitter(prisma, outboxWriter, logger);
-    
+
     const rootJobId = await submitter.submitHydrateAllJob(
       { language, boardCode, grade, subjectCode, ...options },
       userId,
@@ -938,7 +944,7 @@ router.post('/hydrateAll', async (req, res) => {
       rootJobId,
       status: 'pending',
       message: 'HydrateAll job created successfully',
-      traceId
+      traceId,
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -959,9 +965,9 @@ router.get('/hydrateAll/:jobId', async (req, res) => {
     include: {
       executionLogs: {
         orderBy: { createdAt: 'desc' },
-        take: 10
-      }
-    }
+        take: 10,
+      },
+    },
   });
 
   if (!job) {
@@ -975,33 +981,33 @@ router.get('/hydrateAll/:jobId', async (req, res) => {
       overall: job.overallProgress,
       chapters: {
         completed: job.chaptersCompleted,
-        expected: job.chaptersExpected
+        expected: job.chaptersExpected,
       },
       topics: {
         completed: job.topicsCompleted,
-        expected: job.topicsExpected
+        expected: job.topicsExpected,
       },
       notes: {
         completed: job.notesCompleted,
-        expected: job.notesExpected
+        expected: job.notesExpected,
       },
       questions: {
         completed: job.questionsCompleted,
-        expected: job.questionsExpected
-      }
+        expected: job.questionsExpected,
+      },
     },
     timing: {
       createdAt: job.createdAt,
       startedAt: job.startedAt,
       finishedAt: job.finishedAt,
       estimatedDurationMins: job.estimatedDurationMins,
-      actualDurationMins: job.actualDurationMins
+      actualDurationMins: job.actualDurationMins,
     },
     cost: {
       estimated: job.estimatedCostUsd,
-      actual: job.actualCostUsd
+      actual: job.actualCostUsd,
     },
-    recentLogs: job.executionLogs
+    recentLogs: job.executionLogs,
   });
 });
 ```
@@ -1049,7 +1055,7 @@ router.get('/hydrateAll/:jobId', async (req, res) => {
 describe('HydrationSubmitter', () => {
   it('should create root job + outbox in transaction', async () => {
     const submitter = new HydrationSubmitter(prisma, outboxWriter, logger);
-    
+
     const rootJobId = await submitter.submitHydrateAllJob(
       { language: 'en', boardCode: 'CBSE', grade: '10', subjectCode: 'MATH' },
       'user123',
@@ -1072,20 +1078,34 @@ describe('HydrationSubmitter', () => {
 describe('HydrateAll End-to-End', () => {
   it('should complete full cascade', async () => {
     // Submit job
-    const rootJobId = await submitHydrateAll({ /* ... */ });
+    const rootJobId = await submitHydrateAll({
+      /* ... */
+    });
 
     // Wait for completion (with timeout)
     await waitForJobCompletion(rootJobId, 60000);
 
     // Verify all content created
-    const chapters = await prisma.chapter.findMany({ where: { /* ... */ } });
+    const chapters = await prisma.chapter.findMany({
+      where: {
+        /* ... */
+      },
+    });
     expect(chapters.length).toBeGreaterThan(0);
 
-    const topics = await prisma.topic.findMany({ where: { /* ... */ } });
+    const topics = await prisma.topic.findMany({
+      where: {
+        /* ... */
+      },
+    });
     expect(topics.length).toBeGreaterThan(0);
 
     // Verify no null answers
-    const questions = await prisma.topicQuestion.findMany({ where: { /* ... */ } });
+    const questions = await prisma.topicQuestion.findMany({
+      where: {
+        /* ... */
+      },
+    });
     for (const q of questions) {
       expect(q.correctAnswer).not.toBeNull();
       expect(q.correctAnswer).toHaveProperty('final_answer');
@@ -1098,18 +1118,18 @@ describe('HydrateAll End-to-End', () => {
 
 ## 10. COMPARISON: YOUR APPROACH vs ENHANCED APPROACH
 
-| Feature | Your Existing Approach | Enhanced HydrateAll | Decision |
-|---------|------------------------|---------------------|----------|
-| **Job Creation** | Outbox pattern | Direct queue | ✅ **Keep Outbox** - Better reliability |
-| **Job Claiming** | Atomic UPDATE SKIP LOCKED | Queue-based | ✅ **Keep Atomic** - Better concurrency |
-| **Transactions** | Short, focused | Mixed | ✅ **Keep Short** - Better performance |
-| **Orchestration** | Reconciler creates children | Pre-planned cascade | ✅ **Keep Reconciler** - More flexible |
-| **Progress Tracking** | Manual aggregation | Real-time counters | ✅ **Add Counters** - Better UX |
-| **Hierarchy** | Implicit (rootJobId/parentJobId) | Explicit levels | ✅ **Add Levels** - Clearer structure |
-| **Validation** | Not defined | Dedicated service | ✅ **Add Validation** - Quality control |
-| **Answer Completeness** | Not enforced | Strict validation | ✅ **Add Validation** - No null answers |
-| **Observability** | JobExecutionLog | ExecutionLog + Metrics | ✅ **Keep Logs, Add Metrics** |
-| **Cost Tracking** | Not tracked | Token/cost logging | ✅ **Add Tracking** - Budget control |
+| Feature                 | Your Existing Approach           | Enhanced HydrateAll    | Decision                                |
+| ----------------------- | -------------------------------- | ---------------------- | --------------------------------------- |
+| **Job Creation**        | Outbox pattern                   | Direct queue           | ✅ **Keep Outbox** - Better reliability |
+| **Job Claiming**        | Atomic UPDATE SKIP LOCKED        | Queue-based            | ✅ **Keep Atomic** - Better concurrency |
+| **Transactions**        | Short, focused                   | Mixed                  | ✅ **Keep Short** - Better performance  |
+| **Orchestration**       | Reconciler creates children      | Pre-planned cascade    | ✅ **Keep Reconciler** - More flexible  |
+| **Progress Tracking**   | Manual aggregation               | Real-time counters     | ✅ **Add Counters** - Better UX         |
+| **Hierarchy**           | Implicit (rootJobId/parentJobId) | Explicit levels        | ✅ **Add Levels** - Clearer structure   |
+| **Validation**          | Not defined                      | Dedicated service      | ✅ **Add Validation** - Quality control |
+| **Answer Completeness** | Not enforced                     | Strict validation      | ✅ **Add Validation** - No null answers |
+| **Observability**       | JobExecutionLog                  | ExecutionLog + Metrics | ✅ **Keep Logs, Add Metrics**           |
+| **Cost Tracking**       | Not tracked                      | Token/cost logging     | ✅ **Add Tracking** - Budget control    |
 
 ---
 

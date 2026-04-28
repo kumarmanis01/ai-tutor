@@ -49,7 +49,11 @@ import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { recordSessionEvents } from '@/lib/session/sessionEvents';
 import { normalizeAnswer } from '@/lib/tests';
 import { logger } from '@/lib/logger';
-import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector';
+import {
+  detectMisconceptions,
+  loadMisconceptions,
+  logNovelMisconception,
+} from '@/lib/ai/tutor/misconceptionDetector';
 import { normalizeStudentAnswerForLogging } from '@/lib/misconception/logHelpers';
 
 export const dynamic = 'force-dynamic';
@@ -101,10 +105,7 @@ interface PracticeResult {
  *     nextPhase: 'TEST'
  *   }
  */
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ sessionId: string }> },
-) {
+export async function POST(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const start = Date.now();
   let res: Response;
 
@@ -135,7 +136,7 @@ export async function POST(
   if (!body || !Array.isArray(body.answers) || body.answers.length === 0) {
     res = NextResponse.json(
       { error: 'answers[] is required and must be non-empty' },
-      { status: 400 },
+      { status: 400 }
     );
     logger.logAPI(req, res, { className: 'PracticeSubmitAPI', methodName: 'POST' }, start);
     return res;
@@ -186,7 +187,7 @@ export async function POST(
         error: 'Practice can only be submitted while the session is in the PRACTICE phase',
         currentPhase: session.state,
       },
-      { status: 409 },
+      { status: 409 }
     );
     logger.logAPI(req, res, { className: 'PracticeSubmitAPI', methodName: 'POST' }, start);
     return res;
@@ -205,9 +206,7 @@ export async function POST(
     select: { id: true, type: true, choices: true, correctAnswer: true },
   });
 
-  const questionMap = new Map<string, PracticeQuestion>(
-    practiceQuestions.map((q) => [q.id, q]),
-  );
+  const questionMap = new Map<string, PracticeQuestion>(practiceQuestions.map((q) => [q.id, q]));
 
   // ── Grade answers ─────────────────────────────────────────────────────────
 
@@ -291,14 +290,16 @@ export async function POST(
         studentId: user.id,
         topicId: session.topicId,
         error: err,
-      }),
+      })
     );
   }
 
   // ── F-STU-013 AC-05: Novel misconception analytics -- fire-and-forget ─────────
   // For wrong answers, check against the misconception library. If there are
   // wrong answers with no library match, log as a novel misconception signal.
-  const wrongAnswers = gradedAnswers.filter((ga) => !ga.isCorrect && ga.studentAnswer.trim().length > 0);
+  const wrongAnswers = gradedAnswers.filter(
+    (ga) => !ga.isCorrect && ga.studentAnswer.trim().length > 0
+  );
   if (wrongAnswers.length > 0 && session.topicId) {
     const capturedTopicId = session.topicId;
     const capturedStudentId = user.id;
@@ -321,7 +322,10 @@ export async function POST(
         } else {
           const misconceptions = await loadMisconceptions(subjectId, capturedTopicId);
           for (const wrong of wrongAnswers) {
-            const answerText = typeof wrong.studentAnswer === 'string' ? wrong.studentAnswer : String(wrong.studentAnswer ?? '');
+            const answerText =
+              typeof wrong.studentAnswer === 'string'
+                ? wrong.studentAnswer
+                : String(wrong.studentAnswer ?? '');
             const matches = detectMisconceptions(answerText, misconceptions);
             if (matches.length === 0) {
               const snippet = normalizeStudentAnswerForLogging(answerText, 1000);
@@ -356,7 +360,7 @@ export async function POST(
           isCorrect: ga.isCorrect,
           source: 'practice',
         },
-      })),
+      }))
     );
   }
 

@@ -49,4 +49,5 @@ Linked files:
 - `tests/unit/app/api/admin/metrics_ltv_cac.spec.ts`
 
 EDIT LOG:
+
 - 2026-04-17T00:00:00Z | github-copilot | implemented AC-07 automation: models, migrations, job, API, admin UI, CLI, tests (pending DB migrate + prisma generate)

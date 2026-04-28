@@ -20,4 +20,3 @@ export async function GET(req: NextRequest) {
   const summary = await getLearningFunnelSummary({ from, to });
   return NextResponse.json(summary);
 }
-

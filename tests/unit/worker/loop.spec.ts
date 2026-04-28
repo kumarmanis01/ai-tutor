@@ -13,11 +13,11 @@
  * - 2026-01-02T12:55:00Z | automation | added compile test for worker entry
  */
 
-import { execSync } from 'child_process'
-import { join } from 'path'
+import { execSync } from 'child_process';
+import { join } from 'path';
 
 test('worker/loop.ts compiles', () => {
-  const repoRoot = join(__dirname, '../../../')
+  const repoRoot = join(__dirname, '../../../');
   // Run TypeScript on the single file using the workers tsconfig.
-  execSync('npx -y tsc --noEmit -p tsconfig.workers.json', { cwd: repoRoot, stdio: 'inherit' })
-}, 30000)
+  execSync('npx -y tsc --noEmit -p tsconfig.workers.json', { cwd: repoRoot, stdio: 'inherit' });
+}, 30000);

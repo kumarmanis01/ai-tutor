@@ -16,7 +16,7 @@ Test tasks: misconceptionPrevalenceWorker.test.ts (exists), add integration smok
 
 ADM-003 — DoubtKb Deduplication & Index Tuning (Priority: High, Est: 3–5d)
 Description: Ensure DoubtKb write-dedup (similarity threshold), ivfflat/index tuning, and monitoring of cache-hit ratio. Prevent KB bloat.
-Files / Targets: doubtKb.ts, prisma/migrations/*add_doubt_kb*, plan for worker/services/doubtKbWorker.ts (if missing, scaffold).
+Files / Targets: doubtKb.ts, prisma/migrations/_add_doubt_kb_, plan for worker/services/doubtKbWorker.ts (if missing, scaffold).
 Acceptance criteria: On write, near-duplicates (cosine >= threshold) update existing row (timesServed/alternatePhrasings) instead of inserting; retrieval uses pgvector index tuned for production.
 Test tasks: unit tests for dedup logic (tests/unit/lib/ai/tutor/doubtKb.test.ts), performance test for retrieval latency at scale.
 
@@ -34,7 +34,7 @@ Test tasks: unit tests for each LLM wrapper ensuring analytics.enqueue called; e
 
 ADM-006 — Misconception Library Seeding + Admin Review UI (Priority: Medium, Est: 3–5d)
 Description: Provide seeded misconceptions for launch (20 per subject) and minimal admin UI/SQL runbook to review/edit quarantined misconceptions.
-Files / Targets: prisma/seeds/misconceptions-*.ts (create), [app/admin/pages or app/admin/misconceptions UI](app/admin/page.tsx or app/admin/*), schema.prisma (Misconception model)
+Files / Targets: prisma/seeds/misconceptions-_.ts (create), [app/admin/pages or app/admin/misconceptions UI](app/admin/page.tsx or app/admin/_), schema.prisma (Misconception model)
 Acceptance criteria: Seed scripts exist & documented; admin can list/edit misconceptions (with audit log).
 Test tasks: seed script unit test or smoke-run; UI component tests (components).
 
@@ -62,8 +62,6 @@ Acceptance criteria: New tests run in CI; critical coverage thresholds enforced 
 Test tasks: update CI job to run added unit/integration tests; add coverage assertions for changed modules.
 ploy-and-run.sh; ./scripts/deploy-and-run.sh;
 
-
-
 Next Pass
 
 Summary of findings and recommended next steps.
@@ -89,6 +87,7 @@ Summary of findings and recommended next steps.
 - **ADM-010: CI gates & tests for critical flows**: Unit tests exist for many flows; integration tests are present for some workers. Gaps: missing integration test for ingest idempotency and possibly missing CI enforcement to require those specific integration tests and coverage thresholds. Recommendation: add the ingest integration test and update CI to run the new integration tests and the coverage gate for the affected modules.
 
 Concrete next actions I can take (pick one or more):
+
 - Add the ingest integration test that runs ingest-curriculum.ts twice against a test DB and asserts no duplicate `CurriculumChunk` rows and version/hash behavior.
 - Add CI changes to run the new integration test and enforce coverage for changed modules.
 - Add an integration/infra smoke test asserting the DoubtKb IVFFLAT index exists and a simple query returns results.

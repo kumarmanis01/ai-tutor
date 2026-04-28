@@ -7,7 +7,7 @@
  * "Upgrade" link navigates to /subscribe (F-STU-041 checkout page).
  */
 
-import Link from 'next/link'
+import Link from 'next/link';
 
 interface FreemiumCounterProps {
   sessionsUsed: number;
@@ -16,7 +16,11 @@ interface FreemiumCounterProps {
   periodStart: string;
 }
 
-export function FreemiumCounter({ sessionsUsed, sessionsRemaining, periodStart }: FreemiumCounterProps) {
+export function FreemiumCounter({
+  sessionsUsed,
+  sessionsRemaining,
+  periodStart,
+}: FreemiumCounterProps) {
   const total = sessionsUsed + sessionsRemaining;
 
   const resetDate = new Date(periodStart);
@@ -27,8 +31,7 @@ export function FreemiumCounter({ sessionsUsed, sessionsRemaining, periodStart }
 
   // Colour band: green (0 used) -> amber (2/3) -> red (all used, but this
   // component is not rendered when all are used)
-  const barColour =
-    sessionsRemaining === 1 ? 'bg-[#BA7517]' : 'bg-[#534AB7]';
+  const barColour = sessionsRemaining === 1 ? 'bg-[#BA7517]' : 'bg-[#534AB7]';
 
   return (
     <div
@@ -58,7 +61,9 @@ export function FreemiumCounter({ sessionsUsed, sessionsRemaining, periodStart }
 
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-gray-700 dark:text-gray-300">
-          <span className="font-bold text-gray-900 dark:text-gray-100">{sessionsUsed} of {total}</span>{' '}
+          <span className="font-bold text-gray-900 dark:text-gray-100">
+            {sessionsUsed} of {total}
+          </span>{' '}
           free sessions used this month
           {sessionsRemaining === 1 && (
             <span className="ml-2 inline-flex items-center rounded-full bg-[#FAEEDA] dark:bg-[#BA7517]/20 px-2 py-0.5 text-xs font-medium text-[#BA7517]">

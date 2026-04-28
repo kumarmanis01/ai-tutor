@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server'
-import { getServerSessionForHandlers } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
-import { getNextAction } from '@/lib/homeEngine/getNextAction'
-import { logger } from '@/lib/logger'
+import { NextResponse } from 'next/server';
+import { getServerSessionForHandlers } from '@/lib/session';
+import { prisma } from '@/lib/prisma';
+import { getNextAction } from '@/lib/homeEngine/getNextAction';
+import { logger } from '@/lib/logger';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/student/learning-plan/today
@@ -16,13 +16,13 @@ export const dynamic = 'force-dynamic'
  *   { item: LearningPlanItem | null, fallback: boolean }
  */
 export async function GET(req: Request) {
-  const start = Date.now()
-  const session = await getServerSessionForHandlers()
-  const userId = (session?.user as { id?: string })?.id
+  const start = Date.now();
+  const session = await getServerSessionForHandlers();
+  const userId = (session?.user as { id?: string })?.id;
   if (!userId) {
-    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start)
-    return res
+    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start);
+    return res;
   }
 
   try {
@@ -31,18 +31,18 @@ export async function GET(req: Request) {
       where: { studentId: userId },
       orderBy: { generatedAt: 'desc' },
       select: { id: true, subjectId: true, weeklyGoal: true },
-    })
+    });
 
     if (!plan) {
       // No plan exists -- fall back to next action engine
-      const nextAction = await getNextAction(userId).catch(() => null)
+      const nextAction = await getNextAction(userId).catch(() => null);
       const action =
         nextAction && typeof nextAction === 'object' && 'action' in nextAction
           ? (nextAction as { action: unknown }).action
-          : nextAction
-      const res = NextResponse.json({ item: null, fallback: true, action }, { status: 200 })
-      logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start)
-      return res
+          : nextAction;
+      const res = NextResponse.json({ item: null, fallback: true, action }, { status: 200 });
+      logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start);
+      return res;
     }
 
     // 2. Determine current week number from first session date
@@ -50,12 +50,12 @@ export async function GET(req: Request) {
       where: { studentId: userId },
       orderBy: { startedAt: 'asc' },
       select: { startedAt: true },
-    })
+    });
 
     const daysSinceFirst = firstSession
       ? Math.floor((Date.now() - firstSession.startedAt.getTime()) / 86_400_000)
-      : 0
-    const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
+      : 0;
+    const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7));
 
     // 3. Find the first UPCOMING item for current week (or any earlier week if behind)
     const item = await prisma.learningPlanItem.findFirst({
@@ -87,18 +87,18 @@ export async function GET(req: Request) {
           },
         },
       },
-    })
+    });
 
-    const res = NextResponse.json({ item, fallback: false }, { status: 200 })
-    logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start)
-    return res
+    const res = NextResponse.json({ item, fallback: false }, { status: 200 });
+    logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start);
+    return res;
   } catch (err) {
     logger.error('[learning-plan/today] error', {
       userId,
       error: String((err as any)?.message ?? err),
-    })
-    const res = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-    logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start)
-    return res
+    });
+    const res = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start);
+    return res;
   }
 }

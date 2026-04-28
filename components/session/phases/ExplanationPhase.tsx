@@ -21,7 +21,12 @@ interface ExplanationPhaseProps {
   loading?: boolean;
 }
 
-export function ExplanationPhase({ content, topicName: _topicName, onReadyToProceed, loading: _loading }: ExplanationPhaseProps) {
+export function ExplanationPhase({
+  content,
+  topicName: _topicName,
+  onReadyToProceed,
+  loading: _loading,
+}: ExplanationPhaseProps) {
   const sections = extractSections(content.contentJson);
   React.useEffect(() => {
     onReadyToProceed?.(true);

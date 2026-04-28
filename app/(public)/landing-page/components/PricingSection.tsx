@@ -1,332 +1,342 @@
-import Link from 'next/link';
-import Icon from '@/components/UI/AppIcon';
-import { PLANS } from '@/lib/billing/plans';
+﻿/**
+ * FILE OBJECTIVE:
+ * - LP-6.1/6.2 pricing section with Free, Individual, and Family plans,
+ *   monthly/yearly toggle, feature comparison matrix, and annual savings callout.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(public)/landing-page/components/PricingSection.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | restore clean PricingSection and imports; remove corrupted leading fragment
+ * - 2026-04-26T00:00:00Z | copilot | LP-6.2: add annual savings and tuition comparison
+ * - 2026-04-27T00:00:00Z | copilot | v3: replace plan tiers with monthly/quarterly/annual, add billing toggle
+ * - 2026-04-27T10:45:00Z | copilot | align linked unit test path with added pricing component test file
+ * - 2026-04-27T14:30:00Z | copilot | LP-6.2: render savings comparison block below annual plan card only
+ * - 2026-04-28T00:00:00Z | copilot | LP-6.1: replace single-plan pricing card with Free/Individual/Family comparison table
+ */
+'use client';
 
-interface PricingPlan {
-  id: string;
+import { useState } from 'react';
+import Icon from '@/components/UI/AppIcon';
+import LandingGoogleCtaButton from './LandingGoogleCtaButton';
+import SavingsComparison from './SavingsComparison';
+
+type BillingCycle = 'monthly' | 'yearly';
+type PlanId = 'free' | 'individual' | 'family';
+
+interface PlanPrice {
+  monthly: string;
+  yearly: string;
+  yearlyNote?: string;
+}
+
+interface PlanFeatureValue {
+  included: boolean;
+  label: string;
+}
+
+interface PlanDefinition {
+  badge?: string;
+  badgeTone?: 'primary' | 'success';
+  callout?: string;
+  ctaLabel: string;
+  id: PlanId;
   name: string;
-  nameHi: string;
-  price: string;
-  period: string;
-  periodHi: string;
-  description: string;
-  descriptionHi: string;
-  features: string[];
-  featuresHi: string[];
-  recommended: boolean;
-  savings?: string;
-  ctaText: string;
-  ctaTextHi: string;
+  price: PlanPrice;
+  subtitle: string;
+}
+
+interface FeatureRow {
+  highlight?: boolean;
+  name: string;
+  values: Record<PlanId, PlanFeatureValue>;
+}
+
+const BILLING_OPTIONS: Array<{ id: BillingCycle; label: string }> = [
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'yearly', label: 'Yearly' },
+];
+
+const PLAN_DEFINITIONS: PlanDefinition[] = [
+  {
+    id: 'free',
+    name: 'Free',
+    subtitle: 'A starter plan for one child to try NCERT notes, practice, and guided AI help.',
+    price: { monthly: '₹0', yearly: '₹0' },
+    ctaLabel: 'Start Free',
+  },
+  {
+    id: 'individual',
+    name: 'Individual',
+    subtitle: 'Unlimited learning and controls for one child.',
+    price: { monthly: '₹399', yearly: '₹3,999', yearlyNote: 'Save ₹789' },
+    badge: 'Recommended',
+    badgeTone: 'primary',
+    ctaLabel: 'Get Started',
+  },
+  {
+    id: 'family',
+    name: 'Family',
+    subtitle: 'The best fit for siblings with a single parent control layer.',
+    price: { monthly: '₹599', yearly: '₹5,999', yearlyNote: 'Save ₹1,189' },
+    badge: 'Best Value',
+    badgeTone: 'success',
+    callout: 'Save 25% on 2nd & 3rd child',
+    ctaLabel: 'Get Started',
+  },
+];
+
+const FEATURE_ROWS: FeatureRow[] = [
+  {
+    name: 'NCERT Notes Access',
+    values: {
+      free: { included: true, label: 'Yes' },
+      individual: { included: true, label: 'Yes' },
+      family: { included: true, label: 'Yes' },
+    },
+  },
+  {
+    name: 'Practice Questions',
+    values: {
+      free: { included: true, label: '5/day' },
+      individual: { included: true, label: 'Unlimited' },
+      family: { included: true, label: 'Unlimited' },
+    },
+  },
+  {
+    name: 'AI Tutor (Socratic)',
+    values: {
+      free: { included: true, label: '3 prompts/day' },
+      individual: { included: true, label: 'Unlimited' },
+      family: { included: true, label: 'Unlimited' },
+    },
+  },
+  {
+    name: 'On-Demand Topic Generation',
+    highlight: true,
+    values: {
+      free: { included: false, label: 'No' },
+      individual: { included: true, label: 'Yes' },
+      family: { included: true, label: 'Yes' },
+    },
+  },
+  {
+    name: 'Parent Dashboard',
+    highlight: true,
+    values: {
+      free: { included: true, label: 'Weekly Email' },
+      individual: { included: true, label: 'Real-time + Controls' },
+      family: { included: true, label: 'Real-time + Controls' },
+    },
+  },
+  {
+    name: 'Screen Time Limits',
+    highlight: true,
+    values: {
+      free: { included: false, label: 'No' },
+      individual: { included: true, label: 'Yes' },
+      family: { included: true, label: 'Yes' },
+    },
+  },
+  {
+    name: 'Subject Blocker',
+    values: {
+      free: { included: false, label: 'No' },
+      individual: { included: true, label: 'Yes' },
+      family: { included: true, label: 'Yes' },
+    },
+  },
+  {
+    name: 'Offline Access',
+    values: {
+      free: { included: false, label: 'No' },
+      individual: { included: true, label: 'Yes' },
+      family: { included: true, label: 'Yes' },
+    },
+  },
+  {
+    name: 'Progress Reports',
+    values: {
+      free: { included: true, label: 'Weekly' },
+      individual: { included: true, label: 'Weekly + Real-time' },
+      family: { included: true, label: 'Weekly + Real-time' },
+    },
+  },
+  {
+    name: 'Children Covered',
+    values: {
+      free: { included: true, label: '1' },
+      individual: { included: true, label: '1' },
+      family: { included: true, label: 'Up to 3' },
+    },
+  },
+  {
+    name: 'Priority Support',
+    values: {
+      free: { included: false, label: 'No' },
+      individual: { included: true, label: 'Email' },
+      family: { included: true, label: 'WhatsApp' },
+    },
+  },
+];
+
+function PricingValue({ value }: { value: PlanFeatureValue }) {
+  return (
+    <div className="flex items-center justify-end gap-2 text-right md:justify-center md:text-center">
+      <span className={value.included ? 'text-[#1D9E75]' : 'text-slate-400'} aria-hidden="true">
+        {value.included ? '✓' : '✕'}
+      </span>
+      <span className={value.included ? 'text-secondary' : 'text-muted-foreground'}>{value.label}</span>
+    </div>
+  );
+}
+
+function PlanCard({
+  billingCycle,
+  plan,
+}: {
+  billingCycle: BillingCycle;
+  plan: PlanDefinition;
+}) {
+  const badgeClassName =
+    plan.badgeTone === 'success' ? 'bg-[#1D9E75] text-white' : 'bg-[#534AB7] text-white';
+  const priceLabel = billingCycle === 'monthly' ? plan.price.monthly : plan.price.yearly;
+  const periodLabel = billingCycle === 'monthly' ? '/month' : '/year';
+
+  return (
+    <article
+      className={`relative flex h-full flex-col rounded-3xl border p-6 shadow-sm transition-transform duration-200 hover:-translate-y-1 ${
+        plan.id === 'free' ? 'border-slate-200 bg-slate-50/80' : 'border-[#534AB7]/15 bg-white'
+      }`}
+    >
+      {plan.badge ? (
+        <span className={`absolute -top-3 left-6 rounded-full px-3 py-1 text-xs font-bold ${badgeClassName}`}>
+          {plan.badge}
+        </span>
+      ) : null}
+
+      <div className="mb-6">
+        <h3 className="font-headline text-2xl font-bold text-secondary">{plan.name}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.subtitle}</p>
+      </div>
+
+      <div className="mb-5">
+        <div className="flex items-end gap-2">
+          <span className="font-headline text-4xl font-bold text-secondary">{priceLabel}</span>
+          <span className="pb-1 text-sm text-muted-foreground">{periodLabel}</span>
+        </div>
+        {billingCycle === 'yearly' && plan.price.yearlyNote ? (
+          <p className="mt-2 text-sm font-semibold text-[#1D9E75]">{plan.price.yearlyNote}</p>
+        ) : null}
+        {plan.callout ? <p className="mt-2 text-sm font-semibold text-[#534AB7]">{plan.callout}</p> : null}
+      </div>
+
+      <ul className="mb-6 space-y-2 text-sm text-secondary">
+        {FEATURE_ROWS.slice(0, 4).map((row) => (
+          <li key={`${plan.id}-${row.name}`} className="flex items-start gap-2">
+            <span className={row.values[plan.id].included ? 'text-[#1D9E75]' : 'text-slate-400'} aria-hidden="true">
+              {row.values[plan.id].included ? '✓' : '✕'}
+            </span>
+            <span>
+              {row.name}: {row.values[plan.id].label}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <LandingGoogleCtaButton
+        className={`inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
+          plan.id === 'free'
+            ? 'border border-[#534AB7]/15 bg-white text-secondary hover:bg-[#EEEDFE]'
+            : 'bg-[#534AB7] text-white hover:bg-[#433ba0]'
+        }`}
+        icon={plan.id === 'free' ? <Icon name="SparklesIcon" size={18} variant="solid" /> : undefined}
+        label={plan.ctaLabel}
+      />
+    </article>
+  );
 }
 
 const PricingSection = () => {
-
-  const plans: PricingPlan[] = [
-        {
-      id: 'free',
-      name: 'Free Plan',
-      nameHi: 'मुफ्त योजना',
-      price: '₹0',
-      period: 'Forever',
-      periodHi: 'हमेशा के लिए',
-      description: 'Try AI Tutor with limited features',
-      descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
-      features: [
-        '5 questions per day',
-        'Basic explanations',
-        'Hindi + English support',
-        'NCERT notes access',
-      ],
-      featuresHi: [
-        'प्रतिदिन 5 सवाल',
-        'बुनियादी समाधान',
-        'हिंदी + अंग्रेजी सहायता',
-        'NCERT नोट्स एक्सेस',
-      ],
-      recommended: false,
-      ctaText: 'Start Free',
-      ctaTextHi: 'मुफ्त शुरू करें',
-    },
-    {
-      id: 'individual',
-      name: 'Individual Plan',
-      nameHi: 'व्यक्तिगत योजना',
-      price: `₹${PLANS.standard_monthly.billedRupees}`,
-      period: 'per month',
-      periodHi: 'प्रति माह',
-      description: 'Perfect for one student',
-      descriptionHi: 'एक छात्र के लिए बिल्कुल सही',
-      features: [
-        'Unlimited questions',
-        'Detailed step-by-step solutions',
-        'Voice explanations',
-        'Practice tests & worksheets',
-        'Doubt solving in 30 seconds',
-        'All subjects (Class 1-12)',
-        'Priority support',
-        'Progress tracking',
-      ],
-      featuresHi: [
-        'असीमित सवाल',
-        'विस्तृत स्टेप-बाय-स्टेप समाधान',
-        'आवाज में समझाना',
-        'अभ्यास टेस्ट और वर्कशीट',
-        '30 सेकंड में doubt solving',
-        'सभी विषय (कक्षा 1-12)',
-        'प्राथमिकता सहायता',
-        'प्रगति ट्रैकिंग',
-      ],
-      recommended: true,
-      savings: 'Save ₹2900 vs tuition',
-      ctaText: 'Get started',
-      ctaTextHi: 'शुरू करें',
-    },
-    {
-      id: 'family',
-      name: 'Family Plan',
-      nameHi: 'परिवार योजना',
-      price: `₹${PLANS.family_monthly.billedRupees}`,
-      period: 'per month',
-      periodHi: 'प्रति माह',
-      description: 'Best value for multiple children',
-      descriptionHi: 'कई बच्चों के लिए सर्वोत्तम मूल्य',
-      features: [
-        'Everything in Individual Plan',
-        'Up to 3 children',
-        'Separate progress tracking',
-        'Family dashboard',
-        'Parental controls',
-        'Monthly progress reports',
-        'Priority WhatsApp support',
-        'Early access to new features',
-      ],
-      featuresHi: [
-        'Individual Plan की सभी सुविधाएं',
-        '3 बच्चों तक',
-        'अलग प्रगति ट्रैकिंग',
-        'परिवार डैशबोर्ड',
-        'माता-पिता नियंत्रण',
-        'मासिक प्रगति रिपोर्ट',
-        'प्राथमिकता WhatsApp सहायता',
-        'नई सुविधाओं तक पहली पहुंच',
-      ],
-      recommended: false,
-      savings: 'Save ₹5000+ vs multiple tutors',
-      ctaText: 'Get started',
-      ctaTextHi: 'शुरू करें',
-    },
-  ];
-
-  const standardPlan = PLANS.standard_monthly;
-  const spinzyPriceDisplay = `₹${standardPlan.billedRupees}`;
-  const traditionalMin = 3000;
-  const savingsMin = traditionalMin - standardPlan.billedRupees;
-  const savingsText = `₹${savingsMin}+`;
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
 
   return (
-    <section
-      id="pricing"
-      className="py-12 md:py-16 bg-gradient-to-br from-secondary/5 to-primary/5"
-    >
-      <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
-        <div className="text-center mb-12 md:mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
+    <section id="pricing" className="bg-gradient-to-br from-secondary/5 to-primary/5 py-12 md:py-16">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 lg:px-8">
+        <div className="mb-10 text-center md:mb-12">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
             <Icon name="CurrencyRupeeIcon" size={20} variant="solid" />
             <span>Transparent Pricing</span>
           </div>
-          <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
-            Choose Your Perfect Plan
+          <h2 className="mb-4 font-headline text-3xl font-bold text-secondary md:text-4xl lg:text-5xl">
+            Choose Your Plan
           </h2>
-          <p className="font-accent text-xl md:text-2xl text-primary mb-2">अपनी सही योजना चुनें</p>
-          <p className="font-body text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-            No hidden charges. Cancel anytime. 7-day refund policy.
+          <p className="mb-2 font-accent text-xl text-primary md:text-2xl">अपनी योजना चुनें</p>
+          <p className="mx-auto max-w-2xl font-body text-base text-muted-foreground md:text-lg">
+            See exactly what is free, what is premium, and which plan fits one child or a whole family.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-6">
-          {plans.map((plan) => {
-            const displayPrice = plan.price;
-
-            return (
-              <div
-                key={plan.id}
-                className={`relative rounded-2xl border-2 transition-all duration-250 ${
-                  plan.recommended
-                    ? 'border-primary bg-primary/5 shadow-2xl scale-105'
-                    : 'border-border bg-background hover:border-primary/30'
+        <div className="mb-8 flex justify-center">
+          <div className="inline-flex gap-1 rounded-xl border border-border bg-background p-1">
+            {BILLING_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setBillingCycle(option.id)}
+                className={`min-h-[44px] rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                  billingCycle === option.id
+                    ? 'bg-[#534AB7] text-white shadow'
+                    : 'text-secondary hover:bg-muted'
                 }`}
               >
-                {plan.recommended && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white rounded-full text-sm font-bold shadow-lg">
-                    Recommended
-                  </div>
-                )}
-
-                <div className="p-6 md:p-8">
-                  <div className="text-center mb-6">
-                    <h3 className="font-headline font-bold text-2xl text-secondary mb-1">
-                      {plan.name}
-                    </h3>
-                    <p className="font-accent text-base text-primary mb-4">{plan.nameHi}</p>
-                    <div className="flex items-baseline justify-center gap-2 mb-2">
-                      <span className="font-headline font-bold text-5xl text-secondary">
-                        {displayPrice}
-                      </span>
-                      <span className="font-body text-base text-muted-foreground">/{plan.period}</span>
-                    </div>
-                    {/* Prices shown are inclusive of taxes */}
-                    <p className="font-body text-sm text-muted-foreground">{plan.description}</p>
-                    {plan.savings && (
-                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-success/10 text-success rounded-full text-sm font-semibold">
-                        <Icon name="CheckCircleIcon" size={16} variant="solid" />
-                        <span>{plan.savings}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 mb-6">
-                    {plan.features.map((feature, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <Icon
-                          name="CheckCircleIcon"
-                          size={20}
-                          variant="solid"
-                          className={plan.recommended ? 'text-primary' : 'text-success'}
-                        />
-                        <span className="font-body text-sm text-foreground flex-1">{feature}</span>
-                      </div>
-                    ))}
-
-                  </div>
-
-                  <Link
-                    href="/auth/signup"
-                    className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
-                      plan.recommended
-                        ? 'bg-[#534AB7] text-white hover:bg-[#4239a0] shadow-lg'
-                        : 'bg-secondary text-white hover:bg-secondary/90'
-                    }`}
-                  >
-                    {plan.ctaText}
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Payment trust badges */}
-        <div className="text-center mb-10">
-          <p className="text-sm text-muted-foreground">
-            🔒 Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">All prices inclusive of taxes</p>
-        </div>
-
-        <div className="bg-background rounded-2xl border-2 border-border p-6 md:p-8 mb-12">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h3 className="font-headline font-bold text-2xl md:text-3xl text-secondary mb-4">
-                Compare with Traditional Tuition
-              </h3>
-              <p className="font-body text-base text-muted-foreground mb-6">
-                See how much you can save while getting better results
-              </p>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-error/5 rounded-lg border border-error/20">
-                  <div>
-                    <p className="font-headline font-bold text-lg text-secondary">
-                      Traditional Tuition
-                    </p>
-                    <p className="font-body text-sm text-muted-foreground">Per month, per child</p>
-                  </div>
-                  <p className="font-headline font-bold text-2xl text-error">₹3000-5000</p>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-success/5 rounded-lg border border-success/20">
-                  <div>
-                    <p className="font-headline font-bold text-lg text-secondary">
-                      Spinzy Academy Individual
-                    </p>
-                    <p className="font-body text-sm text-muted-foreground">
-                      Per month, unlimited access (incl. taxes)
-                    </p>
-                  </div>
-                  <p className="font-headline font-bold text-2xl text-success">{spinzyPriceDisplay}</p>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
-                  <div>
-                    <p className="font-headline font-bold text-lg text-secondary">Your Savings</p>
-                    <p className="font-body text-sm text-muted-foreground">Every single month</p>
-                  </div>
-                  <p className="font-headline font-bold text-2xl text-primary">{savingsText}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-muted/50 rounded-xl p-6 border border-border">
-                <div className="flex items-start gap-3 mb-3">
-                  <Icon name="ShieldCheckIcon" size={24} variant="solid" className="text-success" />
-                  <div>
-                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      7-Day Refund Policy
-                    </h4>
-                    <p className="font-body text-sm text-muted-foreground">
-                      Refunds available within 7 days of purchase.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted/50 rounded-xl p-6 border border-border">
-                <div className="flex items-start gap-3 mb-3">
-                  <Icon name="CheckCircleIcon" size={24} variant="solid" className="text-success" />
-                  <div>
-                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      Cancel Anytime
-                    </h4>
-                    <p className="font-body text-sm text-muted-foreground">
-                      No long-term commitment. Stop subscription whenever you want
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted/50 rounded-xl p-6 border border-border">
-                <div className="flex items-start gap-3 mb-3">
-                  <Icon
-                    name="ShieldCheckIcon"
-                    size={24}
-                    variant="solid"
-                    className="text-secondary"
-                  />
-                  <div>
-                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      Secure Payments
-                    </h4>
-                    <p className="font-body text-sm text-muted-foreground">
-                      Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="text-center">
-          <p className="font-body text-base text-muted-foreground mb-6">
-            Still have questions about pricing?{' '}
-            <a href="#faq" className="text-primary hover:underline font-semibold">
-              Check our FAQ
-            </a>{' '}
-            or{' '}
-            <a href="tel:+918920754675" className="text-primary hover:underline font-semibold">
-              call us
-            </a>
+        <div className="mb-8 grid gap-5 lg:grid-cols-3">
+          {PLAN_DEFINITIONS.map((plan) => (
+            <PlanCard key={plan.id} billingCycle={billingCycle} plan={plan} />
+          ))}
+        </div>
+
+        {billingCycle === 'yearly' ? <SavingsComparison /> : null}
+
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="hidden grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(0,1fr))] border-b border-slate-200 bg-slate-50 px-6 py-4 text-sm font-semibold text-secondary md:grid">
+            <div>Feature comparison</div>
+            {PLAN_DEFINITIONS.map((plan) => (
+              <div key={`header-${plan.id}`} className="text-center">
+                {plan.name}
+              </div>
+            ))}
+          </div>
+
+          {FEATURE_ROWS.map((row) => (
+            <div
+              key={row.name}
+              className={`grid gap-3 border-b border-slate-100 px-4 py-4 md:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(0,1fr))] md:px-6 ${
+                row.highlight ? 'bg-[#EEEDFE]/35' : 'bg-white'
+              }`}
+            >
+              <div className="font-medium text-secondary">{row.name}</div>
+              {PLAN_DEFINITIONS.map((plan) => (
+                <PricingValue key={`${row.name}-${plan.id}`} value={row.values[plan.id]} />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-[#534AB7]/10 bg-white/80 p-4 text-center shadow-sm">
+          <p className="text-sm font-medium text-secondary">
+            🔒 Secure checkout · UPI / Cards / Net Banking · 7-day refund policy · No auto-renewal without reminder
           </p>
         </div>
       </div>

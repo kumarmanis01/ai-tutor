@@ -5,12 +5,12 @@
  * Fire-and-forget: returns immediately after queuing, sends async.
  * Auth: admin role required.
  */
-import { NextResponse } from 'next/server'
-import { getServerSessionForHandlers } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
-import { sendMailSafe } from '@/lib/mailer'
-import { weeklyDigestHtml } from '@/lib/email/templates'
-import { logger } from '@/lib/logger'
+import { NextResponse } from 'next/server';
+import { getServerSessionForHandlers } from '@/lib/session';
+import { prisma } from '@/lib/prisma';
+import { sendMailSafe } from '@/lib/mailer';
+import { weeklyDigestHtml } from '@/lib/email/templates';
+import { logger } from '@/lib/logger';
 
 async function fetchStudentDigestData(studentId: string) {
   const [student, masteryRow, streak] = await Promise.all([
@@ -26,8 +26,8 @@ async function fetchStudentDigestData(studentId: string) {
       where: { studentId, kind: 'daily' },
       select: { current: true },
     }),
-  ])
-  return { student, masteryRow, streak }
+  ]);
+  return { student, masteryRow, streak };
 }
 
 async function sendDigestsAsync(adminId: string) {
@@ -37,16 +37,16 @@ async function sendDigestsAsync(adminId: string) {
       parent: { select: { id: true, name: true, email: true, parentEmail: true } },
       student: { select: { id: true, name: true, grade: true } },
     },
-  })
+  });
 
-  let sent = 0
+  let sent = 0;
   for (const link of links) {
-    const recipientEmail = link.parent.email ?? link.parent.parentEmail
-    if (!recipientEmail) continue
+    const recipientEmail = link.parent.email ?? link.parent.parentEmail;
+    if (!recipientEmail) continue;
 
     try {
-      const { student, masteryRow, streak } = await fetchStudentDigestData(link.studentId)
-      const readiness = Math.round((masteryRow._avg.mastery ?? 0) * 100)
+      const { student, masteryRow, streak } = await fetchStudentDigestData(link.studentId);
+      const readiness = Math.round((masteryRow._avg.mastery ?? 0) * 100);
       const html = weeklyDigestHtml({
         studentName: student?.name ?? 'Your child',
         sessionsThisWeek: 0,
@@ -55,51 +55,49 @@ async function sendDigestsAsync(adminId: string) {
         topSubject: '',
         streakDays: streak?.current ?? 0,
         parentName: link.parent.name ?? undefined,
-      })
+      });
       await sendMailSafe({
         to: recipientEmail,
         subject: `${student?.name ?? 'Your child'}'s weekly learning report`,
         html,
-      })
-      sent++
+      });
+      sent++;
     } catch (err) {
       logger.error('[broadcast-digest] Failed to send to parent', {
         event: 'broadcast_digest_error',
         context: { parentId: link.parentId, studentId: link.studentId },
         err: err instanceof Error ? err.message : String(err),
-      })
+      });
     }
   }
 
   logger.info('[broadcast-digest] Digest broadcast complete', {
     event: 'broadcast_digest_done',
     context: { adminId, sent, total: links.length },
-  })
+  });
 }
 
 export async function POST() {
-  const session = await getServerSessionForHandlers()
+  const session = await getServerSessionForHandlers();
   if (!session || session.user?.role !== 'admin') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 401 })
+    return NextResponse.json({ error: 'forbidden' }, { status: 401 });
   }
 
-  const queued = await prisma.parentStudent
-    .count({ where: { status: 'active' } })
-    .catch(() => 0)
+  const queued = await prisma.parentStudent.count({ where: { status: 'active' } }).catch(() => 0);
 
   // Fire and forget -- do not await
-  ;(async () => {
+  (async () => {
     try {
-      await sendDigestsAsync(session.user.id)
+      await sendDigestsAsync(session.user.id);
     } catch (err) {
-      logger.error('[broadcast-digest] Unhandled error in async send', { err })
+      logger.error('[broadcast-digest] Unhandled error in async send', { err });
     }
-  })()
+  })();
 
   logger.info('[broadcast-digest] Digest broadcast triggered', {
     event: 'broadcast_digest_triggered',
     context: { adminId: session.user.id, queued },
-  })
+  });
 
-  return NextResponse.json({ ok: true, queued })
+  return NextResponse.json({ ok: true, queued });
 }

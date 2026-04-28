@@ -1,25 +1,26 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react'
-import Link from 'next/link'
+import React, { useState } from 'react';
+import Link from 'next/link';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface StudentRowData {
-  id: string
-  name: string | null
-  email: string | null
-  grade: string | null
-  board: string | null
-  age: number | null
-  accountStatus: string
-  subscriptionStatus: string
-  totalXp: number
-  level: number
-  lastSessionDate: string | null
-  createdAt: string
+  id: string;
+  name: string | null;
+  email: string | null;
+  grade: string | null;
+  board: string | null;
+  age: number | null;
+  isAdult: boolean;
+  accountStatus: string;
+  subscriptionStatus: string;
+  totalXp: number;
+  level: number;
+  lastSessionDate: string | null;
+  createdAt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -27,59 +28,59 @@ export interface StudentRowData {
 // ---------------------------------------------------------------------------
 
 function initials(name: string | null, email: string | null): string {
-  if (name) return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-  if (email) return email[0].toUpperCase()
-  return '?'
+  if (name)
+    return name
+      .split(' ')
+      .map((w) => w[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  if (email) return email[0].toUpperCase();
+  return '?';
 }
 
 function statusLabel(student: StudentRowData): { text: string; cls: string } {
   if (student.accountStatus === 'pending_parent_verification') {
-    return { text: 'Pending OTP', cls: 'bg-[#FAEEDA] text-[#633806]' }
+    return { text: 'Awaiting Parent Consent', cls: 'bg-[#FAEEDA] text-[#633806]' };
   }
   if (student.lastSessionDate) {
     const daysSince = Math.floor(
       (Date.now() - new Date(student.lastSessionDate).getTime()) / 86400000
-    )
+    );
     if (daysSince < 7) {
-      return { text: 'Active', cls: 'bg-[#EAF3DE] text-[#27500A]' }
+      return { text: 'Active', cls: 'bg-[#EAF3DE] text-[#27500A]' };
     }
-    return { text: `Inactive ${daysSince}d`, cls: 'bg-gray-100 text-gray-500' }
+    return { text: `Inactive ${daysSince}d`, cls: 'bg-gray-100 text-gray-500' };
   }
-  return { text: 'No sessions', cls: 'bg-gray-100 text-gray-400' }
+  return { text: 'No sessions', cls: 'bg-gray-100 text-gray-400' };
 }
 
 // ---------------------------------------------------------------------------
 // Notification modal
 // ---------------------------------------------------------------------------
 
-function NotifyModal({
-  student,
-  onClose,
-}: {
-  student: StudentRowData
-  onClose: () => void
-}) {
-  const [type, setType] = useState<'email' | 'push'>('email')
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<'ok' | 'err' | null>(null)
+function NotifyModal({ student, onClose }: { student: StudentRowData; onClose: () => void }) {
+  const [type, setType] = useState<'email' | 'push'>('email');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<'ok' | 'err' | null>(null);
 
   async function send() {
-    setBusy(true)
-    setResult(null)
+    setBusy(true);
+    setResult(null);
     try {
       const r = await fetch('/api/admin/notifications/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: student.id, type, title, body }),
-      })
-      setResult(r.ok ? 'ok' : 'err')
-      if (r.ok) setTimeout(onClose, 800)
+      });
+      setResult(r.ok ? 'ok' : 'err');
+      if (r.ok) setTimeout(onClose, 800);
     } catch {
-      setResult('err')
+      setResult('err');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
@@ -97,7 +98,7 @@ function NotifyModal({
 
         {/* Channel */}
         <div className="flex gap-2">
-          {(['email', 'push'] as const).map(t => (
+          {(['email', 'push'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setType(t)}
@@ -114,21 +115,23 @@ function NotifyModal({
 
         <input
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="Title"
           className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#534AB7]"
         />
 
         <textarea
           value={body}
-          onChange={e => setBody(e.target.value)}
+          onChange={(e) => setBody(e.target.value)}
           placeholder="Message"
           rows={3}
           className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#534AB7] resize-none"
         />
 
         {result === 'ok' && <p className="text-[11px] text-[#1D9E75]">Notification sent.</p>}
-        {result === 'err' && <p className="text-[11px] text-[#E24B4A]">Failed to send. Check logs.</p>}
+        {result === 'err' && (
+          <p className="text-[11px] text-[#E24B4A]">Failed to send. Check logs.</p>
+        )}
 
         <div className="flex gap-2 justify-end">
           <button
@@ -147,7 +150,7 @@ function NotifyModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -158,12 +161,12 @@ function StudentRow({
   student,
   onNotify,
 }: {
-  student: StudentRowData
-  onNotify: (s: StudentRowData) => void
+  student: StudentRowData;
+  onNotify: (s: StudentRowData) => void;
 }) {
-  const status = statusLabel(student)
-  const ini = initials(student.name, student.email)
-  const isPaid = student.subscriptionStatus !== 'free'
+  const status = statusLabel(student);
+  const ini = initials(student.name, student.email);
+  const isPaid = student.subscriptionStatus !== 'free';
 
   return (
     <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 last:border-0">
@@ -186,12 +189,19 @@ function StudentRow({
         {student.age ? ` \u00b7 ${student.age}y` : ''}
       </td>
       <td className="px-3 py-2.5">
-        <span className={`inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${status.cls}`}>
+        <span
+          className={`inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${status.cls}`}
+        >
           {status.text}
         </span>
         {isPaid && (
           <span className="ml-1 inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#EEEDFE] text-[#3C3489]">
             Paid
+          </span>
+        )}
+        {student.isAdult && (
+          <span className="ml-1 inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#EAF3DE] text-[#27500A]">
+            Adult Student
           </span>
         )}
       </td>
@@ -215,7 +225,7 @@ function StudentRow({
         </div>
       </td>
     </tr>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -223,57 +233,61 @@ function StudentRow({
 // ---------------------------------------------------------------------------
 
 export function StudentsTable({ students }: { students: StudentRowData[] }) {
-  const [search, setSearch] = useState('')
-  const [gradeFilter, setGradeFilter] = useState('all')
-  const [boardFilter, setBoardFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [notifyTarget, setNotifyTarget] = useState<StudentRowData | null>(null)
+  const [search, setSearch] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('all');
+  const [boardFilter, setBoardFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [notifyTarget, setNotifyTarget] = useState<StudentRowData | null>(null);
 
-  const visible = students.filter(s => {
+  const visible = students.filter((s) => {
     if (search) {
-      const q = search.toLowerCase()
-      const matchName = s.name?.toLowerCase().includes(q)
-      const matchEmail = s.email?.toLowerCase().includes(q)
-      if (!matchName && !matchEmail) return false
+      const q = search.toLowerCase();
+      const matchName = s.name?.toLowerCase().includes(q);
+      const matchEmail = s.email?.toLowerCase().includes(q);
+      if (!matchName && !matchEmail) return false;
     }
-    if (gradeFilter !== 'all' && s.grade !== gradeFilter) return false
-    if (boardFilter !== 'all' && (s.board ?? '').toLowerCase() !== boardFilter) return false
+    if (gradeFilter !== 'all' && s.grade !== gradeFilter) return false;
+    if (boardFilter !== 'all' && (s.board ?? '').toLowerCase() !== boardFilter) return false;
     if (statusFilter !== 'all') {
-      const st = statusLabel(s).text.toLowerCase()
-      if (statusFilter === 'active' && !st.startsWith('active')) return false
-      if (statusFilter === 'inactive' && !st.startsWith('inactive')) return false
-      if (statusFilter === 'pending' && !st.includes('pending')) return false
+      const st = statusLabel(s).text.toLowerCase();
+      if (statusFilter === 'active' && !st.startsWith('active')) return false;
+      if (statusFilter === 'inactive' && !st.startsWith('inactive')) return false;
+      if (statusFilter === 'awaiting-parent-consent' && !st.includes('awaiting parent consent')) {
+        return false;
+      }
     }
-    return true
-  })
+    return true;
+  });
 
-  const grades = [...new Set(students.map(s => s.grade).filter(Boolean))].sort() as string[]
+  const grades = [...new Set(students.map((s) => s.grade).filter(Boolean))].sort() as string[];
 
   return (
     <>
-      {notifyTarget && (
-        <NotifyModal student={notifyTarget} onClose={() => setNotifyTarget(null)} />
-      )}
+      {notifyTarget && <NotifyModal student={notifyTarget} onClose={() => setNotifyTarget(null)} />}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Search name or email..."
           className="text-[11px] px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 w-52 focus:outline-none focus:ring-2 focus:ring-[#534AB7]"
         />
         <select
           value={gradeFilter}
-          onChange={e => setGradeFilter(e.target.value)}
+          onChange={(e) => setGradeFilter(e.target.value)}
           className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
         >
           <option value="all">All grades</option>
-          {grades.map(g => <option key={g} value={g}>Grade {g}</option>)}
+          {grades.map((g) => (
+            <option key={g} value={g}>
+              Grade {g}
+            </option>
+          ))}
         </select>
         <select
           value={boardFilter}
-          onChange={e => setBoardFilter(e.target.value)}
+          onChange={(e) => setBoardFilter(e.target.value)}
           className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
         >
           <option value="all">All boards</option>
@@ -282,13 +296,13 @@ export function StudentsTable({ students }: { students: StudentRowData[] }) {
         </select>
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="text-[11px] px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
-          <option value="pending">Pending OTP</option>
+          <option value="awaiting-parent-consent">Pending (OTP / Parent Consent)</option>
         </select>
         <span className="text-[11px] text-gray-400 ml-1">{visible.length} students</span>
       </div>
@@ -302,15 +316,18 @@ export function StudentsTable({ students }: { students: StudentRowData[] }) {
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-                  {['Student', 'Grade / Board', 'Status', 'XP / Level', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {['Student', 'Grade / Board', 'Status', 'XP / Level', 'Actions'].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                    >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {visible.map(s => (
+                {visible.map((s) => (
                   <StudentRow key={s.id} student={s} onNotify={setNotifyTarget} />
                 ))}
               </tbody>
@@ -319,5 +336,5 @@ export function StudentsTable({ students }: { students: StudentRowData[] }) {
         )}
       </div>
     </>
-  )
+  );
 }

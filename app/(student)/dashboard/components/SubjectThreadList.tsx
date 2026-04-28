@@ -1,4 +1,4 @@
-"use client";
+'use client';
 /**
  * FILE OBJECTIVE:
  * - Responsive subject selector with horizontal scroll and compact thread list.
@@ -40,7 +40,14 @@ const subjectData: Record<string, { icon: string; color: string }> = {
 
 const defaultSubjects = ['general', 'math', 'science', 'coding'];
 
-export default function SubjectThreadList({ subjects = defaultSubjects, subject, setSubject, onSelectThread, onNewThread, selectedConversationId }: SubjectThreadListProps) {
+export default function SubjectThreadList({
+  subjects = defaultSubjects,
+  subject,
+  setSubject,
+  onSelectThread,
+  onNewThread,
+  selectedConversationId,
+}: SubjectThreadListProps) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(false);
   const [showThreads, setShowThreads] = useState(false);
@@ -48,7 +55,9 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
   const loadThreads = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/chat/conversations?subjectId=${encodeURIComponent(subject)}&limit=20`);
+      const res = await fetch(
+        `/api/chat/conversations?subjectId=${encodeURIComponent(subject)}&limit=20`
+      );
       const data = await res.json().catch(() => null);
       setThreads(Array.isArray(data?.threads) ? data.threads : []);
     } catch {
@@ -58,7 +67,9 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
     }
   }, [subject]);
 
-  useEffect(() => { loadThreads(); }, [loadThreads]);
+  useEffect(() => {
+    loadThreads();
+  }, [loadThreads]);
 
   const _currentData = subjectData[subject] || subjectData.general;
 
@@ -72,7 +83,10 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
           return (
             <button
               key={s}
-              onClick={() => { setSubject(s); setShowThreads(false); }}
+              onClick={() => {
+                setSubject(s);
+                setShowThreads(false);
+              }}
               className={`flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 lg:flex-shrink ${
                 isActive
                   ? `${data.color} text-white shadow-md`
@@ -84,13 +98,19 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
             </button>
           );
         })}
-        
+
         {/* New chat button */}
         <button
           onClick={() => onNewThread(subject)}
           className="flex items-center gap-1 lg:gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium bg-primary text-primary-foreground whitespace-nowrap flex-shrink-0 active:scale-95 hover:bg-primary/90 transition-colors"
         >
-          <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg
+            className="w-3.5 h-3.5 lg:w-4 lg:h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
             <path d="M12 4v16m8-8H4" />
           </svg>
           New
@@ -104,9 +124,17 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
           className="w-full flex items-center justify-between px-3 py-2 lg:px-4 lg:py-2.5 rounded-lg bg-muted/40 dark:bg-slate-800/50 text-xs lg:text-sm active:bg-muted/60 hover:bg-muted/50 transition-colors"
         >
           <span className="text-muted-foreground">
-            {loading ? 'Loading...' : `${threads.length} recent chat${threads.length !== 1 ? 's' : ''}`}
+            {loading
+              ? 'Loading...'
+              : `${threads.length} recent chat${threads.length !== 1 ? 's' : ''}`}
           </span>
-          <svg className={`w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground transition-transform ${showThreads ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className={`w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground transition-transform ${showThreads ? 'rotate-180' : ''}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M19 9l-7 7-7-7" />
           </svg>
         </button>
@@ -121,7 +149,10 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
             return (
               <button
                 key={t.conversationId}
-                onClick={() => { onSelectThread(t.conversationId); setShowThreads(false); }}
+                onClick={() => {
+                  onSelectThread(t.conversationId);
+                  setShowThreads(false);
+                }}
                 className={`w-full text-left px-3 py-2 lg:px-4 lg:py-3 rounded-lg text-xs lg:text-sm transition-colors ${
                   isSelected
                     ? 'bg-primary/10 border border-primary/30'
@@ -129,7 +160,9 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className={`truncate ${isSelected ? 'text-primary font-medium' : 'text-foreground'}`}>
+                  <span
+                    className={`truncate ${isSelected ? 'text-primary font-medium' : 'text-foreground'}`}
+                  >
                     {preview || 'Empty chat'}
                   </span>
                   <span className="text-muted-foreground text-[10px] lg:text-xs flex-shrink-0">
@@ -141,10 +174,15 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
           })}
         </div>
       )}
-      
+
       <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
       `}</style>
     </div>
   );

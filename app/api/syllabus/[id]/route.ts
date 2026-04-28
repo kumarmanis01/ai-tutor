@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   // Syllabus is not a model in the schema. Implement as needed or remove this route.

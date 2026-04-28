@@ -1,4 +1,4 @@
-"use client";
+'use client';
 /**
  * FILE OBJECTIVE:
  * - SWR-backed hook for the deterministic Home Tutor Engine endpoint.

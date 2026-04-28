@@ -16,9 +16,6 @@
       "@/*": ["./src/*", "./*"]
     }
   },
-  "include": [
-    "lib/alertEvaluator.ts",
-    "tests/integration/alert-evaluator.test.ts"
-  ],
+  "include": ["lib/alertEvaluator.ts", "tests/integration/alert-evaluator.test.ts"],
   "exclude": ["node_modules", "dist", "dist-integration"]
 }

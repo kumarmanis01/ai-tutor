@@ -41,7 +41,10 @@ export function publish(roomId: string, payload: RealtimePayload) {
     try {
       cb(payload);
     } catch (e) {
-      logger.error(`subscriber error: ${String(e)}`, { className: 'realtime', methodName: 'publish' });
+      logger.error(`subscriber error: ${String(e)}`, {
+        className: 'realtime',
+        methodName: 'publish',
+      });
     }
   }
 }

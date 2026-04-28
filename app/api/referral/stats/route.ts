@@ -18,7 +18,14 @@ export async function GET() {
   const rewards = await prisma.referralReward.findMany({ where: { userId: session.user.id } });
   const rewardsEarned = rewards.filter((r) => r.status === 'APPLIED').length;
   const rewardsPending = rewards.filter((r) => r.status === 'PENDING').length;
-  const rewardsEarnedAmount = rewards.filter((r) => r.status === 'APPLIED').reduce((s, r) => s + (r.amount || 0), 0);
+  const rewardsEarnedAmount = rewards
+    .filter((r) => r.status === 'APPLIED')
+    .reduce((s, r) => s + (r.amount || 0), 0);
 
-  return NextResponse.json({ totalInvites: invites.length, redeemedCount, invites, rewards: { rewardsEarned, rewardsPending, rewardsEarnedAmount } });
+  return NextResponse.json({
+    totalInvites: invites.length,
+    redeemedCount,
+    invites,
+    rewards: { rewardsEarned, rewardsPending, rewardsEarnedAmount },
+  });
 }

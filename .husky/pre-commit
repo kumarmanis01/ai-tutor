@@ -1,8 +1,21 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+# FILE OBJECTIVE:
+# - Enforce commit-time hygiene gates (smart-quote auto-fix/check, lint, type-check, tests).
+#
+# LINKED UNIT TEST:
+# - tests/unit/scripts/pre-commit-hook.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - /docs/COPILOT_GUARDRAILS.md
+# - .github/copilot-instructions.md
+#
+# EDIT LOG:
+# - 2026-04-26T00:00:00Z | copilot | remove duplicated husky bootstrap and clarify bypass behavior/logging
+
+echo "[pre-commit] Starting commit gates"
+echo "[pre-commit] Note: using --no-verify bypasses this hook entirely"
 
 # Allow full bypass of hooks using standard env flags
 if [ "${SKIP_HOOKS:-}" = "1" ] || [ "${HUSKY_SKIP_HOOKS:-}" = "1" ]; then
@@ -12,12 +25,14 @@ fi
 
 # lint-staged runs fix-smart-quotes.py on staged files and re-stages the result.
 # Run it first to auto-fix obvious issues in the index.
+echo "[pre-commit] Running lint-staged (includes smart-quote auto-fix on staged files)"
 npx --no-install lint-staged
 
 # Preflight smart-quote verification (repo-wide check)
 if [ "${SKIP_SMART_QUOTES:-}" = "1" ]; then
 	echo "SKIP_SMART_QUOTES=1 — skipping smart-quote preflight"
 else
+	echo "[pre-commit] Running smart-quote verification"
 	npm run preflight:smart-quotes
 fi
 
@@ -25,6 +40,7 @@ fi
 if [ "${SKIP_LINT:-}" = "1" ]; then
 	echo "SKIP_LINT=1 — skipping lint"
 else
+	echo "[pre-commit] Running lint"
 	npm run preflight:lint
 fi
 
@@ -32,6 +48,7 @@ fi
 if [ "${SKIP_TYPECHECK:-}" = "1" ]; then
 	echo "SKIP_TYPECHECK=1 — skipping type-check"
 else
+	echo "[pre-commit] Running type-check"
 	npm run preflight:type-check
 fi
 
@@ -39,7 +56,7 @@ fi
 if [ "${SKIP_UNIT_TESTS:-}" = "1" ]; then
 	echo "SKIP_UNIT_TESTS=1 — skipping unit tests"
 else
-	echo "Running unit tests (pre-commit). This may take a while..."
+	echo "[pre-commit] Running unit tests (this may take a while)"
 	npm run preflight:unit
 fi
 
@@ -47,6 +64,8 @@ fi
 if [ "${SKIP_INTEGRATION_TESTS:-}" = "1" ]; then
 	echo "SKIP_INTEGRATION_TESTS=1 — skipping integration tests"
 else
-	echo "Running integration tests (pre-commit). This may take a while..."
+	echo "[pre-commit] Running integration tests (this may take a while)"
 	npm run preflight:integration
 fi
+
+echo "[pre-commit] All enabled gates passed"

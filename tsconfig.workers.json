@@ -10,15 +10,18 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*", "*"] ,
+      "@/*": ["src/*", "*"],
       "@/worker/*": ["worker/*"]
     }
   },
   "include": [
     "worker/**/*.ts",
+    "worker/**/*.tsx",
     "lib/**/*.ts",
+    "lib/**/*.tsx",
     "regeneration/**/*.ts",
     "hydrators/**/*.ts",
     "jobs/**/*.ts",

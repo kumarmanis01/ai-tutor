@@ -71,7 +71,7 @@ function makeStructuredSession(state: string) {
     topicId: 'topic-001',
     state,
     topic: {
-      name: 'Newton\'s Laws',
+      name: "Newton's Laws",
       chapter: {
         name: 'Forces and Motion',
         subject: { name: 'Physics' },
@@ -110,12 +110,11 @@ beforeEach(() => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('getNextAction — P1 session resume', () => {
-
   // ── StructuredSession scenarios ────────────────────────────────────────────
 
   it('returns resumePhase PRACTICE and actionType practice when active PRACTICE session exists', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession('PRACTICE'),
+      makeStructuredSession('PRACTICE')
     );
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -134,7 +133,7 @@ describe('getNextAction — P1 session resume', () => {
 
   it('returns resumePhase TEST and actionType practice when active TEST session exists', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession('TEST'),
+      makeStructuredSession('TEST')
     );
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -148,7 +147,7 @@ describe('getNextAction — P1 session resume', () => {
 
   it('returns resumePhase HOMEWORK and actionType practice when active HOMEWORK session exists', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession('HOMEWORK'),
+      makeStructuredSession('HOMEWORK')
     );
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -162,7 +161,7 @@ describe('getNextAction — P1 session resume', () => {
 
   it('returns resumePhase OVERVIEW and actionType notes when active OVERVIEW session exists', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession('OVERVIEW'),
+      makeStructuredSession('OVERVIEW')
     );
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -176,7 +175,7 @@ describe('getNextAction — P1 session resume', () => {
 
   it('returns resumePhase EXPLANATION and actionType notes when active EXPLANATION session exists', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession('EXPLANATION'),
+      makeStructuredSession('EXPLANATION')
     );
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -201,7 +200,7 @@ describe('getNextAction — P1 session resume', () => {
         where: expect.objectContaining({
           state: { notIn: ['COMPLETE', 'EXPIRED'] },
         }),
-      }),
+      })
     );
   });
 
@@ -256,7 +255,7 @@ describe('getNextAction — P1 session resume', () => {
 
   it('prefers StructuredSession over LearningSession when both are active', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession('PRACTICE'),
+      makeStructuredSession('PRACTICE')
     );
     (prisma.learningSession.findFirst as jest.Mock).mockResolvedValue(makeLegacySession());
 
@@ -272,7 +271,7 @@ describe('getNextAction — P1 session resume', () => {
 
   it('never queries LearningSession when a StructuredSession is found', async () => {
     (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(
-      makeStructuredSession('TEST'),
+      makeStructuredSession('TEST')
     );
 
     await getNextAction(STUDENT_ID);

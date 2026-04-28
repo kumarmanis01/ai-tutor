@@ -43,13 +43,23 @@ function parseCsv(content) {
     const ch = content[i];
     const nxt = content[i + 1];
     if (ch === '"') {
-      if (inQuotes && nxt === '"') { cur += '"'; i++; continue; }
+      if (inQuotes && nxt === '"') {
+        cur += '"';
+        i++;
+        continue;
+      }
       inQuotes = !inQuotes;
       continue;
     }
-    if (!inQuotes && ch === ',') { row.push(cur); cur = ''; continue; }
+    if (!inQuotes && ch === ',') {
+      row.push(cur);
+      cur = '';
+      continue;
+    }
     if (!inQuotes && (ch === '\n' || ch === '\r')) {
-      if (ch === '\r' && content[i + 1] === '\n') { i++; }
+      if (ch === '\r' && content[i + 1] === '\n') {
+        i++;
+      }
       row.push(cur);
       rows.push(row);
       row = [];
@@ -58,7 +68,10 @@ function parseCsv(content) {
     }
     cur += ch;
   }
-  if (cur !== '' || row.length > 0) { row.push(cur); rows.push(row); }
+  if (cur !== '' || row.length > 0) {
+    row.push(cur);
+    rows.push(row);
+  }
   return rows;
 }
 
@@ -81,25 +94,41 @@ async function main() {
 
   let vars = {};
   if (process.env.QA_VARS) {
-    try { vars = JSON.parse(process.env.QA_VARS); } catch (e) { console.error('QA_VARS JSON parse error', e.message); }
+    try {
+      vars = JSON.parse(process.env.QA_VARS);
+    } catch (e) {
+      console.error('QA_VARS JSON parse error', e.message);
+    }
   }
   if (varsFile) {
-    try { const vf = fs.readFileSync(varsFile, 'utf8'); vars = JSON.parse(vf); } catch (e) { console.error('Could not read vars-file', varsFile, e.message); }
+    try {
+      const vf = fs.readFileSync(varsFile, 'utf8');
+      vars = JSON.parse(vf);
+    } catch (e) {
+      console.error('Could not read vars-file', varsFile, e.message);
+    }
   }
 
-  if (!fs.existsSync(file)) { console.error('CSV file not found:', file); process.exit(2); }
+  if (!fs.existsSync(file)) {
+    console.error('CSV file not found:', file);
+    process.exit(2);
+  }
   const content = fs.readFileSync(file, 'utf8');
   const rows = parseCsv(content);
-  if (!rows || rows.length < 2) { console.error('No rows found in CSV'); process.exit(2); }
+  if (!rows || rows.length < 2) {
+    console.error('No rows found in CSV');
+    process.exit(2);
+  }
 
-  const header = rows[0].map(h => (h || '').trim().toLowerCase());
-  const dbIndex = header.findIndex(h => h.includes('db') && h.includes('validation'));
-  const apiIndex = header.findIndex(h => h.includes('api') && h.includes('validation'));
-  const idIndex = header.findIndex(h => h === 'id') >= 0 ? header.findIndex(h => h === 'id') : 0;
+  const header = rows[0].map((h) => (h || '').trim().toLowerCase());
+  const dbIndex = header.findIndex((h) => h.includes('db') && h.includes('validation'));
+  const apiIndex = header.findIndex((h) => h.includes('api') && h.includes('validation'));
+  const idIndex =
+    header.findIndex((h) => h === 'id') >= 0 ? header.findIndex((h) => h === 'id') : 0;
 
   let prisma;
   try {
-const { prisma } = require('../../lib/prisma');
+    const { prisma } = require('../../lib/prisma');
     prisma = new PrismaClient();
     await prisma.$connect();
   } catch (e) {
@@ -121,15 +150,29 @@ const { prisma } = require('../../lib/prisma');
     const entry = { id, db: null, api: null };
 
     // DB check
-    if ((only === 'both' || only === 'db') && dbSnippet && dbSnippet.toLowerCase() !== 'n/a' && prisma) {
+    if (
+      (only === 'both' || only === 'db') &&
+      dbSnippet &&
+      dbSnippet.toLowerCase() !== 'n/a' &&
+      prisma
+    ) {
       const sql = replacePlaceholders(dbSnippet, vars);
       try {
         const rowsRes = await prisma.$queryRawUnsafe(sql);
-        entry.db = { executed: true, rows: Array.isArray(rowsRes) ? rowsRes.length : (rowsRes ? 1 : 0), sample: Array.isArray(rowsRes) ? rowsRes.slice(0, 3) : rowsRes };
+        entry.db = {
+          executed: true,
+          rows: Array.isArray(rowsRes) ? rowsRes.length : rowsRes ? 1 : 0,
+          sample: Array.isArray(rowsRes) ? rowsRes.slice(0, 3) : rowsRes,
+        };
       } catch (err) {
         entry.db = { executed: false, error: (err && err.message) || String(err) };
       }
-    } else if ((only === 'both' || only === 'db') && dbSnippet && dbSnippet.toLowerCase() !== 'n/a' && !prisma) {
+    } else if (
+      (only === 'both' || only === 'db') &&
+      dbSnippet &&
+      dbSnippet.toLowerCase() !== 'n/a' &&
+      !prisma
+    ) {
       entry.db = { executed: false, error: 'Prisma client not available or DB not configured' };
     }
 
@@ -139,10 +182,14 @@ const { prisma } = require('../../lib/prisma');
       const m = apiSnippet.match(/\b(GET|POST|PUT|PATCH|DELETE)\b\s+(\/\S+)/i);
       let method = 'GET';
       let pathSpec = null;
-      if (m) { method = m[1].toUpperCase(); pathSpec = m[2]; }
-      else {
+      if (m) {
+        method = m[1].toUpperCase();
+        pathSpec = m[2];
+      } else {
         const p = apiSnippet.match(/(\/api\/[^\s\)\']+)/i);
-        if (p) { pathSpec = p[1]; }
+        if (p) {
+          pathSpec = p[1];
+        }
       }
       if (pathSpec) {
         const pathReplaced = replacePlaceholders(pathSpec, vars);
@@ -156,7 +203,7 @@ const { prisma } = require('../../lib/prisma');
           const text = await res.text();
           const expectedMatch = apiSnippet.match(/returns\s+(\d{3})/i);
           const expected = expectedMatch ? parseInt(expectedMatch[1], 10) : null;
-          const ok = expected ? (status === expected) : (status >= 200 && status < 400);
+          const ok = expected ? status === expected : status >= 200 && status < 400;
           entry.api = { executed: true, url, method, status, ok, sampleBody: text.slice(0, 1000) };
         } catch (err) {
           entry.api = { executed: false, error: (err && err.message) || String(err) };
@@ -174,16 +221,24 @@ const { prisma } = require('../../lib/prisma');
   const reportDir = path.join(process.cwd(), 'tmp');
   if (!fs.existsSync(reportDir)) fs.mkdirSync(reportDir, { recursive: true });
   const outFile = path.join(reportDir, `qa_validation_report_${Date.now()}.json`);
-  fs.writeFileSync(outFile, JSON.stringify({ file, apiBase, varsUsed: Object.keys(vars), results }, null, 2));
+  fs.writeFileSync(
+    outFile,
+    JSON.stringify({ file, apiBase, varsUsed: Object.keys(vars), results }, null, 2)
+  );
   console.log(`Wrote report to ${outFile}`);
 
   // Summary
   const total = results.length;
-  const dbFails = results.filter(r => r.db && r.db.executed === false).length;
-  const apiFails = results.filter(r => r.api && r.api.executed === false || (r.api && r.api.ok === false)).length;
+  const dbFails = results.filter((r) => r.db && r.db.executed === false).length;
+  const apiFails = results.filter(
+    (r) => (r.api && r.api.executed === false) || (r.api && r.api.ok === false)
+  ).length;
   console.log(`Processed ${total} checks -- DB failures: ${dbFails}, API failures: ${apiFails}`);
 
   process.exit(dbFails + apiFails > 0 ? 2 : 0);
 }
 
-main().catch(err => { console.error('Fatal error', err && err.stack || err); process.exit(2); });
+main().catch((err) => {
+  console.error('Fatal error', (err && err.stack) || err);
+  process.exit(2);
+});

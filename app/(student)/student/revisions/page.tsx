@@ -9,24 +9,24 @@
  * 5. If due > 0: renders RevisionFlow (client component).
  */
 
-import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import Link from 'next/link'
-import RevisionFlow, { type RevisionCard } from '@/components/student/revision/RevisionFlow'
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import Link from 'next/link';
+import RevisionFlow, { type RevisionCard } from '@/components/student/revision/RevisionFlow';
 
-const MAX_CARDS = 20
-const QUESTIONS_PER_CONCEPT = 5
+const MAX_CARDS = 20;
+const QUESTIONS_PER_CONCEPT = 5;
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export default async function RevisionsPage() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) redirect('/login')
-  const userId = (session.user as { id: string }).id
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect('/login');
+  const userId = (session.user as { id: string }).id;
 
-  const now = new Date()
+  const now = new Date();
 
   // 1. Fetch due concepts
   const dueConcepts = await prisma.studentConceptState.findMany({
@@ -44,7 +44,7 @@ export default async function RevisionsPage() {
         },
       },
     },
-  })
+  });
 
   // 2. If nothing is due: empty state
   if (dueConcepts.length === 0) {
@@ -66,52 +66,55 @@ export default async function RevisionsPage() {
           </Link>
         </div>
       </main>
-    )
+    );
   }
 
   // 3. Fetch MCQ questions for each due concept (via topicId)
-  const topicIds = [...new Set(dueConcepts.map((d) => d.concept.topicId))]
+  const topicIds = [...new Set(dueConcepts.map((d) => d.concept.topicId))];
 
-  const questions = topicIds.length > 0
-    ? await prisma.question.findMany({
-        where: {
-          topicId: { in: topicIds },
-          type: 'mcq',
-          choices: { not: undefined },
-          correctAnswer: { not: null },
-        },
-        select: {
-          id: true,
-          topicId: true,
-          prompt: true,
-          choices: true,
-          correctAnswer: true,
-        },
-      })
-    : []
+  const questions =
+    topicIds.length > 0
+      ? await prisma.question.findMany({
+          where: {
+            topicId: { in: topicIds },
+            type: 'mcq',
+            choices: { not: undefined },
+            correctAnswer: { not: null },
+          },
+          select: {
+            id: true,
+            topicId: true,
+            prompt: true,
+            choices: true,
+            correctAnswer: true,
+          },
+        })
+      : [];
 
   // Group questions by topicId for quick lookup
-  const questionsByTopic = new Map<string, typeof questions>()
+  const questionsByTopic = new Map<string, typeof questions>();
   for (const q of questions) {
-    if (!q.topicId) continue
-    if (!questionsByTopic.has(q.topicId)) questionsByTopic.set(q.topicId, [])
-    const list = questionsByTopic.get(q.topicId)!
-    if (list.length < QUESTIONS_PER_CONCEPT) list.push(q)
+    if (!q.topicId) continue;
+    if (!questionsByTopic.has(q.topicId)) questionsByTopic.set(q.topicId, []);
+    const list = questionsByTopic.get(q.topicId)!;
+    if (list.length < QUESTIONS_PER_CONCEPT) list.push(q);
   }
 
   // 4. Build RevisionCard array -- only concepts that have at least one question
-  const cards: RevisionCard[] = []
+  const cards: RevisionCard[] = [];
   for (const d of dueConcepts) {
-    const topicQs = questionsByTopic.get(d.concept.topicId) ?? []
+    const topicQs = questionsByTopic.get(d.concept.topicId) ?? [];
     for (const q of topicQs) {
-      let choices: string[]
+      let choices: string[];
       try {
-        choices = Array.isArray(q.choices) ? (q.choices as string[]) : JSON.parse(String(q.choices))
+        choices = Array.isArray(q.choices)
+          ? (q.choices as string[])
+          : JSON.parse(String(q.choices));
       } catch {
-        continue
+        continue;
       }
-      if (!Array.isArray(choices) || choices.length === 0) continue
-      if (!q.correctAnswer) continue
+      if (!Array.isArray(choices) || choices.length === 0) continue;
+      if (!q.correctAnswer) continue;
       cards.push({
         conceptId: d.conceptId,
         conceptName: d.concept.name,
@@ -120,7 +123,7 @@ export default async function RevisionsPage() {
         prompt: q.prompt,
         choices,
         correctAnswer: q.correctAnswer,
-      })
+      });
     }
   }
 
@@ -144,8 +147,8 @@ export default async function RevisionsPage() {
           </Link>
         </div>
       </main>
-    )
+    );
   }
 
-  return <RevisionFlow cards={cards} totalDue={dueConcepts.length} />
+  return <RevisionFlow cards={cards} totalDue={dueConcepts.length} />;
 }

@@ -1,2 +1,2 @@
-export { default } from '../../jobs/analyticsJobs'
-export * from '../../jobs/analyticsJobs'
+export { default } from '../../jobs/analyticsJobs';
+export * from '../../jobs/analyticsJobs';

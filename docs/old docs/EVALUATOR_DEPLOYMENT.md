@@ -2,7 +2,7 @@
 
 This document contains recommended deployment snippets for running the alert evaluator and metrics exporter in production.
 
-1) Systemd unit (single-node)
+1. Systemd unit (single-node)
 
 Create `/etc/systemd/system/alert-evaluator.service`:
 
@@ -35,14 +35,14 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now alert-evaluator
 ```
 
-2) Procfile (Heroku / container runners)
+2. Procfile (Heroku / container runners)
 
 ```
 evaluator: node -r ts-node/register/transpile-only scripts/runAlertEvaluator.ts
 metrics: node -r ts-node/register/transpile-only scripts/metricsServer.ts
 ```
 
-3) Kubernetes / Helm (minimal Deployment + Service)
+3. Kubernetes / Helm (minimal Deployment + Service)
 
 values.yaml:
 
@@ -53,7 +53,7 @@ image:
   tag: v1.0.0
 env:
   - name: DATABASE_URL
-    value: "postgres://user:pass@postgres:5432/db"
+    value: 'postgres://user:pass@postgres:5432/db'
   - name: REDIS_URL
     valueFrom:
       secretKeyRef:
@@ -91,22 +91,23 @@ spec:
       containers:
         - name: evaluator
           image: your-registry/ai-tutor:v1.0.0
-          command: ["node","-r","ts-node/register/transpile-only","scripts/runAlertEvaluator.ts"]
+          command: ['node', '-r', 'ts-node/register/transpile-only', 'scripts/runAlertEvaluator.ts']
           envFrom:
             - secretRef:
                 name: evaluator-secrets
         - name: metrics
           image: your-registry/ai-tutor:v1.0.0
-          command: ["node","-r","ts-node/register/transpile-only","scripts/metricsServer.ts"]
+          command: ['node', '-r', 'ts-node/register/transpile-only', 'scripts/metricsServer.ts']
           ports:
             - containerPort: 9187
 ```
 
-4) Pushgateway (optional)
+4. Pushgateway (optional)
 
 - If you prefer pushing metrics instead of running a /metrics server, set `PUSHGATEWAY_URL` and the evaluator will try to push metrics at shutdown (or periodically). Example Pushgateway URL: `http://pushgateway.monitoring.svc:9091`.
 
-5) Operational checklist
+5. Operational checklist
+
 - Set repo secret `ALLOW_EVALUATOR_DRY_RUN=1` to enable the CI dry-run test.
 - Provision `REDIS_URL`, set `OPS_EMAIL`, `SLACK_WEBHOOK`, and `PAGER_WEBHOOK` secrets to enable real notifications.
 - Configure monitoring to scrape the `/metrics` endpoint or configure Pushgateway and set `PUSHGATEWAY_URL`.

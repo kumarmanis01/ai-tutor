@@ -29,40 +29,79 @@ export async function POST(req: NextRequest) {
     try {
       const masked = { ...body } as any;
       if (typeof masked.token === 'string') masked.token = `***${String(masked.token).slice(-8)}`;
-      if (typeof masked.phone === 'string') masked.phone = String(masked.phone).replace(/\d(?=\d{4})/g, '*');
-      if (typeof masked.whatsapp_phone === 'string') masked.whatsapp_phone = String(masked.whatsapp_phone).replace(/\d(?=\d{4})/g, '*');
-      logger.info('/api/user/onboarding received payload (masked)', { className: 'api.user.onboarding', methodName: 'POST', masked });
-      const debugEnabled = String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === '1' || String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === 'true';
+      if (typeof masked.phone === 'string')
+        masked.phone = String(masked.phone).replace(/\d(?=\d{4})/g, '*');
+      if (typeof masked.whatsapp_phone === 'string')
+        masked.whatsapp_phone = String(masked.whatsapp_phone).replace(/\d(?=\d{4})/g, '*');
+      logger.info('/api/user/onboarding received payload (masked)', {
+        className: 'api.user.onboarding',
+        methodName: 'POST',
+        masked,
+      });
+      const debugEnabled =
+        String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === '1' ||
+        String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === 'true';
       if (debugEnabled) {
-        logger.debug('/api/user/onboarding received payload (RAW)', { className: 'api.user.onboarding', methodName: 'POST', body });
+        logger.debug('/api/user/onboarding received payload (RAW)', {
+          className: 'api.user.onboarding',
+          methodName: 'POST',
+          body,
+        });
       }
     } catch (logErr) {
-      logger.warn('/api/user/onboarding: failed to mask/log payload', { className: 'api.user.onboarding', methodName: 'POST', error: logErr });
-      logger.debug('/api/user/onboarding raw payload fallback', { className: 'api.user.onboarding', methodName: 'POST', body });
+      logger.warn('/api/user/onboarding: failed to mask/log payload', {
+        className: 'api.user.onboarding',
+        methodName: 'POST',
+        error: logErr,
+      });
+      logger.debug('/api/user/onboarding raw payload fallback', {
+        className: 'api.user.onboarding',
+        methodName: 'POST',
+        body,
+      });
     }
 
     const name = typeof body.name === 'string' ? body.name.trim() : undefined;
     const ageRaw = body.age;
     const age =
-      typeof ageRaw === 'number' && Number.isFinite(ageRaw) ? Math.trunc(ageRaw) :
-      typeof ageRaw === 'string' && ageRaw.trim() !== '' && Number.isFinite(Number(ageRaw)) ? Math.trunc(Number(ageRaw)) :
-      undefined;
-    const gradeRaw = (typeof body.class_grade === 'number' || typeof body.class_grade === 'string') ? body.class_grade : body.grade;
+      typeof ageRaw === 'number' && Number.isFinite(ageRaw)
+        ? Math.trunc(ageRaw)
+        : typeof ageRaw === 'string' && ageRaw.trim() !== '' && Number.isFinite(Number(ageRaw))
+          ? Math.trunc(Number(ageRaw))
+          : undefined;
+    const gradeRaw =
+      typeof body.class_grade === 'number' || typeof body.class_grade === 'string'
+        ? body.class_grade
+        : body.grade;
     const grade = gradeRaw !== undefined && gradeRaw !== null ? String(gradeRaw) : undefined;
     const board = typeof body.board === 'string' ? body.board : undefined;
     // Normalise subject slugs to lowercase to prevent 'Mathematics' vs 'mathematics' mismatch downstream
     const subjects = Array.isArray(body.subjects)
-      ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s).toLowerCase().replace(/\s+/g, '-'))).filter((s) => s.length > 0))]
+      ? [
+          ...new Set(
+            (body.subjects as any[])
+              .map((s) => (s == null ? '' : String(s).toLowerCase().replace(/\s+/g, '-')))
+              .filter((s) => s.length > 0)
+          ),
+        ]
       : undefined;
-    const preferredLanguage = typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
+    const preferredLanguage =
+      typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
     const token = typeof body.token === 'string' ? body.token : undefined;
     const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : undefined;
     const phone = rawPhone ? rawPhone.replace(/[^0-9+]/g, '') : undefined;
-    const rawWhatsappPhone = typeof body.whatsapp_phone === 'string' ? body.whatsapp_phone.trim() : undefined;
+    const rawWhatsappPhone =
+      typeof body.whatsapp_phone === 'string' ? body.whatsapp_phone.trim() : undefined;
     const whatsappPhone = rawWhatsappPhone ? rawWhatsappPhone.replace(/[^0-9+]/g, '') : undefined;
-    const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
+    const parentEmailRaw =
+      typeof body.parent_email === 'string'
+        ? body.parent_email.trim()
+        : typeof body.parentEmail === 'string'
+          ? body.parentEmail.trim()
+          : undefined;
     const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
-    const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
+    const schoolNameRaw =
+      typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
     const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
 
     // Do not create users in onboarding. If there's no session user id, we will return 401 below.
@@ -77,11 +116,13 @@ export async function POST(req: NextRequest) {
     const fieldErrors: Record<string, string> = {};
     if (!grade || String(grade).trim() === '') fieldErrors.class_grade = 'Class is required';
     if (!board || String(board).trim() === '') fieldErrors.board = 'Board is required';
-    if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
+    if (!preferredLanguage || String(preferredLanguage).trim() === '')
+      fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
     // Validate optional school name: trim already applied above; enforce max length
-    if (schoolName && schoolName.length > 120) fieldErrors.school_name = 'School name must be 120 characters or fewer';
+    if (schoolName && schoolName.length > 120)
+      fieldErrors.school_name = 'School name must be 120 characters or fewer';
     // Parent email is collected in a separate post-onboarding step -- not required here.
     // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
     if (Object.keys(fieldErrors).length) {
@@ -126,7 +167,11 @@ export async function POST(req: NextRequest) {
         }
       } catch (valErr) {
         // Non-blocking: if validation query fails, log and continue
-        logger.warn('/api/user/onboarding: subject validation query failed', { className: 'api.user.onboarding', methodName: 'POST', error: valErr });
+        logger.warn('/api/user/onboarding: subject validation query failed', {
+          className: 'api.user.onboarding',
+          methodName: 'POST',
+          error: valErr,
+        });
       }
     }
 
@@ -146,13 +191,21 @@ export async function POST(req: NextRequest) {
     // Mask schoolName so operator logs don't retain school identifiers.
     const maskedUpdates = { ...updates } as any;
     if (maskedUpdates.schoolName !== undefined) maskedUpdates.schoolName = '***REDACTED***';
-    logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates: maskedUpdates });
+    logger.info('/api/user/onboarding userId and updates', {
+      className: 'api.user.onboarding',
+      methodName: 'POST',
+      userId,
+      updates: maskedUpdates,
+    });
     let updatedUser;
     try {
       // First, ensure the user exists; if not, try to resolve via email or phone (without creating)
       const existingById = await prisma.user.findUnique({ where: { id: userId } });
       if (!existingById) {
-        const email = typeof (session?.user as any)?.email === 'string' ? (session!.user as any).email : undefined;
+        const email =
+          typeof (session?.user as any)?.email === 'string'
+            ? (session!.user as any).email
+            : undefined;
         let resolvedUserId: string | undefined = undefined;
         if (email) {
           const byEmail = await prisma.user.findUnique({ where: { email } }).catch(() => null);
@@ -163,11 +216,18 @@ export async function POST(req: NextRequest) {
           if (byPhone) resolvedUserId = byPhone.id;
         }
         if (!resolvedUserId) {
-          logger.warn('/api/user/onboarding: user not found (no create).', { className: 'api.user.onboarding', methodName: 'POST' });
-          res = NextResponse.json({
-            error: 'user_not_found',
-            message: 'Your account record is missing. Please sign out and sign in again to re-link your account.',
-          }, { status: 404 });
+          logger.warn('/api/user/onboarding: user not found (no create).', {
+            className: 'api.user.onboarding',
+            methodName: 'POST',
+          });
+          res = NextResponse.json(
+            {
+              error: 'user_not_found',
+              message:
+                'Your account record is missing. Please sign out and sign in again to re-link your account.',
+            },
+            { status: 404 }
+          );
           logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
           return res;
         }
@@ -175,9 +235,13 @@ export async function POST(req: NextRequest) {
       }
 
       // grade/board immutable after first save -- strip from all PATCH handlers
-      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true, whatsappPhone: true } }).catch(() => null);
+      const gradeRow =
+        existingById ??
+        (await prisma.user
+          .findUnique({ where: { id: userId }, select: { grade: true, whatsappPhone: true } })
+          .catch(() => null));
       if (gradeRow?.grade != null) {
-        delete updates.grade
+        delete updates.grade;
       }
       // whatsappPhone immutable after first save -- only write when not already set
       if (whatsappPhone && !(gradeRow as any)?.whatsappPhone) {
@@ -189,13 +253,15 @@ export async function POST(req: NextRequest) {
       try {
         let prevBoard: string | null = null;
         if (existingById && existingById.board != null) {
-          prevBoard = existingById.board
+          prevBoard = existingById.board;
         } else {
           try {
-            const prev = await prisma.user.findUnique({ where: { id: userId }, select: { board: true } }).catch(() => null)
-            prevBoard = prev?.board ?? null
-          } catch (e) {
-            prevBoard = null
+            const prev = await prisma.user
+              .findUnique({ where: { id: userId }, select: { board: true } })
+              .catch(() => null);
+            prevBoard = prev?.board ?? null;
+          } catch {
+            prevBoard = null;
           }
         }
         const newBoard = updatedUser.board ?? null;
@@ -204,53 +270,89 @@ export async function POST(req: NextRequest) {
           if (lpModel && typeof lpModel.findMany === 'function') {
             // fetch current plans and regenerate using existing plan params
             lpModel
-              .findMany({ where: { studentId: updatedUser.id }, select: { subjectId: true, weeklyGoal: true, examDate: true } })
-              .then(async (plans: Array<{ subjectId: string; weeklyGoal: number; examDate?: Date | null }>) => {
-                if (!plans || plans.length === 0) return;
-                for (const p of plans) {
-                  try {
-                    await generateLearningPlan(updatedUser.id, p.subjectId, {
-                      examDate: p.examDate instanceof Date ? p.examDate : undefined,
-                      weeklyGoal: p.weeklyGoal,
-                    });
-                  } catch (err) {
-                    logger.warn('[onboarding] board-change regen failed', { event: 'learning_plan_regen_failed', context: { studentId: updatedUser.id, subjectId: p.subjectId, error: String(err) } });
+              .findMany({
+                where: { studentId: updatedUser.id },
+                select: { subjectId: true, weeklyGoal: true, examDate: true },
+              })
+              .then(
+                async (
+                  plans: Array<{ subjectId: string; weeklyGoal: number; examDate?: Date | null }>
+                ) => {
+                  if (!plans || plans.length === 0) return;
+                  for (const p of plans) {
+                    try {
+                      await generateLearningPlan(updatedUser.id, p.subjectId, {
+                        examDate: p.examDate instanceof Date ? p.examDate : undefined,
+                        weeklyGoal: p.weeklyGoal,
+                      });
+                    } catch (err) {
+                      logger.warn('[onboarding] board-change regen failed', {
+                        event: 'learning_plan_regen_failed',
+                        context: {
+                          studentId: updatedUser.id,
+                          subjectId: p.subjectId,
+                          error: String(err),
+                        },
+                      });
+                    }
                   }
                 }
-              })
+              )
               .catch((err: any) => {
-                logger.warn('[onboarding] failed to fetch learning plans for board-change regen', { event: 'learning_plan_regen_failed', context: { studentId: updatedUser.id, error: String(err) } });
+                logger.warn('[onboarding] failed to fetch learning plans for board-change regen', {
+                  event: 'learning_plan_regen_failed',
+                  context: { studentId: updatedUser.id, error: String(err) },
+                });
               });
           }
         }
       } catch (err) {
-        logger.warn('[onboarding] board-change regen check failed', { event: 'learning_plan_regen_failed', context: { studentId: updatedUser.id, error: String(err) } });
+        logger.warn('[onboarding] board-change regen check failed', {
+          event: 'learning_plan_regen_failed',
+          context: { studentId: updatedUser.id, error: String(err) },
+        });
       }
-      logger.info('/api/user/onboarding updated user', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
+      logger.info('/api/user/onboarding updated user', {
+        className: 'api.user.onboarding',
+        methodName: 'POST',
+        id: updatedUser.id,
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+      });
 
       // Fire-and-forget: emit subject_selected analytics event when subjects are updated.
       if (subjects && subjects.length > 0) {
-        const previousSubjects = Array.isArray(existingById?.subjects) ? existingById.subjects : []
-        prisma.analyticsEvent.create({
-          data: {
-            eventType: 'subject_selected',
-            userId: updatedUser.id,
-            metadata: {
-              subjects,
-              previous_subjects: previousSubjects,
-              source: 'onboarding',
+        const previousSubjects = Array.isArray(existingById?.subjects) ? existingById.subjects : [];
+        prisma.analyticsEvent
+          .create({
+            data: {
+              eventType: 'subject_selected',
+              userId: updatedUser.id,
+              metadata: {
+                subjects,
+                previous_subjects: previousSubjects,
+                source: 'onboarding',
+              },
             },
-          },
-        }).catch(() => {})
+          })
+          .catch(() => {});
       }
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {
-        logger.error('/api/user/onboarding: prisma schema mismatch on update P2022', { className: 'api.user.onboarding', methodName: 'POST', error: updErr });
-        res = NextResponse.json({
-          error: 'db_schema_mismatch',
-          message: 'Database schema is out of sync with Prisma schema: one or more columns (e.g. `User.board`) are missing. Run `npx prisma migrate dev` to apply pending migrations.',
-          details: updErr?.meta || String(updErr?.message),
-        }, { status: 500 });
+        logger.error('/api/user/onboarding: prisma schema mismatch on update P2022', {
+          className: 'api.user.onboarding',
+          methodName: 'POST',
+          error: updErr,
+        });
+        res = NextResponse.json(
+          {
+            error: 'db_schema_mismatch',
+            message:
+              'Database schema is out of sync with Prisma schema: one or more columns (e.g. `User.board`) are missing. Run `npx prisma migrate dev` to apply pending migrations.',
+            details: updErr?.meta || String(updErr?.message),
+          },
+          { status: 500 }
+        );
         logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
         return res;
       }
@@ -260,7 +362,10 @@ export async function POST(req: NextRequest) {
       if (updErr?.code === 'P2025' || msg.includes('No record was found for an update')) {
         // Attempt a friendly recovery: create or resolve by phone/email, else return 404 with guidance
         try {
-          const email = typeof (session?.user as any)?.email === 'string' ? (session!.user as any).email : undefined;
+          const email =
+            typeof (session?.user as any)?.email === 'string'
+              ? (session!.user as any).email
+              : undefined;
           // Do NOT create; try to resolve and update only
           let fallbackUserId: string | undefined = undefined;
           if (phone) {
@@ -273,37 +378,68 @@ export async function POST(req: NextRequest) {
           }
 
           if (!fallbackUserId) {
-            res = NextResponse.json({
-              error: 'user_not_found',
-              message: 'We could not find your user record to update. Please re-login to refresh your session.',
-            }, { status: 404 });
+            res = NextResponse.json(
+              {
+                error: 'user_not_found',
+                message:
+                  'We could not find your user record to update. Please re-login to refresh your session.',
+              },
+              { status: 404 }
+            );
             logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
             return res;
           }
 
           updatedUser = await prisma.user.update({ where: { id: fallbackUserId }, data: updates });
           userId = fallbackUserId;
-          logger.info('/api/user/onboarding: updated resolved user after P2025', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id });
+          logger.info('/api/user/onboarding: updated resolved user after P2025', {
+            className: 'api.user.onboarding',
+            methodName: 'POST',
+            id: updatedUser.id,
+          });
 
-          res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+          res = NextResponse.json({
+            ok: true,
+            user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone },
+          });
           logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
           return res;
         } catch (recoverErr: any) {
-          logger.warn('/api/user/onboarding: failed to recover from P2025', { className: 'api.user.onboarding', methodName: 'POST', error: recoverErr });
-          res = NextResponse.json({
-            error: 'user_not_found',
-            message: 'We could not find your user record to update. Please try again or re-login to refresh your session.',
-          }, { status: 404 });
+          logger.warn('/api/user/onboarding: failed to recover from P2025', {
+            className: 'api.user.onboarding',
+            methodName: 'POST',
+            error: recoverErr,
+          });
+          res = NextResponse.json(
+            {
+              error: 'user_not_found',
+              message:
+                'We could not find your user record to update. Please try again or re-login to refresh your session.',
+            },
+            { status: 404 }
+          );
           logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
           return res;
         }
       }
-      if (msg.includes('terminating connection due to administrator command') || msg.includes('E57P01')) {
-        logger.warn('/api/user/onboarding: database temporarily unavailable (Neon sleep)', { className: 'api.user.onboarding', methodName: 'POST' });
-        res = new NextResponse(JSON.stringify({ error: 'db_unavailable', message: 'Database temporarily unavailable. Please retry.' }), {
-          status: 503,
-          headers: { 'Retry-After': '3', 'Content-Type': 'application/json' },
+      if (
+        msg.includes('terminating connection due to administrator command') ||
+        msg.includes('E57P01')
+      ) {
+        logger.warn('/api/user/onboarding: database temporarily unavailable (Neon sleep)', {
+          className: 'api.user.onboarding',
+          methodName: 'POST',
         });
+        res = new NextResponse(
+          JSON.stringify({
+            error: 'db_unavailable',
+            message: 'Database temporarily unavailable. Please retry.',
+          }),
+          {
+            status: 503,
+            headers: { 'Retry-After': '3', 'Content-Type': 'application/json' },
+          }
+        );
         logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
         return res;
       }
@@ -319,27 +455,49 @@ export async function POST(req: NextRequest) {
         select: { parentPhoneVerifiedAt: true, accountStatus: true },
       });
       if (!fresh?.parentPhoneVerifiedAt) {
-        await prisma.user.update({
-          where: { id: updatedUser.id },
-          data: { accountStatus: 'pending_parent_verification' },
-        }).catch(() => {});
-        logger.info('/api/user/onboarding: under-DPDP age -- accountStatus set to pending_parent_verification', {
-          className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id,
-        });
+        await prisma.user
+          .update({
+            where: { id: updatedUser.id },
+            data: { accountStatus: 'pending_parent_verification' },
+          })
+          .catch(() => {});
+        logger.info(
+          '/api/user/onboarding: under-DPDP age -- accountStatus set to pending_parent_verification',
+          {
+            className: 'api.user.onboarding',
+            methodName: 'POST',
+            id: updatedUser.id,
+          }
+        );
       }
     }
 
     try {
       if (token) {
-        await prisma.event.create({ data: { userId: updatedUser.id, type: 'otp_widget_token', metadata: { token }, timestamp: new Date() } });
+        await prisma.event.create({
+          data: {
+            userId: updatedUser.id,
+            type: 'otp_widget_token',
+            metadata: { token },
+            timestamp: new Date(),
+          },
+        });
       }
     } catch (evErr) {
-      logger.warn('/api/user/onboarding: failed to persist widget token as event', { className: 'api.user.onboarding', methodName: 'POST', error: evErr });
+      logger.warn('/api/user/onboarding: failed to persist widget token as event', {
+        className: 'api.user.onboarding',
+        methodName: 'POST',
+        error: evErr,
+      });
     }
 
     // Trigger initial learning path generation (non-blocking)
     getDailyTask(updatedUser.id).catch((err) => {
-      logger.warn('/api/user/onboarding: failed to seed initial daily task', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+      logger.warn('/api/user/onboarding: failed to seed initial daily task', {
+        className: 'api.user.onboarding',
+        methodName: 'POST',
+        error: err,
+      });
     });
 
     // Proactive content seeding + diagnostic bootstrap (both non-blocking).
@@ -354,76 +512,92 @@ export async function POST(req: NextRequest) {
     try {
       const gradeNum = Number(grade);
       if (board && Number.isFinite(gradeNum) && subjects && subjects.length > 0) {
-        prisma.classLevel.findFirst({
-          where: {
-            board: { slug: { equals: board, mode: 'insensitive' } },
-            grade: gradeNum,
-          },
-          select: { id: true, boardId: true },
-        }).then(async (cl) => {
-          if (!cl) return;
+        prisma.classLevel
+          .findFirst({
+            where: {
+              board: { slug: { equals: board, mode: 'insensitive' } },
+              grade: gradeNum,
+            },
+            select: { id: true, boardId: true },
+          })
+          .then(async (cl) => {
+            if (!cl) return;
 
-          const subjectPrefs = new Set(subjects.map((s) => String(s).toLowerCase()));
-          const subjectRows = await prisma.subjectDef.findMany({
-            where: { classId: cl.id, lifecycle: 'active' },
-            select: { id: true, slug: true, name: true },
-          });
-          const subjectIds = subjectRows
-            .filter((s) => subjectPrefs.has(String(s.slug).toLowerCase()) || subjectPrefs.has(String(s.name).toLowerCase()))
-            .map((s) => s.id);
-          if (subjectIds.length === 0) return;
+            const subjectPrefs = new Set(subjects.map((s) => String(s).toLowerCase()));
+            const subjectRows = await prisma.subjectDef.findMany({
+              where: { classId: cl.id, lifecycle: 'active' },
+              select: { id: true, slug: true, name: true },
+            });
+            const subjectIds = subjectRows
+              .filter(
+                (s) =>
+                  subjectPrefs.has(String(s.slug).toLowerCase()) ||
+                  subjectPrefs.has(String(s.name).toLowerCase())
+              )
+              .map((s) => s.id);
+            if (subjectIds.length === 0) return;
 
-          // Proactively enqueue hydration for every subject missing content.
-          // enqueueSubjectHydration is idempotent: it skips subjects that already
-          // have topics or that already have a pending/running HydrationJob.
-          const language: LanguageCode = (updatedUser.language as LanguageCode) ?? LanguageCode.en;
-          const hydrationResults = await Promise.allSettled(
-            subjectIds.map((subjectId) =>
-              enqueueSubjectHydration(subjectId, language, 'onboarding'),
-            ),
-          );
-          hydrationResults.forEach((r, i) => {
-            if (r.status === 'rejected') {
-              logger.warn('[onboarding] failed to enqueue subject hydration', {
-                event: 'diagnostic.hydration.onboarding_enqueue_failed',
-                context: { studentId: updatedUser.id, subjectId: subjectIds[i], error: String(r.reason) },
+            // Proactively enqueue hydration for every subject missing content.
+            // enqueueSubjectHydration is idempotent: it skips subjects that already
+            // have topics or that already have a pending/running HydrationJob.
+            const language: LanguageCode =
+              (updatedUser.language as LanguageCode) ?? LanguageCode.en;
+            const hydrationResults = await Promise.allSettled(
+              subjectIds.map((subjectId) =>
+                enqueueSubjectHydration(subjectId, language, 'onboarding')
+              )
+            );
+            hydrationResults.forEach((r, i) => {
+              if (r.status === 'rejected') {
+                logger.warn('[onboarding] failed to enqueue subject hydration', {
+                  event: 'diagnostic.hydration.onboarding_enqueue_failed',
+                  context: {
+                    studentId: updatedUser.id,
+                    subjectId: subjectIds[i],
+                    error: String(r.reason),
+                  },
+                });
+              }
+            });
+
+            // Diagnostic bootstrap: seeds baseline StudentConceptState rows.
+            // Requires chapters to exist, so runs only when the syllabus is already seeded.
+            // Isolated try/catch so a bootstrap failure does not mask hydration errors in logs.
+            try {
+              const chapters = await prisma.chapterDef.findMany({
+                where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
+                select: { id: true },
+              });
+              const chapterIds = chapters.map((c) => c.id);
+              if (chapterIds.length === 0) return;
+
+              await enqueueDiagnosticBootstrapJob({
+                studentId: updatedUser.id,
+                diagnosticSessionId: `bootstrap:${updatedUser.id}`,
+                chapterIds,
+                boardId: cl.boardId,
+                gradeId: cl.id,
+              });
+            } catch (bootstrapErr) {
+              logger.warn('[onboarding] failed to enqueue diagnostic bootstrap', {
+                event: 'diagnostic.bootstrap.enqueue_failed',
+                context: { studentId: updatedUser.id, error: String(bootstrapErr) },
               });
             }
+          })
+          .catch((err) => {
+            logger.warn('[onboarding] background content seeding setup failed', {
+              event: 'diagnostic.seeding.setup_failed',
+              context: { studentId: updatedUser.id, error: String(err) },
+            });
           });
-
-          // Diagnostic bootstrap: seeds baseline StudentConceptState rows.
-          // Requires chapters to exist, so runs only when the syllabus is already seeded.
-          // Isolated try/catch so a bootstrap failure does not mask hydration errors in logs.
-          try {
-            const chapters = await prisma.chapterDef.findMany({
-              where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
-              select: { id: true },
-            });
-            const chapterIds = chapters.map((c) => c.id);
-            if (chapterIds.length === 0) return;
-
-            await enqueueDiagnosticBootstrapJob({
-              studentId: updatedUser.id,
-              diagnosticSessionId: `bootstrap:${updatedUser.id}`,
-              chapterIds,
-              boardId: cl.boardId,
-              gradeId: cl.id,
-            });
-          } catch (bootstrapErr) {
-            logger.warn('[onboarding] failed to enqueue diagnostic bootstrap', {
-              event: 'diagnostic.bootstrap.enqueue_failed',
-              context: { studentId: updatedUser.id, error: String(bootstrapErr) },
-            });
-          }
-        }).catch((err) => {
-          logger.warn('[onboarding] background content seeding setup failed', {
-            event: 'diagnostic.seeding.setup_failed',
-            context: { studentId: updatedUser.id, error: String(err) },
-          });
-        });
       }
     } catch (err) {
-      logger.warn('/api/user/onboarding: failed to trigger content seeding', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+      logger.warn('/api/user/onboarding: failed to trigger content seeding', {
+        className: 'api.user.onboarding',
+        methodName: 'POST',
+        error: err,
+      });
     }
 
     // AC-07 (F-STU-003): when subjects change and plans already exist, generate
@@ -433,54 +607,61 @@ export async function POST(req: NextRequest) {
       const finalGrade = updatedUser.grade ? Number(updatedUser.grade) : null;
       const finalBoard = updatedUser.board ?? null;
       if (finalGrade && finalBoard) {
-        prisma.learningPlan.findMany({
-          where: { studentId: finalUserId },
-          select: { subjectId: true, examDate: true, weeklyGoal: true },
-        }).then(async (existingPlans) => {
-          if (existingPlans.length === 0) return; // first-time onboarding; generate-plan handles it
-          const coveredSubjectIds = new Set(existingPlans.map((p) => p.subjectId));
-          const normSlugs = subjects.map((s) => String(s).toLowerCase().replace(/\s+/g, '-'));
-          const subjectDefs = await prisma.subjectDef.findMany({
-            where: {
-              slug: { in: normSlugs },
-              lifecycle: 'active',
-              class: {
-                grade: finalGrade,
-                board: { slug: { equals: finalBoard, mode: 'insensitive' } },
+        prisma.learningPlan
+          .findMany({
+            where: { studentId: finalUserId },
+            select: { subjectId: true, examDate: true, weeklyGoal: true },
+          })
+          .then(async (existingPlans) => {
+            if (existingPlans.length === 0) return; // first-time onboarding; generate-plan handles it
+            const coveredSubjectIds = new Set(existingPlans.map((p) => p.subjectId));
+            const normSlugs = subjects.map((s) => String(s).toLowerCase().replace(/\s+/g, '-'));
+            const subjectDefs = await prisma.subjectDef.findMany({
+              where: {
+                slug: { in: normSlugs },
+                lifecycle: 'active',
+                class: {
+                  grade: finalGrade,
+                  board: { slug: { equals: finalBoard, mode: 'insensitive' } },
+                },
               },
-            },
-            select: { id: true },
-          });
-          const newSubjects = subjectDefs.filter((s) => !coveredSubjectIds.has(s.id));
-          if (newSubjects.length === 0) return;
-          // Use existing plan params from any current plan as defaults
-          const ref = existingPlans[0];
-          for (const subj of newSubjects) {
-            try {
-              const planId = await generateLearningPlan(finalUserId, subj.id, {
-                examDate: ref.examDate instanceof Date ? ref.examDate : undefined,
-                weeklyGoal: ref.weeklyGoal,
-              });
+              select: { id: true },
+            });
+            const newSubjects = subjectDefs.filter((s) => !coveredSubjectIds.has(s.id));
+            if (newSubjects.length === 0) return;
+            // Use existing plan params from any current plan as defaults
+            const ref = existingPlans[0];
+            for (const subj of newSubjects) {
+              try {
+                const planId = await generateLearningPlan(finalUserId, subj.id, {
+                  examDate: ref.examDate instanceof Date ? ref.examDate : undefined,
+                  weeklyGoal: ref.weeklyGoal,
+                });
 
-              if (planId === null) {
+                if (planId === null) {
+                  logger.warn('[onboarding] AC-07: failed to generate plan for new subject', {
+                    event: 'learning_plan_subject_regen_failed',
+                    context: {
+                      studentId: finalUserId,
+                      subjectId: subj.id,
+                      error: 'generateLearningPlan returned null',
+                    },
+                  });
+                }
+              } catch (err) {
                 logger.warn('[onboarding] AC-07: failed to generate plan for new subject', {
                   event: 'learning_plan_subject_regen_failed',
-                  context: { studentId: finalUserId, subjectId: subj.id, error: 'generateLearningPlan returned null' },
+                  context: { studentId: finalUserId, subjectId: subj.id, error: String(err) },
                 });
               }
-            } catch (err) {
-              logger.warn('[onboarding] AC-07: failed to generate plan for new subject', {
-                event: 'learning_plan_subject_regen_failed',
-                context: { studentId: finalUserId, subjectId: subj.id, error: String(err) },
-              });
             }
-          }
-        }).catch((err) => {
-          logger.warn('[onboarding] AC-07: subject regen check failed', {
-            event: 'learning_plan_subject_regen_check_failed',
-            context: { studentId: finalUserId, error: String(err) },
+          })
+          .catch((err) => {
+            logger.warn('[onboarding] AC-07: subject regen check failed', {
+              event: 'learning_plan_subject_regen_check_failed',
+              context: { studentId: finalUserId, error: String(err) },
+            });
           });
-        });
       }
     }
 
@@ -495,27 +676,44 @@ export async function POST(req: NextRequest) {
         html: welcomeEmailHtml(updatedUser.name ?? 'there'),
       })
         .then(() =>
-          prisma.user.update({
-            where: { id: updatedUser.id },
-            data: { welcomeEmailSent: true },
-          }).catch((e) =>
-            logger.warn('/api/user/onboarding: failed to set welcomeEmailSent', {
-              className: 'api.user.onboarding', methodName: 'POST', error: e,
-            }),
-          ),
+          prisma.user
+            .update({
+              where: { id: updatedUser.id },
+              data: { welcomeEmailSent: true },
+            })
+            .catch((e) =>
+              logger.warn('/api/user/onboarding: failed to set welcomeEmailSent', {
+                className: 'api.user.onboarding',
+                methodName: 'POST',
+                error: e,
+              })
+            )
         )
         .catch(() => {
           // sendMailSafe never throws; this catch is defence-in-depth
         });
     }
 
-    res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+    res = NextResponse.json({
+      ok: true,
+      user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone },
+    });
     logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('/api/user/onboarding error', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+    logger.error('/api/user/onboarding error', {
+      className: 'api.user.onboarding',
+      methodName: 'POST',
+      error: err,
+    });
     // Provide a clearer error message to avoid confusion for users
-    res = NextResponse.json({ error: formatErrorForResponse(err), message: 'Something went wrong while saving your details. Please try again.' }, { status: 500 });
+    res = NextResponse.json(
+      {
+        error: formatErrorForResponse(err),
+        message: 'Something went wrong while saving your details. Please try again.',
+      },
+      { status: 500 }
+    );
     logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
     return res;
   }

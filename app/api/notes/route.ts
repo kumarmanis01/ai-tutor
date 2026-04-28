@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { assertNoStringFilters } from '@/lib/guards/noStringFilters';
 import { formatErrorForResponse } from '@/lib/errorResponse';
@@ -7,7 +7,9 @@ import { logger } from '@/lib/logger';
 
 export async function GET(req: Request) {
   try {
-    try { assertNoStringFilters(req); } catch (e) {
+    try {
+      assertNoStringFilters(req);
+    } catch (e) {
       return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 400 });
     }
 
@@ -30,17 +32,19 @@ export async function GET(req: Request) {
     const publicWhere: any = { isPublic: true };
     if (Object.keys(publicStudentWhere).length > 0) publicWhere.student = publicStudentWhere;
     if (subject) publicWhere.subject = subject;
-    if (q) publicWhere.OR = [
-      { title: { contains: q, mode: 'insensitive' } },
-      { content: { contains: q, mode: 'insensitive' } },
-    ];
+    if (q)
+      publicWhere.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { content: { contains: q, mode: 'insensitive' } },
+      ];
 
     const ownWhere: any = { studentId: session.user.id };
     if (subject) ownWhere.subject = subject;
-    if (q) ownWhere.OR = [
-      { title: { contains: q, mode: 'insensitive' } },
-      { content: { contains: q, mode: 'insensitive' } },
-    ];
+    if (q)
+      ownWhere.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { content: { contains: q, mode: 'insensitive' } },
+      ];
 
     const notes = await prisma.note.findMany({
       where: { OR: [ownWhere, publicWhere] },

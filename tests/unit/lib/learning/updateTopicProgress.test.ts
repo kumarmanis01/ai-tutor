@@ -26,7 +26,7 @@ jest.mock('@/lib/prisma', () => ({
       fn({
         $executeRaw: mockExecuteRaw,
         studentTopicMastery: { upsert: mockMasteryUpsert },
-      }),
+      })
     ),
     studentTopicProgress: { findUnique: mockProgressFindUnique },
     topicDef: { findUnique: mockTopicDefFindUnique },
@@ -49,7 +49,6 @@ import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('updateStudentTopicProgress — dual-write', () => {
-
   beforeEach(() => {
     jest.clearAllMocks();
     mockExecuteRaw.mockResolvedValue(1);
@@ -139,12 +138,11 @@ describe('updateStudentTopicProgress — dual-write', () => {
     expect(prisma.topicDef.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'topic-algebra' },
-      }),
+      })
     );
 
     const upsertCall = mockMasteryUpsert.mock.calls[0][0];
     expect(upsertCall.create.subject).toBe('Mathematics');
     expect(upsertCall.create.chapter).toBe('Algebra');
   });
-
 });

@@ -29,7 +29,7 @@ export function useLearningSnapshot() {
   const { data, error, isLoading } = useSWR<LearningSnapshotResponse>(
     '/api/home/learning-snapshot',
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 
   return {

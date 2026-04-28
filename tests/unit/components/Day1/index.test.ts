@@ -53,8 +53,7 @@ describe('Day-1 Component Exports', () => {
     });
 
     it('should have EXACTLY 4 screen component files', () => {
-      const screenFiles = fs.readdirSync(componentsDir)
-        .filter(f => f.endsWith('Screen.tsx'));
+      const screenFiles = fs.readdirSync(componentsDir).filter((f) => f.endsWith('Screen.tsx'));
       expect(screenFiles).toHaveLength(4);
       expect(screenFiles).toHaveLength(DAY1_RULES.TOTAL_SCREENS);
     });

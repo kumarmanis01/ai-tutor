@@ -17,16 +17,19 @@
  */
 
 import { logger } from '../lib/logger.js';
-import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
+import {
+  markIgnoredRecommendations,
+  cleanupOldIgnoredRecommendations,
+} from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
 import { runWeeklyQuestionHealth } from './jobs/weeklyQuestionHealth.js';
 import { runInactivityAlerts } from './jobs/inactivityAlert.js';
-import { runRecoveryCheck } from '../lib/failureRecovery.js'
+import { runRecoveryCheck } from '../lib/failureRecovery.js';
 import { precomputeReadiness } from './jobs/precomputeReadiness.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
-import { runDailyCostReport } from './services/costReportingWorker.js'
+import { runDailyCostReport } from './services/costReportingWorker.js';
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
 import { processReadinessDropAlerts } from './services/readinessDropWorker.js';
 import { runMonthlyMisconceptionPrevalence } from './services/misconceptionPrevalenceWorker.js';
@@ -86,7 +89,7 @@ async function runMarkIgnoredJob() {
     logger.info('scheduler.markIgnored.completed', { count });
   } catch (error) {
     logger.error('scheduler.markIgnored.error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
@@ -104,7 +107,7 @@ async function runCleanupJob() {
     logger.info('scheduler.cleanup.completed', { count });
   } catch (error) {
     logger.error('scheduler.cleanup.error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
@@ -131,11 +134,13 @@ async function runWeeklyParentJob() {
       const lowCount = await runWeeklyQuestionHealth();
       logger.info('scheduler.weeklyQuestionHealth.completed', { lowCount });
     } catch (err) {
-      logger.error('scheduler.weeklyQuestionHealth.error', { error: err instanceof Error ? err.message : String(err) });
+      logger.error('scheduler.weeklyQuestionHealth.error', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   } catch (error) {
     logger.error('scheduler.weeklyParentJob.error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
@@ -153,7 +158,7 @@ async function runHydrationReconciler() {
     logger.info('scheduler.hydrationReconciler.completed');
   } catch (error) {
     logger.error('scheduler.hydrationReconciler.error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
@@ -166,16 +171,16 @@ async function runHydrationReconciler() {
  */
 async function runCostReportJob() {
   try {
-    logger.info('scheduler.costReport.starting')
-    const result = await runDailyCostReport()
-    logger.info('scheduler.costReport.completed', { ...result })
+    logger.info('scheduler.costReport.starting');
+    const result = await runDailyCostReport();
+    logger.info('scheduler.costReport.completed', { ...result });
   } catch (error) {
     logger.error('scheduler.costReport.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
 
-  setTimeout(runCostReportJob, COST_REPORT_INTERVAL_MS)
+  setTimeout(runCostReportJob, COST_REPORT_INTERVAL_MS);
 }
 
 /**
@@ -183,24 +188,24 @@ async function runCostReportJob() {
  */
 async function runReadinessPrecompute() {
   try {
-    logger.info('scheduler.readinessPrecompute.starting')
-    const { students, scores } = await precomputeReadiness()
-    logger.info('scheduler.readinessPrecompute.completed', { students, scores })
+    logger.info('scheduler.readinessPrecompute.starting');
+    const { students, scores } = await precomputeReadiness();
+    logger.info('scheduler.readinessPrecompute.completed', { students, scores });
   } catch (error) {
     logger.error('scheduler.readinessPrecompute.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
 
-  setTimeout(runReadinessPrecompute, READINESS_PRECOMPUTE_INTERVAL_MS)
+  setTimeout(runReadinessPrecompute, READINESS_PRECOMPUTE_INTERVAL_MS);
 }
 
 // ── Push notification helpers (called inside runDailyMaintenanceJob) ─────────
 
 async function runInactivityPush(): Promise<void> {
-  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-  const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
 
   // Students inactive for exactly 2 days (first nudge)
   const inactiveDay2 = await prisma.user.findMany({
@@ -209,9 +214,9 @@ async function runInactivityPush(): Promise<void> {
       lastSessionDate: { gte: threeDaysAgo, lt: twoDaysAgo },
     },
     select: { id: true, currentStreak: true },
-  })
+  });
   for (const student of inactiveDay2) {
-    await sendPushSafe(student.id, PUSH_NOTIFICATIONS.inactivity_day2(student.currentStreak ?? 0))
+    await sendPushSafe(student.id, PUSH_NOTIFICATIONS.inactivity_day2(student.currentStreak ?? 0));
   }
 
   // Students inactive for exactly 3 days (second nudge with topic)
@@ -221,86 +226,86 @@ async function runInactivityPush(): Promise<void> {
       lastSessionDate: { gte: fourDaysAgo, lt: threeDaysAgo },
     },
     select: { id: true },
-  })
+  });
   for (const student of inactiveDay3) {
     const nextItem = await prisma.learningPlanItem.findFirst({
       where: { plan: { studentId: student.id }, status: 'UPCOMING' },
       include: { concept: { select: { name: true } } },
       orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-    })
-    const topicName = nextItem?.concept?.name ?? 'your next topic'
-    await sendPushSafe(student.id, PUSH_NOTIFICATIONS.inactivity_day3(topicName))
+    });
+    const topicName = nextItem?.concept?.name ?? 'your next topic';
+    await sendPushSafe(student.id, PUSH_NOTIFICATIONS.inactivity_day3(topicName));
   }
   logger.info('scheduler.push.inactivity', {
     day2: inactiveDay2.length,
     day3: inactiveDay3.length,
-  })
+  });
 }
 
 async function runExamCountdownPush(): Promise<void> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const examMilestones = [14, 7, 3, 1]
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const examMilestones = [14, 7, 3, 1];
 
   for (const daysLeft of examMilestones) {
-    const targetDate = new Date(today)
-    targetDate.setDate(targetDate.getDate() + daysLeft)
-    const nextDay = new Date(targetDate)
-    nextDay.setDate(nextDay.getDate() + 1)
+    const targetDate = new Date(today);
+    targetDate.setDate(targetDate.getDate() + daysLeft);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
 
     const plans = await prisma.learningPlan.findMany({
       where: { examDate: { gte: targetDate, lt: nextDay } },
       select: { studentId: true, subjectId: true },
-    })
+    });
 
     for (const plan of plans) {
       if (daysLeft === 14) {
         const readiness = await import('../lib/student/examReadiness.js')
           .then((m) => m.computeReadinessScore(plan.studentId, plan.subjectId))
-          .catch(() => ({ score: 0 }))
+          .catch(() => ({ score: 0 }));
         await sendPushSafe(
           plan.studentId,
-          PUSH_NOTIFICATIONS.exam_14_days(plan.subjectId, readiness.score),
-        )
+          PUSH_NOTIFICATIONS.exam_14_days(plan.subjectId, readiness.score)
+        );
       } else if (daysLeft === 7) {
         const topItem = await prisma.learningPlanItem.findFirst({
           where: { plan: { studentId: plan.studentId }, status: 'UPCOMING' },
           include: { concept: { select: { name: true } } },
           orderBy: [{ weekNumber: 'asc' }],
-        })
+        });
         await sendPushSafe(
           plan.studentId,
-          PUSH_NOTIFICATIONS.exam_7_days(plan.subjectId, topItem?.concept?.name ?? 'revision'),
-        )
+          PUSH_NOTIFICATIONS.exam_7_days(plan.subjectId, topItem?.concept?.name ?? 'revision')
+        );
       } else if (daysLeft === 3) {
-        await sendPushSafe(plan.studentId, PUSH_NOTIFICATIONS.exam_3_days(plan.subjectId))
+        await sendPushSafe(plan.studentId, PUSH_NOTIFICATIONS.exam_3_days(plan.subjectId));
       } else if (daysLeft === 1) {
-        await sendPushSafe(plan.studentId, PUSH_NOTIFICATIONS.exam_day(plan.subjectId))
+        await sendPushSafe(plan.studentId, PUSH_NOTIFICATIONS.exam_day(plan.subjectId));
       }
     }
   }
-  logger.info('scheduler.push.examCountdown', { milestones: examMilestones })
+  logger.info('scheduler.push.examCountdown', { milestones: examMilestones });
 }
 
 async function runRevisionDuePush(): Promise<void> {
   // Only send if current time is between 07:30-09:00 IST
-  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
-  const hourIST = nowIST.getUTCHours()
-  const minuteIST = nowIST.getUTCMinutes()
-  const afterHalfPast7 = hourIST === 7 ? minuteIST >= 30 : hourIST === 8
-  if (!afterHalfPast7) return
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const hourIST = nowIST.getUTCHours();
+  const minuteIST = nowIST.getUTCMinutes();
+  const afterHalfPast7 = hourIST === 7 ? minuteIST >= 30 : hourIST === 8;
+  if (!afterHalfPast7) return;
 
   const groups = await prisma.studentConceptState.groupBy({
     by: ['studentId'],
     where: { nextReviewAt: { lte: new Date() } },
     _count: { id: true },
-  })
+  });
   for (const { studentId, _count } of groups) {
     if (_count.id > 0) {
-      await sendPushSafe(studentId, PUSH_NOTIFICATIONS.revision_due(_count.id))
+      await sendPushSafe(studentId, PUSH_NOTIFICATIONS.revision_due(_count.id));
     }
   }
-  logger.info('scheduler.push.revisionDue', { studentsNotified: groups.length })
+  logger.info('scheduler.push.revisionDue', { studentsNotified: groups.length });
 }
 
 /**
@@ -310,18 +315,18 @@ async function runRevisionDuePush(): Promise<void> {
  */
 async function runFreemiumResetNotifications(): Promise<void> {
   try {
-    const result = await sendFreemiumResetNotifications()
+    const result = await sendFreemiumResetNotifications();
     if (!result.skipped) {
       logger.info('scheduler.freemiumResetNotifications.completed', {
         daysLeft: result.daysLeft,
         eligible: result.eligible,
         sent: result.sent,
-      })
+      });
     }
   } catch (error) {
     logger.error('scheduler.freemiumResetNotifications.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
 }
 
@@ -353,11 +358,13 @@ async function runDailyMaintenanceJob() {
     // are available for the readiness-drop detector. This is best-effort and
     // will not abort the rest of the maintenance job on failure.
     try {
-      logger.info('scheduler.ensureReadinessPrecompute.starting')
-      await precomputeReadiness()
-      logger.info('scheduler.ensureReadinessPrecompute.completed')
+      logger.info('scheduler.ensureReadinessPrecompute.starting');
+      await precomputeReadiness();
+      logger.info('scheduler.ensureReadinessPrecompute.completed');
     } catch (e) {
-      logger.error('scheduler.ensureReadinessPrecompute.failed', { err: e instanceof Error ? e.message : String(e) })
+      logger.error('scheduler.ensureReadinessPrecompute.failed', {
+        err: e instanceof Error ? e.message : String(e),
+      });
     }
 
     // Parent inactivity alerts are handled by `runInactivityAlerts()` above.
@@ -367,7 +374,9 @@ async function runDailyMaintenanceJob() {
     try {
       await processReadinessDropAlerts();
     } catch (e) {
-      logger.error('scheduler.readinessDrop.failed', { err: e instanceof Error ? e.message : String(e) });
+      logger.error('scheduler.readinessDrop.failed', {
+        err: e instanceof Error ? e.message : String(e),
+      });
     }
 
     // ── Notify students for resolved escalations that haven't been notified yet
@@ -375,7 +384,9 @@ async function runDailyMaintenanceJob() {
       const processed = await processDoubtEscalationNotifications();
       logger.info('scheduler.doubtEscalationNotifier.completed', { processed });
     } catch (e) {
-      logger.error('scheduler.doubtEscalationNotifier.error', { err: e instanceof Error ? e.message : String(e) });
+      logger.error('scheduler.doubtEscalationNotifier.error', {
+        err: e instanceof Error ? e.message : String(e),
+      });
     }
 
     // ── Notify students waiting for their diagnostic to become available ──────
@@ -383,7 +394,9 @@ async function runDailyMaintenanceJob() {
       const { checked, notified } = await runDiagnosticReadinessCheck();
       logger.info('scheduler.diagnosticReadinessCheck.completed', { checked, notified });
     } catch (e) {
-      logger.error('scheduler.diagnosticReadinessCheck.error', { err: e instanceof Error ? e.message : String(e) });
+      logger.error('scheduler.diagnosticReadinessCheck.error', {
+        err: e instanceof Error ? e.message : String(e),
+      });
     }
 
     // ── Push: exam countdown reminders ──────────────────────────────────
@@ -428,15 +441,15 @@ function msUntilNextWeeklyRun(targetDay: number, targetHour: number): number {
  */
 async function runWeeklyPlanAdjustJob() {
   try {
-    logger.info('scheduler.weeklyPlanAdjust.starting')
-    const { checked, adjusted } = await weeklyPlanAdjust()
-    logger.info('scheduler.weeklyPlanAdjust.completed', { checked, adjusted })
+    logger.info('scheduler.weeklyPlanAdjust.starting');
+    const { checked, adjusted } = await weeklyPlanAdjust();
+    logger.info('scheduler.weeklyPlanAdjust.completed', { checked, adjusted });
   } catch (error) {
     logger.error('scheduler.weeklyPlanAdjust.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
-  setTimeout(runWeeklyPlanAdjustJob, WEEKLY_PLAN_ADJUST_INTERVAL_MS)
+  setTimeout(runWeeklyPlanAdjustJob, WEEKLY_PLAN_ADJUST_INTERVAL_MS);
 }
 
 /**
@@ -444,15 +457,15 @@ async function runWeeklyPlanAdjustJob() {
  */
 async function runDataDeletionJob() {
   try {
-    logger.info('scheduler.dataDeletion.starting')
-    const result = await runDataDeletionCycle()
-    logger.info('scheduler.dataDeletion.completed', result)
+    logger.info('scheduler.dataDeletion.starting');
+    const result = await runDataDeletionCycle();
+    logger.info('scheduler.dataDeletion.completed', result);
   } catch (error) {
     logger.error('scheduler.dataDeletion.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
-  setTimeout(runDataDeletionJob, DATA_DELETION_INTERVAL_MS)
+  setTimeout(runDataDeletionJob, DATA_DELETION_INTERVAL_MS);
 }
 
 /**
@@ -473,7 +486,9 @@ async function runMisconceptionPrevalenceJob() {
     const res = await runMonthlyMisconceptionPrevalence();
     logger.info('scheduler.misconceptionPrevalence.completed', res);
   } catch (err) {
-    logger.error('scheduler.misconceptionPrevalence.error', { error: err instanceof Error ? err.message : String(err) });
+    logger.error('scheduler.misconceptionPrevalence.error', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   // Schedule next run in ~30 days (approximate monthly cadence)
@@ -485,15 +500,15 @@ async function runMisconceptionPrevalenceJob() {
  */
 async function runWeeklyRatingAggregationJob() {
   try {
-    logger.info('scheduler.weeklyRatingAggregation.starting')
-    const result = await runWeeklyRatingAggregation()
-    logger.info('scheduler.weeklyRatingAggregation.completed', { ...result })
+    logger.info('scheduler.weeklyRatingAggregation.starting');
+    const result = await runWeeklyRatingAggregation();
+    logger.info('scheduler.weeklyRatingAggregation.completed', { ...result });
   } catch (error) {
     logger.error('scheduler.weeklyRatingAggregation.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
-  setTimeout(runWeeklyRatingAggregationJob, WEEKLY_RATING_INTERVAL_MS)
+  setTimeout(runWeeklyRatingAggregationJob, WEEKLY_RATING_INTERVAL_MS);
 }
 
 /**
@@ -501,15 +516,15 @@ async function runWeeklyRatingAggregationJob() {
  */
 async function runDailyLatencyReportJob() {
   try {
-    logger.info('scheduler.dailyLatencyReport.starting')
-    const result = await runDailyLatencyReport()
-    logger.info('scheduler.dailyLatencyReport.completed', { ...result })
+    logger.info('scheduler.dailyLatencyReport.starting');
+    const result = await runDailyLatencyReport();
+    logger.info('scheduler.dailyLatencyReport.completed', { ...result });
   } catch (error) {
     logger.error('scheduler.dailyLatencyReport.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
-  setTimeout(runDailyLatencyReportJob, DAILY_LATENCY_INTERVAL_MS)
+  setTimeout(runDailyLatencyReportJob, DAILY_LATENCY_INTERVAL_MS);
 }
 
 /**
@@ -517,15 +532,15 @@ async function runDailyLatencyReportJob() {
  */
 async function runDailyQuestionGenMetricsJob() {
   try {
-    logger.info('scheduler.dailyQuestionGenMetrics.starting')
-    const result = await runDailyQuestionGenMetrics()
-    logger.info('scheduler.dailyQuestionGenMetrics.completed', { ...result })
+    logger.info('scheduler.dailyQuestionGenMetrics.starting');
+    const result = await runDailyQuestionGenMetrics();
+    logger.info('scheduler.dailyQuestionGenMetrics.completed', { ...result });
   } catch (error) {
     logger.error('scheduler.dailyQuestionGenMetrics.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
-  setTimeout(runDailyQuestionGenMetricsJob, DAILY_QUESTION_GEN_INTERVAL_MS)
+  setTimeout(runDailyQuestionGenMetricsJob, DAILY_QUESTION_GEN_INTERVAL_MS);
 }
 
 /**
@@ -534,18 +549,18 @@ async function runDailyQuestionGenMetricsJob() {
  */
 async function runAnalyticsAggregatorJob() {
   try {
-    logger.info('scheduler.analyticsAggregator.starting')
+    logger.info('scheduler.analyticsAggregator.starting');
     // Aggregate yesterday so all events for the day are fully ingested
-    const yesterday = new Date()
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1)
-    const courses = await aggregateDay(yesterday)
-    logger.info('scheduler.analyticsAggregator.completed', { coursesProcessed: courses.length })
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const courses = await aggregateDay(yesterday);
+    logger.info('scheduler.analyticsAggregator.completed', { coursesProcessed: courses.length });
   } catch (error) {
     logger.error('scheduler.analyticsAggregator.error', {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
   }
-  setTimeout(runAnalyticsAggregatorJob, ANALYTICS_AGGREGATE_INTERVAL_MS)
+  setTimeout(runAnalyticsAggregatorJob, ANALYTICS_AGGREGATE_INTERVAL_MS);
 }
 
 /**
@@ -594,34 +609,46 @@ export async function startScheduler() {
   setTimeout(runWeeklyPlanAdjustJob, delayWeeklyPlanAdjust);
 
   // Data deletion: 02:00 AM IST = 20:30 UTC
-  const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000
-  logger.info('scheduler.scheduled.dataDeletion', { firstRun: new Date(Date.now() + delayDataDeletion).toISOString() })
+  const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000;
+  logger.info('scheduler.scheduled.dataDeletion', {
+    firstRun: new Date(Date.now() + delayDataDeletion).toISOString(),
+  });
   setTimeout(runDataDeletionJob, delayDataDeletion);
 
   // Monthly misconception prevalence job (1st of next month at 04:00 UTC)
-  const delayMonthlyMisconception = msUntilNextMonthlyRun(4)
-  logger.info('scheduler.scheduled.misconceptionPrevalence', { firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString() })
+  const delayMonthlyMisconception = msUntilNextMonthlyRun(4);
+  logger.info('scheduler.scheduled.misconceptionPrevalence', {
+    firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString(),
+  });
   setTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
 
   // Weekly rating aggregation: Sunday 6 AM UTC
-  const delayWeeklyRating = msUntilNextWeeklyRun(0, 6)
-  logger.info('scheduler.scheduled.weeklyRatingAggregation', { firstRun: new Date(Date.now() + delayWeeklyRating).toISOString() })
-  setTimeout(runWeeklyRatingAggregationJob, delayWeeklyRating)
+  const delayWeeklyRating = msUntilNextWeeklyRun(0, 6);
+  logger.info('scheduler.scheduled.weeklyRatingAggregation', {
+    firstRun: new Date(Date.now() + delayWeeklyRating).toISOString(),
+  });
+  setTimeout(runWeeklyRatingAggregationJob, delayWeeklyRating);
 
   // Daily latency report: 01:00 UTC
-  const delayLatencyReport = msUntilNextRun(1)
-  logger.info('scheduler.scheduled.dailyLatencyReport', { firstRun: new Date(Date.now() + delayLatencyReport).toISOString() })
-  setTimeout(runDailyLatencyReportJob, delayLatencyReport)
+  const delayLatencyReport = msUntilNextRun(1);
+  logger.info('scheduler.scheduled.dailyLatencyReport', {
+    firstRun: new Date(Date.now() + delayLatencyReport).toISOString(),
+  });
+  setTimeout(runDailyLatencyReportJob, delayLatencyReport);
 
   // Daily question-gen metrics: 01:30 UTC
-  const delayQuestionGenMetrics = msUntilNextRun(1) + 30 * 60 * 1000
-  logger.info('scheduler.scheduled.dailyQuestionGenMetrics', { firstRun: new Date(Date.now() + delayQuestionGenMetrics).toISOString() })
-  setTimeout(runDailyQuestionGenMetricsJob, delayQuestionGenMetrics)
+  const delayQuestionGenMetrics = msUntilNextRun(1) + 30 * 60 * 1000;
+  logger.info('scheduler.scheduled.dailyQuestionGenMetrics', {
+    firstRun: new Date(Date.now() + delayQuestionGenMetrics).toISOString(),
+  });
+  setTimeout(runDailyQuestionGenMetricsJob, delayQuestionGenMetrics);
 
   // Analytics daily aggregation: 03:30 UTC (9 AM IST) -- aggregate previous day's events
-  const delayAnalyticsAggregate = msUntilNextRun(3) + 30 * 60 * 1000
-  logger.info('scheduler.scheduled.analyticsAggregator', { firstRun: new Date(Date.now() + delayAnalyticsAggregate).toISOString() })
-  setTimeout(runAnalyticsAggregatorJob, delayAnalyticsAggregate)
+  const delayAnalyticsAggregate = msUntilNextRun(3) + 30 * 60 * 1000;
+  logger.info('scheduler.scheduled.analyticsAggregator', {
+    firstRun: new Date(Date.now() + delayAnalyticsAggregate).toISOString(),
+  });
+  setTimeout(runAnalyticsAggregatorJob, delayAnalyticsAggregate);
 
   logger.info('scheduler.started');
 }
@@ -709,7 +736,7 @@ const isDirectRun = (() => {
 if (isDirectRun) {
   startScheduler().catch((error) => {
     logger.error('scheduler.fatal', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     process.exit(1);
   });

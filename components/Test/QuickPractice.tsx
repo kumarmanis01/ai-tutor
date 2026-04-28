@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import AttemptRunner from './AttemptRunner';
@@ -56,7 +56,9 @@ export default function QuickPractice(props: {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Quick Practice</h3>
-          <p className="text-sm text-gray-600">{props.subject || 'General'} • {props.grade || 'Any'} • {props.board || 'Any'}</p>
+          <p className="text-sm text-gray-600">
+            {props.subject || 'General'} • {props.grade || 'Any'} • {props.board || 'Any'}
+          </p>
         </div>
         <button
           className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"

@@ -11,9 +11,17 @@
  * - 2026-02-03 | claude | refactored to use session-cached hierarchy API
  */
 
-"use client";
+'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { logger } from '@/lib/logger';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import type { AcademicHierarchyResponse, HierarchySubject } from '@/hooks/useAcademicHierarchy';
@@ -42,7 +50,7 @@ export class HttpNotesService implements NotesService {
           hierarchyCache = await res.json();
         }
       }
-      
+
       if (hierarchyCache) {
         const board = hierarchyCache.boards.find(
           (b) => b.slug.toLowerCase() === boardSlug.toLowerCase() || b.id === boardSlug
@@ -55,7 +63,7 @@ export class HttpNotesService implements NotesService {
         }));
       }
     }
-    
+
     // Fallback: existing notes/subjects endpoint without classId
     const res = await fetch('/api/notes/subjects');
     if (!res.ok) return [];
@@ -103,13 +111,30 @@ export type NotesAPI = NotesState & {
 
 const Ctx = createContext<NotesAPI | null>(null);
 
-export function NotesProvider({ children, service }: { children: React.ReactNode; service?: NotesService }) {
+export function NotesProvider({
+  children,
+  service,
+}: {
+  children: React.ReactNode;
+  service?: NotesService;
+}) {
   const svc = useMemo(() => service ?? new HttpNotesService(), [service]);
   const { data: profile, loading: profileLoading } = useCurrentUser();
-  const [state, setState] = useState<NotesState>({ query: '', filters: undefined, subjects: [], bookmarked: [], downloaded: [], recent: [], loading: false });
-  
+  const [state, setState] = useState<NotesState>({
+    query: '',
+    filters: undefined,
+    subjects: [],
+    bookmarked: [],
+    downloaded: [],
+    recent: [],
+    loading: false,
+  });
+
   // Track previous profile values to detect changes
-  const prevProfileRef = useRef<{ board: string | null; grade: number | null }>({ board: null, grade: null });
+  const prevProfileRef = useRef<{ board: string | null; grade: number | null }>({
+    board: null,
+    grade: null,
+  });
   const hasFetchedRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -118,7 +143,10 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
       const boardSlug = profile?.board ? String(profile.board) : undefined;
       const gradeNum = profile?.grade ? String(profile.grade) : undefined;
       const [subjects, bookmarked, downloaded, recent] = await Promise.all([
-        svc.fetchSubjects(boardSlug, gradeNum), svc.fetchBookmarked(), svc.fetchDownloaded(), svc.fetchRecentlyAdded(),
+        svc.fetchSubjects(boardSlug, gradeNum),
+        svc.fetchBookmarked(),
+        svc.fetchDownloaded(),
+        svc.fetchRecentlyAdded(),
       ]);
       setState((s) => ({ ...s, subjects, bookmarked, downloaded, recent }));
       logger.info('notes.refresh', { boardSlug, gradeNum, subjectCount: subjects.length });
@@ -133,11 +161,11 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
   useEffect(() => {
     // Skip if profile is still loading
     if (profileLoading) return;
-    
+
     const currentBoard = profile?.board ?? null;
     const currentGrade = profile?.grade ?? null;
     const prev = prevProfileRef.current;
-    
+
     // Fetch if: first time after profile load, or profile values changed
     if (!hasFetchedRef.current || prev.board !== currentBoard || prev.grade !== currentGrade) {
       hasFetchedRef.current = true;
@@ -158,7 +186,11 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
 
   const recordDownload = useCallback(async (noteId: string) => {
     try {
-      await fetch('/api/notes/download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ noteId }) });
+      await fetch('/api/notes/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noteId }),
+      });
       logger.info('notes.download.recorded', { noteId });
     } catch (e) {
       logger.warn('notes.download.error', { message: String(e) });

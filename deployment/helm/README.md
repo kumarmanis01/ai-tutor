@@ -1,6 +1,7 @@
 This folder contains a tiny snippet to deploy the Alert Evaluator as a Kubernetes Deployment + Service with readiness/liveness probes and a Service to expose metrics.
 
 Values to set:
+
 - image.repository
 - image.tag
 - replicas

@@ -97,19 +97,19 @@ export enum OutputType {
 export const ReviewQueueItemSchema = z.object({
   /** Unique review ID */
   id: z.string(),
-  
+
   /** Type of AI output */
   outputType: z.nativeEnum(OutputType),
-  
+
   /** Why it was flagged */
   flagReason: z.nativeEnum(FlagReason),
-  
+
   /** Review priority */
   priority: z.nativeEnum(ReviewPriority),
-  
+
   /** Current status */
   status: z.nativeEnum(ReviewStatus),
-  
+
   /** The AI output content (sanitized, no student PII) */
   aiOutput: z.object({
     /** Main content generated */
@@ -121,7 +121,7 @@ export const ReviewQueueItemSchema = z.object({
     /** Generation timestamp */
     generatedAt: z.string().datetime(),
   }),
-  
+
   /** Context (anonymized) */
   context: z.object({
     /** Grade level */
@@ -135,23 +135,27 @@ export const ReviewQueueItemSchema = z.object({
     /** Original prompt (sanitized) */
     sanitizedPrompt: z.string(),
   }),
-  
+
   /** Automated checks that triggered flag */
-  automatedFlags: z.array(z.object({
-    check: z.string(),
-    result: z.string(),
-    severity: z.enum(['info', 'warning', 'error']),
-  })).optional(),
-  
+  automatedFlags: z
+    .array(
+      z.object({
+        check: z.string(),
+        result: z.string(),
+        severity: z.enum(['info', 'warning', 'error']),
+      })
+    )
+    .optional(),
+
   /** Created timestamp */
   createdAt: z.string().datetime(),
-  
+
   /** Assigned reviewer (if any) */
   assignedTo: z.string().optional(),
-  
+
   /** Assigned timestamp */
   assignedAt: z.string().datetime().optional(),
-  
+
   /** Due date for review */
   dueAt: z.string().datetime().optional(),
 });
@@ -168,62 +172,68 @@ export type ReviewQueueItem = z.infer<typeof ReviewQueueItemSchema>;
 export const ReviewFeedbackSchema = z.object({
   /** Review item ID */
   reviewItemId: z.string(),
-  
+
   /** Reviewer ID */
   reviewerId: z.string(),
-  
+
   /** Action taken */
   action: z.enum(['APPROVE', 'CORRECT', 'ESCALATE', 'REJECT']),
-  
+
   /** Overall quality rating (1-5) */
   qualityRating: z.number().int().min(1).max(5),
-  
+
   /** Is content factually accurate? */
   isFactuallyAccurate: z.boolean(),
-  
+
   /** Is content grade-appropriate? */
   isGradeAppropriate: z.boolean(),
-  
+
   /** Is content curriculum-aligned? */
   isCurriculumAligned: z.boolean(),
-  
+
   /** Correction details (if action is CORRECT) */
-  correction: z.object({
-    /** What was wrong */
-    issue: z.string(),
-    /** Corrected content */
-    correctedContent: z.unknown(),
-    /** Explanation of correction */
-    explanation: z.string(),
-  }).optional(),
-  
+  correction: z
+    .object({
+      /** What was wrong */
+      issue: z.string(),
+      /** Corrected content */
+      correctedContent: z.unknown(),
+      /** Explanation of correction */
+      explanation: z.string(),
+    })
+    .optional(),
+
   /** Escalation details (if action is ESCALATE) */
-  escalation: z.object({
-    /** Why escalating */
-    reason: z.string(),
-    /** Who to escalate to */
-    escalateTo: z.enum(['senior_reviewer', 'curriculum_head', 'safety_team']),
-    /** Urgency */
-    urgency: z.nativeEnum(ReviewPriority),
-  }).optional(),
-  
+  escalation: z
+    .object({
+      /** Why escalating */
+      reason: z.string(),
+      /** Who to escalate to */
+      escalateTo: z.enum(['senior_reviewer', 'curriculum_head', 'safety_team']),
+      /** Urgency */
+      urgency: z.nativeEnum(ReviewPriority),
+    })
+    .optional(),
+
   /** Rejection details (if action is REJECT) */
-  rejection: z.object({
-    /** Why rejected */
-    reason: z.string(),
-    /** Should student be shown alternative? */
-    showAlternative: z.boolean(),
-  }).optional(),
-  
+  rejection: z
+    .object({
+      /** Why rejected */
+      reason: z.string(),
+      /** Should student be shown alternative? */
+      showAlternative: z.boolean(),
+    })
+    .optional(),
+
   /** Notes for system improvement */
   systemNotes: z.string().max(1000).optional(),
-  
+
   /** Suggested prompt improvement */
   promptImprovement: z.string().max(500).optional(),
-  
+
   /** Completed timestamp */
   completedAt: z.string().datetime(),
-  
+
   /** Time spent reviewing (seconds) */
   reviewDurationSeconds: z.number().int(),
 });
@@ -240,52 +250,54 @@ export type ReviewFeedback = z.infer<typeof ReviewFeedbackSchema>;
 export const CorrectionIngestionSchema = z.object({
   /** Correction batch ID */
   batchId: z.string(),
-  
+
   /** Corrections in this batch */
-  corrections: z.array(z.object({
-    /** Original review item ID */
-    reviewItemId: z.string(),
-    /** Output type */
-    outputType: z.nativeEnum(OutputType),
-    /** Grade/subject/topic context */
-    context: z.object({
-      grade: z.number().int(),
-      subject: z.string(),
-      topic: z.string(),
-    }),
-    /** The issue identified */
-    issue: z.object({
-      type: z.enum([
-        'factual_error',
-        'grade_inappropriate',
-        'curriculum_mismatch',
-        'incomplete_explanation',
-        'confusing_language',
-        'missing_example',
-        'wrong_difficulty',
-      ]),
-      description: z.string(),
-    }),
-    /** How to correct */
-    correctionRule: z.object({
-      /** Rule type */
-      ruleType: z.enum([
-        'add_to_prompt',
-        'add_example',
-        'avoid_phrase',
-        'require_check',
-        'adjust_difficulty',
-      ]),
-      /** Rule content */
-      content: z.string(),
-      /** Confidence in rule (from reviewer) */
-      confidence: z.number().min(0).max(1),
-    }),
-  })),
-  
+  corrections: z.array(
+    z.object({
+      /** Original review item ID */
+      reviewItemId: z.string(),
+      /** Output type */
+      outputType: z.nativeEnum(OutputType),
+      /** Grade/subject/topic context */
+      context: z.object({
+        grade: z.number().int(),
+        subject: z.string(),
+        topic: z.string(),
+      }),
+      /** The issue identified */
+      issue: z.object({
+        type: z.enum([
+          'factual_error',
+          'grade_inappropriate',
+          'curriculum_mismatch',
+          'incomplete_explanation',
+          'confusing_language',
+          'missing_example',
+          'wrong_difficulty',
+        ]),
+        description: z.string(),
+      }),
+      /** How to correct */
+      correctionRule: z.object({
+        /** Rule type */
+        ruleType: z.enum([
+          'add_to_prompt',
+          'add_example',
+          'avoid_phrase',
+          'require_check',
+          'adjust_difficulty',
+        ]),
+        /** Rule content */
+        content: z.string(),
+        /** Confidence in rule (from reviewer) */
+        confidence: z.number().min(0).max(1),
+      }),
+    })
+  ),
+
   /** Created timestamp */
   createdAt: z.string().datetime(),
-  
+
   /** Approved by */
   approvedBy: z.string(),
 });
@@ -302,7 +314,7 @@ export type CorrectionIngestion = z.infer<typeof CorrectionIngestionSchema>;
 export const QueueStatisticsSchema = z.object({
   /** Total pending items */
   pendingCount: z.number().int(),
-  
+
   /** Items by priority */
   byPriority: z.object({
     critical: z.number().int(),
@@ -310,25 +322,25 @@ export const QueueStatisticsSchema = z.object({
     medium: z.number().int(),
     low: z.number().int(),
   }),
-  
+
   /** Items by flag reason */
   byFlagReason: z.record(z.string(), z.number().int()),
-  
+
   /** Average review time (seconds) */
   avgReviewTimeSeconds: z.number(),
-  
+
   /** Approval rate */
   approvalRate: z.number().min(0).max(1),
-  
+
   /** Correction rate */
   correctionRate: z.number().min(0).max(1),
-  
+
   /** Escalation rate */
   escalationRate: z.number().min(0).max(1),
-  
+
   /** Items reviewed today */
   reviewedToday: z.number().int(),
-  
+
   /** Updated timestamp */
   updatedAt: z.string().datetime(),
 });
