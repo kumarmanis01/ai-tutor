@@ -1,9 +1,18 @@
 'use client';
 
 /**
- * ApprovalTransition -- S0.3 celebration screen shown when parent approves.
- * CSS keyframe confetti (no animation libraries per CLAUDE.md rules).
- * Auto-redirects to /dashboard after 1.5s (handled by parent via onComplete).
+ * FILE OBJECTIVE:
+ * - Render the parent-approval celebration transition screen with lightweight CSS-based confetti and a timed completion callback.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/explore/ApprovalTransition.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-01-01T00:00:00Z | copilot | created file header in required template for new component
  */
 
 import { useEffect } from 'react';
