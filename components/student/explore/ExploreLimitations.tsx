@@ -1,8 +1,18 @@
 'use client';
 
 /**
- * ExploreLimitations -- S0.3 locked features grid.
- * Shows the student what is available now vs. what unlocks after parent approval.
+ * FILE OBJECTIVE:
+ * - Render a student-facing feature availability list that clearly distinguishes currently available explore features from features locked until parent approval.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/explore/ExploreLimitations.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | copilot | created file header to align with ENGINEERING_PRACTICES.md §8 template
  */
 
 interface Feature {
