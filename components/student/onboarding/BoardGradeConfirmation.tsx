@@ -1,18 +1,19 @@
 'use client';
 
 /**
- * BoardGradeConfirmation -- S1.1 Board & Grade Confirmation.
+ * FILE OBJECTIVE:
+ * - Render the student onboarding board and grade confirmation step with prefilled registration values and a confirmation flow.
+ * - Support confirmation or update of board/grade selections before continuing, including explore-diagnostic skip behavior.
  *
- * Shown to a student entering the app for the first time with full access
- * (post-consent or adult). Pre-fills from registration data.
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/onboarding/BoardGradeConfirmation.spec.tsx
  *
- * Features:
- *   - Board: horizontal scrolling carousel with board logos/names
- *   - Grade: large tappable numbers (1-12) in a grid
- *   - "This is Correct! →" button to confirm (no text input needed)
- *   - "Change" link to re-enter selection
- *   - If student completed diagnostic in Explore Mode: skip and go directly to Learning Map
- *   - PATCHes /api/v1/students/{id} if board/grade changed from pre-filled values
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | copilot | created file header in required template for new component
  */
 
 import { useState } from 'react';
