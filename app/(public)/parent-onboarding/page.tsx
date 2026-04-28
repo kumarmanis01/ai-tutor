@@ -40,7 +40,7 @@ export default function ParentOnboardingPage() {
   useEffect(() => {
     if (sessionStatus === 'loading') return;
     if (sessionStatus === 'unauthenticated') {
-      router.push('/auth/signup?callbackUrl=/parent-onboarding');
+      router.push('/auth/signin?callbackUrl=/parent-onboarding');
       return;
     }
     setStep('add_child');

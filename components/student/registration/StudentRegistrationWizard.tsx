@@ -129,12 +129,12 @@ export default function StudentRegistrationWizard({ onComplete }: Props) {
         >
           {"I'm a Student"}
         </button>
-        <a
-          href="https://app.spinzyacademy.com/register"
+        <Link
+          href="/auth/signin?callbackUrl=/parent-onboarding"
           className="w-full max-w-xs min-h-[44px] rounded-2xl border-2 border-[#F28C28] text-[#F28C28] font-semibold text-base flex items-center justify-center bg-transparent"
         >
           {"I'm a Parent"}
-        </a>
+        </Link>
       </div>
     );
   }

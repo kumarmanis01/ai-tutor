@@ -51,6 +51,6 @@ describe('FinalCTA', () => {
       name: /Start Free -- Sign in with Google/i,
     }) as HTMLAnchorElement;
     expect(cta).toBeTruthy();
-    expect(cta.getAttribute('href')).toBe('https://app.spinzyacademy.com/register');
+    expect(cta.getAttribute('href')).toBe('/register');
   });
 });

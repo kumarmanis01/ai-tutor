@@ -121,7 +121,7 @@ export default function LessonViewClient({
               Sign In
             </Link>
             <Link
-              href="/auth/signin?mode=signup"
+              href="/register"
               className="px-6 py-3 border border-indigo-300 dark:border-[#534AB7] text-[#534AB7] dark:text-indigo-400 font-semibold rounded-lg hover:bg-[#EEEDFE] dark:hover:bg-indigo-900/30 transition-colors"
             >
               Create Account

@@ -38,18 +38,18 @@ const Footer = () => {
   ];
 
   const studentLinks = [
-    { label: 'Learning Map', href: 'https://app.spinzyacademy.com/register' },
-    { label: 'Practice Questions', href: 'https://app.spinzyacademy.com/register' },
-    { label: 'Mock Tests', href: 'https://app.spinzyacademy.com/register' },
-    { label: 'AI Tutor', href: 'https://app.spinzyacademy.com/register' },
-    { label: 'Study Buddy', href: 'https://app.spinzyacademy.com/register' },
+    { label: 'Learning Map', href: '/register' },
+    { label: 'Practice Questions', href: '/register' },
+    { label: 'Mock Tests', href: '/register' },
+    { label: 'AI Tutor', href: '/register' },
+    { label: 'Study Buddy', href: '/register' },
   ];
 
   const parentLinks = [
-    { label: 'Parent Dashboard', href: 'https://app.spinzyacademy.com/register' },
-    { label: 'Progress Reports', href: 'https://app.spinzyacademy.com/register' },
-    { label: 'Assignments', href: 'https://app.spinzyacademy.com/register' },
-    { label: 'Weekly Reports', href: 'https://app.spinzyacademy.com/register' },
+    { label: 'Parent Dashboard', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+    { label: 'Progress Reports', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+    { label: 'Assignments', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+    { label: 'Weekly Reports', href: '/auth/signin?callbackUrl=/parent-onboarding' },
   ];
 
   const schoolLinks = [

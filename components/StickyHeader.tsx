@@ -214,7 +214,7 @@ const StickyHeader = ({
 
               {/* Start Free CTA -- Tangerine #FF6B35 per LP-1.1 spec */}
               <Link
-                href="/auth/signup"
+                href="/register"
                 className="px-4 py-2 md:px-6 md:py-2.5 min-h-[44px] flex items-center bg-[#FF6B35] hover:bg-[#e85f2a] text-white rounded-lg text-sm font-semibold transition-colors"
               >
                 Start Free
