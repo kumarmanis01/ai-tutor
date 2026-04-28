@@ -1,22 +1,19 @@
+'use client';
+
 /**
  * FILE OBJECTIVE:
- * - Provide Explore Mode settings actions for reminder resend, contact change, and request cancellation.
+ * - Provide Explore Mode settings actions for reminder resend, contact change,
+ *   and request cancellation. Includes a live countdown timer for expiry.
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/student/explore/ExploreSettings.spec.ts
  *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/ENGINEERING_PRACTICES.md
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
  * EDIT LOG:
- * - 2026-04-27T00:00:00Z | copilot | created Explore Mode settings panel with resend/change/cancel actions
+ * - 2026-04-27T00:00:00Z | copilot | created Explore Mode settings panel
+ * - 2026-04-28T00:00:00Z | staff-engineer | add live countdown timer per S0.3 spec
  */
 
-'use client';
-
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 interface Props {
   studentId: string | null;
@@ -26,6 +23,18 @@ interface Props {
   channel: string | null;
   onTokenRotate: (nextToken: string) => void;
   onRequestCancelled: () => void;
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return 'Expired';
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, '0')}m`;
+  }
+  return `${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
 }
 
 export default function ExploreSettings({
@@ -45,6 +54,19 @@ export default function ExploreSettings({
   const [newContact, setNewContact] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [countdown, setCountdown] = useState('');
+
+  // Live countdown that ticks every second.
+  useEffect(() => {
+    if (!expiresAt) return;
+    function tick() {
+      const remaining = new Date(expiresAt!).getTime() - Date.now();
+      setCountdown(formatCountdown(remaining));
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
 
   const expiryLabel = useMemo(() => {
     if (!expiresAt) return 'N/A';
@@ -126,22 +148,20 @@ export default function ExploreSettings({
     const confirmed = window.confirm(
       'Are you sure? Your profile and local diagnostic result will be deleted.'
     );
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setBusy(true);
     setMessage('');
     try {
-      const response = await fetch(`/api/v1/students/${encodeURIComponent(studentId)}?consent_token=${encodeURIComponent(consentToken)}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/v1/students/${encodeURIComponent(studentId)}?consent_token=${encodeURIComponent(consentToken)}`,
+        { method: 'DELETE' }
+      );
       if (!response.ok) {
         const payload = (await response.json()) as { error?: string };
         setMessage(payload.error ?? 'Unable to cancel request.');
         return;
       }
-
       onRequestCancelled();
     } catch {
       setMessage('Network error while cancelling request.');
@@ -154,24 +174,36 @@ export default function ExploreSettings({
     <div className="mx-4 mt-4">
       <button
         type="button"
-        className="min-h-[44px] rounded-xl px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm font-semibold"
+        className="min-h-[44px] rounded-xl px-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm font-semibold flex items-center gap-2"
         onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
       >
-        Settings
+        <span aria-hidden>⚙️</span> Settings
       </button>
 
       {open && (
         <div className="mt-3 rounded-2xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">
-          <p className="text-xs text-gray-600 dark:text-gray-300">Current contact: {sentTo ?? 'N/A'}</p>
-          <p className="text-xs text-gray-600 dark:text-gray-300">Request expires: {expiryLabel}</p>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              <strong>Contact:</strong> {sentTo ?? 'N/A'}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              <strong>Requested:</strong> {expiryLabel}
+            </p>
+            {countdown && (
+              <p
+                className={`text-xs font-semibold ${countdown === 'Expired' ? 'text-[#E24B4A]' : 'text-[#BA7517]'}`}
+              >
+                <strong>Expires in:</strong> {countdown}
+              </p>
+            )}
+          </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               type="button"
               disabled={busy}
-              onClick={() => {
-                void sendReminder();
-              }}
+              onClick={() => { void sendReminder(); }}
               className="min-h-[40px] px-3 rounded-lg bg-[#EEEDFE] text-[#534AB7] text-xs font-semibold disabled:opacity-50"
             >
               Send Reminder
@@ -187,9 +219,7 @@ export default function ExploreSettings({
             <button
               type="button"
               disabled={busy}
-              onClick={() => {
-                void cancelRequest();
-              }}
+              onClick={() => { void cancelRequest(); }}
               className="min-h-[40px] px-3 rounded-lg bg-[#FCEBEB] text-[#E24B4A] text-xs font-semibold disabled:opacity-50"
             >
               Cancel Request
@@ -226,9 +256,7 @@ export default function ExploreSettings({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => {
-                  void changeContact();
-                }}
+                onClick={() => { void changeContact(); }}
                 className="min-h-[40px] px-3 rounded-md bg-[#534AB7] text-white text-xs font-semibold disabled:opacity-50"
               >
                 Save & Send New Request
