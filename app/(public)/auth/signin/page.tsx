@@ -8,6 +8,10 @@ import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
 
 function AuthContent() {
   const searchParams = useSearchParams();
+  const rawCallback = searchParams.get('callbackUrl') ?? '';
+  // Only allow same-origin paths to prevent open-redirect abuse.
+  const callbackUrl = rawCallback.startsWith('/') ? rawCallback : '/student/onboarding';
+
   const [email, setEmail] = useState(
     searchParams.get('email') ||
       (typeof window !== 'undefined' ? sessionStorage.getItem('spinzy_signup_email') || '' : '')
@@ -26,7 +30,7 @@ function AuthContent() {
     try {
       const result = await signIn('email', {
         email,
-        callbackUrl: '/student/onboarding',
+        callbackUrl,
         redirect: false,
       });
       if (result?.error) {
@@ -81,7 +85,7 @@ function AuthContent() {
 
         {/* Google Sign In */}
         <button
-          onClick={() => signIn('google', { callbackUrl: '/student/onboarding' })}
+          onClick={() => signIn('google', { callbackUrl })}
           className="w-full flex items-center justify-center gap-3 px-4 py-3
                      border border-gray-300 dark:border-gray-600 rounded-xl
                      bg-white dark:bg-gray-900 hover:bg-gray-50
