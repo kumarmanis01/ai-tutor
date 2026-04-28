@@ -129,12 +129,12 @@ export default function StudentRegistrationWizard({ onComplete }: Props) {
         >
           {"I'm a Student"}
         </button>
-        <Link
-          href="/login"
+        <a
+          href="https://app.spinzyacademy.com/register"
           className="w-full max-w-xs min-h-[44px] rounded-2xl border-2 border-[#F28C28] text-[#F28C28] font-semibold text-base flex items-center justify-center bg-transparent"
         >
           {"I'm a Parent"}
-        </Link>
+        </a>
       </div>
     );
   }
@@ -555,7 +555,7 @@ export default function StudentRegistrationWizard({ onComplete }: Props) {
           >
             Take Diagnostic
           </Link>
-          <Link href="/dashboard" className="text-[#534AB7] text-sm underline">
+          <Link href="/student/learning-map" className="text-[#534AB7] text-sm underline">
             Skip for now
           </Link>
         </div>
