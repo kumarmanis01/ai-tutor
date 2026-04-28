@@ -1,8 +1,18 @@
 'use client';
 
 /**
- * Reusable modal shown when a student taps a locked topic or feature in Explore Mode (S0.3).
- * Props drive the headline copy so the modal doubles for locked topics and locked features.
+ * FILE OBJECTIVE:
+ * - Render a reusable locked-feature modal for Explore Mode so students receive consistent messaging and actions when gated content is selected.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/explore/LockedFeatureModal.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | copilot | created file header to comply with ENGINEERING_PRACTICES.md §8
  */
 
 interface Props {
