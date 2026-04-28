@@ -1,13 +1,14 @@
 ﻿/**
  * FILE OBJECTIVE:
- * - LP-2.1 Hero section: student-focused headline, v3 copy, VideoModal trigger,
- *   trust badges, social proof, and primary CTA to app registration.
+ * - LP-2.1 hero section for the landing page, centered on parent permission,
+ *   trust badges, Google sign-in CTA, and a parent-to-child product illustration.
  *
  * LINKED UNIT TEST:
- * - tests/unit/components/HeroSection.spec.ts
+ * - tests/unit/app/(public)/landing-page/components/HeroSection.spec.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
@@ -16,76 +17,45 @@
  * - 2026-04-24T12:00:00Z | staff-engineer | P0.1: CTA -> /parent-onboarding; add 3 value prop icons
  * - 2026-04-27T00:00:00Z | copilot | v3: student-focused copy, CTA to app.spinzyacademy.com,
  *   Watch Demo triggers VideoModal, updated trust/social badges
+ * - 2026-04-28T00:00:00Z | copilot | LP-2.1: restore parent-permission copy, Google CTA, and parent-child illustration
  */
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
 import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
+import LandingGoogleCtaButton from './LandingGoogleCtaButton';
 import VideoModal from './VideoModal';
 
-// Trust badge bar items per LP-2.1 v3 spec
 const TRUST_BADGES = [
   { icon: '🛡️', label: 'DPDP Compliant' },
+  { icon: '👁️', label: 'No Tracking' },
+  { icon: '📵', label: 'No Social Features' },
   { icon: '🇮🇳', label: 'Servers in India' },
-  { icon: '📚', label: 'CBSE / ICSE / State Boards' },
-  { icon: '⭐', label: 'Free to Start' },
 ] as const;
 
+const AVATAR_COLORS = ['bg-[#534AB7]', 'bg-[#FF6B35]', 'bg-[#1D9E75]', 'bg-[#BA7517]', 'bg-[#1A2E45]'];
+
 const HeroSection = () => {
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [videoOpen, setVideoOpen] = useState(false);
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % 3);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [isHydrated]);
-
-  const testimonials = [
-    'Meri beti ke marks 45% se 78% ho gaye! - Sunita, Jaipur',
-    'Ek mahine mein Science mein confident ho gaya! - Arjun, Pune',
-    '24x7 doubt solving, amazing value for money! - Priya, Lucknow',
-  ];
-
-  const handleSeeHow = () => {
-    const el = document.querySelector('#how-it-works');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   return (
     <>
-      <section className="relative min-h-screen md:min-h-[90vh] flex flex-col bg-gradient-to-br from-[#F0EFFF] via-background to-background">
-        {/* Decorative blobs */}
+      <section className="relative flex min-h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(255,107,53,0.16),_transparent_28%),linear-gradient(135deg,#fff8ef_0%,#f7f8ff_52%,#eef4ff_100%)] md:min-h-[90vh]">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 left-10 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
+          <div className="absolute left-[-8%] top-24 h-64 w-64 rounded-full bg-[#FF6B35]/10 blur-3xl" />
+          <div className="absolute bottom-10 right-[-6%] h-72 w-72 rounded-full bg-[#534AB7]/10 blur-3xl" />
         </div>
 
-        {/* Trust badge bar -- horizontal scrollable on mobile, static row on desktop */}
-        <div className="relative z-10 bg-white/80 border-b border-[#534AB7]/10 py-2.5">
-          <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
-            <div className="flex items-center gap-4 md:gap-8 overflow-x-auto scrollbar-none md:justify-center whitespace-nowrap">
+        <div className="relative z-10 border-b border-[#534AB7]/10 bg-white/80 py-2.5 backdrop-blur-sm">
+          <div className="mx-auto max-w-7xl px-4 md:px-6 lg:px-8">
+            <div className="flex items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-none md:justify-center md:gap-8">
               {TRUST_BADGES.map((badge) => (
                 <span
                   key={badge.label}
-                  className="inline-flex items-center gap-1.5 text-xs md:text-sm font-medium text-secondary shrink-0"
+                  className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-secondary md:text-sm"
                 >
-                  <span role="img" aria-hidden="true">
-                    {badge.icon}
-                  </span>
+                  <span aria-hidden="true">{badge.icon}</span>
                   {badge.label}
                 </span>
               ))}
@@ -93,46 +63,44 @@ const HeroSection = () => {
           </div>
         </div>
 
-        {/* Hero content */}
-        <div className="relative flex-1 w-full mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-16 flex items-center">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-7xl mx-auto w-full">
-            {/* Left -- copy */}
-            <div className="text-center lg:text-left space-y-6">
-              {/* Social proof badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1D9E75]/10 text-[#1D9E75] rounded-full text-sm font-semibold">
-                <Icon name="StarIcon" size={18} variant="solid" />
-                <span>Trusted by 10,000+ Indian Parents</span>
-                <span className="ml-1 font-bold">⭐⭐⭐⭐⭐ 4.9/5</span>
+        <div className="relative flex flex-1 items-center px-4 py-10 md:px-6 md:py-16 lg:px-8">
+          <div className="mx-auto grid w-full max-w-7xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+            <div className="space-y-6 text-center lg:text-left">
+              <div className="inline-flex flex-wrap items-center justify-center gap-3 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-secondary shadow-sm lg:justify-start">
+                <div className="flex items-center -space-x-2" aria-hidden="true">
+                  {AVATAR_COLORS.map((color, index) => (
+                    <span
+                      key={color}
+                      className={`h-7 w-7 rounded-full border-2 border-white ${color} ${index === 4 ? 'opacity-85' : ''}`}
+                    />
+                  ))}
+                </div>
+                <span>Trusted by 1 Lakh+ Indian families</span>
               </div>
 
-              {/* Main headline -- v3 student focused */}
               <div className="space-y-3">
-                <h1 className="font-headline font-bold text-4xl md:text-5xl lg:text-6xl text-secondary leading-tight">
-                  AI Home Tutor for Indian Students --{' '}
-                  <span className="text-[#534AB7]">Learn Smarter, Score Higher</span>
+                <h1 className="font-headline text-4xl font-bold leading-tight text-secondary md:text-5xl lg:text-6xl">
+                  The AI Tutor That Asks YOUR Permission First
                 </h1>
-                {/* Hindi sub */}
-                <p className="font-accent text-xl md:text-2xl text-[#534AB7]">
-                  CBSE, ICSE और State Board के लिए पर्सनलाइज़्ड AI ट्यूटर
+                <p className="font-body text-base leading-relaxed text-foreground/80 md:text-lg lg:max-w-2xl">
+                  Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared.
                 </p>
-                <p className="font-body text-base md:text-lg text-foreground/80 max-w-xl mx-auto lg:mx-0">
-                  Teacher Vidya guides you with hints and questions -- not just answers -- so you
-                  build real understanding and score higher in board exams.
+                <p className="font-accent text-xl text-[#534AB7] md:text-2xl">
+                  AI Tutor जो पहले आपकी अनुमति लेता है
                 </p>
               </div>
 
-              {/* CTA buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link
-                  href="https://app.spinzyacademy.com/register"
-                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 md:px-8 md:py-4 min-h-[48px] bg-[#534AB7] text-white font-cta font-semibold rounded-lg hover:bg-[#433ba0] transition-all duration-250 text-base md:text-lg shadow-lg"
-                >
-                  <Icon name="SparklesIcon" size={20} variant="solid" />
-                  <span>Start Learning Free &rarr;</span>
-                </Link>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-center lg:justify-start">
+                <LandingGoogleCtaButton
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-4 text-base font-bold text-white shadow-lg transition-colors hover:bg-[#e85f2d] sm:w-auto"
+                  errorClassName="mt-3 text-sm font-medium text-[#E24B4A] sm:max-w-sm"
+                  icon={<Icon name="SparklesIcon" size={20} variant="solid" />}
+                  label="Start Free -- Sign in with Google"
+                />
                 <button
+                  type="button"
                   onClick={() => setVideoOpen(true)}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[48px] bg-background border-2 border-secondary text-secondary font-cta font-semibold rounded-lg hover:bg-secondary hover:text-white transition-all duration-250 text-base md:text-lg"
+                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border-2 border-secondary bg-white px-6 py-4 text-base font-semibold text-secondary transition-colors hover:bg-secondary hover:text-white"
                   aria-label="Watch product demo video"
                 >
                   <Icon name="PlayCircleIcon" size={24} variant="solid" />
@@ -140,8 +108,7 @@ const HeroSection = () => {
                 </button>
               </div>
 
-              {/* Below-CTA microcopy */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-sm md:text-base text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-muted-foreground lg:justify-start md:text-base">
                 <span className="flex items-center gap-1.5">
                   <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
                   {FREE_SESSIONS_TEXT}
@@ -155,81 +122,98 @@ const HeroSection = () => {
                   Setup in 2 minutes
                 </span>
               </div>
-
-              {/* Three value prop icons */}
-              <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-                {[
-                  { icon: '📚', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
-                  { icon: '🧠', label: 'Socratic AI Tutor', sub: 'Guides, never just answers' },
-                  { icon: '⭐', label: 'Free to Start', sub: 'No credit card needed' },
-                ].map(({ icon, label, sub }) => (
-                  <div key={label} className="flex items-center gap-3 bg-[#EEEDFE] rounded-2xl px-4 py-3 min-w-[140px]">
-                    <span aria-hidden="true" className="text-2xl">
-                      {icon}
-                    </span>
-                    <div>
-                      <p className="text-sm font-bold text-[#534AB7] leading-tight">{label}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{sub}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Rotating testimonials */}
-              {isHydrated && (
-                <div className="bg-muted/50 rounded-lg p-3 md:p-4 border border-border">
-                  <p className="font-body text-sm md:text-base text-foreground italic text-center lg:text-left">
-                    &ldquo;{testimonials[currentTestimonial]}&rdquo;
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Right -- student learning illustration */}
-            <div className="relative flex justify-center">
-              {/*
-               * LP-2.1 v3: Illustration showing student learning with AI tutor Vidya.
-               * NOT a photo of a child (COPPA/DPDP compliance).
-               * TODO: Replace SVG placeholder with professional SVG/Lottie once designed.
-               */}
-              <div className="relative w-full max-w-sm md:max-w-md lg:max-w-lg mx-auto">
-                {/* Teacher Vidya chat mockup */}
-                <div className="bg-white rounded-3xl shadow-2xl border-4 border-[#534AB7]/40 p-4">
-                  <div className="text-xs font-bold text-secondary mb-2 text-center">Teacher Vidya</div>
-                  <div className="bg-[#EAF3DE] rounded-xl p-3 mb-2">
-                    <p className="text-[10px] font-semibold text-[#1D9E75] mb-1">
-                      Teacher Vidya asks:
-                    </p>
-                    <p className="text-[9px] text-secondary leading-snug">
-                      &ldquo;If 2x + 4 = 10, what is the value of x? Think step by step!&rdquo;
-                    </p>
-                  </div>
-                  <div className="bg-[#EEEDFE] rounded-xl p-2">
-                    <p className="text-[9px] text-[#534AB7] font-medium">Student: x = 3</p>
-                    <p className="text-[9px] text-[#1D9E75] mt-1">🎉 Correct! Well done!</p>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[8px] text-muted-foreground">Session: 23 min</span>
-                    <span className="text-[8px] bg-[#EEEDFE] text-[#534AB7] rounded-full px-2 py-0.5 font-medium">
-                      Maths · Ch 3
-                    </span>
-                  </div>
-                </div>
+            <div className="relative mx-auto flex w-full max-w-xl items-center justify-center lg:justify-end">
+              <div className="relative w-full rounded-[32px] border border-white/70 bg-white/70 p-4 shadow-2xl backdrop-blur-sm md:p-5">
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 520 360"
+                  className="absolute inset-0 h-full w-full text-[#534AB7]/20"
+                >
+                  <path
+                    d="M180 130 C235 95, 288 95, 346 135"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray="10 10"
+                  />
+                </svg>
 
-                {/* Stats badge */}
-                <div className="absolute -bottom-4 -right-2 md:-right-6 bg-white rounded-xl shadow-xl p-3 border border-border">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-success/10 rounded-full flex items-center justify-center">
-                      <Icon
-                        name="AcademicCapIcon"
-                        size={22}
-                        variant="solid"
-                        className="text-success"
-                      />
+                <div className="relative grid gap-4 md:grid-cols-[0.88fr_0.12fr_1fr] md:items-center">
+                  <div className="rounded-[28px] border-4 border-[#1A2E45] bg-[#1A2E45] p-3 shadow-xl">
+                    <div className="overflow-hidden rounded-[22px] bg-white">
+                      <div className="bg-[#534AB7] px-4 py-3 text-white">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-white/80">
+                          Parent Approval
+                        </p>
+                        <p className="mt-1 text-lg font-bold">Approve today&apos;s session?</p>
+                      </div>
+                      <div className="space-y-4 p-4">
+                        <div className="rounded-2xl bg-[#F4F7FC] p-3">
+                          <p className="text-sm font-semibold text-secondary">Riya wants to study</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Maths · Fractions · 30 minutes</p>
+                        </div>
+                        <div className="flex items-center justify-between rounded-2xl bg-[#EAF3DE] p-3">
+                          <div>
+                            <p className="text-sm font-semibold text-secondary">Screen time limit</p>
+                            <p className="text-xs text-[#1D9E75]">Within your daily 1 hour rule</p>
+                          </div>
+                          <div className="h-6 w-11 rounded-full bg-[#1D9E75] p-1">
+                            <div className="ml-auto h-4 w-4 rounded-full bg-white" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" className="min-h-[44px] rounded-xl border border-[#1A2E45]/15 px-3 py-2 text-sm font-semibold text-secondary">
+                            Review
+                          </button>
+                          <button type="button" className="min-h-[44px] rounded-xl bg-[#FF6B35] px-3 py-2 text-sm font-bold text-white">
+                            Approve
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-headline font-bold text-xl text-secondary">10K+</p>
-                      <p className="font-body text-[10px] text-muted-foreground">Active Students</p>
+                  </div>
+
+                  <div className="hidden items-center justify-center md:flex">
+                    <div className="rounded-full bg-white p-3 shadow-lg">
+                      <Icon name="ArrowRightIcon" size={22} variant="solid" className="text-[#534AB7]" />
+                    </div>
+                  </div>
+
+                  <div className="rounded-[34px] border-4 border-[#534AB7]/20 bg-white p-4 shadow-xl">
+                    <div className="rounded-[26px] bg-[#F9FAFF] p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-[#534AB7]">
+                            Learning Screen
+                          </p>
+                          <p className="mt-1 text-lg font-bold text-secondary">Teacher Vidya</p>
+                        </div>
+                        <span className="rounded-full bg-[#EEEDFE] px-3 py-1 text-xs font-semibold text-[#534AB7]">
+                          Maths
+                        </span>
+                      </div>
+                      <div className="mt-4 space-y-3">
+                        <div className="rounded-2xl bg-white p-3 shadow-sm">
+                          <p className="text-sm font-semibold text-secondary">Guided question</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            If 3/4 of the pizza is eaten, what fraction is left? Think one step at a time.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-[#EEEDFE] p-3">
+                          <p className="text-sm font-semibold text-[#534AB7]">Student answer</p>
+                          <p className="mt-1 text-sm text-secondary">1/4 is left.</p>
+                        </div>
+                        <div className="flex items-center justify-between rounded-2xl bg-[#EAF3DE] p-3">
+                          <div>
+                            <p className="text-sm font-semibold text-secondary">Session status</p>
+                            <p className="text-xs text-[#1D9E75]">Approved · Safe mode on</p>
+                          </div>
+                          <Icon name="ShieldCheckIcon" size={22} variant="solid" className="text-[#1D9E75]" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
