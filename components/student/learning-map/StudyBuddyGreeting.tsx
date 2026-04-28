@@ -1,13 +1,30 @@
+/**
+ * FILE OBJECTIVE:
+ * - S2.1 Study Buddy top-bar widget: tappable avatar button that opens a greeting
+ *   popover with a rotating encouraging message, XP, and streak stats.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/learning-map/StudyBuddyGreeting.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | claude | created S2.1 study buddy greeting popover
+ */
+
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const GREETINGS = [
-  "Great to see you! Ready to unlock your next chapter?",
+  'Great to see you! Ready to unlock your next chapter?',
   "You're doing amazing! Keep that streak going!",
-  "Every lesson you complete gets you one step closer to mastery.",
+  'Every lesson you complete gets you one step closer to mastery.',
   "Let's tackle something new today. You've got this!",
-  "Consistency is your superpower. Show up and learn!",
+  'Consistency is your superpower. Show up and learn!',
 ];
 
 type StudyBuddyGreetingProps = {
@@ -47,13 +64,13 @@ export function StudyBuddyGreeting({ xp, streak, avatarName = 'Vidya' }: StudyBu
         onClick={isOpen ? close : open}
         aria-expanded={isOpen}
         aria-label={`${avatarName} study buddy -- tap for greeting`}
-        className="min-h-[44px] w-full rounded-xl bg-[#EEEDFE] px-3 py-2 text-left hover:bg-[#E0DEFF] focus:outline-none"
+        className="min-h-[44px] w-full rounded-xl bg-[#EEEDFE] px-3 py-2 text-left hover:bg-[#E0DEFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-[#534AB7]">
           Study Buddy
         </p>
         <p className="mt-1 text-sm font-medium text-[#3C3489]">
-          {avatarName} · {xp} XP · {streak > 0 ? `${streak}-day streak` : 'Start your streak today!'}
+          {avatarName} &middot; {xp} XP &middot; {streak > 0 ? `${streak}-day streak` : 'Start your streak today!'}
         </p>
       </button>
 
@@ -87,7 +104,7 @@ export function StudyBuddyGreeting({ xp, streak, avatarName = 'Vidya' }: StudyBu
             onClick={close}
             className="mt-3 min-h-[44px] w-full rounded-xl bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white"
           >
-            Let's go! →
+            {"Let's go! →"}
           </button>
         </div>
       )}

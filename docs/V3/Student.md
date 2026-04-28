@@ -1,3 +1,14 @@
+<!--
+FILE OBJECTIVE:
+- Student user-story specifications for Spinzy Academy (V3).
+  Covers all phases: onboarding (S0.x, S1.x), core learning loop (S2.x),
+  on-demand discovery (S3.x), assignments (S4.x), and long-term retention (S5.x).
+
+EDIT LOG:
+- 2026-04-25T00:00:00Z | copilot  | initial V3 student spec
+- 2026-04-28T00:00:00Z | claude   | marked S2.1-S2.4 acceptance criteria complete; added HTML header
+-->
+
 ## S0.1 | P0 | Student-Initiated Registration with Age Gate
 
 **ID:** S0.1
