@@ -8,13 +8,15 @@ EDIT LOG:
 - 2026-04-25T00:00:00Z | copilot  | initial V3 student spec
 - 2026-04-28T00:00:00Z | claude   | marked S2.1-S2.4 acceptance criteria complete; added HTML header
 - 2026-04-28T12:00:00Z | claude   | marked S3.1-S3.2 as DONE (components, APIs, SSE stream all implemented)
+- 2026-04-28T18:00:00Z | claude   | marked S0.1, S0.3, S1.1, S1.3 as DONE; fixed S1.1 flow wiring (onboarding->board-confirm->exam-date->diagnostic); fixed S3.2 SSE event names (partial/complete/error)
 -->
 
-## S0.1 | P0 | Student-Initiated Registration with Age Gate
+## S0.1 | P0 | Student-Initiated Registration with Age Gate ✅ DONE
 
 **ID:** S0.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
+**Status:** Implemented 2026-04-28
 
 ### User Story
 
@@ -108,11 +110,12 @@ So that I face no unnecessary friction since I'm legally an adult under DPDP.
 - [ ] Adult student can access AI Tutor, Practice, Topic Generation immediately
 - [ ] No parent-related UI anywhere in the app for adult students
 
-## S0.3 | P0 | Student Explore Mode — Learning While Waiting
+## S0.3 | P0 | Student Explore Mode — Learning While Waiting ✅ DONE
 
 **ID:** S0.3
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
+**Status:** Implemented 2026-04-28
 
 ### User Story
 
@@ -203,11 +206,12 @@ So that I'm never stuck waiting indefinitely.
 - [ ] Denied cooldown allows re-send to DIFFERENT parent immediately
 - [ ] Expired allows immediate re-send (no cooldown)
 
-## S1.1 | P0 | Student Confirms Board & Grade (Post-Consent or Adult)
+## S1.1 | P0 | Student Confirms Board & Grade (Post-Consent or Adult) ✅ DONE
 
 **ID:** S1.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
+**Status:** Implemented 2026-04-28 (flow wired: onboarding -> board-confirm -> exam-date -> diagnostic)
 
 ### User Story
 
@@ -272,10 +276,11 @@ So that I feel a sense of ownership and the app feels personalized.
 - [ ] Avatar appears in top bar after selection
 - [ ] Study Buddy hints display correct avatar
 
-## S1.3 | P0 | Adaptive Diagnostic Quiz (Right-Sizing)
+## S1.3 | P0 | Adaptive Diagnostic Quiz (Right-Sizing) ✅ DONE
 
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
+**Status:** Implemented 2026-04-28
 
 ### User Story
 

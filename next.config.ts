@@ -37,11 +37,6 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
-        source: '/register',
-        destination: '/auth/signup',
-        permanent: false,
-      },
-      {
         source: '/learn/learning-path',
         destination: '/student/learning-map',
         permanent: false,

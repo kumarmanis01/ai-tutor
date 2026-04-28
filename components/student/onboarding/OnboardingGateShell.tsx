@@ -3,7 +3,7 @@
 /**
  * Client shell for the /student/onboarding page.
  * Wraps ProfileCompletionGate in standalone mode and wires up the
- * afterSave redirect to exam-date capture.
+ * afterSave redirect to board-confirm (S1.1) before exam-date capture.
  */
 
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,7 @@ export default function OnboardingGateShell({ initialValues }: OnboardingGateShe
     <ProfileCompletionGate
       standalone
       initialValues={initialValues}
-      afterSave={() => router.push('/student/onboarding/exam-date')}
+      afterSave={() => router.push('/student/onboarding/board-confirm')}
     />
   );
 }
