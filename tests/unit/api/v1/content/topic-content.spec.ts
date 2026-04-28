@@ -1,5 +1,21 @@
 /**
- * Unit tests for GET /api/v1/content/[topicId] (S2.2).
+ * FILE OBJECTIVE:
+ * - Unit tests for GET /api/v1/content/[topicId] (S2.2 lesson content endpoint).
+ *   Covers auth guard, 404 handling, note-to-payload normalization, locale selection,
+ *   generatedStudyContent fallback, studyBuddyHint derivation, and Cache-Control header.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/v1/content/topic-content.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-25T00:00:00Z | copilot | created S2.2 content topic endpoint tests
+ * - 2026-04-28T00:00:00Z | claude  | added file header; added Cache-Control, studyBuddyHint,
+ *   and availableLocales assertions per PR review
  */
 
 jest.mock('@/lib/session', () => ({ getServerSessionForHandlers: jest.fn() }));
@@ -25,6 +41,19 @@ function makeParams(topicId = 'topic-1') {
   return { params: Promise.resolve({ topicId }) };
 }
 
+const CONTENT_JSON_EN = {
+  title: 'Fractions',
+  content: {
+    introduction: 'Fractions represent parts of a whole.',
+    learningObjectives: ['Understand numerator and denominator'],
+    sections: [{ heading: 'What is a Fraction?', explanation: 'A fraction has two parts.', imageUrl: null, imageAlt: null }],
+    keyTerms: [{ term: 'Numerator', definition: 'Top number in a fraction.' }],
+    commonMistakes: [{ correction: 'The denominator can never be zero.' }],
+    videoUrl: null,
+    summary: 'Fractions are core math concepts.',
+  },
+};
+
 beforeEach(() => {
   jest.resetAllMocks();
   mockSession.mockResolvedValue({ user: { id: 'u1' } });
@@ -45,24 +74,11 @@ describe('GET /api/v1/content/[topicId]', () => {
   });
 
   it('should return lesson payload for topic with notes', async () => {
-    const contentJson = {
-      title: 'Fractions',
-      content: {
-        introduction: 'Fractions represent parts of a whole.',
-        learningObjectives: ['Understand numerator and denominator'],
-        sections: [{ heading: 'What is a Fraction?', explanation: 'A fraction has two parts.', imageUrl: null, imageAlt: null }],
-        keyTerms: [{ term: 'Numerator', definition: 'Top number in a fraction.' }],
-        commonMistakes: [{ correction: 'Do not confuse numerator and denominator.' }],
-        videoUrl: null,
-        summary: 'Fractions are core math concepts.',
-      },
-    };
-
     mockTopicFind.mockResolvedValueOnce({
       id: 't1',
       name: 'Fractions',
       chapter: { id: 'ch1', name: 'Numbers', subject: { id: 'sub1', name: 'Maths' } },
-      notes: [{ id: 'n1', title: 'Fractions', contentJson, status: 'approved', language: 'en' }],
+      notes: [{ id: 'n1', title: 'Fractions', contentJson: CONTENT_JSON_EN, status: 'approved', language: 'en' }],
     });
 
     const res = await GET(new Request('https://example.com/api/v1/content/t1'), makeParams('t1'));
@@ -73,6 +89,44 @@ describe('GET /api/v1/content/[topicId]', () => {
     expect(body.keyPoints.length).toBeGreaterThan(0);
     expect(Array.isArray(body.sections)).toBe(true);
     expect(body.studyBuddyHint).toBeTruthy();
+  });
+
+  it('should derive studyBuddyHint from commonMistakes correction', async () => {
+    mockTopicFind.mockResolvedValueOnce({
+      id: 't1',
+      name: 'Fractions',
+      chapter: { id: 'ch1', name: 'Numbers', subject: { id: 'sub1', name: 'Maths' } },
+      notes: [{ id: 'n1', title: 'Fractions', contentJson: CONTENT_JSON_EN, status: 'approved', language: 'en' }],
+    });
+
+    const res = await GET(new Request('https://example.com/api/v1/content/t1'), makeParams('t1'));
+    const body = await res.json();
+    expect(body.studyBuddyHint).toBe('The denominator can never be zero.');
+  });
+
+  it('should include availableLocales from topic notes', async () => {
+    mockTopicFind.mockResolvedValueOnce({
+      id: 't1',
+      name: 'Fractions',
+      chapter: { id: 'ch1', name: 'Numbers', subject: { id: 'sub1', name: 'Maths' } },
+      notes: [{ id: 'n1', title: 'Fractions', contentJson: CONTENT_JSON_EN, status: 'approved', language: 'en' }],
+    });
+
+    const res = await GET(new Request('https://example.com/api/v1/content/t1'), makeParams('t1'));
+    const body = await res.json();
+    expect(body.availableLocales).toContain('en');
+  });
+
+  it('should set Cache-Control header for client caching', async () => {
+    mockTopicFind.mockResolvedValueOnce({
+      id: 't1',
+      name: 'Fractions',
+      chapter: { id: 'ch1', name: 'Numbers', subject: { id: 'sub1', name: 'Maths' } },
+      notes: [{ id: 'n1', title: 'Fractions', contentJson: CONTENT_JSON_EN, status: 'approved', language: 'en' }],
+    });
+
+    const res = await GET(new Request('https://example.com/api/v1/content/t1'), makeParams('t1'));
+    expect(res.headers.get('Cache-Control')).toMatch(/max-age/);
   });
 
   it('should fall back to generatedStudyContent when no TopicNote exists', async () => {
