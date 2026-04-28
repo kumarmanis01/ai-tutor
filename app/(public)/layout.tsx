@@ -1,6 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Public root layout for marketing routes, including the shared navbar,
+ *   providers, and landing-page font configuration.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/next.config.ts.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | copilot | LP-1.1: switch public shell to Roboto and Noto Sans Devanagari via next/font/google
+ */
 import React, { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
-import localFont from 'next/font/local';
+import { Noto_Sans_Devanagari, Roboto } from 'next/font/google';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import Providers from '@/app/providers';
@@ -10,15 +26,17 @@ import ToastHost from '@/components/ToastHost';
 import StickyHeader from '@/components/StickyHeader';
 import '@/styles/index.css';
 
-// Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
-const inter = localFont({
-  src: '../../public/fonts/inter-latin-variable.woff2',
-  variable: '--font-inter',
+const roboto = Roboto({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-roboto',
   display: 'swap',
 });
-const nunito = localFont({
-  src: '../../public/fonts/nunito-variable-latin.woff2',
-  variable: '--font-nunito',
+
+const notoSansDevanagari = Noto_Sans_Devanagari({
+  subsets: ['devanagari'],
+  weight: ['400', '500', '700'],
+  variable: '--font-noto-sans-devanagari',
   display: 'swap',
 });
 
@@ -70,7 +88,7 @@ export const metadata: Metadata = {
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+    <html lang="en" className={`h-full ${roboto.variable} ${notoSansDevanagari.variable}`}>
       <body className="font-sans antialiased min-h-screen h-full">
         <Providers>
           <GlobalLoaderProvider>
