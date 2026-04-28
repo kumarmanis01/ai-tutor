@@ -7,6 +7,7 @@ FILE OBJECTIVE:
 EDIT LOG:
 - 2026-04-25T00:00:00Z | copilot  | initial V3 student spec
 - 2026-04-28T00:00:00Z | claude   | marked S2.1-S2.4 acceptance criteria complete; added HTML header
+- 2026-04-28T12:00:00Z | claude   | marked S3.1-S3.2 as DONE (components, APIs, SSE stream all implemented)
 -->
 
 ## S0.1 | P0 | Student-Initiated Registration with Age Gate
@@ -520,10 +521,11 @@ So that I feel rewarded and motivated to learn every day.
 - [ ] Streak Freeze auto-applies on first missed day
 - [ ] Rewards unlock at correct streak thresholds
 
-## S3.1 | P0 | Search with Empty Result → Content Request Card
+## S3.1 | P0 | Search with Empty Result → Content Request Card ✅ DONE
 
 **Labels:** P0, phase:on-demand
 **Phase:** On-Demand Discovery
+**Status:** Implemented 2026-04-28
 
 ### User Story
 
@@ -555,10 +557,11 @@ So that I'm not stuck with a dead-end "No Results" page.
 - [x] Generate button triggers generation flow
 - [x] Pending status shows correct disabled button
 
-## S3.2 | P0 | AI Content Generation with Loading Experience
+## S3.2 | P0 | AI Content Generation with Loading Experience ✅ DONE
 
 **Labels:** P0, phase:on-demand
 **Phase:** On-Demand Discovery
+**Status:** Implemented 2026-04-28
 
 ### User Story
 

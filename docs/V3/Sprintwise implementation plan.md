@@ -126,8 +126,8 @@ Here is the complete, updated **Sprint-Wise Ticket Allocation** across MVP and s
 
 | ID | Domain | Priority | Story Title | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| S3.1 | Student | P0 | Search with Empty Result → Content Request Card | 🔲 TODO |
-| S3.2 | Student | P0 | AI Content Generation with Loading Experience | 🔲 TODO |
+| S3.1 | Student | P0 | Search with Empty Result → Content Request Card | ✅ DONE |
+| S3.2 | Student | P0 | AI Content Generation with Loading Experience | ✅ DONE |
 | A1.1 | Admin | P0 | Content Moderation Dashboard | 🔲 TODO |
 | A1.2 | Admin | P0 | Content Review Interface — Side-by-Side Editor | 🔲 TODO |
 | A4.1 | Admin | P0 | Executive Dashboard — Core KPIs | 🔲 TODO |

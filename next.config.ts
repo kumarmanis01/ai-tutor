@@ -36,6 +36,11 @@ const nextConfig: NextConfig = {
         destination: '/dashboard',
         permanent: false,
       },
+      {
+        source: '/register',
+        destination: '/auth/signup',
+        permanent: false,
+      },
     ];
   },
   images: {
