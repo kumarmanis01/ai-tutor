@@ -42,10 +42,10 @@
   --color-destructive-foreground: #ffffff; /* white */
 
   /* Typography */
-  --font-headline: var(--font-roboto), sans-serif;
-  --font-body: var(--font-roboto), sans-serif;
-  --font-cta: var(--font-roboto), sans-serif;
-  --font-accent: var(--font-noto-sans-devanagari), sans-serif;
+  --font-headline: var(--font-roboto, var(--font-inter, ui-sans-serif)), sans-serif;
+  --font-body: var(--font-roboto, var(--font-inter, ui-sans-serif)), sans-serif;
+  --font-cta: var(--font-roboto, var(--font-nunito, ui-sans-serif)), sans-serif;
+  --font-accent: var(--font-noto-sans-devanagari, var(--font-nunito, ui-sans-serif)), sans-serif;
 
   /* Spacing */
   --radius: 0.5rem;
@@ -79,8 +79,10 @@
   --color-warning: #f59e0b;
   --color-error: #ef4444;
 
-  --font-headline: var(--font-roboto), sans-serif;
-  --font-body: var(--font-roboto), sans-serif;
+  --font-headline: var(--font-roboto, var(--font-inter, ui-sans-serif)), sans-serif;
+  --font-body: var(--font-roboto, var(--font-inter, ui-sans-serif)), sans-serif;
+  --font-cta: var(--font-roboto, var(--font-nunito, ui-sans-serif)), sans-serif;
+  --font-accent: var(--font-noto-sans-devanagari, var(--font-nunito, ui-sans-serif)), sans-serif;
 }
 
 /*
@@ -98,6 +100,7 @@
  *
  * EDIT LOG:
  * - 2026-04-28T00:00:00Z | copilot | LP-1.1: bind landing typography tokens to next/font CSS variables
+ * - 2026-04-28T00:00:00Z | copilot | fix(review): add token fallbacks for non-public layouts that do not define public font variables
  */
 @tailwind base;
 @tailwind components;

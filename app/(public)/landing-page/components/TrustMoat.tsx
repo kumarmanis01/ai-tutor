@@ -16,6 +16,7 @@
  *   and parent dashboard preview mockup
  * - 2026-04-24T12:00:00Z | copilot | mark as client component: uses onClick handlers and document API
  * - 2026-04-28T00:00:00Z | copilot | LP-3.1: replace mock dashboard UI with static image preview and internal link
+ * - 2026-04-28T00:00:00Z | copilot | fix(review): remove blur placeholder from non-static image source to avoid Next Image runtime error
  */
 
 import Image from 'next/image';
@@ -85,7 +86,6 @@ function DashboardPreview() {
               src={parentDashboardPreview}
               alt="Parent dashboard preview showing weak topics, screen time toggle, and subject blocker controls"
               className="h-auto w-full"
-              placeholder="blur"
               sizes="(max-width: 768px) 80vw, 360px"
             />
           </div>
