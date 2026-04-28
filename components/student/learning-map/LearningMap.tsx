@@ -14,6 +14,7 @@
  * - 2026-04-25T00:00:00Z | copilot | created S2.1 learning map UI
  * - 2026-04-25T01:45:00Z | copilot | routed premium-locked nodes to freemium wall and added completed-chapter practice entry
  * - 2026-04-25T12:00:00Z | copilot | S3.1 -- added DB content search with debounce + ContentRequestCard fallback
+ * - 2026-04-28T00:00:00Z | claude | S2.1 -- replaced static Study Buddy button with StudyBuddyGreeting popover
  */
 
 'use client';
@@ -26,6 +27,7 @@ import { SearchResults } from '@/components/student/search/SearchResults';
 import type { SearchResult } from '@/components/student/search/SearchResults';
 import ChapterNode from './ChapterNode';
 import ChapterInfo from './ChapterInfo';
+import StudyBuddyGreeting from './StudyBuddyGreeting';
 
 type LearningMapProps = {
   studentId: string;
@@ -146,14 +148,7 @@ export function LearningMap({ studentId, data, isOfflineCache, onRefresh, grade,
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <button
-            type="button"
-            className="min-h-[44px] rounded-xl bg-[#EEEDFE] px-3 py-2 text-left"
-            aria-label="Study buddy greeting"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#534AB7]">Study Buddy</p>
-            <p className="mt-1 text-sm font-medium text-[#3C3489]">Hi! Let us unlock your next chapter.</p>
-          </button>
+          <StudyBuddyGreeting xp={data.topBar.xp} streak={data.topBar.streak} />
           <div className="rounded-xl bg-[#EAF3DE] px-3 py-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#1D9E75]">XP</p>
             <p className="mt-1 text-lg font-bold text-[#1D9E75]">{data.topBar.xp}</p>
