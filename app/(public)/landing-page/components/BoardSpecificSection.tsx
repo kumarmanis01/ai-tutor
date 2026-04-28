@@ -136,7 +136,7 @@ const BoardSpecificSection = () => {
               ))}
             </div>
             <Link
-              href="https://app.spinzyacademy.com/register"
+              href="/register"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[48px] bg-[#534AB7] text-white font-semibold rounded-lg hover:bg-[#433ba0] transition-all text-base"
             >
               {data.ctaText} &rarr;

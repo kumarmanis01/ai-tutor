@@ -41,7 +41,7 @@ const FinalCTA = () => {
 
           <div className="flex flex-col items-center gap-4">
             <Link
-              href="https://app.spinzyacademy.com/register"
+              href="/register"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 md:px-10 md:py-5 min-h-[48px] w-full sm:w-auto bg-[#FF6B35] text-white font-cta font-bold rounded-xl hover:bg-[#e85f2d] transition-all text-base md:text-lg shadow-xl"
             >
               <Icon name="SparklesIcon" size={24} variant="solid" />
