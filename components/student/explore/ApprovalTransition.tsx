@@ -2,17 +2,20 @@
 
 /**
  * FILE OBJECTIVE:
- * - Render the parent-approval celebration transition screen with lightweight CSS-based confetti and a timed completion callback.
+ * - Render the parent-approval celebration transition screen with lightweight CSS-based
+ *   confetti and a timed completion callback. S0.3 explore mode.
+ *   No animation libraries -- pure CSS keyframes per CLAUDE.md rules.
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/student/explore/ApprovalTransition.spec.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-01-01T00:00:00Z | copilot | created file header in required template for new component
+ * - 2026-04-28T00:00:00Z | staff-engineer | created for S0.3 explore mode
  */
 
 import { useEffect } from 'react';

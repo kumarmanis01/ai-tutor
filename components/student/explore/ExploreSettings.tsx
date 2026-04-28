@@ -188,7 +188,7 @@ export default function ExploreSettings({
               <strong>Contact:</strong> {sentTo ?? 'N/A'}
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-300">
-              <strong>Requested:</strong> {expiryLabel}
+              <strong>Expires at:</strong> {expiryLabel}
             </p>
             {countdown && (
               <p

@@ -1,8 +1,21 @@
 'use client';
 
 /**
- * Client wrapper for the diagnostic page -- renders QuickDiagnosticQuiz.
- * Separated from the server component so we can use client-only hooks.
+ * FILE OBJECTIVE:
+ * - Client wrapper for the S1.3 diagnostic page. Renders QuickDiagnosticQuiz with
+ *   server-resolved props (grade, board, studentId, accessToken).
+ *   Separated from the server component to isolate client-only rendering.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/onboarding/diagnostic/DiagnosticPageClient.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | staff-engineer | created for S1.3 diagnostic onboarding step
  */
 
 import QuickDiagnosticQuiz from '@/components/student/onboarding/QuickDiagnosticQuiz';

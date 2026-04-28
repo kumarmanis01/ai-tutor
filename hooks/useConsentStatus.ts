@@ -10,12 +10,19 @@
  * LINKED UNIT TEST:
  * - tests/unit/hooks/useConsentStatus.spec.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | created (polling only)
  * - 2026-04-28T00:00:00Z | staff-engineer | add WebSocket primary + polling fallback per S0.3 spec
+ * - 2026-04-28T00:00:00Z | staff-engineer | fix: stopPolling on WS connect; add JWT auth; use Socket type
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { Socket } from 'socket.io-client';
 
 export type ConsentStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED';
 
@@ -106,12 +113,12 @@ export function useConsentStatus(consentToken: string | null): ConsentStatusResu
   useEffect(() => {
     if (!consentToken) return;
 
-    let socketInstance: { emit: (event: string, data?: unknown) => void; disconnect: () => void; on: (event: string, handler: (payload: unknown) => void) => void } | null = null;
+    let socketInstance: Socket | null = null;
     let wsTimeoutId: ReturnType<typeof setTimeout> | null = null;
     let mounted = true;
 
     async function attemptWebSocket() {
-      let ioFn: ((opts: { path: string; transports: string[] }) => typeof socketInstance) | null = null;
+      let ioFn: ((opts: { path: string; auth?: { token: string }; transports: string[] }) => Socket) | null = null;
       try {
         const mod = await import('socket.io-client');
         ioFn = mod.io as unknown as typeof ioFn;
@@ -126,7 +133,11 @@ export function useConsentStatus(consentToken: string | null): ConsentStatusResu
       }
 
       try {
-        socketInstance = ioFn({ path: '/api/socket', transports: ['websocket', 'polling'] });
+        socketInstance = ioFn({
+          path: '/api/socket',
+          auth: { token: consentToken },
+          transports: ['websocket', 'polling'],
+        });
 
         wsTimeoutId = setTimeout(() => {
           if (!wsConnectedRef.current && mounted) startPolling();
@@ -138,6 +149,8 @@ export function useConsentStatus(consentToken: string | null): ConsentStatusResu
             clearTimeout(wsTimeoutId);
             wsTimeoutId = null;
           }
+          // Stop polling if it started during the WS connect timeout.
+          stopPolling();
           socketInstance!.emit('join_consent_room', consentToken);
           // Hydrate state immediately via HTTP (WS won't replay past events).
           void poll();

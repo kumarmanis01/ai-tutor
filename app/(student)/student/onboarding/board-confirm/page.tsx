@@ -1,9 +1,21 @@
 /**
- * S1.1 -- Board & Grade Confirmation page.
+ * FILE OBJECTIVE:
+ * - S1.1 Board & Grade Confirmation page (server component).
+ *   Reads current board, grade, and explore-diagnostic status from DB.
+ *   If the student completed their diagnostic in Explore Mode, the client
+ *   component skips straight to the Learning Map.
+ *   Otherwise renders BoardGradeConfirmation (carousel + grid).
  *
- * Server component: reads current board, grade, and explore-diagnostic status from DB.
- * If the student completed their diagnostic in Explore Mode, skip straight to Learning Map.
- * Otherwise renders BoardGradeConfirmation (client component with carousel + grid).
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/onboarding/board-confirm/page.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | staff-engineer | created for S1.1 board & grade confirmation
  */
 
 import { redirect } from 'next/navigation';

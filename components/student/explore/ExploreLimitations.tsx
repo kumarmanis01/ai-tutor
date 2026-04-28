@@ -2,17 +2,20 @@
 
 /**
  * FILE OBJECTIVE:
- * - Render a student-facing feature availability list that clearly distinguishes currently available explore features from features locked until parent approval.
+ * - S0.3 locked features grid. Renders a student-facing feature availability list
+ *   distinguishing currently available explore features from those locked until
+ *   parent approval. Static component -- no props required.
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/student/explore/ExploreLimitations.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-04-28T00:00:00Z | copilot | created file header to align with ENGINEERING_PRACTICES.md §8 template
+ * - 2026-04-28T00:00:00Z | staff-engineer | created for S0.3 explore mode
  */
 
 interface Feature {

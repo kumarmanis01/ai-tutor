@@ -1,10 +1,22 @@
 'use client';
 
 /**
- * Full-screen lesson viewer for Explore Mode sample topics (S0.3).
- * - Shows pre-generated note content (or a placeholder if no notes yet).
- * - "Mark as Complete" tracked only in localStorage (not synced to server in explore mode).
- * - After viewing: prompts the student to unlock unlimited practice once parent approves.
+ * FILE OBJECTIVE:
+ * - Full-screen lesson viewer for Explore Mode sample topics (S0.3).
+ *   Shows pre-generated note content (placeholder if no notes yet).
+ *   "Mark as Complete" tracked in localStorage only -- not synced in explore mode.
+ *   After viewing: prompts the student to unlock unlimited practice once parent approves.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/explore/SampleLessonViewer.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | staff-engineer | created for S0.3 explore mode
  */
 
 import { useState, useEffect } from 'react';

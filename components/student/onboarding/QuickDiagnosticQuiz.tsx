@@ -16,7 +16,7 @@
  * - 2026-04-28T00:00:00Z | copilot | created standardized file header to comply with ENGINEERING_PRACTICES.md §8
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ function OptionButton({
 }: {
   text: string;
   selected: boolean;
-  feedback: 'correct' | 'incorrect' | null;
+  feedback: 'correct' | 'incorrect' | 'submitted' | null;
   isCorrect: boolean;
   disabled: boolean;
   onSelect: () => void;
@@ -120,7 +120,8 @@ function OptionButton({
   let className =
     'w-full min-h-[52px] px-4 py-3 rounded-xl border-2 text-left text-sm leading-snug transition-all ';
 
-  if (feedback === null) {
+  if (feedback === null || feedback === 'submitted') {
+    // Pre-submission or no-correct-answer-available: preserve selection state.
     className += selected
       ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 font-medium'
       : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 hover:border-[#534AB7]/40';
@@ -168,11 +169,15 @@ export default function QuickDiagnosticQuiz({
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState('');
-  const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
+  const [feedback, setFeedback] = useState<'correct' | 'incorrect' | 'submitted' | null>(null);
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // Refs for auto-advance timer and latest answers (to avoid stale closure in timer).
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answersRef = useRef<AnswerRecord[]>([]);
 
   // Result phase
   const [phase, setPhase] = useState<'quiz' | 'result'>('quiz');
@@ -204,46 +209,52 @@ export default function QuickDiagnosticQuiz({
       .finally(() => setLoading(false));
   }, [grade, board, selectedSubject]);
 
-  async function handleSubmitAnswer() {
-    if (!selectedOption || submitting) return;
-    const q = questions[currentIndex];
-
-    // Ask the server for the correct answer for this question.
-    // The diagnostic-result API accepts answers[] and returns score+placement, but we need
-    // per-question correctness for instant feedback. We infer it by temporarily checking
-    // all collected answers at the end, or we can call the result API early.
-    // Strategy: track the answer locally and evaluate after all 5 submitted.
-    // For per-question feedback we rely on question.correctAnswer if present (from API),
-    // otherwise we just mark feedback "submitted" without revealing the correct answer
-    // (the API purposely omits correctAnswer from the public payload for security -- we
-    // cannot know the right answer client-side until the server tells us at result time).
-    // To support real instant feedback, we batch-evaluate at submission time via the server.
-
-    const updatedAnswers = [...answers, { questionId: q.id, selectedAnswer: selectedOption }];
-    setAnswers(updatedAnswers);
-
-    // If question has correctAnswer embedded (quiz bank may include it for dev/test), use it.
-    const correct = q.correctAnswer ? q.correctAnswer.trim() === selectedOption.trim() : null;
-    if (correct !== null) {
-      setFeedback(correct ? 'correct' : 'incorrect');
-      if (!correct) setCorrectAnswer(q.correctAnswer ?? '');
-    } else {
-      // No client-side correct-answer available -- skip per-question reveal, proceed.
-      setFeedback('correct'); // show neutral "submitted" state via 'correct' styling
+  function clearAdvanceTimer() {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
     }
+  }
 
+  // Advance to the next question or submit if on the last question.
+  // Called by both the "Next Question" button and the auto-advance timer.
+  function handleAdvance() {
+    clearAdvanceTimer();
     if (currentIndex < questions.length - 1) {
-      // Auto-advance after short delay so feedback is visible.
-      await new Promise((r) => setTimeout(r, 1200));
       setCurrentIndex((i) => i + 1);
       setSelectedOption('');
       setFeedback(null);
       setCorrectAnswer('');
     } else {
-      // Last question -- submit to server.
-      await new Promise((r) => setTimeout(r, 1200));
-      await submitToServer(updatedAnswers);
+      void submitToServer(answersRef.current);
     }
+  }
+
+  // Record the selected answer and show per-question feedback.
+  // Starts a 1200ms auto-advance timer; "Next Question" button cancels it and advances early.
+  function handleSubmitAnswer() {
+    if (!selectedOption || submitting || feedback !== null) return;
+    const q = questions[currentIndex];
+
+    const updatedAnswers = [...answers, { questionId: q.id, selectedAnswer: selectedOption }];
+    answersRef.current = updatedAnswers;
+    setAnswers(updatedAnswers);
+
+    // If question has correctAnswer embedded (quiz bank may include it for dev/test), use it.
+    // API purposely omits correctAnswer from the public payload for security -- if absent,
+    // show a neutral "submitted" state instead of falsely marking the answer correct.
+    const correct = q.correctAnswer ? q.correctAnswer.trim() === selectedOption.trim() : null;
+    if (correct !== null) {
+      setFeedback(correct ? 'correct' : 'incorrect');
+      if (!correct) setCorrectAnswer(q.correctAnswer ?? '');
+    } else {
+      setFeedback('submitted');
+    }
+
+    // Auto-advance after a short delay so feedback is visible.
+    advanceTimerRef.current = setTimeout(() => {
+      handleAdvance();
+    }, 1200);
   }
 
   async function submitToServer(finalAnswers: AnswerRecord[]) {
@@ -413,12 +424,16 @@ export default function QuickDiagnosticQuiz({
             className={`rounded-xl px-4 py-2 text-sm font-semibold ${
               feedback === 'correct'
                 ? 'bg-[#EAF3DE] dark:bg-[#1D9E75]/10 text-[#1D9E75]'
+                : feedback === 'submitted'
+                ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/10 text-[#534AB7] dark:text-indigo-300'
                 : 'bg-[#FAEEDA] dark:bg-[#BA7517]/10 text-[#BA7517]'
             }`}
             role="alert"
           >
             {feedback === 'correct' ? (
               '✅ Well done!'
+            ) : feedback === 'submitted' ? (
+              'Answer submitted!'
             ) : (
               <>
                 Correct answer:{' '}
@@ -459,7 +474,7 @@ export default function QuickDiagnosticQuiz({
           <button
             type="button"
             disabled={!selectedOption || submitting}
-            onClick={() => { void handleSubmitAnswer(); }}
+            onClick={handleSubmitAnswer}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
           >
             {submitting ? 'Submitting...' : 'Submit'}
@@ -468,7 +483,7 @@ export default function QuickDiagnosticQuiz({
           <button
             type="button"
             disabled={submitting}
-            onClick={() => { void handleSubmitAnswer(); }}
+            onClick={handleAdvance}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] disabled:opacity-50 transition-all"
           >
             {submitting

@@ -73,7 +73,7 @@ export default function ExploreMap({ sampleTopics, grade, onSendReminder, remind
             onClick={() => setActiveLesson(topic)}
             className={[
               'w-full text-left rounded-2xl border-2 border-[#534AB7]/40 bg-[#EEEDFE] dark:bg-[#534AB7]/10 p-4',
-              'ring-2 ring-[#534AB7]/20 animate-pulse-slow',
+              'ring-2 ring-[#534AB7]/20 animate-pulse',
               'hover:border-[#534AB7] hover:ring-[#534AB7]/30 transition-all min-h-[72px]',
             ].join(' ')}
             aria-label={`Open free preview: ${topic.name}`}

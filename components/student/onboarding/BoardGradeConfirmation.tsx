@@ -16,7 +16,7 @@
  * - 2026-04-28T00:00:00Z | copilot | created file header in required template for new component
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Board data ────────────────────────────────────────────────────────────────
@@ -71,10 +71,14 @@ export default function BoardGradeConfirmation({
   const [error, setError] = useState('');
 
   // If the student completed the diagnostic in explore mode, skip to Learning Map immediately.
-  if (hasCompletedExploreDiagnostic) {
-    router.replace('/student/learning-map');
-    return null;
-  }
+  // Side-effect must be in useEffect to avoid calling router during render (hydration loop).
+  useEffect(() => {
+    if (hasCompletedExploreDiagnostic) {
+      router.replace('/student/learning-map');
+    }
+  }, [hasCompletedExploreDiagnostic, router]);
+
+  if (hasCompletedExploreDiagnostic) return null;
 
   async function handleConfirm() {
     setBusy(true);
