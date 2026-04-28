@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * QuickDiagnosticQuiz -- S1.3 Adaptive Diagnostic Quiz (Right-Sizing).
+ * FILE OBJECTIVE:
+ * - Render the student onboarding adaptive diagnostic quiz and determine a placement level from a five-question right-sizing flow.
+ * - Fetch diagnostic questions, capture answers, provide instant feedback, submit the placement result, and cache explore-mode progress for later sync.
  *
- * Renders a 5-question quiz with:
- *   - Questions from GET /api/v1/content/diagnostic?grade=&board= (2 below, 2 current, 1 above)
- *   - No timer
- *   - "Submit" button per question (enabled after option selected)
- *   - Instant feedback: Correct (green + "Well done!") / Incorrect (amber + correct answer shown)
- *   - Progress bar "Question X of 5"
- *   - Placement result screen after 5th question
- *   - POSTs result to POST /api/v1/students/{id}/diagnostic-result (with auth or explore token)
- *   - In explore mode: also caches result to localStorage for later server sync
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/onboarding/QuickDiagnosticQuiz.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | copilot | created standardized file header to comply with ENGINEERING_PRACTICES.md §8
  */
 
 import { useEffect, useState } from 'react';
