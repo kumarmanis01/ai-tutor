@@ -16,6 +16,7 @@ EDIT LOG:
 - 2026-04-27T14:30:00Z | copilot | implemented Sprint 7 LP-6.2, LP-7.1, LP-9.1 and updated AC status
 - 2026-04-28T00:00:00Z | copilot | status-only audit: corrected LP-1.1, LP-2.1, LP-3.1, LP-4.1, LP-6.1 and summary entries to match current code
 - 2026-04-28T00:00:00Z | copilot | implemented landing gaps for LP-1.1, LP-2.1, LP-3.1, LP-4.1, and LP-6.1 and refreshed status checkboxes after focused test validation
+- 2026-04-28T00:00:00Z | staff-engineer | fix sprint-2 overwrites: LP-3.1 mobile grid restored to 2-col; LP-5.1 TestimonialsSection rewritten to match AC (Sunita+Priya Menon, trust title, safety badge, progress bar); LP-8.1 SchoolsBanner copy/benefits/CTA aligned to AC; missing routes /blog /careers /press /dpdp /cookies created with Coming Soon pages
 -->
 
 ## LP-1.1 | P0 | Landing Page Shell with Consistent Layout
@@ -236,22 +237,22 @@ So that I feel social proof that Spinzy is safe and parent-approved.
 
 ### Acceptance Criteria
 
-- [ ] Add one NEW testimonial (keep existing Sunita Sharma testimonial — it's strong on academic results).
-- [ ] New testimonial focuses on TRUST and CONTROL:
-- [ ] "I was scared of AI apps. But Spinzy asked MY permission before my son could use it. I set a 1-hour daily limit. Now I get a report every Sunday. Finally, an app I trust, not one I monitor nervously." — Priya Menon, Mumbai. Mother of Class 6 student.
-- [ ] Hindi translation: "मुझे AI apps से डर लगता था। लेकिन Spinzy ने मेरे बेटे के उपयोग से पहले मेरी अनुमति मांगी। मैंने 1 घंटे की दैनिक सीमा तय की। अब हर रविवार को मुझे रिपोर्ट मिलती है। आखिरकार, एक ऐसा app जिस पर मुझे भरोसा है।"
-- [ ] Testimonials section title: "Parents Trust Spinzy. Here's Why."
-- [ ] Two testimonial cards side-by-side on desktop, stacked on mobile.
-- [ ] Each card has: Quote, Parent name + city, Child class, Star rating (5 stars, visually).
-- [ ] Before/After metric for Sunita's card (45% → 78%) displayed as a mini progress bar.
-- [ ] Priya's card has a "Safety Badge" visual (shield icon + "DPDP Compliant" text).
+- [x] Add one NEW testimonial (keep existing Sunita Sharma testimonial — it's strong on academic results).
+- [x] New testimonial focuses on TRUST and CONTROL:
+- [x] "I was scared of AI apps. But Spinzy asked MY permission before my son could use it. I set a 1-hour daily limit. Now I get a report every Sunday. Finally, an app I trust, not one I monitor nervously." — Priya Menon, Mumbai. Mother of Class 6 student.
+- [x] Hindi translation: "मुझे AI apps से डर लगता था। लेकिन Spinzy ने मेरे बेटे के उपयोग से पहले मेरी अनुमति मांगी। मैंने 1 घंटे की दैनिक सीमा तय की। अब हर रविवार को मुझे रिपोर्ट मिलती है। आखिरकार, एक ऐसा app जिस पर मुझे भरोसा है।"
+- [x] Testimonials section title: "Parents Trust Spinzy. Here's Why."
+- [x] Two testimonial cards side-by-side on desktop, stacked on mobile.
+- [x] Each card has: Quote, Parent name + city, Child class, Star rating (5 stars, visually).
+- [x] Before/After metric for Sunita's card (45% → 78%) displayed as a mini progress bar.
+- [x] Priya's card has a "Safety Badge" visual (shield icon + "DPDP Compliant" text).
 
 ### Dev Tasks
 
-- [ ] Create Testimonials section component
-- [ ] Create TestimonialCard sub-component
-- [ ] Add progress bar component for Sunita's metric
-- [ ] Add safety badge for Priya's card
+- [x] Create Testimonials section component
+- [x] Create TestimonialCard sub-component
+- [x] Add progress bar component for Sunita's metric
+- [x] Add safety badge for Priya's card
 
 ### QA
 
@@ -437,22 +438,22 @@ So that I can explore a B2B relationship for my institution.
 
 ### Acceptance Criteria
 
-- [ ] Section headline: "Spinzy for Schools" / "स्कूलों के लिए Spinzy"
-- [ ] Subheadline: "Give your students AI-powered supplementary learning — with teacher dashboards and DPDP-compliant parent consent management."
-- [ ] Benefit cards:
-- [ ] 📋 Teacher Dashboard — Monitor class-wide progress and identify common weak topics.
-- [ ] 👥 Bulk Onboarding — Add entire classes with one CSV upload.
-- [ ] 🛡️ Auto-Consent — Parent consent emails sent automatically. DPDP-compliant.
-- [ ] 📚 Curriculum-Aligned — CBSE, ICSE, and State Board ready.
-- [ ] CTA: "Partner With Us" → Opens email (schools@spinzyacademy.com) OR dedicated inquiry form.
-- [ ] Distinct background (gradient or darker color to separate from FAQ).
-- [ ] Simple 2×2 benefit grid.
-- [ ] CTA opens mailto:schools@spinzyacademy.com with pre-filled subject line.
+- [x] Section headline: "Spinzy for Schools" / "स्कूलों के लिए Spinzy"
+- [x] Subheadline: "Give your students AI-powered supplementary learning — with teacher dashboards and DPDP-compliant parent consent management."
+- [x] Benefit cards:
+- [x] 📋 Teacher Dashboard — Monitor class-wide progress and identify common weak topics.
+- [x] 👥 Bulk Onboarding — Add entire classes with one CSV upload.
+- [x] 🛡️ Auto-Consent — Parent consent emails sent automatically. DPDP-compliant.
+- [x] 📚 Curriculum-Aligned — CBSE, ICSE, and State Board ready.
+- [x] CTA: "Partner With Us" → Opens email (schools@spinzyacademy.com) OR dedicated inquiry form.
+- [x] Distinct background (gradient or darker color to separate from FAQ).
+- [x] Simple 2×2 benefit grid.
+- [x] CTA opens mailto:schools@spinzyacademy.com with pre-filled subject line.
 
 ### Dev Tasks
 
-- [ ] Create SchoolsBanner component.
-- [ ] Set up schools@spinzyacademy.com email forwarding (ops task).
+- [x] Create SchoolsBanner component.
+- [x] Set up schools@spinzyacademy.com email forwarding (ops task).
 
 ### QA
 
