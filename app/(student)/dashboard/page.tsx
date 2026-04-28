@@ -312,7 +312,7 @@ export default async function StudentHomeDashboardPage() {
     firstPendingDiagSubject?.subjectId ?? latestPlan?.subjectId ?? subjects[0]?.id;
   let cardProps: TodaysLearningCardProps = {
     type: 'empty',
-    diagnosticHref: firstDiagSubjectId ? `/diagnostic/${firstDiagSubjectId}` : '/dashboard',
+    diagnosticHref: firstDiagSubjectId ? '/student/onboarding/diagnostic' : '/dashboard',
   };
 
   if (nextAction) {
