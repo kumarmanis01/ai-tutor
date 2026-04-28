@@ -1,10 +1,17 @@
 /**
- * S1.3 -- Diagnostic Quiz page (post-consent / adult flow).
+ * FILE OBJECTIVE:
+ * - Render the student onboarding diagnostic page by loading the authenticated student's profile data and passing the required quiz configuration to the client component.
+ * - Redirect students away when no active session exists or when the onboarding diagnostic has already been completed.
  *
- * Reads the student's board and grade from their DB profile.
- * For grades 9-12, also reads subject preference.
- * Passes studentId + a "full:{id}" access token so the quiz can POST the result.
- * After completion the quiz redirects to /dashboard.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(student)/student/onboarding/diagnostic/page.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-28T00:00:00Z | copilot | created standard file header template for new file compliance
  */
 
 import { redirect } from 'next/navigation';
