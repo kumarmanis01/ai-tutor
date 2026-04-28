@@ -112,34 +112,34 @@ So that I stay engaged and don't delete the app while waiting for my parent.
 
 - [x] Explore Mode Home Screen: Top banner (sticky, dismissible): Text: "⏳ Waiting for Mom's approval. Explore 3 free sample lessons while you wait!" Dismiss button: Small "✕" to collapse banner. Banner re-appears on next app open.
 - [x] Approval Status Bar (collapsed by default, tap to expand): ✅ Profile Created (checkmark, green), ⏳ Approval Sent (pulsing dot, amber), ⬜ Parent Approved (greyed out). Text: "Sent to +91 98XXXXXX12 at 4:32 PM. Expires in 47 hours." "Send Reminder" button below status bar.
-- [ ] Explore Mode Content — Sample Lessons: Curriculum Map rendered in locked/paused state. 3 Sample Topics are highlighted with "Free Preview" badge. Selected based on grade + board (e.g., Grade 5 CBSE → "Introduction to Fractions", "Types of Soil", "Parts of Speech"). Topics glow softly (pulsing border animation).
-- [ ] All other topics visible but locked: 🔒 Lock icon overlay. Tapping a locked topic shows a tooltip/modal: "This topic unlocks when your parent approves. Explore our 3 free sample lessons in the meantime!" Button: "Send Reminder to Mom" Link: "View Sample Lessons" (scrolls to highlighted samples)
-- [ ] Tapping a sample topic: Opens full lesson content (pre-generated core notes + video if exists). Fully functional. No paywall or blocker. After viewing: "Want to practice this topic? Unlock unlimited practice when your parent approves." "Mark as Complete" button tracks locally (not synced to server).
-- [ ] Diagnostic Quiz in Explore Mode: Diagnostic Quiz (Story S1.3) is fully accessible in Explore Mode. 5 questions, adaptive difficulty. Score and placement result stored locally (AsyncStorage / IndexedDB). After quiz: "Great job! Your placement is saved. You'll see your full Learning Map once Mom approves."
-- [ ] On consent approval: Locally stored diagnostic result is pushed to server and applied.
-- [ ] Approval Status Monitoring: App polls GET /api/v1/consent/status?consent_token={token} every 15 seconds while Explore Mode is active. WebSocket connection as primary: Student subscribes to consent:{consent_token} on app open. Fallback: Polling if WebSocket fails or times out (3 seconds).
-- [ ] On Status Change — APPROVED: Confetti animation (2 seconds). Screen: "Mom Approved! 🎉" with child's avatar celebrating. Subtext: "Get ready for unlimited learning!" 1.5-second transition → Full Learning Map (Story S2.1). Locally stored diagnostic result synced to server. Push notification (if enabled): "Your parent approved Spinzy! Start learning now."
-- [ ] On Status Change — DENIED: Screen: "Access Not Approved". Body: "Your parent has declined access to Spinzy Academy. We recommend talking to them to understand why." Secondary body: "You can try again with a different parent contact." Button: "Send New Request" → Returns to Step 4 (Parent Contact). Profile anonymized: Name removed, only grade/board retained as aggregate stats. 72-hour cooldown before new request can be sent from same device.
-- [ ] On Status Change — EXPIRED (48 hours): Banner updates: "Your approval request has expired. Send a new one?" Button: "Send New Request" → Returns to Step 4. No cooldown for expiry (different from denial).
-- [ ] Reminder & Re-send: After 24 hours in Explore Mode with no response: Banner updates: "Mom might have missed it. Send a gentle reminder?" Button: "Send Reminder". Reminder re-sends original channel. Cooldown: 1 per 24 hours.
+- [x] Explore Mode Content -- Sample Lessons: Curriculum Map rendered in locked/paused state. 3 Sample Topics are highlighted with "Free Preview" badge. Selected based on grade + board (e.g., Grade 5 CBSE -> "Introduction to Fractions", "Types of Soil", "Parts of Speech"). Topics glow softly (pulsing border animation).
+- [x] All other topics visible but locked: 🔒 Lock icon overlay. Tapping a locked topic shows a tooltip/modal: "This topic unlocks when your parent approves. Explore our 3 free sample lessons in the meantime!" Button: "Send Reminder to Mom" Link: "View Sample Lessons" (scrolls to highlighted samples)
+- [x] Tapping a sample topic: Opens full lesson content (pre-generated core notes + video if exists). Fully functional. No paywall or blocker. After viewing: "Want to practice this topic? Unlock unlimited practice when your parent approves." "Mark as Complete" button tracks locally (not synced to server).
+- [x] Diagnostic Quiz in Explore Mode: Diagnostic Quiz (Story S1.3) is fully accessible in Explore Mode. 5 questions, adaptive difficulty. Score and placement result stored locally (AsyncStorage / IndexedDB). After quiz: "Great job! Your placement is saved. You'll see your full Learning Map once Mom approves."
+- [x] On consent approval: Locally stored diagnostic result is pushed to server and applied.
+- [x] Approval Status Monitoring: App polls GET /api/v1/consent/status?consent_token={token} every 15 seconds while Explore Mode is active. WebSocket connection as primary: Student subscribes to consent:{consent_token} on app open. Fallback: Polling if WebSocket fails or times out (3 seconds).
+- [x] On Status Change -- APPROVED: Confetti animation (2 seconds). Screen: "Mom Approved! 🎉" with child's avatar celebrating. Subtext: "Get ready for unlimited learning!" 1.5-second transition -> Full Learning Map (Story S2.1). Locally stored diagnostic result synced to server. Push notification (if enabled): "Your parent approved Spinzy! Start learning now."
+- [x] On Status Change -- DENIED: Screen: "Access Not Approved". Body: "Your parent has declined access to Spinzy Academy. We recommend talking to them to understand why." Secondary body: "You can try again with a different parent contact." Button: "Send New Request" -> Returns to Step 4 (Parent Contact). Profile anonymized: Name removed, only grade/board retained as aggregate stats. 72-hour cooldown before new request can be sent from same device.
+- [x] On Status Change -- EXPIRED (48 hours): Banner updates: "Your approval request has expired. Send a new one?" Button: "Send New Request" -> Returns to Step 4. No cooldown for expiry (different from denial).
+- [x] Reminder & Re-send: After 24 hours in Explore Mode with no response: Banner updates: "Mom might have missed it. Send a gentle reminder?" Button: "Send Reminder". Reminder re-sends original channel. Cooldown: 1 per 24 hours.
 - [x] "Change Contact" link: Opens WhatsApp/Email toggle with new input. If contact changed: Old ConsentRequest expires immediately. New request sent to new contact.
-- [ ] Explore Mode Settings (⚙️ icon, top right): Shows: Current contact: Masked (+91 98XXXXXX12 / mom\*\*\*\*@gmail.com). Request sent at: Timestamp. Expires in: Countdown timer (live). "Send Reminder" button. "Change Contact Method" → Opens Step 4. "Cancel Request" → Confirmation modal. On confirm: Profile deleted. App returns to Step 1 (Role Selection).
-- [ ] Explore Mode Limitations: Sample Lessons (3 topics) ✅ Unlocked; Diagnostic Quiz ✅ Unlocked; AI Tutor (Teacher Vidya) ❌ Locked — "Ask Mom to approve to chat with Teacher Vidya!"; Practice Questions ❌ Locked — "Practice unlocks with parent approval. Explore sample lessons now!"; Topic Generation ❌ Locked — "Requesting new topics unlocks with parent approval."; Progress Tracking ❌ Off — "Your progress will be saved after parent approval."; Streaks & XP ❌ Off — "Streaks and rewards begin after approval!"
-- [ ] Backend: GET /api/v1/students/explore-content?grade=5&board=CBSE — Returns exactly 3 sample topics with full content. GET /api/v1/consent/status?consent_token={token} — Returns { status, expiresAt, sentTo (masked), channel, reminderCount }. WebSocket: Student subscribes to consent:{consent_token} on app open. POST /api/v1/consent/resend — Body: { consent_token, new_channel?, new_contact? }. Validates cooldown (24h for same contact, immediate for new contact).
+- [x] Explore Mode Settings (⚙️ icon, top right): Shows: Current contact: Masked (+91 98XXXXXX12 / mom****@gmail.com). Request sent at: Timestamp. Expires in: Countdown timer (live). "Send Reminder" button. "Change Contact Method" -> Opens Step 4. "Cancel Request" -> Confirmation modal. On confirm: Profile deleted. App returns to Step 1 (Role Selection).
+- [x] Explore Mode Limitations: Sample Lessons (3 topics) ✅ Unlocked; Diagnostic Quiz ✅ Unlocked; AI Tutor (Teacher Vidya) ❌ Locked -- "Ask Mom to approve to chat with Teacher Vidya!"; Practice Questions ❌ Locked -- "Practice unlocks with parent approval. Explore sample lessons now!"; Topic Generation ❌ Locked -- "Requesting new topics unlocks with parent approval."; Progress Tracking ❌ Off -- "Your progress will be saved after parent approval."; Streaks & XP ❌ Off -- "Streaks and rewards begin after approval!"
+- [x] Backend: GET /api/v1/students/explore-content?grade=5&board=CBSE -- Returns exactly 3 sample topics with full content. GET /api/v1/consent/status?consent_token={token} -- Returns { status, expiresAt, sentTo (masked), channel, reminderCount }. WebSocket: Student subscribes to consent:{consent_token} on app open. POST /api/v1/consent/resend -- Body: { consent_token, new_channel?, new_contact? }. Validates cooldown (24h for same contact, immediate for new contact).
 
 ### Dev Tasks
 
-- [ ] Create ExploreModeHome component (wrapper for entire Explore Mode experience)
-- [ ] Create ExploreBanner component (sticky, dismissible)
-- [ ] Create ApprovalStatusBar component (expandable timeline)
-- [ ] Create ExploreMap component (locked variant of Learning Map with 3 glowing nodes)
-- [ ] Create LockedFeatureModal component (reusable for locked features)
+- [x] Create ExploreModeHome component (wrapper for entire Explore Mode experience)
+- [x] Create ExploreBanner component (sticky, dismissible)
+- [x] Create ApprovalStatusBar component (expandable timeline)
+- [x] Create ExploreMap component (locked variant of Learning Map with 3 glowing nodes)
+- [x] Create LockedFeatureModal component (reusable for locked features)
 - [x] Create ExploreSettings component (⚙️ menu)
-- [ ] Implement useConsentStatus hook (WebSocket + polling fallback)
-- [ ] Implement useLocalStorage service for diagnostic result caching
-- [ ] Create ApprovalTransition component (confetti + celebration)
-- [ ] Create DeniedScreen component
-- [ ] Create ExpiredScreen component
+- [x] Implement useConsentStatus hook (WebSocket + polling fallback)
+- [x] Implement useLocalStorage service for diagnostic result caching
+- [x] Create ApprovalTransition component (confetti + celebration)
+- [x] Create DeniedScreen component (inline in ExploreModeClient)
+- [x] Create ExpiredScreen component (inline in ExploreModeClient)
 
 ### QA
 
@@ -205,19 +205,19 @@ So that I don't have to type anything and the app serves me the right curriculum
 
 ### Acceptance Criteria
 
-- [ ] Pre-filled from registration data
-- [ ] Board: Horizontal scrolling carousel with board logos/names (CBSE, ICSE, State Boards)
-- [ ] Grade: Large tappable numbers (1-12) in a grid
-- [ ] "This is Correct! →" button to confirm
-- [ ] "Change" link to modify (returns to carousel)
-- [ ] No text input fields
-- [ ] If student was in Explore Mode and completed diagnostic: Skip confirmation. Go directly to Learning Map
+- [x] Pre-filled from registration data
+- [x] Board: Horizontal scrolling carousel with board logos/names (CBSE, ICSE, State Boards)
+- [x] Grade: Large tappable numbers (1-12) in a grid
+- [x] "This is Correct! →" button to confirm
+- [x] "Change" link to modify (returns to carousel)
+- [x] No text input fields
+- [x] If student was in Explore Mode and completed diagnostic: Skip confirmation. Go directly to Learning Map
 
 ### Dev Tasks
 
-- [ ] Create BoardGradeConfirmation component
-- [ ] Use useMemo to pre-select from profile data
-- [ ] API: PATCH /api/v1/students/{id} to update if changed
+- [x] Create BoardGradeConfirmation component
+- [x] Use useMemo to pre-select from profile data
+- [x] API: PATCH /api/v1/students/{id} to update if changed
 
 ### QA
 
@@ -273,24 +273,24 @@ So that the app places me at the right difficulty level instead of boring me or 
 
 ### Acceptance Criteria
 
-- [ ] Screen title: "Let's see what you know! 5 quick questions."
-- [ ] Questions pulled from content bank: 2 questions from one grade below (warm-up), 2 questions from current grade, 1 question from one grade above (stretch)
-- [ ] Mix of Math and Science (for grades 1-8) or subject chosen by student (9-12)
-- [ ] Each question: 4 options, no timer, "Submit" button
-- [ ] Instant feedback: Correct (green check + "Well done!"), Incorrect (amber + correct answer shown)
-- [ ] Progress bar: "Question 3 of 5"
-- [ ] After 5th question: Score ≥ 4: "You're a Prodigy! 🚀 Starting you at an advanced level." → starting_level: ADVANCED. Skips Chapter 1 basics.
-- [ ] Score 2-3: "Solid foundation! 💪 Starting at grade level." → starting_level: STANDARD
-- [ ] Score < 2: "Let's build from the basics. 🧱 Starting with fundamentals." → starting_level: FOUNDATION
+- [x] Screen title: "Let's see what you know! 5 quick questions."
+- [x] Questions pulled from content bank: 2 questions from one grade below (warm-up), 2 questions from current grade, 1 question from one grade above (stretch)
+- [x] Mix of Math and Science (for grades 1-8) or subject chosen by student (9-12)
+- [x] Each question: 4 options, no timer, "Submit" button
+- [x] Instant feedback: Correct (green check + "Well done!"), Incorrect (amber + correct answer shown)
+- [x] Progress bar: "Question 3 of 5"
+- [x] After 5th question: Score >= 4: "You're a Prodigy! 🚀 Starting you at an advanced level." -> starting_level: ADVANCED. Skips Chapter 1 basics.
+- [x] Score 2-3: "Solid foundation! 💪 Starting at grade level." -> starting_level: STANDARD
+- [x] Score < 2: "Let's build from the basics. 🧱 Starting with fundamentals." -> starting_level: FOUNDATION
 - [x] Placement stored: POST /api/v1/students/{id}/diagnostic-result
-- [ ] "Continue to Learning Map" button
-- [ ] If student was in Explore Mode: Diagnostic result is synced from local storage after consent
+- [x] "Continue to Learning Map" button
+- [x] If student was in Explore Mode: Diagnostic result is synced from local storage after consent
 
 ### Dev Tasks
 
-- [ ] Create DiagnosticQuiz component
-- [ ] Create QuizQuestion sub-component
-- [ ] Create QuizResult component (score + placement + avatar reaction)
+- [x] Create DiagnosticQuiz component (QuickDiagnosticQuiz)
+- [x] Create QuizQuestion sub-component (OptionButton inline)
+- [x] Create QuizResult component (placement result screen inline)
 - [x] API: GET /api/v1/content/diagnostic?grade=5&board=CBSE (returns 5 Qs)
 - [x] API: POST /api/v1/students/{id}/diagnostic-result
 

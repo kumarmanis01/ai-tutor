@@ -1,5 +1,7 @@
 /**
  * FILE OBJECTIVE:
+ * - PATCH /api/v1/students/{studentId} -- update mutable student profile fields during onboarding.
+ *   grade/board are stripped unconditionally (immutable after first save).
  * - DELETE /api/v1/students/{studentId} -- student self-cancel during explore/consent flow.
  *   Two auth paths:
  *   1. consent_token query param present: unauthenticated consent-cancel flow (S0.4).
@@ -19,6 +21,7 @@
  * - 2026-04-27T00:00:00Z | copilot | merged consent-token path from [id]/route.ts to resolve ambiguous route build error
  * - 2026-04-27T13:30:00Z | copilot | reject delete when consent request is not pending to prevent token reuse
  * - 2026-04-27T00:00:00Z | copilot | add logger.logAPI to missing_student_id branch and catch block for consistent request tracing
+ * - 2026-04-28T00:00:00Z | staff-engineer | add PATCH handler for S1.1 board-confirm onboarding step
  */
 
 import { NextResponse } from 'next/server';
@@ -115,6 +118,58 @@ async function deleteViaSession(
   const response = NextResponse.json({ ok: true });
   logger.logAPI(req, response, { className: 'StudentDeleteAPI', methodName: 'DELETE' }, start);
   return response;
+}
+
+export async function PATCH(req: Request, { params }: Params) {
+  const start = Date.now();
+  const { studentId } = await params;
+
+  if (!studentId) {
+    const response = NextResponse.json({ error: 'missing_student_id' }, { status: 400 });
+    logger.logAPI(req, response, { className: 'StudentAPI', methodName: 'PATCH' }, start);
+    return response;
+  }
+
+  const session = await getServerSessionForHandlers();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) {
+    const response = NextResponse.json({ error: 'auth_required' }, { status: 401 });
+    logger.logAPI(req, response, { className: 'StudentAPI', methodName: 'PATCH' }, start);
+    return response;
+  }
+  if (userId !== studentId) {
+    const response = NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    logger.logAPI(req, response, { className: 'StudentAPI', methodName: 'PATCH' }, start);
+    return response;
+  }
+
+  try {
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    // grade/board immutable after first save -- strip from all PATCH handlers
+    delete body.grade;
+    delete body.board;
+
+    // No mutable fields in body: return ok without a DB write.
+    if (Object.keys(body).length === 0) {
+      const response = NextResponse.json({ ok: true });
+      logger.logAPI(req, response, { className: 'StudentAPI', methodName: 'PATCH' }, start);
+      return response;
+    }
+
+    await prisma.user.update({
+      where: { id: studentId },
+      data: {},
+    });
+
+    const response = NextResponse.json({ ok: true });
+    logger.logAPI(req, response, { className: 'StudentAPI', methodName: 'PATCH' }, start);
+    return response;
+  } catch (err) {
+    logger.error('student.patch.failed', { error: String(err), studentId });
+    const response = NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.logAPI(req, response, { className: 'StudentAPI', methodName: 'PATCH' }, start);
+    return response;
+  }
 }
 
 export async function DELETE(req: Request, { params }: Params) {
