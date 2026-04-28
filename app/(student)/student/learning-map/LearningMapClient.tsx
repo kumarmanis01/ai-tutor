@@ -22,9 +22,11 @@ import LearningMap from '@/components/student/learning-map/LearningMap';
 
 type LearningMapClientProps = {
   studentId: string;
+  grade: number;
+  board: string;
 };
 
-export default function LearningMapClient({ studentId }: LearningMapClientProps) {
+export default function LearningMapClient({ studentId, grade, board }: LearningMapClientProps) {
   const { data, isLoading, error, isOfflineCache, refresh } = useLearningMap(studentId);
 
   if (isLoading && data.chapters.length === 0) {
@@ -44,7 +46,7 @@ export default function LearningMapClient({ studentId }: LearningMapClientProps)
           Could not fully refresh learning map. Showing latest available data.
         </div>
       )}
-      <LearningMap studentId={studentId} data={data} isOfflineCache={isOfflineCache} onRefresh={refresh} />
+      <LearningMap studentId={studentId} data={data} isOfflineCache={isOfflineCache} onRefresh={refresh} grade={grade} board={board} />
     </>
   );
 }

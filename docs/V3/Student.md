@@ -45,11 +45,11 @@ So that I can get started immediately without waiting for my parent to set every
 
 ### Dev Tasks
 
-- [ ] Create StudentRegistrationWizard component with 5 steps (use framer-motion AnimatePresence)
-- [ ] Create AgeGate component with accessible date picker
-- [ ] Create ProfileCreationForm component
-- [ ] Create ParentContactForm component with WhatsApp/Email toggle
-- [ ] Create RegistrationSuccessScreen component (two variants: under-18, over-18)
+- [x] Create StudentRegistrationWizard component with 5 steps -- implemented inline (no framer-motion; steps use conditional rendering)
+- [x] Create AgeGate component with accessible date picker -- implemented inline in StudentRegistrationWizard (step 'age')
+- [x] Create ProfileCreationForm component -- implemented inline in StudentRegistrationWizard (step 'profile')
+- [x] Create ParentContactForm component with WhatsApp/Email toggle -- implemented inline in StudentRegistrationWizard (step 'parent')
+- [x] Create RegistrationSuccessScreen component (two variants: under-18, over-18) -- implemented inline in StudentRegistrationWizard (step 'success')
 - [x] Implement Zod schemas: studentRegistrationSchema
 - [x] Implement age calculation utility (handles leap years, timezone offset)
 - [x] Implement device fingerprinting for rate limiting (use @fingerprintjs/fingerprintjs or simple hash of device info)

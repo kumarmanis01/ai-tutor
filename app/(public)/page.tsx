@@ -17,9 +17,9 @@ export default async function HomePage() {
     if (role === 'parent') {
       redirect('/parent/dashboard');
     }
-    // Student who completed onboarding: go to student dashboard.
+    // Student who completed onboarding: go to learning map.
     if ((session.user as any)?.onboardingComplete) {
-      redirect('/dashboard');
+      redirect('/student/learning-map');
     }
   }
   return <LandingPageInteractive />;
