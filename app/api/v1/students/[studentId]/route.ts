@@ -7,8 +7,7 @@
  *   2. No consent_token: session-authenticated delete for logged-in students.
  *
  * LINKED UNIT TESTS:
- * - tests/unit/app/api/v1/students/[id]/route.spec.ts
- * - tests/unit/app/api/v1/students/studentId/route.spec.ts
+ * - tests/unit/app/api/v1/students/[studentId]/route.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/ENGINEERING_PRACTICES.md
@@ -19,6 +18,7 @@
  * - 2026-04-25T00:00:00Z | copilot | created delete student endpoint for explore cancel flow
  * - 2026-04-27T00:00:00Z | copilot | merged consent-token path from [id]/route.ts to resolve ambiguous route build error
  * - 2026-04-27T13:30:00Z | copilot | reject delete when consent request is not pending to prevent token reuse
+ * - 2026-04-27T00:00:00Z | copilot | add logger.logAPI to missing_student_id branch and catch block for consistent request tracing
  */
 
 import { NextResponse } from 'next/server';
@@ -122,7 +122,9 @@ export async function DELETE(req: Request, { params }: Params) {
   const { studentId } = await params;
 
   if (!studentId) {
-    return NextResponse.json({ error: 'missing_student_id' }, { status: 400 });
+    const response = NextResponse.json({ error: 'missing_student_id' }, { status: 400 });
+    logger.logAPI(req, response, { className: 'StudentDeleteAPI', methodName: 'DELETE' }, start);
+    return response;
   }
 
   try {
@@ -134,6 +136,8 @@ export async function DELETE(req: Request, { params }: Params) {
     return await deleteViaSession(req, studentId, start);
   } catch (err) {
     logger.error('student.delete.failed', { error: String(err), studentId });
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    const response = NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.logAPI(req, response, { className: 'StudentDeleteAPI', methodName: 'DELETE' }, start);
+    return response;
   }
 }

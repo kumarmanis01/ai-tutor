@@ -12,11 +12,13 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S3.1 ContentRequestCard component
+ * - 2026-04-27T00:00:00Z | copilot | add topic-based pending-job check on mount; replace disabled+onClick button with navigable Link for pending state
  */
 
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { logger } from '@/lib/logger';
 
@@ -125,16 +127,26 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
       </p>
 
       {isPending ? (
-        <button
-          type="button"
-          disabled
-          onClick={pendingJobId ? () => router.push(`/student/learning-map/generate/${pendingJobId}`) : undefined}
-          className="mt-4 flex min-h-[44px] w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#534AB7]/60 px-4 py-2 text-sm font-semibold text-white"
-          aria-label="Content generation already in progress"
-        >
-          <span aria-hidden="true">⏳</span>
-          Content is being prepared...
-        </button>
+        // Disabled buttons do not fire click events; use a Link so the student can
+        // tap through to the in-progress generation page if a jobId is available.
+        pendingJobId ? (
+          <Link
+            href={`/student/learning-map/generate/${pendingJobId}`}
+            className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#534AB7]/60 px-4 py-2 text-sm font-semibold text-white hover:bg-[#534AB7]/70"
+            aria-label="View content being prepared"
+          >
+            <span aria-hidden="true">⏳</span>
+            Content is being prepared...
+          </Link>
+        ) : (
+          <p
+            role="status"
+            className="mt-4 flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#534AB7]/60 px-4 py-2 text-sm font-semibold text-white"
+          >
+            <span aria-hidden="true">⏳</span>
+            Content is being prepared...
+          </p>
+        )
       ) : (
         <button
           type="button"

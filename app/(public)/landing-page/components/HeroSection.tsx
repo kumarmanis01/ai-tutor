@@ -27,10 +27,10 @@ import VideoModal from './VideoModal';
 
 // Trust badge bar items per LP-2.1 v3 spec
 const TRUST_BADGES = [
-  { icon: 'ðŸ›¡ï¸', label: 'DPDP Compliant' },
-  { icon: 'ðŸ‡®ðŸ‡³', label: 'Servers in India' },
-  { icon: 'ðŸ"š', label: 'CBSE / ICSE / State Boards' },
-  { icon: 'â­', label: 'Free to Start' },
+  { icon: '🛡️', label: 'DPDP Compliant' },
+  { icon: '🇮🇳', label: 'Servers in India' },
+  { icon: '📚', label: 'CBSE / ICSE / State Boards' },
+  { icon: '⭐', label: 'Free to Start' },
 ] as const;
 
 const HeroSection = () => {
@@ -102,7 +102,7 @@ const HeroSection = () => {
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1D9E75]/10 text-[#1D9E75] rounded-full text-sm font-semibold">
                 <Icon name="StarIcon" size={18} variant="solid" />
                 <span>Trusted by 10,000+ Indian Parents</span>
-                <span className="ml-1 font-bold">â­â­â­â­â­ 4.9/5</span>
+                <span className="ml-1 font-bold">⭐⭐⭐⭐⭐ 4.9/5</span>
               </div>
 
               {/* Main headline -- v3 student focused */}
@@ -113,7 +113,7 @@ const HeroSection = () => {
                 </h1>
                 {/* Hindi sub */}
                 <p className="font-accent text-xl md:text-2xl text-[#534AB7]">
-                  CBSE, ICSE à¤"à¤° State Board à¤•à¥‡ à¤²à¤¿à¤ à¤ªà¤°à¥à¤¸à¤¨à¤²à¤¾à¤‡à¤œà¤¼à¥à¤¡ AI à¤Ÿà¥à¤¯à¥‚à¤Ÿà¤°
+                  CBSE, ICSE और State Board के लिए पर्सनलाइज़्ड AI ट्यूटर
                 </p>
                 <p className="font-body text-base md:text-lg text-foreground/80 max-w-xl mx-auto lg:mx-0">
                   Teacher Vidya guides you with hints and questions -- not just answers -- so you
@@ -159,9 +159,9 @@ const HeroSection = () => {
               {/* Three value prop icons */}
               <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
                 {[
-                  { icon: 'ðŸ"š', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
-                  { icon: 'ðŸ¤-', label: 'Socratic AI Tutor', sub: 'Guides, never just answers' },
-                  { icon: 'â­', label: 'Free to Start', sub: 'No credit card needed' },
+                  { icon: '📚', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
+                  { icon: '🧠', label: 'Socratic AI Tutor', sub: 'Guides, never just answers' },
+                  { icon: '⭐', label: 'Free to Start', sub: 'No credit card needed' },
                 ].map(({ icon, label, sub }) => (
                   <div key={label} className="flex items-center gap-3 bg-[#EEEDFE] rounded-2xl px-4 py-3 min-w-[140px]">
                     <span aria-hidden="true" className="text-2xl">
@@ -206,12 +206,12 @@ const HeroSection = () => {
                   </div>
                   <div className="bg-[#EEEDFE] rounded-xl p-2">
                     <p className="text-[9px] text-[#534AB7] font-medium">Student: x = 3</p>
-                    <p className="text-[9px] text-[#1D9E75] mt-1">ðŸŽ‰ Correct! Well done!</p>
+                    <p className="text-[9px] text-[#1D9E75] mt-1">🎉 Correct! Well done!</p>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-[8px] text-muted-foreground">Session: 23 min</span>
                     <span className="text-[8px] bg-[#EEEDFE] text-[#534AB7] rounded-full px-2 py-0.5 font-medium">
-                      Maths Â· Ch 3
+                      Maths · Ch 3
                     </span>
                   </div>
                 </div>

@@ -16,11 +16,11 @@
  * EDIT LOG:
  * - 2025-01-15T00:00:00Z | copilot | created -- B4.1 content generation status route
  * - 2026-04-27T00:00:00Z | copilot | added topic-based lookup for S3.1 pending button state
+ * - 2026-04-27T00:00:00Z | copilot | switch to getServerSessionForHandlers; scope topic lookup to requesting user
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { normalizeTopic } from '@/lib/content-generation/deduplication.service';
 import { logger } from '@/lib/logger';
@@ -72,7 +72,7 @@ function formatJob(job: {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session?.user?.id) {
     return NextResponse.json(
       { code: 'UNAUTHORIZED', message: 'Authentication required' },
@@ -92,6 +92,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         where: {
           normalizedTopic,
           status: { in: ['PENDING', 'IN_PROGRESS'] },
+          OR: [{ createdById: userId }, { subscriberIds: { has: userId } }],
         },
         select: JOB_SELECT,
         orderBy: { createdAt: 'desc' },
