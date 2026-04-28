@@ -41,9 +41,9 @@ const NAV_ITEMS = [
   },
   {
     label: 'Learn',
-    href: '/learn',
+    href: '/student/learning-map',
     matchExact: false,
-    matchPaths: ['/learn', '/session'],
+    matchPaths: ['/student/learning-map', '/student/session', '/session'],
     icon: (
       <svg
         viewBox="0 0 24 24"

@@ -68,43 +68,42 @@ export default function GeneratePage() {
     evtSourceRef.current = source;
 
     source.onopen = () => {
-      // Stream connected -- keep loading state until first block
+      // Stream connected -- keep loading state until first partial arrives
     };
 
-    source.addEventListener('start', (ev: MessageEvent) => {
+    // API sends 'partial' events with { content: string, progress: number }
+    source.addEventListener('partial', (ev: MessageEvent) => {
       try {
-        const data = JSON.parse(ev.data as string) as { topic?: string };
-        if (data.topic) setTopic(data.topic);
-      } catch {
-        // Non-critical -- topic already defaulted
-      }
-      setStreamState('streaming');
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
-    });
-
-    source.addEventListener('block', (ev: MessageEvent) => {
-      try {
-        const block = JSON.parse(ev.data as string) as ContentBlock;
-        setBlocks((prev) => [...prev, block]);
-        if (streamState === 'loading') setStreamState('streaming');
+        const data = JSON.parse(ev.data as string) as { content?: string; progress?: number };
+        if (data.content) {
+          const block: ContentBlock = { type: 'section', body: data.content };
+          setBlocks((prev) => [...prev, block]);
+        }
+        setStreamState('streaming');
+        if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
       } catch (parseErr) {
-        logger.error('GeneratePage: failed to parse SSE block', { jobId, error: parseErr });
+        logger.error('GeneratePage: failed to parse SSE partial', { jobId, error: parseErr });
       }
     });
 
-    source.addEventListener('done', (ev: MessageEvent) => {
+    // API sends 'complete' event with { contentId: string, fullContent: string }
+    source.addEventListener('complete', (ev: MessageEvent) => {
       try {
-        const data = JSON.parse(ev.data as string) as { topic?: string; contentId?: string };
-        if (data.topic) setTopic(data.topic);
+        const data = JSON.parse(ev.data as string) as { contentId?: string; fullContent?: unknown };
+        // If fullContent is a structured block array, replace accumulated partials
+        if (Array.isArray(data.fullContent)) {
+          setBlocks(data.fullContent as ContentBlock[]);
+        }
       } catch {
-        // Non-critical
+        // Keep the accumulated partial blocks as fallback
       }
       setStreamState('done');
       source.close();
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
     });
 
-    source.addEventListener('error_event', (ev: MessageEvent) => {
+    // API sends 'error' event with { message: string }
+    source.addEventListener('error', (ev: MessageEvent) => {
       try {
         const data = JSON.parse(ev.data as string) as { message?: string };
         setErrorMsg(data.message ?? 'Generation failed');

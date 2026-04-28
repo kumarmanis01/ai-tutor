@@ -181,10 +181,10 @@ export function LearningMap({ studentId, data, isOfflineCache, onRefresh, grade,
           </div>
           <button
             type="button"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/student/progress')}
             className="min-h-[44px] rounded-xl border border-[#534AB7] px-4 text-sm font-semibold text-[#534AB7] hover:bg-[#EEEDFE]"
           >
-            Back to Dashboard
+            Progress Report
           </button>
         </div>
 

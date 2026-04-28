@@ -98,7 +98,7 @@ export default function BoardGradeConfirmation({
           return;
         }
       }
-      router.push('/student/onboarding/diagnostic');
+      router.push('/student/onboarding/exam-date');
     } catch {
       setError('Network error. Please check your connection.');
     } finally {

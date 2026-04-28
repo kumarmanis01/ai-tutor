@@ -53,7 +53,7 @@ export default async function StudentOnboardingPage() {
   });
 
   if (user && isProfileComplete(user)) {
-    redirect('/student/onboarding/exam-date');
+    redirect('/student/onboarding/board-confirm');
   }
 
   const initialValues: StudentProfileData = {

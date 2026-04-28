@@ -153,9 +153,10 @@ export default function ExamDatePage() {
         // Content pipeline is still running -- show waiting screen instead of
         // redirecting to a broken diagnostic page
         setWaitingForDiagnostic({ subjectId: firstSubjectId, notifyState: 'idle' });
+        return;
       }
 
-      router.push('/student/learning-map');
+      router.push('/student/onboarding/diagnostic');
     } catch {
       setError('Network error. Please check your connection.');
     } finally {

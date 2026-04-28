@@ -36,6 +36,16 @@ const nextConfig: NextConfig = {
         destination: '/dashboard',
         permanent: false,
       },
+      {
+        source: '/learn/learning-path',
+        destination: '/student/learning-map',
+        permanent: false,
+      },
+      {
+        source: '/diagnostic/:subjectId',
+        destination: '/student/onboarding/diagnostic',
+        permanent: false,
+      },
     ];
   },
   images: {

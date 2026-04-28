@@ -16,6 +16,7 @@
 
 import { redirect } from 'next/navigation';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { prisma } from '@/lib/prisma';
 import LearningMapClient from './LearningMapClient';
 
 export const dynamic = 'force-dynamic';
@@ -28,5 +29,13 @@ export default async function StudentLearningMapPage() {
     redirect('/auth/signin');
   }
 
-  return <LearningMapClient studentId={studentId} />;
+  const user = await prisma.user.findUnique({
+    where: { id: studentId },
+    select: { grade: true, board: true },
+  });
+
+  const gradeNum = user?.grade ? parseInt(user.grade, 10) || 0 : 0;
+  const board = user?.board ?? '';
+
+  return <LearningMapClient studentId={studentId} grade={gradeNum} board={board} />;
 }

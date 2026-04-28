@@ -122,7 +122,7 @@ export function SubjectReadinessCard({
           Take diagnostic to see readiness
         </p>
         <Link
-          href={`/diagnostic/${subjectId}`}
+          href="/student/onboarding/diagnostic"
           className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#534AB7] text-white text-xs font-medium hover:bg-[#3C3489] transition-colors"
         >
           Start Diagnostic →
