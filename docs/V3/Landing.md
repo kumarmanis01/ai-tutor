@@ -7,15 +7,12 @@ LINKED UNIT TEST:
 
 COPILOT INSTRUCTIONS FOLLOWED:
 - /docs/COPILOT_GUARDRAILS.md
-- /docs/ENGINEERING_PRACTICES.md
 - .github/copilot-instructions.md
 
 EDIT LOG:
 - 2026-04-27T00:00:00Z | copilot | added AC implementation status summary for Landing v3 rollout
 - 2026-04-27T10:30:00Z | copilot | updated per-AC checkbox status for LP-1.1, LP-2.1, LP-3.1, LP-4.1, LP-6.1 against current implementation
 - 2026-04-27T14:30:00Z | copilot | implemented Sprint 7 LP-6.2, LP-7.1, LP-9.1 and updated AC status
-- 2026-04-28T00:00:00Z | copilot | status-only audit: corrected LP-1.1, LP-2.1, LP-3.1, LP-4.1, LP-6.1 and summary entries to match current code
-- 2026-04-28T00:00:00Z | copilot | implemented landing gaps for LP-1.1, LP-2.1, LP-3.1, LP-4.1, and LP-6.1 and refreshed status checkboxes after focused test validation
 -->
 
 ## LP-1.1 | P0 | Landing Page Shell with Consistent Layout
@@ -40,15 +37,15 @@ So that I can browse the entire page without frustration or layout breaks.
 - [x] CTA button: "Start Free" (Tangerine #FF6B35, 44px height for mobile touch).
 - [x] Footer with: Privacy Policy, Terms of Service, Contact Info, Social Links (Twitter/LinkedIn — no Facebook).
 - [ ] All images use Next.js <Image> with WebP format, lazy loading below fold, and blur placeholders.
-- [x] Page is bilingual-aware: Hindi text blocks render correctly with Google Fonts (Noto Sans Devanagari for Hindi, Roboto for English).
+- [ ] Page is bilingual-aware: Hindi text blocks render correctly with Google Fonts (Noto Sans Devanagari for Hindi, Roboto for English).
 
 ### Dev Tasks
 
 - [ ] Set up apps/web Next.js project with @spinzy/shared package dependency.
-- [x] Implement Navbar component with mobile hamburger menu (use headlessui or Radix UI).
-- [x] Implement Footer component.
+- [ ] Implement Navbar component with mobile hamburger menu (use headlessui or Radix UI).
+- [ ] Implement Footer component.
 - [ ] Configure next.config.js for image domains, i18n, and WebP.
-- [x] Add Google Fonts (Roboto + Noto Sans Devanagari) via next/font.
+- [ ] Add Google Fonts (Roboto + Noto Sans Devanagari) via next/font.
 
 ### QA
 
@@ -109,22 +106,22 @@ So that my #1 fear (child safety) is addressed within 5 seconds, and I scroll fu
 
 ### Acceptance Criteria
 
-- [x] Trust badge bar (top of hero): 🛡️ DPDP Compliant · 👁️ No Tracking · 📵 No Social Features · 🇮🇳 Servers in India
-- [x] Headline: "The AI Tutor That Asks YOUR Permission First"
-- [x] Subheadline: "Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared."
-- [x] Hindi alternate: "AI Tutor जो पहले आपकी अनुमति लेता है"
-- [x] Visual element: Illustration showing parent phone (approval screen) → connected to child tablet (learning screen). NOT a photo of a child (COPPA/DPDP).
+- [ ] Trust badge bar (top of hero): 🛡️ DPDP Compliant · 👁️ No Tracking · 📵 No Social Features · 🇮🇳 Servers in India
+- [ ] Headline: "The AI Tutor That Asks YOUR Permission First"
+- [ ] Subheadline: "Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared."
+- [ ] Hindi alternate: "AI Tutor जो पहले आपकी अनुमति लेता है"
+- [ ] Visual element: Illustration showing parent phone (approval screen) → connected to child tablet (learning screen). NOT a photo of a child (COPPA/DPDP).
 - [x] Hero section is 100vh on mobile, 90vh on desktop.
 - [x] Trust badge bar is a horizontal scrollable strip on mobile, static row on desktop.
-- [x] CTA: "Start Free — Sign in with Google" button (48px min height, full width on mobile).
+- [ ] CTA: "Start Free — Sign in with Google" button (48px min height, full width on mobile).
 - [x] Below CTA: "3 free sessions per month · No credit card · Setup in 2 minutes" in small text.
-- [x] Social proof micro-element: "Trusted by 1 Lakh+ Indian families" with small avatar mosaic (abstract circles, no real faces).
+- [ ] Social proof micro-element: "Trusted by 1 Lakh+ Indian families" with small avatar mosaic (abstract circles, no real faces).
 
 ### Dev Tasks
 
-- [x] Create Hero component with responsive Tailwind classes.
-- [x] Add illustration (SVG or Lottie) optimized for mobile (max 50KB).
-- [x] Wire up Google Sign-In CTA (from LP-1.2).
+- [ ] Create Hero component with responsive Tailwind classes.
+- [ ] Add illustration (SVG or Lottie) optimized for mobile (max 50KB).
+- [ ] Wire up Google Sign-In CTA (from LP-1.2).
 - [ ] Add subtle entrance animation (fade-in-up on headline, no jank).
 
 ### QA
@@ -161,15 +158,15 @@ So that my anxiety is reduced and I'm willing to try the product.
 - [x] Grid uses CSS Grid with grid-cols-2 on mobile, grid-cols-4 on desktop.
 - [x] Each card has: Icon (emoji or inline SVG), Title, Description.
 - [x] Cards have subtle hover effect on desktop (shadow lift).
-- [x] Parent Dashboard preview is an image (static PNG of actual dashboard UI) inside a phone mockup frame.
+- [ ] Parent Dashboard preview is an image (static PNG of actual dashboard UI) inside a phone mockup frame.
 - [x] Section has a distinct background color (slight grey-blue #F4F7FC) to separate it from Hero and How It Works.
 
 ### Dev Tasks
 
-- [x] Create TrustMoat component.
-- [x] Create TrustCard sub-component (reusable).
-- [x] Create DashboardPreview sub-component with phone mockup image.
-- [x] Ensure phone mockup image is lazy-loaded (below fold).
+- [ ] Create TrustMoat component.
+- [ ] Create TrustCard sub-component (reusable).
+- [ ] Create DashboardPreview sub-component with phone mockup image.
+- [ ] Ensure phone mockup image is lazy-loaded (below fold).
 
 ### QA
 
@@ -202,18 +199,18 @@ So that I see value for me (control, insights) not just for my child (learning).
 - [x] Step 01: ✅ Checkmark - Approve & Set Limits - You decide what subjects your child can access and for how long. No unsupervised AI usage.
 - [x] Step 02: 📊 Chart - Watch Progress - Weekly email reports + real-time dashboard showing time spent, accuracy, and weak topics.
 - [x] Step 03: 🎯 Target - Assign Extra Practice - Tap any weak topic to instantly assign 10 targeted questions. Your child gets a fun quest — not a punishment.
-- [x] Desktop: CSS Grid with grid-cols-2. Each column has 3 stacked step cards.
+- [ ] Desktop: CSS Grid with grid-cols-2. Each column has 3 stacked step cards.
 - [x] Mobile: Two tabs ("For Students" / "For Parents") that toggle which journey is shown.
 - [x] Each step card: Step number (large, colored), Icon, Title, Description.
-- [x] Connecting line between step cards (CSS pseudo-element or SVG path).
+- [ ] Connecting line between step cards (CSS pseudo-element or SVG path).
 - [x] Scroll-triggered animation: Cards fade in as user scrolls (use framer-motion or Intersection Observer).
 
 ### Dev Tasks
 
-- [x] Create HowItWorks component.
-- [x] Create JourneyStep sub-component.
-- [x] Implement mobile tab toggle with useState.
-- [x] Add Intersection Observer for scroll animation.
+- [ ] Create HowItWorks component.
+- [ ] Create JourneyStep sub-component.
+- [ ] Implement mobile tab toggle with useState.
+- [ ] Add Intersection Observer for scroll animation.
 
 ### QA
 
@@ -310,36 +307,36 @@ So that I understand the value and can make an informed decision.
 
 ### Acceptance Criteria
 
-- [x] Keep existing three-tier structure: Free / Individual (₹399) / Family (₹599)
-- [x] Feature comparison table with updated features:
-- [x] NCERT Notes Access: ✅ / ✅ / ✅
-- [x] Practice Questions: 5/day / Unlimited / Unlimited
-- [x] AI Tutor (Socratic): 3 prompts/day / Unlimited / Unlimited
-- [x] On-Demand Topic Generation: ❌ / ✅ / ✅
-- [x] Parent Dashboard: Weekly Email / Real-time + Controls / Real-time + Controls
-- [x] Screen Time Limits: ❌ / ✅ / ✅
-- [x] Subject Blocker: ❌ / ✅ / ✅
-- [x] Offline Access: ❌ / ✅ / ✅
-- [x] Progress Reports: Weekly / Weekly + Real-time / Weekly + Real-time
-- [x] Children Covered: 1 / 1 / Up to 3
-- [x] Priority Support: ❌ / Email / WhatsApp
-- [x] "Recommended" badge on Individual plan.
-- [x] "Best Value" badge on Family plan (with sibling discount callout: "Save 25% on 2nd & 3rd child").
-- [x] Annual billing toggle: ₹399/month → ₹3,999/year (Save ₹789). ₹599/month → ₹5,999/year (Save ₹1,189).
-- [x] Trust signals below pricing: "🔒 Secure checkout · UPI / Cards / Net Banking · 7-day refund policy · No auto-renewal without reminder"
-- [x] Three-column layout on desktop, single column stacked on mobile (Free → Individual → Family).
-- [x] Monthly/Yearly toggle switch (CSS animated).
-- [x] Feature rows with ✅ green checkmark or ❌ grey X.
-- [x] Premium features (Topic Generation, Parent Dashboard, Screen Time) highlighted with subtle background tint.
-- [x] Each plan card has "Start Free" or "Get Started" CTA that triggers Google Sign-In.
+- [ ] Keep existing three-tier structure: Free / Individual (₹399) / Family (₹599)
+- [ ] Feature comparison table with updated features:
+- [ ] NCERT Notes Access: ✅ / ✅ / ✅
+- [ ] Practice Questions: 5/day / Unlimited / Unlimited
+- [ ] AI Tutor (Socratic): 3 prompts/day / Unlimited / Unlimited
+- [ ] On-Demand Topic Generation: ❌ / ✅ / ✅
+- [ ] Parent Dashboard: Weekly Email / Real-time + Controls / Real-time + Controls
+- [ ] Screen Time Limits: ❌ / ✅ / ✅
+- [ ] Subject Blocker: ❌ / ✅ / ✅
+- [ ] Offline Access: ❌ / ✅ / ✅
+- [ ] Progress Reports: Weekly / Weekly + Real-time / Weekly + Real-time
+- [ ] Children Covered: 1 / 1 / Up to 3
+- [ ] Priority Support: ❌ / Email / WhatsApp
+- [ ] "Recommended" badge on Individual plan.
+- [ ] "Best Value" badge on Family plan (with sibling discount callout: "Save 25% on 2nd & 3rd child").
+- [ ] Annual billing toggle: ₹399/month → ₹3,999/year (Save ₹789). ₹599/month → ₹5,999/year (Save ₹1,189).
+- [ ] Trust signals below pricing: "🔒 Secure checkout · UPI / Cards / Net Banking · 7-day refund policy · No auto-renewal without reminder"
+- [ ] Three-column layout on desktop, single column stacked on mobile (Free → Individual → Family).
+- [ ] Monthly/Yearly toggle switch (CSS animated).
+- [ ] Feature rows with ✅ green checkmark or ❌ grey X.
+- [ ] Premium features (Topic Generation, Parent Dashboard, Screen Time) highlighted with subtle background tint.
+- [ ] Each plan card has "Start Free" or "Get Started" CTA that triggers Google Sign-In.
 
 ### Dev Tasks
 
-- [x] Create Pricing component.
-- [x] Create PricingCard sub-component.
-- [x] Implement monthly/yearly toggle with useState.
-- [x] Wire up CTA buttons to Google Sign-In flow.
-- [x] Add trust signals row below pricing cards.
+- [ ] Create Pricing component.
+- [ ] Create PricingCard sub-component.
+- [ ] Implement monthly/yearly toggle with useState.
+- [ ] Wire up CTA buttons to Google Sign-In flow.
+- [ ] Add trust signals row below pricing cards.
 
 ### QA
 
@@ -539,23 +536,21 @@ So that I either sign up immediately or find privacy/terms information.
 
 ---
 
-## AC Status Update (2026-04-28)
+## AC Status Update (2026-04-27)
 
 ### Completed
 
+- [x] LP-8.1 Schools Partnership Banner component implemented and rendered in landing flow.
 - [x] LP-6.2 Savings comparison block implemented below annual pricing card with responsive chart.
 - [x] LP-7.1 FAQ section implemented with 8 Sprint 7 questions, reusable accordion, and JSON-LD schema.
 - [x] LP-9.1 Final CTA and footer updated with required copy, links, demo trigger, and contact/social/legal structure.
 
 ### Partially Completed
 
-- [ ] LP-1.1 Public landing shell now includes the corrected footer social set and bilingual Google fonts, but image-format and Lighthouse-specific ACs still need QA confirmation.
-- [x] LP-2.1 Hero section now matches the parent-permission copy, trust badges, CTA, illustration, and social-proof requirements.
-- [x] LP-3.1 Trust Moat section now uses the static parent-dashboard preview image inside the phone frame and matches the defined trust-card content.
-- [x] LP-4.1 How It Works section now matches the exact three-step student and parent journeys, mobile tabs, and desktop connector treatment.
+- [ ] LP-2.1 Hero section updated and live for v3, but copy/visual differs from this parent-permission AC definition.
+- [ ] LP-4.1 How It Works section enhanced (including additional student step), but full AC parity (exact copy/interaction details) needs QA confirmation.
 - [ ] LP-5.2 Trust metrics bar is updated with animated counters, but metric definitions differ from this AC text.
-- [x] LP-6.1 Pricing section now uses the required Free/Individual/Family comparison table with Google CTA actions and annual savings states.
-- [ ] LP-8.1 Schools banner is rendered in the landing flow, but the copy, benefits, CTA label, and mailto subject behavior do not yet match the current AC.
+- [ ] LP-6.1 Pricing section rebuilt for v3 tiers and billing cycle UX, but does not match this Free/Individual/Family comparison-table AC.
 - [ ] LP-8.2 Backend endpoint implemented: POST /api/v1/leads/school-partnership with Zod validation + Redis rate limit, but modal UI and email notification are pending.
 
 ### Blocked / Pending Infrastructure
