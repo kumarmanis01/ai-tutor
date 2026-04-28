@@ -1,6 +1,8 @@
 /**
  * FILE OBJECTIVE:
  * - Persist S1.3 quick onboarding diagnostic outcomes (score + placement) on student profile.
+ *   Moved from [id]/diagnostic-result to [studentId]/diagnostic-result to resolve ambiguous
+ *   route build error (both [id] and [studentId] matched the same URL pattern).
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/api/v1/students/[id]/diagnostic-result/route.spec.ts
@@ -13,6 +15,7 @@
  * EDIT LOG:
  * - 2026-04-27T00:00:00Z | copilot | created POST endpoint to store quick-diagnostic result and placement
  * - 2026-04-27T13:45:00Z | copilot | require authenticated student identity and enforce token-subject match before updates
+ * - 2026-04-27T00:00:00Z | copilot | moved from [id] to [studentId] to fix ambiguous route build error
  */
 
 import { NextResponse } from 'next/server';
@@ -38,7 +41,7 @@ const bodySchema = z.object({
 });
 
 interface RouteContext {
-  params: Promise<{ id: string }>;
+  params: Promise<{ studentId: string }>;
 }
 
 function scoreToPlacement(score: number): PlacementLevel {
@@ -89,9 +92,9 @@ async function isAuthorizedStudentWrite(req: Request, studentId: string): Promis
 
 export async function POST(req: Request, context: RouteContext) {
   const start = Date.now();
-  const { id } = await context.params;
+  const { studentId } = await context.params;
 
-  if (!id) {
+  if (!studentId) {
     const response = NextResponse.json({ error: 'missing_student_id' }, { status: 400 });
     logger.logAPI(
       req,
@@ -102,7 +105,7 @@ export async function POST(req: Request, context: RouteContext) {
     return response;
   }
 
-  const isAuthorized = await isAuthorizedStudentWrite(req, id);
+  const isAuthorized = await isAuthorizedStudentWrite(req, studentId);
   if (!isAuthorized) {
     const response = NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     logger.logAPI(
@@ -164,7 +167,7 @@ export async function POST(req: Request, context: RouteContext) {
     const placement = scoreToPlacement(score);
 
     const student = await prisma.user.update({
-      where: { id },
+      where: { id: studentId },
       data: {
         onboardingDiagnosticScore: score,
         onboardingPlacement: placement,
@@ -192,7 +195,7 @@ export async function POST(req: Request, context: RouteContext) {
     );
     return response;
   } catch (error) {
-    logger.error('quick.diagnostic.result_failed', { error: String(error), studentId: id });
+    logger.error('quick.diagnostic.result_failed', { error: String(error), studentId });
     const response = NextResponse.json({ error: 'server_error' }, { status: 500 });
     logger.logAPI(
       req,

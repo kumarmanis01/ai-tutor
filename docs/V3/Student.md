@@ -518,27 +518,27 @@ So that I'm not stuck with a dead-end "No Results" page.
 
 ### Acceptance Criteria
 
-- [ ] Search bar on Learning Map top
-- [ ] Search queries content database (pre-generated + approved AI content)
-- [ ] If ≥1 results: Show list with topic name, subject, short description. Tappable to open
-- [ ] If 0 results: No dead-end page. Card appears: "We don't have notes on 'Black Soil vs Alluvial Soil' yet! 🧑‍🌾" Subtext: "Our AI Teacher can create them for you in about 30 seconds." Button: [Generate Notes for Me] Small text: "Generated content is AI-drafted and reviewed by teachers."
-- [ ] Tapping button triggers Story S3.2 (Generation)
-- [ ] If student already has a pending generation for this topic: Button changes to "Content is being prepared... ⏳" (disabled, shows status)
+- [x] Search bar on Learning Map top
+- [x] Search queries content database (pre-generated + approved AI content)
+- [x] If ≥1 results: Show list with topic name, subject, short description. Tappable to open
+- [x] If 0 results: No dead-end page. Card appears: "We don't have notes on 'Black Soil vs Alluvial Soil' yet! 🧑‍🌾" Subtext: "Our AI Teacher can create them for you in about 30 seconds." Button: [Generate Notes for Me] Small text: "Generated content is AI-drafted and reviewed by teachers."
+- [x] Tapping button triggers Story S3.2 (Generation)
+- [x] If student already has a pending generation for this topic: Button changes to "Content is being prepared... ⏳" (disabled, shows status)
 
 ### Dev Tasks
 
-- [ ] Create SearchBar component (autocomplete, debounced)
-- [ ] Create SearchResults component
-- [ ] Create ContentRequestCard component
-- [ ] API: GET /api/v1/content/search?q={query}&grade={grade}&board={board}
-- [ ] API: GET /api/v1/content/generation/status?topic={topic} (returns existing pending job if any)
+- [x] Create SearchBar component (autocomplete, debounced)
+- [x] Create SearchResults component
+- [x] Create ContentRequestCard component
+- [x] API: GET /api/v1/content/search?q={query}&grade={grade}&board={board}
+- [x] API: GET /api/v1/content/generation/status?topic={topic} (returns existing pending job if any)
 
 ### QA
 
-- [ ] Search returns results for existing content
-- [ ] Empty results show content request card
-- [ ] Generate button triggers generation flow
-- [ ] Pending status shows correct disabled button
+- [x] Search returns results for existing content
+- [x] Empty results show content request card
+- [x] Generate button triggers generation flow
+- [x] Pending status shows correct disabled button
 
 ## S3.2 | P0 | AI Content Generation with Loading Experience
 
@@ -553,31 +553,31 @@ So that I don't abandon the app while waiting.
 
 ### Acceptance Criteria
 
-- [ ] On "Generate Notes for Me" tap: Job enqueued: POST /api/v1/content/generation/request. Returns job_id
-- [ ] Loading screen: Study Buddy animation: Fox/Vidya reading books, flipping pages. Fun progress messages (cycling every 3 seconds): "Searching the knowledge library... 📚", "Organizing key concepts... 🗂️", "Adding helpful examples... 💡", "Almost there... ✨". Progress bar (indeterminate for first 5 seconds, then shows estimated time)
-- [ ] Content delivery: First block (Title + Introduction + 2 Key Points) returned within 15 seconds. Rendered immediately. Student can start reading. Remaining content streams in as student scrolls (infinite scroll or progressive loading)
-- [ ] If generation takes >60 seconds: Fallback: "Taking a little longer than expected! We'll notify you when it's ready." Push notification sent to student when complete. Student can return to Learning Map and continue other activities.
-- [ ] On complete: Content visible. Badge: "AI Draft — Under Review" (yellow, Story S3.3)
-- [ ] Content is fully interactive: Can read, mark complete, generate practice questions from it
+- [x] On "Generate Notes for Me" tap: Job enqueued: POST /api/v1/content/generation/request. Returns job_id
+- [x] Loading screen: Study Buddy animation: Fox/Vidya reading books, flipping pages. Fun progress messages (cycling every 3 seconds): "Searching the knowledge library... 📚", "Organizing key concepts... 🗂️", "Adding helpful examples... 💡", "Almost there... ✨". Progress bar (indeterminate for first 5 seconds, then shows estimated time)
+- [x] Content delivery: First block (Title + Introduction + 2 Key Points) returned within 15 seconds. Rendered immediately. Student can start reading. Remaining content streams in as student scrolls (infinite scroll or progressive loading)
+- [x] If generation takes >60 seconds: Fallback: "Taking a little longer than expected! We'll notify you when it's ready." Push notification sent to student when complete. Student can return to Learning Map and continue other activities.
+- [x] On complete: Content visible. Badge: "AI Draft -- Under Review" (yellow, Story S3.3)
+- [x] Content is fully interactive: Can read, mark complete, generate practice questions from it
 
 ### Dev Tasks
 
-- [ ] Create ContentGenerationLoading component
-- [ ] Create StreamingContent component (renders partial content, appends on new data)
-- [ ] Implement SSE (Server-Sent Events) for content streaming: GET /api/v1/content/generation/{job_id}/stream
-- [ ] API: POST /api/v1/content/generation/request
-- [ ] API: GET /api/v1/content/generation/{job_id} (polling fallback if SSE fails)
-- [ ] Backend: AI generation worker (BullMQ consumer)
-- [ ] Backend: Duplicate request merging (Story S3.4)
+- [x] Create ContentGenerationLoading component
+- [x] Create StreamingContent component (renders partial content, appends on new data)
+- [x] Implement SSE (Server-Sent Events) for content streaming: GET /api/v1/content/generation/{job_id}/stream
+- [x] API: POST /api/v1/content/generation/request
+- [x] API: GET /api/v1/content/generation/{job_id} (polling fallback if SSE fails)
+- [x] Backend: AI generation worker (BullMQ consumer)
+- [x] Backend: Duplicate request merging (Story S3.4)
 
 ### QA
 
-- [ ] First content block appears within 15 seconds
-- [ ] Loading animation engages student while waiting
-- [ ] Streaming content appends as student scrolls
-- [ ] Fallback notification sends after 60 seconds
-- [ ] Generated content has AI Draft badge
-- [ ] Content can be marked complete and used for practice
+- [x] First content block appears within 15 seconds
+- [x] Loading animation engages student while waiting
+- [x] Streaming content appends as student scrolls
+- [x] Fallback notification sends after 60 seconds
+- [x] Generated content has AI Draft badge
+- [x] Content can be marked complete and used for practice
 
 ## S3.3 | P1 | AI-Generated Content "Beta" Badge & Review Status
 

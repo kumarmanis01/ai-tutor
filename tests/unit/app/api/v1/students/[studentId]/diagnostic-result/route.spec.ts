@@ -1,9 +1,9 @@
 /**
  * FILE OBJECTIVE:
- * - Unit tests for POST /api/v1/students/{id}/diagnostic-result authorization checks.
+ * - Unit tests for POST /api/v1/students/{studentId}/diagnostic-result authorization checks.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/api/v1/students/[id]/diagnostic-result/route.spec.ts
+ * - tests/unit/app/api/v1/students/[studentId]/diagnostic-result/route.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/ENGINEERING_PRACTICES.md
@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T13:45:00Z | copilot | add auth tests for path-id ownership and explore-token authorization
+ * - 2026-04-27T00:00:00Z | copilot | rename [id] -> [studentId] to match consolidated route file
  */
 
 jest.mock('@/lib/prisma', () => ({
@@ -39,7 +40,7 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-import { POST } from '@/app/api/v1/students/[id]/diagnostic-result/route';
+import { POST } from '@/app/api/v1/students/[studentId]/diagnostic-result/route';
 import { prisma } from '@/lib/prisma';
 import { verifyUserAccessToken } from '@/lib/auth/token.service';
 
@@ -48,12 +49,12 @@ const mockConsentFindUnique = prisma.consentRequest.findUnique as jest.MockedFun
   typeof prisma.consentRequest.findUnique
 >;
 
-describe('POST /api/v1/students/{id}/diagnostic-result', () => {
+describe('POST /api/v1/students/{studentId}/diagnostic-result', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('returns 401 when token subject does not match route id', async () => {
+  it('returns 401 when token subject does not match route studentId', async () => {
     mockVerifyUserAccessToken.mockResolvedValue({
       sub: 'another-student',
       role: 'user',
@@ -74,14 +75,14 @@ describe('POST /api/v1/students/{id}/diagnostic-result', () => {
       }),
     });
 
-    const res = await POST(req, { params: Promise.resolve({ id: 'student-1' }) });
+    const res = await POST(req, { params: Promise.resolve({ studentId: 'student-1' }) });
     const body = (await res.json()) as { error?: string };
 
     expect(res.status).toBe(401);
     expect(body.error).toBe('unauthorized');
   });
 
-  it('accepts explore token only when consent token belongs to the same student id', async () => {
+  it('accepts explore token only when consent token belongs to the same studentId', async () => {
     mockConsentFindUnique.mockResolvedValue({ studentId: 'student-1' } as never);
     (prisma.question.findMany as jest.Mock).mockResolvedValue([{ id: 'q-1', correctAnswer: 'A' }]);
     (prisma.user.update as jest.Mock).mockResolvedValue({
@@ -101,7 +102,7 @@ describe('POST /api/v1/students/{id}/diagnostic-result', () => {
       }),
     });
 
-    const res = await POST(req, { params: Promise.resolve({ id: 'student-1' }) });
+    const res = await POST(req, { params: Promise.resolve({ studentId: 'student-1' }) });
     const body = (await res.json()) as { ok?: boolean; studentId?: string };
 
     expect(res.status).toBe(200);

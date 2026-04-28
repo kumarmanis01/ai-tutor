@@ -1,9 +1,9 @@
 /**
  * FILE OBJECTIVE:
- * - Unit tests for DELETE /api/v1/students/{id} anonymize endpoint safeguards.
+ * - Unit tests for DELETE /api/v1/students/{studentId} anonymize endpoint safeguards.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/api/v1/students/[id]/route.spec.ts
+ * - tests/unit/app/api/v1/students/[studentId]/route.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/ENGINEERING_PRACTICES.md
@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-27T13:30:00Z | copilot | add tests for consent mismatch and non-pending consent terminal guard
+ * - 2026-04-27T00:00:00Z | copilot | rename [id] -> [studentId] to match consolidated route file
  */
 
 jest.mock('@/lib/prisma', () => ({
@@ -34,7 +35,7 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-import { DELETE } from '@/app/api/v1/students/[id]/route';
+import { DELETE } from '@/app/api/v1/students/[studentId]/route';
 import { prisma } from '@/lib/prisma';
 
 const mockFindUnique = prisma.consentRequest.findUnique as jest.MockedFunction<
@@ -42,7 +43,7 @@ const mockFindUnique = prisma.consentRequest.findUnique as jest.MockedFunction<
 >;
 const mockTransaction = prisma.$transaction as jest.MockedFunction<typeof prisma.$transaction>;
 
-describe('DELETE /api/v1/students/{id}', () => {
+describe('DELETE /api/v1/students/{studentId}', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -58,7 +59,7 @@ describe('DELETE /api/v1/students/{id}', () => {
       method: 'DELETE',
     });
 
-    const res = await DELETE(req, { params: Promise.resolve({ id: 'student-1' }) });
+    const res = await DELETE(req, { params: Promise.resolve({ studentId: 'student-1' }) });
     const body = (await res.json()) as { error?: string };
 
     expect(res.status).toBe(403);
@@ -77,7 +78,7 @@ describe('DELETE /api/v1/students/{id}', () => {
       method: 'DELETE',
     });
 
-    const res = await DELETE(req, { params: Promise.resolve({ id: 'student-1' }) });
+    const res = await DELETE(req, { params: Promise.resolve({ studentId: 'student-1' }) });
     const body = (await res.json()) as { error?: string };
 
     expect(res.status).toBe(409);
