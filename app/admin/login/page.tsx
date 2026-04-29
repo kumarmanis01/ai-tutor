@@ -38,7 +38,7 @@ export default function AdminLoginPage(): React.ReactElement {
           setupRequired ? (
             <SetupDuringLogin
               loginSessionToken={loginSessionToken}
-              onComplete={() => router.push('/admin')}
+              onComplete={() => router.push('/admin/team')}
             />
           ) : (
             <LoginStep2
@@ -47,7 +47,7 @@ export default function AdminLoginPage(): React.ReactElement {
               onSubmit={async (payload) => {
                 const result = await verifyMfa(payload);
                 if (result?.accessToken) {
-                  router.push('/admin');
+                  router.push('/admin/team');
                 }
               }}
             />
@@ -59,7 +59,7 @@ export default function AdminLoginPage(): React.ReactElement {
             onSubmit={async ({ email, password }) => {
               const result = await login(email, password);
               if (!result.requiresMfa && result.accessToken) {
-                router.push('/admin');
+                router.push('/admin/team');
               }
             }}
           />
