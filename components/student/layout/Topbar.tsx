@@ -19,7 +19,6 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import StreakWidget from '@/components/student/dashboard/StreakWidget';
-import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
 import Logo from '@/components/Logo';
 import { getTierColor } from '@/lib/student/xpLevels';
 
@@ -46,7 +45,6 @@ export default function Topbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const streakBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const { data: stats } = useSWR<TopbarStats>(
@@ -70,8 +68,6 @@ export default function Topbar() {
 
   // Show upgrade button once profile has loaded and has no active plan
   const isFree = profile !== undefined && !profile?.plan;
-
-  const studentEmail = (session?.user as { email?: string | null })?.email ?? null;
 
   const closeStreak = useCallback(() => {
     setStreakOpen(false);
@@ -137,16 +133,15 @@ export default function Topbar() {
 
         {/* Right: badges + avatar */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Upgrade button -- shown for free-tier users only */}
+          {/* Upgrade button -- shown for free-tier users only; goes to /subscribe */}
           {isFree && (
-            <button
-              type="button"
-              onClick={() => setUpgradeOpen(true)}
+            <Link
+              href="/subscribe"
               className="hidden sm:inline-flex items-center gap-1 rounded-full bg-[#F97316] px-3 py-1 text-xs font-semibold text-white min-h-[36px] hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
               aria-label="Upgrade to Premium"
             >
               ✨ Upgrade
-            </button>
+            </Link>
           )}
 
           {/* Streak badge -- tap to open StreakWidget popover */}
@@ -254,13 +249,13 @@ export default function Topbar() {
               Profile
             </Link>
             {isFree && (
-              <button
-                type="button"
-                onClick={() => { setMenuOpen(false); setUpgradeOpen(true); }}
-                className="w-full text-left px-3 py-2 text-sm font-semibold text-[#F97316] min-h-[44px]"
+              <Link
+                href="/subscribe"
+                onClick={() => setMenuOpen(false)}
+                className="block px-3 py-2 text-sm font-semibold text-[#F97316] min-h-[44px] flex items-center"
               >
                 ✨ Upgrade to Premium
-              </button>
+              </Link>
             )}
           </nav>
         </div>
@@ -301,30 +296,6 @@ export default function Topbar() {
               Help
             </Link>
           </nav>
-        </div>
-      )}
-      {/* Upgrade flow modal -- full-screen overlay triggered from upgrade button */}
-      {upgradeOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Upgrade to Premium"
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center"
-        >
-          <div className="relative w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl dark:bg-slate-900 sm:rounded-2xl max-h-[90vh]">
-            <button
-              type="button"
-              onClick={() => setUpgradeOpen(false)}
-              aria-label="Close upgrade flow"
-              className="absolute right-4 top-4 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            >
-              ✕
-            </button>
-            <UpgradeFlow
-              studentName={profile?.name ?? name}
-              studentEmail={studentEmail}
-            />
-          </div>
         </div>
       )}
     </header>
