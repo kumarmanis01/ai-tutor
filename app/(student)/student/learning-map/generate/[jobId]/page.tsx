@@ -48,6 +48,7 @@ export default function GeneratePage() {
   const [streamState, setStreamState] = useState<StreamState>('loading');
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [contentId, setContentId] = useState<string | null>(null);
 
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const evtSourceRef = useRef<EventSource | null>(null);
@@ -90,6 +91,9 @@ export default function GeneratePage() {
     source.addEventListener('complete', (ev: MessageEvent) => {
       try {
         const data = JSON.parse(ev.data as string) as { contentId?: string; fullContent?: unknown };
+        if (data.contentId) {
+          setContentId(data.contentId);
+        }
         // If fullContent is a structured block array, replace accumulated partials
         if (Array.isArray(data.fullContent)) {
           setBlocks(data.fullContent as ContentBlock[]);
@@ -178,11 +182,19 @@ export default function GeneratePage() {
     <div>
       <StreamingContent topic={topic} blocks={blocks} isStreaming={streamState === 'streaming'} />
       {streamState === 'done' && (
-        <div className="mx-auto max-w-2xl px-4 pb-8">
+        <div className="mx-auto max-w-2xl px-4 pb-8 flex flex-col gap-3 sm:flex-row">
+          {contentId && (
+            <Link
+              href={`/student/learning-map/content/${encodeURIComponent(contentId)}`}
+              className="min-h-[44px] flex-1 rounded-xl bg-[#534AB7] px-4 py-2 text-center text-sm font-semibold text-white hover:bg-[#4238a3]"
+            >
+              View Notes
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => router.push('/student/learning-map')}
-            className="min-h-[44px] w-full rounded-xl border border-[#534AB7] px-4 text-sm font-semibold text-[#534AB7] hover:bg-[#EEEDFE]"
+            className="min-h-[44px] flex-1 rounded-xl border border-[#534AB7] px-4 text-sm font-semibold text-[#534AB7] hover:bg-[#EEEDFE]"
           >
             Back to Learning Map
           </button>

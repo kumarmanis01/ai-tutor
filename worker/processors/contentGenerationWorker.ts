@@ -169,7 +169,8 @@ async function processContentGenerationJob(job: Job<ContentGenerationJobData>): 
     throw err;
   }
 
-  // Create Content record with PENDING_REVIEW status
+  // Create Content record with APPROVED status so it appears in search immediately.
+  // Student-requested on-demand content is auto-approved; admin can later flag via ContentFlag.
   const content = await prisma.content.create({
     data: {
       topic: job.data.topic,
@@ -178,7 +179,7 @@ async function processContentGenerationJob(job: Job<ContentGenerationJobData>): 
       board: job.data.board,
       language: job.data.language === 'hi' ? 'hi' : 'en',
       type: 'AI_GENERATED',
-      status: 'PENDING_REVIEW',
+      status: 'APPROVED',
       contentJson: { markdown: fullContent },
       version: 1,
       createdById: requesterId,

@@ -31,12 +31,37 @@ interface NoteLikeContent {
   title?: string;
   en?: NoteLikeContent;
   hi?: NoteLikeContent;
+  // New schema from topic-notes prompt: metadata + top-level sections with type/title/content
+  metadata?: {
+    topic?: string;
+    conceptsIntroduced?: string[];
+    estimatedReadingMinutes?: number;
+    difficultyLevel?: string;
+  };
+  // Shared sections field -- old format uses heading/explanation/body; new format uses title/content
+  sections?: Array<{
+    heading?: string;
+    explanation?: string;
+    body?: string;
+    imageUrl?: string;
+    imageAlt?: string;
+    // New format fields
+    type?: string;
+    title?: string;
+    content?: string;
+  }>;
+  // New schema concept fields
+  keyConcepts?: Array<{ term?: string; definition?: string; formula?: string | null }>;
+  examTips?: string[];
+  bridgeToNext?: string;
+  // Old wrapped format
   content?: {
     introduction?: string;
     learningObjectives?: string[];
     sections?: Array<{
       heading?: string;
       explanation?: string;
+      body?: string;
       imageUrl?: string;
       imageAlt?: string;
     }>;
@@ -45,14 +70,9 @@ interface NoteLikeContent {
     commonMistakes?: Array<{ correction?: string }>;
     videoUrl?: string;
   };
+  // Old flat format
   introduction?: string;
   learningObjectives?: string[];
-  sections?: Array<{
-    heading?: string;
-    explanation?: string;
-    imageUrl?: string;
-    imageAlt?: string;
-  }>;
   keyTerms?: Array<{ term?: string; definition?: string }>;
   summary?: string;
   commonMistakes?: Array<{ correction?: string }>;
@@ -77,14 +97,83 @@ function normalizeContent(raw: unknown): {
   videoUrl: string | null;
 } {
   const content = (raw ?? {}) as NoteLikeContent;
+
+  // Detect new schema: top-level sections array where items have a 'content' string field
+  // (produced by topic-notes.ts prompt via notesWorker). Old schema wraps under content.* or
+  // uses heading/explanation/body field names.
+  const topLevelSections = Array.isArray(content.sections) ? content.sections : [];
+  const isNewSchema =
+    topLevelSections.length > 0 &&
+    typeof topLevelSections[0]?.content === 'string' &&
+    !topLevelSections[0]?.explanation &&
+    !topLevelSections[0]?.body;
+
+  if (isNewSchema) {
+    // New schema: { metadata, sections:[{type, title, content}], keyConcepts, examTips, bridgeToNext }
+    const sections = topLevelSections
+      .map((s) => ({
+        heading: (s?.title ?? s?.heading ?? '').trim(),
+        body: (s?.content ?? s?.explanation ?? s?.body ?? '').trim(),
+        imageUrl: null as string | null,
+        imageAlt: null as string | null,
+      }))
+      .filter((s) => s.heading.length > 0 || s.body.length > 0);
+
+    const keyConceptPoints = Array.isArray(content.keyConcepts)
+      ? content.keyConcepts
+          .map((k) => {
+            const term = (k?.term ?? '').trim();
+            const def = (k?.definition ?? '').trim();
+            return term && def ? `${term}: ${def}` : '';
+          })
+          .filter(Boolean)
+      : [];
+
+    const conceptsIntroduced = Array.isArray(content.metadata?.conceptsIntroduced)
+      ? (content.metadata!.conceptsIntroduced as string[]).filter(
+          (c): c is string => typeof c === 'string'
+        )
+      : [];
+
+    const keyPoints = [...conceptsIntroduced, ...keyConceptPoints].slice(0, 4);
+
+    // Intro: prefer hook section body, fall back to first section body
+    const hookSection = topLevelSections.find((s) => s?.type === 'hook');
+    const intro =
+      (hookSection?.content ?? '').trim() ||
+      (sections[0]?.body ?? '').trim() ||
+      'Review the key ideas below before practicing.';
+
+    const hint =
+      (content.bridgeToNext ?? '').trim() ||
+      (Array.isArray(content.examTips) && content.examTips[0]
+        ? String(content.examTips[0]).trim()
+        : '') ||
+      'Take it step by step and verify each part.';
+
+    const titleRaw =
+      (content.metadata?.topic ?? content.title ?? '') as string;
+    return {
+      title: titleRaw.trim() || null,
+      intro,
+      keyPoints,
+      sections,
+      hint,
+      hintPlacements: [],
+      videoUrl: null,
+    };
+  }
+
+  // Old schema: content wrapped under content.* object or flat at root level
   const nested = content.content ?? content;
   const commonMistakes = Array.isArray(nested.commonMistakes) ? nested.commonMistakes : [];
 
   const sections = Array.isArray(nested.sections)
     ? nested.sections
         .map((section) => ({
-          heading: (section?.heading ?? '').trim(),
-          body: (section?.explanation ?? '').trim(),
+          heading: (section?.heading ?? section?.title ?? '').trim(),
+          // Support old 'explanation' and 'body' field names
+          body: (section?.explanation ?? section?.body ?? section?.content ?? '').trim(),
           imageUrl:
             typeof section?.imageUrl === 'string' && section.imageUrl.trim().length > 0
               ? section.imageUrl.trim()
@@ -133,7 +222,8 @@ function normalizeContent(raw: unknown): {
     (sections[0]?.body ?? '').trim() ||
     'Review the key ideas below before practicing.';
 
-  const videoUrl = typeof nested.videoUrl === 'string' && nested.videoUrl.trim() ? nested.videoUrl : null;
+  const videoUrl =
+    typeof nested.videoUrl === 'string' && nested.videoUrl.trim() ? nested.videoUrl : null;
 
   return {
     title: typeof content.title === 'string' && content.title.trim() ? content.title.trim() : null,

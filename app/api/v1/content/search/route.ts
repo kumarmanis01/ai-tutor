@@ -82,10 +82,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       orderBy: { name: 'asc' },
     });
 
-    // -- Search 2: AI-generated Content matching the query
+    // -- Search 2: AI-generated Content matching the query (approved or pending-review)
     const contentResults = await prisma.content.findMany({
       where: {
-        status: 'APPROVED',
+        status: { in: ['APPROVED', 'PENDING_REVIEW'] },
         topic: { contains: q, mode: 'insensitive' },
         ...(grade != null && !Number.isNaN(grade) ? { grade } : {}),
         ...(board ? { board: { contains: board, mode: 'insensitive' } } : {}),
