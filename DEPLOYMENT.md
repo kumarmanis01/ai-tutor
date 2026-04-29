@@ -175,6 +175,30 @@ ls -l /home/gnosiva/apps/content-engine/ai-tutor/.env.production
 # expect -rw------- (600)
 ```
 
+## Super Admin seed & first-login flow
+
+- **Set secrets:** On the VPS set the following as secure environment variables (never commit):
+  - `INITIAL_SUPER_ADMIN_EMAIL`
+  - `INITIAL_SUPER_ADMIN_NAME`
+  - `INITIAL_SUPER_ADMIN_PASSWORD`
+  Prefer a secret manager or a restricted `/.env.production` (chmod 600).
+
+- **Run seed:** From the repo root run:
+
+```bash
+npm run seed:superadmin
+```
+
+- **Login & MFA setup:** Visit `https://admin.spinzy.academy/login`, sign in with the seeded email and password. On first login the system will force TOTP MFA setup: scan the QR or copy the secret, verify a 6-digit code, and store the one-time backup codes shown (displayed once). After successful setup `mfaEnabled` becomes `true` and an audit entry `super_admin.first_login` is recorded.
+
+- **If you accidentally placed a bcrypt hash in `INITIAL_SUPER_ADMIN_PASSWORD`:** the seed may double-hash it. Use the helper to fix the stored hash:
+
+```bash
+node scripts/fix-superadmin-password.cjs
+```
+
+- **Security note:** Do not commit passwords into the repository. After initial login, rotate the seeded password and store secrets in a vault or the VPS env file with restrictive permissions.
+
 ## Handoff & documentation
 
 - Add this file as `DEPLOYMENT.md` at repo root (updated). Add `scripts/README.md` with usage for both staging and production scripts and instructions for skipping pre-commit hooks.

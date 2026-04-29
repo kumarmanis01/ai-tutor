@@ -4,13 +4,9 @@ I want a secure, documented process to create the initial Super Admin account du
 So that the first administrator can log in and begin creating other admin accounts.
 
 Acceptance Criteria:
-
 Database Seed Script (prisma/seed.ts):
-
 Seed script checks if any Super Admin exists before creating one (idempotent).
-
 If no Super Admin exists: Creates one using environment variables.
-
 Required environment variables for seed:
 
 env
@@ -20,99 +16,59 @@ INITIAL_SUPER_ADMIN_PASSWORD=<secure-password>
 Password requirements enforced in seed:
 
 Minimum 16 characters
-
 At least 1 uppercase, 1 lowercase, 1 number, 1 special character
-
 Password is NOT logged or stored in plaintext anywhere
-
 Password hashed with bcrypt (cost factor 12) before storage
 
 AdminUser record created with:
-
 email: From INITIAL_SUPER_ADMIN_EMAIL
-
 name: From INITIAL_SUPER_ADMIN_NAME
-
 role: SUPER_ADMIN
-
 status: ACTIVE (NOT invited — directly active)
-
 passwordHash: bcrypt hash of INITIAL_SUPER_ADMIN_PASSWORD
-
 mfaEnabled: false (MFA setup enforced on first login)
-
 createdBy: NULL (no creator — first admin)
-
 Seed logs (to console only, not persisted):
 
 "✅ Initial Super Admin created: admin@spinzyacademy.com"
-
 Does NOT log the password
-
 If Super Admin already exists: Seed logs "ℹ️ Super Admin already exists. Skipping creation."
-
 First Login Experience:
-
 Super Admin navigates to https://admin.spinzy.academy/login
 
 Logs in with email + password from environment variables
-
 MFA Enforcement: On first login, system detects mfaEnabled: false and FORCES MFA setup:
-
 Screen: "Welcome, Vikram! Before you access the admin panel, you must set up two-factor authentication."
 
 Displays QR code + secret key for TOTP enrollment
-
 Requires verification of 6-digit TOTP code
-
 Generates 10 backup codes (displayed once)
-
 After successful MFA setup: mfaEnabled: true
-
 After MFA setup: Redirected to Admin Dashboard
-
 Audit log: super_admin.first_login with timestamp and IP
 
 Security Requirements:
-
 INITIAL_SUPER_ADMIN_PASSWORD must NOT be committed to Git
-
 Password must be set via secure secret manager or environment variable injection at deploy time
-
 Password change enforced on first login (optional but recommended — can be P2)
-
 Production deployment documentation includes: "Step 1: Set INITIAL_SUPER_ADMIN_PASSWORD as a secure environment variable. Step 2: Run database seed. Step 3: Super Admin logs in and sets up MFA."
 
 Dev Tasks:
-
 Create seed function: seedSuperAdmin()
-
 Add idempotency check (don't create if exists)
-
 Add environment variable validation (fail seed with clear error if vars not set)
-
 Add MFA enforcement logic to login flow (check mfaEnabled flag, redirect to setup if false)
-
 Create MFA setup page for first-time login
-
 Document production deployment process in docs/production-deployment.md
 
 QA:
-
 Seed creates Super Admin on fresh database
-
 Seed skips creation if Super Admin exists
-
 Missing environment variables → Seed fails with clear error
-
 Password is hashed, not stored in plaintext
-
 First login enforces MFA setup
-
 Cannot skip MFA setup (no "Skip" or "Later" button)
-
 Audit log records first login
-
 Password is NOT logged anywhere
 
 Story A0.0a | P1 | Super Admin Promotes Existing Admin to Super Admin

@@ -16,7 +16,7 @@ const bcrypt = require('bcryptjs');
 
 function loadEnv() {
   const root = path.resolve(__dirname, '..');
-  for (const name of ['.env.production', '.env', '.env.local']) {
+  for (const name of ['.env', '.env.production', '.env.local']) {
     const p = path.join(root, name);
     if (!fs.existsSync(p)) continue;
     for (let line of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
