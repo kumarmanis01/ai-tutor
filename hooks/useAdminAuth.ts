@@ -59,6 +59,7 @@ export function useAdminAuth() {
   const [error, setError] = useState<string | null>(null);
   const [loginSessionToken, setLoginSessionToken] = useState<string>('');
   const [requiresMfa, setRequiresMfa] = useState(false);
+  const [setupRequired, setSetupRequired] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
   const accessToken = useMemo(() => readStorage(ACCESS_TOKEN_KEY), []);
@@ -74,6 +75,7 @@ export function useAdminAuth() {
     clearStorage(LOGIN_AT_KEY);
     setLoginSessionToken('');
     setRequiresMfa(false);
+    setSetupRequired(false);
   }, []);
 
   const scheduleSessionTimeout = useCallback(() => {
@@ -141,6 +143,7 @@ export function useAdminAuth() {
       if (data.requiresMfa && data.loginSessionToken) {
         setRequiresMfa(true);
         setLoginSessionToken(data.loginSessionToken);
+        setSetupRequired(Boolean((data as any).setupRequired));
         return data;
       }
 
@@ -243,6 +246,7 @@ export function useAdminAuth() {
     refresh,
     logout,
     clearSession,
+    setupRequired,
   };
 }
 

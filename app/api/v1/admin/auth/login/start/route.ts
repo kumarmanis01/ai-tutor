@@ -158,6 +158,9 @@ export async function POST(req: Request) {
     const loginSessionToken = await signAdminLoginSessionToken(admin.id, admin.role);
     const res = NextResponse.json({
       requiresMfa: true,
+      // If the admin has not yet enabled MFA, signal the client to run
+      // the forced MFA enrollment flow on first login.
+      setupRequired: admin.mfaEnabled === false,
       loginSessionToken,
       lockoutThreshold: 3,
     });

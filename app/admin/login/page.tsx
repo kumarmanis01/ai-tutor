@@ -19,11 +19,12 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import LoginStep1 from '@/components/admin/auth/LoginStep1';
 import LoginStep2 from '@/components/admin/auth/LoginStep2';
+import SetupDuringLogin from '@/components/admin/auth/SetupDuringLogin';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 export default function AdminLoginPage(): React.ReactElement {
   const router = useRouter();
-  const { isLoading, error, requiresMfa, login, verifyMfa } = useAdminAuth();
+  const { isLoading, error, requiresMfa, setupRequired, loginSessionToken, login, verifyMfa } = useAdminAuth();
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-10 bg-gradient-to-b from-[#EEEDFE] to-white">
@@ -34,16 +35,23 @@ export default function AdminLoginPage(): React.ReactElement {
         </p>
 
         {requiresMfa ? (
-          <LoginStep2
-            isLoading={isLoading}
-            error={error}
-            onSubmit={async (payload) => {
-              const result = await verifyMfa(payload);
-              if (result?.accessToken) {
-                router.push('/admin/team');
-              }
-            }}
-          />
+          setupRequired ? (
+            <SetupDuringLogin
+              loginSessionToken={loginSessionToken}
+              onComplete={() => router.push('/admin/team')}
+            />
+          ) : (
+            <LoginStep2
+              isLoading={isLoading}
+              error={error}
+              onSubmit={async (payload) => {
+                const result = await verifyMfa(payload);
+                if (result?.accessToken) {
+                  router.push('/admin/team');
+                }
+              }}
+            />
+          )
         ) : (
           <LoginStep1
             isLoading={isLoading}
