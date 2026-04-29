@@ -1,5 +1,5 @@
 param(
-  [string]$DatabaseUrl = 'postgresql://postgres:asdf1234@localhost:5432/spinzy_dev',
+  [string]$DatabaseUrl = 'postgresql://postgres:asdf1234@localhost:5432/neon_local',
   [string]$RedisUrl = 'redis://127.0.0.1:6379'
 )
 
