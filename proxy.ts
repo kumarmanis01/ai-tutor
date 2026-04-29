@@ -37,7 +37,13 @@ export async function proxy(request: NextRequest) {
       return passthrough;
     }
 
-    const allowed = token && (token.role === 'admin' || token.role === 'moderator');
+    // Admin users authenticate via __admin_tok (custom JWT), not NextAuth.
+    // Accept either a NextAuth token with admin/moderator role, or a valid __admin_tok cookie.
+    // The layout (app/admin/layout.tsx) performs full JWT verification -- middleware just gates access.
+    const adminTok = request.cookies.get('__admin_tok')?.value;
+    const allowed =
+      (token != null && (token.role === 'admin' || token.role === 'moderator')) ||
+      (adminTok != null && adminTok.length > 0);
     if (!allowed) {
       if (pathname.startsWith('/api/admin')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
