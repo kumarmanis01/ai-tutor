@@ -283,6 +283,270 @@ So that I can start learning immediately without creating an account or entering
 - [x] Relation label in WhatsApp/email message matches what parent selected at onboarding
 
 ---
+Story S0.6 | P1 | Student Uses Parent's Device via Profile Switching
+As a student who shares a device with my parent,
+I want my parent to switch to my profile from their account,
+So that I can use Spinzy on the same phone without logging out my parent.
+
+Acceptance Criteria:
+
+Parent Sets Up Shared Device (From Story S0.5, Option 3):
+
+Parent selects: "Aarav will use my device" during child setup.
+
+System sets child's preferredDevice: SHARED_WITH_PARENT.
+
+Profile Switcher already shows the child (existing Profile Picker UI from auth architecture).
+
+Parent taps child's profile → Child enters the app with full Learning Map access.
+
+No PIN required for child profile (only for parent profile switching).
+
+Child Experience on Shared Device:
+
+App opens. Profile Picker shows:
+
+👩 Mom (Parent)
+
+👦 Aarav (Student — Class 5 CBSE)
+
+Aarav taps his profile → Lands directly on Learning Map (or Diagnostic Quiz if first time).
+
+Full app access. No registration. No consent needed (already granted).
+
+To switch back to parent: Profile Picker → Mom → 4-digit PIN → Parent Dashboard.
+
+Child Gets Own Device Later:
+
+Parent Dashboard: "Aarav is using your device. Send the app to Aarav's own phone?"
+
+"Send to Aarav's Phone" button → Triggers Story S0.5 flow (WhatsApp/QR).
+
+After child claims on own device: Shared device profile shows "Aarav has moved to their own device. Remove from this device?"
+
+Dev Tasks:
+
+Add "Shared Device" option to Parent Dashboard child setup completion
+
+Ensure Profile Picker correctly displays child profiles
+
+Add "Move to Own Device" action in Parent Dashboard
+
+Handle profile transfer: Learning progress preserved, device-specific data (offline cache) reset
+
+QA:
+
+Child profile appears in Profile Picker immediately after parent setup
+
+Switching to child profile lands on correct screen
+
+Switching back to parent requires PIN
+
+"Move to Own Device" generates claim link
+
+After move, shared device shows removal prompt
+
+Learning progress persists after device move
+
+Story S0.7 | P2 | Student Scans QR Code from Parent's Screen
+As a student whose parent is showing a QR code on their phone screen,
+I want to scan the QR code with my phone camera and instantly open Spinzy with my profile loaded,
+So that I don't need to type a link or wait for a WhatsApp message.
+
+Acceptance Criteria:
+
+QR Code Display (Parent's Device):
+
+Parent Dashboard → "Show QR Code" option in child setup completion
+
+QR code displayed full-screen on parent's device
+
+QR code contains: https://spinzyacademy.com/student/claim?token={child_claim_token}
+
+QR code has Spinzy logo in center (branded QR)
+
+QR code expires after 15 minutes (rotates — fresh token generated)
+
+Subtext: "Have Aarav scan this with their phone camera. Link expires in 15 minutes."
+
+QR Code Scan (Student's Device):
+
+Student opens Spinzy app (or downloads fresh)
+
+On app launch: "Scan QR Code" button next to "I'm a Student" and "I'm a Parent"
+
+Tapping "Scan QR Code" → Opens camera with QR scanner overlay (using device camera)
+
+Student scans parent's QR code
+
+App reads deep link from QR → Same claim flow as S0.5
+
+Success: "Welcome, Aarav! Mom set up your account."
+
+Error (invalid QR): "This isn't a Spinzy QR code. Please scan the code from your parent's Spinzy app."
+
+QR Code from App Install:
+
+If app not installed: QR code redirects to Play Store first.
+
+After install, student can tap "I have a QR code" on launch screen.
+
+Dev Tasks:
+
+Generate branded QR code on parent's device (use qrcode with logo overlay)
+
+Implement QR scanner in student app (use device camera + expo-barcode-scanner or similar)
+
+Add "Scan QR Code" button to app launch screen
+
+QR code expiry and rotation logic
+
+Handle invalid/non-Spinzy QR codes
+
+QA:
+
+QR code generates correctly on parent's device
+
+Student can scan QR code with phone camera
+
+Scanned code opens claim flow
+
+QR code expires after 15 minutes
+
+Invalid QR code shows appropriate error
+
+Flow works: Parent website → QR code → Student fresh install → Profile claimed
+
+Story S0.8 | P1 | Student Profile Already Exists — Merge Flow
+As a student who already created an Explore Mode profile (self-initiated) and whose parent later set up an account (parent-initiated),
+I want the system to detect and merge these profiles instead of creating a duplicate,
+So that my diagnostic results and sample lesson progress are preserved.
+
+Acceptance Criteria:
+
+Detection:
+
+When parent creates child profile (P1.1-P), system checks for existing StudentProfile with:
+
+Same or similar name (fuzzy match: Levenshtein distance ≤ 2)
+
+Same grade
+
+Same board
+
+Status: AWAITING_PARENT_CONSENT or ACTIVE
+
+If potential match found: Parent sees notification during setup:
+
+"We found an existing profile for Aarav (Grade 5, CBSE) that was created on April 20. Is this the same child?"
+
+[Yes, merge profiles] [No, create separate]
+
+Merge:
+
+Parent confirms merge:
+
+Self-initiated profile merged into parent-created profile.
+
+Diagnostic results preserved.
+
+Explore Mode sample lesson progress preserved.
+
+Parent consent pre-granted (no need for re-approval).
+
+Student app (if Explore Mode active) instantly transitions to full Learning Map via WebSocket.
+
+Parent declines merge: New profile created. Self-initiated profile remains separate (will be orphaned/anonymized after expiry).
+
+Conflict Resolution:
+
+If name/grade/board don't match exactly: Prompt parent to verify.
+
+If self-initiated profile has different parent contact: Override with current parent's contact.
+
+Dev Tasks:
+
+Implement profile matching logic (fuzzy name match + exact grade/board match)
+
+Add merge confirmation step to parent child setup flow
+
+Implement profile merge: Combine progress data, preserve diagnostic, resolve duplicate fields
+
+Send WebSocket event to student app on merge (transition Explore Mode → Full Mode)
+
+QA:
+
+Duplicate profile detected during parent setup
+
+Parent sees merge prompt with correct child details
+
+Merge preserves diagnostic results
+
+Merge preserves sample lesson progress
+
+Student app transitions instantly on merge
+
+Non-matching profiles don't trigger false merge prompts
+
+Declining merge creates separate profile
+
+Story S0.9 | P1 | Student Receives App Install Reminder (If Not Claimed)
+As a parent whose child hasn't claimed their account after 48 hours,
+I want to receive a reminder and have the option to re-send the app link,
+So that my child doesn't miss out on using Spinzy.
+
+Acceptance Criteria:
+
+Backend (Cron Job):
+
+Runs daily at 10:00 IST.
+
+Finds all StudentProfile where:
+
+status: ACTIVE
+
+consent_status: GRANTED_BY_PARENT
+
+claimed_at: NULL (not yet claimed by student)
+
+created_at > 48 hours ago
+
+last_reminder_sent_at: NULL OR last_reminder_sent_at < 72 hours ago
+
+Sends reminder to parent:
+
+Email: "Aarav hasn't started learning yet! Send the app to their phone so they can begin." with "Send App Link" button → Parent Dashboard.
+
+In-App Notification: Same message, visible on Parent Dashboard.
+
+Parent Dashboard shows: "Aarav hasn't accessed Spinzy yet. [Send App Link] [Aarav uses my device]"
+
+Reminder cooldown: Max 1 reminder per 72 hours, max 3 reminders total.
+
+Dev Tasks:
+
+Create UnclaimedProfileReminderWorker (cron job)
+
+Add claimed_at field to StudentProfile
+
+Add last_reminder_sent_at and reminder_count to StudentProfile
+
+Create reminder email template
+
+Add "Not Yet Claimed" status to Parent Dashboard
+
+QA:
+
+Reminder sent 48 hours after parent setup if unclaimed
+
+Reminder cooldown works (max 1 per 72h)
+
+Max 3 reminders then stop
+
+Parent can re-send manually from Dashboard
+
+claimed_at set when student claims via deep link/QR
+
 
 ## S1.1 | P0 | Student Confirms Board & Grade (Post-Consent or Adult) ✅ DONE
 

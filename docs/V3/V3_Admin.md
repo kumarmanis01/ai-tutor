@@ -1,3 +1,324 @@
+Story A0.0 | P0 | Initial Super Admin Creation via Database Seed
+As a platform engineer deploying Spinzy Academy for the first time,
+I want a secure, documented process to create the initial Super Admin account during database seeding,
+So that the first administrator can log in and begin creating other admin accounts.
+
+Acceptance Criteria:
+
+Database Seed Script (prisma/seed.ts):
+
+Seed script checks if any Super Admin exists before creating one (idempotent).
+
+If no Super Admin exists: Creates one using environment variables.
+
+Required environment variables for seed:
+
+env
+INITIAL_SUPER_ADMIN_EMAIL=admin@spinzyacademy.com
+INITIAL_SUPER_ADMIN_NAME=Vikram Sharma
+INITIAL_SUPER_ADMIN_PASSWORD=<secure-password>
+Password requirements enforced in seed:
+
+Minimum 16 characters
+
+At least 1 uppercase, 1 lowercase, 1 number, 1 special character
+
+Password is NOT logged or stored in plaintext anywhere
+
+Password hashed with bcrypt (cost factor 12) before storage
+
+AdminUser record created with:
+
+email: From INITIAL_SUPER_ADMIN_EMAIL
+
+name: From INITIAL_SUPER_ADMIN_NAME
+
+role: SUPER_ADMIN
+
+status: ACTIVE (NOT invited — directly active)
+
+passwordHash: bcrypt hash of INITIAL_SUPER_ADMIN_PASSWORD
+
+mfaEnabled: false (MFA setup enforced on first login)
+
+createdBy: NULL (no creator — first admin)
+
+Seed logs (to console only, not persisted):
+
+"✅ Initial Super Admin created: admin@spinzyacademy.com"
+
+Does NOT log the password
+
+If Super Admin already exists: Seed logs "ℹ️ Super Admin already exists. Skipping creation."
+
+First Login Experience:
+
+Super Admin navigates to https://admin.spinzy.academy/login
+
+Logs in with email + password from environment variables
+
+MFA Enforcement: On first login, system detects mfaEnabled: false and FORCES MFA setup:
+
+Screen: "Welcome, Vikram! Before you access the admin panel, you must set up two-factor authentication."
+
+Displays QR code + secret key for TOTP enrollment
+
+Requires verification of 6-digit TOTP code
+
+Generates 10 backup codes (displayed once)
+
+After successful MFA setup: mfaEnabled: true
+
+After MFA setup: Redirected to Admin Dashboard
+
+Audit log: super_admin.first_login with timestamp and IP
+
+Security Requirements:
+
+INITIAL_SUPER_ADMIN_PASSWORD must NOT be committed to Git
+
+Password must be set via secure secret manager or environment variable injection at deploy time
+
+Password change enforced on first login (optional but recommended — can be P2)
+
+Production deployment documentation includes: "Step 1: Set INITIAL_SUPER_ADMIN_PASSWORD as a secure environment variable. Step 2: Run database seed. Step 3: Super Admin logs in and sets up MFA."
+
+Dev Tasks:
+
+Create seed function: seedSuperAdmin()
+
+Add idempotency check (don't create if exists)
+
+Add environment variable validation (fail seed with clear error if vars not set)
+
+Add MFA enforcement logic to login flow (check mfaEnabled flag, redirect to setup if false)
+
+Create MFA setup page for first-time login
+
+Document production deployment process in docs/production-deployment.md
+
+QA:
+
+Seed creates Super Admin on fresh database
+
+Seed skips creation if Super Admin exists
+
+Missing environment variables → Seed fails with clear error
+
+Password is hashed, not stored in plaintext
+
+First login enforces MFA setup
+
+Cannot skip MFA setup (no "Skip" or "Later" button)
+
+Audit log records first login
+
+Password is NOT logged anywhere
+
+Story A0.0a | P1 | Super Admin Promotes Existing Admin to Super Admin
+As a Super Admin,
+I want to promote an existing Content Admin or Support Admin to Super Admin,
+So that we have redundancy and a successor if the original Super Admin leaves.
+
+Acceptance Criteria:
+
+Admin Promotion Flow (Super Admin Only):
+
+Admin Management page (admin.spinzy.academy/team): Each admin row has an "Actions" dropdown.
+
+Super Admin sees: "Promote to Super Admin" action (only visible to Super Admin).
+
+Clicking "Promote to Super Admin":
+
+Confirmation modal: "⚠️ Are you sure? [Admin Name] will have full access including billing, audit logs, and admin management. This action cannot be undone without another Super Admin."
+
+Reason field (required): "Why is this admin being promoted?"
+
+"Confirm Promotion" button
+
+On confirm:
+
+Admin's role updated from CONTENT_ADMIN or SUPPORT_ADMIN to SUPER_ADMIN
+
+Audit log: admin.promoted_to_super_admin with promoting admin ID, promoted admin ID, reason
+
+Email notification to promoted admin: "You have been promoted to Super Admin at Spinzy Academy. This role has full platform access. Log out and log back in to activate your new permissions."
+
+Email notification to other Super Admins: "[Name] has been promoted to Super Admin by [Promoter Name]."
+
+Maximum Super Admins: Configurable limit (default: 3). Attempting to promote beyond limit shows: "Maximum Super Admin limit (3) reached. Demote an existing Super Admin first."
+
+Backend:
+
+PUT /api/v1/admin/accounts/{id}/promote — Body: { reason: string }
+
+Validates: Caller is Super Admin, target is not already Super Admin, max limit not exceeded
+
+Permission: SUPER_ADMIN only
+
+RBAC update: New permissions take effect on next token refresh (or immediate if force-logout)
+
+Dev Tasks:
+
+Add "Promote to Super Admin" action to AdminTeamPage
+
+Create promotion confirmation modal with reason field
+
+Implement API endpoint with validation
+
+Send notification emails
+
+Add MAX_SUPER_ADMINS configuration
+
+QA:
+
+Super Admin can promote Content Admin to Super Admin
+
+Promotion requires reason
+
+Max limit enforced
+
+Audit log records promotion
+
+Promoted admin receives email
+
+Other Super Admins receive notification
+
+Non-Super Admin cannot see promotion action
+
+New Super Admin permissions work after re-login
+
+Story A0.0b | P2 | Super Admin Demotes Another Super Admin
+As a Super Admin,
+I want to demote another Super Admin back to a lower role,
+So that we can manage admin access when team members change roles or leave.
+
+Acceptance Criteria:
+
+Admin Management page: Super Admin sees "Demote from Super Admin" action on other Super Admins.
+
+Cannot demote yourself (action hidden for own row).
+
+Demotion modal:
+
+Select new role: Content Admin or Support Admin
+
+Required reason field
+
+Warning: "⚠️ [Name] will lose access to billing, audit logs, and admin management."
+
+On confirm:
+
+Role updated
+
+Audit log recorded
+
+Email to demoted admin
+
+Force logout from all sessions (invalidate all refresh tokens)
+
+Last Super Admin protection: Cannot demote if this is the only remaining Super Admin. "Cannot demote: At least one Super Admin must exist."
+
+QA:
+
+Demotion works
+
+Cannot demote self
+
+Last Super Admin protected
+
+Story A0.0c | P2 | Super Admin Password & MFA Reset
+As a Super Admin who lost access to MFA device,
+I want another Super Admin to reset my MFA,
+So that I can regain access without database manipulation.
+
+Acceptance Criteria:
+
+Admin Management page: Super Admin can reset MFA for another admin.
+
+Action: "Reset MFA" → Confirmation modal with reason
+
+On reset: Admin's mfaEnabled: false, mfaSecret: null, mfaBackupCodes: null
+
+Admin must re-enroll MFA on next login (same forced flow as A0.2)
+
+Audit log: admin.mfa_reset with resetter ID, target ID, reason
+
+Password reset: Same flow. "Reset Password" → Sends password reset email to admin's email.
+
+Cannot reset your own MFA/password via this method (use standard "Forgot MFA?" flow).
+
+QA:
+
+MFA reset works
+
+Admin forced to re-enroll MFA
+
+Audit log recorded
+
+Updated Creation Flow: Complete Admin Lifecycle
+text
+┌─────────────────────────────────────────────────────────────────┐
+│                    SUPER ADMIN LIFECYCLE                        │
+│                                                                 │
+│  DEPLOYMENT (One-time)                                          │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ 1. Platform Engineer sets env vars:                       │  │
+│  │    INITIAL_SUPER_ADMIN_EMAIL                              │  │
+│  │    INITIAL_SUPER_ADMIN_NAME                               │  │
+│  │    INITIAL_SUPER_ADMIN_PASSWORD                           │  │
+│  │                                                           │  │
+│  │ 2. Database seed runs                                     │  │
+│  │    → Super Admin created (A0.0)                           │  │
+│  │    → Status: ACTIVE, MFA: NOT ENABLED                    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                           │                                     │
+│                           ▼                                     │
+│  FIRST LOGIN (One-time per Super Admin)                         │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ 3. Super Admin logs in with email + password              │  │
+│  │ 4. System detects MFA not enabled                         │  │
+│  │ 5. FORCED MFA enrollment (QR code + TOTP)                 │  │
+│  │ 6. Backup codes generated & saved                         │  │
+│  │ 7. Super Admin now fully active                            │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                           │                                     │
+│                           ▼                                     │
+│  ONGOING ADMIN MANAGEMENT                                       │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ 8. Super Admin creates Content Admins (A0.1)              │  │
+│  │ 9. Super Admin creates Support Admins (A0.1)              │  │
+│  │ 10. Super Admin promotes existing admin (A0.0a)           │  │
+│  │ 11. Super Admin demotes Super Admin (A0.0b)               │  │
+│  │ 12. Super Admin resets MFA for other admin (A0.0c)        │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+Security Hardening for Super Admin
+Requirement	Implementation
+Password complexity	Min 16 characters (vs 12 for regular admins)
+MFA mandatory	Cannot be skipped. No "remind me later."
+Session timeout	15 minutes inactivity (vs 30 for regular admins)
+IP whitelist	Strongly recommended for Super Admin logins
+Audit log	Every Super Admin action logged immutably
+Max count	Maximum 3 Super Admins at any time
+Password rotation	Enforced every 90 days (P2)
+Login alerts	Email to ALL Super Admins when any Super Admin logs in
+Updated Admin Journey Story Map (With New Stories)
+Phase	ID	Priority	Story Title
+0: Super Admin	A0.0	P0	Initial Super Admin creation via database seed
+A0.0a	P1	Super Admin promotes existing admin to Super Admin
+A0.0b	P2	Super Admin demotes another Super Admin
+A0.0c	P2	Super Admin password & MFA reset for other admins
+0: Onboarding	A0.1	P0	Super Admin creates admin accounts (Content/Support)
+A0.2	P0	Admin accepts invite & sets up account (password + MFA)
+A0.3	P0	Admin login with MFA
+A0.4	P1	RBAC enforcement for admin API
+Updated MVP Sprint Plan
+Add to Sprint 1 (Backend Foundation):
+
+ID	Priority	Story Title	Why Sprint 1
+A0.0	P0	Initial Super Admin creation via database seed	Must exist before any admin can log in. Blocks A0.1, A0.2, A0.3.
+
 ## A0.1 | P0 | Super Admin Creates Admin Accounts
 
 **ID:** A0.1
