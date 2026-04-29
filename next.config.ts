@@ -73,6 +73,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'ai-tutor-uploads-spinzyacademy-01.s3.eu-north-1.amazonaws.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.qrserver.com',
+        // No port or pathname restriction needed for basic setup
+      },
     ],
   },
 };

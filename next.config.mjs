@@ -28,6 +28,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.qrserver.com',
+        // No port or pathname restriction needed for basic setup
+      },
     ],
   },
 };
