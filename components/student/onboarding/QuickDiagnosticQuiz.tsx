@@ -323,10 +323,10 @@ export default function QuickDiagnosticQuiz({
         {!isExploreMode && (
           <button
             type="button"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/student/learning-map')}
             className="min-h-[44px] px-6 rounded-xl bg-[#534AB7] text-white text-sm font-semibold"
           >
-            Skip for now
+            Skip and start learning
           </button>
         )}
       </div>

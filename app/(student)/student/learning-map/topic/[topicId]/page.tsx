@@ -21,11 +21,11 @@ import LessonExperience from '@/components/student/learning-map/LessonExperience
 export const dynamic = 'force-dynamic';
 
 type TopicPageProps = {
-  params: { topicId: string };
+  params: Promise<{ topicId: string }>;
 };
 
 export default async function TopicLessonPage({ params }: TopicPageProps) {
-  const { topicId } = params;
+  const { topicId } = await params;
   const session = await getServerSessionForHandlers();
   const studentId = (session?.user as { id?: string })?.id;
 

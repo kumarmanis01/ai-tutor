@@ -21,11 +21,11 @@ import PracticeFlow from '@/components/student/practice/PracticeFlow';
 export const dynamic = 'force-dynamic';
 
 type PracticePageProps = {
-  params: { topicId: string };
+  params: Promise<{ topicId: string }>;
 };
 
 export default async function TopicPracticePage({ params }: PracticePageProps) {
-  const { topicId } = params;
+  const { topicId } = await params;
   const session = await getServerSessionForHandlers();
   const studentId = (session?.user as { id?: string })?.id;
 

@@ -31,17 +31,29 @@ export default async function BoardConfirmPage() {
 
   const userId = (session.user as { id: string }).id;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      grade: true,
-      board: true,
-      onboardingDiagnosticCompletedAt: true,
-    },
-  });
+  const [user, learningProfile] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        grade: true,
+        board: true,
+        onboardingDiagnosticCompletedAt: true,
+      },
+    }),
+    prisma.studentLearningProfile.findUnique({
+      where: { studentId: userId },
+      select: { studyDaysPerWeek: true },
+    }),
+  ]);
 
   if (!user) redirect('/');
+
+  // If the user has already generated a plan (completed exam-date step) or
+  // completed the diagnostic, skip board-confirm entirely.
+  if (learningProfile?.studyDaysPerWeek != null || user.onboardingDiagnosticCompletedAt !== null) {
+    redirect('/student/learning-map');
+  }
 
   const grade = user.grade ? parseInt(String(user.grade), 10) : 0;
   const board = user.board ?? '';
@@ -51,7 +63,7 @@ export default async function BoardConfirmPage() {
       initialBoard={board}
       initialGrade={grade}
       studentId={userId}
-      hasCompletedExploreDiagnostic={user.onboardingDiagnosticCompletedAt !== null}
+      hasCompletedExploreDiagnostic={false}
     />
   );
 }
