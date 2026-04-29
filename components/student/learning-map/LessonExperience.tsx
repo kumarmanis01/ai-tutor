@@ -20,7 +20,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { DoubtPanel } from '@/components/session/DoubtPanel';
 
 type LessonPayload = {
   topicId: string;
@@ -45,7 +45,6 @@ type LessonExperienceProps = {
 };
 
 export default function LessonExperience({ studentId, topicId }: LessonExperienceProps) {
-  const router = useRouter();
   const [lesson, setLesson] = useState<LessonPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -53,6 +52,13 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
   const [error, setError] = useState<string | null>(null);
   const [showVideo, setShowVideo] = useState(false);
   const [locale, setLocale] = useState<'en' | 'hi'>('en');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportIssueType, setReportIssueType] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [showVidyaPanel, setShowVidyaPanel] = useState(false);
 
   function lessonCacheKey(topicIdValue: string, localeValue: 'en' | 'hi'): string {
     return `lesson-cache:${topicIdValue}:${localeValue}`;
@@ -123,6 +129,33 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
     }
   }
 
+  async function submitReport() {
+    if (reportSubmitting || !reportIssueType || !reportDescription.trim()) return;
+    setReportSubmitting(true);
+    setReportError(null);
+    try {
+      const res = await fetch(`/api/v1/content/${encodeURIComponent(topicId)}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issueType: reportIssueType, description: reportDescription.trim() }),
+      });
+      if (!res.ok) throw new Error('Submission failed');
+      setReportDone(true);
+    } catch {
+      setReportError("Couldn't submit right now. Please try again.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
+  function closeReportModal() {
+    setShowReportModal(false);
+    setReportIssueType('');
+    setReportDescription('');
+    setReportDone(false);
+    setReportError(null);
+  }
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
@@ -175,9 +208,7 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
           <button
             type="button"
             className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-800"
-            onClick={() => {
-              router.push('/doubts');
-            }}
+            onClick={() => setShowReportModal(true)}
           >
             Report Content Issue
           </button>
@@ -283,6 +314,108 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
           </Link>
         </div>
       </article>
+
+      {/* Report Content Issue modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeReportModal}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 shadow-2xl dark:bg-slate-900 sm:rounded-2xl">
+            <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Report a Content Issue</h2>
+            {reportDone ? (
+              <>
+                <p className="mt-3 text-sm text-[#1D9E75]">Thanks for letting us know. We will review and fix it soon.</p>
+                <button
+                  type="button"
+                  onClick={closeReportModal}
+                  className="mt-4 min-h-[44px] w-full rounded-xl bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Help us improve this topic for everyone.</p>
+                <div className="mt-4 space-y-2">
+                  {[
+                    { value: 'incorrect_info', label: 'Incorrect information' },
+                    { value: 'typo', label: 'Typo or spelling error' },
+                    { value: 'unclear_explanation', label: 'Unclear explanation' },
+                    { value: 'missing_content', label: 'Missing content' },
+                    { value: 'other', label: 'Other' },
+                  ].map(({ value, label }) => (
+                    <label key={value} className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 dark:border-slate-700">
+                      <input
+                        type="radio"
+                        name="issueType"
+                        value={value}
+                        checked={reportIssueType === value}
+                        onChange={() => setReportIssueType(value)}
+                        className="accent-[#534AB7]"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                    </label>
+                  ))}
+                </div>
+                <textarea
+                  className="mt-3 min-h-[80px] w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-700 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-300"
+                  placeholder="Describe the issue (required)"
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  maxLength={1000}
+                />
+                {reportError && (
+                  <p className="mt-2 text-xs text-[#E24B4A]">{reportError}</p>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={closeReportModal}
+                    className="min-h-[44px] flex-1 rounded-xl border border-gray-300 px-4 text-sm font-semibold text-gray-600 dark:border-slate-700 dark:text-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { void submitReport(); }}
+                    disabled={reportSubmitting || !reportIssueType || !reportDescription.trim()}
+                    className="min-h-[44px] flex-1 rounded-xl bg-[#534AB7] px-4 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {reportSubmitting ? 'Submitting...' : 'Submit'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Vidya floating action button */}
+      <button
+        type="button"
+        aria-label="Ask Teacher Vidya"
+        onClick={() => setShowVidyaPanel(true)}
+        className="fixed bottom-6 right-4 z-40 flex min-h-[56px] min-w-[56px] items-center justify-center rounded-full bg-[#534AB7] shadow-lg hover:bg-[#4238a3] sm:right-6"
+      >
+        <Image
+          src="/logos/vidya/vidya-avatar-64.png"
+          alt="Teacher Vidya"
+          width={36}
+          height={36}
+          className="rounded-full object-cover"
+        />
+      </button>
+
+      <DoubtPanel
+        subject={lesson?.subjectName ?? ''}
+        chapter={lesson?.chapterName ?? ''}
+        topicName={lesson?.title ?? ''}
+        isOpen={showVidyaPanel}
+        onClose={() => setShowVidyaPanel(false)}
+      />
     </div>
   );
 }
