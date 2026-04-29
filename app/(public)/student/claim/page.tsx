@@ -15,7 +15,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -49,6 +49,16 @@ const ERROR_TITLE: Record<ErrorCode, string> = {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function StudentClaimPage() {
+  return (
+    <PageShell>
+      <Suspense fallback={<LoadingView />}>
+        <StudentClaimContent />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+function StudentClaimContent() {
   const searchParams = useSearchParams();
   const [state, setState] = useState<ClaimState>({ status: 'loading' });
 
@@ -129,7 +139,7 @@ export default function StudentClaimPage() {
   }, [searchParams]);
 
   return (
-    <PageShell>
+    <>
       {state.status === 'loading' && <LoadingView />}
       {state.status === 'success' && (
         <SuccessView
@@ -141,7 +151,7 @@ export default function StudentClaimPage() {
       {state.status === 'error' && (
         <ErrorView code={state.code} message={state.message} />
       )}
-    </PageShell>
+    </>
   );
 }
 
