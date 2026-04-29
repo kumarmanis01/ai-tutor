@@ -58,6 +58,15 @@ export default async function StudentOnboardingPage() {
   });
 
   if (user && isProfileComplete(user)) {
+    // If a learning plan has already been generated, skip the whole onboarding
+    // funnel and go straight to the learning map.
+    const existing = await prisma.studentLearningProfile.findUnique({
+      where: { studentId: userId },
+      select: { studyDaysPerWeek: true },
+    });
+    if (existing?.studyDaysPerWeek != null) {
+      redirect('/student/learning-map');
+    }
     redirect('/student/onboarding/board-confirm');
   }
 

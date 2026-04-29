@@ -178,52 +178,35 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Check whether the first subject already has diagnostic questions available.
-    // This lets the client decide whether to redirect to the diagnostic immediately
-    // or show a "Vidya is preparing" waiting screen.
-    // Notification registration is intentionally omitted here -- it is strictly
-    // user-initiated via POST /api/student/diagnostic/notify-ready.
+    // 4. Check whether diagnostic questions are available using the same
+    // grade+board+subject criteria as /api/v1/content/diagnostic.
+    // This avoids a false-positive where topicId-linked questions exist but
+    // the diagnostic API (which queries by grade/board/subject strings) finds none.
     let diagnosticReady = false;
-    if (firstSubjectId) {
+    if (studentGrade && studentBoard) {
       try {
-        const topicIds = await prisma.topicDef
-          .findMany({
-            where: {
-              chapter: { subjectId: firstSubjectId, lifecycle: 'active' },
-              lifecycle: 'active',
-            },
-            select: { id: true },
-          })
-          .then((rows) => rows.map((r) => r.id));
+        const subjectPool =
+          studentGrade <= 8
+            ? ['Mathematics', 'Science']
+            : subjectDefs.length > 0
+            ? [subjectDefs[0].name]
+            : ['Mathematics'];
 
-        if (topicIds.length > 0) {
-          const qCount = await prisma.question.count({
-            where: { status: 'ACTIVE', topicId: { in: topicIds } },
-          });
-          if (qCount === 0) {
-            const gqCount = await prisma.generatedQuestion.count({
-              where: {
-                test: {
-                  lifecycle: 'active',
-                  topic: {
-                    lifecycle: 'active',
-                    chapter: { lifecycle: 'active', subjectId: firstSubjectId },
-                  },
-                },
-              },
-            });
-            diagnosticReady = gqCount > 0;
-          } else {
-            diagnosticReady = true;
-          }
-        }
+        const qCount = await prisma.question.count({
+          where: {
+            status: 'ACTIVE',
+            grade: String(studentGrade),
+            board: studentBoard,
+            subject: { in: subjectPool },
+          },
+        });
+        diagnosticReady = qCount > 0;
       } catch (readinessErr) {
         // Non-fatal: default to false -- client will show waiting screen
         logger.warn('[generate-plan] diagnosticReady check failed', {
           className: 'GeneratePlanAPI',
           methodName: 'POST',
           studentId: userId,
-          firstSubjectId,
           error: String(readinessErr),
         });
       }
