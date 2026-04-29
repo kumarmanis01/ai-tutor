@@ -96,7 +96,7 @@ export default function SetupDuringLogin({ loginSessionToken, onComplete }: Prop
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-700">Welcome — set up two-factor authentication for this account.</p>
+      <p className="text-sm text-gray-700">Welcome -- set up two-factor authentication for this account.</p>
       {qrUrl ? (
         <Image src={qrUrl} alt="MFA QR" width={220} height={220} className="rounded-lg border border-gray-200" />
       ) : null}

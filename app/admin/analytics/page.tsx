@@ -16,16 +16,14 @@
 
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireActiveAdmin } from '@/lib/admin/guards';
 import { AnalyticsDashboardClient } from './AnalyticsDashboardClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) redirect('/auth/signin');
-  if (session.user.role !== 'admin') redirect('/admin');
+  const guard = await requireActiveAdmin();
+  if (!guard.ok) redirect('/admin/login');
 
   return (
     <div className="px-4 py-6">

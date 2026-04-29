@@ -138,6 +138,39 @@ const IconCoin = () => (
   </svg>
 );
 
+const IconClipboard = () => (
+  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+    />
+  </svg>
+);
+
+const IconTeam = () => (
+  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+    />
+  </svg>
+);
+
+const IconAudit = () => (
+  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+    />
+  </svg>
+);
+
 const IconPulse = () => (
   <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
@@ -272,10 +305,16 @@ export function AdminSidebar({
           isActive={isActive('/admin/content')}
         />
         <NavItem
+          href="/admin/moderation"
+          icon={<IconClipboard />}
+          label="Moderation Queue"
+          badge={pendingReview}
+          isActive={isActive('/admin/moderation')}
+        />
+        <NavItem
           href="/admin/content-approval"
           icon={<IconDoc />}
           label="Content Review"
-          badge={pendingReview}
           isActive={isActive('/admin/content-approval')}
         />
         <NavItem
@@ -305,8 +344,14 @@ export function AdminSidebar({
         {/* ANALYTICS */}
         <SectionLabel label="Analytics" />
         <NavItem
-          href="/admin/learning-analytics"
+          href="/admin/analytics"
           icon={<IconChart />}
+          label="Executive Analytics"
+          isActive={isActive('/admin/analytics')}
+        />
+        <NavItem
+          href="/admin/learning-analytics"
+          icon={<IconLines />}
           label="Learning Analytics"
           isActive={isActive('/admin/learning-analytics')}
         />
@@ -337,6 +382,21 @@ export function AdminSidebar({
           icon={<IconBell />}
           label="Notifications"
           isActive={isActive('/admin/notifications')}
+        />
+        <NavItem
+          href="/admin/audit-logs"
+          icon={<IconAudit />}
+          label="Audit Logs"
+          isActive={isActive('/admin/audit-logs')}
+        />
+
+        {/* ADMIN */}
+        <SectionLabel label="Admin" />
+        <NavItem
+          href="/admin/team"
+          icon={<IconTeam />}
+          label="Team Management"
+          isActive={isActive('/admin/team')}
         />
       </nav>
 
