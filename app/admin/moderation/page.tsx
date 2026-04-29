@@ -2,16 +2,17 @@
  * FILE OBJECTIVE:
  * - A1.1: Content Moderation Dashboard server entry point.
  *   Fetches initial page of moderation queue and renders the client component.
+ *   Provides a graceful fallback when the `Content` table is missing (pre-migration).
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/admin/moderation/page.spec.tsx
+ * - tests/unit/app/admin/moderation/page.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-04-25T00:00:00Z | copilot | created A1.1 moderation dashboard page
+ * - 2026-04-29T15:40:00Z | copilot | add resilient data fetch with missing-table handling and exported helper for unit tests
  */
 
 import React from 'react';
@@ -22,13 +23,17 @@ import { ModerationDashboardClient } from './ModerationDashboardClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ModerationPage() {
-  const guard = await requireActiveAdmin();
-  if (!guard.ok) redirect('/admin/login');
+function isMissingTableError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const msg = (err as any)?.message ?? String(err);
+  if (typeof msg !== 'string') return false;
+  const lowered = msg.toLowerCase();
+  if (lowered.includes('does not exist') && (lowered.includes('relation') || lowered.includes('table') || lowered.includes('public.'))) return true;
+  return false;
+}
 
-  // Server-side fetch of first page for SSR (avoids extra client round-trip)
-  let initialItems: unknown[] = [];
-  let initialTotal = 0;
+export async function fetchModerationInitialData(adminUserId: string) {
+  const operation = 'ModerationPage.initialDataFetch';
   try {
     const { prisma } = await import('@/lib/db');
     const [rawItems, total] = await prisma.$transaction([
@@ -58,7 +63,7 @@ export default async function ModerationPage() {
       prisma.content.count(),
     ]);
 
-    initialItems = rawItems.map((item) => {
+    const initialItems = rawItems.map((item) => {
       const job = item.generationJobs[0];
       return {
         id: item.id,
@@ -77,15 +82,41 @@ export default async function ModerationPage() {
         updatedAt: item.updatedAt.toISOString(),
       };
     });
-    initialTotal = total;
-  } catch (error: unknown) {
-    // Non-fatal -- client will fetch on mount; log so SSR failures are diagnosable
-    logger.error('ModerationPage SSR prefetch failed', {
+
+    return { items: initialItems, total, migrated: true };
+  } catch (err) {
+    logger.error('[ERROR] ModerationPage SSR prefetch failed', {
       route: 'app/admin/moderation/page.tsx',
-      operation: 'ModerationPage.initialDataFetch',
-      adminUserId: guard.adminUserId,
-      error: error instanceof Error ? error.message : String(error),
+      operation,
+      adminUserId,
+      error: err instanceof Error ? err.message : String(err),
     });
+
+    if (isMissingTableError(err)) {
+      return { items: [], total: 0, migrated: false };
+    }
+
+    throw err;
+  }
+}
+
+export default async function ModerationPage() {
+  const guard = await requireActiveAdmin();
+  if (!guard.ok) redirect('/admin/login');
+
+  let items: unknown[] = [];
+  let total = 0;
+  let migrated = true;
+
+  try {
+    const res = await fetchModerationInitialData(guard.adminUserId);
+    items = res.items;
+    total = res.total;
+    migrated = res.migrated;
+  } catch (err) {
+    // Unexpected errors should surface to monitoring; we've already logged in helper.
+    // Re-throw so Next.js / Sentry capture it rather than silently continuing.
+    throw err;
   }
 
   return (
@@ -97,10 +128,17 @@ export default async function ModerationPage() {
           Auto-refreshes every 30s.
         </p>
       </div>
+
+      {!migrated && (
+        <div role="status" className="mb-4 p-3 rounded bg-yellow-50 text-yellow-800">
+          Moderation database table not found. Please run migrations on the database. Showing empty results.
+        </div>
+      )}
+
       <ModerationDashboardClient
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        initialItems={initialItems as any}
-        initialTotal={initialTotal}
+        initialItems={items as any}
+        initialTotal={total}
       />
     </div>
   );

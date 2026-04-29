@@ -55,6 +55,10 @@ module.exports = {
       '<rootDir>/$1/index.tsx',
     ],
     '^@prisma/client$': '<rootDir>/tests/mocks/prismaClientMock.ts',
+    // CSS and style imports stubbed for Jest (avoid parsing CSS as JS)
+    '\\.(css|less|scss|sass)$': '<rootDir>/tests/__mocks__/styleMock.js',
+    // Static assets (images, fonts) mapped to a file mock
+    '\\.(jpg|jpeg|png|gif|webp|avif|svg|eot|ttf|woff|woff2)$': '<rootDir>/tests/__mocks__/fileMock.js',
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
   transform: {

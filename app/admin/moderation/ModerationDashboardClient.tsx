@@ -375,24 +375,24 @@ export function ModerationDashboardClient({ initialItems, initialTotal }: {
       </div>
 
       {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
+      {(pagination?.totalPages ?? 0) > 1 && (
+        <div className="mt-4 flex items-center justify-between" role="navigation" aria-label="Moderation pagination">
           <span className="text-sm text-gray-500">
-            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} items)
+            Showing page {pagination?.page ?? 1} of {pagination?.totalPages ?? 0} ({pagination?.total ?? 0} items)
           </span>
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={pagination.page <= 1 || isLoading}
-              onClick={() => void fetchPage(pagination.page - 1, filters)}
+              disabled={(pagination?.page ?? 1) <= 1 || isLoading}
+              onClick={() => void fetchPage((pagination?.page ?? 1) - 1, filters)}
               className="min-h-[36px] rounded-lg border border-gray-300 px-3 text-sm disabled:opacity-50"
             >
               Previous
             </button>
             <button
               type="button"
-              disabled={pagination.page >= pagination.totalPages || isLoading}
-              onClick={() => void fetchPage(pagination.page + 1, filters)}
+              disabled={(pagination?.page ?? 1) >= (pagination?.totalPages ?? 1) || isLoading}
+              onClick={() => void fetchPage((pagination?.page ?? 1) + 1, filters)}
               className="min-h-[36px] rounded-lg border border-gray-300 px-3 text-sm disabled:opacity-50"
             >
               Next
