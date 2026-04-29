@@ -128,7 +128,8 @@
     "ingest:cli": "node ingest.cjs",
     "ingest:seed-cbse-grade10": "node scripts/seed-cbse-grade10.cjs",
     "ingest:retry": "node ingest.cjs --retry-failed",
-    "ingest:scrape": "node ingest.cjs"
+    "ingest:scrape": "node ingest.cjs",
+    "seed:superadmin": "node scripts/seed-super-admin.cjs"
   },
   "_notes_orchestrator": "orchestrator:start now runs via tsx (ESM). worker/orchestrator.ts contains a require.main check which is undefined under pure ESM when executed via tsx. This can crash startup. Replace the entrypoint check with an ESM-safe pattern (e.g., compare import.meta.url to process.argv[1] or use an explicit CJS wrapper that imports and calls main()), or keep a guarded typeof require !== 'undefined' check. See worker/orchestrator.ts for a temporary guarded check; prefer an import.meta.url approach for long-term ESM correctness.",
   "dependencies": {
