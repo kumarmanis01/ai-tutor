@@ -1054,6 +1054,8 @@ model ParentStudent {
   inactivityOptOut        Boolean          @default(false)
   pausedUntil             DateTime?
   pauseReason             String?
+  /// Relationship of the parent to the child (set during onboarding).
+  relationToChild         ParentRelation?
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
   parent                  User             @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
@@ -2360,6 +2362,12 @@ enum ParentLinkStatus {
   pending
   active
   revoked
+}
+
+enum ParentRelation {
+  Mom
+  Dad
+  LegalGuardian
 }
 
 enum ParentInviteStatus {

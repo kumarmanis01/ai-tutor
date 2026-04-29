@@ -15,6 +15,7 @@
  * - 2026-04-12T12:00:00Z | copilot | use FAMILY_MAX_CHILDREN constant from billing constants
  * - 2026-04-14T00:00:00Z | claude | added dateOfBirth, grade, board, medium fields (F-PAR-002 AC-01)
  * - 2026-04-14T12:00:00Z | staff-engineer | fix: create child with role 'user', default language, remove unused const
+ * - 2026-04-29T00:00:00Z | claude | accept and store relation (Mom/Dad/LegalGuardian) on ParentStudent
  */
 
 import { NextResponse } from 'next/server';
@@ -24,7 +25,7 @@ import { logger } from '@/lib/logger';
 import { sendMailSafe } from '@/lib/mailer';
 import { sendSms } from '@/lib/sms';
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants';
-import { Prisma } from '@prisma/client';
+import { Prisma, ParentRelation } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,11 @@ export async function POST(req: Request) {
   const dateOfBirth =
     typeof body.dateOfBirth === 'string' && body.dateOfBirth
       ? new Date(body.dateOfBirth)
+      : undefined;
+  const VALID_RELATIONS = new Set<string>(['Mom', 'Dad', 'LegalGuardian']);
+  const relation: ParentRelation | undefined =
+    typeof body.relation === 'string' && VALID_RELATIONS.has(body.relation)
+      ? (body.relation as ParentRelation)
       : undefined;
 
   if (!name) {
@@ -108,7 +114,12 @@ export async function POST(req: Request) {
 
       const created = await tx.user.create({ data: userData as any });
       await tx.parentStudent.create({
-        data: { parentId, studentId: created.id, status: 'active' },
+        data: {
+          parentId,
+          studentId: created.id,
+          status: 'active',
+          ...(relation ? { relationToChild: relation } : {}),
+        },
       });
       // promote parent role if necessary
       const p = await tx.user.findUnique({ where: { id: parentId }, select: { role: true } });

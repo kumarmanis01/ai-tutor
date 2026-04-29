@@ -309,6 +309,58 @@ As a backend developer, I want Prisma connection pooling with PgBouncer and a Re
 
 ---
 
+## B6.1 | P0 | Child Claim Token Service (S0.5 Deep Link)
+
+**ID:** B6.1
+**Labels:** P0, phase:parent-setup
+**Phase:** Parent-Initiated Child Setup
+**Status: ❌ Not started**
+
+### User Story
+
+As a parent who has set up a child account,
+I want to generate a secure single-use claim link so that my child can open the Spinzy app with their profile pre-loaded,
+without needing to register or enter any credentials.
+
+### Acceptance Criteria
+
+- [ ] `POST /api/v1/parent/children/{childId}/generate-claim-link` -- auth-guarded (parent session, parentId must own childId)
+  - Generates a signed JWT: `{ sub: childId, type: "child_claim", jti: uuid }`, expiry 7 days
+  - Stores token hash in Redis: `child_claim:{jti}` with 7-day TTL and status `PENDING`
+  - Returns `{ claimToken, deepLink, expiresAt }`
+  - Rate limit: max 5 tokens per child per hour (prevent spam)
+- [ ] `POST /api/v1/students/claim` -- public (no session required)
+  - Body: `{ claimToken }`
+  - Validate JWT signature and expiry. Return 401 if invalid/expired with message: "This link has expired. Ask your parent to send a new one from their Parent Dashboard."
+  - Check Redis: if status is not `PENDING`, return 409: "This link has already been used. If you need help, ask your parent to generate a new link."
+  - Mark Redis key status as `USED`
+  - Look up child profile by `sub` (childId in token)
+  - Issue full-scope JWT for the child: `{ sub: childId, role: "user", scope: "student_full" }`
+  - Merge logic: if device fingerprint matches an existing Explore Mode profile with same name+grade+board, merge into parent-created profile, preserve diagnostic results
+  - Returns `{ accessToken, refreshToken, child: { id, name, grade, board }, alreadyHadProfile }`
+- [ ] Token single-use enforced via Redis atomic check-and-set (GETSET pattern)
+- [ ] All claim events logged in audit trail: `{ event: "child_claim", childId, parentId, claimedAt, deviceFingerprint }`
+
+### Dev Tasks
+
+- [ ] Create `ChildClaimTokenService` in `lib/auth/child-claim-token.service.ts`
+- [ ] Implement `POST /api/v1/parent/children/{childId}/generate-claim-link`
+- [ ] Implement `POST /api/v1/students/claim`
+- [ ] Implement profile merge logic in `StudentService.mergeExploreProfile(childId, deviceFingerprint)`
+- [ ] Add audit logging for claim events
+
+### QA
+
+- [ ] Valid token claims profile and returns student JWT
+- [ ] Used token returns 409 with correct message
+- [ ] Expired token returns 401 with correct message
+- [ ] Claimed profile has correct name, grade, board from parent-created record
+- [ ] Explore Mode merge preserves diagnostic results
+- [ ] Rate limit: 6th token generation in 1 hour rejected
+- [ ] Audit trail entry created on every claim attempt (success or failure)
+
+---
+
 ## Environment Variables Reference (v3 MVP)
 
 | Variable | Required | Default | Notes |

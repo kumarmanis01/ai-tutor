@@ -14,17 +14,21 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | staff-engineer | created per P1.1-P AC
+ * - 2026-04-29T00:00:00Z | claude | add relation dropdown (Mom / Dad / Legal Guardian)
  */
 
 'use client';
 
 import { useState } from 'react';
 
+export type ParentRelation = 'Mom' | 'Dad' | 'LegalGuardian';
+
 export interface ChildInput {
   id?: string;
   firstName: string;
   grade: string;
   board: string;
+  relation: ParentRelation | '';
 }
 
 export interface CreatedChild {
@@ -40,8 +44,13 @@ interface AddChildFormProps {
 
 const BOARDS = ['CBSE', 'ICSE', 'State Board'];
 const GRADES = Array.from({ length: 12 }, (_, i) => String(i + 1));
+const RELATIONS: { value: ParentRelation; label: string }[] = [
+  { value: 'Mom', label: 'Mom' },
+  { value: 'Dad', label: 'Dad' },
+  { value: 'LegalGuardian', label: 'Legal Guardian' },
+];
 
-const EMPTY_CHILD: ChildInput = { firstName: '', grade: '', board: '' };
+const EMPTY_CHILD: ChildInput = { firstName: '', grade: '', board: '', relation: '' };
 
 export default function AddChildForm({ onSuccess }: AddChildFormProps) {
   const [children, setChildren] = useState<ChildInput[]>([
@@ -71,7 +80,7 @@ export default function AddChildForm({ onSuccess }: AddChildFormProps) {
     e.preventDefault();
     setError(null);
 
-    const invalid = children.find((c) => !c.firstName.trim() || !c.grade || !c.board);
+    const invalid = children.find((c) => !c.firstName.trim() || !c.grade || !c.board || !c.relation);
     if (invalid) {
       setError('Please fill in all fields for each child.');
       return;
@@ -89,6 +98,7 @@ export default function AddChildForm({ onSuccess }: AddChildFormProps) {
             name: child.firstName.trim(),
             grade: child.grade,
             board: child.board,
+            relation: child.relation || undefined,
           }),
         });
 
@@ -141,6 +151,31 @@ export default function AddChildForm({ onSuccess }: AddChildFormProps) {
             </h3>
 
             <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor={`relation-${idx}`}
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  Your relation to this child *
+                </label>
+                <select
+                  id={`relation-${idx}`}
+                  required
+                  value={child.relation}
+                  onChange={(e) => updateChild(idx, 'relation', e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base
+                    focus:border-[#534AB7] focus:ring-2 focus:ring-[#534AB7]/30 focus:outline-none
+                    dark:bg-gray-800 dark:border-gray-600 dark:text-white min-h-[44px]"
+                >
+                  <option value="">Select</option>
+                  {RELATIONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label
                   htmlFor={`firstName-${idx}`}

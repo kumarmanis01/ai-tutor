@@ -206,6 +206,84 @@ So that I'm never stuck waiting indefinitely.
 - [ ] Denied cooldown allows re-send to DIFFERENT parent immediately
 - [ ] Expired allows immediate re-send (no cooldown)
 
+## S0.5 | P0 | Student Accesses App via Parent-Initiated Setup (Deep Link)
+
+**ID:** S0.5
+**Labels:** P0, phase:onboarding
+**Phase:** Onboarding
+
+### User Story
+
+As a student whose parent set up my account on the Spinzy website,
+I want to receive a WhatsApp message or email from my parent that opens the Spinzy app with my profile pre-loaded,
+So that I can start learning immediately without creating an account or entering any details.
+
+### Acceptance Criteria
+
+#### Parent Sends App to Child (from Parent Dashboard -- extends Story P1.3-P)
+
+- [ ] After child setup completion, Parent Dashboard shows: "{ChildName}'s account is ready! How will {ChildName} access Spinzy?"
+- [ ] Three option cards presented:
+  - "Send App Link via WhatsApp" (Primary)
+  - "Send App Link via Email" (Primary)
+  - "Shared Device / Show QR Code" (Secondary)
+- [ ] WhatsApp pre-filled message:
+  ```
+  Hey {ChildName}! Your Spinzy Academy learning app is ready!
+  {Relation} has set up your account for Class {Grade} {Board}.
+  Tap here to start learning: {Deep Link}
+  If you don't have the app yet, download it here: {Play Store Link}
+  ```
+  where `{Relation}` is the label chosen at onboarding (Mom / Dad / Legal Guardian)
+- [ ] Deep link format: `https://spinzyacademy.com/student/claim?token={child_claim_token}`
+
+#### Student Opens Deep Link (App Already Installed)
+
+- [ ] App receives deep link and extracts `child_claim_token`
+- [ ] Screen: "Welcome, {ChildName}!" with child's name, grade, board displayed
+- [ ] Subtext: "{Relation} set up your account. You're ready to start learning!"
+- [ ] Single button: [Start Learning] -- navigates to Diagnostic Quiz (S1.3) or Learning Map if quiz already completed
+- [ ] No registration. No age gate. No parent contact needed (already approved by parent)
+- [ ] Student profile linked to device. Future opens go directly to Learning Map
+- [ ] If student already has an Explore Mode profile (self-initiated): system detects and merges. "Your account is now fully activated! Your parent's setup has been linked."
+
+#### Student Opens Deep Link (App Not Installed)
+
+- [ ] Deep link redirects to Play Store listing
+- [ ] After install + first open: app reads deferred deep link (Play Install Referrer API or Firebase Dynamic Links)
+- [ ] Same claim flow as above. Profile auto-claimed on first open
+
+#### Error States
+
+- [ ] Token already used: "This link has already been used. If you need help, ask your parent to generate a new link."
+- [ ] Token expired (after 7 days): "This link has expired. Ask your parent to send a new one from their Parent Dashboard."
+
+### Dev Tasks
+
+- [ ] Create ParentDashboard "Send to Child" section UI (3 option cards -- P1.3-P)
+- [ ] Implement WhatsApp share with pre-filled message (uses relation label from onboarding)
+- [ ] Implement Email share with pre-filled subject and body
+- [ ] Implement deep link handling in student app (Next.js dynamic route `/student/claim`)
+- [ ] Implement POST /api/v1/parent/children/{id}/generate-claim-link
+- [ ] Implement POST /api/v1/students/claim
+- [ ] Implement deferred deep link for new app installs (Firebase Dynamic Links or Play Install Referrer)
+- [ ] Implement profile merge logic (Explore Mode + parent-created profile)
+
+### QA
+
+- [ ] Parent can send WhatsApp message with correct pre-filled content (name, relation, grade, board, link)
+- [ ] Parent can send Email with correct pre-filled content
+- [ ] Deep link opens app and claims profile correctly
+- [ ] Deferred deep link works after fresh install
+- [ ] Claimed profile shows correct name, grade, board
+- [ ] Already-used token shows correct error
+- [ ] Expired token shows correct error
+- [ ] Explore Mode merge works (diagnostic result preserved)
+- [ ] Student lands on Diagnostic Quiz (first time) or Learning Map (returning)
+- [ ] Relation label in WhatsApp/email message matches what parent selected at onboarding
+
+---
+
 ## S1.1 | P0 | Student Confirms Board & Grade (Post-Consent or Adult) ✅ DONE
 
 **ID:** S1.1
