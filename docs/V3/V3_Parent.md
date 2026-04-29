@@ -184,33 +184,48 @@ So that I provide informed consent as required by Indian DPDP law.
 **ID:** P1.3-P
 **Labels:** P1, phase:parent-setup
 **Phase:** Phase 1: Parent-Initiated Child Setup
+**Extended:** Now includes 3 delivery options (WhatsApp / Email / Shared Device + QR Code)
 
 ### User Story
 
 As a parent who just set up my child's account,
-I want to send the app download link to my child's device via WhatsApp,
-So that they can start learning immediately without me typing URLs.
+I want to choose how to send or hand over the Spinzy app to my child's device,
+So that they can start learning immediately regardless of whether they have WhatsApp, email, or are using the same device.
 
 ### Acceptance Criteria
 
-- [ ] Screen after consent: "Aarav's account is ready! 🎉"
-- [ ] Instructions: "Hand the device to Aarav, or send the app to their phone."
-- [ ] Primary CTA: "Send App Link via WhatsApp"
-- [ ] Opens WhatsApp with pre-filled message: "Aarav, your Spinzy Academy learning app is ready! Download: [Deep Link]. Your profile is already set up — just open and start learning."
-- [ ] Secondary CTA: "I'll set it up later" → Go to Parent Dashboard
+- [ ] Screen after consent: "{ChildName}'s account is ready! How will {ChildName} access Spinzy?"
+- [ ] Three delivery option cards displayed:
+  - **Option A — Send App Link via WhatsApp** (Primary): Parent's phone opens WhatsApp with pre-filled message (see S0.5 for message content). Deep link format: `https://spinzyacademy.com/student/claim?token={child_claim_token}`
+  - **Option B — Send App Link via Email** (Primary): Parent's phone/browser opens email client with pre-filled subject and body containing the same deep link.
+  - **Option C — Shared Device / QR Code** (Secondary): Shown for parents using the same device. Displays a QR code the child can scan, or offers a "Switch to Child Mode" button that opens the student app flow on the same device with the child's token pre-loaded.
+- [ ] Each option card has a minimum touch target of 44px height
+- [ ] WhatsApp pre-filled message content (same as S0.5): "Hey {ChildName}! Your Spinzy Academy learning app is ready! {Relation} has set up your account for Class {Grade} {Board}. Tap here to start learning: [Deep Link] If you don't have the app yet, download it here: [Play Store Link]"
+- [ ] Email pre-filled subject: "{ChildName}, your Spinzy learning account is ready!"
+- [ ] Email pre-filled body contains same deep link and download link
+- [ ] "I'll set it up later" secondary text link below all options → Go to Parent Dashboard
+- [ ] Backend: POST /api/v1/parent/children/{childId}/generate-claim-link (see S0.5 — creates child_claim_token, JWT, 7-day expiry, single-use)
 - [ ] Deep link auto-fills child's profile on first app open (no re-login)
+- [ ] Relation label used in message is derived from the relationToChild stored at onboarding
 
 ### Dev Tasks
 
-- [ ] Create SetupComplete component
-- [ ] Generate deep link with child_profile_id token
+- [ ] Create SetupComplete component with 3 option cards
+- [ ] Generate deep link with child_profile_id token via POST /api/v1/parent/children/{id}/generate-claim-link
 - [ ] WhatsApp share intent (universal link: https://wa.me/?text=...)
+- [ ] Email share intent (mailto: link with pre-filled subject and body)
+- [ ] QR code generation for Shared Device option (use qrcode.react or canvas-based — no new npm dep if possible)
+- [ ] "Switch to Child Mode" deep-link handler for shared-device flow
 
 ### QA
 
-- [ ] WhatsApp opens with pre-filled message
-- [ ] Deep link correctly auto-logs-in child on fresh install
+- [ ] WhatsApp opens with pre-filled message including child name, relation, grade, board, and deep link
+- [ ] Email client opens with pre-filled subject and body
+- [ ] QR code renders and is scannable
+- [ ] Shared Device "Switch to Child Mode" opens student claim flow
+- [ ] Deep link correctly claims child profile on fresh install
 - [ ] Skip option returns to Dashboard
+- [ ] Relation label in message matches what parent selected during onboarding
 
 ## P1.4-P | P2 | Add Sibling — Additional Child with Discount
 

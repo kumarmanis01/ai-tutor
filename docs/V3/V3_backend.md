@@ -309,6 +309,60 @@ As a backend developer, I want Prisma connection pooling with PgBouncer and a Re
 
 ---
 
+## B6.1 | P0 | Child Claim Token Service (S0.5 Deep Link) ⚠️ PARTIAL
+
+**ID:** B6.1
+**Labels:** P0, phase:parent-setup
+**Phase:** Parent-Initiated Child Setup
+**Status: ⚠️ Core implemented 2026-04-29. Profile merge deferred to post-launch.**
+
+### User Story
+
+As a parent who has set up a child account,
+I want to generate a secure single-use claim link so that my child can open the Spinzy app with their profile pre-loaded,
+without needing to register or enter any credentials.
+
+### Acceptance Criteria
+
+- [x] `POST /api/v1/parent/children/{childId}/generate-claim-link` -- auth-guarded (parent session, parentId must own childId)
+  - Generates a signed JWT: `{ sub: childId, type: "child_claim", parentId, jti: uuid }`, expiry 7 days
+  - Stores token status in Redis: `child_claim:{jti}` = `PENDING` with 7-day TTL
+  - Returns `{ claimToken, deepLink, expiresAt }`
+  - Rate limit: max 5 tokens per child per hour (implemented via Redis INCR)
+  - Implementation: `app/api/v1/parent/children/[childId]/generate-claim-link/route.ts`
+- [x] `POST /api/v1/students/claim` -- public (no session required)
+  - Body: `{ claimToken }`
+  - Validate JWT signature and expiry. Return 401 with message: "This link has expired. Ask your parent to send a new one from their Parent Dashboard."
+  - Atomically consume Redis status via Lua script (PENDING -> USED). Return 409 if already USED: "This link has already been used."
+  - Look up child profile by `sub` (childId in token)
+  - Activates account if status is not yet `active`
+  - Issues full-scope JWT pair for the child: `{ sub: childId, role: "user", scope: "user" }`
+  - Returns `{ accessToken, refreshToken, child: { id, name, grade, board } }`
+  - Implementation: `app/api/v1/students/claim/route.ts`
+- [x] Token single-use enforced via atomic Lua script in Redis (PENDING check + SET KEEPTTL pattern)
+- [x] Claim events logged in audit trail: `{ legacyAction: "child_claim_profile", childId, parentId, claimedAt }`
+- [ ] Merge logic: if device has an existing Explore Mode profile with same name+grade+board, merge into parent-created profile, preserve diagnostic results (post-launch)
+
+### Dev Tasks
+
+- [x] Create `ChildClaimTokenService` in `lib/auth/child-claim-token.service.ts`
+- [x] Implement `POST /api/v1/parent/children/{childId}/generate-claim-link`
+- [x] Implement `POST /api/v1/students/claim`
+- [x] Add audit logging for claim events
+- [ ] Implement profile merge logic in `StudentService.mergeExploreProfile(childId, deviceFingerprint)` (post-launch)
+
+### QA
+
+- [x] Valid token claims profile and returns student JWT
+- [x] Used token returns 409 with correct message
+- [x] Expired token returns 401 with correct message
+- [x] Claimed profile has correct name, grade, board from parent-created record
+- [x] Rate limit: 6th token generation in 1 hour rejected (429)
+- [x] Audit trail entry created on successful claim
+- [ ] Explore Mode merge preserves diagnostic results (post-launch)
+
+---
+
 ## Environment Variables Reference (v3 MVP)
 
 | Variable | Required | Default | Notes |
