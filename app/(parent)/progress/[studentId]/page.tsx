@@ -29,6 +29,10 @@ export default async function ParentProgressDetailPage({
   params: { studentId: string };
 }) {
   const { studentId } = params;
+  if (!studentId) {
+    // Defensive: if params are missing or malformed, return 404 instead of calling Prisma
+    notFound();
+  }
   const session = (await getServerSession(authOptions)) as AppSession | null;
 
   if (!session?.user?.id) redirect('/login');
