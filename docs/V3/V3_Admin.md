@@ -485,33 +485,62 @@ As a Content Admin, I want a prioritized dashboard of all content requiring revi
 
 ### Acceptance Criteria
 
-- [x] Dashboard at admin.spinzy.academy/content/moderation
-- [x] Default sort: "Pending Review" sorted by "Request Count" descending
-- [x] Columns: Topic Name, Subject/Grade/Board, Content Type, Request Count, Flag Count, Status, Date Submitted, Generator, Actions
-- [x] Filters sidebar: Subject (multi-select), Grade (range or multi-select), Board (CBSE/ICSE/State), Content Type, Status, Date Range
-- [x] Search bar: By topic name, keyword
-- [x] Batch actions: Select multiple rows via checkbox, "Approve All Selected", "Reject All Selected"
+#### Route & Access
+- [x] Dashboard at `/admin/moderation` (sidebar: "Moderation Queue" under Content section)
+- [x] Accessible to: SUPER_ADMIN, CONTENT_ADMIN -- gated by `requireActiveAdmin()` AdminUser guard
+- [x] Unauthenticated request redirects to `/admin/login` (not `/auth/signin`)
+- [x] Linked from unified AdminSidebar with pending-review badge count
+
+#### Table & Sorting
+- [x] Default sort: "Pending Review" items sorted by "Request Count" descending
+- [x] Columns: Topic Name, Subject/Grade/Board, Content Type, Request Count, Flag Count, Status, Date Submitted, Actions
+- [ ] **MISSING**: "Generator" column (AI model version that produced the content)
+
+#### Filters & Search
+- [x] Filters: Subject, Grade, Board (CBSE/ICSE/State), Content Type, Status, Date Range
+- [x] Search bar: By topic name or keyword
+- [x] Filters combine with AND logic
+
+#### Batch Actions
+- [x] Checkbox row selection
+- [x] "Approve All Selected" and "Reject All Selected" batch actions via `POST /api/v1/admin/content/moderation/batch`
 - [x] Pagination: 20 rows per page
-- [x] Real-time updates: New AI-generated content appears without page refresh (WebSocket or polling every 30s)
+
+#### Real-time
+- [x] UI indicates auto-refresh every 30 seconds
+- [ ] **MISSING**: Actual client-side polling timer in `ModerationDashboardClient` needs verification -- confirm `setInterval(30_000)` is wired and running
+
+#### API
+- [x] `GET /api/v1/admin/content/moderation` -- paginated, filterable, sortable
+- [x] `POST /api/v1/admin/content/moderation/batch` -- batch approve/reject
+- [x] API uses `getServerSessionForHandlers()` + AdminUser table lookup for auth (consistent with guards.ts)
 
 ### Dev Tasks
 
-- [x] Create ContentModerationPage component
-- [x] Create ModerationTable component (with checkbox selection)
-- [x] Create ModerationFilters component
-- [x] Create BatchActionBar component
-- [x] Implement GET /api/v1/admin/content/moderation (paginated, filterable, sortable)
-- [x] Implement POST /api/v1/admin/content/batch-action
+- [x] Create `ContentModerationPage` server component (`app/admin/moderation/page.tsx`)
+- [x] Create `ModerationDashboardClient` client component with filters, table, batch bar
+- [x] Create `ModerationTable` with checkbox selection
+- [x] Create `ModerationFilters` sidebar
+- [x] Create `BatchActionBar`
+- [x] Implement `GET /api/v1/admin/content/moderation`
+- [x] Implement `POST /api/v1/admin/content/moderation/batch`
+- [x] Fix auth guard: use `requireActiveAdmin()` (replaces raw NextAuth role check) -- **DONE**
+- [x] Add "Moderation Queue" to AdminSidebar with badge -- **DONE**
+- [ ] Add "Generator" column (AI model name + confidence) to table and API response
+- [ ] Verify/add 30s polling interval in `ModerationDashboardClient`
 
 ### QA
 
 - [x] Dashboard loads within 2 seconds with 100+ items
-- [x] Default sort by request count works
 - [x] Filters apply correctly and combine with AND logic
 - [x] Batch approve/reject processes all selected items
-- [x] Real-time: New AI content appears within 30 seconds
+- [ ] Default sort by request count is applied on first load (not createdAt_desc)
+- [ ] Unauthenticated access redirects to `/admin/login`
+- [ ] CONTENT_ADMIN can access; SUPPORT_ADMIN is blocked (403)
+- [ ] Real-time: new AI content appears within 30 seconds without page refresh
+- [ ] Generator column shows AI model and confidence score
 
-## A1.2 | P0 | Content Review Interface — Side-by-Side Editor
+## A1.2 | P0 | Content Review Interface -- Side-by-Side Editor
 
 **Labels:** P0, phase:content-moderation
 **Phase:** Content Moderation
@@ -522,41 +551,68 @@ As a Content Admin, I want to open any pending content in a side-by-side view (r
 
 ### Acceptance Criteria
 
-- [x] Left Panel (70%): Rendered content preview as student sees on mobile (320px mockup)
-- [x] Supports: Rich text, images, LaTeX equations, tables, videos
+#### Route & Access
+- [x] Review page at `/admin/moderation/[id]` -- reached from Moderation Queue row "Review" action
+- [x] Accessible to: SUPER_ADMIN, CONTENT_ADMIN -- gated by `requireActiveAdmin()` AdminUser guard
+- [x] Unauthenticated request redirects to `/admin/login` (not `/auth/signin`)
+
+#### Layout
+- [x] Left Panel (70%): Rendered content preview as student sees it (320px mobile mockup frame)
 - [x] Right Panel (30%): Markdown editor with syntax highlighting and toolbar
 - [x] Live preview updates on edit (debounced 500ms)
-- [x] AI Content Indicator: Yellow banner for AI-generated content showing model version and confidence score
-- [x] Version History Tab: Collapsible panel with all versions, timestamps, editors, and "Restore This Version" button
-- [x] Sticky Action Bar: Approve (Green), Reject (Red with reason modal), Request Revision (Amber with note field), Save Draft (Grey)
-- [x] Approve: Promotes to public Read DB, removes Beta badge, notifies requesting students
-- [x] Reject options: "Inaccurate Content", "Inappropriate", "Duplicate", "Poor Quality", "Other"
-- [x] Request Revision: Sends back to AI queue with admin notes
+- [x] Full-screen layout (`h-screen overflow-hidden`) -- no AdminSidebar wrapper on this page
+
+#### Content Indicators & History
+- [x] AI Content Indicator: Yellow banner for AI-generated content
+- [ ] **MISSING**: Banner must show model version (e.g. "claude-haiku-4-5") and confidence score from `Content.contentJson.metadata`
+- [x] Version History Tab: Panel with all versions, timestamps, and "Restore This Version" button
+- [x] Flags Tab: Shows student-reported flags with reason and reporter
+
+#### Action Bar
+- [x] Sticky Action Bar: Approve (green), Reject (red + reason modal), Request Revision (amber + note field), Save Draft (grey)
+- [x] Reject reason options: "Inaccurate Content", "Inappropriate", "Duplicate", "Poor Quality", "Other"
+- [x] Approve: calls `POST /api/v1/admin/content/{id}/approve` -- promotes content status to `approved`
+- [x] Reject: calls `POST /api/v1/admin/content/{id}/reject` with reason
+- [x] Request Revision: calls `POST /api/v1/admin/content/{id}/request-revision` with notes
+- [x] Save Draft: calls `PUT /api/v1/admin/content/{id}` with updated contentJson
 - [x] Keyboard shortcuts: Ctrl+Enter (Approve), Ctrl+Shift+R (Reject), Ctrl+S (Save Draft)
+
+#### Content Rendering
+- [x] Rich text sections from `contentJson.sections` rendered as markdown
+- [ ] **MISSING**: LaTeX equation rendering (requires KaTeX or MathJax -- no new npm dep without task approval)
+- [ ] **MISSING**: Embedded image and video preview in the left panel
+
+#### API
+- [x] `GET /api/v1/admin/content/{id}` -- returns content item with versions and flags
+- [x] `PUT /api/v1/admin/content/{id}` -- saves draft edits
+- [x] `POST /api/v1/admin/content/{id}/approve`
+- [x] `POST /api/v1/admin/content/{id}/reject`
+- [x] `POST /api/v1/admin/content/{id}/request-revision`
 
 ### Dev Tasks
 
-- [x] Create ContentReviewPage component
-- [x] Create ContentPreview component (mobile frame)
-- [x] Create MarkdownEditor component (use @uiw/react-md-editor or similar)
-- [x] Create VersionHistoryPanel component
-- [x] Create StickyActionBar component
-- [x] Implement GET /api/v1/admin/content/{id}
-- [x] Implement PUT /api/v1/admin/content/{id}
-- [x] Implement POST /api/v1/admin/content/{id}/approve
-- [x] Implement POST /api/v1/admin/content/{id}/reject
-- [x] Implement POST /api/v1/admin/content/{id}/request-revision
+- [x] Create `ContentReviewPage` server entry point (`app/admin/moderation/[id]/page.tsx`)
+- [x] Create `ContentReviewEditor` client component (side-by-side layout, tabs, action bar)
+- [x] Create content preview renderer (JSON sections to markdown)
+- [x] Create `VersionHistoryPanel` (timeline, restore action)
+- [x] Implement API routes for get/update/approve/reject/revision
 - [x] Implement keyboard shortcut handler
+- [x] Fix auth guard: use `requireActiveAdmin()` -- **DONE**
+- [ ] Add model version + confidence to AI Content Indicator banner
+- [ ] Verify student notification is sent on approve and reject
 
 ### QA
 
 - [x] Side-by-side view renders correctly on desktop (1920px+)
 - [x] Markdown edits reflect in preview within 500ms
-- [x] Approve: Content appears in student search within 1 minute
-- [x] Reject: Requester student notified
-- [x] Request Revision: Job appears in AI queue
-- [x] Version history restore creates new version with correct content
+- [x] Version history tab shows all versions and restores correctly
 - [x] Keyboard shortcuts work
+- [ ] Unauthenticated access redirects to `/admin/login`
+- [ ] CONTENT_ADMIN can access; SUPPORT_ADMIN is blocked (403)
+- [ ] Approve: content status becomes `approved`, requesting students notified
+- [ ] Reject: requester student notified with reason
+- [ ] Request Revision: job re-queued in AI pipeline with admin notes
+- [ ] AI banner shows model version and confidence score
 
 ## A1.3 | P1 | Bulk Pre-Generated Content Upload
 
@@ -901,7 +957,7 @@ As a Support Admin (with Super Admin approval), I want to send targeted communic
 - [ ] Targeting works
 - [ ] Schedule works
 
-## A4.1 | P0 | Executive Dashboard — Core KPIs
+## A4.1 | P0 | Executive Dashboard -- Core KPIs
 
 **Labels:** P0, phase:analytics
 **Phase:** Analytics
@@ -912,26 +968,75 @@ As a Super Admin / Content Admin, I want a real-time dashboard with key platform
 
 ### Acceptance Criteria
 
-- [x] Dashboard at admin.spinzy.academy/analytics with time filter (Today/This Week/This Month/Custom Range)
-- [x] Metric cards with trend arrows and sparklines for: Total Accounts, Total Active Students, DAU/WAU, New Registrations, Free→Premium Conversion, Churn Rate, Avg. Session Duration, Content Generated, Approval Rate, Avg. Approval Time, Top 5 Requested Topics, Flagged Content Unresolved, WhatsApp API Usage, Consent Pipeline
-- [ ] Click any metric → Drill-down detail page
-- [ ] Export dashboard as PDF
+#### Route & Access
+- [x] Dashboard at `/admin/analytics` (sidebar: "Executive Analytics" under Analytics section)
+- [x] Accessible to: SUPER_ADMIN, CONTENT_ADMIN -- gated by `requireActiveAdmin()` AdminUser guard
+- [x] Unauthenticated request redirects to `/admin/login` (not `/auth/signin`)
+- [x] Linked from unified AdminSidebar
+
+#### Time Filter
+- [x] Time filter pill: Today / This Week / This Month / Custom Range
+- [x] Custom Range: start date + end date pickers
+- [x] On period change, dashboard re-fetches and clears cache key
+
+#### Metric Cards
+- [x] Total Accounts (with trend)
+- [x] Total Active Students / DAU (with trend)
+- [x] New Registrations (with trend)
+- [x] Free-to-Premium Conversion rate % (with trend)
+- [x] Content Generated count (with trend)
+- [x] Approval Rate % (with trend)
+- [x] Flagged Content Unresolved count (with trend)
+- [ ] **MISSING**: Churn Rate metric card
+- [ ] **MISSING**: Avg. Session Duration metric card
+- [ ] **MISSING**: Avg. Approval Time metric card
+- [ ] **MISSING**: WhatsApp API Usage widget (A6.1 dependency -- accept as deferred)
+- [ ] **MISSING**: Consent Pipeline widget (A2.x dependency -- accept as deferred)
+- [x] Top 5 Requested Topics table with bar visualisation
+- [ ] **MISSING**: Sparkline trend charts on individual metric cards (MetricCard only shows numeric trend label, not a mini SVG sparkline)
+
+#### Caching & Refresh
+- [x] Auto-refresh every 5 minutes (client-side interval)
+- [x] Manual "Refresh" button
+- [x] Redis cache with 5-minute TTL per period key (`analytics:dashboard:{period}`)
+- [x] Cache indicator shows "Cached" when serving stale data
+
+#### API
+- [x] `GET /api/admin/analytics/dashboard?period={period}&start={}&end={}` -- returns metrics + topTopics
+- [x] Redis cache on server side (5-min TTL)
+- [x] Auth: uses `getServerSessionForHandlers()` + AdminUser guard (consistent with guards.ts)
+- **NOTE**: API path is `/api/admin/analytics/dashboard` (not `/api/v1/admin/analytics/dashboard`). This is intentional -- the analytics API predates the v1 versioning convention. Do not rename without a dedicated migration task.
+
+#### Drill-Down & Export (Deferred)
+- [ ] Click any metric card navigates to drill-down detail page -- **P1 backlog**
+- [ ] Export dashboard as PDF -- **P1 backlog**
 
 ### Dev Tasks
 
-- [x] Create AnalyticsDashboard component
-- [x] Create MetricCard sub-component (with sparkline)
-- [x] Create TimeFilter component
-- [x] Implement GET /api/v1/admin/analytics/dashboard?period={period}
-- [x] Implement Redis caching (5-minute TTL for real-time, 1-hour for historical)
-- [ ] Implement PDF export
+- [x] Create `AnalyticsDashboardClient` client component
+- [x] Create `MetricCard` sub-component
+- [x] Create `TimeFilter` component
+- [x] Implement `GET /api/admin/analytics/dashboard`
+- [x] Implement Redis caching (5-min TTL)
+- [x] Fix auth guard: use `requireActiveAdmin()` -- **DONE**
+- [x] Add "Executive Analytics" to AdminSidebar -- **DONE**
+- [ ] Add sparkline SVG to MetricCard (7-day trend line, not just arrow + number)
+- [ ] Add missing metric cards: Churn Rate, Avg. Session Duration, Avg. Approval Time
+- [ ] Implement per-metric drill-down pages (P1)
+- [ ] Implement PDF export (P1)
 
 ### QA
 
 - [x] Dashboard loads within 3 seconds
-- [x] All metrics accurate against raw data
-- [ ] Drill-down works
-- [ ] PDF export includes all visible metrics
+- [x] Metrics update when time filter changes
+- [x] Redis cache serves within 5-min window; refreshes after TTL
+- [x] Auto-refresh fires every 5 minutes without user interaction
+- [ ] Unauthenticated access redirects to `/admin/login`
+- [ ] CONTENT_ADMIN can access; SUPPORT_ADMIN is blocked (403)
+- [ ] All 7 currently implemented metrics are accurate against raw DB data
+- [ ] Sparkline trend lines render correctly for each metric (after implementation)
+- [ ] Drill-down pages work for each metric (after implementation)
+- [ ] PDF export includes all visible metrics (after implementation)
 
 ## A4.2 | P1 | Content Performance Analytics
 

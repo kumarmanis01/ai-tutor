@@ -16,19 +16,15 @@
 
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireActiveAdmin } from '@/lib/admin/guards';
 import { logger } from '@/lib/logger';
 import { ModerationDashboardClient } from './ModerationDashboardClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ModerationPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) redirect('/auth/signin');
-  if (session.user.role !== 'admin' && session.user.role !== 'moderator') {
-    redirect('/admin');
-  }
+  const guard = await requireActiveAdmin();
+  if (!guard.ok) redirect('/admin/login');
 
   // Server-side fetch of first page for SSR (avoids extra client round-trip)
   let initialItems: unknown[] = [];
@@ -87,7 +83,7 @@ export default async function ModerationPage() {
     logger.error('ModerationPage SSR prefetch failed', {
       route: 'app/admin/moderation/page.tsx',
       operation: 'ModerationPage.initialDataFetch',
-      userId: session.user.id,
+      adminUserId: guard.adminUserId,
       error: error instanceof Error ? error.message : String(error),
     });
   }
