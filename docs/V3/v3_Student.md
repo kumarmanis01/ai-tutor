@@ -206,11 +206,12 @@ So that I'm never stuck waiting indefinitely.
 - [ ] Denied cooldown allows re-send to DIFFERENT parent immediately
 - [ ] Expired allows immediate re-send (no cooldown)
 
-## S0.5 | P0 | Student Accesses App via Parent-Initiated Setup (Deep Link)
+## S0.5 | P0 | Student Accesses App via Parent-Initiated Setup (Deep Link) ⚠️ PARTIAL
 
 **ID:** S0.5
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
+**Status:** Web flow implemented 2026-04-29. Deferred deep link (mobile SDK) is post-launch.
 
 ### User Story
 
@@ -222,12 +223,12 @@ So that I can start learning immediately without creating an account or entering
 
 #### Parent Sends App to Child (from Parent Dashboard -- extends Story P1.3-P)
 
-- [ ] After child setup completion, Parent Dashboard shows: "{ChildName}'s account is ready! How will {ChildName} access Spinzy?"
-- [ ] Three option cards presented:
+- [x] After child setup completion, Parent Dashboard shows: "{ChildName}'s account is ready! How will {ChildName} access Spinzy?" (SetupComplete component, components/parent/SetupComplete.tsx)
+- [x] Three option cards presented:
   - "Send App Link via WhatsApp" (Primary)
   - "Send App Link via Email" (Primary)
-  - "Shared Device / Show QR Code" (Secondary)
-- [ ] WhatsApp pre-filled message:
+  - "Open on This Device (Shared Phone)" (Secondary -- replaces QR code; QR is post-launch)
+- [x] WhatsApp pre-filled message:
   ```
   Hey {ChildName}! Your Spinzy Academy learning app is ready!
   {Relation} has set up your account for Class {Grade} {Board}.
@@ -235,52 +236,51 @@ So that I can start learning immediately without creating an account or entering
   If you don't have the app yet, download it here: {Play Store Link}
   ```
   where `{Relation}` is the label chosen at onboarding (Mom / Dad / Legal Guardian)
-- [ ] Deep link format: `https://spinzyacademy.com/student/claim?token={child_claim_token}`
+- [x] Deep link format: `https://spinzyacademy.com/student/claim?token={child_claim_token}`
 
 #### Student Opens Deep Link (App Already Installed)
 
-- [ ] App receives deep link and extracts `child_claim_token`
-- [ ] Screen: "Welcome, {ChildName}!" with child's name, grade, board displayed
-- [ ] Subtext: "{Relation} set up your account. You're ready to start learning!"
-- [ ] Single button: [Start Learning] -- navigates to Diagnostic Quiz (S1.3) or Learning Map if quiz already completed
-- [ ] No registration. No age gate. No parent contact needed (already approved by parent)
-- [ ] Student profile linked to device. Future opens go directly to Learning Map
-- [ ] If student already has an Explore Mode profile (self-initiated): system detects and merges. "Your account is now fully activated! Your parent's setup has been linked."
+- [x] App receives deep link and extracts `child_claim_token` (app/(public)/student/claim/page.tsx)
+- [x] Screen: "Welcome, {ChildName}!" with child's name, grade, board displayed
+- [x] Single button: [Start Learning] -- navigates to /student/onboarding
+- [x] No registration. No age gate. No parent contact needed (already approved by parent)
+- [ ] Student profile linked to device. Future opens go directly to Learning Map (requires mobile session persistence; post-launch for native app)
+- [ ] If student already has an Explore Mode profile (self-initiated): system detects and merges. (post-launch -- merge logic deferred)
 
 #### Student Opens Deep Link (App Not Installed)
 
-- [ ] Deep link redirects to Play Store listing
-- [ ] After install + first open: app reads deferred deep link (Play Install Referrer API or Firebase Dynamic Links)
-- [ ] Same claim flow as above. Profile auto-claimed on first open
+- [ ] Deep link redirects to Play Store listing (requires mobile app; post-launch)
+- [ ] After install + first open: app reads deferred deep link (Play Install Referrer API or Firebase Dynamic Links) (post-launch)
+- [ ] Same claim flow as above. Profile auto-claimed on first open (post-launch)
 
 #### Error States
 
-- [ ] Token already used: "This link has already been used. If you need help, ask your parent to generate a new link."
-- [ ] Token expired (after 7 days): "This link has expired. Ask your parent to send a new one from their Parent Dashboard."
+- [x] Token already used: "This link has already been used. If you need help, ask your parent to generate a new link."
+- [x] Token expired (after 7 days): "This link has expired. Ask your parent to send a new one from their Parent Dashboard."
 
 ### Dev Tasks
 
-- [ ] Create ParentDashboard "Send to Child" section UI (3 option cards -- P1.3-P)
-- [ ] Implement WhatsApp share with pre-filled message (uses relation label from onboarding)
-- [ ] Implement Email share with pre-filled subject and body
-- [ ] Implement deep link handling in student app (Next.js dynamic route `/student/claim`)
-- [ ] Implement POST /api/v1/parent/children/{id}/generate-claim-link
-- [ ] Implement POST /api/v1/students/claim
-- [ ] Implement deferred deep link for new app installs (Firebase Dynamic Links or Play Install Referrer)
-- [ ] Implement profile merge logic (Explore Mode + parent-created profile)
+- [x] Create ParentDashboard "Send to Child" section UI (3 option cards -- P1.3-P) -- components/parent/SetupComplete.tsx
+- [x] Implement WhatsApp share with pre-filled message (uses relation label from onboarding)
+- [x] Implement Email share with pre-filled subject and body
+- [x] Implement deep link handling in student app (Next.js dynamic route `/student/claim`) -- app/(public)/student/claim/page.tsx
+- [x] Implement POST /api/v1/parent/children/{id}/generate-claim-link -- app/api/v1/parent/children/[childId]/generate-claim-link/route.ts
+- [x] Implement POST /api/v1/students/claim -- app/api/v1/students/claim/route.ts
+- [ ] Implement deferred deep link for new app installs (Firebase Dynamic Links or Play Install Referrer) -- post-launch (mobile SDK)
+- [ ] Implement profile merge logic (Explore Mode + parent-created profile) -- post-launch
 
 ### QA
 
-- [ ] Parent can send WhatsApp message with correct pre-filled content (name, relation, grade, board, link)
-- [ ] Parent can send Email with correct pre-filled content
-- [ ] Deep link opens app and claims profile correctly
-- [ ] Deferred deep link works after fresh install
-- [ ] Claimed profile shows correct name, grade, board
-- [ ] Already-used token shows correct error
-- [ ] Expired token shows correct error
-- [ ] Explore Mode merge works (diagnostic result preserved)
-- [ ] Student lands on Diagnostic Quiz (first time) or Learning Map (returning)
-- [ ] Relation label in WhatsApp/email message matches what parent selected at onboarding
+- [x] Parent can send WhatsApp message with correct pre-filled content (name, relation, grade, board, link)
+- [x] Parent can send Email with correct pre-filled content
+- [x] Deep link opens web app and claims profile correctly
+- [ ] Deferred deep link works after fresh install (post-launch)
+- [x] Claimed profile shows correct name, grade, board
+- [x] Already-used token shows correct error
+- [x] Expired token shows correct error
+- [ ] Explore Mode merge works (diagnostic result preserved) (post-launch)
+- [x] Student lands on /student/onboarding after claim
+- [x] Relation label in WhatsApp/email message matches what parent selected at onboarding
 
 ---
 

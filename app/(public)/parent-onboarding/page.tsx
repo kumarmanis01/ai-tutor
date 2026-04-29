@@ -16,6 +16,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | staff-engineer | created per P1.1-P and P1.2-P AC
+ * - 2026-04-29T00:00:00Z | claude | replace inline success with SetupComplete (S0.5 / P1.3-P)
  */
 
 'use client';
@@ -23,9 +24,9 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import AddChildForm, { type CreatedChild } from '@/components/parent/AddChildForm';
 import DPDPConsentScreen from '@/components/parent/DPDPConsentScreen';
+import SetupComplete from '@/components/parent/SetupComplete';
 
 type Step = 'loading' | 'add_child' | 'consent' | 'success';
 
@@ -109,29 +110,10 @@ export default function ParentOnboardingPage() {
     );
   }
 
-  // success
-  const firstChildName = children[0]?.name ?? 'Your child';
+  // success -- show the "Send to Child" screen (S0.5 / P1.3-P)
   return (
     <PageWrapper step={3}>
-      <div className="text-5xl text-center mb-4" aria-hidden="true">
-        &#x1F389;
-      </div>
-      <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center">
-        {children.length === 1
-          ? `${firstChildName}'s account is ready!`
-          : `All ${children.length} accounts are ready!`}
-      </h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
-        Vidya, your child&apos;s AI tutor, will start personalising lessons right away. You&apos;ll
-        get a weekly progress report every Sunday.
-      </p>
-      <Link
-        href="/parent/dashboard"
-        className="mt-6 block w-full bg-[#534AB7] text-white text-center font-bold
-          rounded-2xl py-4 min-h-[52px] hover:bg-[#4239a0] transition-colors"
-      >
-        Go to Dashboard
-      </Link>
+      <SetupComplete children={children} />
     </PageWrapper>
   );
 }

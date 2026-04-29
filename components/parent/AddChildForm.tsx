@@ -36,6 +36,7 @@ export interface CreatedChild {
   name: string;
   grade: string;
   board: string;
+  relation?: string;
 }
 
 interface AddChildFormProps {
@@ -108,7 +109,7 @@ export default function AddChildForm({ onSuccess }: AddChildFormProps) {
         }
 
         const data = (await res.json()) as { child?: CreatedChild };
-        if (data.child) created.push(data.child);
+        if (data.child) created.push({ ...data.child, relation: child.relation || undefined });
       }
       onSuccess(created);
     } catch (err: unknown) {
