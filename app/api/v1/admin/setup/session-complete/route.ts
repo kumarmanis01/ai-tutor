@@ -16,6 +16,7 @@
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { generateTokenPair } from '@/lib/auth/token.service';
 import {
   decryptAdminMfaSecret,
   extractClientIp,
@@ -100,5 +101,38 @@ export async function POST(req: Request) {
     });
   });
 
-  return NextResponse.json({ ok: true, backupCodes, redirectTo: '/admin/team' });
+  const admin2 = await prisma.adminUser.findUnique({
+    where: { id: admin.id },
+    include: { user: { select: { id: true } } },
+  });
+  if (!admin2?.user) {
+    return NextResponse.json({ error: 'user_not_found' }, { status: 404 });
+  }
+
+  const tokens = await generateTokenPair({ sub: admin2.user.id, role: admin2.role, scope: 'admin' });
+
+  await prisma.adminSession.create({
+    data: {
+      adminId: admin.id,
+      refreshToken: tokens.refreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      ipAddress,
+      userAgent,
+    },
+  });
+
+  const res = NextResponse.json({
+    ok: true,
+    backupCodes,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+  });
+  res.cookies.set('__admin_tok', tokens.accessToken, {
+    httpOnly: true,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 30 * 60,
+    secure: process.env.NODE_ENV === 'production',
+  });
+  return res;
 }

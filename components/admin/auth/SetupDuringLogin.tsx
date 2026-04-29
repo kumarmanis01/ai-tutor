@@ -18,11 +18,10 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import BackupCodesDisplay from '@/components/admin/auth/BackupCodesDisplay';
-import { propagateServerField } from 'next/dist/server/lib/render-server';
 
 interface Props {
   loginSessionToken: string;
-  onComplete: (redirect?: string) => void;
+  onComplete: () => void;
 }
 
 export default function SetupDuringLogin({ loginSessionToken, onComplete }: Props) {
@@ -66,6 +65,10 @@ export default function SetupDuringLogin({ loginSessionToken, onComplete }: Prop
         setError(data.error || 'Unable to complete MFA setup');
         return;
       }
+      // Store tokens in localStorage so useAdminAuth stays in sync with the cookie
+      if (data.accessToken) localStorage.setItem('admin_access_token', data.accessToken);
+      if (data.refreshToken) localStorage.setItem('admin_refresh_token', data.refreshToken);
+      localStorage.setItem('admin_login_at', String(Date.now()));
       setBackupCodes(data.backupCodes || []);
     } finally {
       setLoading(false);

@@ -148,11 +148,19 @@ export async function POST(req: Request) {
         where: { id: admin.id },
         data: { lastLoginAt: new Date(), lastLoginIp: ip },
       });
-      return NextResponse.json({
+      const res = NextResponse.json({
         requiresMfa: false,
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       });
+      res.cookies.set('__admin_tok', tokens.accessToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 30 * 60,
+        secure: process.env.NODE_ENV === 'production',
+      });
+      return res;
     }
 
     const loginSessionToken = await signAdminLoginSessionToken(admin.id, admin.role);

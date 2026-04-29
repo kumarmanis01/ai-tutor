@@ -13,8 +13,10 @@
  * - 2026-04-25T00:00:00Z | copilot | created admin role guards for v1 endpoints
  */
 
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { verifyAdminAccessToken } from '@/lib/auth/token.service';
 
 export interface GuardResult {
   ok: boolean;
@@ -24,8 +26,25 @@ export interface GuardResult {
 }
 
 export async function requireActiveAdmin(): Promise<GuardResult> {
-  const session = await getServerSessionForHandlers();
-  const userId = (session?.user as { id?: string } | undefined)?.id;
+  // Primary: verify the HTTP-only cookie set by the admin JWT auth endpoints
+  let userId: string | undefined;
+  try {
+    const cookieStore = await cookies();
+    const tok = cookieStore.get('__admin_tok')?.value;
+    if (tok) {
+      const payload = await verifyAdminAccessToken(tok);
+      if (payload.scope === 'admin') userId = payload.sub;
+    }
+  } catch {
+    // invalid or missing cookie -- fall through to NextAuth
+  }
+
+  // Fallback: NextAuth session (supports legacy admin accounts and test harness)
+  if (!userId) {
+    const session = await getServerSessionForHandlers();
+    userId = (session?.user as { id?: string } | undefined)?.id;
+  }
+
   if (!userId) return { ok: false };
 
   const admin = await prisma.adminUser.findUnique({

@@ -68,5 +68,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   await Promise.all(jobs);
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set('__admin_tok', '', { httpOnly: true, path: '/', maxAge: 0 });
+  return res;
 }

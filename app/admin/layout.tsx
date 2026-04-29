@@ -1,14 +1,13 @@
 import React, { Suspense } from 'react';
 import localFont from 'next/font/local';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import { verifyAdminAccessToken } from '@/lib/auth/token.service';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import { NavigationProgress } from '../../components/NavigationProgress';
-import AuthSessionLoader from '../../components/AuthSessionLoader';
 import ToastHost from '../../components/ToastHost';
 import GoogleTagManagerClient from '../../components/ClientOnly/GoogleTagManagerClient';
 import AppModalClient from '../../components/ClientOnly/AppModalClient';
@@ -34,7 +33,7 @@ export const viewport = {
 /**
  * Admin shell root layout
  * - Standalone root layout for /admin/* routes (no parent app/layout.tsx)
- * - Checks admin role server-side; redirects non-admins to /dashboard
+ * - Verifies __admin_tok HTTP-only cookie (JWT issued by /api/v1/admin/auth/*)
  * - Fetches sidebar badge counts server-side in parallel
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -50,11 +49,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
-  const session = await getServerSessionForHandlers();
+  // Verify the admin session cookie set by the JWT auth endpoints
+  const cookieStore = await cookies();
+  const adminTok = cookieStore.get('__admin_tok')?.value;
 
-  if (!session || session.user?.role !== 'admin') {
+  if (!adminTok) redirect('/admin/login');
+
+  let adminUserId: string | undefined;
+  try {
+    const payload = await verifyAdminAccessToken(adminTok!);
+    if (payload.scope === 'admin') adminUserId = payload.sub;
+  } catch {
     redirect('/admin/login');
   }
+
+  if (!adminUserId) redirect('/admin/login');
+
+  const adminRecord = await prisma.adminUser.findUnique({
+    where: { userId: adminUserId },
+    select: { id: true, status: true },
+  });
+
+  if (!adminRecord || adminRecord.status !== 'ACTIVE') redirect('/admin/login');
 
   // Badge counts -- all run in parallel; individual failures fall back to 0
   const [pendingReview, activeJobs, failedJobs, safetyAlerts] = await Promise.all([
@@ -84,7 +100,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Providers>
           <GlobalLoaderProvider>
             <NavigationProgress />
-            <AuthSessionLoader />
             <Suspense fallback={null}>
               <GoogleTagManagerClient />
             </Suspense>

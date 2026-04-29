@@ -174,6 +174,13 @@ export async function POST(req: Request) {
       refreshToken: tokens.refreshToken,
       deviceToken,
     });
+    res.cookies.set('__admin_tok', tokens.accessToken, {
+      httpOnly: true,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 30 * 60, // matches 30-min access token TTL
+      secure: process.env.NODE_ENV === 'production',
+    });
     logger.logAPI(req, res, { className: 'AdminLoginVerifyMFAAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
