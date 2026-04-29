@@ -18,6 +18,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import BackupCodesDisplay from '@/components/admin/auth/BackupCodesDisplay';
+import { propagateServerField } from 'next/dist/server/lib/render-server';
 
 interface Props {
   loginSessionToken: string;
@@ -84,7 +85,7 @@ export default function SetupDuringLogin({ loginSessionToken, onComplete }: Prop
           <button
             type="button"
             disabled={!ack}
-            onClick={() => onComplete('/')}
+            onClick={() => onComplete()}
             className="min-h-[44px] rounded-lg bg-[#534AB7] text-white font-semibold px-4 py-2 disabled:opacity-60"
           >
             Done

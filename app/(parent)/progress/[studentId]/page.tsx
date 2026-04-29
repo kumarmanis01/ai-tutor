@@ -26,9 +26,9 @@ export const metadata: Metadata = {
 export default async function ParentProgressDetailPage({
   params,
 }: {
-  params: { studentId: string };
+  params: { studentId: string } | Promise<{ studentId: string }>;
 }) {
-  const { studentId } = params;
+  const { studentId } = (await params) as { studentId: string };
   if (!studentId) {
     // Defensive: if params are missing or malformed, return 404 instead of calling Prisma
     notFound();

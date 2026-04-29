@@ -11,7 +11,7 @@ import ParentSettings from '@/components/parent/ParentSettings';
 
 export default async function ParentSettingsPage() {
   const session = (await getServerSession(authOptions)) as AppSession | null;
-  if (!session?.user?.id) redirect('/login');
+  if (!session?.user?.id) redirect('/');
   if (session.user.role !== 'parent') redirect('/dashboard');
 
   return (
