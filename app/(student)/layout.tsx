@@ -106,6 +106,11 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const session = await requireActiveSession();
   if (!session) redirect('/');
 
+  // Parents have their own route group -- never let them land in the student shell.
+  if ((session.user as { role?: string }).role === 'parent') {
+    redirect('/parent/dashboard');
+  }
+
   const userId = (session.user as { id?: string })?.id;
   // studentName kept for StudentLayoutShell (profile gate overlay)
   const pathname = (await headers()).get('x-pathname') ?? '';

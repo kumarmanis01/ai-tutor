@@ -35,6 +35,11 @@ export default async function StudentOnboardingPage() {
   const session = await requireActiveSession();
   if (!session) redirect('/');
 
+  // Parents have their own dashboard -- never send them through student onboarding.
+  if ((session.user as { role?: string }).role === 'parent') {
+    redirect('/parent/dashboard');
+  }
+
   const userId = (session.user as { id: string }).id;
 
   const user = await prisma.user.findUnique({
