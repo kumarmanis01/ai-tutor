@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - Daily job to reset free question counts for all non-premium users at midnight UTC.
+ * - Weekly job to reset free question counts (freeQuestionsCount) for all non-premium users every 7 days (Sunday 4 AM UTC).
  *
  * LINKED UNIT TEST:
  * - tests/unit/jobs/dailyFreeQuestionReset.spec.ts
@@ -18,9 +18,9 @@ import logAuditEvent from '@/lib/audit/log';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
-const CLASS_NAME = 'DailyFreeQuestionReset';
-const JOB_NAME = 'daily_free_question_reset';
-const DAILY_FREE_LIMIT = 3;
+const CLASS_NAME = 'WeeklyFreeQuestionReset';
+const JOB_NAME = 'weekly_free_question_reset';
+const WEEKLY_FREE_LIMIT = 5; // Example: 3 per day * 7, adjust as needed
 
 /**
  * Result of running the daily reset job.
@@ -36,11 +36,11 @@ export interface DailyResetResult {
 
 /**
  * Reset the free question count for all non-premium users.
- * This should run at midnight UTC daily.
+ * This should run at 4 AM UTC every Sunday (weekly).
  *
  * Premium users (those with active subscriptions) are excluded.
  */
-export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
+export async function runWeeklyFreeQuestionReset(): Promise<DailyResetResult> {
   const started = Date.now();
   let lockAcquired = false;
 
@@ -71,17 +71,15 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
     }
     lockAcquired = true;
 
-    logger.info('Starting daily free question reset job', {
+    logger.info('Starting weekly free question reset job', {
       className: CLASS_NAME,
-      methodName: 'runDailyFreeQuestionReset',
+      methodName: 'runWeeklyFreeQuestionReset',
     });
 
     // Find all users who don't have an active premium subscription
-    // and reset their free question count to the daily limit
+    // and reset their freeQuestionsCount to the weekly limit
     const result = await prisma.user.updateMany({
       where: {
-        // Exclude users with an active (non-free) subscription.
-        // Relation name is plural (`subscriptions`).
         subscriptions: {
           none: {
             active: true,
@@ -90,21 +88,20 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
             endDate: { gte: new Date() },
           },
         },
-        // Only update users who have consumed some questions (optimization)
-        todaysFreeQuestionsCount: {
-          lt: DAILY_FREE_LIMIT,
+        freeQuestionsCount: {
+          lt: WEEKLY_FREE_LIMIT,
         },
       },
       data: {
-        todaysFreeQuestionsCount: DAILY_FREE_LIMIT,
+        freeQuestionsCount: WEEKLY_FREE_LIMIT,
       },
     });
 
     const durationMs = Date.now() - started;
 
-    logger.info('Daily free question reset completed', {
+    logger.info('Weekly free question reset completed', {
       className: CLASS_NAME,
-      methodName: 'runDailyFreeQuestionReset',
+      methodName: 'runWeeklyFreeQuestionReset',
       usersUpdated: result.count,
       durationMs,
     });
@@ -112,10 +109,10 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
     // Record audit log for successful run
     logAuditEvent(prisma, {
       targetEntity: 'System',
-      targetId: 'daily_free_reset',
+      targetId: 'weekly_free_reset',
       action: null,
       details: {
-        legacyAction: 'DAILY_FREE_RESET_RUN',
+        legacyAction: 'WEEKLY_FREE_RESET_RUN',
         status: 'SUCCESS',
         usersUpdated: result.count,
         durationMs,
@@ -131,9 +128,9 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
     const durationMs = Date.now() - started;
     const errorMsg = String(error);
 
-    logger.error('Daily free question reset failed', {
+    logger.error('Weekly free question reset failed', {
       className: CLASS_NAME,
-      methodName: 'runDailyFreeQuestionReset',
+      methodName: 'runWeeklyFreeQuestionReset',
       error: errorMsg,
       durationMs,
     });
@@ -141,10 +138,10 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
     // Record audit log for failed run
     logAuditEvent(prisma, {
       targetEntity: 'System',
-      targetId: 'daily_free_reset',
+      targetId: 'weekly_free_reset',
       action: null,
       details: {
-        legacyAction: 'DAILY_FREE_RESET_RUN',
+        legacyAction: 'WEEKLY_FREE_RESET_RUN',
         status: 'FAILED',
         error: errorMsg,
         durationMs,
@@ -167,56 +164,62 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
  * Schedule the daily reset to run at midnight UTC.
  * Call this once during worker startup.
  */
-export function scheduleDailyFreeQuestionReset(): void {
-  const resetHour = Number(process.env.FREE_QUESTION_RESET_HOUR || '0'); // Default: midnight UTC
+export function scheduleWeeklyFreeQuestionReset(): void {
+  // Schedule for Sunday 4 AM UTC
+  const TARGET_DAY = 0; // Sunday (0=Sunday, 6=Saturday)
+  const TARGET_HOUR = 4; // 4 AM UTC
+
+  function msUntilNextWeeklyRun(targetDay: number, targetHour: number): number {
+    const now = new Date();
+    const next = new Date();
+    next.setUTCHours(targetHour, 0, 0, 0);
+    const currentDay = now.getUTCDay();
+    let daysUntil = targetDay - currentDay;
+    if (daysUntil < 0 || (daysUntil === 0 && next <= now)) {
+      daysUntil += 7;
+    }
+    next.setUTCDate(now.getUTCDate() + daysUntil);
+    return next.getTime() - now.getTime();
+  }
 
   const scheduleReset = async () => {
     try {
-      logger.info('Running scheduled daily free question reset', {
+      logger.info('Running scheduled weekly free question reset', {
         className: CLASS_NAME,
-        methodName: 'scheduleDailyFreeQuestionReset',
+        methodName: 'scheduleWeeklyFreeQuestionReset',
       });
-      const result = await runDailyFreeQuestionReset();
-      logger.info('Scheduled daily reset result', {
+      const result = await runWeeklyFreeQuestionReset();
+      logger.info('Scheduled weekly reset result', {
         className: CLASS_NAME,
-        methodName: 'scheduleDailyFreeQuestionReset',
+        methodName: 'scheduleWeeklyFreeQuestionReset',
         ...result,
       });
     } catch (error) {
-      logger.error('Scheduled daily reset failed', {
+      logger.error('Scheduled weekly reset failed', {
         className: CLASS_NAME,
-        methodName: 'scheduleDailyFreeQuestionReset',
+        methodName: 'scheduleWeeklyFreeQuestionReset',
         error: String(error),
       });
     }
   };
 
-  // Compute milliseconds until next midnight (resetHour:00 UTC)
-  const now = new Date();
-  const next = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), resetHour, 0, 0, 0)
-  );
-  if (next.getTime() <= now.getTime()) {
-    next.setUTCDate(next.getUTCDate() + 1);
-  }
-  const firstDelay = next.getTime() - now.getTime();
+  const firstDelay = msUntilNextWeeklyRun(TARGET_DAY, TARGET_HOUR);
 
-  logger.info('Daily free question reset scheduled', {
+  logger.info('Weekly free question reset scheduled', {
     className: CLASS_NAME,
-    methodName: 'scheduleDailyFreeQuestionReset',
-    resetHour,
+    methodName: 'scheduleWeeklyFreeQuestionReset',
+    targetDay: TARGET_DAY,
+    targetHour: TARGET_HOUR,
     firstDelaySeconds: Math.round(firstDelay / 1000),
-    nextRunAt: next.toISOString(),
   });
 
-  // Set up the schedule: run once at the calculated time, then every 24h
   setTimeout(() => {
     void scheduleReset();
     setInterval(
       () => {
         void scheduleReset();
       },
-      24 * 60 * 60 * 1000
+      7 * 24 * 60 * 60 * 1000 // 7 days
     );
   }, firstDelay);
 }
