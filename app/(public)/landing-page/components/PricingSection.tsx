@@ -66,7 +66,7 @@ const PLAN_DEFINITIONS: PlanDefinition[] = [
   {
     id: 'free',
     name: 'Free',
-    subtitle: 'A starter plan for one child to try NCERT notes, practice, and guided AI help.',
+    subtitle: 'Ask Teacher Vidya up to 5 questions/ week and enjoy full access to study material for your first 30 days.',
     price: { monthly: '₹0', yearly: '₹0' },
     ctaLabel: 'Start Free',
   },
@@ -103,7 +103,7 @@ const FEATURE_ROWS: FeatureRow[] = [
   {
     name: 'Practice Questions',
     values: {
-      free: { included: true, label: '5/day' },
+      free: { included: true, label: '5/week' },
       individual: { included: true, label: 'Unlimited' },
       family: { included: true, label: 'Unlimited' },
     },
@@ -117,10 +117,10 @@ const FEATURE_ROWS: FeatureRow[] = [
     },
   },
   {
-    name: 'On-Demand Topic Generation',
+    name: 'On-Demand Notes Generation',
     highlight: true,
     values: {
-      free: { included: false, label: 'No' },
+      free: { included: false, label: 'Premium only' },
       individual: { included: true, label: 'Yes' },
       family: { included: true, label: 'Yes' },
     },
@@ -133,14 +133,13 @@ const FEATURE_ROWS: FeatureRow[] = [
       individual: { included: true, label: 'Real-time + Controls' },
       family: { included: true, label: 'Real-time + Controls' },
     },
-  },
+  },  
   {
-    name: 'Screen Time Limits',
-    highlight: true,
+    name: 'Study Material Access',
     values: {
-      free: { included: false, label: 'No' },
-      individual: { included: true, label: 'Yes' },
-      family: { included: true, label: 'Yes' },
+      free: { included: true, label: 'First 30 days' },
+      individual: { included: true, label: 'Unlimited' },
+      family: { included: true, label: 'Unlimited' },
     },
   },
   {

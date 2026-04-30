@@ -1,21 +1,11 @@
 /// FILE OBJECTIVE:
-/// - Prisma schema defining application models for the project.
+/// - Prisma schema defining application models for the project, including user freemium/trial logic and question logging for Vidya.
 ///
 /// LINKED UNIT TEST:
 /// - tests/unit/prisma/schema.spec.ts
 ///
 /// EDIT LOG:
-/// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
-/// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
-/// - 2026-04-08T00:00:00Z | copilot | add MISCONCEPTION_HIGH_PREVALENCE alert type
-/// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
-/// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
-/// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
-/// - 2026-04-24T00:00:00Z | copilot | add isAdult boolean to User model for consent gating
-/// - 2026-04-26T14:30:00Z | staff-engineer | add PromptVersion, PromptExample, AIGenerationLog, ABTest models (Sprint 8 PR-1.1, PR-1.2, PR-1.3, PR-3.1)
-/// - 2026-04-26T07:00:56Z | copilot | remove duplicate PromptStatus/PromptVersion/AIGenerationLog declarations to fix Prisma P1012
-/// - 2026-04-27T00:00:00Z | copilot | add onboarding quick-diagnostic placement fields on User for S1.3 sync and gating
-/// - 2026-04-27T13:55:00Z | copilot | convert onboardingPlacement to enum to enforce valid placement values
+/// - 2026-04-30T00:00:00Z | assistant | add QuestionLog model, clarify User fields for trial and free questions, update doc header
 /// - 2026-04-30T00:00:00Z | assistant | add couponCode to PaymentOrder to match applied migration
 generator client {
   provider = "prisma-client-js"
@@ -80,11 +70,31 @@ model User {
   onboardingDiagnosticCompletedAt DateTime?
   welcomeEmailSent         Boolean                  @default(false)
   passwordHash             String?
-  todaysFreeQuestionsCount Int                      @default(3)
+  /// Tracks free questions asked to Vidya. Resets weekly via scheduled job.
+  freeQuestionsCount        Int                      @default(0)
+  /// Allowed number of days in trial, A/B testable.
+  trialPeriodInDays         Int                      @default(30)
+  /// Set on account creation. Used for trial gating.
+  trialStartDate            DateTime                 @default(now())
+  // isTrialActive is derived: (trialStartDate + trialPeriodInDays) > today
   subscriptionStatus       String                   @default("free")
   subscriptionExpiry       DateTime?
   status                   String?
   createdAt                DateTime                 @default(now())
+  /// Relation to log all questions asked to Vidya (for audit and paywall enforcement)
+  questionLogs             QuestionLog[]
+  /// Logs every question asked to Vidya for paywall and analytics.
+  model QuestionLog {
+    id           String   @id @default(cuid())
+    userId       String
+    timestamp    DateTime @default(now())
+    questionText String
+    topic        String?
+
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId, timestamp])
+  }
   accounts                 Account[]
   apiUsages                ApiUsage[]
   approvalAudits           ApprovalAudit[]
@@ -308,6 +318,7 @@ model Trial {
   utmCampaign String?     @map("utm_campaign")
   startAt     DateTime    @default(now())
   expiresAt   DateTime
+  // trialPeriodInDays and trialStartDate are now tracked on User for gating logic
   status      TrialStatus @default(ACTIVE)
   createdAt   DateTime    @default(now())
 

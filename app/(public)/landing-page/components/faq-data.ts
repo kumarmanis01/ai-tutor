@@ -45,11 +45,19 @@ export function getFAQs(): FAQ[] {
       questionEn: 'Can my child try before paying?',
       questionHi: 'क्या मेरा बच्चा payment से पहले try कर सकता है?',
       answerEn:
-        'Absolutely. Free tier includes 5 daily practice questions, full diagnostic quiz, and learning map preview. No credit card required. Upgrade anytime for unlimited access.',
+        'Absolutely. Free users can ask up to 5 questions per week to Teacher Vidya and enjoy full access to study material for the first 30 days. No credit card required. Upgrade anytime to unlock unlimited questions, on-demand notes, and more.',
       answerHi:
-        'बिल्कुल। Free tier में 5 daily practice questions, full diagnostic quiz, और learning map preview शामिल है। कोई credit card नहीं चाहिए।',
+        'बिल्कुल। Free users हर हफ्ते Teacher Vidya से 5 सवाल पूछ सकते हैं और पहले 30 दिनों तक सभी study material का पूरा लाभ उठा सकते हैं। कोई credit card नहीं चाहिए। Upgrade करें और unlimited questions, on-demand notes जैसी सुविधाएं पाएं।',
       category: 'Pricing',
     },
+        {
+          id: 9,
+          questionEn: 'What are the limits for free users?',
+          questionHi: 'Free users के लिए क्या सीमाएं हैं?',
+          answerEn: 'Free users can ask up to 5 questions per week to Teacher Vidya and access all study material for the first 30 days. After 30 days, study material and on-demand notes become premium features. Upgrade anytime to continue learning without limits.',
+          answerHi: 'Free users हर हफ्ते Teacher Vidya से 5 सवाल पूछ सकते हैं और पहले 30 दिनों तक सभी study material का लाभ उठा सकते हैं। 30 दिन बाद, study material और on-demand notes premium feature बन जाते हैं। Upgrade करें और बिना किसी सीमा के सीखना जारी रखें।',
+          category: 'Limits',
+        },
     {
       id: 3,
       questionEn: 'How is Spinzy different from other tutoring apps?',
