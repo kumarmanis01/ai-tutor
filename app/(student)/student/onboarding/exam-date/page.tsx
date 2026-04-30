@@ -145,7 +145,8 @@ export default function ExamDatePage() {
       const diagnosticReady: boolean = json?.diagnosticReady ?? true;
 
       if (!firstSubjectId) {
-        router.push('/student/learning-map');
+        // router.push('/student/learning-map');
+        router.push('/dashboard');
         return;
       }
 
