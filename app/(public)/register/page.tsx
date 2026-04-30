@@ -15,7 +15,8 @@
  */
 
 import type { Metadata } from 'next';
-import StudentRegistrationWizard from '@/components/student/registration/StudentRegistrationWizard';
+// import StudentRegistrationWizard from '@/components/student/registration/StudentRegistrationWizard';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Get Started -- Spinzy AI Tutor',
@@ -23,5 +24,6 @@ export const metadata: Metadata = {
 };
 
 export default function RegisterPage() {
-  return <StudentRegistrationWizard />;
+  // return <StudentRegistrationWizard />;
+  redirect('/auth/signin');
 }

@@ -37,19 +37,27 @@ const Footer = () => {
     { label: 'Free Tier', href: '#pricing' },
   ];
 
-  const studentLinks = [
-    { label: 'Learning Map', href: '/register' },
-    { label: 'Practice Questions', href: '/register' },
-    { label: 'Mock Tests', href: '/register' },
-    { label: 'AI Tutor', href: '/register' },
-    { label: 'Study Buddy', href: '/register' },
+  // const studentLinks = [
+  //   { label: 'Learning Map', href: '/register' },
+  //   { label: 'Practice Questions', href: '/register' },
+  //   { label: 'Mock Tests', href: '/register' },
+  //   { label: 'AI Tutor', href: '/register' },
+  //   { label: 'Study Buddy', href: '/register' },
+  // ];
+
+  // const parentLinks = [
+  //   { label: 'Parent Dashboard', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+  //   { label: 'Progress Reports', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+  //   { label: 'Assignments', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+  //   { label: 'Weekly Reports', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+  // ];
+
+    const studentLinks = [
+        { label: 'Learning Map', href: '/auth/signin' },
   ];
 
   const parentLinks = [
-    { label: 'Parent Dashboard', href: '/auth/signin?callbackUrl=/parent-onboarding' },
-    { label: 'Progress Reports', href: '/auth/signin?callbackUrl=/parent-onboarding' },
-    { label: 'Assignments', href: '/auth/signin?callbackUrl=/parent-onboarding' },
-    { label: 'Weekly Reports', href: '/auth/signin?callbackUrl=/parent-onboarding' },
+    { label: 'Coming Soon', href: '#' },
   ];
 
   const schoolLinks = [
@@ -60,9 +68,9 @@ const Footer = () => {
 
   const companyLinks = [
     { label: 'About Us', href: '/about' },
-    { label: 'Blog', href: '/blog' },
-    { label: 'Careers', href: '/careers' },
-    { label: 'Press Kit', href: '/press' },
+    // { label: 'Blog', href: '/blog' },
+    // { label: 'Careers', href: '/careers' },
+    // { label: 'Press Kit', href: '/press' },
   ];
 
   const legalLinks = [
