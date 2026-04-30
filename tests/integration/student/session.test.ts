@@ -118,12 +118,12 @@ describe('Freemium session cap', () => {
   });
 
   describe('enforceTutorFreemiumCap() — daily free questions', () => {
-    it('throws RATE_LIMITED when todaysFreeQuestionsCount is 0', async () => {
+    it('throws RATE_LIMITED when freeQuestionsCount is 0', async () => {
       (isPremiumUser as jest.Mock).mockResolvedValueOnce(false);
       prismaMock.$transaction.mockImplementationOnce(async (fn: any) => {
         const txMock = {
           user: {
-            findUnique: jest.fn().mockResolvedValueOnce({ todaysFreeQuestionsCount: 0 }),
+            findUnique: jest.fn().mockResolvedValueOnce({ freeQuestionsCount: 0 }),
             update: jest.fn(),
           },
         };
@@ -135,12 +135,12 @@ describe('Freemium session cap', () => {
       });
     });
 
-    it('succeeds when todaysFreeQuestionsCount > 0', async () => {
+    it('succeeds when freeQuestionsCount > 0', async () => {
       (isPremiumUser as jest.Mock).mockResolvedValueOnce(false);
       prismaMock.$transaction.mockImplementationOnce(async (fn: any) => {
         const txMock = {
           user: {
-            findUnique: jest.fn().mockResolvedValueOnce({ todaysFreeQuestionsCount: 3 }),
+            findUnique: jest.fn().mockResolvedValueOnce({ freeQuestionsCount: 3 }),
             update: jest.fn().mockResolvedValueOnce({}),
           },
         };

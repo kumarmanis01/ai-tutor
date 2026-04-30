@@ -144,7 +144,7 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
   const premium = await isPremiumUser(studentId);
   if (premium) return;
 
-  // Legacy per-day free-questions counter stored on User.todaysFreeQuestionsCount
+  // Legacy per-day free-questions counter stored on User.freeQuestionsCount
   // Many tests and some deployments rely on this behaviour. Try the legacy
   // transaction first; on any unexpected error, fall back to the canonical
   // monthly free-tier implementation below.
@@ -159,17 +159,17 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
       prisma.$transaction(async (tx) => {
         const u = await (tx as any).user.findUnique({
           where: { id: studentId },
-          select: { todaysFreeQuestionsCount: true },
+          select: { freeQuestionsCount: true },
         });
-        if (u && typeof u.todaysFreeQuestionsCount === 'number') {
-          if ((u as any).todaysFreeQuestionsCount <= 0) {
+        if (u && typeof u.freeQuestionsCount === 'number') {
+          if ((u as any).freeQuestionsCount <= 0) {
             const err: any = new Error('RATE_LIMITED');
             err.code = 'RATE_LIMITED';
             throw err;
           }
           await (tx as any).user.update({
             where: { id: studentId },
-            data: { todaysFreeQuestionsCount: (u as any).todaysFreeQuestionsCount - 1 },
+            data: { freeQuestionsCount: (u as any).freeQuestionsCount - 1 },
           });
           return true;
         }

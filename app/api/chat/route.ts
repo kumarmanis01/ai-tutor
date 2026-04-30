@@ -64,11 +64,11 @@ export async function POST(req: Request) {
       const txResult = await prisma.$transaction(async (tx) => {
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) return { notFound: true } as const;
-        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0)
+        if ((user.freeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0)
           return { limitReached: true } as const;
         const updated = await tx.user.update({
           where: { id: userId },
-          data: { todaysFreeQuestionsCount: { decrement: 1 } },
+          data: { freeQuestionsCount: { decrement: 1 } },
         });
         return { updated } as const;
       });

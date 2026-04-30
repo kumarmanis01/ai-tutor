@@ -11,7 +11,7 @@ const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
 
 // NOTE: `lastFreeQuestionsUpdate` column was removed from the schema.
 // The application no longer performs lazy UTC resets based on that timestamp.
-// We preserve the simple quota behavior: `todaysFreeQuestionsCount` is used
+// We preserve the simple quota behavior: `freeQuestionsCount` is used
 // as the authoritative remaining count. If you need daily resets, implement
 // a separate scheduled job or a different mechanism.
 
@@ -38,7 +38,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
     return NextResponse.json({
-      remaining: user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT,
+      remaining: user.freeQuestionsCount ?? DAILY_FREE_LIMIT,
       isPremium: false,
       total: DAILY_FREE_LIMIT,
     });
@@ -82,13 +82,13 @@ export async function POST(req: Request) {
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user) return { notFound: true } as const;
 
-      if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
+      if ((user.freeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
         return { limitReached: true } as const;
       }
 
       const updated = await tx.user.update({
         where: { id: userId },
-        data: { todaysFreeQuestionsCount: { decrement: 1 } },
+        data: { freeQuestionsCount: { decrement: 1 } },
       });
 
       return { updated } as const;
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
     }
 
     res = NextResponse.json({
-      remaining: result.updated.todaysFreeQuestionsCount,
+      remaining: result.updated.freeQuestionsCount,
       total: DAILY_FREE_LIMIT,
     });
     logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
