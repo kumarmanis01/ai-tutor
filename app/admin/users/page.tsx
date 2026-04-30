@@ -6,7 +6,6 @@
  */
 import React from 'react';
 import { prisma } from '@/lib/prisma';
-import { AdminTopbar } from '../../../components/admin/AdminTopbar';
 import { StudentsTable, type StudentRowData } from './StudentsTable';
 
 export default async function StudentsPage() {
@@ -74,8 +73,6 @@ export default async function StudentsPage() {
 
   return (
     <>
-      <AdminTopbar title="Students" />
-
       <div className="p-5 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

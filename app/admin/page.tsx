@@ -1,7 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import { AdminTopbar } from '../../components/admin/AdminTopbar';
 import { timeSince } from '@/lib/admin/formatters';
 
 // ---------------------------------------------------------------------------

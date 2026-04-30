@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { verifyAdminAccessToken } from '@/lib/auth/token.service';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminTopbar } from '../../components/admin/AdminTopbar';
 import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import { NavigationProgress } from '../../components/NavigationProgress';
@@ -112,6 +113,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 safetyAlerts={safetyAlerts}
               />
               <main className="flex-1 overflow-y-auto text-gray-900 dark:text-gray-100">
+                <AdminTopbar title="Admin" runningJobs={activeJobs} />
                 {children}
               </main>
             </div>
