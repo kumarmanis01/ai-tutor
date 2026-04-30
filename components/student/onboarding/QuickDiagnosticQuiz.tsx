@@ -181,7 +181,7 @@ export default function QuickDiagnosticQuiz({
 
   // Result phase
   const [phase, setPhase] = useState<'quiz' | 'result'>('quiz');
-  const [score, setScore] = useState(0);
+  const [_score, setScore] = useState(0);
   const [placement, setPlacement] = useState<PlacementLevel>('STANDARD');
 
   // Load questions on mount.

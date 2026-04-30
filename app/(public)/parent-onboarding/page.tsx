@@ -113,7 +113,7 @@ export default function ParentOnboardingPage() {
   // success -- show the "Send to Child" screen (S0.5 / P1.3-P)
   return (
     <PageWrapper step={3}>
-      <SetupComplete children={children} />
+      <SetupComplete profiles={children} />
     </PageWrapper>
   );
 }

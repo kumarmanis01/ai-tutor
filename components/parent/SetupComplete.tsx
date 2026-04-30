@@ -3,12 +3,20 @@
  * - S0.5 / P1.3-P: "Send to Child" completion screen shown after parent onboarding.
  *   Renders one card per child with 3 delivery options:
  *     A. Send App Link via WhatsApp  (opens wa.me with pre-filled message)
- *     B. Send App Link via Email     (opens mailto: with pre-filled subject + body)
+ *     B. Send App Link via Email     (opens mailto: with canonical `subjectId` + body)
  *     C. Open on This Device         (navigates directly -- shared device flow)
  *   Calls POST /api/v1/parent/children/{id}/generate-claim-link lazily on first tap.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/parent/SetupComplete.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2026-04-29T00:00:00Z | claude | created for S0.5 / P1.3-P
+ * - 2026-04-30T00:00:00Z | copilot | replace free-text mailto subject with canonical `subjectId`
  */
 
 'use client';
@@ -27,7 +35,7 @@ export interface SetupCompleteChild {
 }
 
 interface SetupCompleteProps {
-  children: SetupCompleteChild[];
+  profiles: SetupCompleteChild[];
 }
 
 interface ClaimLinkResponse {
@@ -96,16 +104,13 @@ function ChildSendCard({ child }: { child: SetupCompleteChild }) {
     try {
       const link = await resolveDeepLink();
       const rel = toRelationLabel(child.relation);
-      const subject = encodeURIComponent(
-        `${child.name}, your Spinzy learning account is ready!`
-      );
       const body = encodeURIComponent(
         `${rel} has set up your Spinzy Academy learning account for Class ${child.grade} ${child.board}.\n\n` +
           `Tap here to start learning: ${link}\n\n` +
           `If you don't have the app yet, download it here: https://play.google.com/store/apps/details?id=com.spinzyacademy\n\n` +
           `Happy learning!\nTeam Spinzy`
       );
-      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+          window.open(`mailto:?subjectId=parent_setup_child_link&body=${body}`, '_blank');
     } catch {}
   }
 
@@ -193,8 +198,8 @@ function ChildSendCard({ child }: { child: SetupCompleteChild }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function SetupComplete({ children }: SetupCompleteProps) {
-  const firstName = children[0]?.name ?? 'Your child';
+export default function SetupComplete({ profiles }: SetupCompleteProps) {
+  const firstName = profiles[0]?.name ?? 'Your child';
 
   return (
     <div>
@@ -211,7 +216,7 @@ export default function SetupComplete({ children }: SetupCompleteProps) {
         {children.length === 1 ? firstName : 'them'} started on their device.
       </p>
 
-      {children.map((child) => (
+      {profiles.map((child) => (
         <ChildSendCard key={child.id} child={child} />
       ))}
 

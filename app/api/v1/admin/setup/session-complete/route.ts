@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   let claims;
   try {
     claims = await verifyAdminLoginSessionToken(loginSessionToken);
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'invalid_session_token' }, { status: 401 });
   }
 

@@ -1,17 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/lib/toast';
 
 export default function SecondaryStartOptions({
-  todaysConceptId,
+  _todaysConceptId,
 }: {
-  todaysConceptId?: string | null;
+  _todaysConceptId?: string | null;
 }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const _router = useRouter();
+  const [_loading, _setLoading] = useState(false);
 
   // async function handleSurprise() {
   //   if (loading) return;

@@ -44,7 +44,7 @@ export default function GeneratePage() {
   const router = useRouter();
   const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
 
-  const [topic, setTopic] = useState('your topic');
+  const [topic, _setTopic] = useState('your topic');
   const [streamState, setStreamState] = useState<StreamState>('loading');
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [errorMsg, setErrorMsg] = useState('');

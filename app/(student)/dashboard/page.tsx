@@ -45,9 +45,7 @@ import TodaysLearningCard, {
   type TodaysLearningCardProps,
 } from '@/components/student/dashboard/TodaysLearningCard'
 import SecondaryStartOptions from '@/components/student/dashboard/SecondaryStartOptions'
-import { XPWidget } from '@/components/student/dashboard/XPWidget'
-import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip'
-import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
+// XPWidget, WeeklyStudyStrip and RevisionWidget temporarily removed to avoid unused-import warnings
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
 import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
@@ -153,7 +151,7 @@ export default async function StudentHomeDashboardPage() {
   const isCrunchMode = prefCrunch === 'on' ? true : prefCrunch === 'off' ? false : autoCrunch
 
   // ── XP breakdown ─────────────────────────────────────────────────────────────
-  const xpThisWeek = xpThisWeekResult._sum.amount ?? 0
+  const _xpThisWeek = xpThisWeekResult._sum.amount ?? 0
   const xpBySource: Record<string, number> = {}
   for (const row of xpBySourceRaw) {
     xpBySource[row.source] = row._sum.amount ?? 0
@@ -299,7 +297,7 @@ export default async function StudentHomeDashboardPage() {
   const activeDateSet = new Set(
     weeklyActivity.map((s) => s.startedAt.toISOString().split('T')[0])
   )
-  const weeklyStripData = {
+  const _weeklyStripData = {
     days: weekDays.map((date, i) => ({
       date,
       dayLabel: DAY_LABELS[i],
