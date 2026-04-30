@@ -360,12 +360,13 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // When all enrolled subjects have a completed diagnostic but no learning plan
-  // is ready yet, show the plan-loading state instead of the onboarding checklist.
-  // This prevents "Take diagnostic test" from appearing after all tests are done.
+  // is ready yet, navigate the user to the comprehensive diagnostic summary page
+  // so they can review readiness for all their selected subjects at once.
   const allDiagnosticsComplete =
     readinessResults.length > 0 && readinessResults.every((r) => r.diagnosticDone)
   if (cardProps.type === 'empty' && allDiagnosticsComplete) {
-    cardProps = { type: 'plan_loading' }
+    const ids = readinessResults.map((r) => r.subjectId).join(',')
+    redirect(`/diagnostic/summary?subjects=${encodeURIComponent(ids)}`)
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
