@@ -119,14 +119,15 @@ export function LearningMap({ studentId, data, isOfflineCache, onRefresh, grade,
     }
 
     if (node.previewTopicId) {
-      router.push(`/student/learning-map/topic/${encodeURIComponent(node.previewTopicId)}`);
+      // router.push(`/student/learning-map/topic/${encodeURIComponent(node.previewTopicId)}`);
+      router.push(`/session/${encodeURIComponent(node.previewTopicId)}`);
     }
   }
 
-  function handlePracticeClick(node: LearningMapNode) {
-    if (!node.previewTopicId) return;
-    router.push(`/student/learning-map/topic/${encodeURIComponent(node.previewTopicId)}/practice`);
-  }
+  // function handlePracticeClick(node: LearningMapNode) {
+  //   if (!node.previewTopicId) return;
+  //   router.push(`/student/learning-map/topic/${encodeURIComponent(node.previewTopicId)}/practice`);
+  // }
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6">
@@ -210,7 +211,8 @@ export function LearningMap({ studentId, data, isOfflineCache, onRefresh, grade,
         <div className="overflow-x-auto pb-2">
           <div className="flex min-w-max items-stretch gap-4">
             {filteredChapters.map((node) => (
-              <ChapterNode key={node.chapterId} node={node} onClick={handleNodeClick} onPractice={handlePracticeClick} />
+              // <ChapterNode key={node.chapterId} node={node} onClick={handleNodeClick} onPractice={handlePracticeClick} />
+              <ChapterNode key={node.chapterId} node={node} onClick={handleNodeClick} onPractice={() => {}} />
             ))}
           </div>
         </div>
