@@ -26,7 +26,7 @@ import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectRead
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Diagnostics — Summary',
+  title: 'Diagnostics -- Summary',
   description: 'Overview of diagnostics across your selected subjects',
 }
 
@@ -72,7 +72,7 @@ export default async function DiagnosticSummaryPage({
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-xl font-bold">Diagnostics — Your results</h1>
+        <h1 className="text-xl font-bold">Diagnostics -- Your results</h1>
         <p className="text-sm text-gray-600 mt-1">Review readiness for each subject you selected.</p>
       </div>
 
