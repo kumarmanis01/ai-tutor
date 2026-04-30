@@ -18,6 +18,19 @@ datasource db {
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
+/// Logs every question asked to Vidya for paywall and analytics.
+model QuestionLog {
+  id           String   @id @default(cuid())
+  userId       String
+  timestamp    DateTime @default(now())
+  questionText String
+  topic        String?
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+}
+
 model User {
   id                         String        @id @default(cuid())
   name                       String?
@@ -83,18 +96,6 @@ model User {
   createdAt                DateTime                 @default(now())
   /// Relation to log all questions asked to Vidya (for audit and paywall enforcement)
   questionLogs             QuestionLog[]
-  /// Logs every question asked to Vidya for paywall and analytics.
-  model QuestionLog {
-    id           String   @id @default(cuid())
-    userId       String
-    timestamp    DateTime @default(now())
-    questionText String
-    topic        String?
-
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@index([userId, timestamp])
-  }
   accounts                 Account[]
   apiUsages                ApiUsage[]
   approvalAudits           ApprovalAudit[]
