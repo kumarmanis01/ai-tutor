@@ -16,6 +16,7 @@
 /// - 2026-04-26T07:00:56Z | copilot | remove duplicate PromptStatus/PromptVersion/AIGenerationLog declarations to fix Prisma P1012
 /// - 2026-04-27T00:00:00Z | copilot | add onboarding quick-diagnostic placement fields on User for S1.3 sync and gating
 /// - 2026-04-27T13:55:00Z | copilot | convert onboardingPlacement to enum to enforce valid placement values
+/// - 2026-04-30T00:00:00Z | assistant | add couponCode to PaymentOrder to match applied migration
 generator client {
   provider = "prisma-client-js"
 }
@@ -186,6 +187,8 @@ model PaymentOrder {
   planMonths             Int       @default(1)
   /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
   planId                 String?
+  /// Coupon code applied to this order (nullable). Added to match migration.
+  couponCode             String?
   createdAt              DateTime  @default(now())
   paidAt                 DateTime?
 

@@ -1,6 +1,22 @@
 'use client';
 
 /**
+FILE OBJECTIVE:
+- Render selectable subscription plans and compute the display order when not provided.
+
+LINKED UNIT TEST:
+- tests/unit/components/student/subscription/PlanSelector.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- /docs/COPILOT_GUARDRAILS.md
+- .github/copilot-instructions.md
+
+EDIT LOG:
+- 2026-04-30T00:00:00Z | copilot | add computed PLAN_ORDER fallback derived from PLANS to fix missing identifier
+**/
+
+
+/**
  * PlanSelector -- step 1 of upgrade flow.
  *
  * Three plan rows: Monthly / Quarterly (featured) / Annual.
@@ -18,6 +34,39 @@ interface PlanSelectorProps {
 }
 
 // By default show all non-internal plans. Order: featured first, then by billed price.
+
+const PLAN_ORDER: PlanId[] = (() => {
+  const ids = Object.keys(PLANS) as PlanId[];
+
+  const priceValue = (p: SubscriptionPlan): number => {
+    const anyP = p as any;
+    if (typeof anyP.perMonth === 'number' && !Number.isNaN(anyP.perMonth)) return anyP.perMonth;
+    if (typeof anyP.billedAmountRupees === 'number' && !Number.isNaN(anyP.billedAmountRupees)) return anyP.billedAmountRupees;
+    if (typeof anyP.baseRupees === 'number') {
+      const gst = typeof anyP.gstRupees === 'number' && !Number.isNaN(anyP.gstRupees) ? anyP.gstRupees : 0;
+      return anyP.baseRupees + gst;
+    }
+    return Number.MAX_SAFE_INTEGER;
+  };
+
+  return ids
+    .filter((id) => {
+      const plan = PLANS[id];
+      return !(plan as any).internal;
+    })
+    .sort((a, b) => {
+      const pa = PLANS[a];
+      const pb = PLANS[b];
+
+      const fa = pa.featured ? 0 : 1;
+      const fb = pb.featured ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+
+      const na = priceValue(pa);
+      const nb = priceValue(pb);
+      return na - nb;
+    });
+})();
 
 function PlanRow({
   plan,
