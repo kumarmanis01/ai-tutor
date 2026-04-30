@@ -16,23 +16,6 @@
   - Made the column `creditBalance` on table `Subscription` required. This step will fail if there are existing NULL values in that column.
 
 */
--- CreateEnum
-CREATE TYPE "XPReason" AS ENUM ('SESSION_CORRECT', 'STREAK_BONUS', 'REVISION_COMPLETE', 'BADGE_EARNED', 'DIAGNOSTIC_COMPLETE', 'ASSIGNMENT_COMPLETE');
-
--- CreateEnum
-CREATE TYPE "PaymentType" AS ENUM ('CARD', 'UPI', 'NET_BANKING', 'WALLET', 'EMI');
-
--- CreateEnum
-CREATE TYPE "PaymentStatus" AS ENUM ('CREATED', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED');
-
--- CreateEnum
-CREATE TYPE "ReferralStatus" AS ENUM ('PENDING', 'CONVERTED', 'EXPIRED', 'REJECTED');
-
--- CreateEnum
-CREATE TYPE "TicketStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'WAITING_ON_USER', 'RESOLVED', 'CLOSED');
-
--- CreateEnum
-CREATE TYPE "TicketPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
 
 -- AlterEnum
 BEGIN;
@@ -415,152 +398,122 @@ CREATE TABLE "StreakHistory" (
     CONSTRAINT "StreakHistory_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "QuestionLog_userId_timestamp_idx" ON "QuestionLog"("userId", "timestamp");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE UNIQUE INDEX "Invoice_invoiceNumber_key" ON "Invoice"("invoiceNumber");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE UNIQUE INDEX "Invoice_paymentId_key" ON "Invoice"("paymentId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "Invoice_userId_idx" ON "Invoice"("userId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE UNIQUE INDEX "Coupon_code_key" ON "Coupon"("code");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "Coupon_code_idx" ON "Coupon"("code");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "Coupon_studentId_idx" ON "Coupon"("studentId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "CouponRedemption_couponId_idx" ON "CouponRedemption"("couponId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "CouponRedemption_userId_idx" ON "CouponRedemption"("userId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "CouponRedemption_subscriptionId_idx" ON "CouponRedemption"("subscriptionId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "SchoolPartner_isActive_idx" ON "SchoolPartner"("isActive");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "SchoolLead_status_createdAt_idx" ON "SchoolLead"("status", "createdAt");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "SchoolLead_partnerId_idx" ON "SchoolLead"("partnerId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "SupportTicket_userId_status_idx" ON "SupportTicket"("userId", "status");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "SupportTicket_status_priority_createdAt_idx" ON "SupportTicket"("status", "priority", "createdAt");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "SupportTicket_assignedTo_idx" ON "SupportTicket"("assignedTo");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "Notification_userId_readAt_idx" ON "Notification"("userId", "readAt");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "Notification_userId_createdAt_idx" ON "Notification"("userId", "createdAt");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "StreakHistory_studentId_date_idx" ON "StreakHistory"("studentId", "date");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE UNIQUE INDEX "StreakHistory_studentId_date_key" ON "StreakHistory"("studentId", "date");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE INDEX "ConsentMessageLog_messageId_idx" ON "ConsentMessageLog"("messageId");
 
--- CreateIndex
+-- -- CreateIndex
 CREATE UNIQUE INDEX "ConsentRequest_token_key" ON "ConsentRequest"("token");
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "QuestionLog" ADD CONSTRAINT "QuestionLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "PhoneOtp" ADD CONSTRAINT "PhoneOtp_consentRequestId_fkey" FOREIGN KEY ("consentRequestId") REFERENCES "ConsentRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Trial" ADD CONSTRAINT "Trial_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "Installment" ADD CONSTRAINT "Installment_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "Subscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "Installment" ADD CONSTRAINT "Installment_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "PaymentEvent" ADD CONSTRAINT "PaymentEvent_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "PaymentCustomer" ADD CONSTRAINT "PaymentCustomer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "PaymentMethod" ADD CONSTRAINT "PaymentMethod_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "PaymentMethod" ADD CONSTRAINT "PaymentMethod_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "PaymentCustomer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "CouponRedemption" ADD CONSTRAINT "CouponRedemption_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "CouponRedemption" ADD CONSTRAINT "CouponRedemption_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "CouponRedemption" ADD CONSTRAINT "CouponRedemption_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "Subscription"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "ReferralReward" ADD CONSTRAINT "ReferralReward_referralId_fkey" FOREIGN KEY ("referralId") REFERENCES "Referral"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "ReferralReward" ADD CONSTRAINT "ReferralReward_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+-- -- AddForeignKey
 ALTER TABLE "SessionArtifact" ADD CONSTRAINT "SessionArtifact_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "SessionArtifact" ADD CONSTRAINT "SessionArtifact_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "StructuredSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "StudentConceptState" ADD CONSTRAINT "StudentConceptState_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "StudentConceptState" ADD CONSTRAINT "StudentConceptState_conceptId_fkey" FOREIGN KEY ("conceptId") REFERENCES "Concept"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ConceptHistory" ADD CONSTRAINT "ConceptHistory_conceptId_fkey" FOREIGN KEY ("conceptId") REFERENCES "Concept"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "LearningPlanItem" ADD CONSTRAINT "LearningPlanItem_conceptId_fkey" FOREIGN KEY ("conceptId") REFERENCES "Concept"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "DoubtEscalation" ADD CONSTRAINT "DoubtEscalation_doubtKbId_fkey" FOREIGN KEY ("doubtKbId") REFERENCES "DoubtKb"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MockExamSection" ADD CONSTRAINT "MockExamSection_mockExamId_fkey" FOREIGN KEY ("mockExamId") REFERENCES "MockExam"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MockExamQuestion" ADD CONSTRAINT "MockExamQuestion_sectionId_fkey" FOREIGN KEY ("sectionId") REFERENCES "MockExamSection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MockExamAttempt" ADD CONSTRAINT "MockExamAttempt_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MockExamSectionAttempt" ADD CONSTRAINT "MockExamSectionAttempt_attemptId_fkey" FOREIGN KEY ("attemptId") REFERENCES "MockExamAttempt"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ConsentRequest" ADD CONSTRAINT "ConsentRequest_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
