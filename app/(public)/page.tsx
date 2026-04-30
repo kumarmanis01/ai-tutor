@@ -19,7 +19,8 @@ export default async function HomePage() {
     }
     // Student who completed onboarding: go to learning map.
     if ((session.user as any)?.onboardingComplete) {
-      redirect('/student/learning-map');
+      // redirect('/student/learning-map');
+         redirect('/dashboard');
     }
   }
   return <LandingPageInteractive />;

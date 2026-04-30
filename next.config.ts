@@ -41,11 +41,11 @@ const nextConfig: NextConfig = {
         destination: '/student/learning-map',
         permanent: false,
       },
-      {
-        source: '/diagnostic/:subjectId',
-        destination: '/student/onboarding/diagnostic',
-        permanent: false,
-      },
+      // {
+      //   source: '/diagnostic/:subjectId',
+      //   destination: '/student/onboarding/diagnostic',
+      //   permanent: false,
+      // },
     ];
   },
   images: {

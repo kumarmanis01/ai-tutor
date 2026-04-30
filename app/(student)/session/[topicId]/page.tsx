@@ -73,7 +73,8 @@ export default async function SessionPage({ params, searchParams }: Props) {
   const subjectId = topic?.chapter?.subjectId;
   if (subjectId) {
     const hasDiag = await hasDiagnosticForSubject(auth.user.id, subjectId);
-    if (!hasDiag) redirect('/student/onboarding/diagnostic');
+    // if (!hasDiag) redirect('/student/onboarding/diagnostic');
+    if (!hasDiag) redirect(`/diagnostic/${subjectId}`);
   }
 
   // ── AI tutor path (sid + cid present) ───────────────────────────────────────

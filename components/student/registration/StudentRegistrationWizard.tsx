@@ -550,7 +550,7 @@ export default function StudentRegistrationWizard({ onComplete }: Props) {
             You are all set. Let us find out where you stand with a quick diagnostic quiz.
           </p>
           <Link
-            href="/student/onboarding"
+            href="/dashboard"
             className="w-full max-w-xs min-h-[44px] rounded-2xl bg-[#534AB7] text-white font-bold text-lg flex items-center justify-center"
           >
             Take Diagnostic

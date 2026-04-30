@@ -179,7 +179,64 @@ const prismaProxy = new Proxy(client, {
   },
 });
 
-export const prisma = prismaProxy as unknown as PrismaClient;
+
+// Helper to wrap model methods to log results if not in production
+
+// ANSI color helpers for dev logs
+const color = {
+  yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
+  cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
+  magenta: (s: string) => `\x1b[35m${s}\x1b[0m`,
+  reset: (s: string) => `\x1b[0m${s}`,
+};
+
+function pretty(obj: any) {
+  return typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+}
+
+function wrapModelWithLogging(model: any, modelName: string) {
+  const queryMethods = [
+    'findMany', 'findFirst', 'findUnique', 'create', 'createMany', 'update', 'updateMany',
+    'delete', 'deleteMany', 'upsert', 'aggregate', 'count', 'groupBy', 'findRaw', 'queryRaw',
+  ];
+  return new Proxy(model, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && queryMethods.includes(prop)) {
+        return async (...args: any[]) => {
+          const result = await (target as any)[prop](...args);
+          if (process.env.NODE_ENV !== 'production') {
+            // Color code query and result for dev log readability
+            const queryStr = color.cyan(`\n[Prisma Query] ${modelName}.${prop}\n`) + color.yellow(pretty(args));
+            const resultStr = color.magenta(`\n[Prisma Result] ${modelName}.${prop}\n`) + color.reset(pretty(result));
+            // Use logger.debug for dev, logger.info for others
+            logger.debug(`${queryStr}\n${resultStr}`);
+          }
+          return result;
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
+// Proxy to wrap all models with logging in non-production
+const prismaWithLogging = new Proxy(prismaProxy as PrismaClient, {
+  get(target, prop, receiver) {
+    // Only wrap model properties (skip $-methods and internal props)
+    if (
+      typeof prop === 'string' &&
+      /^[A-Z]/.test(prop) === false && // skip class/static props
+      !prop.startsWith('$') &&
+      typeof (target as any)[prop] === 'object' &&
+      (target as any)[prop] !== null
+    ) {
+      return wrapModelWithLogging((target as any)[prop], prop);
+    }
+    return Reflect.get(target, prop, receiver);
+  },
+});
+
+export const prisma = prismaWithLogging;
 
 process.on('exit', () => {
   try {
