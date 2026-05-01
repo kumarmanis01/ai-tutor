@@ -167,7 +167,7 @@ export default function FreemiumWallModal({
           type="button"
           onClick={() => {
             if (topicId) {
-              router.push(`/student/learning-map/topic/${encodeURIComponent(topicId)}`);
+              router.push(`/session/${encodeURIComponent(topicId)}`);
               return;
             }
             onClose();
@@ -178,7 +178,7 @@ export default function FreemiumWallModal({
         </button>
 
         <p className="mt-2 text-center text-xs text-gray-500">
-          Wait until tomorrow? Your 5 free questions reset at midnight.
+          Wait until Monday? Your 5 free questions reset at Sunday midnight.
         </p>
 
         {retryAfterSeconds && isSent && (
