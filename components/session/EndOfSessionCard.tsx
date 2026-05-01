@@ -237,7 +237,7 @@ export function EndOfSessionCard({
       {/* 5 & 6. CTAs */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <Link
-          href="/dashboard"
+          href="/student/learning-map"
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 border border-border bg-background hover:bg-muted/50 text-foreground font-medium rounded-xl transition-colors text-sm min-h-[44px]"
         >
           <svg
