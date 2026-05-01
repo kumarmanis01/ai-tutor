@@ -20,7 +20,7 @@ export default function OnboardingGateShell({ initialValues }: OnboardingGateShe
     <ProfileCompletionGate
       standalone
       initialValues={initialValues}
-      afterSave={() => router.push('/student/onboarding/board-confirm')}
+      afterSave={() => router.push('/dashboard')}
     />
   );
 }
