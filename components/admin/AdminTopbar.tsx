@@ -1,5 +1,20 @@
 'use client';
 
+/**
+ * FILE OBJECTIVE:
+ * - Render the admin topbar with service status chips that distinguish auth failures from infrastructure outages.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/admin/AdminTopbar.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-01T00:00:00Z | copilot | map 403 status checks to auth-required chips for redis and worker
+ */
+
 import React, { useEffect, useState } from 'react';
 
 // ---------------------------------------------------------------------------
@@ -41,13 +56,18 @@ function Chip({ label, variant = 'default' }: { label: string; variant?: ChipVar
 // ---------------------------------------------------------------------------
 
 function RedisStatusChip() {
-  const [status, setStatus] = useState<'loading' | 'ok' | 'down'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ok' | 'down' | 'forbidden'>('loading');
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/admin/content-engine/redis')
       .then((r) => {
-        if (!cancelled) setStatus(r.ok ? 'ok' : 'down');
+        if (cancelled) return;
+        if (r.status === 403) {
+          setStatus('forbidden');
+          return;
+        }
+        setStatus(r.ok ? 'ok' : 'down');
       })
       .catch(() => {
         if (!cancelled) setStatus('down');
@@ -60,8 +80,8 @@ function RedisStatusChip() {
   if (status === 'loading') return null;
   return (
     <Chip
-      label={status === 'ok' ? 'Redis OK' : 'Redis down'}
-      variant={status === 'ok' ? 'ok' : 'err'}
+      label={status === 'ok' ? 'Redis OK' : status === 'forbidden' ? 'Redis auth required' : 'Redis down'}
+      variant={status === 'ok' ? 'ok' : status === 'forbidden' ? 'warn' : 'err'}
     />
   );
 }
@@ -71,25 +91,49 @@ function RedisStatusChip() {
 // ---------------------------------------------------------------------------
 
 function WorkerStatusChip() {
-  const [alive, setAlive] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<'loading' | 'running' | 'down' | 'forbidden'>('loading');
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/admin/system/worker-status')
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setAlive(d.alive ?? false);
+      .then(async (r) => {
+        if (cancelled) return;
+        if (r.status === 403) {
+          setStatus('forbidden');
+          return;
+        }
+        if (!r.ok) {
+          setStatus('down');
+          return;
+        }
+
+        const d = await r.json();
+        if (!cancelled) {
+          setStatus(d.alive ? 'running' : 'down');
+        }
       })
       .catch(() => {
-        if (!cancelled) setAlive(false);
+        if (!cancelled) setStatus('down');
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  if (alive === null) return null;
-  return <Chip label={alive ? 'Worker running' : 'Worker down'} variant={alive ? 'ok' : 'err'} />;
+  if (status === 'loading') return null;
+
+  return (
+    <Chip
+      label={
+        status === 'running'
+          ? 'Worker running'
+          : status === 'forbidden'
+            ? 'Worker auth required'
+            : 'Worker down'
+      }
+      variant={status === 'running' ? 'ok' : status === 'forbidden' ? 'warn' : 'err'}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
