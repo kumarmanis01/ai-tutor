@@ -86,8 +86,7 @@ const HeroSection = () => {
                 </h1>
                 <p className="font-body text-base leading-relaxed text-foreground/80 md:text-lg lg:max-w-2xl">
                   {/* Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared. */}
-                                  Adaptive practice, mastery checks, and guided hints that build conceptual fluency -- no shortcuts.
-                Adaptive practice, mastery checks, and guided hints that build conceptual fluency -- no shortcuts.
+                  Adaptive practice, mastery checks, and guided hints that build conceptual fluency -- no shortcuts.
                 </p>
                 {/* <p className="font-accent text-xl text-[#534AB7] md:text-2xl">
                   AI Tutor जो पहले आपकी अनुमति लेता है
