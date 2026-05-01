@@ -98,7 +98,8 @@ export default function BoardGradeConfirmation({
           return;
         }
       }
-      router.push('/student/onboarding/exam-date');
+      // router.push('/student/onboarding/exam-date');
+      router.push('/dashboard');
     } catch {
       setError('Network error. Please check your connection.');
     } finally {

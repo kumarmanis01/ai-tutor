@@ -95,7 +95,7 @@ export default async function DiagnosticSummaryPage({
 
       <div className="mt-6">
         <Link
-          href="/student/learning-map"
+          href="/student/exam-date"
           className="inline-flex items-center px-4 py-2 rounded-lg bg-[#534AB7] text-white text-sm font-medium hover:bg-[#4840a3]"
         >
           Start learning →
