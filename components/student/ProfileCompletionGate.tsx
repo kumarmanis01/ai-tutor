@@ -60,7 +60,7 @@ const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 // Mandatory subjects that cannot be deselected.
 function getMandatorySubjects(board: string, grade: number): string[] {
   if (board === 'cbse') {
-    if (grade >= 9 && grade <= 10) return ['mathematics', 'science', 'english'];
+    if (grade >= 9 && grade <= 10) return ['mathematics', 'science'];
     if (grade >= 11) return ['english'];
   }
   return [];
