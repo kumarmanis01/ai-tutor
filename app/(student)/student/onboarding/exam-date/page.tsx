@@ -157,7 +157,7 @@ export default function ExamDatePage() {
       }
 
       // router.push('/student/onboarding/diagnostic');
-      router.push('/dashboard');
+      router.push('/student/learning-map');
     } catch {
       setError('Network error. Please check your connection.');
     } finally {
