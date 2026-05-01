@@ -233,7 +233,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
               showProfileGate={showProfileGate}
               initialProfileData={initialProfileData}
             >
-              <div id="student-main" className="pt-[44px] pb-16 md:pb-0">
+              <div id="student-main" className="pt-[1px] pb-16 md:pb-0">
                 {children}
               </div>
             </StudentLayoutShell>
