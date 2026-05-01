@@ -24,7 +24,7 @@ import { startMetricsServer, incJobsSpawned } from './metrics-server';
 import { createJobForWorker } from './k8s-adapter';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 import { runAnalyticsJobs } from '../jobs/analyticsJobs';
-import { scheduleDailyFreeQuestionReset } from '../jobs/dailyFreeQuestionReset';
+import { scheduleFreeQuestionReset } from '../jobs/freeQuestionReset';
 // Register job definitions for orchestrator/worker processes only
 import '../lib/jobs/registerJobs';
 
@@ -282,7 +282,7 @@ async function main() {
   try {
     const enableFreeQuestionReset = process.env.ORCHESTRATOR_ENABLE_FREE_RESET !== '0';
     if (enableFreeQuestionReset) {
-      scheduleDailyFreeQuestionReset();
+      scheduleFreeQuestionReset();
     }
   } catch (e) {
     logger.error(

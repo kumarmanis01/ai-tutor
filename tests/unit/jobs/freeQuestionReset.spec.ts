@@ -3,7 +3,7 @@
  * - Unit tests for weekly free question reset job (freeQuestionsCount).
  *
  * LINKED UNIT TEST:
- * - tests/unit/jobs/dailyFreeQuestionReset.spec.ts
+ * - tests/unit/jobs/freeQuestionReset.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
@@ -32,16 +32,16 @@ jest.mock('@/lib/logger', () => ({
   logger: { info: loggerInfoMock, error: loggerErrorMock },
 }));
 
-import { runWeeklyFreeQuestionReset } from '@/jobs/dailyFreeQuestionReset';
+import { runFreeQuestionReset } from '@/jobs/freeQuestionReset';
 
-describe('runWeeklyFreeQuestionReset', () => {
+describe('runFreeQuestionReset', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('resets freeQuestionsCount for eligible users', async () => {
     updateManyMock.mockResolvedValueOnce({ count: 5 });
-    const result = await runWeeklyFreeQuestionReset();
+    const result = await runFreeQuestionReset();
     expect(result.success).toBe(true);
     expect(result.usersUpdated).toBe(5);
     expect(loggerInfoMock).toHaveBeenCalledWith(
@@ -53,7 +53,7 @@ describe('runWeeklyFreeQuestionReset', () => {
   it('handles lock skip', async () => {
     const { acquireJobLock } = require('@/jobs/jobLock');
     acquireJobLock.mockResolvedValueOnce({ skipped: true, reason: 'locked' });
-    const result = await runWeeklyFreeQuestionReset();
+    const result = await runFreeQuestionReset();
     expect(result.success).toBe(false);
     expect(result.skipped).toBe(true);
     expect(result.reason).toBe('locked');
@@ -61,7 +61,7 @@ describe('runWeeklyFreeQuestionReset', () => {
 
   it('handles errors gracefully', async () => {
     updateManyMock.mockRejectedValueOnce(new Error('db error'));
-    const result = await runWeeklyFreeQuestionReset();
+    const result = await runFreeQuestionReset();
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/db error/);
     expect(loggerErrorMock).toHaveBeenCalledWith(

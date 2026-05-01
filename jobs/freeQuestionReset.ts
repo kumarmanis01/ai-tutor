@@ -3,7 +3,7 @@
  * - Weekly job to reset free question counts (freeQuestionsCount) for all non-premium users every 7 days (Sunday 4 AM UTC).
  *
  * LINKED UNIT TEST:
- * - tests/unit/jobs/dailyFreeQuestionReset.spec.ts
+ * - tests/unit/jobs/freeQuestionReset.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
@@ -18,9 +18,9 @@ import logAuditEvent from '@/lib/audit/log';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
-const CLASS_NAME = 'WeeklyFreeQuestionReset';
-const JOB_NAME = 'weekly_free_question_reset';
-const WEEKLY_FREE_LIMIT = 5; // Example: 3 per day * 7, adjust as needed
+const CLASS_NAME = 'FreeQuestionReset';
+const JOB_NAME = 'free_question_reset';
+const FREE_QUESTION_LIMIT = 5; // Example: 5 questions per week
 
 /**
  * Result of running the daily reset job.
@@ -40,7 +40,7 @@ export interface DailyResetResult {
  *
  * Premium users (those with active subscriptions) are excluded.
  */
-export async function runWeeklyFreeQuestionReset(): Promise<DailyResetResult> {
+export async function runFreeQuestionReset(): Promise<DailyResetResult> {
   const started = Date.now();
   let lockAcquired = false;
 
@@ -73,7 +73,7 @@ export async function runWeeklyFreeQuestionReset(): Promise<DailyResetResult> {
 
     logger.info('Starting weekly free question reset job', {
       className: CLASS_NAME,
-      methodName: 'runWeeklyFreeQuestionReset',
+      methodName: 'runFreeQuestionReset',
     });
 
     // Find all users who don't have an active premium subscription
@@ -89,11 +89,11 @@ export async function runWeeklyFreeQuestionReset(): Promise<DailyResetResult> {
           },
         },
         freeQuestionsCount: {
-          lt: WEEKLY_FREE_LIMIT,
+          lt: FREE_QUESTION_LIMIT,
         },
       },
       data: {
-        freeQuestionsCount: WEEKLY_FREE_LIMIT,
+        freeQuestionsCount: FREE_QUESTION_LIMIT,
       },
     });
 
@@ -101,7 +101,7 @@ export async function runWeeklyFreeQuestionReset(): Promise<DailyResetResult> {
 
     logger.info('Weekly free question reset completed', {
       className: CLASS_NAME,
-      methodName: 'runWeeklyFreeQuestionReset',
+      methodName: 'runFreeQuestionReset',
       usersUpdated: result.count,
       durationMs,
     });
@@ -130,7 +130,7 @@ export async function runWeeklyFreeQuestionReset(): Promise<DailyResetResult> {
 
     logger.error('Weekly free question reset failed', {
       className: CLASS_NAME,
-      methodName: 'runWeeklyFreeQuestionReset',
+      methodName: 'runFreeQuestionReset',
       error: errorMsg,
       durationMs,
     });
@@ -164,7 +164,7 @@ export async function runWeeklyFreeQuestionReset(): Promise<DailyResetResult> {
  * Schedule the daily reset to run at midnight UTC.
  * Call this once during worker startup.
  */
-export function scheduleWeeklyFreeQuestionReset(): void {
+export function scheduleFreeQuestionReset(): void {
   // Schedule for Sunday 4 AM UTC
   const TARGET_DAY = 0; // Sunday (0=Sunday, 6=Saturday)
   const TARGET_HOUR = 4; // 4 AM UTC
@@ -186,18 +186,18 @@ export function scheduleWeeklyFreeQuestionReset(): void {
     try {
       logger.info('Running scheduled weekly free question reset', {
         className: CLASS_NAME,
-        methodName: 'scheduleWeeklyFreeQuestionReset',
+        methodName: 'scheduleFreeQuestionReset',
       });
-      const result = await runWeeklyFreeQuestionReset();
+      const result = await runFreeQuestionReset();
       logger.info('Scheduled weekly reset result', {
         className: CLASS_NAME,
-        methodName: 'scheduleWeeklyFreeQuestionReset',
+        methodName: 'scheduleFreeQuestionReset',
         ...result,
       });
     } catch (error) {
       logger.error('Scheduled weekly reset failed', {
         className: CLASS_NAME,
-        methodName: 'scheduleWeeklyFreeQuestionReset',
+        methodName: 'scheduleFreeQuestionReset',
         error: String(error),
       });
     }
@@ -207,7 +207,7 @@ export function scheduleWeeklyFreeQuestionReset(): void {
 
   logger.info('Weekly free question reset scheduled', {
     className: CLASS_NAME,
-    methodName: 'scheduleWeeklyFreeQuestionReset',
+    methodName: 'scheduleFreeQuestionReset',
     targetDay: TARGET_DAY,
     targetHour: TARGET_HOUR,
     firstDelaySeconds: Math.round(firstDelay / 1000),
