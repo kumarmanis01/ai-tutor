@@ -15,7 +15,7 @@
  */
 
 import HeroSection from './HeroSection';
-import AsSeenOnBar from './AsSeenOnBar';
+// import AsSeenOnBar from './AsSeenOnBar';
 import TrustBar from './TrustBar';
 import TrustMoat from './TrustMoat';
 import HowItWorksSection from './HowItWorksSection';
@@ -37,7 +37,7 @@ const LandingPageInteractive = () => {
       <FAQSchemaMarkup />
       <main className="min-h-screen">
         <HeroSection />
-        <AsSeenOnBar />
+        {/* <AsSeenOnBar /> */}
         <TrustBar />
         {/* LP-3.1: Trust Moat -- DPDP & Safety Icons Grid */}
         <TrustMoat />

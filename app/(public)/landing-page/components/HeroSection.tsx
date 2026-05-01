@@ -75,19 +75,22 @@ const HeroSection = () => {
                     />
                   ))}
                 </div>
-                <span>Trusted by 1 Lakh+ Indian families</span>
+                <span>Trusted by 8K+ Indian families</span>
               </div>
 
               <div className="space-y-3">
                 <h1 className="font-headline text-4xl font-bold leading-tight text-secondary md:text-5xl lg:text-6xl">
-                  The AI Tutor That Asks YOUR Permission First
+                  {/* The AI Tutor That Asks YOUR Permission First */}
+                  Turn doubts into confidence with Spinzy AI Tutor.
                 </h1>
                 <p className="font-body text-base leading-relaxed text-foreground/80 md:text-lg lg:max-w-2xl">
-                  Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared.
+                  {/* Spinzy Academy lets your child learn with an AI tutor while you control what they access, for how long, and what data is shared. */}
+                                  Adaptive practice, mastery checks, and guided hints that build conceptual fluency -- no shortcuts.
+                Adaptive practice, mastery checks, and guided hints that build conceptual fluency -- no shortcuts.
                 </p>
-                <p className="font-accent text-xl text-[#534AB7] md:text-2xl">
+                {/* <p className="font-accent text-xl text-[#534AB7] md:text-2xl">
                   AI Tutor जो पहले आपकी अनुमति लेता है
-                </p>
+                </p> */}
               </div>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-center lg:justify-start">

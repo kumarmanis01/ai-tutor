@@ -231,8 +231,8 @@ const HowItWorksSection = () => {
           <JourneyColumn
             accentClassName="bg-[#1D9E75]"
             iconName="UserIcon"
-            label="Parent Journey"
-            labelHi="माता-पिता की यात्रा"
+            label="Parent Journey - Coming Soon"
+            labelHi="माता-पिता की यात्रा - जल्द आ रहा है"
             steps={PARENT_STEPS}
             visible={isVisible}
           />
