@@ -22,6 +22,7 @@
 'use client';
 
 import { useState } from 'react';
+import AppImage from '@/components/UI/AppImage';
 import Icon from '@/components/UI/AppIcon';
 import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
 import LandingGoogleCtaButton from './LandingGoogleCtaButton';
@@ -128,7 +129,60 @@ const HeroSection = () => {
             </div>
 
             <div className="relative mx-auto flex w-full max-w-xl items-center justify-center lg:justify-end">
-              <div className="relative w-full rounded-[32px] border border-white/70 bg-white/70 p-4 shadow-2xl backdrop-blur-sm md:p-5">
+              <div className="relative">
+            {/* Teacher Vidya avatar badge */}
+            <div className="flex flex-col items-center mb-6">
+              <AppImage
+                src="/logos/vidya/vidya-avatar-128.png"
+                alt="Teacher Vidya"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-full object-cover ring-2 ring-[#534AB7] ring-offset-2"
+              />
+              <p className="mt-2 text-sm font-semibold text-[#534AB7]">Teacher Vidya</p>
+              <p className="text-xs text-muted-foreground">Your AI home tutor</p>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-8 border-border bg-card">
+              <AppImage
+                src="/images/landing_page_bg.jpg"
+                alt="Student learning at desk"
+                className="w-full h-auto"
+              />
+
+              <div className="absolute inset-0 bg-gradient-to-t from-secondary/20 to-transparent" />
+            </div>
+
+            <div className="hidden md:block absolute -bottom-6 -left-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[200px]">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+                  <Icon name="AcademicCapIcon" size={24} variant="solid" className="text-success" />
+                </div>
+                <div>
+                  <p className="font-headline font-bold text-2xl text-secondary">2L+</p>
+                  <p className="font-body text-xs text-muted-foreground">Questions Solved</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden md:block absolute -top-6 -right-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[180px]">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Icon
+                    name="DevicePhoneMobileIcon"
+                    size={24}
+                    variant="solid"
+                    className="text-primary"
+                  />
+                </div>
+                <div>
+                  <p className="font-headline font-bold text-lg text-secondary">₹5000</p>
+                  <p className="font-body text-xs text-muted-foreground">Phone Works!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+              {/* <div className="relative w-full rounded-[32px] border border-white/70 bg-white/70 p-4 shadow-2xl backdrop-blur-sm md:p-5">
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 520 360"
@@ -220,7 +274,7 @@ const HeroSection = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
