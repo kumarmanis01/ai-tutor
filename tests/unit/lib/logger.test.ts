@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot | add unit tests for logger features
+ * - 2026-05-01T00:00:00Z | copilot | verify Error objects serialize with name/message/stack in structured logs
  */
 
 describe('logger (unit)', () => {
@@ -171,6 +172,26 @@ describe('logger module', () => {
 
     expect(consoleWarnSpy).toHaveBeenCalled();
     expect(consoleErrSpy).toHaveBeenCalled();
+  });
+
+  it('serializes Error objects in structured context payloads', () => {
+    process.env.NODE_ENV = 'development';
+    jest.resetModules();
+    const { error } = require('@/lib/logger.js');
+
+    error('redis.failure', { err: new Error('redis unavailable') });
+
+    expect(consoleErrSpy).toHaveBeenCalled();
+    const line = consoleErrSpy.mock.calls[0][0];
+    const payload = JSON.parse(String(line));
+    expect(payload.level).toBe('error');
+    expect(payload.context.err).toMatchObject({
+      name: 'Error',
+      message: 'redis unavailable',
+    });
+    expect(typeof payload.context.err.stack === 'string' || payload.context.err.stack === null).toBe(
+      true
+    );
   });
 
   it('logger.subscribe and getLogs obey debug env', () => {

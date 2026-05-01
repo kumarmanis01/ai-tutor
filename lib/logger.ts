@@ -1,8 +1,19 @@
 /**
- * Lightweight structured logger for ai-tutor
- * - Emits JSON objects: { timestamp, level, event, context }
- * - Respects environment: debug only in development; info in production; warn/error always
- * - Sanitizes sensitive fields: JWTs, session tokens, emails, raw answers
+ * FILE OBJECTIVE:
+ * - Provide structured, sanitized logging for server and client contexts with
+ *   environment-aware level gating and API request/response debugging helpers.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/logger.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-15T00:00:00Z | copilot | add unit tests for logger features
+ * - 2026-05-01T00:00:00Z | copilot | preserve Error details in structured context logs
  */
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -13,9 +24,18 @@ function now() {
   return new Date().toISOString();
 }
 
+function toSerializableError(err: Error) {
+  return {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+  };
+}
+
 // Basic sanitizers
 function sanitizeValue(v: unknown): unknown {
   if (v == null) return v;
+  if (v instanceof Error) return toSerializableError(v);
   if (typeof v === 'string') {
     // redact JWT-looking strings (three segments separated by dots, length heuristics)
     if (/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(v)) return '[REDACTED_JWT]';
@@ -33,6 +53,7 @@ function sanitizeValue(v: unknown): unknown {
 }
 function sanitizeObject(obj: Record<string, unknown> | null | undefined): unknown {
   if (!obj) return obj;
+  if (obj instanceof Error) return toSerializableError(obj);
   const out: Record<string, unknown> | unknown[] = Array.isArray(obj) ? [] : {};
   for (const k of Object.keys(obj)) {
     const lk = k.toLowerCase();
