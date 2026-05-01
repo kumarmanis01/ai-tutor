@@ -130,6 +130,7 @@ export function useAdminAuth() {
     try {
       const res = await fetch('/api/v1/admin/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -170,6 +171,7 @@ export function useAdminAuth() {
       try {
         const res = await fetch('/api/v1/admin/auth/mfa', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             loginSessionToken,
@@ -206,6 +208,7 @@ export function useAdminAuth() {
 
     const res = await fetch('/api/v1/admin/auth/refresh', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
@@ -224,6 +227,7 @@ export function useAdminAuth() {
   const logout = useCallback(async (): Promise<void> => {
     await fetch('/api/v1/admin/auth/logout', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         accessToken: readStorage(ACCESS_TOKEN_KEY),

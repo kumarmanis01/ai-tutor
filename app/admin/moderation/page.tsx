@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-29T15:40:00Z | copilot | add resilient data fetch with missing-table handling and exported helper for unit tests
+ * - 2026-05-01T00:00:00Z | copilot | replace array transaction with callback transaction to avoid PrismaPromise array runtime error
  */
 
 import React from 'react';
@@ -36,8 +37,8 @@ export async function fetchModerationInitialData(adminUserId: string) {
   const operation = 'ModerationPage.initialDataFetch';
   try {
     const { prisma } = await import('@/lib/db');
-    const [rawItems, total] = await prisma.$transaction([
-      prisma.content.findMany({
+    const [rawItems, total] = await prisma.$transaction(async (tx) => {
+      const items = await tx.content.findMany({
         orderBy: { createdAt: 'desc' },
         take: 20,
         select: {
@@ -59,9 +60,10 @@ export async function fetchModerationInitialData(adminUserId: string) {
             orderBy: { createdAt: 'desc' },
           },
         },
-      }),
-      prisma.content.count(),
-    ]);
+      });
+      const count = await tx.content.count();
+      return [items, count] as const;
+    });
 
     const initialItems = rawItems.map((item) => {
       const job = item.generationJobs[0];

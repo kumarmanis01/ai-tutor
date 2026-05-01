@@ -48,7 +48,8 @@ export async function proxy(request: NextRequest) {
       if (pathname.startsWith('/api/admin')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      return NextResponse.redirect(new URL('/', request.url));
+      // Redirect unauthenticated admin UI requests to the admin login page
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
     return NextResponse.next();
   }
