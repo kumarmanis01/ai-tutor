@@ -8,12 +8,14 @@
  * - tests/unit/worker/scheduler.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-02-01 | claude | created scheduler for ignored recommendations job
  * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
+ * - 2026-05-01T14:40:00Z | copilot | fix monthly scheduler timer overflow by chunking long delays
  */
 
 import { logger } from '../lib/logger.js';
@@ -44,6 +46,7 @@ import { aggregateDay } from './services/analyticsAggregator.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
+import { setSafeTimeout } from './utils/safeTimer.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
@@ -492,7 +495,7 @@ async function runMisconceptionPrevalenceJob() {
   }
 
   // Schedule next run in ~30 days (approximate monthly cadence)
-  setTimeout(runMisconceptionPrevalenceJob, MONTHLY_INTERVAL_MS);
+  setSafeTimeout(runMisconceptionPrevalenceJob, MONTHLY_INTERVAL_MS);
 }
 
 /**
@@ -620,7 +623,7 @@ export async function startScheduler() {
   logger.info('scheduler.scheduled.misconceptionPrevalence', {
     firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString(),
   });
-  setTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
+  setSafeTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
 
   // Weekly rating aggregation: Sunday 6 AM UTC
   const delayWeeklyRating = msUntilNextWeeklyRun(0, 6);
