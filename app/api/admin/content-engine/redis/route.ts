@@ -1,14 +1,36 @@
+/**
+ * FILE OBJECTIVE:
+ * - Expose Redis health details for admin status surfaces with explicit admin authorization handling.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/content-engine/redis/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-01T00:00:00Z | copilot | enforce shared admin guard and return 403 on unauthorized access
+ */
+
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
-import { requireAdminOrModerator } from '@/lib/auth';
+import { requireActiveAdmin } from '@/lib/admin/guards';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function GET() {
   try {
-    await requireAdminOrModerator();
+    const guard = await requireActiveAdmin();
+    if (!guard.ok) {
+      return NextResponse.json(
+        { ok: false, error: { name: 'Error', message: 'Forbidden' } },
+        { status: 403 }
+      );
+    }
+
     const r = getRedis();
 
     const [pong, infoRaw] = await Promise.all([r.ping(), r.info().catch(() => '')]);
