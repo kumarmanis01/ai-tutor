@@ -127,8 +127,8 @@ export default function ProfileCompletionGate({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  // Show parent email + phone OTP steps only for under-DPDP_MINOR_AGE (strictly < 13).
-  // Age 14+ must NOT see these fields -- irrelevant for students above the threshold.
+  // Show parent email + phone OTP steps only for under-DPDP_MINOR_AGE.
+  // Students at or above DPDP_MINOR_AGE must not see these fields.
   const ageNum = initialValues?.age ?? null;
   const parentEmailRequired = ageNum !== null && ageNum < DPDP_MINOR_AGE;
   const showParentEmail = parentEmailRequired;

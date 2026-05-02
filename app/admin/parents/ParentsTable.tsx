@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -171,11 +172,10 @@ export function ParentsTable({ rows }: { rows: ParentRowData[] }) {
               No parents linked yet
             </p>
             <p className="text-[11px] text-gray-400 max-w-xs mb-3">
-              Parents link via the parent verification flow when a student under 13 adds a parent
-              email during onboarding.
+              {`Parents link via the parent verification flow when a student under ${DPDP_MINOR_AGE} adds a parent email during onboarding.`}
             </p>
             <div className="text-[10px] text-gray-400 space-y-0.5 text-left">
-              <p>1. Student age &lt; 13 -- parent email required</p>
+              <p>{`1. Student age < ${DPDP_MINOR_AGE} -- parent email required`}</p>
               <p>2. Parent receives OTP email -- verifies</p>
               <p>3. Link created with status &quot;active&quot;</p>
             </div>

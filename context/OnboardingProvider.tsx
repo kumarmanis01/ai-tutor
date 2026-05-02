@@ -7,6 +7,7 @@ import {
   OnboardingService,
   OnboardingValues,
 } from '@/lib/onboardingService';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { logger } from '@/lib/logger';
 
 type State = {
@@ -95,8 +96,9 @@ export function OnboardingProvider({
         // (board, grade, language, subjects) OR when firstLogin is true.
         const profileWithFirstLogin = profile as typeof profile & { firstLogin?: boolean };
         const ageNum = (profile as any).age;
-        const under18 = ageNum != null && Number(ageNum) >= 1 && Number(ageNum) < 18;
-        const needsParentEmail = under18 && !(profile as any).parentEmail?.trim?.();
+        const isMinorByDpdpAge =
+          ageNum != null && Number(ageNum) >= 1 && Number(ageNum) < DPDP_MINOR_AGE;
+        const needsParentEmail = isMinorByDpdpAge && !(profile as any).parentEmail?.trim?.();
         const needsProfile =
           !profile.board ||
           !profile.grade ||
@@ -146,8 +148,9 @@ export function OnboardingProvider({
       afterSave?: 'dashboard' | 'stay';
     }) => {
       const force = opts?.force === true;
-      const under18 = values.age != null && Number(values.age) >= 1 && Number(values.age) < 18;
-      const needsParentEmail = under18 && !values.parent_email?.trim?.();
+      const isMinorByDpdpAge =
+        values.age != null && Number(values.age) >= 1 && Number(values.age) < DPDP_MINOR_AGE;
+      const needsParentEmail = isMinorByDpdpAge && !values.parent_email?.trim?.();
       const shouldHydrate =
         force ||
         !values.name ||
@@ -175,8 +178,9 @@ export function OnboardingProvider({
   );
 
   // Profile is required (non-dismissable) when core fields are missing
-  const under18 = values.age != null && Number(values.age) >= 1 && Number(values.age) < 18;
-  const needsParentEmail = under18 && !values.parent_email?.trim?.();
+  const isMinorByDpdpAge =
+    values.age != null && Number(values.age) >= 1 && Number(values.age) < DPDP_MINOR_AGE;
+  const needsParentEmail = isMinorByDpdpAge && !values.parent_email?.trim?.();
   const needsProfileValues =
     !values.board ||
     !values.class_grade ||
@@ -188,7 +192,8 @@ export function OnboardingProvider({
 
   const isRequired =
     !!session?.user &&
-    (needsProfileValues || (values.age != null && Number(values.age) < 13 && !parentVerified));
+    (needsProfileValues ||
+      (values.age != null && Number(values.age) < DPDP_MINOR_AGE && !parentVerified));
 
   const close = useCallback(() => {
     if (isRequired && !allowDismiss) return; // Cannot dismiss when onboarding is required (unless explicitly allowed)
@@ -217,14 +222,15 @@ export function OnboardingProvider({
     if (
       v.age != null &&
       Number(v.age) >= 1 &&
-      Number(v.age) < 18 &&
+      Number(v.age) < DPDP_MINOR_AGE &&
       (!v.parent_email || !String(v.parent_email).trim() || !v.parent_email.includes('@'))
     ) {
-      errs.parent_email = 'Parent or guardian email is required for students under 18.';
+      errs.parent_email =
+        'Parent or guardian email is required for students below the DPDP minor age threshold.';
     }
-    if (v.age != null && Number(v.age) < 13 && !parentVerified) {
+    if (v.age != null && Number(v.age) < DPDP_MINOR_AGE && !parentVerified) {
       if (!v.parent_phone || !String(v.parent_phone).trim())
-        errs.parent_phone = 'Parent phone is required for under-13';
+        errs.parent_phone = `Parent phone is required for under-${DPDP_MINOR_AGE}`;
       // OTP is verified via dedicated endpoint, but we validate presence here to block bypass.
       if (!v.parent_otp || !String(v.parent_otp).trim())
         errs.parent_otp = 'Enter OTP to verify parent phone';
@@ -243,8 +249,8 @@ export function OnboardingProvider({
         throw new Error('Please fill all required fields.');
       }
 
-      // Under-13: verify parent OTP before saving profile (cannot bypass).
-      if (v.age != null && Number(v.age) < 13 && !parentVerified) {
+      // Under DPDP minor age: verify parent OTP before saving profile (cannot bypass).
+      if (v.age != null && Number(v.age) < DPDP_MINOR_AGE && !parentVerified) {
         const verifyRes = await fetch('/api/auth/parent/verify-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
