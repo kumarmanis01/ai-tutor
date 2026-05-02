@@ -23,6 +23,8 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { verifyUserAccessToken } from '@/lib/auth/token.service';
+import { sendMailSafe } from '@/lib/mailer';
+import { diagnosticSummaryEmailHtml } from '@/lib/email/templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,10 +177,32 @@ export async function POST(req: Request, context: RouteContext) {
       },
       select: {
         id: true,
+        name: true,
+        email: true,
         onboardingDiagnosticScore: true,
         onboardingPlacement: true,
       },
     });
+
+    // Send diagnostic summary email (best-effort -- never block the response).
+    if (student.email) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com';
+      sendMailSafe({
+        to: student.email,
+        subject: 'Your Spinzy diagnostic is complete!',
+        html: diagnosticSummaryEmailHtml({
+          studentName: student.name ?? 'there',
+          score,
+          total: parsed.data.answers.length,
+          placement,
+          learningMapUrl: `${appUrl}/student/learning-map`,
+        }),
+      }).catch((err: unknown) =>
+        logger.warn('diagnostic.result: summary email failed', { studentId, error: String(err) })
+      );
+    }
+
+    logger.info('diagnostic.result.saved', { event: 'diagnostic_complete', context: { studentId, score, placement } });
 
     const response = NextResponse.json({
       ok: true,

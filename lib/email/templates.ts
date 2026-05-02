@@ -759,3 +759,75 @@ export function paymentInvoiceEmailHtml(data: {
     </div>
   `;
 }
+
+/**
+ * Diagnostic summary email -- sent after the student completes the onboarding diagnostic.
+ * Includes score, placement level, and a CTA to the learning map.
+ */
+export function diagnosticSummaryEmailHtml(data: {
+  studentName: string;
+  score: number;
+  total: number;
+  placement: 'FOUNDATION' | 'STANDARD' | 'ADVANCED';
+  learningMapUrl: string;
+}): string {
+  const placementLabel =
+    data.placement === 'ADVANCED'
+      ? 'Advanced Learner'
+      : data.placement === 'STANDARD'
+        ? 'On Track'
+        : 'Building Foundations';
+  const placementColour =
+    data.placement === 'ADVANCED' ? '#1D9E75' : data.placement === 'STANDARD' ? '#534AB7' : '#BA7517';
+  const encouragement =
+    data.placement === 'ADVANCED'
+      ? 'Outstanding work! Your personalised learning plan starts at an advanced level.'
+      : data.placement === 'STANDARD'
+        ? 'Solid start! Your learning plan is calibrated to build on your strengths.'
+        : 'Great effort! Your learning plan starts with solid fundamentals to set you up for success.';
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Your diagnostic is complete!</h2>
+      <p>Hi ${data.studentName},</p>
+      <p>${encouragement}</p>
+      <div style="background:#EEEDFE;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
+        <p style="margin:0 0 4px;font-size:14px;color:#534AB7;">Your score</p>
+        <p style="margin:0;font-size:32px;font-weight:700;color:#534AB7;">${data.score}/${data.total}</p>
+        <p style="margin:8px 0 0;font-size:15px;font-weight:600;color:${placementColour};">
+          ${placementLabel}
+        </p>
+      </div>
+      <p>Teacher Vidya has prepared your personalised learning map. Tap below to start learning!</p>
+      <a href="${data.learningMapUrl}" style="${BTN}">Go to my Learning Map</a>
+      ${FOOTER}
+    </div>
+  `;
+}
+
+/**
+ * Content generation notification email -- sent when on-demand AI content generation completes.
+ */
+export function contentGenerationReadyEmailHtml(data: {
+  studentName: string;
+  topic: string;
+  contentUrl: string;
+}): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Your notes on "${data.topic}" are ready!</h2>
+      <p>Hi ${data.studentName},</p>
+      <p>
+        Teacher Vidya has finished creating personalised notes on
+        <strong>${data.topic}</strong> for you.
+        Tap below to start reading and practising.
+      </p>
+      <a href="${data.contentUrl}" style="${BTN}">Read my notes</a>
+      <p style="color:#888;font-size:13px;margin-top:16px;">
+        Questions? Reply to this email or reach us at support@spinzyacademy.com
+      </p>
+      ${FOOTER}
+    </div>
+  `;
+}

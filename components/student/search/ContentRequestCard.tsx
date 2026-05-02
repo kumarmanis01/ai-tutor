@@ -30,6 +30,7 @@ type ContentRequestCardProps = {
 };
 
 type GenerationState = 'idle' | 'checking' | 'pending' | 'requesting' | 'done' | 'error';
+type PremiumState = 'checking' | 'premium' | 'free';
 
 /**
  * S3.1 -- Shown when content search returns 0 results.
@@ -42,6 +43,22 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
   const [state, setState] = useState<GenerationState>('checking');
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [premiumState, setPremiumState] = useState<PremiumState>('checking');
+
+  // Check premium subscription status on mount
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/subscription/status')
+      .then(async (res) => {
+        if (cancelled) return;
+        const data = (await res.json()) as { isPremium?: boolean };
+        if (!cancelled) setPremiumState(data.isPremium ? 'premium' : 'free');
+      })
+      .catch(() => {
+        if (!cancelled) setPremiumState('free');
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   // Check if there is already a pending/in-progress job for this topic
   useEffect(() => {
@@ -126,7 +143,25 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
         Our AI Teacher can create them for you in about 30 seconds.
       </p>
 
-      {isPending ? (
+      {/* Premium gate: content generation is a paid feature */}
+      {premiumState === 'free' ? (
+        <div className="mt-4 rounded-xl border border-[#534AB7]/30 bg-white px-4 py-3">
+          <p className="text-sm font-semibold text-[#3C3489]">
+            AI note generation is a Premium feature. 👑
+          </p>
+          <p className="mt-1 text-xs text-[#534AB7]">
+            Upgrade to Spinzy Premium (from ₹399/month) to generate notes on any topic.
+          </p>
+          <Link
+            href="/subscribe"
+            className="mt-3 flex min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4239a0]"
+          >
+            Upgrade to Premium
+          </Link>
+        </div>
+      ) : premiumState === 'checking' ? (
+        <div className="mt-4 h-12 animate-pulse rounded-xl bg-[#534AB7]/20" />
+      ) : isPending ? (
         // Disabled buttons do not fire click events; use a Link so the student can
         // tap through to the in-progress generation page if a jobId is available.
         pendingJobId ? (
@@ -162,9 +197,11 @@ export function ContentRequestCard({ query, grade, board, subject }: ContentRequ
         <p className="mt-2 text-xs text-[#E24B4A]">{errorMsg}. Please try again.</p>
       )}
 
-      <p className="mt-3 text-xs text-[#534AB7]/70">
-        Generated content is AI-drafted and reviewed by teachers.
-      </p>
+      {premiumState !== 'free' && (
+        <p className="mt-3 text-xs text-[#534AB7]/70">
+          Generated content is AI-drafted and reviewed by teachers.
+        </p>
+      )}
     </div>
   );
 }
