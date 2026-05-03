@@ -65,7 +65,7 @@ export default async function StudentOnboardingPage() {
       select: { studyDaysPerWeek: true },
     });
     if (existing?.studyDaysPerWeek != null) {
-      redirect('/student/learning-map');
+      redirect('/dashboard');
     }
     redirect('/dashboard');
   }

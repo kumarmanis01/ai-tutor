@@ -45,7 +45,7 @@ type SearchResultsProps = {
 function ResultItem({ result }: { result: SearchResult }) {
   const href =
     result.type === 'topic'
-      ? `/student/learning-map/topic/${result.topicId ?? result.id}`
+      ? `/session/${result.topicId ?? result.id}`
       : `/student/learning-map/content/${result.contentId ?? result.id}`;
 
   const badge =

@@ -127,12 +127,19 @@ export default function ProfileCompletionGate({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  // Show parent email + phone OTP steps only for under-DPDP_MINOR_AGE.
-  // Students at or above DPDP_MINOR_AGE must not see these fields.
+  // Grade-based DPDP proxy: Grade 1-7 students are typically under 13.
+  // Grade 8+ students are typically 13 or above (above DPDP threshold).
+  // If grade is unknown, fall back to age if available.
+  const gradeNum = initialValues?.grade ? parseInt(String(initialValues.grade), 10) : 0;
   const ageNum = initialValues?.age ?? null;
-  const parentEmailRequired = ageNum !== null && ageNum < DPDP_MINOR_AGE;
-  const showParentEmail = parentEmailRequired;
-  const showParentPhone = parentEmailRequired;
+  const isUnderDpdp =
+    (Number.isFinite(gradeNum) && gradeNum >= 1 && gradeNum <= 7) ||
+    (ageNum !== null && ageNum < DPDP_MINOR_AGE);
+  const parentEmailRequired = isUnderDpdp;
+  const showParentEmail = isUnderDpdp;
+  // parentPhone is collected but OTP verification is not required to proceed --
+  // consent is requested via email after profile save.
+  const showParentPhone = isUnderDpdp;
 
   const steps = buildSteps(showParentEmail, showParentPhone);
 

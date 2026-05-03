@@ -195,7 +195,7 @@ export async function POST(req: Request, context: RouteContext) {
           score,
           total: parsed.data.answers.length,
           placement,
-          learningMapUrl: `${appUrl}/student/learning-map`,
+          learningMapUrl: `${appUrl}/dashboard`,
         }),
       }).catch((err: unknown) =>
         logger.warn('diagnostic.result: summary email failed', { studentId, error: String(err) })

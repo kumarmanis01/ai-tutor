@@ -93,12 +93,18 @@ export default async function DiagnosticSummaryPage({
         ))}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Link
+          href="/dashboard"
+          className="inline-flex min-h-[44px] items-center justify-center px-6 py-2 rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] transition-colors"
+        >
+          Go to Dashboard →
+        </Link>
         <Link
           href="/student/onboarding/exam-date"
-          className="inline-flex items-center px-4 py-2 rounded-lg bg-[#534AB7] text-white text-sm font-medium hover:bg-[#4840a3]"
+          className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-800 transition-colors"
         >
-          Start learning →
+          Set exam date
         </Link>
       </div>
     </main>
