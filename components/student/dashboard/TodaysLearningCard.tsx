@@ -339,7 +339,7 @@ function AheadState() {
           All topics for this week are done. Take a well-earned rest or explore something new.
         </p>
         <Link
-          href="/student/learning-map"
+          href="/dashboard"
           className="inline-flex min-h-[44px] items-center rounded-xl border border-[#1D9E75] text-[#1D9E75] dark:text-[#1D9E75] px-5 text-sm font-semibold hover:bg-[#1D9E75]/10 transition-colors"
         >
           Explore topics →
@@ -363,7 +363,7 @@ function PlanLoadingState() {
           minutes -- refresh this page to check if your first session is ready.
         </p>
         <Link
-          href="/student/learning-map"
+          href="/dashboard"
           className="inline-flex min-h-[44px] items-center rounded-xl border border-[#534AB7] text-[#534AB7] dark:text-indigo-300 px-5 text-sm font-semibold hover:bg-[#534AB7]/10 transition-colors"
         >
           Browse curriculum →

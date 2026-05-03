@@ -31,6 +31,7 @@ import { SessionContainer } from '@/components/session/SessionContainer';
 import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard';
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor';
 import AITutorSessionShell from '@/components/student/session/AITutorSessionShell';
+import { ReportContentButton } from '@/components/session/ReportContentButton';
 
 interface Props {
   params: Promise<{ topicId: string }>;
@@ -110,14 +111,19 @@ export default async function SessionPage({ params, searchParams }: Props) {
   const estimatedTimeMin = time ? Number(time) : undefined;
 
   return (
-    <SessionContainer
-      topicId={id}
-      reasonLabel={reasonLabel}
-      estimatedTimeMin={estimatedTimeMin}
-      initialFocus={{
-        focus: (focus as string) ?? undefined,
-        itemId: (itemId as string) ?? undefined,
-      }}
-    />
+    <>
+      <div className="flex justify-end px-4 pt-3">
+        <ReportContentButton topicId={id} />
+      </div>
+      <SessionContainer
+        topicId={id}
+        reasonLabel={reasonLabel}
+        estimatedTimeMin={estimatedTimeMin}
+        initialFocus={{
+          focus: (focus as string) ?? undefined,
+          itemId: (itemId as string) ?? undefined,
+        }}
+      />
+    </>
   );
 }

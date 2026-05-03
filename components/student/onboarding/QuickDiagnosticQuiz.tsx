@@ -323,7 +323,7 @@ export default function QuickDiagnosticQuiz({
         {!isExploreMode && (
           <button
             type="button"
-            onClick={() => router.push('/student/learning-map')}
+            onClick={() => router.push('/dashboard')}
             className="min-h-[44px] px-6 rounded-xl bg-[#534AB7] text-white text-sm font-semibold"
           >
             Skip and start learning

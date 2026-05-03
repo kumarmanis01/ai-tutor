@@ -145,7 +145,7 @@ export default function ExamDatePage() {
       const diagnosticReady: boolean = json?.diagnosticReady ?? true;
 
       if (!firstSubjectId) {
-        router.push('/student/learning-map');
+        router.push('/dashboard');
         return;
       }
 
@@ -157,7 +157,7 @@ export default function ExamDatePage() {
       }
 
       // router.push('/student/onboarding/diagnostic');
-      router.push('/student/learning-map');
+      router.push('/dashboard');
     } catch {
       setError('Network error. Please check your connection.');
     } finally {

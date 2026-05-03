@@ -51,6 +51,8 @@ import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
 import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
+import TopicSearchWidget from '@/app/(student)/dashboard/components/TopicSearchWidget'
+import GamificationHeroCard from '@/components/student/dashboard/GamificationHeroCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,6 +96,8 @@ export default async function StudentHomeDashboardPage() {
         email: true,
         totalXp: true,
         level: true,
+        currentStreak: true,
+        longestStreak: true,
         subscriptionStatus: true,
         subjects: true,
         board: true,
@@ -367,6 +371,9 @@ export default async function StudentHomeDashboardPage() {
     redirect(`/diagnostic/summary?subjects=${encodeURIComponent(ids)}`)
   }
 
+  const userGrade = user?.grade ? parseInt(String(user.grade), 10) || 0 : 0
+  const userBoard = user?.board ?? ''
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
@@ -391,10 +398,38 @@ export default async function StudentHomeDashboardPage() {
       <div className="flex flex-col gap-5 md:flex-row md:items-start">
         {/* ── Left column (60%) ──────────────────────────────────────────── */}
         <div className="flex flex-col gap-5 md:w-3/5">
-          {/* F-STU-032 AC-03: Primary CTA */}
+          {/* Gamification hero: XP, streak, weekly goal, study buddy */}
+          {!isCrunchMode && (
+            <GamificationHeroCard
+              totalXp={user.totalXp}
+              level={user.level}
+              currentStreak={user.currentStreak}
+              longestStreak={user.longestStreak}
+              weeklySessionCount={weeklyActivity.length}
+            />
+          )}
 
+          {/* F-STU-032 AC-03: Primary CTA */}
           <TodaysLearningCard {...cardProps} />
           {!isCrunchMode && <SecondaryStartOptions todaysConceptId={cardProps.recommendation?.conceptId} />}
+
+          {/* Topic search */}
+          <section aria-label="Search topics">
+            <TopicSearchWidget grade={userGrade} board={userBoard} />
+          </section>
+
+          {/* On-demand notes quick link */}
+          <Link
+            href="/dashboard/notes"
+            className="flex min-h-[52px] items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 hover:bg-[#EEEDFE] hover:border-[#534AB7]/30 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-[#534AB7]/10"
+          >
+            <span className="text-xl" aria-hidden="true">📝</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">On-demand Notes</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Quick-reference notes for any topic</p>
+            </div>
+            <span className="ml-auto text-gray-300 dark:text-gray-600" aria-hidden="true">›</span>
+          </Link>
 
           {/* F-STU-031: XP + Level + source breakdown (hidden in crunch mode) */}
           {/* {!isCrunchMode && (

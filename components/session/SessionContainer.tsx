@@ -143,7 +143,7 @@ export function SessionContainer({
               : (error ?? 'Unable to load this session.')}
           </p>
           <Link
-            href="/student/learning-map"
+            href="/dashboard"
             className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
           >
             Return to Dashboard

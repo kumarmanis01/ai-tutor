@@ -42,7 +42,7 @@ export default async function DiagnosticPage() {
 
   // If diagnostic already completed, skip to learning map.
   if (user.onboardingDiagnosticCompletedAt) {
-    redirect('/student/learning-map');
+    redirect('/dashboard');
   }
 
   const grade = user.grade ? parseInt(String(user.grade), 10) : 0;
