@@ -185,6 +185,7 @@ model User {
   notifications               Notification[]
   /// v3 MVP: daily streak history log
   streakHistory               StreakHistory[]
+  onDemandQuizRequests        OnDemandQuizRequest[]
 }
 
 model PaymentOrder {
@@ -1837,6 +1838,28 @@ model GeneratedQuestion {
   test        GeneratedTest @relation(fields: [testId], references: [id])
 }
 
+/// On-demand quiz requested by a student for a scope (topic/chapter/subject/studied_so_far).
+model OnDemandQuizRequest {
+  id            String          @id @default(cuid())
+  userId        String
+  scope         QuizScope
+  topicId       String?
+  chapterId     String?
+  subjectId     String?
+  difficulty    DifficultyLevel @default(medium)
+  language      LanguageCode    @default(en)
+  questionCount Int             @default(10)
+  status        QuizGenStatus   @default(pending)
+  resultJson    Json?
+  error         String?
+  requestedAt   DateTime        @default(now())
+  completedAt   DateTime?
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, requestedAt])
+  @@index([status])
+}
+
 model AIContentLog {
   id           String       @id @default(cuid())
   model        String
@@ -2364,6 +2387,20 @@ enum DifficultyLevel {
   easy
   medium
   hard
+}
+
+enum QuizScope {
+  topic
+  chapter
+  subject
+  studied_so_far
+}
+
+enum QuizGenStatus {
+  pending
+  processing
+  completed
+  failed
 }
 
 enum MasteryLevel {
