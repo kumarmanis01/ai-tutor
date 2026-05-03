@@ -16,7 +16,7 @@
  */
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { StudentGreeting } from './StudentGreeting';
 import { WelcomeBanner } from './WelcomeBanner';
 import { RecoveryBanner } from './RecoveryBanner';
@@ -28,6 +28,8 @@ import { RecentlyStudied } from '@/components/dashboard/home/RecentlyStudied';
 import { ReviewQueueCard } from '@/components/dashboard/home/ReviewQueueCard';
 import { WeakTopicsCard } from '@/components/dashboard/home/WeakTopicsCard';
 import { UpcomingTopics } from '@/components/dashboard/home/UpcomingTopics';
+import { BrowseTopicsDrawer } from './BrowseTopicsDrawer';
+import { SurpriseMeButton } from './SurpriseMeButton';
 
 interface HomeTabProps {
   /** Callback when user clicks on a learning item to start/resume */
@@ -44,6 +46,8 @@ interface HomeTabProps {
  * - Child-safe design: Age-appropriate language and visuals
  */
 export function HomeTab({ onStartLearning }: HomeTabProps) {
+  const [browseOpen, setBrowseOpen] = useState(false);
+
   return (
     <div className="space-y-6 pb-24 px-4 sm:px-6">
       {/* Greeting + streak badge */}
@@ -59,6 +63,24 @@ export function HomeTab({ onStartLearning }: HomeTabProps) {
       <section aria-labelledby="todays-learning-heading">
         <TodaysLearningCard onStartLearning={onStartLearning} />
       </section>
+
+      {/* Secondary actions: Browse Topics + Surprise Me */}
+      <section aria-label="Explore more topics" className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => setBrowseOpen(true)}
+          className="flex flex-col items-center justify-center gap-1.5 min-h-[72px] px-3 py-4 rounded-2xl
+                     border-2 border-dashed border-[#534AB7]/30 hover:border-[#534AB7]/60
+                     bg-[#EEEDFE]/40 hover:bg-[#EEEDFE]/70 transition-all active:scale-95"
+        >
+          <span className="text-xl">🗺️</span>
+          <span className="text-xs font-semibold text-[#534AB7]">Browse Topics</span>
+        </button>
+
+        <SurpriseMeButton />
+      </section>
+
+      {/* Browse Topics Drawer (portal-rendered) */}
+      <BrowseTopicsDrawer open={browseOpen} onClose={() => setBrowseOpen(false)} />
 
       {/* Visual streak calendar (Gap #10) */}
       <section aria-label="Weekly activity calendar">

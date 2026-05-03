@@ -10,6 +10,8 @@ import {
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
 import { logger } from '@/lib/logger';
 import { recordSessionEvent } from '@/lib/session/sessionEvents';
+import { notifyParentOnActivity } from '@/lib/notifications/parentActivityAlert';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +69,19 @@ export async function POST(req: Request) {
       eventType: 'SESSION_COMPLETED',
       metadata: { studentId: user.id, topicId: view.topicId },
     });
+
+    // Fire-and-forget: notify parent that student completed a session
+    prisma.topicDef
+      .findUnique({ where: { id: view.topicId }, select: { name: true, chapter: { select: { subject: { select: { name: true } } } } } })
+      .then((topic) => {
+        notifyParentOnActivity({
+          studentId: user.id,
+          activityType: 'session_completed',
+          topicName: topic?.name ?? undefined,
+          subjectName: topic?.chapter?.subject?.name ?? undefined,
+        });
+      })
+      .catch(() => undefined);
 
     res = NextResponse.json({ session: view, phase, content });
   } catch (err) {
