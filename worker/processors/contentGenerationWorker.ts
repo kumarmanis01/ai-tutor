@@ -23,6 +23,8 @@ import { getSharedConnection, getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 import { emitContentGenerated } from '@/lib/socket/server';
 import { generationLogService } from '@/lib/ai/generationLogService';
+import { sendMailSafe } from '@/lib/mailer';
+import { contentGenerationReadyEmailHtml } from '@/lib/email/templates';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -215,6 +217,48 @@ async function processContentGenerationJob(job: Job<ContentGenerationJobData>): 
     logger.warn('ContentGenerationWorker: socket notify failed', {
       jobId,
       error: String(notifyErr),
+    });
+  }
+
+  // Send email notification to all subscribers (best-effort -- never block job completion).
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com';
+    const contentUrl = `${appUrl}/student/learning-map/content/${content.id}`;
+    const subscriberIds = (
+      await prisma.generationJob.findUnique({
+        where: { id: jobId },
+        select: { subscriberIds: true },
+      })
+    )?.subscriberIds ?? [];
+
+    if (subscriberIds.length > 0) {
+      const subscribers = await prisma.user.findMany({
+        where: { id: { in: subscriberIds } },
+        select: { id: true, name: true, email: true },
+      });
+      for (const sub of subscribers) {
+        if (!sub.email) continue;
+        void sendMailSafe({
+          to: sub.email,
+          subject: `Your notes on "${job.data.topic}" are ready!`,
+          html: contentGenerationReadyEmailHtml({
+            studentName: sub.name ?? 'there',
+            topic: job.data.topic,
+            contentUrl,
+          }),
+        }).catch((err: unknown) =>
+          logger.warn('ContentGenerationWorker: notification email failed', {
+            jobId,
+            userId: sub.id,
+            error: String(err),
+          })
+        );
+      }
+    }
+  } catch (emailErr) {
+    logger.warn('ContentGenerationWorker: email notification setup failed', {
+      jobId,
+      error: String(emailErr),
     });
   }
 

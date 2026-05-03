@@ -26,6 +26,7 @@ import {
   clearDedup,
   addSubscriber,
 } from '@/lib/content-generation/deduplication.service';
+import { isPremiumUser } from '@/lib/subscription';
 import { logger } from '@/lib/logger';
 
 // ── POST handler ──────────────────────────────────────────────────────────────
@@ -90,6 +91,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const requesterId = session.user.id;
+
+  // Content generation is a premium feature -- reject free-tier students.
+  const hasPremium = await isPremiumUser(requesterId);
+  if (!hasPremium) {
+    return NextResponse.json(
+      { code: 'PREMIUM_REQUIRED', message: 'Content generation requires an active paid plan' },
+      { status: 403 }
+    );
+  }
+
   const normalizedTopic = normalizeTopic(topic);
 
   // Check for duplicate job within 15-minute window
@@ -172,6 +183,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  logger.info('Content generation job created', { jobId: dbJob.id, topic, requesterId });
+  logger.info('on_demand_generation.requested', {
+    event: 'content_generation_requested',
+    context: { jobId: dbJob.id, topic, subject, grade, board, requesterId },
+  });
   return NextResponse.json({ jobId: dbJob.id, isDuplicate: false }, { status: 201 });
 }
