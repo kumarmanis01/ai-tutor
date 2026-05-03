@@ -20,3 +20,5 @@ export { RecoveryBanner } from './RecoveryBanner';
 export { TodaysLearningCard } from './TodaysLearningCard';
 export { ContinueWhereLeftOff } from './ContinueWhereLeftOff';
 export { WeeklyProgressSnapshot } from './WeeklyProgressSnapshot';
+export { BrowseTopicsDrawer } from './BrowseTopicsDrawer';
+export { SurpriseMeButton } from './SurpriseMeButton';

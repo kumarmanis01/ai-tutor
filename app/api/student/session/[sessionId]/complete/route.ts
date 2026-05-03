@@ -6,6 +6,7 @@ import { updateStreak } from '@/lib/student/streak';
 import { buildSessionInsight } from '@/lib/student/sessionInsight';
 import { checkSessionBadges } from '@/lib/student/badges';
 import { logger } from '@/lib/logger';
+import { notifyParentOnActivity } from '@/lib/notifications/parentActivityAlert';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,6 +136,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       accuracy,
       avgTimeSeconds,
     });
+
+    // Fire-and-forget: notify parent that student completed a session
+    notifyParentOnActivity({
+      studentId: userId,
+      activityType: 'session_completed',
+      topicName: conceptName ?? undefined,
+      xpEarned,
+      sessionDurationMinutes,
+    }).catch(() => undefined);
 
     const res = NextResponse.json(
       {

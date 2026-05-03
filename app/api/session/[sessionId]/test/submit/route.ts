@@ -37,6 +37,7 @@ import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { recordSessionEvents } from '@/lib/session/sessionEvents';
 import { normalizeAnswer } from '@/lib/tests';
 import { logger } from '@/lib/logger';
+import { notifyParentOnActivity } from '@/lib/notifications/parentActivityAlert';
 
 export const dynamic = 'force-dynamic';
 
@@ -278,6 +279,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       }))
     );
   }
+
+  // Fire-and-forget: notify parent about quiz completion
+  prisma.topicDef
+    .findUnique({
+      where: { id: session.topicId },
+      select: { name: true, chapter: { select: { subject: { select: { name: true } } } } },
+    })
+    .then((topic) => {
+      notifyParentOnActivity({
+        studentId: user.id,
+        activityType: 'quiz_completed',
+        topicName: topic?.name ?? undefined,
+        subjectName: topic?.chapter?.subject?.name ?? undefined,
+        scorePercent: Math.round(score * 100),
+      });
+    })
+    .catch(() => undefined);
 
   res = NextResponse.json({
     score,
