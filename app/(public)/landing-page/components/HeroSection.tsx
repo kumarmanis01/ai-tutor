@@ -22,10 +22,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import AppImage from '@/components/UI/AppImage';
 import Icon from '@/components/UI/AppIcon';
 import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
-import LandingGoogleCtaButton from './LandingGoogleCtaButton';
 import VideoModal from './VideoModal';
 
 const TRUST_BADGES = [
@@ -94,13 +94,13 @@ const HeroSection = () => {
               </div>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-center lg:justify-start">
-                <LandingGoogleCtaButton
-                  callbackUrl="/parent-onboarding"
-                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-4 text-base font-bold text-white shadow-lg transition-colors hover:bg-[#e85f2d] sm:w-auto"
-                  errorClassName="mt-3 text-sm font-medium text-[#E24B4A] sm:max-w-sm"
-                  icon={<Icon name="SparklesIcon" size={20} variant="solid" />}
-                  label="Start Free -- Sign in with Google"
-                />
+                <Link
+                  href="/auth/signin"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#534AB7] px-6 py-4 text-base font-bold text-white shadow-lg transition-colors hover:bg-[#4338A0] sm:w-auto"
+                >
+                  <Icon name="SparklesIcon" size={20} variant="solid" />
+                  Start Here
+                </Link>
                 <button
                   type="button"
                   onClick={() => setVideoOpen(true)}

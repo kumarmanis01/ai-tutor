@@ -13,15 +13,14 @@ export default async function HomePage() {
   const session = await requireActiveSession();
   if (session) {
     const role = (session.user as any)?.role;
-    // Existing parent: go straight to parent dashboard.
     if (role === 'parent') {
       redirect('/parent/dashboard');
     }
-    // Student who completed onboarding: go to learning map.
     if ((session.user as any)?.onboardingComplete) {
-      // redirect('/student/learning-map');
-         redirect('/dashboard');
+      redirect('/dashboard');
     }
+    // Logged-in user with no completed onboarding: send to role selection.
+    redirect('/select-role');
   }
   return <LandingPageInteractive />;
 }
