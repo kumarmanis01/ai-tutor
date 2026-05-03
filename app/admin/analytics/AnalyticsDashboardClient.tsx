@@ -27,6 +27,7 @@ type MetricValue = {
   suffix?: string;
   trend?: string | null;
   label: string;
+  sparkline?: number[];
 };
 
 type Metrics = {
@@ -148,38 +149,45 @@ export function AnalyticsDashboardClient() {
             label={metrics.totalAccounts.label}
             value={metrics.totalAccounts.value}
             trend={metrics.totalAccounts.trend}
+            sparkline={metrics.totalAccounts.sparkline}
           />
           <MetricCard
             label={metrics.activeUsers.label}
             value={metrics.activeUsers.value}
             trend={metrics.activeUsers.trend}
+            sparkline={metrics.activeUsers.sparkline}
           />
           <MetricCard
             label={metrics.newRegistrations.label}
             value={metrics.newRegistrations.value}
             trend={metrics.newRegistrations.trend}
+            sparkline={metrics.newRegistrations.sparkline}
           />
           <MetricCard
             label={metrics.premiumConversion.label}
             value={metrics.premiumConversion.value}
             suffix={metrics.premiumConversion.suffix}
             trend={metrics.premiumConversion.trend}
+            sparkline={metrics.premiumConversion.sparkline}
           />
           <MetricCard
             label={metrics.contentGenerated.label}
             value={metrics.contentGenerated.value}
             trend={metrics.contentGenerated.trend}
+            sparkline={metrics.contentGenerated.sparkline}
           />
           <MetricCard
             label={metrics.approvalRate.label}
             value={metrics.approvalRate.value}
             suffix={metrics.approvalRate.suffix}
             trend={metrics.approvalRate.trend}
+            sparkline={metrics.approvalRate.sparkline}
           />
           <MetricCard
             label={metrics.flaggedContent.label}
             value={metrics.flaggedContent.value}
             trend={metrics.flaggedContent.trend}
+            sparkline={metrics.flaggedContent.sparkline}
           />
         </div>
       ) : null}
