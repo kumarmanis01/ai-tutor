@@ -74,6 +74,7 @@ type StepKey =
   | 'language'
   | 'board'
   | 'grade'
+  | 'dateOfBirth'
   | 'subjects'
   | 'schoolName'
   | 'whatsappPhone'
@@ -85,6 +86,7 @@ function buildSteps(showParentEmail: boolean, showParentPhone: boolean): StepKey
     'language',
     'board',
     'grade',
+    'dateOfBirth',
     'subjects',
     'schoolName',
     'whatsappPhone',
@@ -92,6 +94,17 @@ function buildSteps(showParentEmail: boolean, showParentPhone: boolean): StepKey
   if (showParentEmail) steps.push('parentEmail');
   if (showParentPhone) steps.push('parentPhone');
   return steps;
+}
+
+function computeAgeFromDobStr(dobStr: string): number | null {
+  if (!dobStr) return null;
+  const dob = new Date(dobStr);
+  if (isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
 }
 
 function parseGrade(raw: string | null | undefined): number {
@@ -105,6 +118,8 @@ function getInitialStep(iv: StudentProfileData | undefined, steps: StepKey[]): n
     language: !iv.language,
     board: !iv.board,
     grade: !iv.grade,
+    // DOB is always required -- new field, so existing users will land here on re-entry
+    dateOfBirth: true,
     subjects: !Array.isArray(iv.subjects) || iv.subjects.length === 0,
     // whatsappPhone is optional -- never blocks step progression
     whatsappPhone: false,
@@ -127,29 +142,30 @@ export default function ProfileCompletionGate({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  // Grade-based DPDP proxy: Grade 1-7 students are typically under 13.
-  // Grade 8+ students are typically 13 or above (above DPDP threshold).
-  // If grade is unknown, fall back to age if available.
-  const gradeNum = initialValues?.grade ? parseInt(String(initialValues.grade), 10) : 0;
-  const ageNum = initialValues?.age ?? null;
-  const isUnderDpdp =
-    (Number.isFinite(gradeNum) && gradeNum >= 1 && gradeNum <= 7) ||
-    (ageNum !== null && ageNum < DPDP_MINOR_AGE);
-  const parentEmailRequired = isUnderDpdp;
-  const showParentEmail = isUnderDpdp;
-  // parentPhone is collected but OTP verification is not required to proceed --
-  // consent is requested via email after profile save.
-  const showParentPhone = isUnderDpdp;
-
-  const steps = buildSteps(showParentEmail, showParentPhone);
-
   // Pre-populate state from server-side profile data
-  const [step, setStep] = useState(() => getInitialStep(initialValues, steps));
   const [language, setLanguage] = useState<'en' | 'hi'>(
     (initialValues?.language as 'en' | 'hi' | null) === 'hi' ? 'hi' : 'en'
   );
   const [board, setBoard] = useState(initialValues?.board ?? '');
   const [grade, setGrade] = useState(() => parseGrade(initialValues?.grade));
+  // dob: ISO date string "YYYY-MM-DD". Empty string = not yet entered.
+  const [dob, setDob] = useState('');
+
+  // DPDP determination: prefer entered DOB age; fall back to grade proxy.
+  // This is reactive -- re-computed on every render as dob/grade changes.
+  const dobAge = computeAgeFromDobStr(dob);
+  const gradeNum = parseGrade(initialValues?.grade || String(grade));
+  const isUnderDpdp =
+    dobAge !== null
+      ? dobAge < DPDP_MINOR_AGE
+      : Number.isFinite(gradeNum) && gradeNum >= 1 && gradeNum <= 7;
+  const parentEmailRequired = isUnderDpdp;
+  const showParentEmail = isUnderDpdp;
+  const showParentPhone = isUnderDpdp;
+
+  const steps = buildSteps(showParentEmail, showParentPhone);
+
+  const [step, setStep] = useState(() => getInitialStep(initialValues, steps));
   const [subjects, setSubjects] = useState<string[]>(initialValues?.subjects ?? []);
   const [schoolName, setSchoolName] = useState(initialValues?.schoolName ?? '');
   // whatsappPhone is immutable after first save. If already set, we show a locked display.
@@ -184,14 +200,22 @@ export default function ProfileCompletionGate({
 
   const availableSubjects = helpers.getSubjectsForGrade(board || null, grade || null);
   const mandatory = getMandatorySubjects(board, grade);
-  const currentStepKey = steps[step] as StepKey | undefined;
-  const isLastStep = step === steps.length - 1;
+  // Clamp step index when steps array shrinks (e.g. DOB changes DPDP status)
+  const safeStep = Math.min(step, steps.length - 1);
+  const currentStepKey = steps[safeStep] as StepKey | undefined;
+  const isLastStep = safeStep === steps.length - 1;
   const _totalSteps = steps.length;
 
   function canAdvance(): boolean {
     if (currentStepKey === 'language') return language !== '';
     if (currentStepKey === 'board') return board !== '';
     if (currentStepKey === 'grade') return grade > 0;
+    if (currentStepKey === 'dateOfBirth') {
+      // Must be a valid date not in the future, student must be at least 4 years old
+      if (!dob) return false;
+      const age = computeAgeFromDobStr(dob);
+      return age !== null && age >= 4 && age <= 25;
+    }
     if (currentStepKey === 'subjects') return subjects.length > 0;
     if (currentStepKey === 'schoolName') return true; // optional
     if (currentStepKey === 'whatsappPhone') {
@@ -294,6 +318,7 @@ export default function ProfileCompletionGate({
         class_grade: grade,
         subjects,
       };
+      if (dob) payload.date_of_birth = dob;
       if (schoolName.trim()) payload.school_name = schoolName.trim();
       // whatsappPhone is immutable after first save; only include when not already locked
       if (!whatsappPhoneLocked && whatsappPhone.trim()) {
@@ -346,7 +371,7 @@ export default function ProfileCompletionGate({
     if (isLastStep) {
       void handleSubmit();
     } else {
-      setStep((s) => s + 1);
+      setStep(safeStep + 1);
     }
   }
 
@@ -370,6 +395,10 @@ export default function ProfileCompletionGate({
       value: BOARD_OPTIONS.find((b) => b.slug === board)?.label ?? '',
     },
     grade: { label: 'Class', value: grade > 0 ? `Class ${grade}` : '' },
+    dateOfBirth: {
+      label: 'Date of birth',
+      value: dob ? (dobAge !== null ? `Age ${dobAge}` : 'Added') : '',
+    },
     subjects: {
       label: 'Subjects',
       value:
@@ -389,7 +418,7 @@ export default function ProfileCompletionGate({
     return stepLabels[sk].value !== '';
   }
   function isStepActive(sk: StepKey): boolean {
-    return steps[step] === sk;
+    return steps[safeStep] === sk;
   }
 
   const formCard = (
@@ -591,6 +620,50 @@ export default function ProfileCompletionGate({
                 </button>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* ── Date of Birth ─────────────────────────────────────────── */}
+        {currentStepKey === 'dateOfBirth' && (
+          <section>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+              When is your birthday?
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              We use this to personalise your learning and meet India privacy rules (DPDP Act 2023).
+            </p>
+            <div>
+              <label
+                htmlFor="gate-dob"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Date of birth <span className="text-[#E24B4A] ml-1">*</span>
+              </label>
+              <input
+                id="gate-dob"
+                type="date"
+                value={dob}
+                max={new Date(new Date().setFullYear(new Date().getFullYear() - 4))
+                  .toISOString()
+                  .slice(0, 10)}
+                min="1990-01-01"
+                onChange={(e) => setDob(e.target.value)}
+                className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+              />
+            </div>
+            {dob && dobAge !== null && (
+              <div
+                className={`mt-3 rounded-xl px-4 py-3 text-sm ${
+                  dobAge < DPDP_MINOR_AGE
+                    ? 'bg-[#FAEEDA] dark:bg-[#BA7517]/10 text-[#BA7517]'
+                    : 'bg-[#EAF3DE] dark:bg-[#1D9E75]/10 text-[#1D9E75]'
+                }`}
+              >
+                {dobAge < DPDP_MINOR_AGE
+                  ? "As you're under 13, a parent approval is required before you start -- we'll send them a quick verification."
+                  : "Great! You can start your learning journey right after setup."}
+              </div>
+            )}
           </section>
         )}
 
