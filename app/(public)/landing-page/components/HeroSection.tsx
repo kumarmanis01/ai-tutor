@@ -95,6 +95,7 @@ const HeroSection = () => {
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-center lg:justify-start">
                 <LandingGoogleCtaButton
+                  callbackUrl="/parent-onboarding"
                   className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-4 text-base font-bold text-white shadow-lg transition-colors hover:bg-[#e85f2d] sm:w-auto"
                   errorClassName="mt-3 text-sm font-medium text-[#E24B4A] sm:max-w-sm"
                   icon={<Icon name="SparklesIcon" size={20} variant="solid" />}

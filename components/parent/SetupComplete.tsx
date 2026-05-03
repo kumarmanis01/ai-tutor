@@ -110,7 +110,7 @@ function ChildSendCard({ child }: { child: SetupCompleteChild }) {
           `If you don't have the app yet, download it here: https://play.google.com/store/apps/details?id=com.spinzyacademy\n\n` +
           `Happy learning!\nTeam Spinzy`
       );
-          window.open(`mailto:?subjectId=parent_setup_child_link&body=${body}`, '_blank');
+          window.open(`mailto:?subject=${encodeURIComponent(`${child.name}, your Spinzy learning account is ready!`)}&body=${body}`, '_blank');
     } catch {}
   }
 
@@ -207,13 +207,13 @@ export default function SetupComplete({ profiles }: SetupCompleteProps) {
         &#x1F389;
       </div>
       <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1">
-        {children.length === 1
+        {profiles.length === 1
           ? `${firstName}'s account is ready!`
-          : `All ${children.length} accounts are ready!`}
+          : `All ${profiles.length} accounts are ready!`}
       </h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
         Now let&apos;s get{' '}
-        {children.length === 1 ? firstName : 'them'} started on their device.
+        {profiles.length === 1 ? firstName : 'them'} started on their device.
       </p>
 
       {profiles.map((child) => (

@@ -68,7 +68,11 @@ export default async function ParentLayout({ children }: { children: React.React
   }
 
   if (session.user.role !== 'parent') {
-    redirect(`/auth/signin?${new URLSearchParams({ callbackUrl: '/parent/dashboard' }).toString()}`);
+    // role:'user' means onboarding not yet complete -- send to parent setup flow.
+    // role:'student' means they belong on the student dashboard.
+    // Never redirect an authenticated user back to sign-in (causes a redirect loop).
+    const dest = session.user.role === 'student' ? '/dashboard' : '/parent-onboarding';
+    redirect(dest);
   }
 
   return (
