@@ -60,6 +60,7 @@ export default function Topbar() {
   });
 
   const name: string = (session?.user as { name?: string | null })?.name ?? '';
+  const firstName = name.trim().split(' ')[0] ?? '';
   const initial = name.trim() ? name.trim().charAt(0).toUpperCase() : 'S';
 
   const streak = stats?.streak ?? 0;
@@ -117,6 +118,13 @@ export default function Topbar() {
             <Logo variant="navbar-mobile" />
           </span>
         </Link>
+
+        {/* Middle mobile: first-name greeting */}
+        {firstName && (
+          <span className="flex-1 md:hidden text-sm font-semibold text-gray-800 dark:text-white truncate">
+            Hi, {firstName}!
+          </span>
+        )}
 
         {/* Middle (md+): student name & meta (school, grade, board, plan) */}
         <div className="hidden md:flex flex-col ml-3">
