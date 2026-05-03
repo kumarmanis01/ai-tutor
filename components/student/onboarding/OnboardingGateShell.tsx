@@ -9,7 +9,7 @@
  * Selecting "I'm a Parent" pushes to /parent-onboarding.
  * Selecting "I'm a Student" falls through to ProfileCompletionGate.
  *
- * After profile save -> board-confirm (S1.1) -> exam-date -> diagnostic -> learning-map.
+ * After profile save -> diagnostic -> learning-map.
  */
 
 import { useState } from 'react';
@@ -69,7 +69,7 @@ export default function OnboardingGateShell({ initialValues }: OnboardingGateShe
     <ProfileCompletionGate
       standalone
       initialValues={initialValues}
-      afterSave={() => router.push('/student/onboarding/board-confirm')}
+      afterSave={() => router.push('/student/onboarding/diagnostic')}
     />
   );
 }
