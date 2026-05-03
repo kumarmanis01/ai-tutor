@@ -10,7 +10,7 @@ function AuthContent() {
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get('callbackUrl') ?? '';
   // Only allow same-origin paths to prevent open-redirect abuse.
-  const callbackUrl = rawCallback.startsWith('/') ? rawCallback : '/student/onboarding';
+  const callbackUrl = rawCallback.startsWith('/') ? rawCallback : '/select-role';
 
   const [email, setEmail] = useState(
     searchParams.get('email') ||

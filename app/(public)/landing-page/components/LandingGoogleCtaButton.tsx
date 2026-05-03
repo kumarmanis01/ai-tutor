@@ -31,7 +31,7 @@ interface LandingGoogleCtaButtonProps {
 const DEFAULT_ERROR_MESSAGE = 'Sign-in failed. Please try again or contact support.';
 
 const LandingGoogleCtaButton = ({
-  callbackUrl = '/student/onboarding',
+  callbackUrl = '/select-role',
   className,
   errorClassName,
   icon,
