@@ -10,6 +10,7 @@
  *   2026-03-08 | claude | original 4-card client-polling dashboard
  *   2026-03-15 | claude | T38 -- rewritten as server component with multi-child view
  *   2026-04-09 | copilot | pass parent/student timezones to ParentDashboard for dual-display
+ *   2026-05-04 | copilot | F-PAR-010 AC-02: include examDate per child for exam countdown display
  */
 
 import type { Metadata } from 'next'
@@ -61,7 +62,7 @@ export default async function ParentDashboardPage() {
   const [students, streaks, sessionCounts] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: studentIds } },
-      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true },
+      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true, examDate: true },
     }),
     prisma.studentStreak.findMany({
       where: { studentId: { in: studentIds }, kind: 'daily' },
@@ -109,6 +110,7 @@ export default async function ParentDashboardPage() {
     grade: string
     board: string
     timezone: string | null
+    examDate: string | null
     streak: number
     sessionsThisWeek: number
     readiness: Array<{ subjectId: string; subjectName: string; score: number }>
@@ -134,6 +136,7 @@ export default async function ParentDashboardPage() {
       grade: student.grade ?? '',
       board: student.board ?? '',
       timezone: student.timezone ?? null,
+      examDate: student.examDate ? student.examDate.toISOString() : null,
       streak: streakMap.get(studentId) ?? 0,
       sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
       readiness,

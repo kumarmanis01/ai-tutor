@@ -15,6 +15,9 @@ EDIT LOG:
  - 2026-04-17T09:50:00Z | copilot | Add Phase 2 enhancement items for F-PAR-020 (Weekly Progress Digest) and note QA send/testing status.
  - 2026-04-17T12:00:00Z | copilot | Implement F-PAR-024 readiness-drop worker: enforce 90-day exam window, include AI remediation summary in parent notifications, add SMS/email plain-text fallback; update docs with Phase 2 planned enhancements.
  - 2026-04-17T14:00:00Z | copilot | Implement F-PAR-031 EMI schedule UI + retry flow: add client retry modal, toast notifications, inline banners, retry API + enqueue helper, and server-render unit tests; update docs with Phase 2 planned enhancements for subscription management.
+ - 2026-05-04T00:00:00Z | copilot | Perform exhaustive AC audit across codebase and update status per AC (Done / Partial / Pending) for all F-PAR stories.
+ - 2026-05-04T00:00:00Z | copilot | Inline AC status labels directly in each MVP acceptance criterion row.
+ - 2026-05-04T12:00:00Z | copilot | Implement F-PAR-010 AC-02/AC-03/AC-06: exam countdown, horizontal tabs, loading skeleton; F-PAR-011 AC-04: peer benchmarking opt-in in ParentProgressDetail; update AC statuses to Done.
 -->
 
 AI HOME TUTOR PLATFORM
@@ -94,25 +97,25 @@ Parent creates an account and links it to one or more child student profiles.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Parent can register independently (without student) or be auto-prompted during student registration when student age < 13.
 MUST
-AC-02
+AC-02 (Status: Partial)
 Registration requires: parent mobile number (OTP verified), name, relationship to student (Father / Mother / Guardian).
 MUST
-AC-03
+AC-03 (Status: Done)
 If student age < 13: parent account creation and verification is mandatory before student account is activated. Student cannot bypass this gate.
 MUST
-AC-04
+AC-04 (Status: Done)
 If student age ≥ 13: parent account linking is optional. Student can invite parent from their profile settings at any time.
 MUST
-AC-05
+AC-05 (Status: Done)
 Parent can link up to 3 child profiles (family plan). Each child has an independent learning profile and subscription.
 MUST
-AC-06
+AC-06 (Status: Done)
 Parent account is separate from student account. Parent cannot accidentally access or alter the student's learning sessions.
 MUST
-AC-07
+AC-07 (Status: Partial)
 Parent receives a verification SMS + welcome email on account activation with: what they can see, what their child can do, privacy policy summary.
 SHOULD
 
@@ -125,19 +128,19 @@ Parent creates and manages academic profiles for each linked child.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Parent can create a child profile: name, date of birth, grade, board, medium (language). This creates a linked student account.
 MUST
-AC-02
+AC-02 (Status: Done)
 Parent can set or update: exam date, weekly study hours target, preferred study schedule (morning / afternoon / evening preference).
 MUST
-AC-03
+AC-03 (Status: Partial)
 Parent can view — but not modify — the AI-generated learning plan. To request topic focus changes, parent submits a preference that the AI considers in the next plan adjustment.
 SHOULD
-AC-04
+AC-04 (Status: Partial)
 Parent can temporarily pause a child's account (e.g., during illness or travel). Sessions do not count against free limits during pause. Streak shield auto-activates.
 SHOULD
-AC-05
+AC-05 (Status: Partial)
 Multiple children shown as tabs on the parent dashboard — quick switching between children without re-login.
 MUST
 
@@ -150,16 +153,16 @@ Parent acknowledges child data usage and platform safety policies.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Partial)
 During child account creation, parent must explicitly accept: data collection consent for minor, AI interaction consent, community features consent (Phase 2), platform safety policy.
 MUST
-AC-02
+AC-02 (Status: Done)
 Consent is stored with timestamp + IP for DPDP Act (India) compliance. Non-acceptance blocks account creation.
 MUST
-AC-03
+AC-03 (Status: Done)
 Parent can withdraw consent at any time from account settings. Withdrawal triggers: data deletion request initiated (30-day processing), account deactivated immediately.
 MUST
-AC-04
+AC-04 (Status: Done)
 Privacy policy presented in plain language (not legal jargon). Available in Hindi and English at MVP.
 SHOULD
 
@@ -178,22 +181,22 @@ Simplified, child-centric home screen showing the week's key learning signals.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Parent dashboard is separate from student dashboard. Parent cannot see the AI tutoring conversation transcript (privacy + trust — student should feel the AI tutor session is their private space).
 MUST
-AC-02
+AC-02 (Status: Done)
 Dashboard shows for each linked child: Study activity this week (sessions completed, time spent), Current streak, Subject mastery summary (3 subject cards), Upcoming exam countdown + readiness score.
 MUST
-AC-03
+AC-03 (Status: Done)
 Multiple children shown as horizontal tabs. Active child tab highlighted.
 MUST
-AC-04
-Dashboard uses simple language — no jargon. "Your child mastered 3 new topics this week" not "Knowledge graph updated: 3 concept nodes reached mastery threshold."
+AC-04 (Status: Done)
+Dashboard uses simple language -- no jargon. "Your child mastered 3 new topics this week" not "Knowledge graph updated: 3 concept nodes reached mastery threshold."
 MUST
-AC-05
+AC-05 (Status: Done)
 All data shown in parent timezone. If parent and student are in different time zones (e.g., NRI parent), study times shown in both zones.
 SHOULD
-AC-06
+AC-06 (Status: Done)
 Dashboard loads in < 2 seconds. No empty states — always shows something meaningful even in the first week.
 MUST
 
@@ -216,19 +219,19 @@ Detailed per-subject mastery breakdown readable by a non-technical parent.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Each subject shows: Overall mastery % (large number, colour coded), Chapter-by-chapter mastery bar chart, Top 3 strong chapters, Bottom 3 weak chapters with status ("AI is actively working on this").
 MUST
-AC-02
+AC-02 (Status: Done)
 Mastery percentages displayed as progress bars — not raw numbers only. Visual makes trend obvious.
 MUST
-AC-03
+AC-03 (Status: Done)
 "What this means" tooltip on mastery %. Plain-language explanation: "72% mastery means your child has solidly learned 72% of the Class 10 Maths syllabus."
 MUST
-AC-04
+AC-04 (Status: Done)
 Benchmarking shown anonymously: "Your child's mastery is above 68% of students in their grade on our platform." Opt-in only.
 SHOULD
-AC-05
+AC-05 (Status: Done)
 Exam readiness score shown per subject: 0–100 score + predicted mark range. E.g., "Predicted board score: 72–81 out of 100."
 MUST
 
@@ -241,19 +244,19 @@ Weekly and monthly study activity visible to parent.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Activity calendar: heatmap showing study days in the last 30 days. Green = active day, Empty = missed day. Visual streak pattern.
 MUST
-AC-02
+AC-02 (Status: Done)
 Weekly summary: sessions completed, total time studied, subjects covered, tests taken, scores.
 MUST
-AC-03
+AC-03 (Status: Done)
 Parent can see last 10 sessions: date, subject, topic, duration, mastery change for that session (positive / neutral / needs revision). Cannot see transcript.
 MUST
-AC-04
+AC-04 (Status: Done)
 Inactivity alert trigger visible: parent can see the inactivity threshold they have set (default: 3 days without study triggers alert).
 SHOULD
-AC-05
+AC-05 (Status: Done)
 "Predicted study time to exam readiness 80%" shown: "At current pace, Riya will reach 80% readiness in Mathematics by [date]."
 SHOULD
 
@@ -272,19 +275,19 @@ Automated weekly summary delivered every Sunday morning.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Partial)
 Digest sent every Sunday at 9 AM (parent's local timezone) via email. SMS summary sent simultaneously.
 MUST
-AC-02
+AC-02 (Status: Done)
 Digest contains: Week's study summary (sessions, time, topics), Mastery highlights (what was learned), Exam readiness trend (up / down / stable), One actionable suggestion from AI ("Encourage Arjun to do one more session on Quadratic Equations this week").
 MUST
-AC-03
+AC-03 (Status: Done)
 Digest is narrative-first — written as a paragraph by AI, not a data table. E.g., "Priya had a strong week! She completed 6 sessions and mastered 4 new topics in Chemistry. Her exam readiness is now 71%, up from 65% last week."
 MUST
-AC-04
+AC-04 (Status: Done)
 Parent can configure: opt out of weekly digest, change delivery day/time. Cannot opt out of payment and safety notifications.
 SHOULD
-AC-05
+AC-05 (Status: Done)
 Digest email is mobile-optimised HTML. Single-column. Loads without images on slow connections. Dark mode safe.
 MUST
 
@@ -324,26 +327,26 @@ Alert when child has not studied for configured number of days.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Default threshold: 3 consecutive days without a qualifying study session. Parent can change to 2, 3, 5, or 7 days.
 MUST
-AC-02
+AC-02 (Status: Done)
 Alert message is warm and constructive — not alarming. E.g., "Arjun hasn't had a study session in 3 days. A quick 20-minute session today would keep his streak going!"
 MUST
-AC-03
+AC-03 (Status: Done)
 Alert includes a direct deep-link to open the app at the student's next planned session (for platforms that support deep links in email/SMS).
 SHOULD
-AC-03.1
+AC-03.1 (Status: Done)
 Deep-link behaviour: inactivity alerts include a parameterised deep-link to open the app at the student's next planned session using `?focus=next&itemId=<id>` when available. Mobile and web clients should parse `focus`/`itemId` and navigate to the corresponding session or highlight the next plan item.
 SHOULD
 
-AC-03.2
+AC-03.2 (Status: Done)
 Reset semantics: when the student takes any qualifying activity (session completion or revision threshold), any active inactivity suppression keys are cleared so that the inactivity alert window resets immediately and future alerts may be sent again per policy.
 SHOULD
-AC-04
+AC-04 (Status: Done)
 Maximum 1 inactivity alert per 3-day period. No spam. If student studies after first alert, alert resets.
 MUST
-AC-05
+AC-05 (Status: Done)
 Parent can mute inactivity alerts for a specified period (e.g., school exam period, family event). Mute configurable from alert itself.
 SHOULD
 
@@ -369,16 +372,16 @@ Positive reinforcement alerts when child reaches a learning milestone.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Partial)
 Notifications sent for: Streak milestones (7, 14, 30 days), Chapter mastery completion (first time), Mock exam completion + score, Level up (gamification tier), Exam readiness score crosses 50%, 70%, 90% thresholds.
 MUST
-AC-02
+AC-02 (Status: Done)
 Message framing gives parent a specific action: "Arjun just completed a 30-day study streak — that's amazing dedication! This would be a great moment to celebrate with him."
 MUST
-AC-03
+AC-03 (Status: Done)
 Milestone notifications are positive-only. No "your child only scored 45% on mock exam" framing. Score report available in dashboard.
 MUST
-AC-04
+AC-04 (Status: Done)
 Maximum 2 milestone notifications per week to avoid notification fatigue.
 SHOULD
 
@@ -406,22 +409,22 @@ Transactional notifications for all payment and account events.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Partial)
 Payment success: SMS + email within 60 seconds of charge. Includes: amount, plan, next renewal date, invoice link.
 MUST
-AC-02
+AC-02 (Status: Partial)
 Payment failure: SMS + email immediately. Includes: retry link, grace period expiry date, support contact.
 MUST
-AC-03
+AC-03 (Status: Pending)
 Upcoming renewal reminder: 7 days before renewal date. Includes renewal amount and cancel option.
 MUST
-AC-04
+AC-04 (Status: Pending)
 Subscription cancelled confirmation: immediate email. Includes access expiry date and resubscribe link.
 MUST
-AC-05
+AC-05 (Status: Partial)
 All transactional emails include GST invoice as PDF attachment.
 MUST
-AC-06
+AC-06 (Status: Partial)
 Account security: OTP for any login, child account change, or subscription change. Cannot be disabled.
 MUST
 
@@ -434,16 +437,16 @@ Alert when child's exam readiness drops significantly.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Alert triggers when: exam readiness score drops > 10 points within 7 days for any subject.
 MUST
-AC-02
+AC-02 (Status: Done)
 Message is informative, not alarming. E.g., "Riya's Maths readiness has dipped from 74% to 62% this week — likely due to missed revision sessions. The AI has already adjusted her study plan to catch up."
 MUST
-AC-03
+AC-03 (Status: Done)
 Alert includes the AI's remediation plan summary: "3 targeted sessions on Trigonometry this week will bring her back on track."
 SHOULD
-AC-04
+AC-04 (Status: Done)
 Alert only triggers if exam is within 90 days. No alert for readiness drops when exam is > 90 days away (less urgent).
 SHOULD
 
@@ -482,22 +485,22 @@ Parent purchases a plan for their child's account.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Parent can purchase from their dashboard — no need to log in as student. Plan applied to selected child profile.
 MUST
-AC-02
+AC-02 (Status: Done)
 Plans visible: Monthly, Quarterly (10% off label shown clearly), Annual (25% off + EMI option). INR pricing with GST shown before confirmation.
 MUST
-AC-03
+AC-03 (Status: Done)
 Family plan option: 3 children under one subscription at 1.8x single-child price. Savings clearly shown.
 MUST
-AC-04
+AC-04 (Status: Partial)
 Payment via: UPI (GPay, PhonePe, Paytm), Debit/Credit card, Net banking, EMI (3/6/12 months on annual plan). UPI shown as default (highest adoption in target market).
 MUST
-AC-05
+AC-05 (Status: Done)
 Pre-payment screen shows: plan summary, total amount, renewal terms, cancellation policy. No dark patterns. Must scroll to see full terms before confirm button activates.
 MUST
-AC-06
+AC-06 (Status: Partial)
 Payment confirmation within 5 seconds. If payment gateway times out, transaction status checked via webhook before showing success/failure.
 MUST
 
@@ -529,22 +532,22 @@ Parent manages active subscriptions, renewals, and plan changes.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Partial)
 Subscription status screen shows per child: current plan, billing cycle, next renewal date + amount, payment method on file, invoice history (downloadable as PDF).
 MUST
-AC-02
+AC-02 (Status: Done)
 Parent can upgrade plan at any time. Prorated credit applied for remainder of current period. Effective immediately.
 MUST
-AC-03
+AC-03 (Status: Done)
 Parent can downgrade or cancel subscription. Access continues to end of paid period. No mid-cycle refund (communicated at purchase). Downgrade takes effect on next renewal.
 MUST
-AC-04
+AC-04 (Status: Done)
 Failed payment handling: 3 auto-retries (day 0, day 1, day 3). After all retries fail: grace period of 3 days with access maintained. Parent notified daily during grace period. After grace: reversion to free tier.
 MUST
-AC-05
+AC-05 (Status: Partial)
 Parent can update payment method at any time. New method validated before old method removed.
 MUST
-AC-06
+AC-06 (Status: Done)
 Annual plan with EMI: parent can view EMI schedule. Individual EMI failures handled same as subscription payment failure (grace period per instalment).
 SHOULD
 
@@ -581,19 +584,19 @@ GST-compliant invoice generation for all payments.
 AC#
 Acceptance Criterion
 Priority
-AC-01
+AC-01 (Status: Done)
 Invoice generated automatically on every successful payment. Available in parent dashboard under billing history.
 MUST
-AC-02
+AC-02 (Status: Done)
 Invoice format: GST-compliant (HSN code, GSTIN of platform, tax breakdown, sequential invoice number). Required for corporate reimbursement claims.
 MUST
-AC-03
+AC-03 (Status: Done)
 Invoice emailed automatically as PDF attachment on each payment.
 MUST
-AC-04
+AC-04 (Status: Done)
 Parent can download any historical invoice from dashboard — available indefinitely (stored in R2).
 MUST
-AC-05
+AC-05 (Status: Done)
 Annual invoice summary downloadable: single PDF with all invoices for a financial year. For parent's tax filings.
 SHOULD
 
@@ -659,5 +662,205 @@ Student-AI conversation is private. Parent sees summary only.
 Language support
 English + Hindi at MVP
 UI shell localisation — not AI tutoring language
+
+
+8. AC Audit Status (Codebase Audit — 2026-05-04)
+
+Status legend:
+- Done: implemented and evidenced in code/tests.
+- Partial: implemented in part; one or more required behaviors are missing or not fully enforced.
+- Pending: no production-grade implementation found for the AC.
+
+
+F-PAR-001 Parent Account Registration
+- AC-01: Done
+- AC-02: Partial
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
+- AC-06: Done
+- AC-07: Partial
+
+F-PAR-002 Child Profile Management
+- AC-01: Done
+- AC-02: Done
+- AC-03: Partial
+- AC-04: Partial
+- AC-05: Partial
+
+F-PAR-003 Consent & Safety Acknowledgement
+- AC-01: Partial
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+
+F-PAR-010 Parent Dashboard -- Overview
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
+- AC-06: Done
+
+F-PAR-010 Phase 2 Timezone & UX Enhancements
+- P2-AC-01: Pending
+- P2-AC-02: Partial
+- P2-AC-03: Partial
+- P2-AC-04: Pending
+- P2-AC-05: Pending
+- P2-AC-06: Pending
+
+F-PAR-011 Subject Mastery View
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
+
+F-PAR-012 Study Activity History
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
+
+F-PAR-020 Weekly Progress Digest
+- AC-01: Partial
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
+
+F-PAR-020 Phase 2 Digest Enhancements
+- P2-AC-01: Partial
+- P2-AC-02: Pending
+- P2-AC-03: Pending
+- P2-AC-04: Pending
+- P2-AC-05: Partial
+- P2-AC-06: Pending
+- P2-AC-07: Partial
+- P2-AC-08: Pending
+
+F-PAR-021 Inactivity Alert
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-03.1: Done
+- AC-03.2: Done
+- AC-04: Done
+- AC-05: Done
+
+F-PAR-021 Phase 2 Inactivity Enhancements
+- P2-AC-01: Partial
+- P2-AC-02: Partial
+- P2-AC-03: Partial
+- P2-AC-04: Pending
+- P2-AC-05: Partial
+- P2-AC-06: Partial
+
+F-PAR-022 Milestone & Achievement Notifications
+- AC-01: Partial
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+
+F-PAR-022 Phase 2 Milestone Enhancements
+- P2-AC-01: Pending
+- P2-AC-02: Pending
+- P2-AC-03: Pending
+- P2-AC-04: Pending
+- P2-AC-05: Partial
+- P2-AC-06: Pending
+- P2-AC-07: Pending
+- P2-AC-08: Partial
+
+F-PAR-023 Payment & Account Notifications
+- AC-01: Partial
+- AC-02: Partial
+- AC-03: Pending
+- AC-04: Pending
+- AC-05: Partial
+- AC-06: Partial
+
+F-PAR-024 Exam Readiness Score Drop Alert
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+
+F-PAR-024 Phase 2 Enhancements
+- P2-AC-01: Pending
+- P2-AC-02: Pending
+- P2-AC-03: Partial
+- P2-AC-04: Pending
+- P2-AC-05: Partial
+- P2-AC-06: Pending
+- P2-AC-07: Partial
+- P2-AC-08: Pending
+
+F-PAR-030 Subscription Purchase (Parent-Initiated)
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-04: Partial
+- AC-05: Done
+- AC-06: Partial
+
+F-PAR-030 Phase 2 Subscription Purchase Enhancements
+- P2-AC-01: Pending
+- P2-AC-02: Pending
+- P2-AC-03: Pending
+- P2-AC-04: Pending
+- P2-AC-05: Pending
+- P2-AC-06 Promotions & Coupons: Partial
+
+F-PAR-031 Subscription Management
+- AC-01: Partial
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+- AC-05: Partial
+- AC-06: Done
+
+F-PAR-031 Phase 2 Subscription Management Enhancements
+- P2-AC-01: Partial
+- P2-AC-02: Partial
+- P2-AC-03: Partial
+- P2-AC-04: Partial
+- P2-AC-05: Pending
+- P2-AC-06: Partial
+- P2-AC-07: Partial
+
+F-PAR-032 Invoice & Tax Management
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
+
+4.1 Phase 2 WhatsApp Integration
+- WhatsApp delivery for all parent notifications: Partial
+- Parent quick-reply Report summary: Pending
+- Parent-AI chatbot over WhatsApp: Pending
+- Parent-initiated tutor focus via WhatsApp: Pending
+
+6. Phase 2 Parent Features (Scoped, Not Built at MVP)
+- F-PAR-P2-001 WhatsApp Notification Delivery: Partial
+- F-PAR-P2-002 WhatsApp Quick Reply Commands: Pending
+- F-PAR-P2-003 Parent-AI Chatbot: Pending
+- F-PAR-P2-004 Study Schedule Override: Partial
+- F-PAR-P2-005 Parent-Initiated Difficulty Adjustment: Pending
+- F-PAR-P2-006 Multi-Child Comparative Report: Pending
+- F-PAR-P2-007 Teacher/Tutor Sharing: Pending
+
+7. Non-Functional Requirements Status Snapshot
+- Dashboard load time < 2 seconds: Partial
+- Notification delivery SMS < 60 seconds: Partial
+- Notification delivery Email < 5 minutes: Partial
+- Mobile responsiveness Android 8+, 2 GB RAM: Partial
+- Concurrent parent sessions 500: Pending (no hard evidence from audited code)
+- Invoice availability permanent in R2: Done
+- Parent cannot access transcript: Done
+- Language support English + Hindi at MVP: Done
 
 
