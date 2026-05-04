@@ -76,14 +76,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       conceptName = concept?.name ?? null
     }
 
-    const xpEarned = correctAnswers * 10
+    let sessionDurationMinutes = 0
+    if (learningSession) {
+      const end = learningSession.endedAt ?? new Date()
+      const ms = end.getTime() - learningSession.startedAt.getTime()
+      sessionDurationMinutes = Math.max(0, Math.round(ms / 60000))
+    }
+
+    // AC-01 (F-STU-031): multi-source XP calculation.
+    // 1. Base XP by session duration (2 XP/min, cap 60 min).
+    const durationXP = Math.min(sessionDurationMinutes, 60) * 2
+    // 2. Correct answers XP (per question, flat rate per difficulty approximation).
+    const correctAnswerXP = correctAnswers * 10
+    // 3. First-attempt correct 1.5x bonus: no hints used in session means first-attempt answers.
+    const firstAttemptBonus = hintsUsed === 0 && correctAnswers > 0
+      ? Math.round(correctAnswerXP * 0.5)
+      : 0
+    const xpEarned = durationXP + correctAnswerXP + firstAttemptBonus
+
     const xpResult = await awardXP({
       studentId: userId,
       amount: xpEarned,
       source: 'session_correct',
       sessionId,
     })
-    const totalXp = xpResult?.totalXp ?? xpEarned
+    let totalXp = xpResult?.totalXp ?? xpEarned
     const leveledUp = xpResult?.leveledUp ?? false
     const newLevel = xpResult?.newLevel ?? null
 
@@ -93,13 +110,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     if (totalQuestions >= 5) {
       const streakResult = await updateStreak(userId)
       currentStreak = streakResult?.currentStreak ?? 0
-    }
-
-    let sessionDurationMinutes = 0
-    if (learningSession) {
-      const end = learningSession.endedAt ?? new Date()
-      const ms = end.getTime() - learningSession.startedAt.getTime()
-      sessionDurationMinutes = Math.max(0, Math.round(ms / 60000))
+      // AC-01 (F-STU-031): streak maintenance daily multiplier -- bonus XP when streak advances.
+      if (streakResult?.streakIncremented) {
+        const streakBonusXP = Math.max(5, Math.round(xpEarned * 0.1))
+        const streakXpResult = await awardXP({
+          studentId: userId,
+          amount: streakBonusXP,
+          source: 'streak_bonus',
+          sessionId,
+        })
+        if (streakXpResult) totalXp = streakXpResult.totalXp
+      }
     }
 
     // AC-03 (F-STU-015 MUST): AI-generated personalised closing insight, not a template.

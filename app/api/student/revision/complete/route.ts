@@ -4,27 +4,34 @@
  * Records completion of a revision card session for one concept.
  * Body: { conceptId: string, score: number }   // score = 0.0-1.0
  *
- * Side effects (all non-blocking / fire-and-forget):
- *   - Awards revision_complete XP (5 XP)
- *   - Calls trackRevisionAndMaybeUpdateStreak() to count toward streak
- *   - If score ≤ 0.8: enqueues a reteach LearningPlanItem via BullMQ
+ * Side effects:
+ *   - AC-04 (F-STU-022): Updates StudentConceptState.nextReviewAt via SM-18 based on score.
+ *     Score > 0.8 = correct: stability increases, interval lengthens.
+ *     Score <= 0.8 = wrong: stability halves, interval resets to 1 day.
+ *   - Awards revision_complete XP (5 XP) -- fire-and-forget
+ *   - Calls trackRevisionAndMaybeUpdateStreak() -- fire-and-forget
+ *   - If score <= 0.8: enqueues a reteach LearningPlanItem via BullMQ -- fire-and-forget
+ *   - AC-06: tracks ~2 min toward daily 20-min cap -- fire-and-forget
  *
  * Auth: session required -- 401 before any DB work.
  * Input: validated with zod-style manual checks -- 400 on bad input.
  */
 
 import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { logger } from '@/lib/logger'
 import { awardXP } from '@/lib/student/xp'
 import { trackRevisionAndMaybeUpdateStreak } from '@/lib/student/streak'
 import { enqueueReteachPlan } from '@/jobs/reteachPlan'
 import { addRevisionMinutes } from '@/lib/student/revisionCap'
+import { updateSM18 } from '@/lib/ai/tutor/sm18'
 
 export const dynamic = 'force-dynamic'
 
 const RETEACH_SCORE_THRESHOLD = 0.8
 const REVISION_XP = 5
+const MS_PER_DAY = 86400000
 
 export async function POST(req: Request) {
   const start = Date.now()
@@ -50,6 +57,40 @@ export async function POST(req: Request) {
       )
       logger.logAPI(req, res, { className: 'RevisionCompleteAPI', methodName: 'POST' }, start)
       return res
+    }
+
+    // AC-04 (F-STU-022): update SM-18 state immediately on revision completion.
+    // Score > 0.8 treated as correct (interval grows); score <= 0.8 as wrong (interval resets).
+    try {
+      const state = await prisma.studentConceptState.findUnique({
+        where: { studentId_conceptId: { studentId: userId, conceptId } },
+        select: { stability: true, retention: true, lastInteraction: true },
+      })
+      if (state) {
+        const now = new Date()
+        const elapsedDays = (now.getTime() - state.lastInteraction.getTime()) / MS_PER_DAY
+        const isCorrect = score > RETEACH_SCORE_THRESHOLD
+        const sm18 = updateSM18({
+          stability: state.stability,
+          retention: state.retention,
+          isCorrect,
+          elapsedDays,
+        })
+        const nextReviewAt = new Date(now.getTime() + sm18.nextReviewInDays * MS_PER_DAY)
+        await prisma.studentConceptState.update({
+          where: { studentId_conceptId: { studentId: userId, conceptId } },
+          data: {
+            stability: sm18.newStability,
+            retention: sm18.newRetention,
+            memoryStrength: sm18.newRetention,
+            nextReviewAt,
+            lastInteraction: now,
+          },
+        })
+      }
+    } catch (err) {
+      logger.error('RevisionCompleteAPI.sm18Update', { studentId: userId, conceptId, error: err })
+      // non-fatal -- response still succeeds
     }
 
     // Fire-and-forget side effects -- none can fail the response.
