@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST /api/student/session/[sessionId]/complete
+ * - Marks a learning session complete, computes multi-source XP (duration,
+ *   correct answers, first-attempt bonus, streak multiplier), updates streak,
+ *   awards badges, and returns the session summary to the client.
+ * - AC-01 (F-STU-031): XP calculation sources documented inline.
+ *
+ * EDIT LOG:
+ * - 2026-03-15 | v2-migration | created for session completion flow
+ * - 2026-05-04 | staff-engineer | AC-01 F-STU-031: add duration XP, first-attempt
+ *   bonus, streak daily multiplier; fix leveledUp/newLevel to reflect final XP
+ *   award (streak bonus can trigger level-up independently)
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
@@ -102,8 +117,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       sessionId,
     })
     let totalXp = xpResult?.totalXp ?? xpEarned
-    const leveledUp = xpResult?.leveledUp ?? false
-    const newLevel = xpResult?.newLevel ?? null
+    // leveledUp/newLevel start from the base XP award and may be updated by the streak
+    // bonus below -- the streak bonus can independently push the student to a new level.
+    let leveledUp = xpResult?.leveledUp ?? false
+    let newLevel = xpResult?.newLevel ?? null
 
     // Award streak credit and capture result for badge checking.
     // Awaited so currentStreak is up-to-date when checkSessionBadges runs below.
@@ -120,7 +137,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
           source: 'streak_bonus',
           sessionId,
         })
-        if (streakXpResult) totalXp = streakXpResult.totalXp
+        if (streakXpResult) {
+          totalXp = streakXpResult.totalXp
+          // Streak bonus may have triggered a level-up; use the final result.
+          if (streakXpResult.leveledUp) {
+            leveledUp = true
+            newLevel = streakXpResult.newLevel
+          }
+        }
       }
     }
 

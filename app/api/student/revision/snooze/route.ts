@@ -1,7 +1,10 @@
 /**
  * FILE OBJECTIVE:
- * - Provide the student revision snooze API endpoint that delays the next review time by exactly 24 hours for an authenticated user's concept state.
- * - Enforces AC-02 (F-STU-022) by allowing only a one-day snooze, requiring a `conceptId` request body, and returning the updated `nextReviewAt` timestamp.
+ * - POST /api/student/revision/snooze
+ * - AC-02 (F-STU-022): Student can snooze a revision card by 1 day only.
+ *   Cannot permanently dismiss -- snooze pushes nextReviewAt by exactly 24 hours
+ *   from now (not compounding from the original due date).
+ * - Returns 404 when no StudentConceptState exists for (userId, conceptId).
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/api/student/revision/snooze/route.spec.ts
@@ -11,7 +14,8 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-05-04T00:00:00Z | copilot | replace non-standard route comment with required engineering practices header and add edit log entry
+ * - 2026-05-04 | staff-engineer | created for F-STU-022 AC-02 snooze requirement
+ * - 2026-05-04T00:00:00Z | copilot | add full engineering practices header
  */
 
 import { NextResponse } from 'next/server'
