@@ -132,16 +132,23 @@ export async function activateSubscription(
         })
       }
 
-      // Reset FreeTierUsage for the student
+      // Reset FreeTierUsage for the student (aggregate scope '__ALL__')
+      // upsert requires the compound unique key: studentId_subjectScope_periodStart
       await tx.freeTierUsage
         .upsert({
-          where: { studentId },
+          where: {
+            studentId_subjectScope_periodStart: {
+              studentId,
+              subjectScope: '__ALL__',
+              periodStart: now,
+            },
+          },
           update: {
-            periodStart: now,
             sessionsUsed: 0,
           },
           create: {
             studentId,
+            subjectScope: '__ALL__',
             periodStart: now,
             sessionsUsed: 0,
           },
