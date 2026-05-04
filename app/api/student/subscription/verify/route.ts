@@ -145,13 +145,37 @@ export async function POST(req: Request) {
           data: { subscriptionStatus: 'active', subscriptionExpiry: expiry },
         });
 
+        const currentPeriodStart = new Date(now)
+        currentPeriodStart.setDate(1)
+        currentPeriodStart.setHours(0, 0, 0, 0)
         await tx.freeTierUsage
-          .upsert({
-            where: { studentId: userId },
-            update: { periodStart: now, sessionsUsed: 0 },
-            create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
+          .findFirst({
+            where: {
+              studentId: userId,
+              subjectScope: '__ALL__',
+              periodStart: currentPeriodStart,
+            },
+            select: { id: true },
           })
-          .catch((err) => { logger.warn('freeTierUsage.upsert failed', { event: 'subscription.verify.upsert', context: { userId }, error: String(err) }) });
+          .then(async (existing) => {
+            if (existing?.id) {
+              await tx.freeTierUsage.update({
+                where: { id: existing.id },
+                data: { sessionsUsed: 0, chapterTestsUsed: 0 },
+              })
+              return
+            }
+            await tx.freeTierUsage.create({
+              data: {
+                studentId: userId,
+                subjectScope: '__ALL__',
+                periodStart: currentPeriodStart,
+                sessionsUsed: 0,
+                chapterTestsUsed: 0,
+              },
+            })
+          })
+          .catch((err) => { logger.warn('freeTierUsage.reset failed', { event: 'subscription.verify.reset', context: { userId }, error: String(err) }) });
 
         // Create a Payment record to persist transaction metadata
         const payment = await tx.payment.create({

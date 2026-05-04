@@ -2057,13 +2057,16 @@ model DoubtKb {
 
 model FreeTierUsage {
   id               String   @id @default(cuid())
-  studentId        String   @unique
+  studentId        String
+  /// '__ALL__' is the aggregate scope used by session caps; subject names are used for chapter-test caps.
+  subjectScope     String   @default("__ALL__")
   periodStart      DateTime
   sessionsUsed     Int      @default(0)
   /// AC-01 (F-STU-040): 1 chapter test per subject per month for free tier. Resets with sessionsUsed.
   chapterTestsUsed Int      @default(0)
   updatedAt        DateTime @updatedAt
 
+  @@unique([studentId, subjectScope, periodStart])
   @@index([studentId, periodStart])
 }
 

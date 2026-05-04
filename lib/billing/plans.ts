@@ -11,6 +11,7 @@
  * - 2026-04-15T00:00:00Z | staff-engineer  | added test_weekly; durationDays override for sub-monthly plans
  * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named variable
  * - 2026-04-16T03:30:00Z | copilot | add resolvePlanByShortId helper to map short plan ids to PLANS entries
+ * - 2026-05-04T00:00:00Z | copilot | mark quarterly as featured plan for selector badge logic
  */
 
 export type PlanId =
@@ -87,9 +88,9 @@ function mkPlan(
 }
 
 export const PLANS: Record<PlanId, SubscriptionPlan> = {
-  standard_monthly:   mkPlan('standard_monthly', 399, 1, 'Monthly', '₹399/month', { featured: true }),
+  standard_monthly:   mkPlan('standard_monthly', 399, 1, 'Monthly', '₹399/month'),
   // AC-01 (F-STU-041): Quarterly plan -- 3 months at 10% discount (399*3*0.9 = 1077.30, rounded to 1,077)
-  standard_quarterly: mkPlan('standard_quarterly', 1077, 3, 'Quarterly', '₹359/month', { billedDisplay: 'billed ₹1,077', saveLabel: '10% off' }),
+  standard_quarterly: mkPlan('standard_quarterly', 1077, 3, 'Quarterly', '₹359/month', { featured: true, billedDisplay: 'billed ₹1,077', saveLabel: '10% off' }),
   standard_annual:    mkPlan('standard_annual', 3590, 12, 'Annual', '₹299.17/month', { billedDisplay: 'billed ₹3,590', saveLabel: '25% off' }),
   family_monthly:   mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
   family_annual:    mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', { billedDisplay: 'billed ₹5,990', saveLabel: '2 months free', childSlots: 2 }),

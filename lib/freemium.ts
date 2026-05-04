@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate map callbacks and add header
+ * - 2026-05-04T00:00:00Z | copilot | scope usage rows by subjectScope+periodStart and enforce chapter-test caps per subject
  */
 
 import { prisma } from '@/lib/prisma'
@@ -21,6 +22,7 @@ import { logger } from '@/lib/logger'
 export const FREE_TIER_SESSION_LIMIT = 3
 // AC-01 (F-STU-040): 1 chapter test per subject per month on free tier
 export const FREE_TIER_CHAPTER_TEST_LIMIT = 1
+const SESSION_SCOPE = '__ALL__'
 
 export interface FreeTierStatus {
   allowed: boolean
@@ -112,32 +114,24 @@ export async function checkFreeTierCap(studentId: string): Promise<FreeTierStatu
 
     const currentPeriodStart = getCurrentPeriodStart()
 
-    let usage = await prisma.freeTierUsage.findUnique({
-      where: { studentId },
+    let usage = await prisma.freeTierUsage.findFirst({
+      where: {
+        studentId,
+        subjectScope: SESSION_SCOPE,
+        periodStart: currentPeriodStart,
+      },
     })
 
     if (!usage) {
       usage = await prisma.freeTierUsage.create({
         data: {
           studentId,
+          subjectScope: SESSION_SCOPE,
           periodStart: currentPeriodStart,
           sessionsUsed: 0,
+          chapterTestsUsed: 0,
         },
       })
-    } else {
-      const sameMonth =
-        usage.periodStart.getFullYear() === currentPeriodStart.getFullYear() &&
-        usage.periodStart.getMonth() === currentPeriodStart.getMonth()
-
-      if (!sameMonth) {
-        usage = await prisma.freeTierUsage.update({
-          where: { studentId },
-          data: {
-            periodStart: currentPeriodStart,
-            sessionsUsed: 0,
-          },
-        })
-      }
     }
 
     // If a parent has paused this child, sessions during the pause do not count
@@ -201,6 +195,7 @@ export async function getStudentsNearingReset(targetDaysOut: number = 3): Promis
 
     const usageRows = await prisma.freeTierUsage.findMany({
       where: {
+        subjectScope: SESSION_SCOPE,
         periodStart: currentPeriodStart,
         sessionsUsed: { gt: 0 },
       },
@@ -209,7 +204,7 @@ export async function getStudentsNearingReset(targetDaysOut: number = 3): Promis
 
     if (usageRows.length === 0) return []
 
-    const studentIds = usageRows.map((r: { studentId: string }) => r.studentId)
+    const studentIds = Array.from(new Set(usageRows.map((r: { studentId: string }) => r.studentId)))
 
     // Only notify students who are still on the free tier
     const freeStudents = await prisma.user.findMany({
@@ -241,38 +236,31 @@ export async function incrementFreeTierUsage(studentId: string): Promise<void> {
     const currentPeriodStart = getCurrentPeriodStart()
 
     await prisma.$transaction(async (tx) => {
-      const usage = await tx.freeTierUsage.findUnique({
-        where: { studentId },
+      const usage = await tx.freeTierUsage.findFirst({
+        where: {
+          studentId,
+          subjectScope: SESSION_SCOPE,
+          periodStart: currentPeriodStart,
+        },
       })
 
       if (!usage) {
         await tx.freeTierUsage.create({
           data: {
             studentId,
+            subjectScope: SESSION_SCOPE,
             periodStart: currentPeriodStart,
             sessionsUsed: 1,
+            chapterTestsUsed: 0,
           },
         })
         return
       }
 
-      let sessionsUsed = usage.sessionsUsed
-      let periodStart = usage.periodStart
-
-      const sameMonth =
-        periodStart.getFullYear() === currentPeriodStart.getFullYear() &&
-        periodStart.getMonth() === currentPeriodStart.getMonth()
-
-      if (!sameMonth) {
-        periodStart = currentPeriodStart
-        sessionsUsed = 0
-      }
-
       await tx.freeTierUsage.update({
-        where: { studentId },
+        where: { id: usage.id },
         data: {
-          periodStart,
-          sessionsUsed: sessionsUsed + 1,
+          sessionsUsed: usage.sessionsUsed + 1,
         },
       })
     })
@@ -287,7 +275,7 @@ export async function incrementFreeTierUsage(studentId: string): Promise<void> {
  * Premium students bypass the cap.
  * Never throws -- returns allowed: false on DB or subscription error.
  */
-export async function checkChapterTestCap(studentId: string): Promise<ChapterTestCapStatus> {
+export async function checkChapterTestCap(studentId: string, subjectScope: string): Promise<ChapterTestCapStatus> {
   const periodStart = getCurrentPeriodStart()
   const fallback: ChapterTestCapStatus = {
     allowed: false,
@@ -297,6 +285,8 @@ export async function checkChapterTestCap(studentId: string): Promise<ChapterTes
   }
 
   try {
+    if (!subjectScope) return fallback
+
     const isPremium = await isPremiumUser(studentId)
     if (isPremium) {
       return { allowed: true, testsUsed: 0, testsRemaining: FREE_TIER_CHAPTER_TEST_LIMIT, periodStart }
@@ -304,26 +294,21 @@ export async function checkChapterTestCap(studentId: string): Promise<ChapterTes
 
     const currentPeriodStart = getCurrentPeriodStart()
 
-    let usage = await prisma.freeTierUsage.findUnique({ where: { studentId } })
+    let usage = await prisma.freeTierUsage.findFirst({
+      where: {
+        studentId,
+        subjectScope,
+        periodStart: currentPeriodStart,
+      },
+    })
 
     if (!usage) {
       usage = await prisma.freeTierUsage.create({
-        data: { studentId, periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 0 },
+        data: { studentId, subjectScope, periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 0 },
       })
-    } else {
-      const sameMonth =
-        usage.periodStart.getFullYear() === currentPeriodStart.getFullYear() &&
-        usage.periodStart.getMonth() === currentPeriodStart.getMonth()
-
-      if (!sameMonth) {
-        usage = await prisma.freeTierUsage.update({
-          where: { studentId },
-          data: { periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 0 },
-        })
-      }
     }
 
-    const testsUsed = (usage as any).chapterTestsUsed ?? 0
+    const testsUsed = usage.chapterTestsUsed ?? 0
     const testsRemaining = Math.max(0, FREE_TIER_CHAPTER_TEST_LIMIT - testsUsed)
     return { allowed: testsUsed < FREE_TIER_CHAPTER_TEST_LIMIT, testsUsed, testsRemaining, periodStart: usage.periodStart }
   } catch {
@@ -336,35 +321,35 @@ export async function checkChapterTestCap(studentId: string): Promise<ChapterTes
  * Call AFTER chapter test successfully starts -- not before.
  * Never throws.
  */
-export async function incrementChapterTestUsage(studentId: string): Promise<void> {
+export async function incrementChapterTestUsage(studentId: string, subjectScope: string): Promise<void> {
   try {
+    if (!subjectScope) return
+
     const isPremium = await isPremiumUser(studentId)
     if (isPremium) return
 
     const currentPeriodStart = getCurrentPeriodStart()
 
     await prisma.$transaction(async (tx) => {
-      const usage = await tx.freeTierUsage.findUnique({ where: { studentId } })
+      const usage = await tx.freeTierUsage.findFirst({
+        where: {
+          studentId,
+          subjectScope,
+          periodStart: currentPeriodStart,
+        },
+      })
 
       if (!usage) {
         await tx.freeTierUsage.create({
-          data: { studentId, periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 1 },
+          data: { studentId, subjectScope, periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 1 },
         })
         return
       }
 
-      const sameMonth =
-        usage.periodStart.getFullYear() === currentPeriodStart.getFullYear() &&
-        usage.periodStart.getMonth() === currentPeriodStart.getMonth()
-
-      const currentTests = sameMonth ? ((usage as any).chapterTestsUsed ?? 0) : 0
-
       await tx.freeTierUsage.update({
-        where: { studentId },
+        where: { id: usage.id },
         data: {
-          periodStart: sameMonth ? usage.periodStart : currentPeriodStart,
-          sessionsUsed: sameMonth ? usage.sessionsUsed : 0,
-          chapterTestsUsed: currentTests + 1,
+          chapterTestsUsed: usage.chapterTestsUsed + 1,
         },
       })
     })

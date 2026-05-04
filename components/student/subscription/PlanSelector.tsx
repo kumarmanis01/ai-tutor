@@ -1,10 +1,19 @@
 'use client';
 
 /**
- * PlanSelector -- step 1 of upgrade flow.
+ * FILE OBJECTIVE:
+ * - Render selectable billing plans for the student upgrade flow.
+ * - Surface featured and savings badges while lifting selected plan state to parent.
  *
- * Three plan rows: Monthly / Quarterly (featured) / Annual.
- * Selected plan highlighted; state lifted to parent via onSelect.
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/subscription/PlanSelector.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T00:00:00Z | copilot | add required file header and edit log metadata
  */
 
 import React from 'react';
@@ -37,7 +46,6 @@ function PlanRow({
     <button
       type="button"
       onClick={onSelect}
-      aria-pressed={isSelected ? 'true' : 'false'}
       className={[
         'w-full text-left rounded-xl px-4 py-4 min-h-[56px] flex items-center gap-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]',
         isFeatured

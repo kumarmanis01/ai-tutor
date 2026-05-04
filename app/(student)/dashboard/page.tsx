@@ -65,6 +65,9 @@ export default async function StudentHomeDashboardPage() {
   const userId = (authSession.user as { id: string }).id
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)
+  const currentPeriodStart = new Date()
+  currentPeriodStart.setDate(1)
+  currentPeriodStart.setHours(0, 0, 0, 0)
 
   // ── Round 1: all independent queries in a single parallel fetch ──────────────
   // XP aggregates merged here so there is no second sequential Promise.all below.
@@ -97,8 +100,8 @@ export default async function StudentHomeDashboardPage() {
       },
     }),
     getNextAction(userId).catch(() => null),
-    prisma.freeTierUsage.findUnique({
-      where: { studentId: userId },
+    prisma.freeTierUsage.findFirst({
+      where: { studentId: userId, subjectScope: '__ALL__', periodStart: currentPeriodStart },
       select: { sessionsUsed: true, periodStart: true },
     }),
     // Fetch learning plans for this student (used to scope dashboard subjects)

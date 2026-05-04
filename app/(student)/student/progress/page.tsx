@@ -19,6 +19,7 @@
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page
  * - 2026-04-07 | claude | F-STU-033 AC-02: subject + time-range filters via URL params
+ * - 2026-05-04 | copilot | apply subject filter to heatmap and concepts mastered count
  */
 
 import type { Metadata } from 'next';
@@ -78,6 +79,18 @@ export default async function ProgressPage({
     ? { subject: { equals: activeSubject, mode: 'insensitive' as const } }
     : {};
 
+  const conceptSubjectFilter = activeSubject
+    ? {
+        concept: {
+          topic: {
+            chapter: {
+              subject: { name: { equals: activeSubject, mode: 'insensitive' as const } },
+            },
+          },
+        },
+      }
+    : {};
+
   const heatmapSince = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
 
   const [studentProfile, chartSessions, completedSessions, trendRows, heatmapSessions, conceptsMasteredCount] = await Promise.all([
@@ -134,12 +147,17 @@ export default async function ProgressPage({
       where: {
         studentId: userId,
         completedAt: { not: null, gte: heatmapSince },
+        ...subjectFilter,
       },
       select: { startedAt: true, completedAt: true },
     }),
     // AC-01 (F-STU-033): Concepts mastered count (masteryScore > 0.75)
     prisma.studentConceptState.count({
-      where: { studentId: userId, masteryScore: { gt: 0.75 } },
+      where: {
+        studentId: userId,
+        masteryScore: { gt: 0.75 },
+        ...conceptSubjectFilter,
+      },
     }),
   ]);
 

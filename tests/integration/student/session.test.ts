@@ -13,7 +13,7 @@ const prismaMock = {
     update: jest.fn(),
   },
   freeTierUsage: {
-    findUnique: jest.fn(),
+    findFirst: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
   },
@@ -72,7 +72,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 describe('Freemium session cap', () => {
   it('returns allowed:false when sessionsUsed >= FREE_TIER_SESSION_LIMIT', async () => {
-    prismaMock.freeTierUsage.findUnique.mockResolvedValueOnce({
+    prismaMock.freeTierUsage.findFirst.mockResolvedValueOnce({
       studentId: 'student-1',
       periodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
       sessionsUsed: FREE_TIER_SESSION_LIMIT,
@@ -84,7 +84,7 @@ describe('Freemium session cap', () => {
   });
 
   it('returns allowed:true when sessionsUsed < FREE_TIER_SESSION_LIMIT', async () => {
-    prismaMock.freeTierUsage.findUnique.mockResolvedValueOnce({
+    prismaMock.freeTierUsage.findFirst.mockResolvedValueOnce({
       studentId: 'student-2',
       periodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
       sessionsUsed: 2,
@@ -101,11 +101,11 @@ describe('Freemium session cap', () => {
     const result = await checkFreeTierCap('premium-student');
     expect(result.allowed).toBe(true);
     // Premium users skip freeTierUsage lookup entirely
-    expect(prismaMock.freeTierUsage.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.freeTierUsage.findFirst).not.toHaveBeenCalled();
   });
 
   it('creates new FreeTierUsage when none exists', async () => {
-    prismaMock.freeTierUsage.findUnique.mockResolvedValueOnce(null);
+    prismaMock.freeTierUsage.findFirst.mockResolvedValueOnce(null);
     prismaMock.freeTierUsage.create.mockResolvedValueOnce({
       studentId: 'student-new',
       periodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1),

@@ -151,7 +151,7 @@ describe('StudentHomeDashboardPage', () => {
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser())
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue({
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue({
       sessionsUsed: 1,
       periodStart: new Date(),
     })
@@ -177,11 +177,7 @@ describe('StudentHomeDashboardPage', () => {
     expect(prismaMock.studentXP.groupBy).toHaveBeenCalled()
     expect(prismaMock.subjectDef.findMany).toHaveBeenCalled()
     expect(computeReadinessScoreMock).toHaveBeenCalledWith(MOCK_USER_ID, 'sub-math')
-    expect(prismaMock.diagnosticSession.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ studentId: MOCK_USER_ID, subjectId: 'sub-math' }),
-      }),
-    )
+    expect(prismaMock.diagnosticSession.findFirst).not.toHaveBeenCalled()
     expect(getSubjectDiagnosticStatusMock).toHaveBeenCalledWith(MOCK_USER_ID, 'sub-math')
   })
 
@@ -194,7 +190,7 @@ describe('StudentHomeDashboardPage', () => {
     prismaMock.user.findUnique.mockResolvedValue(
       makeUser({ board: 'CBSE', grade: '10', subjects: ['Mathematics'] }),
     )
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
@@ -226,7 +222,7 @@ describe('StudentHomeDashboardPage', () => {
     prismaMock.user.findUnique.mockResolvedValue(
       makeUser({ board: 'CBSE', grade: '10', subjects: ['Mathematics'] }),
     )
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([{ subjectId: 'plan-sub-math' }])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
@@ -252,7 +248,7 @@ describe('StudentHomeDashboardPage', () => {
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subjects: ['Mathematics'] }))
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
@@ -282,7 +278,7 @@ describe('StudentHomeDashboardPage', () => {
     )
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser())
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
@@ -313,7 +309,7 @@ describe('StudentHomeDashboardPage', () => {
     getNextActionMock.mockResolvedValue(null)
 
     prismaMock.user.findUnique.mockResolvedValue(null)
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
@@ -332,7 +328,7 @@ describe('StudentHomeDashboardPage', () => {
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     // 1 session used out of 3 cap => 2 remaining
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue({
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue({
       sessionsUsed: 1,
       periodStart: new Date(),
     })
@@ -361,7 +357,7 @@ describe('StudentHomeDashboardPage', () => {
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     // 3 sessions used = cap reached => 0 remaining
-    prismaMock.freeTierUsage.findUnique.mockResolvedValue({
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue({
       sessionsUsed: 3,
       periodStart: new Date(),
     })

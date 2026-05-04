@@ -42,8 +42,14 @@ export async function POST(req: Request) {
     let timeLimitSeconds: number | null = null;
 
     if (chapter) {
+      if (!subject || typeof subject !== 'string') {
+        res = NextResponse.json({ error: 'subject is required for chapter tests' }, { status: 400 });
+        logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
+        return res;
+      }
+
       // AC-01 (F-STU-040): Enforce 1 chapter test per month on free tier.
-      const cap = await checkChapterTestCap(user.id)
+      const cap = await checkChapterTestCap(user.id, subject)
       if (!cap.allowed) {
         res = NextResponse.json(
           { error: 'free_tier_chapter_test_cap', message: 'You have used your 1 free chapter test this month. Upgrade for unlimited access.' },
@@ -95,8 +101,8 @@ export async function POST(req: Request) {
     );
 
     // AC-01 (F-STU-040): Record chapter test usage after successful start.
-    if (chapter) {
-      void incrementChapterTestUsage(user.id)
+    if (chapter && subject && typeof subject === 'string') {
+      void incrementChapterTestUsage(user.id, subject)
     }
 
     const payload = questions.map((q) => ({

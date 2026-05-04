@@ -1,15 +1,17 @@
 /**
- * StudyTimeHeatmap -- F-STU-033 AC-01
+ * FILE OBJECTIVE:
+ * - Render a calendar-aligned study-time heatmap for the last N weeks.
+ * - Show one cell per weekday with intensity bands based on minutes studied.
  *
- * Shows last 28 days of study activity as a 4-week x 7-day colour grid.
- * Each cell is one calendar day; colour intensity = minutes studied that day.
- * Pure CSS, no charting library.
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/progress/StudyTimeHeatmap.spec.ts
  *
- * Colour bands:
- *   0 min        -> bg-gray-100  dark:bg-slate-700  (no activity)
- *   1-20 min     -> bg-[#EEEDFE] (lightest)
- *   21-40 min    -> bg-[#534AB7]/40
- *   41+ min      -> bg-[#534AB7]  (full)
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T00:00:00Z | copilot | add required file header and align columns to Monday-Sunday calendar weeks
  */
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
@@ -37,31 +39,31 @@ function cellBg(minutes: number): string {
 export default function StudyTimeHeatmap({ days, weeks = 4 }: StudyTimeHeatmapProps) {
   const minutesByDate = new Map<string, number>(days.map((d) => [d.date, d.minutes]));
 
-  // Build grid: weeks columns x 7 rows (Mon=0 ... Sun=6)
-  // Anchor: today. Walk back (weeks*7 - 1) days to fill the grid.
-  const totalDays = weeks * 7;
-  const cells: { date: string; minutes: number; weekIdx: number; dayIdx: number }[] = [];
+  // Build grid: weeks columns x 7 rows (Mon=0 ... Sun=6), aligned to calendar weeks.
+  const cells: { date: string; minutes: number; weekIdx: number; dayIdx: number; isFuture: boolean }[] = [];
 
-  const now = new Date();
-  // Sunday = 0 in JS. Shift so Monday = 0.
-  const todayDow = (now.getDay() + 6) % 7; // Mon=0 Sun=6
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayDow = (today.getDay() + 6) % 7; // Mon=0 Sun=6
 
-  // Pad so the last column ends on today's day-of-week.
-  // We fill columns left to right, rows top to bottom (Mon=row 0 ... Sun=row 6).
-  for (let i = totalDays - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const dayOfWeek = (d.getDay() + 6) % 7; // Mon=0
-    // Column index: 0 = leftmost week. We have `weeks` columns.
-    const absPos = totalDays - 1 - i; // 0 = (totalDays-1) days ago
-    const weekIdx = Math.floor((absPos + (7 - (todayDow + 1))) % totalDays / 7);
-    cells.push({
-      date: dateStr,
-      minutes: minutesByDate.get(dateStr) ?? 0,
-      weekIdx: Math.floor(absPos / 7),
-      dayIdx: dayOfWeek,
-    });
+  // Monday of the left-most rendered week.
+  const gridStart = new Date(today);
+  gridStart.setDate(today.getDate() - todayDow - (weeks - 1) * 7);
+
+  for (let weekIdx = 0; weekIdx < weeks; weekIdx += 1) {
+    for (let dayIdx = 0; dayIdx < 7; dayIdx += 1) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + weekIdx * 7 + dayIdx);
+      const dateStr = d.toISOString().slice(0, 10);
+      const isFuture = d.getTime() > today.getTime();
+      cells.push({
+        date: dateStr,
+        minutes: isFuture ? 0 : (minutesByDate.get(dateStr) ?? 0),
+        weekIdx,
+        dayIdx,
+        isFuture,
+      });
+    }
   }
 
   // Build week columns array (length=weeks), each an array of 7 day cells
@@ -103,6 +105,15 @@ export default function StudyTimeHeatmap({ days, weeks = 4 }: StudyTimeHeatmapPr
           <div key={wIdx} className="flex flex-col gap-1 flex-1">
             {week.map((cell, dIdx) => {
               if (!cell) {
+                return (
+                  <div
+                    key={dIdx}
+                    className="h-5 rounded-sm bg-transparent"
+                    aria-hidden="true"
+                  />
+                );
+              }
+              if (cell.isFuture) {
                 return (
                   <div
                     key={dIdx}

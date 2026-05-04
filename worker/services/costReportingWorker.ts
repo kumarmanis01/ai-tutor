@@ -376,7 +376,7 @@ async function runFreeTierResetPush(): Promise<void> {
 
     // Find free-tier students who have used ≥ 2 of 10 sessions this month
     const usages = await prisma.freeTierUsage.findMany({
-      where: { sessionsUsed: { gte: 2 } },
+      where: { subjectScope: '__ALL__', sessionsUsed: { gte: 2 } },
       select: { studentId: true, sessionsUsed: true },
     })
 

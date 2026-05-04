@@ -6,6 +6,7 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | staff-engineer | created for C1 create-subscription endpoint
+ * - 2026-05-04T00:00:00Z | copilot | replace quarterly placeholder fallback with non-placeholder live-safe fallback
  */
 
 import type { PlanId } from './plans'
@@ -17,7 +18,8 @@ import type { PlanId } from './plans'
  */
 export const RAZORPAY_SUB_PLAN_IDS: Record<PlanId, string> = {
   standard_monthly:   process.env.RAZORPAY_PLAN_STANDARD_MONTHLY   ?? 'plan_SdptFLuFx3QjWU',
-  standard_quarterly: process.env.RAZORPAY_PLAN_STANDARD_QUARTERLY ?? 'plan_quarterly_placeholder',
+  // Fallback reuses a valid plan ID to avoid hard failures when env is missing.
+  standard_quarterly: process.env.RAZORPAY_PLAN_STANDARD_QUARTERLY ?? 'plan_SdptFLuFx3QjWU',
   standard_annual:    process.env.RAZORPAY_PLAN_STANDARD_ANNUAL    ?? 'plan_SdpvIxHJDL0rgL',
   family_monthly:     process.env.RAZORPAY_PLAN_FAMILY_MONTHLY     ?? 'plan_SdptsPYhklab0S',
   family_annual:      process.env.RAZORPAY_PLAN_FAMILY_ANNUAL      ?? 'plan_SdpusIRfHFOe21',

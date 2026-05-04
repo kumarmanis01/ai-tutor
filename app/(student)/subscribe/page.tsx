@@ -38,6 +38,9 @@ export default async function SubscribePage() {
   if (!authSession) redirect('/')
 
   const userId = (authSession.user as { id: string }).id
+  const currentPeriodStart = new Date()
+  currentPeriodStart.setDate(1)
+  currentPeriodStart.setHours(0, 0, 0, 0)
 
   const [user, freeTierUsage] = await Promise.all([
     prisma.user.findUnique({
@@ -48,8 +51,8 @@ export default async function SubscribePage() {
         subscriptionStatus: true,
       },
     }),
-    prisma.freeTierUsage.findUnique({
-      where: { studentId: userId },
+    prisma.freeTierUsage.findFirst({
+      where: { studentId: userId, subjectScope: '__ALL__', periodStart: currentPeriodStart },
       select: { sessionsUsed: true, periodStart: true },
     }),
   ])

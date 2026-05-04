@@ -1,14 +1,19 @@
 'use client';
 
 /**
- * ReferralShareCard -- F-STU-042 AC-01
+ * FILE OBJECTIVE:
+ * - Fetch and display a student's invite code with copy and WhatsApp share actions.
+ * - Keep widget-local loading/error states so failures do not blank surrounding pages.
  *
- * Fetches the student's unique referral code (/api/referral/create) and renders:
- * - Copy-to-clipboard button (AC-01)
- * - WhatsApp share button using the wa.me deep link (AC-01; no Business API required)
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/referral/ReferralShareCard.spec.ts
  *
- * Independent loading/error states -- one widget failing never blanks the page.
- * Never mentions "referral programme" by that name in user-facing copy (brand rule).
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T00:00:00Z | copilot | add required file header and edit log metadata
  */
 
 import { useState, useEffect, useCallback } from 'react';
