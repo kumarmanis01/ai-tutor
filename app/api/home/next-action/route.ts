@@ -6,8 +6,13 @@
  * LINKED UNIT TEST:
  * - tests/unit/app/api/home/next-action.spec.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-05-04 | claude | created for F-STU-015 AC-05 -- reuses getNextAction engine
+ * - 2026-05-04T00:00:00Z | claude | created for F-STU-015 AC-05 -- reuses getNextAction engine
+ * - 2026-05-04T00:00:01Z | copilot | add required header section and normalize EDIT LOG timestamp format for repo compliance
  */
 
 import { NextResponse } from 'next/server'
