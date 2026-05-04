@@ -495,7 +495,7 @@ SHOULD
 AC-05
 "Schedule next session" prompt with AI's recommended time slot (based on student's historical active hours).
 SHOULD
-✅ DONE — "Start next session" CTA populated via GET /api/home/next-action (app/api/home/next-action/route.ts, created); returns getNextAction() result; CTA shows next topic name when available; time-slot recommendation based on historical active hours is Phase 2 (requires session-hour analytics schema)
+⚠️ PARTIAL — "Start next session" CTA exists in SessionCompletionScreen and is populated via GET /api/home/next-action (created); CTA shows next recommended topic name from getNextAction(). Time-slot recommendation based on student's historical active hours is NOT yet implemented (requires session-hour distribution analytics and additional UI — deferred to Phase 2)
 AC-06
 Session summary shareable to parent via WhatsApp (Phase 2) or copy-to-clipboard (MVP).
 SHOULD

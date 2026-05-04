@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | add optional boardChapterWeightMarks to PromptContext and stage cues for board mapping (AC-07)
+ * - 2026-05-04T00:00:00Z | claude | add grade-band tone calibration to buildPersonaLayer (AC-10, F-STU-011 SHOULD)
  */
 
 import type { TutorStage } from '@/lib/ai/tutor/stateMachine'

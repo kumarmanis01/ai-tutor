@@ -24,9 +24,11 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
   const start = Date.now()
+  // Hoisted so the catch block can include userId in structured error logs.
+  let userId: string | undefined
   try {
     const session = await getServerSessionForHandlers()
-    const userId = session?.user?.id as string | undefined
+    userId = session?.user?.id as string | undefined
     if (!userId) {
       const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       logger.logAPI(req, res, { className: 'HomeNextActionAPI', methodName: 'GET' }, start)
@@ -46,7 +48,8 @@ export async function GET(req: Request) {
     logger.error('HomeNextActionAPI failed', {
       className: 'HomeNextActionAPI',
       methodName: 'GET',
-      error: String(err),
+      userId,
+      error: err,
     })
     const res = NextResponse.json({ error: 'Internal error' }, { status: 500 })
     logger.logAPI(req, res, { className: 'HomeNextActionAPI', methodName: 'GET' }, start)

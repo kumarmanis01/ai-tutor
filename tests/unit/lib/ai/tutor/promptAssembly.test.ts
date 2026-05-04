@@ -1,5 +1,6 @@
 import {
   assembleSystemPrompt,
+  buildPersonaLayer,
   buildStageInstructionsLayer,
   type PromptContext,
 } from '@/lib/ai/tutor/promptAssembly'
@@ -486,6 +487,74 @@ describe('buildStageInstructionsLayer -- board chapter weight (AC-07)', () => {
     const result = assembleSystemPrompt(ctx)
     expect(result.system).toContain('Board exam reminder')
     expect(result.system).toContain('6 marks')
+  })
+})
+
+// AC-10 (F-STU-011 SHOULD): grade-band tone calibration in PERSONA layer
+describe('buildPersonaLayer -- grade-band tone calibration (AC-10)', () => {
+  test('should emit elder-sibling tone note for grade 6', () => {
+    const layer = buildPersonaLayer(makeCtx({ grade: 6 }))
+    expect(layer).toContain('Tone calibration (Grade 6-8)')
+    expect(layer).toContain('elder sibling')
+  })
+
+  test('should emit elder-sibling tone note for grade 7', () => {
+    const layer = buildPersonaLayer(makeCtx({ grade: 7 }))
+    expect(layer).toContain('Tone calibration (Grade 6-8)')
+    expect(layer).toContain('elder sibling')
+  })
+
+  test('should emit elder-sibling tone note for grade 8', () => {
+    const layer = buildPersonaLayer(makeCtx({ grade: 8 }))
+    expect(layer).toContain('Tone calibration (Grade 6-8)')
+    expect(layer).toContain('elder sibling')
+  })
+
+  test('should emit peer-collaborator tone note for grade 9', () => {
+    const layer = buildPersonaLayer(makeCtx({ grade: 9 }))
+    expect(layer).toContain('Tone calibration (Grade 9-10)')
+    expect(layer).toContain('peer collaborator')
+    expect(layer).not.toContain('elder sibling')
+  })
+
+  test('should emit peer-collaborator tone note for grade 10', () => {
+    const layer = buildPersonaLayer(makeCtx({ grade: 10 }))
+    expect(layer).toContain('Tone calibration (Grade 9-10)')
+    expect(layer).toContain('peer collaborator')
+    expect(layer).not.toContain('elder sibling')
+  })
+
+  test('should emit focused-mentor tone note for grade 11', () => {
+    const layer = buildPersonaLayer(makeCtx({ grade: 11 }))
+    expect(layer).toContain('Tone calibration (Grade 11-12)')
+    expect(layer).toContain('focused mentor')
+    expect(layer).not.toContain('peer collaborator')
+  })
+
+  test('should emit focused-mentor tone note for grade 12', () => {
+    const layer = buildPersonaLayer(makeCtx({ grade: 12 }))
+    expect(layer).toContain('Tone calibration (Grade 11-12)')
+    expect(layer).toContain('focused mentor')
+  })
+
+  test('tone note is present in assembled system prompt PERSONA section for all grade bands', () => {
+    for (const { grade, expected } of [
+      { grade: 7,  expected: 'elder sibling' },
+      { grade: 10, expected: 'peer collaborator' },
+      { grade: 12, expected: 'focused mentor' },
+    ]) {
+      const result = assembleSystemPrompt(makeCtx({ grade }))
+      const personaEnd = result.system.indexOf('### SAFETY')
+      const personaSection = result.system.slice(0, personaEnd)
+      expect(personaSection).toContain(expected)
+    }
+  })
+
+  test('tone note does not bleed into SAFETY or later layers', () => {
+    const result = assembleSystemPrompt(makeCtx({ grade: 7 }))
+    const safetyIdx = result.system.indexOf('### SAFETY')
+    const safetyOnward = result.system.slice(safetyIdx)
+    expect(safetyOnward).not.toContain('Tone calibration')
   })
 })
 
