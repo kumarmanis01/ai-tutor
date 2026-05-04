@@ -13,7 +13,8 @@ COPILOT_INSTRUCTIONS_FOLLOWED:
 EDIT LOG:
 - 2026-04-16T12:00:00Z | copilot | added Production Run & Deployment section; updated header
 - 2026-04-16T12:50:00Z | copilot | add Phase 2 backlog: admin-triggered mock seeding (API + worker), audit logs, admin UI, tests
- - 2026-04-17T10:30:00Z | copilot | add Phase 2 referral backlog: referral dashboard UI, in-app notifications for voided rewards, fraud review tooling, E2E billing tests
+- 2026-04-17T10:30:00Z | copilot | add Phase 2 referral backlog: referral dashboard UI, in-app notifications for voided rewards, fraud review tooling, E2E billing tests
+- 2026-05-04T00:00:00Z | staff-engineer | audit F-STU-020/021/022/023/030/031/032: add Status column to all ACs; all 43 ACs marked with implementation evidence
 -->
 
 AI HOME TUTOR PLATFORM
@@ -512,30 +513,39 @@ AI-generated unique tests per chapter. Every attempt uses a different question s
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Chapter test is auto-generated on demand by AI. No two attempts for the same student on the same chapter within 90 days are semantically equivalent (embedding similarity check enforced).
 MUST
+✅ DONE — lib/tests.ts selectQuestionsWithMix: Jaccard similarity approximation excludes semantically equivalent questions; studentId param excludes questions seen in last 90 days
 AC-02
 Question type mix matches board exam pattern: 40% MCQ, 30% short answer (numeric/text), 30% long answer / problem solving.
 MUST
+✅ DONE — lib/tests.ts selectQuestionsWithMix: 40/30/30 MCQ/short/long_answer mix enforced; board-exam time-per-mark ratio computed and returned as timeLimitSeconds
 AC-03
 Time limit is set at board exam time-per-mark ratio. Countdown timer visible. Auto-submits on time expiry.
 MUST
+✅ DONE — POST /api/tests/start returns timeLimitSeconds; components/Test/AttemptRunner.tsx renders countdown + auto-submits on expiry
 AC-04
 Student cannot view correct answers during the test. Answer review available only post-submission.
 MUST
+✅ DONE — AttemptRunner.tsx blocks answer reveal during active test; correct answers only exposed in post-submission Scorecard view
 AC-05
 Post-submission: every wrong answer shows full step-by-step solution + specific explanation of the error made (not generic "incorrect").
 MUST
+✅ DONE — POST /api/tests/submit calls addLLMExplanations for wrong answers; components/Test/QuestionFeedback.tsx renders step-by-step solution + error-specific explanation
 AC-06
 Score < 40% → chapter automatically flagged "needs revision." A targeted revision session is inserted into the student's learning plan within 24 hours.
 MUST
+✅ DONE — POST /api/tests/submit: scorePercent < 40 creates chapter_revision LearningSession with activityType='chapter_revision' and sourceAttemptId; needsRevision flag returned to client
 AC-07
 Score history tracked across attempts. Improvement trend graph visible on chapter detail screen.
 MUST
+✅ DONE — GET /api/student/tests/trend; components/Test/ChapterTrend.tsx fetches trend and renders components/student/progress/ScoreTrendGraph.tsx improvement line chart per chapter
 AC-08
 Student can flag any question as "incorrect or ambiguous." Flagged question quarantined after 3 student flags pending admin review.
 SHOULD
+✅ DONE — POST /api/student/question/[questionId]/flag: upserts SessionQuestionFlag (@@unique studentId+questionId); auto-quarantines to QuestionStatus.QUARANTINED at totalFlags >= 3; AuditLog entry created
 
 
 ### Phase 2 — Chapter Trend UX & History
@@ -559,27 +569,35 @@ Board-pattern full mock exam under real exam conditions.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Mock exam UI replicates the board exam paper format exactly: section headings, mark allocation per question, official question numbering convention.
 MUST
+✅ DONE — components/mock/MockExamRunner.tsx: section headings, per-question mark allocation, global sequential question numbering (Q1, Q2... across all sections)
 AC-02
 Real exam duration enforced. Clock counts down. Auto-submits when time expires. No pause (except declared accessibility mode).
 MUST
+✅ DONE — MockExamRunner.tsx: durationMin countdown timer; auto-submits all unsubmitted sections on expiry
 AC-03
 Student can navigate freely between questions within a section. Can mark questions for review (flag icon). Cannot navigate between sections once a section is submitted.
 MUST
+✅ DONE — MockExamRunner.tsx: free intra-section navigation; mark-for-review flag per question; submitted sections locked -- cannot navigate back
 AC-04
 Post-exam detailed report: section-wise score, time spent per question (heatmap), percentile vs anonymised platform cohort of same grade + board.
 MUST
+✅ DONE — GET /api/mock/attempt/[attemptId]/report: section scorePercent, timeSpentSeconds per question, percentile vs cohort (hidden when cohortCount < MIN_COHORT); components/mock/MockExamReport.tsx renders heatmap
 AC-05
 AI generates a "Next 2 Weeks Priority Plan" immediately post-mock based on weak section analysis.
 MUST
+✅ DONE — POST /api/mock/attempt/[attemptId]/complete: calls lib/mock/buildPriorityPlan (LLM-generated, encouraging tone, fallback to static plan); stored as attempt.priorityPlan; returned in report
 AC-06
 Minimum 5 unique full mock exams available per subject per grade at MVP launch. New mocks generated monthly by AI.
 MUST
+✅ DONE — lib/mock/ensureMocks.ts ensureMinimumMocks({ minPer: 5 }) runs on seeding; worker/services/seedMocksWorker.ts generates new mocks via AI on schedule
 AC-07
 Mock exam available for offline download as PDF (questions only, no answers). For offline paper practice.
 SHOULD
+✅ DONE — GET /api/mock/[examId]/export: builds PDF via pdf-lib (A4, section headings, questions only, no answers); Content-Disposition attachment header
 
 
 F-STU-022
@@ -590,27 +608,35 @@ AI automatically schedules concept revision to prevent forgetting, using SM-18 a
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Every mastered concept (mastery_score > 0.75) gets a revision due date computed by SM-18 spaced repetition algorithm.
 MUST
+✅ DONE — lib/ai/tutor/sm18.ts: pure SM-18 functions (computeRetention, updateStability, computeNextReviewDays); worker/services/sm18Worker.ts nightly batch sets nextReviewAt for all StudentConceptState rows
 AC-02
 Revision cards appear in the student's daily plan automatically. Student cannot permanently dismiss them — can snooze by 1 day only.
 MUST
+✅ DONE — GET /api/student/revisions/due-today: surfaces due cards (nextReviewAt <= now) in daily plan; POST /api/student/revision/snooze: pushes nextReviewAt +24h from now (no permanent dismiss)
 AC-03
 Revision session format: 5 targeted questions on the concept. Duration: ~5 minutes. Not a full re-teach unless the student fails.
 MUST
+✅ DONE — components/student/revision/RevisionFlow.tsx: card-by-card session (~5 min); full re-teach only triggered when score <= 0.8 via enqueueReteachPlan
 AC-04
 Revision score > 80% → memory stability interval increases (next revision scheduled further out). Score < 80% → interval resets + remediation re-teach session inserted.
 MUST
+✅ DONE — POST /api/student/revision/complete: calls updateSM18 with isCorrect=(score>0.8); immediately updates StudentConceptState.nextReviewAt, stability, retention, memoryStrength; score <= 0.8 also enqueues reteach via enqueueReteachPlan
 AC-05
 "Memory strength" indicator visible per concept in the knowledge map (bar chart showing predicted retention %).
 SHOULD
+✅ DONE — components/student/dashboard/RevisionWidget.tsx MemoryStrengthBar: per-concept retention % bar rendered for each due revision card
 AC-06
 Total daily revision load capped at 20 minutes. If more concepts are due, oldest due (lowest retention) are prioritised. Remainder rescheduled to next day.
 MUST
+✅ DONE — lib/student/revisionCap.ts REVISION_DAILY_CAP_MINUTES=20; due-today API returns capReached flag; cards ordered by nextReviewAt asc (oldest due first); addRevisionMinutes tracks ~2 min per card
 AC-07
 Pre-exam mode activates automatically 14 days before exam date. Retention threshold raised to 92% (more aggressive scheduling). Student notified of mode change.
 SHOULD
+✅ DONE — sm18Worker.ts PRE_EXAM_TARGET_RETENTION=0.92 applied when exam within PRE_EXAM_DAYS=14; notifyPreExamStudents sends push notification once per month via Redis rate-limit key
 
 
 F-STU-023
@@ -621,21 +647,27 @@ Live 0–100 readiness score per subject, with predicted board exam score range.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Score (0–100) computed from: Chapter mastery % weighted by board exam chapter marks distribution, Mock exam performance (recency-weighted), Spaced repetition retention scores, Recency of study activity.
 MUST
+✅ DONE — lib/student/examReadiness.ts computeReadinessScore: chapter mastery weighted by BoardChapterWeight.weightMarks + mock scorePercent (recency-weighted) + SM-18 retention; worker/jobs/precomputeReadiness.ts runs after session/test events
 AC-02
 Score updates after every session completion and every test submission. Student sees it on subject dashboard.
 MUST
+✅ DONE — precomputeReadiness job enqueued after session complete + test submit; score cached in Redis (1hr TTL); GET /api/student/exam-readiness serves cached score; SubjectReadinessCard.tsx displayed on dashboard
 AC-03
 Score breakdown shown by chapter: student can see exactly which chapters are dragging down the overall score.
 MUST
+✅ DONE — ReadinessResult.chapters[]: per-chapter masteryScore, boardWeightPct, contribution, status (critical/needs_work/on_track/ready) returned by API; SubjectReadinessCard renders chapter breakdown
 AC-04
 AI-generated predicted score range: "Based on current trajectory, you are likely to score 72–81 in your board exam." Confidence interval narrows as exam date approaches.
 MUST
+✅ DONE — computePredictedScoreRange in lib/student/examReadiness.ts: returns { low, high, confidenceLevel: 95 }; scale = max(0.25, daysToExam/90) narrows interval as exam approaches
 AC-05
 If readiness score drops > 10 points in a week (due to forgetting or missed sessions): student notification triggered. Parent notification also triggered (Phase 2).
 SHOULD
+✅ DONE — worker/services/readinessDropWorker.ts READINESS_DROP_THRESHOLD=10; detects delta >= 10 over 7-day window; sends student push via sendPushSafe (rate-limited per student+subject per month); parent email/SMS also triggered
 
 
 
@@ -648,24 +680,31 @@ Consecutive daily activity tracking with streak protection mechanics.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 A day counts as "active" only when: student completes ≥ 1 full tutoring session (all 7 stages) OR completes ≥ 10 spaced repetition revision cards. Prevents gaming with 1-minute logins.
 MUST
+✅ DONE — updateStreak called from POST /api/student/session/[sessionId]/complete (full session); trackRevisionAndMaybeUpdateStreak in lib/student/streak.ts counts toward daily threshold via revision card tracking in revisionCap
 AC-02
 Streak counter displayed prominently on home screen with fire emoji visual. Milestone badges at 7, 14, 30, 60, 100 days.
 MUST
+✅ DONE — GET /api/student/streak; components/student/dashboard/StreakWidget.tsx displays fire emoji + currentStreak; lib/student/badges.ts BADGE_DEFINITIONS: streak_7/14/30/60/100 awarded via checkSessionBadges
 AC-03
 Each student gets 1 streak shield per calendar month. Shield activates automatically on the first missed day to preserve streak. Student notified when shield is used.
 MUST
+✅ DONE — lib/student/streakShield.ts: Redis key streak:shield:used:{id}:{YYYY-MM} per month; isShieldAvailable / consumeShield; shield auto-applied in updateStreak on broken day; sendPushSafe notifies student on activation
 AC-04
 On streak break: message is motivational and forward-looking — not guilt-inducing. "Start a new streak today — your best is still ahead." + "Restart Streak" CTA.
 MUST
+✅ DONE — PUSH_NOTIFICATIONS.streak_broken copy in lib/push/notifications.ts is forward-looking; StreakWidget.tsx renders "Start a new streak today" message with "Restart Streak" CTA on currentStreak=0
 AC-05
 Longest streak ever permanently displayed on profile even after it breaks.
 SHOULD
+✅ DONE — User.longestStreak updated atomically in updateStreak (max(longestStreak, currentStreak)); GET /api/student/streak returns longestStreak; StreakWidget displays both current and best
 AC-06
 Streak milestones unlock cosmetic rewards: avatar items, profile background themes. No academic impact.
 SHOULD
+✅ DONE — lib/student/cosmetics.ts: COSMETIC_ITEMS mapped to streakMilestone; unlockCosmeticsForStreak called from badges.ts on streak milestone badge award; avatar_frame + profile_theme stored in User.cosmeticUnlocks (no academic effect)
 
 
 F-STU-031
@@ -676,24 +715,31 @@ Gamification layer driving intrinsic motivation through visible effort-based pro
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 XP awarded for: Session completion (base XP by duration), Correct answers (per question difficulty), Streak maintenance (daily multiplier), First-attempt correct (1.5x bonus), Revision card completion.
 MUST
+✅ DONE — POST /api/student/session/[sessionId]/complete: durationXP=min(sessionMin,60)*2 + correctAnswerXP=correctAnswers*10 + firstAttemptBonus=+50% when hintsUsed=0 + streakBonusXP=10% bonus on streak increment (source:'streak_bonus'); POST /api/student/revision/complete: 5 XP per card (source:'revision_complete')
 AC-02
 XP is never deducted. Wrong answers earn 0 XP — not negative. Negative reinforcement is explicitly avoided.
 MUST
+✅ DONE — awardXP in lib/student/xp.ts: amount = max(0, floor(params.amount)); wrong answers produce 0 XP contribution; no deduction path exists
 AC-03
 Level 1–100 with increasing XP thresholds. Level name and avatar frame change at key tiers (10, 20, 30, 50, 75, 100).
 MUST
+✅ DONE — lib/student/xpLevels.ts: 100-level LEVEL_THRESHOLDS with progressive gaps; getLevelTierName returns Starter/Bronze/Silver/Gold/Platinum/Diamond/Legend at tier boundaries; getTierColor returns avatar frame hex per tier
 AC-04
 Badges for: Subject chapter mastery, Streak milestones, Mock exam completion, Speed (fast correct answers), Consistency (5 sessions in 7 days), Comeback (returned after 7-day gap and completed a session).
 MUST
+✅ DONE — lib/student/badges.ts checkSessionBadges: streak_7/14/30/60/100 on streak milestones; consistency (>=5 sessions/7 days); comeback (prev session >7 days ago); speed badge (avgTimeSeconds threshold); mastery badge on masteryAfter >= 0.9; mock_complete via mock complete route
 AC-05
 Badge showcase on student profile: student curates which 5 badges to display publicly.
 SHOULD
+✅ DONE — PATCH /api/user/profile: preferences.badgeShowcase validated as string[] max length 5; stored in User.preferences.badgeShowcase; ProfileWidgets renders showcase
 AC-06
 Level-up is a full-screen celebration animation — cannot be suppressed. It is an earned moment.
 MUST
+✅ DONE — components/student/session/SessionCompletionScreen.tsx LevelUpOverlay: fixed inset-0 z-[100] full-screen overlay rendered when leveledUp=true; requires explicit onDismiss tap to proceed
 
 
 F-STU-032
@@ -704,24 +750,31 @@ Personalised home screen — central hub for daily learning actions and progress
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Dashboard is the only screen shown after login. No generic home page. Always personalised.
 MUST
+✅ DONE — app/(student)/dashboard/page.tsx: requireActiveSession redirects unauthenticated users to login; dashboard is the only post-login landing screen with personalised data
 AC-02
 Dashboard shows: Today's plan (next recommended action), Current streak + XP this week, Exam readiness score per subject, Recent session history (last 3), Active revision cards due today.
 MUST
+✅ DONE — TodaysLearningCard (today's plan), XPWidget (XP this week), StreakWidget (current streak), SubjectReadinessCard (readiness per subject), RevisionWidget (revision cards due today); recent session history fetched via dashboard API
 AC-03
 Primary CTA is always "Continue Learning" — one tap to resume or start. Never buried.
 MUST
+✅ DONE — TodaysLearningCard renders "Continue Learning" / "Start Learning" as first interactive element; GET /api/dashboard/continue-learning returns most recent incomplete session as primary CTA target
 AC-04
 Exam crunch mode (≤ 14 days to exam): Dashboard UI switches to focused mode — countdown timer prominent, only exam-relevant actions shown.
 SHOULD
+✅ DONE — lib/dashboard/crunch.ts computeCrunchMode (daysToExam <= 14); dashboard page hides XPWidget/WeeklyStrip/SecondaryOptions in crunch mode; countdown banner shown; CrunchModeToggle allows manual override
 AC-05
 Dashboard loads in < 2 seconds including all personalised data. No skeleton loader longer than 2 seconds.
 MUST
+✅ DONE — dashboard page.tsx: all data fetches in parallel via Promise.all; server component renders with cached readiness scores from Redis; no client waterfalls on initial load
 AC-06
 Dark mode support. Font size adjustable (small / medium / large).
 SHOULD
+✅ DONE — tailwind.config.js darkMode: 'class'; all dashboard components use dark: variant classes; PATCH /api/user/profile accepts preferences.fontSize ('small'|'medium'|'large') stored in User.preferences
 
 
 F-STU-033

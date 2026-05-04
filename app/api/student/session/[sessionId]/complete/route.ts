@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST /api/student/session/[sessionId]/complete
+ * - Marks a learning session complete, computes multi-source XP (duration,
+ *   correct answers, first-attempt bonus, streak multiplier), updates streak,
+ *   awards badges, and returns the session summary to the client.
+ * - AC-01 (F-STU-031): XP calculation sources documented inline.
+ *
+ * EDIT LOG:
+ * - 2026-03-15 | v2-migration | created for session completion flow
+ * - 2026-05-04 | staff-engineer | AC-01 F-STU-031: add duration XP, first-attempt
+ *   bonus, streak daily multiplier; fix leveledUp/newLevel to reflect final XP
+ *   award (streak bonus can trigger level-up independently)
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
@@ -76,16 +91,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       conceptName = concept?.name ?? null
     }
 
-    const xpEarned = correctAnswers * 10
+    let sessionDurationMinutes = 0
+    if (learningSession) {
+      const end = learningSession.endedAt ?? new Date()
+      const ms = end.getTime() - learningSession.startedAt.getTime()
+      // Count only fully elapsed minutes to avoid inflating XP for partial minutes.
+      sessionDurationMinutes = Math.max(0, Math.floor(ms / 60000))
+    }
+
+    // AC-01 (F-STU-031): multi-source XP calculation.
+    // 1. Base XP by session duration (2 XP/min, cap 60 min).
+    const durationXP = Math.min(sessionDurationMinutes, 60) * 2
+    // 2. Correct answers XP (per question, flat rate per difficulty approximation).
+    const correctAnswerXP = correctAnswers * 10
+    // 3. First-attempt correct 1.5x bonus: no hints used in session means first-attempt answers.
+    const firstAttemptBonus = hintsUsed === 0 && correctAnswers > 0
+      ? Math.round(correctAnswerXP * 0.5)
+      : 0
+    const xpEarned = durationXP + correctAnswerXP + firstAttemptBonus
+
     const xpResult = await awardXP({
       studentId: userId,
       amount: xpEarned,
       source: 'session_correct',
       sessionId,
     })
-    const totalXp = xpResult?.totalXp ?? xpEarned
-    const leveledUp = xpResult?.leveledUp ?? false
-    const newLevel = xpResult?.newLevel ?? null
+    let totalXp = xpResult?.totalXp ?? xpEarned
+    // leveledUp/newLevel start from the base XP award and may be updated by the streak
+    // bonus below -- the streak bonus can independently push the student to a new level.
+    let leveledUp = xpResult?.leveledUp ?? false
+    let newLevel = xpResult?.newLevel ?? null
 
     // Award streak credit and capture result for badge checking.
     // Awaited so currentStreak is up-to-date when checkSessionBadges runs below.
@@ -93,13 +128,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     if (totalQuestions >= 5) {
       const streakResult = await updateStreak(userId)
       currentStreak = streakResult?.currentStreak ?? 0
-    }
-
-    let sessionDurationMinutes = 0
-    if (learningSession) {
-      const end = learningSession.endedAt ?? new Date()
-      const ms = end.getTime() - learningSession.startedAt.getTime()
-      sessionDurationMinutes = Math.max(0, Math.round(ms / 60000))
+      // AC-01 (F-STU-031): streak maintenance daily multiplier -- bonus XP when streak advances.
+      if (streakResult?.streakIncremented) {
+        const streakBonusXP = Math.round(xpEarned * 0.1)
+        const streakXpResult = await awardXP({
+          studentId: userId,
+          amount: streakBonusXP,
+          source: 'streak_bonus',
+          sessionId,
+        })
+        if (streakXpResult) {
+          totalXp = streakXpResult.totalXp
+          // Streak bonus may have triggered a level-up; use the final result.
+          if (streakXpResult.leveledUp) {
+            leveledUp = true
+            newLevel = streakXpResult.newLevel
+          }
+        }
+      }
     }
 
     // AC-03 (F-STU-015 MUST): AI-generated personalised closing insight, not a template.
