@@ -38,6 +38,7 @@ import TestScoreHistory, {
 } from '@/components/student/progress/TestScoreHistory';
 import ProgressFilters from '@/components/student/progress/ProgressFilters';
 import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/ScoreTrendGraph';
+import StudyTimeHeatmap, { type HeatmapDay } from '@/components/student/progress/StudyTimeHeatmap';
 import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
 
 export const dynamic = 'force-dynamic';
@@ -77,7 +78,9 @@ export default async function ProgressPage({
     ? { subject: { equals: activeSubject, mode: 'insensitive' as const } }
     : {};
 
-  const [studentProfile, chartSessions, completedSessions, trendRows] = await Promise.all([
+  const heatmapSince = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+
+  const [studentProfile, chartSessions, completedSessions, trendRows, heatmapSessions, conceptsMasteredCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { subjects: true },
@@ -125,6 +128,18 @@ export default async function ProgressPage({
       select: { score: true, finishedAt: true },
       orderBy: { finishedAt: 'asc' },
       take: 10,
+    }),
+    // AC-01 (F-STU-033): Time spent heatmap -- last 28 days, one row per session
+    prisma.structuredSession.findMany({
+      where: {
+        studentId: userId,
+        completedAt: { not: null, gte: heatmapSince },
+      },
+      select: { startedAt: true, completedAt: true },
+    }),
+    // AC-01 (F-STU-033): Concepts mastered count (masteryScore > 0.75)
+    prisma.studentConceptState.count({
+      where: { studentId: userId, masteryScore: { gt: 0.75 } },
     }),
   ]);
 
@@ -223,6 +238,16 @@ export default async function ProgressPage({
     return { subjectId: subj.id, subjectName: subj.name, chapters };
   });
 
+  // ── Heatmap: aggregate minutes per calendar day (AC-01 F-STU-033) ───────────
+  const minutesByDate = new Map<string, number>();
+  for (const s of heatmapSessions) {
+    if (!s.completedAt) continue;
+    const dateKey = s.completedAt.toISOString().slice(0, 10);
+    const durationMin = Math.max(0, Math.round((s.completedAt.getTime() - s.startedAt.getTime()) / 60_000));
+    minutesByDate.set(dateKey, (minutesByDate.get(dateKey) ?? 0) + durationMin);
+  }
+  const heatmapDays: HeatmapDay[] = Array.from(minutesByDate.entries()).map(([date, minutes]) => ({ date, minutes }));
+
   // ── Chart ───────────────────────────────────────────────────────────────────
   const bucketCounts = buildBucketCounts(chartSessions, cfg, Date.now());
   const totalSessions = chartSessions.length;
@@ -281,15 +306,38 @@ export default async function ProgressPage({
 
         {/* Right column -- chapter mastery + session history (40%) */}
         <div className="flex flex-col gap-6 md:w-2/5">
+          {/* AC-01 (F-STU-033): Concepts mastered count */}
+          <article className="rounded-2xl border border-[#1D9E75]/30 bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#1D9E75]">
+                Concepts mastered
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50 mt-0.5">
+                {conceptsMasteredCount}
+              </p>
+            </div>
+            <svg
+              className="w-8 h-8 text-[#1D9E75] opacity-70"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </article>
           <ChapterMasteryBars subjects={subjectMasteryData} />
           <TestScoreHistory sessions={sessionRows} />
-          {/* AC-07: chapter practice test score trend */}
+          {/* AC-01 (F-STU-033): chapter practice test score trend */}
           <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
             <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
               Practice test trend
             </h2>
             <ScoreTrendGraph data={trendData} />
           </article>
+          {/* AC-01 (F-STU-033): Time spent studying weekly heatmap */}
+          <StudyTimeHeatmap days={heatmapDays} />
         </div>
       </div>
     </main>

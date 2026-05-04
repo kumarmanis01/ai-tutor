@@ -2056,11 +2056,13 @@ model DoubtKb {
 }
 
 model FreeTierUsage {
-  id           String   @id @default(cuid())
-  studentId    String   @unique
-  periodStart  DateTime
-  sessionsUsed Int      @default(0)
-  updatedAt    DateTime @updatedAt
+  id               String   @id @default(cuid())
+  studentId        String   @unique
+  periodStart      DateTime
+  sessionsUsed     Int      @default(0)
+  /// AC-01 (F-STU-040): 1 chapter test per subject per month for free tier. Resets with sessionsUsed.
+  chapterTestsUsed Int      @default(0)
+  updatedAt        DateTime @updatedAt
 
   @@index([studentId, periodStart])
 }

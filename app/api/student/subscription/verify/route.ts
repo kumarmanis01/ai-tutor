@@ -33,7 +33,7 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS } from '@/lib/billing/plans';
+import { PLANS, resolvePlanByShortId } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
@@ -85,7 +85,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  if (!['monthly', 'quarterly', 'annual'].includes(planId)) {
+  // Accept both full plan IDs (e.g. 'standard_quarterly') and short IDs (e.g. 'quarterly').
+  // resolvePlanByShortId handles both forms so the client can use either.
+  const resolvedPlan = (PLANS as any)[planId] ?? resolvePlanByShortId(planId, false);
+  if (!resolvedPlan) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
@@ -104,7 +107,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
 
-  const plan = PLANS[planId as PlanId];
+  const plan = resolvedPlan;
   const now = new Date();
   const expiry = new Date(now);
   expiry.setMonth(expiry.getMonth() + plan.durationMonths);

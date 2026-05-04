@@ -19,11 +19,20 @@ import { logger } from '@/lib/logger'
 
 // AC-01 (F-STU-040): 3 AI tutoring sessions per month on free tier
 export const FREE_TIER_SESSION_LIMIT = 3
+// AC-01 (F-STU-040): 1 chapter test per subject per month on free tier
+export const FREE_TIER_CHAPTER_TEST_LIMIT = 1
 
 export interface FreeTierStatus {
   allowed: boolean
   sessionsUsed: number
   sessionsRemaining: number
+  periodStart: Date
+}
+
+export interface ChapterTestCapStatus {
+  allowed: boolean
+  testsUsed: number
+  testsRemaining: number
   periodStart: Date
 }
 
@@ -269,6 +278,98 @@ export async function incrementFreeTierUsage(studentId: string): Promise<void> {
     })
   } catch {
     // Swallow all errors - freemium enforcement must never break session start.
+  }
+}
+
+/**
+ * Check if a free-tier student can start a new chapter test.
+ * AC-01 (F-STU-040): 1 chapter test per subject per month.
+ * Premium students bypass the cap.
+ * Never throws -- returns allowed: false on DB or subscription error.
+ */
+export async function checkChapterTestCap(studentId: string): Promise<ChapterTestCapStatus> {
+  const periodStart = getCurrentPeriodStart()
+  const fallback: ChapterTestCapStatus = {
+    allowed: false,
+    testsUsed: 0,
+    testsRemaining: 0,
+    periodStart,
+  }
+
+  try {
+    const isPremium = await isPremiumUser(studentId)
+    if (isPremium) {
+      return { allowed: true, testsUsed: 0, testsRemaining: FREE_TIER_CHAPTER_TEST_LIMIT, periodStart }
+    }
+
+    const currentPeriodStart = getCurrentPeriodStart()
+
+    let usage = await prisma.freeTierUsage.findUnique({ where: { studentId } })
+
+    if (!usage) {
+      usage = await prisma.freeTierUsage.create({
+        data: { studentId, periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 0 },
+      })
+    } else {
+      const sameMonth =
+        usage.periodStart.getFullYear() === currentPeriodStart.getFullYear() &&
+        usage.periodStart.getMonth() === currentPeriodStart.getMonth()
+
+      if (!sameMonth) {
+        usage = await prisma.freeTierUsage.update({
+          where: { studentId },
+          data: { periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 0 },
+        })
+      }
+    }
+
+    const testsUsed = (usage as any).chapterTestsUsed ?? 0
+    const testsRemaining = Math.max(0, FREE_TIER_CHAPTER_TEST_LIMIT - testsUsed)
+    return { allowed: testsUsed < FREE_TIER_CHAPTER_TEST_LIMIT, testsUsed, testsRemaining, periodStart: usage.periodStart }
+  } catch {
+    return fallback
+  }
+}
+
+/**
+ * Increment chapterTestsUsed for the student's current period.
+ * Call AFTER chapter test successfully starts -- not before.
+ * Never throws.
+ */
+export async function incrementChapterTestUsage(studentId: string): Promise<void> {
+  try {
+    const isPremium = await isPremiumUser(studentId)
+    if (isPremium) return
+
+    const currentPeriodStart = getCurrentPeriodStart()
+
+    await prisma.$transaction(async (tx) => {
+      const usage = await tx.freeTierUsage.findUnique({ where: { studentId } })
+
+      if (!usage) {
+        await tx.freeTierUsage.create({
+          data: { studentId, periodStart: currentPeriodStart, sessionsUsed: 0, chapterTestsUsed: 1 },
+        })
+        return
+      }
+
+      const sameMonth =
+        usage.periodStart.getFullYear() === currentPeriodStart.getFullYear() &&
+        usage.periodStart.getMonth() === currentPeriodStart.getMonth()
+
+      const currentTests = sameMonth ? ((usage as any).chapterTestsUsed ?? 0) : 0
+
+      await tx.freeTierUsage.update({
+        where: { studentId },
+        data: {
+          periodStart: sameMonth ? usage.periodStart : currentPeriodStart,
+          sessionsUsed: sameMonth ? usage.sessionsUsed : 0,
+          chapterTestsUsed: currentTests + 1,
+        },
+      })
+    })
+  } catch {
+    // Swallow -- freemium enforcement must never break chapter test start.
   }
 }
 

@@ -15,6 +15,7 @@
 
 export type PlanId =
   | 'standard_monthly'
+  | 'standard_quarterly'
   | 'standard_annual'
   | 'family_monthly'
   | 'family_annual'
@@ -86,8 +87,10 @@ function mkPlan(
 }
 
 export const PLANS: Record<PlanId, SubscriptionPlan> = {
-  standard_monthly: mkPlan('standard_monthly', 399, 1, 'Standard', '₹399/month', { featured: true }),
-  standard_annual:  mkPlan('standard_annual', 3990, 12, 'Annual (Standard)', '₹332.50/month', { billedDisplay: 'billed ₹3,990', saveLabel: '2 months free' }),
+  standard_monthly:   mkPlan('standard_monthly', 399, 1, 'Monthly', '₹399/month', { featured: true }),
+  // AC-01 (F-STU-041): Quarterly plan -- 3 months at 10% discount (399*3*0.9 = 1077.30, rounded to 1,077)
+  standard_quarterly: mkPlan('standard_quarterly', 1077, 3, 'Quarterly', '₹359/month', { billedDisplay: 'billed ₹1,077', saveLabel: '10% off' }),
+  standard_annual:    mkPlan('standard_annual', 3590, 12, 'Annual', '₹299.17/month', { billedDisplay: 'billed ₹3,590', saveLabel: '25% off' }),
   family_monthly:   mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
   family_annual:    mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', { billedDisplay: 'billed ₹5,990', saveLabel: '2 months free', childSlots: 2 }),
   lite_monthly:     mkPlan('lite_monthly', 249, 1, 'Lite', '₹249/month'),
