@@ -18,6 +18,8 @@ import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 
+const DEFAULT_SUPPORT_EMAIL = 'support@spinzyacademy.com'
+
 /**
  * Retry schedule (relative to first attempt):
  * - attempt 0: now (day 0)
@@ -50,6 +52,7 @@ export async function processRenewals(now = new Date()) {
 
   const pendingPayments = await prisma.payment.findMany({ where: { status: 'pending' } })
   const appUrl = (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? 'https://app.spinzyacademy.com').replace(/\/$/, '')
+  const supportEmail = process.env.SUPPORT_EMAIL ?? DEFAULT_SUPPORT_EMAIL
 
   const simulateFailures: boolean = String(process.env.SUBSCRIPTION_RENEWAL_SIMULATE_FAILURES ?? '1') !== '0'
 
@@ -84,9 +87,9 @@ export async function processRenewals(now = new Date()) {
           const graceStr = predictedGrace.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
           const retryLink = `${appUrl}/account/billing`
           const subject = 'Payment failed -- Spinzy Academy'
-          const html = `<p>Hi ${user?.name ?? ''},</p><p>We attempted to renew your subscription but the payment failed. We'll retry automatically over the next few days. You can retry manually or update your payment method here: <a href="${retryLink}">Manage billing</a>.</p><p>If all retries fail, access will be suspended after approximately ${graceStr}.</p><p>-- Team Spinzy</p>`
+          const html = `<p>Hi ${user?.name ?? ''},</p><p>We attempted to renew your subscription but the payment failed. We'll retry automatically over the next few days.</p><p>Retry now: <a href="${retryLink}">Manage billing</a></p><p>If all retries fail, access may be suspended after approximately ${graceStr}.</p><p>Support: ${supportEmail}</p><p>-- Team Spinzy</p>`
           if (user?.email) await sendMailSafe({ to: user.email, subject, html, text: subject }).catch((e) => logger.error('sendMailSafe failed (renewal first-failure)', { err: String(e), userId: p.userId }))
-          if (user?.phone) await sendSms(user.phone, `Payment failed for your Spinzy subscription. Update payment: ${retryLink}`).catch((e) => logger.error('sendSms failed (renewal first-failure)', { err: e, userId: p.userId }))
+          if (user?.phone) await sendSms(user.phone, `Payment failed. Retry: ${retryLink}. Grace estimate: ${graceStr}. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (renewal first-failure)', { err: e, userId: p.userId }))
         } catch (err) {
           logger.error('Failed to notify user on first payment failure', { err: String(err), paymentId: p.id })
         }
@@ -104,9 +107,9 @@ export async function processRenewals(now = new Date()) {
       try {
         const user = await prisma.user.findUnique({ where: { id: p.userId }, select: { name: true, email: true, phone: true } })
         const subject = 'Payment overdue -- access will be paused soon'
-        const html = `<p>Hi ${user?.name ?? ''},</p><p>We were unable to charge your saved payment method after multiple attempts. Your account is now in a 3-day grace period and access will be suspended on ${graceUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} if payment is not received. Please update your payment method or retry now: <a href="${appUrl}/account/billing">Manage billing</a>.</p><p>-- Team Spinzy</p>`
+        const html = `<p>Hi ${user?.name ?? ''},</p><p>We were unable to charge your saved payment method after multiple attempts. Your account is now in a 3-day grace period and access will be suspended on ${graceUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} if payment is not received.</p><p>Update payment: <a href="${appUrl}/account/billing">Manage billing</a></p><p>Support: ${supportEmail}</p><p>-- Team Spinzy</p>`
         if (user?.email) await sendMailSafe({ to: user.email, subject, html, text: subject }).catch((e) => logger.error('sendMailSafe failed (enter grace)', { err: String(e), userId: p.userId }))
-        if (user?.phone) await sendSms(user.phone, `Payment overdue. Access will be suspended on ${graceUntil.toLocaleDateString('en-IN')}. Update: ${appUrl}/account/billing`).catch((e) => logger.error('sendSms failed (enter grace)', { err: String(e), userId: p.userId }))
+        if (user?.phone) await sendSms(user.phone, `Payment overdue. Grace ends ${graceUntil.toLocaleDateString('en-IN')}. Retry: ${appUrl}/account/billing. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (enter grace)', { err: String(e), userId: p.userId }))
       } catch (err) {
         logger.error('Failed to notify user on entering grace', { err: String(err), paymentId: p.id })
       }
@@ -129,9 +132,9 @@ export async function processRenewals(now = new Date()) {
         try {
           const user = await prisma.user.findUnique({ where: { id: p.userId }, select: { name: true, email: true, phone: true } })
           const subject = 'Reminder: payment overdue -- update billing'
-          const html = `<p>Hi ${user?.name ?? ''},</p><p>Your account is in a grace period until ${graceUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}. Please update your payment method here: <a href="${appUrl}/account/billing">Manage billing</a>.</p><p>-- Team Spinzy</p>`
+          const html = `<p>Hi ${user?.name ?? ''},</p><p>Your account is in a grace period until ${graceUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}. Please update your payment method here: <a href="${appUrl}/account/billing">Manage billing</a>.</p><p>Support: ${supportEmail}</p><p>-- Team Spinzy</p>`
           if (user?.email) await sendMailSafe({ to: user.email, subject, html, text: subject }).catch((e) => logger.error('sendMailSafe failed (grace reminder)', { err: String(e), userId: p.userId }))
-          if (user?.phone) await sendSms(user.phone, `Reminder: payment overdue. Update billing: ${appUrl}/account/billing`).catch((e) => logger.error('sendSms failed (grace reminder)', { err: e, userId: p.userId }))
+          if (user?.phone) await sendSms(user.phone, `Reminder: payment overdue. Update billing: ${appUrl}/account/billing. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (grace reminder)', { err: e, userId: p.userId }))
           await prisma.payment.update({ where: { id: p.id }, data: { meta: { ...meta, lastNotifiedGraceAt: now.toISOString() } } })
         } catch (err) {
           logger.error('Failed to send grace reminder', { err, paymentId: p.id })

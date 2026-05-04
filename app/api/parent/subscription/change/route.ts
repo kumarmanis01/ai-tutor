@@ -23,6 +23,7 @@ import Razorpay from 'razorpay';
 import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
 import { calculateProrationCredit } from '@/lib/subscription/proration';
 import type { PlanId } from '@/lib/billing/plans';
+import { sendMailSafe } from '@/lib/mailer';
 
 function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -56,6 +57,15 @@ export async function POST(req: Request) {
   // Verify parent-child links
   const links = await prisma.parentStudent.findMany({ where: { parentId: user.id, studentId: { in: childIds }, status: 'active' }, select: { studentId: true } });
   if (links.length !== childIds.length) return NextResponse.json({ error: 'One or more children are not linked to you' }, { status: 403 });
+
+  // F-PAR-023 AC-06: sensitive subscription changes require OTP-verified parent phone.
+  const parentSecurity = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { parentPhoneVerifiedAt: true },
+  })
+  if (!parentSecurity?.parentPhoneVerifiedAt) {
+    return NextResponse.json({ error: 'Parent phone OTP verification required before subscription changes' }, { status: 403 })
+  }
 
   const plan = PLANS[planId];
 
@@ -95,6 +105,21 @@ export async function POST(req: Request) {
           meta: { scheduledChange: true, newPlanId: planId, effectiveDate: current.endDate?.toISOString() },
         },
       });
+
+      // F-PAR-023 AC-04: immediate confirmation with access expiry + resubscribe link.
+      try {
+        const parent = await prisma.user.findUnique({ where: { id: user.id }, select: { email: true, name: true } })
+        if (parent?.email) {
+          const expiryLabel = current.endDate ? current.endDate.toLocaleDateString('en-IN') : 'the end of your current billing period'
+          const resubscribeLink = `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/billing`
+          const subject = 'Subscription change confirmed -- access continues till period end'
+          const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>Your subscription downgrade/cancellation request is confirmed.</p><p>Access will continue until <strong>${expiryLabel}</strong>.</p><p>You can resubscribe anytime here: <a href="${resubscribeLink}">Resubscribe</a>.</p>`
+          await sendMailSafe({ to: parent.email, subject, html })
+        }
+      } catch (notifyErr) {
+        logger.warn('parent.subscription.change: cancellation confirmation email failed', { err: String(notifyErr), parentId: user.id })
+      }
+
       return NextResponse.json({ ok: true, scheduledEffectiveDate: current.endDate?.toISOString() }, { status: 200 });
     }
 

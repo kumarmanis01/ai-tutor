@@ -291,6 +291,7 @@ export async function POST(req: Request) {
   const renewalDate = expiry.toLocaleDateString('en-IN', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
+  let receiptSmsSent = false
 
   // Send receipt email -- non-blocking, never throws to caller
   if (user?.email) {
@@ -304,17 +305,18 @@ export async function POST(req: Request) {
         planLabel: plan.label,
         billingCycle: plan.perMonthDisplay,
       });
+      const invoiceLink = invoiceResult.fileUrl ? `<p><a href="${invoiceResult.fileUrl}">Download invoice</a></p>` : ''
 
       await sendEmail({
         to: user.email,
         subject: 'Payment confirmed -- Spinzy Academy',
-        html: paymentReceiptHtml({
+        html: `${paymentReceiptHtml({
           studentName: user.name ?? 'Student',
           plan: plan.label,
           amountRupees: plan.billedRupees,
           billingCycle: plan.perMonthDisplay,
           renewalDate,
-        }),
+        })}${invoiceLink}`,
         ...(invoiceResult.pdfBuffer ? {
           attachments: [
             {
@@ -327,6 +329,14 @@ export async function POST(req: Request) {
       } as any).catch((err: unknown) => {
         logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
       });
+      if (user?.phone) {
+        const amountInr = ((order.amount ?? 0) / 100).toFixed(2)
+        const smsText = `Payment success: INR ${amountInr}, plan ${plan.label}. Next renewal ${renewalDate}. Invoice: ${invoiceResult.fileUrl ?? `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/billing`}`
+        sendSms(user.phone, smsText).catch((err: unknown) => {
+          logger.error('Receipt SMS failed', { event: 'subscription.verify.sms_error', context: { userId }, err });
+        });
+        receiptSmsSent = true
+      }
       } catch (err: unknown) {
       logger.error('Invoice generation/email failed', { event: 'subscription.verify.invoice_error', context: { userId, orderId }, err });
       // Fallback: send receipt without attachment
@@ -346,9 +356,10 @@ export async function POST(req: Request) {
     }
   }
 
-  // Send receipt SMS -- non-blocking
-  if (user?.phone) {
-    const smsText = `Hi ${user.name ?? ''}! Your Spinzy ${plan.label} plan is active. Happy learning! - Team Spinzy`;
+  // Send fallback receipt SMS -- non-blocking.
+  if (user?.phone && !receiptSmsSent) {
+    const amountInr = ((order.amount ?? 0) / 100).toFixed(2)
+    const smsText = `Payment success: INR ${amountInr}, plan ${plan.label}. Next renewal ${renewalDate}. Invoice: ${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/billing`;
     sendSms(user.phone, smsText).catch((err: unknown) => {
       logger.error('Receipt SMS failed', { event: 'subscription.verify.sms_error', context: { userId }, err });
     });
