@@ -80,7 +80,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     if (learningSession) {
       const end = learningSession.endedAt ?? new Date()
       const ms = end.getTime() - learningSession.startedAt.getTime()
-      sessionDurationMinutes = Math.max(0, Math.round(ms / 60000))
+      // Count only fully elapsed minutes to avoid inflating XP for partial minutes.
+      sessionDurationMinutes = Math.max(0, Math.floor(ms / 60000))
     }
 
     // AC-01 (F-STU-031): multi-source XP calculation.
