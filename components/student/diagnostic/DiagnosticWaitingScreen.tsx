@@ -28,6 +28,9 @@ import Link from 'next/link';
 
 const POLL_INTERVAL_MS = 5_000;
 const MAX_POLL_FAILURES = 3;
+// After this many total polls (~1 min) with no ready signal, surface a manual retry.
+// Prevents permanent background polling when content generation is stalled.
+const MAX_TOTAL_POLLS = 12;
 
 type Phase = 'topics' | 'questions' | 'ready';
 type NotifyState = 'idle' | 'loading' | 'done' | 'error';
@@ -41,10 +44,13 @@ interface Props {
 export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason }: Props) {
   const [phase, setPhase] = useState<Phase>(reason);
   const [pollFailures, setPollFailures] = useState(0);
+  const [pollCeilingHit, setPollCeilingHit] = useState(false);
   const [notifyState, setNotifyState] = useState<NotifyState>('idle');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const triggeredRef = useRef(false);
   const inFlightRef = useRef(false);
+  // Mutable ref so the poll closure always reads the current count without stale captures.
+  const totalPollsRef = useRef(0);
 
   // Trigger content generation once on mount.
   useEffect(() => {
@@ -97,7 +103,15 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
         setPollFailures((f) => f + 1);
       } finally {
         inFlightRef.current = false;
-        scheduleNext();
+        totalPollsRef.current += 1;
+        if (!cancelled) {
+          if (totalPollsRef.current >= MAX_TOTAL_POLLS) {
+            // Surface a manual reload button; stop the background loop.
+            setPollCeilingHit(true);
+          } else {
+            scheduleNext();
+          }
+        }
       }
     };
 
@@ -128,6 +142,8 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
   }, [subjectId]);
 
   const pollingFailed = pollFailures >= MAX_POLL_FAILURES;
+  // Show manual retry when either HTTP errors or the total polls ceiling is reached.
+  const showRetry = pollingFailed || pollCeilingHit;
 
   const phaseLabel =
     phase === 'topics'
@@ -143,7 +159,7 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
             fill="none"
             stroke="#534AB7"
             strokeWidth="2"
-            className="w-8 h-8 animate-spin"
+            className={`w-8 h-8 ${showRetry ? '' : 'animate-spin'}`}
             aria-hidden
           >
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
@@ -155,9 +171,11 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{phaseLabel}</p>
 
-        {pollingFailed ? (
-          <p className="text-xs text-[#E24B4A] dark:text-red-400 mb-6">
-            Could not check status. Tap below to try again.
+        {showRetry ? (
+          <p className="text-xs text-[#BA7517] dark:text-amber-400 mb-6">
+            {pollingFailed
+              ? "Could not check status. Tap below to try again."
+              : "This is taking longer than usual. Tap below to try loading the test."}
           </p>
         ) : (
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-6">
@@ -165,17 +183,17 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
           </p>
         )}
 
-        {pollingFailed && (
+        {showRetry && (
           <button
             type="button"
             onClick={() => window.location.reload()}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] transition-all shadow-md shadow-[#534AB7]/25 mb-3"
           >
-            Try again
+            Try loading the test
           </button>
         )}
 
-        {!pollingFailed && notifyState === 'idle' && (
+        {!showRetry && notifyState === 'idle' && (
           <button
             type="button"
             onClick={handleNotify}
