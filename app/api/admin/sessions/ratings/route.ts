@@ -1,14 +1,20 @@
 /**
- * GET /api/admin/sessions/ratings
- * F-ADM-010 AC-06: Query student session ratings by activityType / activityRef / day.
+ * FILE OBJECTIVE:
+ * - Admin endpoint to query session ratings by activityType, activityRef, and day.
+ * - Uses LearningSession.ratedAt (not createdAt) as the date anchor so ratings
+ *   written after session creation land in the correct reporting window.
+ * - Returns a truncation signal when results exceed the page limit.
+ * - F-ADM-010 AC-06.
  *
- * Query params:
- *   days         - lookback window in days (default 7, max 90)
- *   activityType - optional filter (e.g. 'concept', 'chapter')
- *   activityRef  - optional filter (specific concept/chapter id)
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/sessions_ratings.spec.ts (pending -- tests deferred per sprint plan)
  *
- * Returns average rating per (activityType, activityRef, date).
- * Entries with avgRating < 3 are flagged needsReview=true.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T20:00:00Z | claude | created for F-ADM-010 AC-06 audit pass
+ * - 2026-05-04T21:00:00Z | claude | fix: use ratedAt not createdAt, remove dead whereClause, add truncation signal
  */
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -19,6 +25,7 @@ export const dynamic = 'force-dynamic'
 const RATING_REVIEW_THRESHOLD = 3
 const MAX_DAYS = 90
 const DEFAULT_DAYS = 7
+const PAGE_LIMIT = 200
 
 interface RatingRow {
   activityType: string
@@ -40,35 +47,36 @@ export async function GET(req: Request) {
   const activityTypeFilter = url.searchParams.get('activityType')
   const activityRefFilter = url.searchParams.get('activityRef')
 
+  // Anchor on ratedAt so that sessions rated after their creation date land in
+  // the correct reporting window (not the session creation window).
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
-  // Build WHERE clause dynamically; always filter by date and non-null rating.
-  const whereClause: Record<string, unknown> = {
-    createdAt: { gte: since },
-    rating: { not: null },
-  }
-  if (activityTypeFilter) whereClause['activityType'] = activityTypeFilter
-  if (activityRefFilter) whereClause['activityRef'] = activityRefFilter
+  // Fetch one extra row beyond PAGE_LIMIT to detect truncation without a
+  // separate COUNT query.
+  const fetchLimit = PAGE_LIMIT + 1
 
-  // Aggregate via raw SQL for the grouped-by-day breakdown.
   const rows = await prisma.$queryRaw<RatingRow[]>`
     SELECT
       "activityType",
       "activityRef",
-      DATE("createdAt")::text                                      AS day,
+      DATE("ratedAt")::text                                        AS day,
       AVG("rating")::float                                         AS "avgRating",
       COUNT(*) FILTER (WHERE "rating" IS NOT NULL)::bigint         AS "ratedCount"
     FROM "LearningSession"
-    WHERE "createdAt" >= ${since}
+    WHERE "ratedAt" >= ${since}
+      AND "ratedAt" IS NOT NULL
       AND "rating" IS NOT NULL
       AND (${activityTypeFilter}::text IS NULL OR "activityType" = ${activityTypeFilter})
       AND (${activityRefFilter}::text IS NULL OR "activityRef" = ${activityRefFilter})
-    GROUP BY "activityType", "activityRef", DATE("createdAt")
+    GROUP BY "activityType", "activityRef", DATE("ratedAt")
     ORDER BY day DESC, "avgRating" ASC
-    LIMIT 500
+    LIMIT ${fetchLimit}
   `
 
-  const results = rows.map((r) => ({
+  const truncated = rows.length > PAGE_LIMIT
+  const page = truncated ? rows.slice(0, PAGE_LIMIT) : rows
+
+  const results = page.map((r) => ({
     activityType: r.activityType,
     activityRef: r.activityRef,
     day: r.day,
@@ -80,6 +88,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     period: { days, since: since.toISOString() },
     ratingReviewThreshold: RATING_REVIEW_THRESHOLD,
+    truncated,
     results,
   })
 }

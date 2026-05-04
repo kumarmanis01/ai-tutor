@@ -1,10 +1,28 @@
+/**
+ * FILE OBJECTIVE:
+ * - PATCH endpoint for admin question review actions: approve, reject, or force-validate.
+ * - Approve/reject applies to quarantined questions (F-ADM-003 AC-03).
+ * - Force-validate is restricted to manually authored questions (source='manual') only;
+ *   AI-generated questions are validated automatically by the nightly IRT job after
+ *   50 responses (F-ADM-003 AC-05).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/questions_patch.spec.ts (pending -- tests deferred per sprint plan)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T20:00:00Z | claude | added validated:true force-validate path for F-ADM-003 AC-05
+ * - 2026-05-04T21:00:00Z | claude | fix: guard force-validate to source='manual' only; add file header
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { QuestionStatus, AdminActionType } from '@prisma/client'
 
-// F-ADM-003 AC-03: approve (ACTIVE) or reject (REJECTED) a quarantined question.
-// F-ADM-003 AC-05: force-validate a manually authored question (validated=true).
+const MANUAL_SOURCE = 'manual'
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
@@ -26,13 +44,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'status must be ACTIVE or REJECTED' }, { status: 400 })
   }
 
-  const question = await prisma.question.findUnique({ where: { id }, select: { id: true } })
+  const question = await prisma.question.findUnique({
+    where: { id },
+    select: { id: true, source: true },
+  })
   if (!question) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   if (validated === true) {
-    // Force-validate: marks IRT parameters as trusted (for manually authored questions)
+    // Force-validate is only valid for manually authored questions. AI-generated
+    // questions are promoted automatically by the nightly IRT job after >= 50 responses.
+    if (question.source !== MANUAL_SOURCE) {
+      return NextResponse.json(
+        {
+          error: 'invalid_source',
+          message:
+            'Force-validate is only for manually authored questions (source=manual). ' +
+            'AI-generated questions are validated automatically after 50 student responses.',
+        },
+        { status: 422 },
+      )
+    }
+
     await prisma.$transaction([
       prisma.question.update({
         where: { id },

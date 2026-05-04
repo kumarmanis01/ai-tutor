@@ -1,9 +1,21 @@
 /**
- * GET /api/admin/users/:id/payments
- * F-ADM-021 AC-04: Full payment event history for a student.
+ * FILE OBJECTIVE:
+ * - Returns full payment event history for a student for admin dispute resolution.
+ * - Fetches Payment rows (with nested PaymentEvent audit trail) plus loose
+ *   PaymentEvents not linked to a Payment row (e.g. early webhook.received rows
+ *   written before userId is populated). Loose events are resolved via orderId
+ *   cross-reference so no gateway events are missed.
+ * - F-ADM-021 AC-04.
  *
- * Returns all Payment records and their PaymentEvent audit trail for the
- * given user, ordered by most recent first. Used for dispute resolution.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/users_payments.spec.ts (pending -- tests deferred per sprint plan)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T20:00:00Z | claude | created for F-ADM-021 AC-04 audit pass
+ * - 2026-05-04T21:00:00Z | claude | fix: include orderId-correlated loose events missing userId
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -58,17 +70,32 @@ export async function GET(
     },
   })
 
-  // Also fetch loose PaymentEvents not linked to a Payment row (e.g. webhook failures)
+  // Collect all orderIds from this user's payments so we can correlate loose
+  // webhook rows that were written before userId was resolved (e.g. the initial
+  // 'webhook.received' event arrives before order lookup completes).
+  const knownOrderIds = payments
+    .map((p) => p.orderId)
+    .filter((id): id is string => id !== null && id !== undefined)
+
+  // Loose events: not linked to a Payment row. Match by userId (when set) OR
+  // by orderId cross-reference (when userId was not yet resolved at write time).
   const looseEvents = await prisma.paymentEvent.findMany({
-    where: { userId, paymentId: null },
+    where: {
+      paymentId: null,
+      OR: [
+        { userId },
+        ...(knownOrderIds.length > 0 ? [{ orderId: { in: knownOrderIds } }] : []),
+      ],
+    },
     orderBy: { createdAt: 'desc' },
-    take: 50,
+    take: 100,
     select: {
       id: true,
       eventType: true,
       status: true,
       amount: true,
       provider: true,
+      orderId: true,
       payload: true,
       createdAt: true,
     },
