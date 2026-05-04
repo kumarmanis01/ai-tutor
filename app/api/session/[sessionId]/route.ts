@@ -106,3 +106,80 @@ export async function GET(
   logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'GET' }, start);
   return res;
 }
+
+/**
+ * PATCH /api/session/[sessionId]
+ * Body: { action: 'heartbeat' }
+ *
+ * Auto-save heartbeat called by the client every 60 seconds (F-STU-010 AC-06).
+ * Touches lastAccessed on the StructuredSession so progress is never lost on
+ * network drop or app close. Owns auth + ownership check before any DB write.
+ */
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ sessionId: string }> },
+) {
+  const start = Date.now();
+  const { sessionId } = await params;
+
+  const authSession = await getServerSessionForHandlers();
+  const userId = authSession?.user?.id;
+  if (!userId) {
+    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'PATCH' }, start);
+    return res;
+  }
+
+  const body = await req.json().catch(() => ({}));
+  if (body?.action !== 'heartbeat') {
+    const res = NextResponse.json({ error: 'action must be "heartbeat"' }, { status: 400 });
+    logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'PATCH' }, start);
+    return res;
+  }
+
+  try {
+    // Ownership check: verify session belongs to this student before writing.
+    const existing = await prisma.structuredSession.findFirst({
+      where: { id: sessionId, studentId: userId },
+      select: { id: true, state: true, meta: true },
+    });
+
+    if (!existing) {
+      const res = NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'PATCH' }, start);
+      return res;
+    }
+
+    // Terminal sessions should not be touched -- client should not be sending heartbeats.
+    if (existing.state === 'COMPLETE' || existing.state === 'EXPIRED') {
+      const res = NextResponse.json({ ok: true, skipped: true }, { status: 200 });
+      logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'PATCH' }, start);
+      return res;
+    }
+
+    const now = new Date();
+    // StructuredSession uses a meta JSON field; merge in the heartbeat timestamp so
+    // the "continue where you left off" engine can surface the most recently active session
+    // without a dedicated lastAccessed column (avoids a schema migration).
+    const updatedMeta = { ...(typeof existing.meta === 'object' && existing.meta !== null ? existing.meta as Record<string, unknown> : {}), lastHeartbeatAt: now.toISOString() };
+    await prisma.structuredSession.update({
+      where: { id: sessionId },
+      data: { meta: updatedMeta },
+    });
+
+    const res = NextResponse.json({ ok: true, savedAt: new Date().toISOString() });
+    logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'PATCH' }, start);
+    return res;
+  } catch (err) {
+    logger.error('[session/heartbeat] error', {
+      className: 'SessionDetailAPI',
+      methodName: 'PATCH',
+      userId,
+      sessionId,
+      error: String((err as Error)?.message ?? err),
+    });
+    const res = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'PATCH' }, start);
+    return res;
+  }
+}

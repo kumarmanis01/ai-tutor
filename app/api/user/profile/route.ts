@@ -101,7 +101,9 @@ export async function GET(req: Request) {
   return res;
 }
 
-export const VALID_LEARNING_STYLES = ['visual', 'verbal', 'practice', 'mixed'] as const;
+// F-STU-004 AC-06: primary values are visual/reading/kinesthetic (per spec).
+// verbal/practice/mixed retained for backwards compatibility with existing student records.
+export const VALID_LEARNING_STYLES = ['visual', 'reading', 'kinesthetic', 'verbal', 'practice', 'mixed'] as const;
 
 export async function PATCH(req: Request) {
   const start = Date.now();

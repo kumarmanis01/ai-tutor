@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { getNextAction } from '@/lib/homeEngine/getNextAction'
+import { generateLearningPlan } from '@/lib/ai/learningPlan'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+
+// Plans older than this are considered stale and queued for background regeneration.
+const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * GET /api/student/learning-plan/today
@@ -30,7 +34,7 @@ export async function GET(req: Request) {
     const plan = await prisma.learningPlan.findFirst({
       where: { studentId: userId },
       orderBy: { generatedAt: 'desc' },
-      select: { id: true, subjectId: true, weeklyGoal: true },
+      select: { id: true, subjectId: true, weeklyGoal: true, examDate: true, generatedAt: true },
     })
 
     if (!plan) {
@@ -88,6 +92,24 @@ export async function GET(req: Request) {
         },
       },
     })
+
+    // AC-05 (F-STU-003): trigger a non-blocking plan regeneration when the plan is stale
+    // (older than 7 days). This surfaces fresh mastery data so the plan re-prioritises
+    // remaining chapters based on what the student has actually learned since last generation.
+    if (plan.generatedAt && Date.now() - plan.generatedAt.getTime() > STALE_THRESHOLD_MS) {
+      generateLearningPlan(userId, plan.subjectId, {
+        examDate: plan.examDate ?? undefined,
+        weeklyGoal: plan.weeklyGoal,
+      }).catch((err) => {
+        logger.warn('[learning-plan/today] background plan regeneration failed', {
+          className: 'LearningPlanTodayAPI',
+          methodName: 'GET',
+          userId,
+          subjectId: plan.subjectId,
+          error: String(err),
+        })
+      })
+    }
 
     const res = NextResponse.json({ item, fallback: false }, { status: 200 })
     logger.logAPI(req, res, { className: 'LearningPlanTodayAPI', methodName: 'GET' }, start)

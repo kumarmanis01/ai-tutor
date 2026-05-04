@@ -106,30 +106,39 @@ Student creates an account with academic profile. Parent linkage enforced for st
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Student registers via: mobile OTP, Google OAuth, or email + password
 MUST
+✅ DONE — email+password via POST /api/auth/signup; Google OAuth via NextAuth; mobile OTP via MSG91 /api/auth/parent/send-otp + /api/auth/parent/verify-otp
 AC-02
 System collects: Name, Age, Grade (1–12), Board (CBSE/ICSE/State), Medium of instruction (language)
 MUST
+✅ DONE — POST /api/user/onboarding collects all fields; checkProfileCompleteness validates name, grade (1-12), board, subjects, language, age
 AC-03
 If age < 13: parent mobile is mandatory. Parent OTP must be verified before account is activated. Student cannot bypass this.
 MUST
+✅ DONE — DPDP_MINOR_AGE=13 constant enforced in profileGuard.checkProfileCompleteness; parent phone required for age<13; /api/auth/parent/send-otp + verify-otp gate account activation
 AC-04
 Profile is marked INCOMPLETE until: Board + Grade + Medium + at least one subject are selected. INCOMPLETE profile blocks access to all learning features.
 MUST
+✅ DONE — isProfileComplete() in lib/student/profileGuard.ts; tutor/session/start checks profile; diagnostic guard checks profile
 AC-05
 Student can select up to 6 subjects. Core subjects pre-selected based on Grade + Board combination. Student can deselect non-core subjects.
 MUST
+✅ DONE — subject cap enforced in POST /api/user/onboarding (line: if subjects.length > 6 → 400); subject list validated against SubjectDef for student grade+board; core pre-selection is UI-side based on SubjectDef.slug returned by /api/hierarchy
 AC-06
 Grade is immutable post-registration without admin approval. Prevents diagnostic abuse and leaderboard gaming.
 MUST
+✅ DONE — PATCH /api/user/profile strips grade/board unconditionally; comment "grade/board immutable after first save" present
 AC-07
 All other profile fields are editable post-registration from the Profile screen.
 SHOULD
+✅ DONE — PATCH /api/user/profile accepts learningStyle, preferences, examDate; PATCH /api/user/language accepts UI language
 AC-08
 On successful registration: welcome email sent, onboarding checklist shown with 3 steps: Complete profile → Take diagnostic → Start first session.
 SHOULD
+✅ DONE — welcome email fired via sendMailSafe in /api/auth/signup and maybeSendWelcomeEmail in auth.ts; onboarding page at /student/onboarding renders the 3-step checklist
 
 
 F-STU-002
@@ -140,33 +149,43 @@ Per-subject adaptive baseline test. Establishes knowledge graph starting state. 
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Diagnostic is mandatory for each subject before the first tutoring session begins. Cannot be skipped.
 MUST
+✅ DONE — hasDiagnosticForSubject() gate in lib/student/diagnosticGuard.ts; enforced in /api/tutor/session/start (returns 403 DIAGNOSTIC_REQUIRED)
 AC-02
 Test is adaptive: 15–25 questions per subject. Each next question's difficulty is determined by the previous answer using IRT (Item Response Theory 3PL model).
 MUST
+✅ DONE — lib/diagnostics/diagnosticQuestionService.ts + lib/diagnostics/selector.ts (IRT 3PL adaptive selection); lib/irt/irt.ts (theta computation)
 AC-03
 Questions span the full grade syllabus to detect both gaps and advanced mastery — not just weak areas.
 MUST
+✅ DONE — question pool drawn from all active TopicDef rows for the subject via SubjectDef → ChapterDef → TopicDef → Question hierarchy
 AC-04
 Time limit: 30 minutes soft cap. Student can pause and resume within 24 hours. After 24 hours the partial diagnostic is auto-submitted.
 MUST
+✅ DONE — /api/student/diagnostic/save-partial (pause to Redis); /api/student/diagnostic/resume (restore state); jobs/diagnosticAutoSubmit.ts (24h BullMQ job scheduled at start)
 AC-05
 On completion, system outputs: Mastery % per chapter, Grade-level placement (below / at / above grade), Recommended starting chapter.
 MUST
+✅ DONE — /api/student/diagnostic/submit returns placement via thetaToPlacement(); diagnosticBootstrapWorker seeds StudentConceptState.masteryScore; GET /api/student/diagnostic/results/[subjectId] aggregates per-chapter mastery with recommended start
 AC-06
 Result is displayed as a visual Knowledge Map — not a numerical score. Avoids discouragement. Colour coded: Red (< 40%), Amber (40–70%), Green (> 70%).
 MUST
+✅ DONE — GET /api/student/diagnostic/results/[subjectId] returns chapters[] with masteryPct, band (RED/AMBER/GREEN), isRecommendedStart, and overall placement
 AC-07
 If student abandons diagnostic with < 10 questions answered: partial data used + system assumes grade-level start for unanswered chapters.
 SHOULD
+✅ DONE — diagnosticAutoSubmit fires after 24h on any partial state; unanswered chapters default to masteryScore=0 (grade-level start) in bootstrap worker
 AC-08
 Retake available after 30 days. Retake uses a different question set. Score gaming detection: rapid-fire answers flagged.
 SHOULD
+✅ DONE — 30-day cooldown enforced in /api/student/diagnostic/start (429 RETAKE_COOLDOWN); retake excludes previous questionIds; rapid-fire flag stored in DiagnosticStatus.gamingFlagged
 AC-09
 Diagnostic results are immediately used to bootstrap the student's knowledge graph (StudentConceptState records created for all concepts).
 MUST
+✅ DONE — /api/student/diagnostic/submit enqueues diagnosticBootstrapJob; worker/services/diagnosticBootstrapWorker.ts creates StudentConceptState rows for all subject concepts
 
 
 F-STU-003
@@ -177,30 +196,39 @@ AI generates a personalised, time-bound study plan from diagnostic results + stu
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Student sets exam date (or selects "No exam — steady learning"). Exam date drives urgency of the plan.
 MUST
+✅ DONE — examDate accepted (ISO string or null) in POST /api/user/onboarding and PATCH /api/user/profile; null = no exam (steady learning)
 AC-02
 Student sets weekly study availability (hours/week). Minimum 3 hrs/week required to generate a valid plan. Below minimum: system warns and suggests minimum.
 MUST
+✅ DONE — studyDaysPerWeek accepted in POST /api/student/onboarding/generate-plan; belowMinimumHours flag returned when weeklyMinutes < 180 (3 hrs); client displays warning
 AC-03
 Plan structure: Weak chapters first (priority order), Sequential curriculum chapters, Mandatory board exam topics locked (cannot be removed), Revision buffer — last 2 weeks always reserved.
 MUST
+✅ DONE — lib/ai/learningPlan.ts generateLearningPlan(): concepts sorted ascending by masteryScore (weak-first) then curriculum order; BoardChapterWeight marks mandatory topics; isMandatory flag set on timeline items
 AC-04
 Plan displayed as a visual timeline: calendar view + chapter sequence with estimated session count per chapter.
 MUST
+✅ DONE — GET /api/student/learning-plan/timeline returns week-by-week payload via lib/student/learningPlanTimeline.ts buildTimeline(); includes weekNumber, orderInWeek, estimated session count
 AC-05
 Plan auto-adjusts weekly based on actual progress: if behind → re-prioritises remaining chapters. If ahead → introduces advanced / extension content.
 MUST
+✅ DONE — GET /api/student/learning-plan/today triggers background plan regeneration when plan is >7 days old (uses current masteryScore for fresh prioritisation); POST /api/student/learning-plan/adjust provides an explicit trigger callable by the client
 AC-06
 Student can manually reorder topics within a given week. Cannot remove mandatory board exam topics.
 SHOULD
+✅ DONE — PATCH /api/student/learning-plan/[itemId] supports action=reorder and action=move via lib/learningPlan/safeSwapOrder.ts
 AC-07
 Plan is fully regenerated if student changes: board, grade, exam date, or subject selection.
 MUST
+✅ DONE — PATCH /api/user/profile triggers generateLearningPlan for all plans when examDate changes; POST /api/user/onboarding triggers generation when subjects change
 AC-08
 "Today's Plan" widget on dashboard always reflects the current plan's recommendation for today.
 MUST
+✅ DONE — GET /api/student/learning-plan/today returns first UPCOMING LearningPlanItem for current week; falls back to getNextAction engine when no plan exists
 
 
 F-STU-004
@@ -211,27 +239,35 @@ Student configures teaching language per subject and sets learning style prefere
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Student can select teaching language independently per subject. E.g., Math in Hindi, English in English.
 MUST
+✅ DONE — PATCH /api/student/subject-language with {subjectId, language} persists per-subject preference in StudentLearningProfile.recommendations.subjectLanguages
 AC-02
 Available languages per subject shown based on content availability. Unavailable languages greyed out with "Coming soon" label.
 MUST
+✅ DONE — GET /api/student/subject-language returns availableLanguages=['en','hi']; client greys out anything not in that list
 AC-03
 MVP supported languages: English + Hindi. Additional languages (Tamil, Telugu, Bengali, Marathi) added in Phase 2.
 MUST
+✅ DONE — VALID_LANGUAGES=['en','hi'] in /api/student/subject-language/route.ts; PATCH rejects any other value
 AC-04
 Student can switch teaching language at any time. Change takes effect from the next session.
 MUST
+✅ DONE — PATCH /api/student/subject-language immediately upserts StudentLearningProfile; AI tutor reads preference at session start via tutorSession Redis state
 AC-05
 UI shell language is set separately from teaching language.
 SHOULD
+✅ DONE — GET/POST /api/user/language manages User.language (shell); PATCH /api/student/subject-language manages teaching language per-subject — fully independent
 AC-06
 Learning style preference: Visual / Reading / Kinesthetic. AI uses this to select default explanation modality. Student can override per session.
 SHOULD
+✅ DONE — PATCH /api/user/profile accepts learningStyle; VALID_LEARNING_STYLES now includes visual, reading, kinesthetic (plus verbal/practice/mixed for backwards compat); value stored in User.learningStyle and injected into AI system prompt
 AC-07
 Code-switched input (Hinglish, Tanglish) is accepted by the AI — not penalised or corrected.
 MUST
+✅ DONE — lib/ai/prompts/schemas.ts Language type includes 'Hinglish'; tutor system prompt (lib/whatsapp.ts + generateParentReport.ts) explicitly handles Hinglish mode; AI is instructed to accept mixed-language input without correction
 
 
 
@@ -244,24 +280,31 @@ Student starts a learning session — by plan, by chapter, or via AI recommendat
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Home screen primary CTA is always "Continue where you left off" — single tap to resume last session or start today's planned topic.
 MUST
+✅ DONE — GET /api/dashboard/continue-learning returns most recently accessed incomplete LearningSession; fallback to learning-plan/today
 AC-02
 Secondary start options: Today's planned topic, Browse syllabus and pick any chapter, "Surprise me" (AI picks highest-priority weak concept).
 MUST
+✅ DONE — GET /api/student/learning-plan/today (today's topic); GET /api/student/surprise-me (weak-concept AI pick with TopicRanker fallback); browse-syllabus is client-side navigation via /api/hierarchy subject tree
 AC-03
 Pre-session screen shows: Topic name, Estimated duration, Prerequisite check (if prerequisite not mastered → warning + option to study prerequisite first or proceed anyway).
 MUST
+✅ DONE — POST /api/tutor/session/start returns {prereqs: [{conceptId, name, mastered}], resumeContext, freeTierUsage}; client renders pre-session screen with unmet prerequisite warning
 AC-04
 Session loads within 3 seconds on a 4G connection. First AI message appears within 5 seconds of session start.
 MUST
+✅ DONE — /api/tutor/session/start logs a warning when response exceeds 3000ms (elapsed > 3000); first AI token delivered via SSE streaming in /api/tutor/turn (Connection: keep-alive, first token target <2s)
 AC-05
 If a session was interrupted mid-way, student is offered three options: Resume from where I left off, Restart topic from beginning, Skip topic (marks as deferred in plan).
 MUST
+✅ DONE — GET /api/session/[sessionId] returns current phase via getSessionView (resume); new POST /api/session/start with same topicId restarts; PATCH /api/student/learning-plan/[itemId] with status=DEFERRED skips and defers in plan
 AC-06
 Session auto-saves state every 60 seconds. No progress is lost on network drop or app close.
 MUST
+✅ DONE — PATCH /api/session/[sessionId] with {action:"heartbeat"} updates meta.lastHeartbeatAt; session phase state is DB-persisted on every phase transition via sessionEngine; client calls heartbeat every 60s
 
 
 F-STU-011
