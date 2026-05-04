@@ -28,8 +28,7 @@ export function SessionProgressBar({
   totalPhases,
   onStepClick,
 }: SessionProgressBarProps) {
-  if (currentPhase === 'COMPLETE' || currentPhase === 'EXPIRED') return null;
-
+  // Hooks must be called before any early return — react-hooks/rules-of-hooks
   const steps = PHASE_ORDER.slice(0, totalPhases);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +37,8 @@ export function SessionProgressBar({
     const active = stripRef.current?.querySelector<HTMLElement>('[aria-current="step"]');
     active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [phaseIndex]);
+
+  if (currentPhase === 'COMPLETE' || currentPhase === 'EXPIRED') return null;
 
   return (
     <div

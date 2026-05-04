@@ -32,7 +32,8 @@ export function getToken(grade: Grade, key: string): string | number | undefined
   return tokens[key as keyof CSSVariables];
 }
 
-export default {
+const theme = {
   tokensForGrade,
   getToken,
 };
+export default theme;

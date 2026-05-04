@@ -52,7 +52,7 @@ function subjectAdvisoryLockKey(subjectId: string): bigint {
   return h;
 }
 
-type TxOutcome =
+type _TxOutcome =
   | { outcome: 'job_running'; jobId: string }
   | { outcome: 'subject_not_found' }
   | { outcome: 'created'; jobId: string; boardSlug: string; grade: number; subjectSlug: string };
