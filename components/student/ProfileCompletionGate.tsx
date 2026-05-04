@@ -190,6 +190,24 @@ export default function ProfileCompletionGate({
     setMounted(true);
   }, []);
 
+  // Auto-submit when parentPhone OTP is verified and it is the last step.
+  // Without this the user sees "Phone verified" but must tap a separate "Save"
+  // button -- confusing because OTP feels like the terminal action.
+  // mountedRef prevents the effect from firing on initial mount when parentPhoneSubStep
+  // is already 'verified' (returning user whose phone was pre-verified).
+  const otpAutoSubmitMountedRef = React.useRef(false);
+  useEffect(() => {
+    if (!otpAutoSubmitMountedRef.current) {
+      otpAutoSubmitMountedRef.current = true;
+      return;
+    }
+    if (currentStepKey === 'parentPhone' && parentPhoneSubStep === 'verified' && isLastStep && !saving) {
+      void handleSubmit();
+    }
+    // handleSubmit reads state via closure; including it would cause spurious re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentPhoneSubStep]);
+
   // Auto-select mandatory subjects when board/grade change
   useEffect(() => {
     if (!board || !grade) return;

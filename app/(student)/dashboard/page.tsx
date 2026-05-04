@@ -362,14 +362,15 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // When all enrolled subjects have a completed diagnostic but no learning plan
-  // is ready yet, navigate the user to the comprehensive diagnostic summary page
-  // so they can review readiness for all their selected subjects at once.
+  // is ready yet, surface a banner linking to the summary page.
+  // A server-side redirect here caused an infinite loop: the redirect fires on
+  // every /dashboard visit, including the return trip from the summary page itself.
   const allDiagnosticsComplete =
     readinessResults.length > 0 && readinessResults.every((r) => r.diagnosticDone)
-  if (cardProps.type === 'empty' && allDiagnosticsComplete) {
-    const ids = readinessResults.map((r) => r.subjectId).join(',')
-    redirect(`/diagnostic/summary?subjects=${encodeURIComponent(ids)}`)
-  }
+  const diagnosticSummaryIds =
+    allDiagnosticsComplete && learningPlans.length === 0
+      ? readinessResults.map((r) => r.subjectId).join(',')
+      : null
 
   const userGrade = user?.grade ? parseInt(String(user.grade), 10) || 0 : 0
   const userBoard = user?.board ?? ''
@@ -407,6 +408,22 @@ export default async function StudentHomeDashboardPage() {
               longestStreak={user.longestStreak}
               weeklySessionCount={weeklyActivity.length}
             />
+          )}
+
+          {/* All diagnostics done but no learning plan yet -- show banner instead of looping redirect */}
+          {diagnosticSummaryIds && (
+            <div className="rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 border border-[#1D9E75]/30 px-4 py-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#1D9E75]">All diagnostics complete!</p>
+                <p className="text-xs text-[#1D9E75]/80 mt-0.5">Your personalised learning plan is being prepared.</p>
+              </div>
+              <Link
+                href={`/diagnostic/summary?subjects=${encodeURIComponent(diagnosticSummaryIds)}`}
+                className="flex-shrink-0 min-h-[36px] inline-flex items-center px-3 py-1.5 rounded-lg bg-[#1D9E75] text-white text-xs font-semibold hover:bg-[#178a65] transition-colors"
+              >
+                View results
+              </Link>
+            </div>
           )}
 
           {/* F-STU-032 AC-03: Primary CTA */}
