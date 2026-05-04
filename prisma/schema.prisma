@@ -11,6 +11,7 @@
 /// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
 /// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
+/// - 2026-05-04T00:00:00Z | copilot | add ParentStudent.relationship and ConsentScope.COMMUNITY_FEATURES for parent registration/consent completeness
 generator client {
   provider = "prisma-client-js"
 }
@@ -1002,6 +1003,7 @@ model ParentStudent {
   parentId                String
   studentId               String
   status                  ParentLinkStatus @default(active)
+  relationship            ParentRelationship @default(guardian)
   inviteCode              String?          @unique
   /// Pause controls set by parent: when true, sessions during pause do not count
   /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
@@ -2687,7 +2689,14 @@ enum ConsentScope {
   DATA_PROCESSING
   AI_INTERACTION
   PARENT_NOTIFICATION
+  COMMUNITY_FEATURES
   MARKETING
+}
+
+enum ParentRelationship {
+  father
+  mother
+  guardian
 }
 
 /// Parent-specific profile record — one per parent user.

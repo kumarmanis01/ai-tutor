@@ -34,6 +34,8 @@ function makeRequest(body: Record<string, unknown>) {
   });
 }
 
+const RELATIONSHIP = 'guardian'
+
 describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () => {
   let getServerSession: jest.Mock;
   let redeemParentInviteAndLink: jest.Mock;
@@ -56,7 +58,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
   it('should return 401 when unauthenticated', async () => {
     getServerSession.mockResolvedValue(null);
     const { POST } = await import('@/app/api/parent/link/route');
-    const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
+    const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234', relationship: RELATIONSHIP }) as any);
     expect(res.status).toBe(401);
   });
 
@@ -68,7 +70,13 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
 
   it('should return 400 when link action has no inviteCode or studentEmail', async () => {
     const { POST } = await import('@/app/api/parent/link/route');
-    const res = await POST(makeRequest({ action: 'link' }) as any);
+    const res = await POST(makeRequest({ action: 'link', relationship: RELATIONSHIP }) as any);
+    expect(res.status).toBe(400);
+  });
+
+  it('should return 400 when relationship is missing', async () => {
+    const { POST } = await import('@/app/api/parent/link/route');
+    const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
     expect(res.status).toBe(400);
   });
 
@@ -80,7 +88,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
+      const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234', relationship: RELATIONSHIP }) as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -94,7 +102,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       redeemParentInviteAndLink.mockResolvedValue({ status: 'already_linked', studentId: STUDENT_ID });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
+      const res = await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234', relationship: RELATIONSHIP }) as any);
 
       const data = await res.json();
       expect(data.status).toBe('already_linked');
@@ -108,7 +116,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
+      await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234', relationship: RELATIONSHIP }) as any);
 
       expect(sendMailSafe).not.toHaveBeenCalled();
     });
@@ -134,7 +142,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(makeRequest({ action: 'link', inviteCode: 'LEGACY01' }) as any);
+      const res = await POST(makeRequest({ action: 'link', inviteCode: 'LEGACY01', relationship: RELATIONSHIP }) as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -158,7 +166,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       prismaMock.parentStudent.update.mockResolvedValue({} as any);
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(makeRequest({ action: 'link', inviteCode: 'LEGACY01' }) as any);
+      const res = await POST(makeRequest({ action: 'link', inviteCode: 'LEGACY01', relationship: RELATIONSHIP }) as any);
 
       const data = await res.json();
       expect(data.status).toBe('already_linked');
@@ -174,7 +182,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(makeRequest({ action: 'link', studentEmail: 'student@example.test' }) as any);
+      const res = await POST(makeRequest({ action: 'link', studentEmail: 'student@example.test', relationship: RELATIONSHIP }) as any);
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -188,7 +196,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       linkParentToStudentByEmail.mockResolvedValue({ status: 'already_linked', studentId: STUDENT_ID });
 
       const { POST } = await import('@/app/api/parent/link/route');
-      const res = await POST(makeRequest({ action: 'link', studentEmail: 'student@example.test' }) as any);
+      const res = await POST(makeRequest({ action: 'link', studentEmail: 'student@example.test', relationship: RELATIONSHIP }) as any);
 
       const data = await res.json();
       expect(data.status).toBe('already_linked');

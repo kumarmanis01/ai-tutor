@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
-import type { PrismaClient, Prisma } from '@prisma/client';
+import type { PrismaClient, Prisma, ParentRelationship } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants';
 
 export const PARENT_INVITE_TTL_DAYS = 7;
 
@@ -13,6 +14,14 @@ export type InviteRedeemResult = {
   studentId: string;
   status: 'linked' | 'already_linked';
 };
+
+function normalizeParentRelationship(raw?: string | null): ParentRelationship {
+  const value = String(raw ?? '').trim().toLowerCase();
+  if (value === 'father' || value === 'mother' || value === 'guardian') {
+    return value as ParentRelationship;
+  }
+  return 'guardian';
+}
 
 function generateCode(): string {
   // 8-char hex code (uppercase) -- easy to read/type on mobile.
@@ -75,10 +84,12 @@ export async function redeemParentInviteAndLink(params: {
   parentId: string;
   parentEmail?: string | null;
   code: string;
+  relationship?: string | null;
   now?: Date;
 }): Promise<InviteRedeemResult> {
   const { prisma, parentId, code } = params;
   const now = params.now ?? new Date();
+  const relationship = normalizeParentRelationship(params.relationship);
 
   const normalizedCode = String(code).trim().toUpperCase();
   if (!normalizedCode || normalizedCode.length < 6) {
@@ -135,14 +146,26 @@ export async function redeemParentInviteAndLink(params: {
       return { studentId: invite.studentId, status: 'already_linked' };
     }
 
+    // F-PAR-001 AC-05: hard cap of 3 active children per parent.
+    const activeCount = await tx.parentStudent.count({
+      where: {
+        parentId,
+        studentId: { not: invite.studentId },
+        status: 'active',
+      },
+    });
+    if ((!existing || existing.status === 'revoked') && activeCount >= FAMILY_MAX_CHILDREN) {
+      throw new Error(`Parent already has maximum linked children (${FAMILY_MAX_CHILDREN})`);
+    }
+
     if (existing?.status === 'revoked') {
       await tx.parentStudent.update({
         where: { id: existing.id },
-        data: { status: 'active' },
+        data: { status: 'active', relationship },
       });
     } else if (!existing) {
       await tx.parentStudent.create({
-        data: { parentId, studentId: invite.studentId, status: 'active' },
+        data: { parentId, studentId: invite.studentId, status: 'active', relationship },
       });
     }
 
@@ -176,10 +199,12 @@ export async function linkParentToStudentByEmail(params: {
   parentId: string;
   parentEmail?: string | null;
   studentEmail: string;
+  relationship?: string | null;
 }): Promise<{ studentId: string; status: 'linked' | 'already_linked' }> {
   const { prisma, parentId } = params;
   const parentEmail = (params.parentEmail ?? '').trim().toLowerCase();
   const studentEmail = String(params.studentEmail).trim().toLowerCase();
+  const relationship = normalizeParentRelationship(params.relationship);
 
   if (!studentEmail) throw new Error('studentEmail required');
   if (!parentEmail) {
@@ -219,10 +244,22 @@ export async function linkParentToStudentByEmail(params: {
     return { studentId: student.id, status: 'already_linked' };
   }
 
+  // F-PAR-001 AC-05: hard cap of 3 active children per parent.
+  const activeCount = await prisma.parentStudent.count({
+    where: {
+      parentId,
+      studentId: { not: student.id },
+      status: 'active',
+    },
+  });
+  if ((!existing || existing.status === 'revoked') && activeCount >= FAMILY_MAX_CHILDREN) {
+    throw new Error(`Parent already has maximum linked children (${FAMILY_MAX_CHILDREN})`);
+  }
+
   if (existing?.status === 'revoked') {
-    await prisma.parentStudent.update({ where: { id: existing.id }, data: { status: 'active' } });
+    await prisma.parentStudent.update({ where: { id: existing.id }, data: { status: 'active', relationship } });
   } else if (!existing) {
-    await prisma.parentStudent.create({ data: { parentId, studentId: student.id, status: 'active' } });
+    await prisma.parentStudent.create({ data: { parentId, studentId: student.id, status: 'active', relationship } });
   }
 
   await ensureParentRole(prisma, parentId);

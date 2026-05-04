@@ -18,6 +18,7 @@ EDIT LOG:
  - 2026-05-04T00:00:00Z | copilot | Perform exhaustive AC audit across codebase and update status per AC (Done / Partial / Pending) for all F-PAR stories.
  - 2026-05-04T00:00:00Z | copilot | Inline AC status labels directly in each MVP acceptance criterion row.
  - 2026-05-04T12:00:00Z | copilot | Implement F-PAR-010 AC-02/AC-03/AC-06: exam countdown, horizontal tabs, loading skeleton; F-PAR-011 AC-04: peer benchmarking opt-in in ParentProgressDetail; update AC statuses to Done.
+ - 2026-05-04T18:00:00Z | copilot | Close parent registration/consent gaps: enforce ParentRelationship (father|mother|guardian) in link and create-child flows; require mandatory consent bundle (DATA_PROCESSING, AI_INTERACTION, PARENT_NOTIFICATION, COMMUNITY_FEATURES) on child creation; enforce FAMILY_MAX_CHILDREN=3 cap. Update F-PAR-001 AC-02, F-PAR-003 AC-01 to Done.
 -->
 
 AI HOME TUTOR PLATFORM
@@ -100,7 +101,7 @@ Priority
 AC-01 (Status: Done)
 Parent can register independently (without student) or be auto-prompted during student registration when student age < 13.
 MUST
-AC-02 (Status: Partial)
+AC-02 (Status: Done)
 Registration requires: parent mobile number (OTP verified), name, relationship to student (Father / Mother / Guardian).
 MUST
 AC-03 (Status: Done)
@@ -153,7 +154,7 @@ Parent acknowledges child data usage and platform safety policies.
 AC#
 Acceptance Criterion
 Priority
-AC-01 (Status: Partial)
+AC-01 (Status: Done)
 During child account creation, parent must explicitly accept: data collection consent for minor, AI interaction consent, community features consent (Phase 2), platform safety policy.
 MUST
 AC-02 (Status: Done)

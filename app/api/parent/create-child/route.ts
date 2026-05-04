@@ -15,6 +15,7 @@
  * - 2026-04-12T12:00:00Z | copilot | use FAMILY_MAX_CHILDREN constant from billing constants
  * - 2026-04-14T00:00:00Z | claude | added dateOfBirth, grade, board, medium fields (F-PAR-002 AC-01)
  * - 2026-04-14T12:00:00Z | staff-engineer | fix: create child with role 'user', default language, remove unused const
+ * - 2026-05-04T00:00:00Z | copilot | require relationship and explicit consent bundle for parent-created child accounts
  */
 
 import { NextResponse } from 'next/server'
@@ -24,9 +25,25 @@ import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
-import { Prisma } from '@prisma/client'
+import { ConsentScope, Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
+
+// Valid consent scope strings - used for both validation and required scopes
+const VALID_CONSENT_SCOPES = [
+  'DATA_PROCESSING',
+  'AI_INTERACTION',
+  'PARENT_NOTIFICATION',
+  'COMMUNITY_FEATURES',
+  'MARKETING',
+] as const
+
+const REQUIRED_CONSENT_SCOPES = [
+  'DATA_PROCESSING',
+  'AI_INTERACTION',
+  'PARENT_NOTIFICATION',
+  'COMMUNITY_FEATURES',
+] as const
 
 
 
@@ -48,12 +65,30 @@ export async function POST(req: Request) {
   // F-PAR-002 AC-01 fields
   const grade = typeof body.grade === 'string' ? body.grade.trim() : undefined
   const board = typeof body.board === 'string' ? body.board.trim() : undefined
+  const relationship = typeof body.relationship === 'string' ? body.relationship.trim().toLowerCase() : ''
   // medium maps to language field on User
   const medium = typeof body.medium === 'string' ? body.medium.trim() : undefined
   const dateOfBirth = typeof body.dateOfBirth === 'string' && body.dateOfBirth ? new Date(body.dateOfBirth) : undefined
+  const consentScopesRaw = Array.isArray(body.consentScopes) ? body.consentScopes : []
+  const consentScopes = consentScopesRaw.filter(
+    (scope: unknown): scope is string => typeof scope === 'string' && VALID_CONSENT_SCOPES.includes(scope as any)
+  )
 
   if (!name) {
     const res = NextResponse.json({ error: 'child name required' }, { status: 400 })
+    logger.logAPI(req, res, { className: 'ParentCreateChildAPI', methodName: 'POST' }, start)
+    return res
+  }
+
+  if (!['father', 'mother', 'guardian'].includes(relationship)) {
+    const res = NextResponse.json({ error: 'relationship required (father|mother|guardian)' }, { status: 400 })
+    logger.logAPI(req, res, { className: 'ParentCreateChildAPI', methodName: 'POST' }, start)
+    return res
+  }
+
+  const missingScopes = REQUIRED_CONSENT_SCOPES.filter((requiredScope) => !consentScopes.includes(requiredScope))
+  if (missingScopes.length > 0) {
+    const res = NextResponse.json({ error: 'required consents missing', missingScopes }, { status: 400 })
     logger.logAPI(req, res, { className: 'ParentCreateChildAPI', methodName: 'POST' }, start)
     return res
   }
@@ -78,6 +113,8 @@ export async function POST(req: Request) {
     const defaultLanguage = (parentUser?.language as any) ?? 'en'
 
     // Create child user and parentStudent link in a transaction
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+    const userAgent = req.headers.get('user-agent') ?? null
     const child = await prisma.$transaction(async (tx) => {
       const normalizedMedium = typeof medium === 'string' ? medium.toLowerCase() : ''
       const resolvedLanguage = normalizedMedium === 'hi' || normalizedMedium === 'hindi' ? 'hi' : normalizedMedium === 'en' || normalizedMedium === 'english' ? 'en' : defaultLanguage
@@ -94,7 +131,31 @@ export async function POST(req: Request) {
       if (dateOfBirth) (userData as any).dateOfBirth = dateOfBirth
 
       const created = await tx.user.create({ data: userData as any })
-      await tx.parentStudent.create({ data: { parentId, studentId: created.id, status: 'active' } })
+      await tx.parentStudent.create({ data: { parentId, studentId: created.id, status: 'active', relationship: relationship as any } })
+
+      await Promise.all(
+        REQUIRED_CONSENT_SCOPES.map((scope) =>
+          tx.consent.upsert({
+            where: { id: `${created.id}:${scope}` },
+            update: {
+              givenAt: new Date(),
+              withdrawnAt: null,
+              ipAddress: ip,
+              userAgent,
+              version: '1.0',
+            },
+            create: {
+              id: `${created.id}:${scope}`,
+              userId: created.id,
+              scope,
+              ipAddress: ip,
+              userAgent,
+              version: '1.0',
+            },
+          }),
+        ),
+      )
+
       // promote parent role if necessary
       const p = await tx.user.findUnique({ where: { id: parentId }, select: { role: true } })
       if (p?.role === 'user') {

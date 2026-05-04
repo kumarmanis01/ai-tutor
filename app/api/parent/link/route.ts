@@ -10,6 +10,7 @@
  * - 2026-03-03 | gpt | migrate to ParentInvite + harden privacy
  * - 2026-04-20 | claude | F-PAR-001 AC-07: send parentWelcomeHtml on new link (invite-code + email paths)
  * - 2026-04-20 | claude | refactor: extract sendParentWelcomeNotifications; cover legacy path; drop SMS (OTP API only)
+ * - 2026-05-04 | copilot | require relationship for linking and persist relationship in invite/email link flows
  */
 
 export const dynamic = 'force-dynamic';
@@ -118,7 +119,11 @@ async function handleGenerateCode(studentId: string, req: NextRequest, start: nu
  * Parent links to a student via invite code or email
  */
 async function handleLink(parentId: string, parentEmail: string | null, body: any, req: NextRequest, start: number) {
-  const { inviteCode, studentEmail } = body;
+  const { inviteCode, studentEmail, relationship: rawRelationship } = body;
+  const relationship = typeof rawRelationship === 'string' ? rawRelationship.trim().toLowerCase() : '';
+  if (!['father', 'mother', 'guardian'].includes(relationship)) {
+    return NextResponse.json({ error: 'relationship required (father|mother|guardian)' }, { status: 400 });
+  }
 
   if (!inviteCode && !studentEmail) {
     return NextResponse.json({ error: 'inviteCode or studentEmail required' }, { status: 400 });
@@ -126,7 +131,7 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
 
   if (inviteCode) {
     try {
-      const result = await redeemParentInviteAndLink({ prisma, parentId, parentEmail, code: inviteCode });
+      const result = await redeemParentInviteAndLink({ prisma, parentId, parentEmail, code: inviteCode, relationship });
 
       // F-PAR-001 AC-07: send welcome email on new link only (not already_linked)
       if (result.status === 'linked') {
@@ -211,7 +216,7 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
     }
   } else {
     try {
-      const result = await linkParentToStudentByEmail({ prisma, parentId, parentEmail, studentEmail });
+      const result = await linkParentToStudentByEmail({ prisma, parentId, parentEmail, studentEmail, relationship });
 
       // F-PAR-001 AC-07: send welcome email on new link only
       if (result.status === 'linked') {
