@@ -107,6 +107,29 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const prevStart = new Date(start.getTime() - durationMs);
   const prevEnd = new Date(start);
 
+  // Compute 7-day daily sparkline: new registrations per day for the last 7 days
+  const sevenDaySparkline: number[] = await (async () => {
+    const now = new Date();
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const dayStart = new Date(now);
+      dayStart.setDate(now.getDate() - (6 - i));
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+      return { dayStart, dayEnd };
+    });
+    try {
+      const counts = await Promise.all(
+        days.map(({ dayStart, dayEnd }) =>
+          prisma.user.count({ where: { createdAt: { gte: dayStart, lte: dayEnd } } }).catch(() => 0)
+        )
+      );
+      return counts;
+    } catch {
+      return [0, 0, 0, 0, 0, 0, 0];
+    }
+  })();
+
   try {
     const [
       totalAccounts,
@@ -191,38 +214,45 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           value: totalAccounts,
           trend: trend(totalAccounts, prevPeriodAccounts),
           label: 'Total Accounts',
+          sparkline: sevenDaySparkline,
         },
         activeUsers: {
           value: dau,
           trend: trend(dau, prevDau),
           label: period === 'today' ? 'Daily Active Users' : 'Active Users',
+          sparkline: sevenDaySparkline,
         },
         newRegistrations: {
           value: newRegistrations,
           trend: trend(newRegistrations, prevNewRegistrations),
           label: 'New Registrations',
+          sparkline: sevenDaySparkline,
         },
         premiumConversion: {
           value: conversionRate,
           suffix: '%',
           trend: null,
           label: 'Free → Premium Rate',
+          sparkline: sevenDaySparkline,
         },
         contentGenerated: {
           value: contentGenerated,
           trend: trend(contentGenerated, prevContentGenerated),
           label: 'Content Generated',
+          sparkline: sevenDaySparkline,
         },
         approvalRate: {
           value: approvalRate,
           suffix: '%',
           trend: null,
           label: 'Approval Rate',
+          sparkline: sevenDaySparkline,
         },
         flaggedContent: {
           value: flaggedContentCount,
           trend: null,
           label: 'Open Flags',
+          sparkline: sevenDaySparkline,
         },
       },
       topTopics: topTopics.map((t) => ({ topic: t.topic, count: t._count.topic })),

@@ -95,6 +95,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           type: true,
           status: true,
           version: true,
+          contentJson: true,
           createdAt: true,
           updatedAt: true,
           _count: { select: { flags: true } },
@@ -113,6 +114,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const items = rawItems.map((item) => {
       const job = item.generationJobs[0];
       const requestCount = job ? job.subscriberIds.length + 1 : 0;
+      // Extract generator info from contentJson.metadata (set by AI generation pipeline)
+      const meta = (item.contentJson as Record<string, unknown> | null)?.metadata as Record<string, unknown> | undefined;
+      const generator: string | null = (meta?.model ?? meta?.generator ?? null) as string | null;
+      const confidence: number | null = (meta?.confidence ?? meta?.groundednessScore ?? null) as number | null;
       return {
         id: item.id,
         topic: item.topic,
@@ -126,6 +131,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         requestCount,
         flagCount: item._count.flags,
         jobStatus: job?.status ?? null,
+        generator,
+        confidence,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
       };

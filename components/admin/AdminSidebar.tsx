@@ -311,12 +311,7 @@ export function AdminSidebar({
           badge={pendingReview}
           isActive={isActive('/admin/moderation')}
         />
-        <NavItem
-          href="/admin/content-approval"
-          icon={<IconDoc />}
-          label="Content Review"
-          isActive={isActive('/admin/content-approval')}
-        />
+
         <NavItem
           href="/admin/jobs"
           icon={<IconClock />}

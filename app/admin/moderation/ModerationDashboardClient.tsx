@@ -33,6 +33,8 @@ type ModerationItem = {
   requestCount: number;
   flagCount: number;
   jobStatus: string | null;
+  generator: string | null;
+  confidence: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -289,6 +291,7 @@ export function ModerationDashboardClient({ initialItems, initialTotal }: {
               <th className="px-3 py-3 text-left font-semibold text-gray-700">Subject</th>
               <th className="px-3 py-3 text-center font-semibold text-gray-700">Grade</th>
               <th className="px-3 py-3 text-left font-semibold text-gray-700">Board</th>
+              <th className="px-3 py-3 text-left font-semibold text-gray-700">Generator</th>
               <th className="px-3 py-3 text-center font-semibold text-gray-700">Requests</th>
               <th className="px-3 py-3 text-center font-semibold text-gray-700">Flags</th>
               <th className="px-3 py-3 text-center font-semibold text-gray-700">Status</th>
@@ -301,14 +304,14 @@ export function ModerationDashboardClient({ initialItems, initialTotal }: {
               Array.from({ length: 5 }).map((_, idx) => (
                 // eslint-disable-next-line react/no-array-index-key
                 <tr key={idx} className="border-b border-gray-50">
-                  <td colSpan={10} className="px-3 py-3">
+                  <td colSpan={11} className="px-3 py-3">
                     <div className="h-6 w-full animate-pulse rounded bg-gray-100" />
                   </td>
                 </tr>
               ))
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-sm text-gray-400">
+                <td colSpan={11} className="py-12 text-center text-sm text-gray-400">
                   No content items match the current filters.
                 </td>
               </tr>
@@ -340,6 +343,18 @@ export function ModerationDashboardClient({ initialItems, initialTotal }: {
                     <td className="px-3 py-3 text-gray-600">{item.subject}</td>
                     <td className="px-3 py-3 text-center text-gray-600">{item.grade ?? '--'}</td>
                     <td className="px-3 py-3 text-gray-600">{item.board}</td>
+                    <td className="px-3 py-3">
+                      {item.generator ? (
+                        <span className="inline-flex flex-col gap-0.5">
+                          <span className="text-xs font-medium text-gray-700">{item.generator}</span>
+                          {item.confidence != null && (
+                            <span className="text-[10px] text-gray-400">{Math.round(item.confidence * 100)}% conf.</span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">--</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-center font-semibold text-[#534AB7]">
                       {item.requestCount}
                     </td>

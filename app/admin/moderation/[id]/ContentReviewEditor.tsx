@@ -17,9 +17,11 @@
 
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { logger } from '@/lib/logger';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 
 type ContentVersion = {
   id: string;
@@ -59,6 +61,25 @@ type RejectModalState = {
   open: boolean;
   reason: string;
 };
+
+function renderWithLatex(text: string): string {
+  // Render display math $$...$$ then inline math $...$
+  let result = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr: string) => {
+    try {
+      return katex.renderToString(expr.trim(), { displayMode: true, throwOnError: false });
+    } catch {
+      return `<span class="text-[#E24B4A]">$$${expr}$$</span>`;
+    }
+  });
+  result = result.replace(/\$([^$\n]+?)\$/g, (_, expr: string) => {
+    try {
+      return katex.renderToString(expr.trim(), { displayMode: false, throwOnError: false });
+    } catch {
+      return `<span class="text-[#E24B4A]">$${expr}$</span>`;
+    }
+  });
+  return result;
+}
 
 function renderContentPreview(contentJson: unknown): string {
   if (!contentJson || typeof contentJson !== 'object') return '';
@@ -102,6 +123,7 @@ export function ContentReviewEditor({ contentId }: ContentReviewEditorProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [rejectModal, setRejectModal] = useState<RejectModalState>({ open: false, reason: '' });
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const renderedPreview = useMemo(() => renderWithLatex(editorText), [editorText]);
 
   const fetchContent = useCallback(async () => {
     try {
@@ -250,9 +272,11 @@ export function ContentReviewEditor({ contentId }: ContentReviewEditorProps) {
                 <p className="text-xs text-gray-500">
                   {content.subject} · Grade {content.grade} · {content.board} · {content.language.toUpperCase()}
                 </p>
-                <pre className="mt-4 whitespace-pre-wrap rounded-xl bg-white p-4 text-sm text-gray-700 shadow-sm">
-                  {editorText}
-                </pre>
+                {/* eslint-disable-next-line react/no-danger */}
+                <div
+                  className="mt-4 whitespace-pre-wrap rounded-xl bg-white p-4 text-sm text-gray-700 shadow-sm"
+                  dangerouslySetInnerHTML={{ __html: renderedPreview }}
+                />
               </div>
             </div>
             {/* Editor -- 30% */}
