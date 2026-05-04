@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     const state = await prisma.studentConceptState.findUnique({
       where: { studentId_conceptId: { studentId: userId, conceptId } },
-      select: { nextReviewAt: true },
+      select: { conceptId: true },
     })
 
     if (!state) {
