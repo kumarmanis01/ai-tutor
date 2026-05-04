@@ -14,6 +14,7 @@ EDIT LOG:
 - 2026-04-17T00:00:00Z | assistant | Add Phase 2 timezone enhancement items and document implementation notes for F-PAR-010 (dual-timezone display); updated roadmap and tests/code references.
  - 2026-04-17T09:50:00Z | copilot | Add Phase 2 enhancement items for F-PAR-020 (Weekly Progress Digest) and note QA send/testing status.
  - 2026-04-17T12:00:00Z | copilot | Implement F-PAR-024 readiness-drop worker: enforce 90-day exam window, include AI remediation summary in parent notifications, add SMS/email plain-text fallback; update docs with Phase 2 planned enhancements.
+ - 2026-05-04T15:00:00Z | copilot | Audit + close F-PAR-020/022/023 gaps: fix weeklyDigestWorker SMS parity (AC-01 Done), wire mock-exam + level-up parent notifications (F-PAR-022 AC-01 Done), add 7-day renewal reminder + cancellation confirmation (F-PAR-023 AC-03/04 Done), upgrade dunning/renewal notification content (AC-01/02 Done), enforce OTP gate on subscription changes (AC-06 Done), confirm PDF attachment on verify routes (AC-05 Done). Fix prismaMock missing learningPlanItem; update inactivityAlert.spec.ts for refactored canSendNotification suppression flow.
  - 2026-04-17T14:00:00Z | copilot | Implement F-PAR-031 EMI schedule UI + retry flow: add client retry modal, toast notifications, inline banners, retry API + enqueue helper, and server-render unit tests; update docs with Phase 2 planned enhancements for subscription management.
  - 2026-05-04T00:00:00Z | copilot | Perform exhaustive AC audit across codebase and update status per AC (Done / Partial / Pending) for all F-PAR stories.
  - 2026-05-04T00:00:00Z | copilot | Inline AC status labels directly in each MVP acceptance criterion row.
@@ -276,7 +277,7 @@ Automated weekly summary delivered every Sunday morning.
 AC#
 Acceptance Criterion
 Priority
-AC-01 (Status: Partial)
+AC-01 (Status: Done)
 Digest sent every Sunday at 9 AM (parent's local timezone) via email. SMS summary sent simultaneously.
 MUST
 AC-02 (Status: Done)
@@ -373,7 +374,7 @@ Positive reinforcement alerts when child reaches a learning milestone.
 AC#
 Acceptance Criterion
 Priority
-AC-01 (Status: Partial)
+AC-01 (Status: Done)
 Notifications sent for: Streak milestones (7, 14, 30 days), Chapter mastery completion (first time), Mock exam completion + score, Level up (gamification tier), Exam readiness score crosses 50%, 70%, 90% thresholds.
 MUST
 AC-02 (Status: Done)
@@ -410,22 +411,22 @@ Transactional notifications for all payment and account events.
 AC#
 Acceptance Criterion
 Priority
-AC-01 (Status: Partial)
+AC-01 (Status: Done)
 Payment success: SMS + email within 60 seconds of charge. Includes: amount, plan, next renewal date, invoice link.
 MUST
-AC-02 (Status: Partial)
+AC-02 (Status: Done)
 Payment failure: SMS + email immediately. Includes: retry link, grace period expiry date, support contact.
 MUST
-AC-03 (Status: Pending)
+AC-03 (Status: Done)
 Upcoming renewal reminder: 7 days before renewal date. Includes renewal amount and cancel option.
 MUST
-AC-04 (Status: Pending)
+AC-04 (Status: Done)
 Subscription cancelled confirmation: immediate email. Includes access expiry date and resubscribe link.
 MUST
-AC-05 (Status: Partial)
+AC-05 (Status: Done)
 All transactional emails include GST invoice as PDF attachment.
 MUST
-AC-06 (Status: Partial)
+AC-06 (Status: Done)
 Account security: OTP for any login, child account change, or subscription change. Cannot be disabled.
 MUST
 
@@ -726,7 +727,7 @@ F-PAR-012 Study Activity History
 - AC-05: Done
 
 F-PAR-020 Weekly Progress Digest
-- AC-01: Partial
+- AC-01: Done
 - AC-02: Done
 - AC-03: Done
 - AC-04: Done
@@ -760,7 +761,7 @@ F-PAR-021 Phase 2 Inactivity Enhancements
 - P2-AC-06: Partial
 
 F-PAR-022 Milestone & Achievement Notifications
-- AC-01: Partial
+- AC-01: Done
 - AC-02: Done
 - AC-03: Done
 - AC-04: Done
@@ -776,12 +777,12 @@ F-PAR-022 Phase 2 Milestone Enhancements
 - P2-AC-08: Partial
 
 F-PAR-023 Payment & Account Notifications
-- AC-01: Partial
-- AC-02: Partial
-- AC-03: Pending
-- AC-04: Pending
-- AC-05: Partial
-- AC-06: Partial
+- AC-01: Done
+- AC-02: Done
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
+- AC-06: Done
 
 F-PAR-024 Exam Readiness Score Drop Alert
 - AC-01: Done
