@@ -6,21 +6,23 @@
  * - Satisfies F-STU-003 AC-05: plan auto-adjusts weekly based on actual progress.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/api/student/learningPlan.adjust.spec.ts
+ * - tests/unit/app/api/student/learning-plan/adjust/route.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
- * - docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /.github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-05-04 | staff-engineer | created -- F-STU-003 AC-05 weekly auto-adjust
+ * - 2026-05-04T00:00:00Z | staff-engineer | created -- F-STU-003 AC-05 weekly auto-adjust
+ * - 2026-05-04T00:00:00Z | copilot | add mid-week behind check and guarded regeneration dedup
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { generateLearningPlan } from '@/lib/ai/learningPlan';
+import { enqueueLearningPlanRegeneration } from '@/lib/ai/learningPlanRegeneration';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +34,12 @@ const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
  * Behind = fewer than half the expected weekly concepts completed so far this week.
  */
 async function isStudentBehind(planId: string, weeklyGoal: number, currentWeek: number): Promise<boolean> {
+  const dayOfWeek = new Date().getDay();
+  const isMidWeekOrLater = dayOfWeek >= 3;
+  if (!isMidWeekOrLater) {
+    return false;
+  }
+
   const completedThisWeek = await prisma.learningPlanItem.count({
     where: { planId, weekNumber: currentWeek, status: 'COMPLETED' },
   });
@@ -94,18 +102,18 @@ export async function POST(req: NextRequest) {
       });
 
       // Fire-and-forget: regeneration is non-blocking so the student's request returns fast.
-      generateLearningPlan(userId, plan.subjectId, {
+      const queued = await enqueueLearningPlanRegeneration({
+        studentId: userId,
+        subjectId: plan.subjectId,
         examDate: plan.examDate ?? undefined,
         weeklyGoal: plan.weeklyGoal,
-      }).catch((err) => {
-        logger.warn('[learning-plan/adjust] regeneration failed', {
-          className: 'LearningPlanAdjustAPI',
-          methodName: 'POST',
-          userId,
-          subjectId: plan.subjectId,
-          error: String(err),
-        });
+        routeName: 'LearningPlanAdjustAPI',
+        methodName: 'POST',
       });
+
+      if (!queued) {
+        continue;
+      }
 
       adjustedSubjects.push(plan.subjectId);
     }

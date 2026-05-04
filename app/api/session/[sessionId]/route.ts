@@ -112,7 +112,7 @@ export async function GET(
  * Body: { action: 'heartbeat' }
  *
  * Auto-save heartbeat called by the client every 60 seconds (F-STU-010 AC-06).
- * Touches lastAccessed on the StructuredSession so progress is never lost on
+ * Updates meta.lastHeartbeatAt on the StructuredSession so progress is never lost on
  * network drop or app close. Owns auth + ownership check before any DB write.
  */
 export async function PATCH(

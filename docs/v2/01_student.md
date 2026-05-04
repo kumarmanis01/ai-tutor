@@ -6,15 +6,17 @@ FILE OBJECTIVE:
 LINKED UNIT TEST:
 - tests/unit/docs/01_student.spec.ts
 
-COPILOT_INSTRUCTIONS_FOLLOWED:
-- .github/copilot-instructions.md
-- docs/COPILOT_GUARDRAILS.md
+COPILOT INSTRUCTIONS FOLLOWED:
+- /docs/COPILOT_GUARDRAILS.md
+- /docs/ENGINEERING_PRACTICES.md
+- /.github/copilot-instructions.md
 
 EDIT LOG:
 - 2026-04-16T12:00:00Z | copilot | added Production Run & Deployment section; updated header
 - 2026-04-16T12:50:00Z | copilot | add Phase 2 backlog: admin-triggered mock seeding (API + worker), audit logs, admin UI, tests
 - 2026-04-17T10:30:00Z | copilot | add Phase 2 referral backlog: referral dashboard UI, in-app notifications for voided rewards, fraud review tooling, E2E billing tests
 - 2026-05-04T00:00:00Z | staff-engineer | audit F-STU-020/021/022/023/030/031/032: add Status column to all ACs; all 43 ACs marked with implementation evidence
+- 2026-05-04T00:00:00Z | copilot | align header field names and instruction paths with engineering template
 -->
 
 AI HOME TUTOR PLATFORM

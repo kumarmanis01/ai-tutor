@@ -1,6 +1,6 @@
 # Spinzy AI Tutor — Claude Code Instructions
 # Read this file fully before starting any task.
-# Last updated: 2026-03-15
+# Last updated: 2026-05-04
 
 ---
 
@@ -189,6 +189,20 @@ This is a deletion task. Rules:
 11. **One task at a time.**
     Never combine two tasks. Never start the next task until the current one
     is committed with a green gate.
+
+12. **Environment variables must be declared in env files.**
+    Every required environment variable must be added to `.env`.
+    For production deployment, required runtime variables must also be maintained in `.env.production` (PM2 `env_file`).
+    If any required variable is missing or not visible, explicitly call it out in the change summary.
+
+13. **All UI must honor theme and branding.**
+    Every UI change must use the theme-based look and feel and approved brand colors.
+    Prefer theme tokens/config over hardcoded values, and keep component styling aligned with the product brand system.
+
+14. **No stray string constants in implementation code.**
+    String constants reused within a file must be extracted to top-of-file constants.
+    Constants reused across files must be centralized in `lib/constants/*.ts`.
+    Avoid repeating raw literals across handlers/components when a named constant exists or should exist.
 
 ---
 

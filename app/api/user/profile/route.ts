@@ -4,14 +4,16 @@
  *   Supports GET (read canonical profile) and PATCH (update learningStyle).
  *
  * LINKED UNIT TEST:
- * - __tests__/app/api/user/profile/learningStyle.spec.ts
+ * - __tests__/app/api/user/profile/learningStyle.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
- * - .github/copilot-instructions.md
  * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /.github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-04-13T00:00:00Z | copilot | export VALID_LEARNING_STYLES for unit tests
+ * - 2026-05-04T00:00:00Z | copilot | update header template paths and linked test reference
  */
 
 import { NextResponse } from 'next/server';

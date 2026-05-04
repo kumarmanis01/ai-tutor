@@ -11,7 +11,8 @@
  * Never throws -- logs and continues on per-parent failures.
  *
  * EDIT LOG:
- * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
+ * - 2026-04-09T00:00:00Z | copilot | respect excludeFromParentReport when selecting parent links
+ * - 2026-05-04T00:00:00Z | copilot | normalize local outbox row type comment and maintain dedup outbox lookup
  */
 
 import { prisma } from '@/lib/prisma'

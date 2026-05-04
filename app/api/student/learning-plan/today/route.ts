@@ -1,8 +1,27 @@
+/**
+ * FILE OBJECTIVE:
+ * - GET /api/student/learning-plan/today
+ * - Returns the next upcoming learning-plan item for the student's current week
+ *   and falls back to next-action guidance when no plan exists.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/student/learning-plan/today/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /.github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T00:00:00Z | staff-engineer | add stale-plan background regeneration trigger
+ * - 2026-05-04T00:00:00Z | copilot | add required file header and guarded regeneration dedup lock
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { getNextAction } from '@/lib/homeEngine/getNextAction'
-import { generateLearningPlan } from '@/lib/ai/learningPlan'
+import { enqueueLearningPlanRegeneration } from '@/lib/ai/learningPlanRegeneration'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -97,17 +116,13 @@ export async function GET(req: Request) {
     // (older than 7 days). This surfaces fresh mastery data so the plan re-prioritises
     // remaining chapters based on what the student has actually learned since last generation.
     if (plan.generatedAt && Date.now() - plan.generatedAt.getTime() > STALE_THRESHOLD_MS) {
-      generateLearningPlan(userId, plan.subjectId, {
+      await enqueueLearningPlanRegeneration({
+        studentId: userId,
+        subjectId: plan.subjectId,
         examDate: plan.examDate ?? undefined,
         weeklyGoal: plan.weeklyGoal,
-      }).catch((err) => {
-        logger.warn('[learning-plan/today] background plan regeneration failed', {
-          className: 'LearningPlanTodayAPI',
-          methodName: 'GET',
-          userId,
-          subjectId: plan.subjectId,
-          error: String(err),
-        })
+        routeName: 'LearningPlanTodayAPI',
+        methodName: 'GET',
       })
     }
 

@@ -14,6 +14,7 @@ EDIT LOG:
 - 2026-01-02T00:00:00Z | git-user | reorganized doc for clarity
 - 2026-04-08T00:00:00Z | copilot | add ESLint & style guardrails to reduce repeated lint violations
 - 2026-04-18T00:00:00Z | copilot | add reference to ENGINEERING_PRACTICES.md as primary code-quality source of truth
+- 2026-05-04T00:00:00Z | copilot | add env file, theme branding, and constants centralization guardrails
 -->
 
 # HARD GUARDRAILS — Copilot Instructions (Summary)
@@ -195,6 +196,12 @@ These rules are added to reduce repeated lint failures and ensure consistent, pr
 - **Guard ESLint exceptions:** If a rule must be bypassed, add an inline `eslint-disable-next-line` with a short justification and add the justification to the file's EDIT LOG.
 
 - **CI enforcement:** Ensure `npm run lint` and `npm run type-check` are run locally before committing. CI is configured to fail PRs with lint or type errors.
+
+- **Environment variable declaration is mandatory:** All required environment variables must be added to `.env`. Production-required variables must also be present in `.env.production` used by PM2. If a required variable is missing or not visible, call it out explicitly in the change summary.
+
+- **Theme-based UI compliance is mandatory:** All UI must honor the theme-based look and feel, color system, and branding conventions. Prefer theme tokens/configuration over hardcoded visual values.
+
+- **No stray string constants:** Do not leave repeated raw string literals in implementation code. Constants reused in a file must be extracted to top-of-file constants. Constants reused across files must be centralized in `lib/constants/*.ts`.
 
 These guardrails are minimal but critical to avoid cyclical lint fixes. Follow them for all edits and include the relevant rule references in the edit's header when applicable.
 
