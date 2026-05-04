@@ -112,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       currentStreak = streakResult?.currentStreak ?? 0
       // AC-01 (F-STU-031): streak maintenance daily multiplier -- bonus XP when streak advances.
       if (streakResult?.streakIncremented) {
-        const streakBonusXP = Math.max(5, Math.round(xpEarned * 0.1))
+        const streakBonusXP = Math.round(xpEarned * 0.1)
         const streakXpResult = await awardXP({
           studentId: userId,
           amount: streakBonusXP,
