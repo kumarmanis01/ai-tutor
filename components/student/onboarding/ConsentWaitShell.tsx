@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { QuickDiagnosticQuiz } from '@/components/student/onboarding/QuickDiagnosticQuiz';
+import QuickDiagnosticQuiz from '@/components/student/onboarding/QuickDiagnosticQuiz';
 
 type ConsentWaitShellProps = {
   studentId: string;

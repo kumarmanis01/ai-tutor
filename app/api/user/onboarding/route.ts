@@ -12,6 +12,7 @@ import { sendMailSafe } from '@/lib/mailer';
 import { welcomeEmailHtml } from '@/lib/email/templates';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
 import { LanguageCode } from '@prisma/client';
+import { calculateAgeFromDob } from '@/lib/student/calculateAgeFromDob';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -63,12 +64,21 @@ export async function POST(req: NextRequest) {
 
     const name = typeof body.name === 'string' ? body.name.trim() : undefined;
     const ageRaw = body.age;
-    const age =
+    const ageFromField =
       typeof ageRaw === 'number' && Number.isFinite(ageRaw)
         ? Math.trunc(ageRaw)
         : typeof ageRaw === 'string' && ageRaw.trim() !== '' && Number.isFinite(Number(ageRaw))
           ? Math.trunc(Number(ageRaw))
           : undefined;
+    // Prefer DOB-derived age over a raw age integer for DPDP accuracy.
+    const dobRaw = typeof body.date_of_birth === 'string' ? body.date_of_birth.trim() : undefined;
+    const dateOfBirthDate = dobRaw ? new Date(dobRaw) : undefined;
+    const validDateOfBirth =
+      dateOfBirthDate && !isNaN(dateOfBirthDate.getTime()) && dateOfBirthDate < new Date()
+        ? dateOfBirthDate
+        : undefined;
+    const ageFromDob = validDateOfBirth ? calculateAgeFromDob(validDateOfBirth.toISOString()) : undefined;
+    const age = ageFromDob ?? ageFromField;
     const gradeRaw =
       typeof body.class_grade === 'number' || typeof body.class_grade === 'string'
         ? body.class_grade
@@ -178,6 +188,7 @@ export async function POST(req: NextRequest) {
     const updates: any = {};
     if (name) updates.name = name;
     if (age != null) updates.age = age;
+    if (validDateOfBirth) updates.dateOfBirth = validDateOfBirth;
     if (grade) updates.grade = grade;
     if (board) updates.board = board;
     if (subjects) updates.subjects = subjects;

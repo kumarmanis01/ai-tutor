@@ -11,11 +11,12 @@
 import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { calculateAgeFromDob } from '@/lib/student/calculateAgeFromDob';
 
 export const dynamic = 'force-dynamic';
 
-// Grade threshold used as a proxy for DPDP_MINOR_AGE (13).
-// Grade 7 students are typically 12; Grade 8 students are typically 13.
+const DPDP_MINOR_AGE = 13;
+// Grade proxy fallback when no DOB is stored (grade 7 -> typically 12 years old).
 const DPDP_MAX_GRADE = 7;
 
 export default async function PostProfilePage() {
@@ -26,7 +27,7 @@ export default async function PostProfilePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { grade: true, subjects: true },
+    select: { grade: true, subjects: true, age: true, dateOfBirth: true },
   });
 
   if (!user?.grade) {
@@ -36,6 +37,14 @@ export default async function PostProfilePage() {
   const gradeNum = parseInt(user.grade, 10);
   if (!Number.isFinite(gradeNum)) {
     redirect('/student/onboarding');
+  }
+
+  // Determine actual age: prefer stored DOB, then stored age int, then grade proxy.
+  let resolvedAge: number | null = null;
+  if (user.dateOfBirth) {
+    resolvedAge = calculateAgeFromDob(user.dateOfBirth.toISOString());
+  } else if (user.age != null) {
+    resolvedAge = user.age;
   }
 
   // Resolve first subject for the full diagnostic CTA
@@ -61,7 +70,11 @@ export default async function PostProfilePage() {
     firstSubjectId = subjectDef?.id ?? null;
   }
 
-  if (gradeNum <= DPDP_MAX_GRADE) {
+  // Route to consent-wait when age < 13 (real DOB check) or grade proxy triggers.
+  const needsParentConsent =
+    resolvedAge !== null ? resolvedAge < DPDP_MINOR_AGE : gradeNum <= DPDP_MAX_GRADE;
+
+  if (needsParentConsent) {
     redirect('/student/onboarding/consent-wait');
   }
 
