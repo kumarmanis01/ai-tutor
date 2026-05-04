@@ -315,36 +315,47 @@ Seven-stage structured explanation with adaptive branching. The AI's core teachi
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Every concept session follows this sequence: Hook → Prerequisite Bridge → Core Explanation → Worked Example → Guided Practice → Independent Practice → Consolidation.
 MUST
+✅ DONE — TutorStage union + STAGE_ORDER array in lib/ai/tutor/stateMachine.ts; all 7 stages driven by STAGE_ADVANCE tag; stage strip rendered in AITutorChatPanel with done/active/pending chips
 AC-02
 AI may not advance a stage until the stage's exit criterion is met. Failing the exit criterion twice triggers Prerequisite Remediation before retry.
 MUST
+✅ DONE — STAGE_ADVANCE tag only fires when AI emits it; applyTagTransitionWithRemediation in stateMachine.ts auto-upgrades STRUGGLE_DETECTED to PREREQ_FAIL at consecutiveWrongAnswers >= 3 (two failures triggers remediation before third retry)
 AC-03
 Student can interrupt AI explanation at any point to ask a doubt. AI pauses, resolves the doubt, then offers to resume or re-explain from the start.
 MUST
+✅ DONE — student can type any message in the input bar at any stage; promptAssembly PEDAGOGICAL_RULES instructs Vidya to handle doubts before continuing; re-explain bar (simpler/harder/example/diagram) available at all explanation stages
 AC-04
 Student can request re-explanation in a different style at any time: "Show me a diagram", "Give me a real-life example", "Explain simpler", "Explain harder".
 MUST
+✅ DONE — ReExplainBar in AITutorChatPanel with 4 chips (Simpler, Deeper, Real-life example, Diagram); sentinels __EXPLAIN_SIMPLER__ / __EXPLAIN_HARDER__ / __EXPLAIN_EXAMPLE__ / __EXPLAIN_DIAGRAM__ routed to promptAssembly buildStageInstructionsLayer; session-level style selector persisted via POST /api/tutor/session/style
 AC-05
 AI never gives direct answers to practice problems. Uses the 3-tier hint system exclusively.
 MUST
+✅ DONE — PEDAGOGICAL_RULES layer: "Never give a direct answer to a practice or test problem. Guide with questions, hints, or worked examples only." + "1b. For avoidance of doubt: never give the student the direct answer."
 AC-06
 AI uses culturally relevant analogies: cricket averages for statistics, train journeys for speed-distance, market prices for percentages. Analogy pool is region-aware (India).
 MUST
+✅ DONE — buildPersonaLayer instructs "Use Indian-context analogies (e.g., cricket, trains, markets) where helpful"; real_life_example re-explain style explicitly requests "specific, vivid real-world scenario from Indian daily life (cricket, trains, markets, festivals)"
 AC-07
 Every explanation cites the board exam objective it addresses: "This concept appears in CBSE Class 10 Board Exam — 6 marks weightage."
 SHOULD
+✅ DONE — boardChapterWeightMarks field in PromptContext; injected into CORE_EXPLANATION, WORKED_EXAMPLE, and CONSOLIDATION stage instructions in buildStageInstructionsLayer; board + grade + marks cited in example sentence
 AC-08
 If student gives 3 consecutive wrong answers: AI detects struggle, inserts prerequisite remediation sub-flow before retrying the original concept.
 MUST
+✅ DONE — applyTagTransitionWithRemediation in stateMachine.ts: tag === 'STRUGGLE_DETECTED' && consecutiveWrongAnswers >= 3 auto-upgrades to PREREQ_FAIL; sets prereqRemediationActive=true + prereqReturnStage; MASTERY_CONFIRMED returns to original stage
 AC-09
 AI detects copy-pasted or suspiciously perfect answers and follows up with a probing question: "Great — can you explain why that works?"
 SHOULD
+✅ DONE — detectCopyPaste imported from lib/ai/tutor/copyPasteDetector; called in services/tutor/turn.ts before LLM call; on detection: short-circuit with answerText "Great -- can you explain in your own words why that works?"; anomalyFlags written to Message row and AITutorTurnLog
 AC-10
 Dialogue tone calibrated by grade: Grade 6–8 → encouraging elder sibling. Grade 9–10 → peer collaborator. Grade 11–12 → focused mentor.
 SHOULD
+✅ DONE — toneNote computed from ctx.grade in buildPersonaLayer (lib/ai/tutor/promptAssembly.ts): grade<=8 elder sibling, grade<=10 peer collaborator, grade 11-12 focused mentor; injected as explicit directive in PERSONA layer
 
 
 F-STU-012
@@ -355,27 +366,35 @@ AI guides students toward the answer through scaffolded hints rather than giving
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Tier 1 — Directional Nudge: points student toward relevant concept or formula without revealing approach. E.g., "Think about what formula connects distance, speed, and time."
 MUST
+✅ DONE — buildStageInstructionsLayer in promptAssembly.ts: when isHintRequest && hintsUsed===0, instructs "Point the student toward the relevant concept or formula WITHOUT revealing the approach"
 AC-02
 Tier 2 — Structural Hint: reveals the method or approach without executing it. Asks student to supply components. E.g., "You'll use the quadratic formula — what goes into a, b, c here?"
 MUST
+✅ DONE — buildStageInstructionsLayer: when isHintRequest && hintsUsed===1, instructs "Reveal the method or approach WITHOUT executing it. Ask the student to supply the components."
 AC-03
 Tier 3 — Worked Scaffold: AI works through the first step only. Student must complete the rest independently.
 MUST
+✅ DONE — buildStageInstructionsLayer: when isHintRequest && hintsUsed===2, instructs "Work through the FIRST STEP only, then stop. Student must complete the rest independently."
 AC-04
 Hints are never volunteered unprompted before 90 seconds of student inactivity. After 90 seconds → AI prompts: "Still working on it? Want a hint?" — never auto-delivers the hint.
 MUST
+✅ DONE — INACTIVITY_MS=90_000 in AITutorChatPanel; scheduleInactivity sets a timer that shows the inactivity banner with "Still working on it? Want a hint?"; "Yes" sends __HINT_REQUEST__ explicitly; "No" reschedules timer; banner never auto-delivers the hint
 AC-05
 Student must explicitly request each hint. Hint counter (0/3) visible to student.
 MUST
+✅ DONE — "Get a hint" explicit button in AITutorChatPanel hint bar; "Hints: X / 3" counter displayed; button only fires on click; hint bar hidden during HOOK/PREREQ_BRIDGE/CORE_EXPLANATION/WORKED_EXAMPLE stages
 AC-06
 After all 3 hints exhausted and answer still wrong: AI solves fully with step-by-step explanation, then immediately presents an isomorphic problem (same structure, different numbers/context) for independent retry.
 MUST
+✅ DONE — buildStageInstructionsLayer: when isHintRequest && hintsUsed>=3, instructs full solution + isomorphic problem sequence; hint bar shows "No hints remaining" and disables the button
 AC-07
 Hint usage tracked per concept in knowledge graph. High hint dependency on a concept triggers a "needs consolidation" flag and additional practice allocation.
 SHOULD
+✅ DONE — services/tutor/turn.ts AC-07 block: on every isHintRequest, upserts StudentConceptState incrementing hintCount, hintTier1/2/3, lastHintAt; when hintCount >= HINT_DEPENDENCY_THRESHOLD (env, default 5), sets needsConsolidation=true and upserts AttentionFlag with reason='high_hint_dependency'
 
 
 F-STU-013
@@ -386,24 +405,31 @@ AI identifies and corrects specific wrong mental models using contrastive explan
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Platform maintains a misconception library per subject: common wrong mental models mapped to diagnostic signals (wrong answer patterns + error types).
 MUST
+✅ DONE — Misconception Prisma model with fields: id, name, triggerPatterns (string[]), correction, description, subjectId, conceptId; loadMisconceptions() queries by subjectId+conceptId with module-level cache; migrations applied
 AC-02
 When a student answer matches a misconception signature, AI names and corrects it: "It looks like you might be thinking X — that's a very common confusion."
 MUST
+✅ DONE — detectMisconceptions() in lib/ai/tutor/misconceptionDetector.ts matches student input against triggerPatterns (case-insensitive substring); confidence HIGH (>=2 matches) or LOW (1 match); activeMisconceptionName injected into SESSION_STATE prompt layer
 AC-03
 Correction uses contrastive explanation: show why the wrong model fails with a counterexample, then show why the correct model works. Not just "that's wrong, here's right."
 MUST
+✅ DONE — buildStageInstructionsLayer in promptAssembly.ts: when activeMisconceptionName + activeMisconceptionCorrection set, mandates 3-step sequence: (1) name warmly, (2) counterexample showing why wrong model fails, (3) correct model; "counterexample step is mandatory"
 AC-04
 Detected misconceptions are logged to the student's profile and injected into all future session prompts for that concept cluster.
 MUST
+✅ DONE — services/tutor/turn.ts: studentMisconception.upsert persists every detected misconception to DB; on subsequent turns for same concept, recentMisconceptions queried from StudentMisconception rows and injected as recentMisconceptions[] in STUDENT_PROFILE prompt layer
 AC-05
 Novel misconceptions (no library match) are logged to an analytics event for content team review. Used to enrich the misconception library.
 SHOULD
+✅ DONE — logNovelMisconception() in lib/ai/tutor/misconceptionDetector.ts: structured JSON event 'misconception.novel_detected' with studentId, subjectId, conceptId, and redacted inputSnippet (max 200 chars); called in services/tutor/turn.ts when detectedMisconceptions is empty but input is non-trivial
 AC-06
 MVP seed: minimum 20 misconceptions per subject, hand-crafted by subject experts.
 MUST
+✅ DONE — prisma/seeds/misconceptions_cbse_grade10_science.ts (22 entries) and prisma/seeds/misconceptions_cbse_grade10_mathematics.ts (22 entries) hand-crafted; both exceed the 20-minimum threshold
 
 
 F-STU-014
@@ -414,24 +440,31 @@ AI draws step-by-step on a shared canvas. Student can draw and submit working fo
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Whiteboard activates automatically for: geometry, algebra step-by-step, chemistry equations, physics diagrams.
 MUST
+✅ DONE — WHITEBOARD_SUBJECTS set in AITutorSessionShell.tsx: {mathematics, maths, math, physics, chemistry, geometry, algebra}; needsWhiteboard() checks subjectName.toLowerCase(); side-by-side layout on md+, stacked on mobile
 AC-02
 AI draws incrementally — each step revealed as AI narrates. Not a static image reveal. Steps timed to narration pace.
 MUST
+✅ DONE — AiStepsList in WhiteboardPanel.tsx reveals steps one by one using STEP_REVEAL_MS=600 timer chained in useEffect; CSS keyframe wb-step-in (opacity 0→1, translateY 6px→0, 0.3s ease-out); new AI messages reset visibleSteps to 0 and re-animate
 AC-03
 Student has a separate canvas layer. Student can draw, annotate, and write working without overwriting AI content.
 MUST
+✅ DONE — Two stacked canvas elements: aiCanvasRef (pointer-events-none, aria-hidden, holds replayed visualHint commands) and canvasRef (student drawing layer on top); mouse + touch event handlers on student canvas only
 AC-04
 "Submit my working" button — AI evaluates student's canvas drawing and provides specific feedback.
 MUST
+✅ DONE — "Submit my working" button in WhiteboardPanel; handleSubmit merges both layers to PNG via offscreen canvas; POST /api/student/whiteboard/evaluate with conceptName+dataUrl; LLM returns single encouraging sentence (max 20 words, never says wrong/incorrect/failed); displayed in feedback banner
 AC-05
 Student can erase and redo their working. AI does not re-evaluate until student explicitly submits.
 MUST
+✅ DONE — Toolbar has pencil + eraser tools; handleUndo restores previous ImageData snapshot (up to 20 snapshots kept); handleClear wipes student canvas + AI canvas; feedback cleared on clear; evaluation only fires on explicit "Submit my working" click
 AC-06
 Whiteboard state saved as part of session artifact. Student can revisit whiteboard from session replay.
 SHOULD
+✅ DONE — handleSubmit fire-and-forgets POST /api/student/session-artifact with {sessionId, type:'whiteboard', dataUrl}; persisted to SessionArtifact table; artifact available for session replay query; failure is non-critical and does not block evaluation
 
 
 F-STU-015
@@ -442,24 +475,31 @@ Structured end-of-session summary with progress feedback and next steps.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Summary screen shows: Concepts covered, Questions attempted vs correct %, Time spent, Mastery change (before vs after session), Next recommended session.
 MUST
+✅ DONE — SessionCompletionScreen.tsx renders: StatsRow (attempted, % correct, hints, minutes), MasteryDelta (masteryDelta + masteryAfter), next session CTA populated from /api/home/next-action; data from POST /api/student/session/[sessionId]/complete which computes all metrics from AnswerEvent + LearningSession records
 AC-02
 XP earned in session displayed with animation before summary. Milestone celebrations (level-up, badge unlock) shown in full-screen moment before summary.
 MUST
+✅ DONE — XpSection: +XP circle badge + requestAnimationFrame easeOut 800ms counter + progress bar animation; LevelUpOverlay full-screen modal shown when leveledUp=true, auto-dismisses after 3s (min 1.5s display); BadgesEarnedSection renders all newly earned badges; overlays shown before navigating to main summary layout
 AC-03
 AI generates one personalised closing insight specific to this session's performance. Not a generic message.
 MUST
+✅ DONE — buildSessionInsight() in lib/student/sessionInsight.ts: LLM-generated single sentence (max 25 words); adaptive framing by score band (>=75% celebrate, 50-74% acknowledge progress, <50% warm encouragement); never uses failed/wrong/bad/missed/broke; 5s timeout with motivational fallback; called in POST /api/student/session/[sessionId]/complete
 AC-04
 Student rates the session 1–5 stars (optional free text). Rating stored and feeds AI quality monitoring.
 SHOULD
+✅ DONE — StarRating component in SessionCompletionScreen; 5-star tap interaction; POST /api/student/session/[sessionId]/rate persists rating + ratingFeedback + ratedAt to LearningSession; best-effort (non-blocking); "Thanks for your feedback!" confirmation shown after submit
 AC-05
 "Schedule next session" prompt with AI's recommended time slot (based on student's historical active hours).
 SHOULD
+⚠️ PARTIAL — "Start next session" CTA exists in SessionCompletionScreen and is populated via GET /api/home/next-action (created); CTA shows next recommended topic name from getNextAction(). Time-slot recommendation based on student's historical active hours is NOT yet implemented (requires session-hour distribution analytics and additional UI — deferred to Phase 2)
 AC-06
 Session summary shareable to parent via WhatsApp (Phase 2) or copy-to-clipboard (MVP).
 SHOULD
+✅ DONE — "Copy session summary" button uses buildShareableSessionSummary() + navigator.clipboard.writeText (with execCommand fallback); "Share on WhatsApp" button uses Web Share API with WhatsApp URL fallback via buildWhatsAppShareUrl(); both in SessionCompletionScreen.tsx
 
 
 

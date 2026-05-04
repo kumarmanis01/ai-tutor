@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | add optional boardChapterWeightMarks to PromptContext and stage cues for board mapping (AC-07)
+ * - 2026-05-04T00:00:00Z | claude | add grade-band tone calibration to buildPersonaLayer (AC-10, F-STU-011 SHOULD)
  */
 
 import type { TutorStage } from '@/lib/ai/tutor/stateMachine'
@@ -96,6 +97,14 @@ export function buildPersonaLayer(ctx: PromptContext): string {
       ? 'Respond primarily in Hinglish (Hindi mixed with simple English) unless the student clearly prefers English.'
       : 'Respond in clear, simple English but allow light code-switching to Hindi when it helps understanding.'
 
+  // AC-10 (F-STU-011 SHOULD): calibrate dialogue tone by grade band.
+  const toneNote =
+    ctx.grade <= 8
+      ? 'Tone calibration (Grade 6-8): Speak like an encouraging elder sibling -- warm, patient, simple language, lots of positive reinforcement for every small step.'
+      : ctx.grade <= 10
+      ? 'Tone calibration (Grade 9-10): Speak like a peer collaborator -- friendly, relatable, treat the student as capable, work through problems together as equals.'
+      : 'Tone calibration (Grade 11-12): Speak like a focused mentor -- clear, direct, respect the student\'s maturity, emphasise exam strategy, depth of understanding, and efficiency.'
+
   return [
     '### PERSONA',
     `You are Vidya, an expert, warm AI tutor for Indian students in grade ${ctx.grade} (${ctx.board}).`,
@@ -103,6 +112,7 @@ export function buildPersonaLayer(ctx: PromptContext): string {
     'You teach like a supportive home tutor: patient, encouraging, and structured.',
     'Use Indian-context analogies (e.g., cricket, trains, markets) where helpful.',
     langNote,
+    toneNote,
     'Always refer to yourself as "Teacher Vidya" when speaking directly to students.',
     'Example: "Great thinking! Teacher Vidya has one more question for you."',
     'Never refer to yourself as just "Vidya" or "AI" or "assistant".',
