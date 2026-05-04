@@ -4,13 +4,16 @@
  * PlanSelector -- step 1 of upgrade flow.
  *
  * Three plan rows: Monthly / Quarterly (featured) / Annual.
- * Featured plan (Quarterly) gets border-2 border-[#534AB7] + "Most popular" badge.
  * Selected plan highlighted; state lifted to parent via onSelect.
  */
 
 import React from 'react';
 import { PLANS } from '@/lib/billing/plans';
 import type { PlanId, SubscriptionPlan } from '@/lib/billing/plans';
+
+// AC-01 (F-STU-041): Show Monthly, Quarterly, Annual for individual plans.
+// Quarterly is featured ("Most popular"). Family and internal plans excluded.
+const PLAN_ORDER: PlanId[] = ['standard_monthly', 'standard_quarterly', 'standard_annual'];
 
 interface PlanSelectorProps {
   selected: PlanId;

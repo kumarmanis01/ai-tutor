@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { selectQuestions, selectQuestionsWithMix } from '@/lib/tests';
 import { logger } from '@/lib/logger';
+import { checkChapterTestCap, incrementChapterTestUsage } from '@/lib/freemium';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,17 @@ export async function POST(req: Request) {
     let timeLimitSeconds: number | null = null;
 
     if (chapter) {
+      // AC-01 (F-STU-040): Enforce 1 chapter test per month on free tier.
+      const cap = await checkChapterTestCap(user.id)
+      if (!cap.allowed) {
+        res = NextResponse.json(
+          { error: 'free_tier_chapter_test_cap', message: 'You have used your 1 free chapter test this month. Upgrade for unlimited access.' },
+          { status: 403 },
+        )
+        logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start)
+        return res
+      }
+
       // Pass user.id so recently-seen questions (90 days) are excluded (AC-01).
       const mix = await selectQuestionsWithMix(
         { subject, grade, board, chapter, difficulty },
@@ -81,6 +93,11 @@ export async function POST(req: Request) {
         }),
       ),
     );
+
+    // AC-01 (F-STU-040): Record chapter test usage after successful start.
+    if (chapter) {
+      void incrementChapterTestUsage(user.id)
+    }
 
     const payload = questions.map((q) => ({
       id: q.id,

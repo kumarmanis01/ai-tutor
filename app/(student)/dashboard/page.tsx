@@ -40,6 +40,7 @@ import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
 import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
+import ReferralShareCard from '@/components/student/referral/ReferralShareCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -415,6 +416,9 @@ export default async function StudentHomeDashboardPage() {
               freeTierUsage={{ sessionsUsed, sessionsRemaining, periodStart }}
             />
           )}
+
+          {/* F-STU-042 AC-01: Referral share card -- copy or WhatsApp share */}
+          <ReferralShareCard />
 
           {/* F-STU-023 AC-02/03: Exam readiness per subject -- links to chapter breakdown */}
           {readinessResults.length > 0 && (

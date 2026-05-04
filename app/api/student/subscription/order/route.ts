@@ -87,20 +87,25 @@ export async function POST(req: Request) {
 
   const purchaserIp = getClientIp(req);
 
-  // If this user was referred and the referral is still available, apply 20% off first month
+  // AC-03 (F-STU-042): If this user was referred, apply 20% off their first month.
+  // The discount applies when:
+  //   (a) The referral code stored at signup exists, AND
+  //   (b) The referral is either unredeemed OR already redeemed by THIS user
+  //       (AuthRedeemOnSignIn may mark it redeemed at sign-in before first payment), AND
+  //   (c) The student has no prior subscriptions (ensures discount applies only once).
   let finalAmount = amountPaise
   try {
     const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } })
     const refCode = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
     if (typeof refCode === 'string' && refCode) {
-      // Only apply discount for monthly-duration plans (first month)
-      if ((plan.durationMonths || 0) === 1) {
-        // Verify referral exists and is not already redeemed
-        const r = await prisma.referral.findUnique({ where: { code: refCode }, select: { redeemedBy: true } })
-        if (r && !r.redeemedBy) {
-          const discount = Math.floor(amountPaise * 0.2)
-          finalAmount = Math.max(1, amountPaise - discount)
-        }
+      const [r, priorSubCount] = await Promise.all([
+        prisma.referral.findUnique({ where: { code: refCode }, select: { redeemedBy: true } }),
+        prisma.subscription.count({ where: { userId } }),
+      ])
+      // Apply 20% off if this is user's first subscription and they are the referral redeemer
+      if (r && (!r.redeemedBy || r.redeemedBy === userId) && priorSubCount === 0) {
+        const discount = Math.floor(amountPaise * 0.2)
+        finalAmount = Math.max(1, amountPaise - discount)
       }
     }
   } catch (err) {

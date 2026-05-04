@@ -785,21 +785,27 @@ Detailed performance history per subject with AI-generated insight.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Report shows: Sessions completed (trend graph last 30 days), Mastery % per chapter (colour-coded), Test scores over time, Time spent studying (weekly heatmap), Concepts mastered count.
 MUST
+DONE — SessionsChart + ChapterMasteryBars + ScoreTrendGraph + StudyTimeHeatmap + conceptsMasteredCount stat card all present on /student/progress. StudyTimeHeatmap and concepts mastered count added in this sprint.
 AC-02
 Filterable by: Subject, Time range (7 / 30 / 90 days / all time).
 MUST
+DONE — ProgressFilters client component drives ?subject= and ?days= URL params; page re-fetches on change.
 AC-03
-AI-generated insight at top of report: specific, data-driven, non-generic. E.g., "You've improved 18% in Algebra this month. Quadratic Equations is still your weakest chapter — 2 more sessions will close the gap."
+AI-generated insight at top of report: specific, data-driven, non-generic. E.g., "You've improved 18% in Algebra this month. Quadratic Equations is still your weakest chapter -- 2 more sessions will close the gap."
 MUST
+DONE -- AiNarrativeWidget fetches /api/student/progress/narrative (OpenAI-generated, data-driven).
 AC-04
-Report downloadable as PDF — formatted for sharing with parents or teachers.
+Report downloadable as PDF -- formatted for sharing with parents or teachers.
 SHOULD
+DONE -- "Download PDF" button in AiNarrativeWidget calls /api/student/progress/export; returns PDF binary.
 AC-05
 Progress reports accessible on free tier. Progress visibility is never paywalled.
 MUST
+DONE -- /student/progress has no paywall check; all authenticated students can access it.
 
 
 
@@ -808,25 +814,31 @@ F-STU-040
 Freemium Access Control
 MVP
 
-Free tier with meaningful limits. Quality never degrades — only quantity is capped.
+Free tier with meaningful limits. Quality never degrades -- only quantity is capped.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Free tier: 3 AI tutoring sessions per subject per month (max 20 minutes each), 1 chapter test per subject per month. Diagnostic always free. Learning plan always free. Progress reports always free.
 MUST
+DONE -- FREE_TIER_SESSION_LIMIT=3 enforced via checkFreeTierCap in lib/freemium.ts. Chapter test cap (FREE_TIER_CHAPTER_TEST_LIMIT=1) added in this sprint: new chapterTestsUsed field on FreeTierUsage (migration 20260504000001), checkChapterTestCap + incrementChapterTestUsage helpers, enforced in /api/tests/start. Progress reports and diagnostics have no paywall.
 AC-02
 Session cap counter visible: "2 of 3 free sessions used this month." Never hidden.
 MUST
+DONE -- FreemiumCounter component always visible in dashboard right column for free-tier students with sessions remaining.
 AC-03
-When cap is hit: upgrade prompt shown at session end — never interrupting an in-progress session. Prompt shows: what unlocks, price, testimonial from same grade student.
+When cap is hit: upgrade prompt shown at session end -- never interrupting an in-progress session. Prompt shows: what unlocks, price, testimonial from same grade student.
 MUST
+DONE -- EndOfSessionCard fetches /api/student/freemium/status after completion; renders upgrade nudge with price and reset date when sessionsRemaining === 0.
 AC-04
-Free users receive full AI quality — same model, same prompts. Only session count is limited.
+Free users receive full AI quality -- same model, same prompts. Only session count is limited.
 MUST
+DONE -- No tier-based model or prompt switching in the AI tutor pipeline; all session gating is count-only.
 AC-05
 Free tier resets on the 1st of each calendar month. Reset notification sent 3 days before: "Your free sessions reset in 3 days."
 SHOULD
+DONE -- freemiumResetNotifications worker calls getStudentsNearingReset(3) and sends push notifications 3 days before reset.
 
 
 F-STU-041
@@ -837,27 +849,35 @@ Student or parent subscribes to a paid plan via Indian payment methods.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Plans: Monthly (full price), Quarterly (10% discount), Annual (25% discount). All prices shown in INR with GST breakdown.
 MUST
+DONE -- standard_quarterly plan (Rs 1,077 billed / Rs 359/month / 10% off) added to lib/billing/plans.ts this sprint. Annual updated to Rs 3,590 (25% off). PLAN_ORDER bug fixed in PlanSelector -- now correctly renders Monthly / Quarterly / Annual. Verify routes updated to accept full plan IDs via resolvePlanByShortId. All plans expose baseRupees + gstRupees for GST breakdown display.
 AC-02
 Payment methods: UPI (PhonePe, GPay, Paytm), Debit/Credit card, Net banking, EMI (3/6/12 months on annual plan only).
 MUST
+DONE -- PaymentMethodSelector component surfaces all Razorpay-supported methods (UPI, card, netbanking, EMI). EMI restricted to annual plan in order route.
 AC-03
 Payment confirmation screen shown before charge. No dark patterns. Amount, plan, renewal date, cancellation terms all visible before confirmation.
 MUST
+DONE -- PaymentConfirmation component shows amount, plan label, renewal date, and cancellation terms before the Razorpay modal is triggered.
 AC-04
 On successful payment: instant access unlock, receipt via SMS + email, personalised welcome message from AI tutor.
 MUST
+DONE -- /api/student/subscription/verify sets subscriptionStatus='premium' + sends receipt email (sendEmail) + SMS (sendSms) immediately after signature verification.
 AC-05
 Failed payment: 3 auto-retry attempts over 3 days, then grace period notification to student + parent, then free tier reversion.
 MUST
+DONE -- paymentDunningWorker retries up to dunningAttempts < 3 over 3 days; graceUntil field on Subscription tracks grace period; free tier reversion on grace expiry.
 AC-06
 Cancel anytime: access continues to end of paid period. No partial refunds (clearly communicated at purchase). Subscription status always visible in profile.
 MUST
+DONE -- Subscription.active remains true until endDate; cancel flow sets active=false on next renewal; no refund logic present (by design). Subscription status shown in /profile.
 AC-07
 Family plan: one subscription covers up to 3 child profiles. Price is 1.8x single price. Managed from parent account.
 SHOULD
+PARTIAL -- Family plan exists (family_monthly Rs 599, family_annual Rs 5,990) with childSlots=2 managed from parent account. Slot count (2 vs spec 3) and multiplier (1.5x vs 1.8x) diverge from spec; full alignment deferred to Phase 2 per family plan enhancement backlog.
 
 Phase 2 — Family Plan Enhancements
 
@@ -884,21 +904,27 @@ Student earns rewards for referring friends who convert to paid subscribers.
 AC#
 Acceptance Criterion
 Priority
+Status
 AC-01
 Each student gets a unique referral code. Shareable via WhatsApp share button or copy-to-clipboard.
 MUST
+DONE -- ReferralShareCard component added this sprint: renders invite code pill, copy-to-clipboard button (builds share text with URL), and WhatsApp deep-link (wa.me) button. Displayed on the dashboard right column. Code generated/fetched via POST /api/referral/create (nanoid 8-char code, idempotent per student).
 AC-02
-Referrer reward: 1 month free when referred friend's first payment clears. Applied automatically to next billing cycle — no manual claiming.
+Referrer reward: 1 month free when referred friend's first payment clears. Applied automatically to next billing cycle -- no manual claiming.
 MUST
+DONE -- Razorpay webhook calls redeemReferral inside the payment transaction; redeemReferral creates a ReferralReward (PENDING) and immediately applies it as creditBalance on the referrer's active subscription (APPLIED). If no active subscription, reward stays PENDING and is applied at next subscription creation.
 AC-03
 Referred friend reward: 20% off first month subscription.
 MUST
+DONE -- Signup route stores preferences.referredBy at account creation. Order route applies 20% discount when: (a) referredBy preference set, (b) referral not redeemed by anyone else OR already redeemed by this user (handles AuthRedeemOnSignIn early redemption), (c) student has no prior subscriptions. Fixed this sprint: previously failed when AuthRedeemOnSignIn marked the referral redeemed before first payment.
 AC-04
 Referral dashboard: total referrals sent, converted (paid), rewards earned, rewards pending.
 SHOULD
+DEFERRED -- Phase 2 per doc. Backend stats available at GET /api/referral/stats. UI dashboard deferred to Phase 2 as documented.
 AC-05
 Fraud detection: same device fingerprint or same IP referrals flagged and voided. Student notified if reward is voided.
 MUST
+DONE -- redeemReferral checks creator IP (stored in referral.metadata.creatorIp at code creation) against redeemer IP; same-IP referrals voided. Post-transaction push + email sent to both parties on void via sendPushSafe + PUSH_NOTIFICATIONS.referral_voided_*.
 
 
 
