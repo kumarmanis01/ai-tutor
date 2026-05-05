@@ -46,6 +46,14 @@ interface ReadinessRow {
   peerPercentile?: number | null
 }
 
+interface LearningPlanSummary {
+  subjectName: string
+  totalConcepts: number
+  completedConcepts: number
+  progressPercent: number
+  nextConceptName: string | null
+}
+
 interface ParentProgressDetailProps {
   studentName: string
   grade: string
@@ -53,6 +61,8 @@ interface ParentProgressDetailProps {
   sessions: SessionRow[]
   readiness: ReadinessRow[]
   heatmapDays?: { date: string; count: number }[]
+  /** F-PAR-002 AC-03: read-only AI learning plan summary */
+  learningPlan?: LearningPlanSummary | null
 }
 
 function formatDate(iso: string): string {
@@ -70,6 +80,7 @@ export default function ParentProgressDetail({
   sessions,
   readiness,
   heatmapDays,
+  learningPlan,
 }: ParentProgressDetailProps) {
   const subtitle = [grade, board].filter(Boolean).join(' · ')
 
@@ -154,6 +165,41 @@ export default function ParentProgressDetail({
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* ── AI Learning Plan summary (F-PAR-002 AC-03: read-only view) ──── */}
+      {learningPlan && (
+        <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900">
+          <h2 className="mb-2 text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-gray-400">
+            AI Learning Plan
+          </h2>
+          <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">{learningPlan.subjectName}</p>
+          {/* Progress bar */}
+          <div className="mt-2">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span>{learningPlan.completedConcepts} of {learningPlan.totalConcepts} topics completed</span>
+              <span>{learningPlan.progressPercent}%</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800">
+              <div
+                className="h-2 rounded-full bg-[#534AB7]"
+                style={{ width: `${Math.min(learningPlan.progressPercent, 100)}%` }}
+              />
+            </div>
+          </div>
+          {learningPlan.nextConceptName && (
+            <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+              <span className="font-medium">Next topic:</span> {learningPlan.nextConceptName}
+            </p>
+          )}
+          <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+            To suggest a topic focus, go to{' '}
+            <a href="/parent/settings" className="underline text-[#534AB7] dark:text-indigo-400">
+              parent settings
+            </a>
+            .
+          </p>
         </section>
       )}
 

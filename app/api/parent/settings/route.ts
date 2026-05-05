@@ -43,6 +43,16 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     })
 
+    // Load per-child controls to surface topicFocusRequest (F-PAR-002 AC-03)
+    const childIds = links.map((l) => l.student.id)
+    const controls = childIds.length
+      ? await prisma.parentChildControl.findMany({
+          where: { parentId: userId, studentId: { in: childIds } },
+          select: { studentId: true, topicFocusRequest: true },
+        })
+      : []
+    const controlsByStudentId = new Map(controls.map((c) => [c.studentId, c]))
+
     return NextResponse.json({
       digestOptOut: profile?.digestOptOut ?? false,
       inactivityOptOut: (profile as any)?.inactivityOptOut ?? false,
@@ -65,6 +75,8 @@ export async function GET() {
         excludeFromParentReport: (l as any).excludeFromParentReport ?? false,
         // When true, parent will not receive inactivity alerts for this child
         inactivityOptOut: (l as any).inactivityOptOut ?? false,
+        // F-PAR-002 AC-03: topic focus preference submitted by parent for AI to consider
+        topicFocusRequest: controlsByStudentId.get(l.student.id)?.topicFocusRequest ?? null,
       })),
     })
   } catch (err) {

@@ -30,27 +30,35 @@ import {
 } from '@/lib/parent/inviteService';
 import { sendMailSafe } from '@/lib/mailer';
 import { parentWelcomeHtml } from '@/lib/email/templates';
+import { sendSms } from '@/lib/sms';
 
 const CLASS_NAME = 'ParentLinkAPI';
 
 /**
- * F-PAR-001 AC-07: send welcome email on new parent-student link.
- * SMS is intentionally omitted: sendSms uses the MSG91 OTP API which
- * only supports pre-approved OTP templates and ignores arbitrary message
- * text in production. Transactional SMS requires a separate MSG91 flow
- * (post-launch). Best-effort -- errors are logged as warnings, never thrown.
+ * F-PAR-001 AC-07: send welcome email + SMS on new parent-student link.
+ * Best-effort -- errors are logged as warnings, never thrown.
  */
 async function sendParentWelcomeNotifications(parentId: string, studentId: string) {
   try {
     const [parent, student] = await Promise.all([
-      prisma.user.findUnique({ where: { id: parentId }, select: { name: true, email: true } }),
+      prisma.user.findUnique({ where: { id: parentId }, select: { name: true, email: true, phone: true } }),
       prisma.user.findUnique({ where: { id: studentId }, select: { name: true } }),
     ]);
+    const parentName = parent?.name ?? 'Parent';
+    const studentName = student?.name ?? 'your child';
     if (parent?.email) {
       await sendMailSafe({
         to: parent.email,
         subject: 'Welcome to Spinzy -- your account is linked',
-        html: parentWelcomeHtml(parent.name ?? null, student?.name ?? ''),
+        html: parentWelcomeHtml(parent.name ?? null, studentName),
+      });
+    }
+    if (parent?.phone) {
+      sendSms(
+        parent.phone,
+        `Hi ${parentName}! Your Spinzy parent account is now linked to ${studentName}. Log in to track their progress. - Team Spinzy`,
+      ).catch((err) => {
+        logger.warn('Parent welcome SMS failed', { className: CLASS_NAME, parentId, err: String(err) });
       });
     }
   } catch (e) {

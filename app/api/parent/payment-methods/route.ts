@@ -1,12 +1,12 @@
 /**
- * POST /api/parent/payment-methods
+ * GET  /api/parent/payment-methods       -- list saved payment methods (F-PAR-031 AC-01)
+ * POST /api/parent/payment-methods       -- save a new tokenized payment method (F-PAR-031 AC-05)
+ * DELETE /api/parent/payment-methods?id= -- remove a payment method after new one is verified (F-PAR-031 AC-05)
  *
- * Save a tokenized payment method for a parent (provider customer id + payment method id).
- * This API stores masked metadata only (last4, brand) and provider references required
- * for server-side retry/auto-charge flows. It does NOT store raw PAN data.
+ * Stores masked metadata only (last4, brand). Does NOT store raw PAN data.
  *
  * FILE OBJECTIVE:
- * - Accept a provider token and persist a PaymentCustomer + PaymentMethod record.
+ * - CRUD for parent stored payment methods.
  *
  * LINKED UNIT TEST:
  * - tests/unit/api/parent-payment-methods.spec.ts
@@ -17,12 +17,33 @@
  *
  * EDIT LOG:
  * - 2026-04-10T00:00:00Z | copilot | add parent payment-methods POST endpoint
+ * - 2026-05-05T00:00:00Z | staff-engineer | add GET (list) + DELETE endpoints (F-PAR-031 AC-01/05)
  */
 
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+
+/** GET /api/parent/payment-methods -- list saved payment methods for the authenticated parent */
+export async function GET() {
+  const session = await getServerSessionForHandlers();
+  const userId = (session as any)?.user?.id;
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if ((session as any)?.user?.role !== 'parent') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  try {
+    const methods = await prisma.paymentMethod.findMany({
+      where: { userId },
+      select: { id: true, type: true, last4: true, cardBrand: true, expiryMonth: true, expiryYear: true, isDefault: true, verified: true, createdAt: true },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+    });
+    return NextResponse.json({ methods }, { status: 200 });
+  } catch (err) {
+    logger.error('Failed to list payment methods', { event: 'parent.paymentMethod.list.error', context: { userId }, err });
+    return NextResponse.json({ error: 'Could not load payment methods' }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -94,6 +115,51 @@ export async function POST(req: Request) {
   } catch (err) {
     logger.error('Failed to save payment method', { event: 'parent.paymentMethod.save.error', context: { userId }, err });
     return NextResponse.json({ error: 'Could not save payment method' }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/parent/payment-methods?id=<methodId>
+ *
+ * Remove a stored payment method. Only allowed when the parent has at least
+ * one other verified payment method (new method validated before old is removed).
+ */
+export async function DELETE(req: Request) {
+  const session = await getServerSessionForHandlers();
+  const userId = (session as any)?.user?.id;
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if ((session as any)?.user?.role !== 'parent') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const url = new URL(req.url);
+  const id = url.searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  try {
+    const method = await prisma.paymentMethod.findUnique({ where: { id }, select: { userId: true, isDefault: true } });
+    if (!method || method.userId !== userId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    // Ensure the parent retains at least one other payment method before removing this one.
+    const remaining = await prisma.paymentMethod.count({ where: { userId, id: { not: id } } });
+    if (remaining === 0) {
+      return NextResponse.json({ error: 'Cannot remove your only payment method' }, { status: 409 });
+    }
+
+    await prisma.paymentMethod.delete({ where: { id } });
+
+    // If the deleted method was default, promote the most recently added method as default.
+    if (method.isDefault) {
+      const next = await prisma.paymentMethod.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' }, select: { id: true } });
+      if (next) {
+        await prisma.paymentMethod.update({ where: { id: next.id }, data: { isDefault: true } });
+      }
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (err) {
+    logger.error('Failed to delete payment method', { event: 'parent.paymentMethod.delete.error', context: { userId, id }, err });
+    return NextResponse.json({ error: 'Could not remove payment method' }, { status: 500 });
   }
 }
 
