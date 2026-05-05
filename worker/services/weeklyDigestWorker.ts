@@ -1,18 +1,20 @@
 /**
- * Weekly parent digest worker -- T39
+ * FILE OBJECTIVE:
+ * - Weekly parent digest worker processor for WEEKLY_DIGEST_QUEUE_NAME.
+ * - Schedules/send digest notifications for active parent-child links with per-week dedup.
  *
- * BullMQ processor for WEEKLY_DIGEST_QUEUE_NAME jobs.
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/weeklyDigestWorker.test.ts
  *
- * For each parent with at least one active linked child:
- *   1. Load sessions this week, mastery delta, streak per child
- *   2. Call GPT-4o-mini for a 2-sentence AI narrative
- *   3. Send email via lib/mailer.ts
- *
- * Never throws -- logs and continues on per-parent failures.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /.github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | respect excludeFromParentReport when selecting parent links
  * - 2026-05-04T00:00:00Z | copilot | normalize local outbox row type comment and maintain dedup outbox lookup
+ * - 2026-05-05T00:00:00Z | copilot | align header to engineering template for PR review compliance
  */
 
 import { prisma } from '@/lib/prisma'

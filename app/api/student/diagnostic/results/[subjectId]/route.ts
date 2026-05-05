@@ -6,14 +6,16 @@
  *   Also surfaces placement (below / at / above grade) and recommended starting chapter.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/api/student/diagnostic/results.spec.ts
+ * - tests/unit/app/api/student/diagnostic/results/route.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
- * - docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /.github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-05-04 | staff-engineer | created -- F-STU-002 AC-06 knowledge map
+ * - 2026-05-04T00:00:00Z | staff-engineer | created -- F-STU-002 AC-06 knowledge map
+ * - 2026-05-05T00:00:00Z | copilot | align header template and linked unit test path
  */
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - GET/PATCH handlers for student session detail and heartbeat persistence.
+ * - PATCH action heartbeat updates StructuredSession meta.lastHeartbeatAt for autosave resilience.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/session/[sessionId]/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /.github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T00:00:00Z | staff-engineer | add session heartbeat PATCH handler
+ * - 2026-05-05T00:00:00Z | copilot | add required file header for PR template compliance
+ */
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
