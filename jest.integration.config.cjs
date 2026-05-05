@@ -13,6 +13,7 @@ module.exports = {
     'tests/integration/alert-evaluator.test.ts',
     'tests/integration/hydrateAll-e2e.test.ts',
     'tests/integration/homeEngine.scenarios.withSeed.test.ts',
+    '/scripts/',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
