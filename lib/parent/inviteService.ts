@@ -1,5 +1,23 @@
+/**
+ * FILE OBJECTIVE:
+ * - Create and redeem parent invite codes used to link parent accounts to student accounts safely.
+ * - Enforce invite expiry, parent-child relationship normalization, family size limits, and audit logging for parent linking flows.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/parent/inviteService.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-05T00:00:00Z | copilot | add file header and replace invalid Prisma enum import with Prisma namespace enum typing
+ * - 2026-05-05T00:05:00Z | copilot | replace unsupported Prisma.$Enums typing with generated top-level ParentRelationship import
+ */
+
 import { randomBytes } from 'crypto';
-import type { PrismaClient, Prisma, ParentRelationship } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants';
 
@@ -14,6 +32,8 @@ export type InviteRedeemResult = {
   studentId: string;
   status: 'linked' | 'already_linked';
 };
+
+type ParentRelationship = 'father' | 'mother' | 'guardian';
 
 function normalizeParentRelationship(raw?: string | null): ParentRelationship {
   const value = String(raw ?? '').trim().toLowerCase();

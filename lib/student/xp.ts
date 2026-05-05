@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Award XP to students, derive levels deterministically, and trigger best-effort parent milestone notifications after level-up events.
+ * - Re-export pure XP level helpers and constants for callers that depend on centralized level calculations.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/xp.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-05T00:00:00Z | copilot | add file header and explicit link callback typing for strict TypeScript compliance
+ */
+
 import { prisma } from '@/lib/prisma'
 import { sendPushSafe } from '@/lib/push/send'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
@@ -122,7 +139,7 @@ export async function awardXP(params: {
           const milestoneLabel = `Level up: Level ${result.newLevel}`
           const dashboardUrl = `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/dashboard`
 
-          await Promise.allSettled(links.map((pl) => {
+          await Promise.allSettled(links.map((pl: (typeof links)[number]) => {
             const brandedHtml = milestoneEmailHtml({
               parentName: pl.parent.name ?? 'Parent',
               studentName,
