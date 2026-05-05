@@ -78,7 +78,7 @@ const PricingSection = () => {
       ],
       recommended: true,
       savings: 'Save ₹2900 vs tuition',
-      ctaText: 'Get started',
+      ctaText: 'Start For Free',
       ctaTextHi: 'शुरू करें',
     },
     {
@@ -112,7 +112,7 @@ const PricingSection = () => {
       ],
       recommended: false,
       savings: 'Save ₹5000+ vs multiple tutors',
-      ctaText: 'Get started',
+      ctaText: 'Start For Free',
       ctaTextHi: 'शुरू करें',
     },
   ];

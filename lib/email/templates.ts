@@ -548,3 +548,99 @@ export function trialEndingHtml(data: {
     </div>
   `;
 }
+
+export function diagnosticCompleteForParentHtml(data: {
+  parentName: string;
+  studentName: string;
+  subjectName: string;
+  placement: string;
+  dashboardUrl: string;
+}): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Diagnostic complete for ${data.studentName}</h2>
+      <p>Hi ${data.parentName},</p>
+      <p>${data.studentName} has completed their ${data.subjectName} diagnostic on Spinzy Academy.
+         Based on their responses, we have identified their current level and created a
+         personalised learning path.</p>
+
+      <div style="background:#EEEDFE;border-radius:12px;padding:16px 20px;margin:20px 0;">
+        <p style="margin:0;font-size:14px;color:#534AB7;font-weight:600;">
+          Current placement: ${data.placement}
+        </p>
+        <p style="margin:8px 0 0;font-size:13px;color:#555;">
+          Vidya, their AI tutor, will now guide ${data.studentName} step by step.
+        </p>
+      </div>
+
+      <a href="${data.dashboardUrl}" style="${BTN}">View progress</a>
+
+      ${FOOTER}
+    </div>
+  `;
+}
+
+export function planGeneratedForParentHtml(data: {
+  parentName: string;
+  studentName: string;
+  subjectName: string;
+  dashboardUrl: string;
+}): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#1D9E75;">${data.studentName}'s learning plan is ready</h2>
+      <p>Hi ${data.parentName},</p>
+      <p>${data.studentName}'s personalised ${data.subjectName} learning plan has been generated
+         on Spinzy Academy. Vidya has mapped out the topics they will cover this week, starting
+         from where they are right now.</p>
+
+      <div style="background:#EAF3DE;border-radius:12px;padding:16px 20px;margin:20px 0;">
+        <p style="margin:0;font-size:14px;color:#1D9E75;font-weight:600;">
+          Learning plan for ${data.subjectName} is live
+        </p>
+        <p style="margin:8px 0 0;font-size:13px;color:#555;">
+          Encourage ${data.studentName} to complete at least one session today.
+        </p>
+      </div>
+
+      <a href="${data.dashboardUrl}" style="${BTN}">See the plan</a>
+
+      ${FOOTER}
+    </div>
+  `;
+}
+
+export function sessionCompleteForParentHtml(data: {
+  parentName: string;
+  studentName: string;
+  topicName: string;
+  subjectName: string;
+  sessionDate: string;
+  dashboardUrl: string;
+}): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#1D9E75;">Great session today!</h2>
+      <p>Hi ${data.parentName},</p>
+      <p>${data.studentName} completed a learning session on <strong>${data.topicName}</strong>
+         (${data.subjectName}) on ${data.sessionDate}. Vidya guided them through the topic
+         and they are making steady progress.</p>
+
+      <div style="background:#EAF3DE;border-radius:12px;padding:16px 20px;margin:20px 0;">
+        <p style="margin:0;font-size:14px;color:#1D9E75;font-weight:600;">
+          Session completed
+        </p>
+        <p style="margin:8px 0 0;font-size:13px;color:#555;">
+          Consistent daily sessions are the fastest path to exam confidence.
+        </p>
+      </div>
+
+      <a href="${data.dashboardUrl}" style="${BTN}">View progress</a>
+
+      ${FOOTER}
+    </div>
+  `;
+}

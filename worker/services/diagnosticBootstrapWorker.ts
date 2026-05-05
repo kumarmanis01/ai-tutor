@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { generateLearningPlan } from '@/lib/ai/learningPlan.js'
 import { diagnosticConfig } from '@/lib/config';
+import { notifyParent, DEFAULT_DASHBOARD_URL } from '@/lib/notifications/parentNotify.js'
+import { PARENT_NOTIF_EVENTS } from '@/lib/constants/mail.js'
 
 export interface DiagnosticBootstrapJobData {
   studentId: string
@@ -167,9 +169,23 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
 
     const firstChapter = await prisma.chapterDef.findUnique({
       where: { id: chapterIds[0] },
-      select: { subjectId: true },
+      select: { subjectId: true, subject: { select: { name: true } } },
     })
     const primarySubjectId = firstChapter?.subjectId
+    const subjectName = firstChapter?.subject?.name ?? 'your subject'
+
+    // Notify parent: diagnostic complete
+    notifyParent(studentId, {
+      event: PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE,
+      data: {
+        subjectName,
+        placement: 'See dashboard for details',
+        dashboardUrl: DEFAULT_DASHBOARD_URL,
+      },
+    }).catch((err) =>
+      logger.warn('[diagnostic-bootstrap] parent diagnostic_complete notification failed', { studentId, error: String(err) }),
+    )
+
     if (primarySubjectId) {
       const planId = await generateLearningPlan(studentId, primarySubjectId)
       if (planId) {
@@ -179,6 +195,17 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
           planId,
           itemCount,
         })
+
+        // Notify parent: learning plan generated
+        notifyParent(studentId, {
+          event: PARENT_NOTIF_EVENTS.PLAN_GENERATED,
+          data: {
+            subjectName,
+            dashboardUrl: DEFAULT_DASHBOARD_URL,
+          },
+        }).catch((err) =>
+          logger.warn('[diagnostic-bootstrap] parent plan_generated notification failed', { studentId, error: String(err) }),
+        )
       }
     }
   } catch (err) {

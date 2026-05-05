@@ -70,7 +70,7 @@ const HeroSection = () => {
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-[#534AB7] text-white font-cta font-semibold rounded-lg hover:bg-[#4239a0] transition-all duration-250 text-base md:text-lg shadow-lg"
               >
                 <Icon name="SparklesIcon" size={20} variant="solid" />
-                <span>Get started</span>
+                <span>Start For Free</span>
               </Link>
               <button
                 onClick={handleSeeHow}
