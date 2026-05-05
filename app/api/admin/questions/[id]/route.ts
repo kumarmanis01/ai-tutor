@@ -1,7 +1,27 @@
+/**
+ * FILE OBJECTIVE:
+ * - PATCH endpoint for admin question review actions: approve, reject, or force-validate.
+ * - Approve/reject applies to quarantined questions (F-ADM-003 AC-03).
+ * - Force-validate is restricted to manually authored questions (source='manual') only;
+ *   AI-generated questions are validated automatically by the nightly IRT job after
+ *   50 responses (F-ADM-003 AC-05).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/questions_patch.spec.ts (pending -- tests deferred per sprint plan)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-04T20:00:00Z | claude | added validated:true force-validate path for F-ADM-003 AC-05
+ * - 2026-05-04T21:00:00Z | claude | fix: guard force-validate to source='manual' only; add file header
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { QuestionStatus, AdminActionType } from '@prisma/client'
+
+const MANUAL_SOURCE = 'manual'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers()
@@ -11,10 +31,58 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const body = await req.json().catch(() => ({}))
-  const { status } = body as { status?: string }
+  const { status, validated } = body as { status?: string; validated?: boolean }
 
-  if (status !== 'ACTIVE' && status !== 'REJECTED') {
+  if (!status && validated === undefined) {
+    return NextResponse.json(
+      { error: 'Provide status (ACTIVE or REJECTED) or validated (true)' },
+      { status: 400 },
+    )
+  }
+
+  if (status !== undefined && status !== 'ACTIVE' && status !== 'REJECTED') {
     return NextResponse.json({ error: 'status must be ACTIVE or REJECTED' }, { status: 400 })
+  }
+
+  const question = await prisma.question.findUnique({
+    where: { id },
+    select: { id: true, source: true },
+  })
+  if (!question) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  if (validated === true) {
+    // Force-validate is only valid for manually authored questions. AI-generated
+    // questions are promoted automatically by the nightly IRT job after >= 50 responses.
+    if (question.source !== MANUAL_SOURCE) {
+      return NextResponse.json(
+        {
+          error: 'invalid_source',
+          message:
+            'Force-validate is only for manually authored questions (source=manual). ' +
+            'AI-generated questions are validated automatically after 50 student responses.',
+        },
+        { status: 422 },
+      )
+    }
+
+    await prisma.$transaction([
+      prisma.question.update({
+        where: { id },
+        data: { validated: true, validatedAt: new Date() },
+      }),
+      prisma.auditLog.create({
+        data: {
+          adminId: session.user.id,
+          targetEntity: 'Question',
+          targetId: id,
+          action: AdminActionType.QUESTION_APPROVE,
+          newValue: { validated: true, forcedBy: session.user.id },
+        },
+      }),
+    ])
+    return NextResponse.json({ ok: true, validated: true })
   }
 
   const action =

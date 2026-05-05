@@ -1460,6 +1460,9 @@ model Question {
   correctAnswer     String?
   source            String?
   status            QuestionStatus        @default(ACTIVE)
+  /// F-ADM-003 AC-05: true once >= 50 responses accumulated and IRT params trusted
+  validated         Boolean               @default(false)
+  validatedAt       DateTime?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   topic             TopicDef?             @relation(fields: [topicId], references: [id])
@@ -2076,10 +2079,12 @@ model Misconception {
   conceptId         String
   name              String
   description       String
-  triggerPatterns   String[]
-  correction        String
-  createdAt         DateTime               @default(now())
-  prevalenceRate    Float                  @default(0)
+  triggerPatterns     String[]
+  correction          String
+  /// F-ADM-004 AC-01: contrastive worked example for the correction
+  contrastiveExample  String?
+  createdAt           DateTime               @default(now())
+  prevalenceRate      Float                  @default(0)
   studentDetections StudentMisconception[]
 
   @@index([subjectId, conceptId])
@@ -2677,8 +2682,10 @@ model Consent {
   ipAddress   String?
   userAgent   String?
   withdrawnAt DateTime?
-  version     String       @default("1.0")
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version          String       @default("1.0")
+  /// F-ADM-040 AC-01: SHA-256 hash of parent mobile number for DPDP compliance
+  parentMobileHash String?
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, scope])
 }
