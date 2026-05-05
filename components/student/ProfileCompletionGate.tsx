@@ -22,6 +22,7 @@
  *
  * EDIT LOG:
  * - 2026-05-05T00:00:00Z | copilot | fix: prefix unused parentPhone/parentPhoneError state vars with _ (lint)
+ * - 2026-05-05T00:00:00Z | copilot | fix: replace hardcoded under-13 copy with DPDP_MINOR_AGE constant
  */
 
 import React, { useEffect, useState } from 'react';
@@ -733,7 +734,7 @@ export default function ProfileCompletionGate({
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 {parentEmailRequired
-                  ? "Required for students under 13 -- we send weekly progress reports."
+                  ? `Required for students under ${DPDP_MINOR_AGE} -- we send weekly progress reports.`
                   : "Add a parent email to share your progress reports."}
               </p>
               <div>
