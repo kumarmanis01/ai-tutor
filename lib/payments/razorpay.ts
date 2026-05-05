@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Razorpay integration: order creation, payment signature verification, and
+ *   subscription activation (including FreeTierUsage reset on upgrade).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/payments/razorpay.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-05T00:00:00Z | claude | add file header; fix periodStart in FreeTierUsage upsert to use normalized month-start
+ */
+
 import Razorpay from 'razorpay'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
@@ -132,15 +149,18 @@ export async function activateSubscription(
         })
       }
 
-      // Reset FreeTierUsage for the student (aggregate scope '__ALL__')
-      // upsert requires the compound unique key: studentId_subjectScope_periodStart
+      // Reset FreeTierUsage for the student (aggregate scope '__ALL__').
+      // periodStart must be the 1st of the current month at 00:00 -- the same
+      // normalized value used by checkFreeTierCap/incrementFreeTierUsage --
+      // so the upsert finds the row that enforcement and UI already read.
+      const currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1)
       await tx.freeTierUsage
         .upsert({
           where: {
             studentId_subjectScope_periodStart: {
               studentId,
               subjectScope: '__ALL__',
-              periodStart: now,
+              periodStart: currentPeriodStart,
             },
           },
           update: {
@@ -150,7 +170,7 @@ export async function activateSubscription(
           create: {
             studentId,
             subjectScope: '__ALL__',
-            periodStart: now,
+            periodStart: currentPeriodStart,
             sessionsUsed: 0,
             chapterTestsUsed: 0,
           },
