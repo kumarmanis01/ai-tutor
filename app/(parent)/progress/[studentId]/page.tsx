@@ -21,6 +21,7 @@ import type { AppSession } from '@/lib/types/auth'
 import { prisma } from '@/lib/prisma'
 import { computeReadinessScore } from '@/lib/student/examReadiness'
 import ParentProgressDetail from '@/components/parent/ParentProgressDetail'
+import { getNextConcept } from '@/lib/student/learningPlan'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +99,36 @@ export default async function ParentProgressDetailPage({
   ])
 
   if (!student) notFound()
+
+  // ── Learning plan summary (F-PAR-002 AC-03: read-only view for parent) ──
+  const [latestPlan, nextConcept] = await Promise.all([
+    prisma.learningPlan.findFirst({
+      where: { studentId },
+      orderBy: { generatedAt: 'desc' },
+      select: {
+        id: true,
+        subjectId: true,
+        _count: { select: { items: true } },
+      },
+    }),
+    getNextConcept(studentId).catch(() => null),
+  ])
+
+  let learningPlan = null
+  if (latestPlan) {
+    const [completedCount, subjectDef] = await Promise.all([
+      prisma.learningPlanItem.count({ where: { planId: latestPlan.id, status: 'COMPLETED' } }),
+      prisma.subjectDef.findUnique({ where: { id: latestPlan.subjectId }, select: { name: true } }),
+    ])
+    const totalConcepts = latestPlan._count.items
+    learningPlan = {
+      subjectName: subjectDef?.name ?? '',
+      totalConcepts,
+      completedConcepts: completedCount,
+      progressPercent: totalConcepts > 0 ? Math.round((completedCount / totalConcepts) * 100) : 0,
+      nextConceptName: nextConcept?.conceptName ?? null,
+    }
+  }
 
   // ── Readiness per subject ──────────────────────────────────────────────
   const readiness: Array<{ subjectId: string; subjectName: string; score: number; peerPercentile: number | null }> = []
@@ -195,6 +226,7 @@ export default async function ParentProgressDetailPage({
       sessions={formattedSessions}
       readiness={readiness}
       heatmapDays={heatmapDays}
+      learningPlan={learningPlan}
     />
   )
 }

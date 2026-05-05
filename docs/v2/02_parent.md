@@ -117,7 +117,7 @@ MUST
 AC-06 (Status: Done)
 Parent account is separate from student account. Parent cannot accidentally access or alter the student's learning sessions.
 MUST
-AC-07 (Status: Partial)
+AC-07 (Status: Done)
 Parent receives a verification SMS + welcome email on account activation with: what they can see, what their child can do, privacy policy summary.
 SHOULD
 
@@ -136,13 +136,13 @@ MUST
 AC-02 (Status: Done)
 Parent can set or update: exam date, weekly study hours target, preferred study schedule (morning / afternoon / evening preference).
 MUST
-AC-03 (Status: Partial)
+AC-03 (Status: Done)
 Parent can view — but not modify — the AI-generated learning plan. To request topic focus changes, parent submits a preference that the AI considers in the next plan adjustment.
 SHOULD
-AC-04 (Status: Partial)
+AC-04 (Status: Done)
 Parent can temporarily pause a child's account (e.g., during illness or travel). Sessions do not count against free limits during pause. Streak shield auto-activates.
 SHOULD
-AC-05 (Status: Partial)
+AC-05 (Status: Done)
 Multiple children shown as tabs on the parent dashboard — quick switching between children without re-login.
 MUST
 
@@ -496,13 +496,13 @@ MUST
 AC-03 (Status: Done)
 Family plan option: 3 children under one subscription at 1.8x single-child price. Savings clearly shown.
 MUST
-AC-04 (Status: Partial)
+AC-04 (Status: Done)
 Payment via: UPI (GPay, PhonePe, Paytm), Debit/Credit card, Net banking, EMI (3/6/12 months on annual plan). UPI shown as default (highest adoption in target market).
 MUST
 AC-05 (Status: Done)
 Pre-payment screen shows: plan summary, total amount, renewal terms, cancellation policy. No dark patterns. Must scroll to see full terms before confirm button activates.
 MUST
-AC-06 (Status: Partial)
+AC-06 (Status: Done)
 Payment confirmation within 5 seconds. If payment gateway times out, transaction status checked via webhook before showing success/failure.
 MUST
 
@@ -534,7 +534,7 @@ Parent manages active subscriptions, renewals, and plan changes.
 AC#
 Acceptance Criterion
 Priority
-AC-01 (Status: Partial)
+AC-01 (Status: Done)
 Subscription status screen shows per child: current plan, billing cycle, next renewal date + amount, payment method on file, invoice history (downloadable as PDF).
 MUST
 AC-02 (Status: Done)
@@ -546,7 +546,7 @@ MUST
 AC-04 (Status: Done)
 Failed payment handling: 3 auto-retries (day 0, day 1, day 3). After all retries fail: grace period of 3 days with access maintained. Parent notified daily during grace period. After grace: reversion to free tier.
 MUST
-AC-05 (Status: Partial)
+AC-05 (Status: Done)
 Parent can update payment method at any time. New method validated before old method removed.
 MUST
 AC-06 (Status: Done)
@@ -676,22 +676,22 @@ Status legend:
 
 F-PAR-001 Parent Account Registration
 - AC-01: Done
-- AC-02: Partial
+- AC-02: Done
 - AC-03: Done
 - AC-04: Done
 - AC-05: Done
 - AC-06: Done
-- AC-07: Partial
+- AC-07: Done
 
 F-PAR-002 Child Profile Management
 - AC-01: Done
 - AC-02: Done
-- AC-03: Partial
-- AC-04: Partial
-- AC-05: Partial
+- AC-03: Done
+- AC-04: Done
+- AC-05: Done
 
 F-PAR-003 Consent & Safety Acknowledgement
-- AC-01: Partial
+- AC-01: Done
 - AC-02: Done
 - AC-03: Done
 - AC-04: Done
@@ -804,9 +804,9 @@ F-PAR-030 Subscription Purchase (Parent-Initiated)
 - AC-01: Done
 - AC-02: Done
 - AC-03: Done
-- AC-04: Partial
+- AC-04: Done
 - AC-05: Done
-- AC-06: Partial
+- AC-06: Done
 
 F-PAR-030 Phase 2 Subscription Purchase Enhancements
 - P2-AC-01: Pending
@@ -817,11 +817,11 @@ F-PAR-030 Phase 2 Subscription Purchase Enhancements
 - P2-AC-06 Promotions & Coupons: Partial
 
 F-PAR-031 Subscription Management
-- AC-01: Partial
+- AC-01: Done
 - AC-02: Done
 - AC-03: Done
 - AC-04: Done
-- AC-05: Partial
+- AC-05: Done
 - AC-06: Done
 
 F-PAR-031 Phase 2 Subscription Management Enhancements
