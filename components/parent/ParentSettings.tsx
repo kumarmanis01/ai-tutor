@@ -20,8 +20,9 @@ export default function ParentSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null; excludeFromParentReport?: boolean; inactivityOptOut?: boolean }>>([])
+  const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null; excludeFromParentReport?: boolean; inactivityOptOut?: boolean; topicFocusRequest?: string | null }>>([])
   const [message, setMessage] = useState<string | null>(null)
+  const [topicDraft, setTopicDraft] = useState<Record<string, string>>({})
   const [pauseDialogStudentId, setPauseDialogStudentId] = useState<string | null>(null)
   const [pauseDialogReason, setPauseDialogReason] = useState<string>('')
   const [pauseDialogDate, setPauseDialogDate] = useState<string>('')
@@ -32,7 +33,13 @@ export default function ParentSettings() {
       .then((r) => r.json())
       .then((data) => {
         setProfile(data)
-        setChildren(data.children ?? [])
+        const kids = data.children ?? []
+        setChildren(kids)
+        const drafts: Record<string, string> = {}
+        for (const kid of kids) {
+          drafts[kid.id] = kid.topicFocusRequest ?? ''
+        }
+        setTopicDraft(drafts)
       })
       .catch((err) => {
         logger.debug('Failed to load parent settings', { error: String(err) })
@@ -160,6 +167,31 @@ export default function ParentSettings() {
     }
   }
 
+  async function saveTopicFocus(studentId: string) {
+    const topicFocusRequest = (topicDraft[studentId] ?? '').trim() || null
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/parent/controls', {
+        method: 'PUT',
+        body: JSON.stringify({ studentId, topicFocusRequest }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        setChildren((c) => c.map((ch) => (ch.id === studentId ? { ...ch, topicFocusRequest } : ch)))
+        setMessage('Topic preference saved')
+      } else {
+        setMessage('Save failed')
+      }
+    } catch (err) {
+      logger.error('Failed to save topic focus', { error: String(err), studentId })
+      setMessage('Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function toggleChildInactivity(studentId: string, optOut: boolean) {
     setSaving(true)
     setMessage(null)
@@ -264,7 +296,31 @@ export default function ParentSettings() {
                   </div>
                 </div>
 
-                {/* pause dialog removed temporarily to fix parse errors during build */}
+                {/* F-PAR-002 AC-03: topic focus preference for AI learning plan */}
+                <div className="mt-2 rounded border border-gray-100 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-2">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                    Topic focus request for {child.name}
+                  </label>
+                  <textarea
+                    rows={2}
+                    maxLength={500}
+                    className="w-full rounded border px-2 py-1.5 text-sm resize-none bg-white dark:bg-gray-900 dark:text-gray-100 dark:border-gray-600"
+                    placeholder="E.g. Focus more on Trigonometry this week"
+                    value={topicDraft[child.id] ?? ''}
+                    onChange={(e) => setTopicDraft((d) => ({ ...d, [child.id]: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    The AI tutor will consider this when planning {child.name}'s sessions.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => saveTopicFocus(child.id)}
+                    disabled={saving}
+                    className="mt-1.5 min-h-[44px] min-w-[44px] rounded border border-[#534AB7] px-3 py-1 text-xs font-medium text-[#534AB7] hover:bg-[#EEEDFE] disabled:opacity-50"
+                  >
+                    Save preference
+                  </button>
+                </div>
               </div>
             ))}
           </div>

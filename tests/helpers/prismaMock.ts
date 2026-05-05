@@ -36,6 +36,8 @@ export const prismaMock = {
   parentInvite: mockModel(),
   parentStudent: mockModel(),
   parentProfile: mockModel(),
+  consent: mockModel(),
+  deletionRequest: mockModel(),
   parentChildControl: mockModel(),
   freeTierUsage: mockModel(),
   weeklyStudentSummary: mockModel(),
@@ -79,6 +81,9 @@ export const prismaMock = {
   mockExamAttempt: mockModel(),
   studentLearningProfile: mockModel(),
   homeworkAssignment: mockModel(),
+  learningPlanItem: mockModel(),
+  mockExamSectionAttempt: mockModel(),
+  paymentOrder: mockModel(),
 };
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */

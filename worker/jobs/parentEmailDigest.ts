@@ -16,6 +16,7 @@ import { generateParentReportAI } from '@/lib/ai/tools/generateParentReport';
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
 import { buildDigestTemplate } from '@/lib/whatsapp/templates';
 import { t } from '@/lib/i18n';
+import { sendSms } from '@/lib/sms';
 
 /**
  * Send weekly email digest to all parents with active student links
@@ -243,6 +244,12 @@ export async function sendParentDigests(): Promise<number> {
         text,
         meta: { type: 'digest', locale: parent.language },
       })
+
+      if (parent.phone) {
+        const firstChild = parent.children[0]
+        const smsSummary = `Weekly digest: ${firstChild?.name ?? 'Your child'} summary is ready. View report: ${reportUrl}`
+        await sendSms(parent.phone, smsSummary)
+      }
 
       sentCount++;
       logger.info('parentEmailDigest: sent', { parentId, childCount: parent.children.length });

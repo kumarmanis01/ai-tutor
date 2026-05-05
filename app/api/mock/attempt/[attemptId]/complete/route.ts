@@ -4,6 +4,9 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { buildPriorityPlan } from '@/lib/mock/buildPriorityPlan';
 import { computeSectionScores } from '@/lib/mock/selectMockQuestions';
 import { logger } from '@/lib/logger';
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
+import { milestoneEmailHtml } from '@/lib/email/templates';
+import { buildMilestoneTemplate } from '@/lib/whatsapp/templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -191,6 +194,42 @@ export async function POST(
   } catch (err) {
     // Non-blocking: don't fail the mock complete API if badge awarding fails
     logger.warn('mock.complete: failed to award mock_complete badge', { studentId: user.id, error: String(err) })
+  }
+
+  // Parent milestone notification (F-PAR-022 AC-01): mock completion + score.
+  try {
+    const parentLinks = await prisma.parentStudent.findMany({
+      where: { studentId: user.id, status: 'active' },
+      include: { parent: { select: { id: true, email: true, whatsappPhone: true, name: true, language: true } } },
+    })
+    if (parentLinks.length > 0) {
+      const scoreLabel = `${Math.round(overallScore)}%`
+      const milestoneLabel = `Mock exam completed (${scoreLabel})`
+      const dashboardUrl = `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/dashboard`
+      await Promise.allSettled(parentLinks.map((pl) => {
+        const brandedHtml = milestoneEmailHtml({
+          parentName: pl.parent.name ?? 'Parent',
+          studentName: 'Your child',
+          milestoneLabel,
+          milestoneDetail: `Great effort. Encourage a quick review of weaker sections this week to build exam confidence.`,
+          dashboardUrl,
+        })
+        const waTemplate = pl.parent.whatsappPhone
+          ? buildMilestoneTemplate(pl.parent.name ?? 'Parent', 'Your child', milestoneLabel, dashboardUrl)
+          : undefined
+        return sendParentMilestoneNotification(pl.parent.id, {
+          email: pl.parent.email ?? undefined,
+          whatsappPhone: pl.parent.whatsappPhone ?? undefined,
+          whatsappTemplate: waTemplate,
+          subject: `Mock completed: ${scoreLabel}`,
+          html: brandedHtml,
+          text: `Mock completed with ${scoreLabel}. View details: ${dashboardUrl}`,
+          meta: { studentId: user.id, type: 'milestone', locale: pl.parent.language ?? undefined },
+        })
+      }))
+    }
+  } catch (err) {
+    logger.warn('mock.complete: failed to notify parents', { studentId: user.id, error: String(err) })
   }
 
   logger.info('mock.completed', {

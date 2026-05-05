@@ -6,6 +6,7 @@
  * EDIT LOG:
  * - 2025-01-XX | copilot | created parent dashboard client component
  * - 2026-02-04 | claude | enhanced with progress, weak topics, readiness, invite codes
+ * - 2026-05-04 | copilot | capture parent-child relationship in link form for F-PAR-001 registration requirements
  */
 
 'use client';
@@ -516,13 +517,14 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
   const [mode, setMode] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  const [relationship, setRelationship] = useState<'father' | 'mother' | 'guardian'>('guardian');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload: any = { action: 'link' };
+      const payload: any = { action: 'link', relationship };
       if (mode === 'email') {
         if (!email.trim()) return;
         payload.studentEmail = email;
@@ -631,6 +633,21 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
           </div>
         </>
       )}
+
+      <div className="mt-3">
+        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+          Relationship to student
+        </label>
+        <select
+          value={relationship}
+          onChange={(e) => setRelationship(e.target.value as 'father' | 'mother' | 'guardian')}
+          className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+        >
+          <option value="father">Father</option>
+          <option value="mother">Mother</option>
+          <option value="guardian">Guardian</option>
+        </select>
+      </div>
     </form>
   );
 }

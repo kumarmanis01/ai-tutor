@@ -101,6 +101,8 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
 
       const { orderId, amount, keyId } = orderJson as { orderId: string; amount: number; keyId: string };
 
+      // Map internal method selection to Razorpay method codes (F-PAR-030 AC-04: UPI as default)
+      const rzMethodMap: Record<string, string> = { upi: 'upi', card: 'card', netbanking: 'netbanking' }
       const options: any = {
         key: keyId,
         amount,
@@ -108,6 +110,7 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
         name: 'Spinzy Academy',
         description: `${PLANS[planId].label} subscription`,
         order_id: orderId,
+        method: rzMethodMap[method] ?? 'upi',
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
                 try {
                   const verifyRes = await fetch('/api/parent/subscription/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ orderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature, planId }) });
@@ -272,9 +275,18 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
 
   return (
     <div className="rounded-2xl border border-[#E24B4A]/30 bg-[#FCEBEB] px-5 py-6 text-center">
-      <h3 className="text-lg font-semibold">Payment failed</h3>
-      <p className="mt-2 text-sm">We couldn't confirm the payment. Please try again or contact support.</p>
-      <div className="mt-4"><button onClick={() => setStep('confirm')} className="px-4 py-2 rounded bg-[#534AB7] text-white">Retry</button></div>
+      <h3 className="text-lg font-semibold">Payment not confirmed</h3>
+      <p className="mt-2 text-sm">
+        We could not confirm your payment right now. If money was deducted from your account,
+        it will be processed automatically and you will receive a confirmation email within a few minutes.
+      </p>
+      <p className="mt-1 text-sm text-gray-600">
+        You can also check your subscription status on this page after a minute.
+      </p>
+      <div className="mt-4 flex justify-center gap-3">
+        <button onClick={() => setStep('confirm')} className="min-h-[44px] px-4 py-2 rounded bg-[#534AB7] text-white">Try again</button>
+        <button onClick={() => window.location.reload()} className="min-h-[44px] px-4 py-2 rounded border border-gray-300 text-gray-700">Refresh page</button>
+      </div>
     </div>
   );
 }

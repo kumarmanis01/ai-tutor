@@ -18,6 +18,7 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     mockExamAttempt: { findFirst: jest.fn(), count: jest.fn(), update: jest.fn() },
     mockExamSectionAttempt: { upsert: jest.fn(), findMany: jest.fn() },
+    parentStudent: { findMany: jest.fn() },
   },
 }));
 jest.mock('@/lib/session', () => ({ getServerSessionForHandlers: jest.fn() }));
@@ -26,17 +27,20 @@ jest.mock('@/lib/mock/selectMockQuestions', () => ({ computeSectionScores: jest.
 jest.mock('@/lib/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
+jest.mock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: jest.fn(async () => ({ sent: true })) }))
 
 import { POST } from '@/app/api/mock/attempt/[attemptId]/complete/route';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { buildPriorityPlan } from '@/lib/mock/buildPriorityPlan';
 import { computeSectionScores } from '@/lib/mock/selectMockQuestions';
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
 
 const mp = prisma as any;
 const mockSession = getServerSessionForHandlers as jest.Mock;
 const mockBuild = buildPriorityPlan as jest.Mock;
 const mockCompute = computeSectionScores as jest.Mock;
+const mockSendParentMilestone = sendParentMilestoneNotification as jest.Mock;
 
 function makeAttempt(overrides: Record<string, unknown> = {}) {
   return {
@@ -72,7 +76,11 @@ function postReq() {
 }
 
 describe('POST /api/mock/attempt/[attemptId]/complete -- edge cases', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks()
+    // Default: no parents linked, so parent notification block is skipped silently
+    mp.parentStudent.findMany.mockResolvedValue([])
+  });
 
   // ------------------------------------------------------------------ auth
   it('should return 401 when session is missing', async () => {
@@ -108,8 +116,6 @@ describe('POST /api/mock/attempt/[attemptId]/complete -- edge cases', () => {
       rawResult: { totalMarks: 80, earnedMarks: 58 },
     });
     mp.mockExamAttempt.findFirst.mockResolvedValueOnce(finishedAttempt);
-    // count is called to determine percentileReliable in idempotent path
-    mp.mockExamAttempt.count.mockResolvedValueOnce(15);
 
     const res = await POST(postReq(), { params: { attemptId: 'att-1' } } as any);
     expect(res.status).toBe(200);
@@ -217,6 +223,9 @@ describe('POST /api/mock/attempt/[attemptId]/complete -- edge cases', () => {
       { title: 'Section C', scorePercent: 60, marksEarned: 18, totalMarks: 30 },
     ]);
     mp.mockExamAttempt.count.mockResolvedValueOnce(20).mockResolvedValueOnce(14);
+    mp.parentStudent.findMany.mockResolvedValueOnce([
+      { parent: { id: 'p1', email: 'parent@example.test', whatsappPhone: null, name: 'Parent', language: 'en' } },
+    ])
     mockBuild.mockResolvedValueOnce('## Week 1\nRevise.');
     mp.mockExamAttempt.update.mockResolvedValueOnce({});
 
@@ -233,5 +242,6 @@ describe('POST /api/mock/attempt/[attemptId]/complete -- edge cases', () => {
       priorityPlan: '## Week 1\nRevise.',
       rawResult: expect.objectContaining({ totalMarks: 80, earnedMarks: expect.any(Number) }),
     });
+    expect(mockSendParentMilestone).toHaveBeenCalled()
   });
 });

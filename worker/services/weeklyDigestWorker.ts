@@ -40,6 +40,7 @@ import { sendMailSafe } from '@/lib/mailer'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 import { callLLM } from '@/lib/callLLM'
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
+import { sendSms } from '@/lib/sms'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -338,14 +339,14 @@ export async function processParentDigest(parentId: string, weekStartIso: string
   try {
     // Load first active child for the parent
     // Local row type for parentStudent link (single)
-    type ParentStudentLinkSingleRow = { studentId: string; student: { name: string | null }; parent: { name: string | null; email: string | null } } | null;
-    const link = await prisma.parentStudent.findFirst({ where: { parentId, status: 'active', excludeFromParentReport: false }, select: { studentId: true, student: { select: { name: true } }, parent: { select: { name: true, email: true } } } }) as ParentStudentLinkSingleRow
+    type ParentStudentLinkSingleRow = { studentId: string; student: { name: string | null }; parent: { name: string | null; email: string | null; phone?: string | null } } | null;
+    const link = await prisma.parentStudent.findFirst({ where: { parentId, status: 'active', excludeFromParentReport: false }, select: { studentId: true, student: { select: { name: true } }, parent: { select: { name: true, email: true, phone: true } } } }) as ParentStudentLinkSingleRow
     if (!link || !link.parent?.email) {
       logger.info('[parentDigest] no active child or email, skipping', { parentId })
       return
     }
 
-    const parent = { id: parentId, name: link.parent.name ?? 'Parent', email: link.parent.email }
+    const parent = { id: parentId, name: link.parent.name ?? 'Parent', email: link.parent.email, phone: (link.parent as any).phone ?? null }
     const child = { studentId: link.studentId, name: link.student?.name ?? 'Student' }
 
     // Sessions this week
@@ -387,6 +388,10 @@ export async function processParentDigest(parentId: string, weekStartIso: string
     const html = buildEmailHtml({ parentName: parent.name, childName: child.name, sessionsThisWeek: sessions.length, streak: streak?.current ?? 0, readinessDelta, narrative, dashboardUrl: `${appUrl}/parent/dashboard` })
 
     await sendParentMilestoneNotification(parentId, { email: parent.email, subject, html, text: subject, meta: { type: 'digest', channel: 'email' } })
+    if (parent.phone) {
+      const smsUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
+      await sendSms(parent.phone, "Weekly digest: ${child.name}'s summary is ready. View: ${smsUrl}/parent/dashboard")
+    }
     logger.info('[parentDigest] sent via delivery helper', { parentId, email: parent.email, childName: child.name })
   } catch (err) {
     logger.error('[parentDigest] failed', { parentId, error: err instanceof Error ? err.message : String(err) })

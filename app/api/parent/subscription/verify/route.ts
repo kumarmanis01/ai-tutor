@@ -288,25 +288,35 @@ export async function POST(req: Request) {
     // Send receipt email & SMS to parent user (best-effort)
     const parent = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, phone: true } });
     const renewalDate = expiry.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    let receiptSmsSent = false
 
     if (parent?.email) {
       try {
             const invoiceResult = await createInvoiceForPayment({ userId, paymentId: _createdPayment?.id, studentId: childIds && childIds.length > 0 ? childIds[0] : undefined, amountPaise: order.amount, planLabel: appliedPlan?.label ?? '', billingCycle: appliedPlan?.perMonthDisplay ?? '' });
+        const invoiceLink = invoiceResult.fileUrl ? `<p><a href="${invoiceResult.fileUrl}">Download invoice</a></p>` : ''
         await sendEmail({
           to: parent.email,
           subject: 'Payment confirmed -- Spinzy Academy',
-          html: paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: appliedPlan?.label ?? '', amountRupees: (order.amount ? (order.amount / 100) : appliedPlan?.billedRupees), billingCycle: appliedPlan?.perMonthDisplay ?? '', renewalDate }),
+          html: `${paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: appliedPlan?.label ?? '', amountRupees: (order.amount ? (order.amount / 100) : appliedPlan?.billedRupees), billingCycle: appliedPlan?.perMonthDisplay ?? '', renewalDate })}${invoiceLink}`,
           ...(invoiceResult.pdfBuffer ? {
             attachments: [{ filename: `invoice-${invoiceResult.invoiceNumber}.pdf`, content: invoiceResult.pdfBuffer, contentType: 'application/pdf' }],
           } : {}),
         } as any).catch((err) => { logger.error('Receipt email failed (parent.verify)', { event: 'parent.subscription.verify.email_error', context: { userId }, err }); });
+
+        if (parent?.phone) {
+          const amountInr = ((order.amount ?? 0) / 100).toFixed(2)
+          const smsText = `Payment success: INR ${amountInr}, plan ${appliedPlan?.label ?? 'subscription'}. Next renewal ${renewalDate}. Invoice: ${invoiceResult.fileUrl ?? `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/billing`}`
+          sendSms(parent.phone, smsText).catch((err: unknown) => { logger.error('Receipt SMS failed (parent.verify)', { event: 'parent.subscription.verify.sms_error', context: { userId }, err }); });
+          receiptSmsSent = true
+        }
       } catch (err) {
         logger.error('Invoice generation/email failed (parent.verify)', { event: 'parent.subscription.verify.invoice_error', context: { userId, orderId }, err });
       }
     }
 
-    if (parent?.phone) {
-      const smsText = `Hi ${parent.name ?? ''}! Your Spinzy subscription is active. Happy learning! - Team Spinzy`;
+    if (parent?.phone && !receiptSmsSent) {
+      const amountInr = ((order.amount ?? 0) / 100).toFixed(2)
+      const smsText = `Payment success: INR ${amountInr}, plan ${appliedPlan?.label ?? 'subscription'}. Next renewal ${renewalDate}. Invoice: ${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/billing`
       sendSms(parent.phone, smsText).catch((err: unknown) => { logger.error('Receipt SMS failed (parent.verify)', { event: 'parent.subscription.verify.sms_error', context: { userId }, err }); });
     }
 

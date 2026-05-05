@@ -22,9 +22,10 @@ describe('processParentDigest', () => {
 
   it('calls sendParentMilestoneNotification when a parent and child exist', async () => {
     const sendMock = jest.fn(async () => ({ sent: true }))
+    const smsMock = jest.fn(async () => ({ ok: true, provider: 'dev' }))
 
     const prismaMock: any = {
-      parentStudent: { findFirst: jest.fn(async () => ({ studentId: 's1', student: { name: 'Asha' }, parent: { name: 'Parent', email: 'p@example.test' } })) },
+      parentStudent: { findFirst: jest.fn(async () => ({ studentId: 's1', student: { name: 'Asha' }, parent: { name: 'Parent', email: 'p@example.test', phone: '9999999999' } })) },
       structuredSession: { findMany: jest.fn(async () => [{ id: 'sess1' }]) },
       studentStreak: { findFirst: jest.fn(async () => ({ current: 4 })) },
       studentConceptState: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
@@ -32,6 +33,7 @@ describe('processParentDigest', () => {
 
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
     jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+    jest.doMock('@/lib/sms', () => ({ sendSms: smsMock }))
     // Prevent real OpenAI calls: ALLOW_LLM_CALLS=1 is set globally in forceTestNodeEnv.cjs
     jest.doMock('@/lib/callLLM', () => ({ callLLM: jest.fn().mockRejectedValue(new Error('callLLM mocked in unit tests')) }))
 
@@ -40,6 +42,7 @@ describe('processParentDigest', () => {
     await processParentDigest('p1', null)
 
     expect(sendMock).toHaveBeenCalled()
+    expect(smsMock).toHaveBeenCalled()
   })
 
   it('produces mobile-friendly, image-fallback and dark-mode-aware HTML', async () => {
