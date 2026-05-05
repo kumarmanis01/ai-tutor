@@ -21,7 +21,7 @@ import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { checkAuthRateLimit, createRateLimitResponse } from '@/lib/middleware/authRateLimit';
-import { MAIL_FROM, MAIL_SUBJECTS } from '@/lib/constants/mail';
+import { MAIL_SUBJECTS } from '@/lib/constants/mail';
 
 const OTP_EXPIRY_SECONDS = Number(process.env.OTP_EXPIRY_SECONDS ?? 300);
 
@@ -98,7 +98,6 @@ export async function POST(req: NextRequest) {
     // Send to email if available
     if (hasEmail) {
       await sendMailSafe({
-        from: MAIL_FROM,
         to: parentEmail,
         subject: MAIL_SUBJECTS.PARENT_OTP,
         html: parentOtpHtml(otp, studentName),

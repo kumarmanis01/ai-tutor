@@ -56,7 +56,7 @@ const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DATA_DELETION_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-// NOTE: MONTHLY_INTERVAL_MS (2_592_000_000) was removed — it exceeds Node.js 32-bit
+// NOTE: MONTHLY_INTERVAL_MS (2_592_000_000) was removed -- it exceeds Node.js 32-bit
 // setTimeout limit and caused TimeoutOverflowWarning. Use msUntilNextMonthlyRun() instead.
 const WEEKLY_RATING_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_LATENCY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours

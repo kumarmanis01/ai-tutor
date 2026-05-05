@@ -12,7 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-05-05T12:30:00Z | copilot | created — fix TimeoutOverflowWarning for durations > 24.8 days
+ * - 2026-05-05T12:30:00Z | copilot | created -- fix TimeoutOverflowWarning for durations > 24.8 days
  */
 
 /**
