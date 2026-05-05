@@ -57,6 +57,9 @@ interface DiagnosticFlowProps {
   subjectSlug?: string;
   // Names of other subjects the student still needs to diagnose (for post-submit nudge)
   pendingDiagnosticSubjectNames?: string[];
+  // Override destination for the "Start learning" / "Continue" CTA after results.
+  // Defaults to /dashboard. Pass /enroll/diagnostic-queue in enrollment mode.
+  afterResultsPath?: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -237,11 +240,13 @@ function KnowledgeMapResults({
   results,
   placement,
   pendingDiagnosticSubjectNames = [],
+  afterResultsPath = '/dashboard',
 }: {
   subjectName: string;
   results: ChapterResult[];
   placement: 'below' | 'at' | 'above' | null;
   pendingDiagnosticSubjectNames?: string[];
+  afterResultsPath?: string;
 }) {
   const router = useRouter();
   const startHere = results[0]; // weakest chapter (sorted ascending)
@@ -321,15 +326,15 @@ function KnowledgeMapResults({
         <button
           type="button"
           onClick={() => {
-            if (pendingDiagnosticSubjectNames.length > 0) {
+            if (afterResultsPath === '/dashboard' && pendingDiagnosticSubjectNames.length > 0) {
               const list = pendingDiagnosticSubjectNames.join(', ');
               toast(`Complete diagnostics for ${list} to unlock your full learning plan.`, 6000);
             }
-            router.push('/dashboard');
+            router.push(afterResultsPath);
           }}
           className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] transition-all shadow-md shadow-[#534AB7]/25"
         >
-          Start learning →
+          {afterResultsPath === '/dashboard' ? 'Start learning →' : 'Next subject →'}
         </button>
       </div>
     </div>
@@ -348,6 +353,7 @@ export default function DiagnosticFlow({
   grade,
   subjectSlug,
   pendingDiagnosticSubjectNames = [],
+  afterResultsPath = '/dashboard',
 }: DiagnosticFlowProps) {
   const router = useRouter();
 
@@ -657,7 +663,7 @@ export default function DiagnosticFlow({
   if (phase === 'results') {
     return (
       <div className="fixed inset-0 z-[100] overflow-y-auto bg-gray-50 dark:bg-slate-950">
-        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} placement={placement} pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames} />
+        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} placement={placement} pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames} afterResultsPath={afterResultsPath} />
       </div>
     );
   }

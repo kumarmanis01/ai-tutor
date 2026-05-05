@@ -25,14 +25,19 @@ export const dynamic = 'force-dynamic';
 
 export default async function DiagnosticPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ subjectId: string }>;
+  searchParams?: Promise<Record<string, string>>;
 }) {
   const authSession = await requireActiveSession();
   if (!authSession) redirect('/');
 
   const userId = (authSession.user as { id: string }).id;
   const { subjectId } = await params;
+  const sp = searchParams ? await searchParams : {};
+  const fromEnrollment = sp.from === 'enrollment';
+  const afterResultsPath = fromEnrollment ? '/enroll/diagnostic-queue' : '/dashboard';
 
   // Fetch student profile and completed diagnostics in parallel.
   // board/grade/language are needed for question generation; completedSubjectIds is
@@ -241,6 +246,7 @@ export default async function DiagnosticPage({
         grade={student.grade}
         subjectSlug={subjectDef.slug}
         pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames}
+        afterResultsPath={afterResultsPath}
       />
     </div>
   );

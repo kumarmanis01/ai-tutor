@@ -101,6 +101,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const skipApi = pathname.startsWith('/student/api');
   const skipVerifyParent = pathname.startsWith('/student/verify-parent');
   const skipOnboarding = pathname.startsWith('/student/onboarding');
+  const skipEnroll = pathname.startsWith('/enroll');
 
   // Onboarding first, then parent verification: only run parent gate after profile is complete.
   const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const, data: EMPTY_PROFILE_DATA };
@@ -126,7 +127,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 
-  if (!skipApi && !skipVerifyParent && !skipOnboarding && userId && onboardingComplete) {
+  if (!skipApi && !skipVerifyParent && !skipOnboarding && !skipEnroll && userId && onboardingComplete) {
     const [needsOtpGate, gate] = await Promise.all([
       requiresParentOTPGate(userId),
       checkParentGate(userId),
@@ -160,11 +161,12 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   // Profile completion gate: shown as overlay when board/grade/language/subjects are missing.
   // Uses freshProfile (direct DB read) so the gate check is never stale after onboarding.
-  // Skipped on API routes, /student/onboarding, and /student/verify-parent.
+  // Skipped on API routes, /student/onboarding, /student/verify-parent, and /enroll.
   const showProfileGate =
     !skipApi &&
     !skipVerifyParent &&
     !skipOnboarding &&
+    !skipEnroll &&
     !isProfileComplete(freshProfile ?? profile.data);
 
   // Build initialProfileData from fresh DB row, falling back to checkProfileCompleteness result.
