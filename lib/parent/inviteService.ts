@@ -14,10 +14,11 @@
  * EDIT LOG:
  * - 2026-05-05T00:00:00Z | copilot | add file header and replace invalid Prisma enum import with Prisma namespace enum typing
  * - 2026-05-05T00:05:00Z | copilot | replace unsupported Prisma.$Enums typing with generated top-level ParentRelationship import
+ * - 2026-05-05T00:10:00Z | copilot | fix TS2503 by importing Prisma namespace type for TransactionClient in ensureParentRole
  */
 
 import { randomBytes } from 'crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants';
 
