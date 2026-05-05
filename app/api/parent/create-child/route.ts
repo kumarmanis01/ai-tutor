@@ -16,6 +16,7 @@
  * - 2026-04-14T00:00:00Z | claude | added dateOfBirth, grade, board, medium fields (F-PAR-002 AC-01)
  * - 2026-04-14T12:00:00Z | staff-engineer | fix: create child with role 'user', default language, remove unused const
  * - 2026-05-04T00:00:00Z | copilot | require relationship and explicit consent bundle for parent-created child accounts
+ * - 2026-05-05T00:00:00Z | copilot | fix: remove unused ConsentScope import (lint)
  */
 
 import { NextResponse } from 'next/server'
@@ -25,7 +26,7 @@ import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
-import { ConsentScope, Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 

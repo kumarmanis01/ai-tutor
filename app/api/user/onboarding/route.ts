@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
           try {
             const prev = await prisma.user.findUnique({ where: { id: userId }, select: { board: true } }).catch(() => null)
             prevBoard = prev?.board ?? null
-          } catch (_e) {
+          } catch {
             prevBoard = null
           }
         }

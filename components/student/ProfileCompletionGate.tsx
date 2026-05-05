@@ -19,6 +19,9 @@
  * router.refresh() forces the server layout to re-query the DB; once
  * isProfileComplete() returns true, showProfileGate becomes false and
  * this component unmounts without a page reload.
+ *
+ * EDIT LOG:
+ * - 2026-05-05T00:00:00Z | copilot | fix: prefix unused parentPhone/parentPhoneError state vars with _ (lint)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -139,8 +142,8 @@ export default function ProfileCompletionGate({
   const [whatsappPhoneError, setWhatsappPhoneError] = useState('');
   const [parentEmail, setParentEmail] = useState(initialValues?.parentEmail ?? '');
   const [parentEmailError, setParentEmailError] = useState('');
-  const [parentPhone, setParentPhone] = useState(initialValues?.parentPhone ?? '');
-  const [parentPhoneError, setParentPhoneError] = useState('');
+  const [parentPhone, _setParentPhone] = useState(initialValues?.parentPhone ?? '');
+  const [_parentPhoneError, _setParentPhoneError] = useState('');
   // OTP state for DPDP-minor parent verification step
   const [otpSent, setOtpSent] = useState(initialValues?.parentPhoneVerified ?? false);
   const [otpVerified, setOtpVerified] = useState(initialValues?.parentPhoneVerified ?? false);

@@ -19,6 +19,7 @@
  * - 2026-04-08T00:00:00Z | copilot | created parent upgrade flow UI
  * - 2026-04-13T00:00:00Z | copilot | fix: suppress aria lint for dynamic aria-pressed usage; compute EMI schedule at top-level and replace console with logger
  * - 2026-04-14T00:00:00Z | claude | added scroll-gate on terms (F-PAR-030 AC-05)
+ * - 2026-05-05T00:00:00Z | copilot | fix: add missing `method` dependency to openRazorpay useCallback (lint)
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -132,7 +133,7 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
     } finally {
       setPayLoading(false);
     }
-  }, [planId, selectedChildren, isFamily, emiMonths]);
+  }, [planId, selectedChildren, isFamily, emiMonths, method]);
 
   // Handle retryInstallment query param: if present, call API to enqueue retry
   useEffect(() => {

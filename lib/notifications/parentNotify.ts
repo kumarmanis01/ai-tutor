@@ -23,7 +23,6 @@ import { sendMailSafe } from '@/lib/mailer';
 import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 import { logger } from '@/lib/logger';
 import {
-  MAIL_FROM,
   MAIL_SUBJECTS,
   PARENT_NOTIF_EVENTS,
   formatSubject,
