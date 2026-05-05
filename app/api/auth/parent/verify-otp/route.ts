@@ -1,3 +1,12 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST /api/auth/parent/verify-otp
+ * - Verifies a 6-digit OTP sent to parent channels (email or WhatsApp).
+ * - Body: { code: string }  (no phone required -- key derived server-side)
+ * - On success: sets parentPhoneVerifiedAt (used as "parent verified" flag) and
+ *   transitions accountStatus to 'active'.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
@@ -10,6 +19,15 @@ function hashOtp(otp: string) {
   return crypto.createHash('sha256').update(`${otp}${secret}`).digest('hex');
 }
 
+/** Must match the key derivation in send-otp/route.ts exactly. */
+function deriveOtpKey(whatsappPhone: string, parentPhone: string, parentEmail: string): string {
+  const wa = whatsappPhone.replace(/\D/g, '');
+  if (wa.length >= 10) return wa;
+  const ph = parentPhone.replace(/\D/g, '');
+  if (ph.length >= 10) return ph;
+  return `email:${Buffer.from(parentEmail).toString('base64').slice(0, 20)}`;
+}
+
 export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
@@ -18,31 +36,34 @@ export async function POST(req: NextRequest) {
     if (!studentId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const rawPhone = String(body.parentPhone || '');
-    const parentPhone = rawPhone.replace(/\D/g, '');
     const code = String(body.code || '').trim();
 
-    if (!/^\d{7,15}$/.test(parentPhone) || !/^\d{4,6}$/.test(code)) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    if (!/^\d{4,6}$/.test(code)) {
+      return NextResponse.json({ error: 'Enter the 6-digit code' }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({
       where: { id: studentId },
-      select: { parentPhone: true, parentPhoneVerifiedAt: true },
+      select: { parentEmail: true, parentPhone: true, whatsappPhone: true, parentPhoneVerifiedAt: true },
     });
-    if (!user?.parentPhone || user.parentPhone.replace(/\D/g, '') !== parentPhone) {
-      return NextResponse.json({ error: 'Parent phone mismatch' }, { status: 400 });
-    }
+
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     if (user.parentPhoneVerifiedAt) {
       const res = NextResponse.json({ ok: true, alreadyVerified: true });
       logger.logAPI(req, res, { className: 'api.auth.parent.verify-otp', methodName: 'POST' }, start);
       return res;
     }
 
+    const parentEmail = user.parentEmail?.trim() ?? '';
+    const whatsappPhone = user.whatsappPhone?.trim() ?? '';
+    const parentPhone = user.parentPhone?.trim() ?? '';
+    const otpKey = deriveOtpKey(whatsappPhone, parentPhone, parentEmail);
     const codeHash = hashOtp(code);
+
     const record = await prisma.phoneOtp.findFirst({
       where: {
-        phone: parentPhone,
+        phone: otpKey,
         codeHash,
         consumed: false,
         expiresAt: { gte: new Date() },
@@ -73,4 +94,3 @@ export async function POST(req: NextRequest) {
     return res;
   }
 }
-

@@ -153,17 +153,21 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       missingFields.push('age')
     }
 
-    // Under DPDP_MINOR_AGE (13): parent email required for legal consent (DPDP Act 2023)
-    // Age 13-17: parent email is useful but not legally required -- do not block profile completion
-    if (Number.isFinite(ageNum) && ageNum >= 1 && ageNum < DPDP_MINOR_AGE) {
-      if (!user.parentEmail || String(user.parentEmail).trim() === '') {
-        missingFields.push('parent_email')
-      }
+    // All students: at least one parent contact channel required (email OR whatsappPhone/parentPhone).
+    // This ensures notifications (session updates, nudges) can always reach the parent.
+    const hasParentEmail = !!(user.parentEmail && String(user.parentEmail).trim().includes('@'))
+    const hasParentPhone = !!(
+      (user.whatsappPhone && user.whatsappPhone.replace(/\D/g, '').length >= 10) ||
+      (user.parentPhone && user.parentPhone.replace(/\D/g, '').length >= 10)
+    )
+    if (!hasParentEmail && !hasParentPhone) {
+      missingFields.push('parent_email')
     }
 
-    // Under DPDP_MINOR_AGE: need parent phone for OTP verification (collected and set via send-otp in onboarding)
+    // Under DPDP_MINOR_AGE (13): OTP confirmation via parent channel is required (DPDP Act 2023).
+    // parentPhoneVerifiedAt is used as the "parent channel verified" flag regardless of channel used.
     if (Number.isFinite(ageNum) && ageNum >= 1 && ageNum < DPDP_MINOR_AGE) {
-      if (!user.parentPhone || String(user.parentPhone).trim() === '') {
+      if (!user.parentPhoneVerifiedAt) {
         missingFields.push('parent_phone')
       }
     }

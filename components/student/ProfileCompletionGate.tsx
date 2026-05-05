@@ -97,7 +97,8 @@ function getInitialStep(
     subjects: !Array.isArray(iv.subjects) || iv.subjects.length === 0,
     // whatsappPhone is optional -- never blocks step progression
     whatsappPhone: false,
-    parentEmail: !iv.parentEmail,
+    // parentEmail step: blocked only if neither email nor whatsappPhone is on file
+    parentEmail: !iv.parentEmail && !iv.whatsappPhone,
     parentPhone: !iv.parentPhoneVerified,
   };
   for (let i = 0; i < steps.length; i++) {
@@ -116,10 +117,8 @@ export default function ProfileCompletionGate({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  // Parent contact: parentEmail is required for all students (at least one notification channel needed).
-  // parentPhone OTP step is only shown for under-DPDP_MINOR_AGE since it was part of DPDP minor consent flow.
+  // parentEmail step shown for all students; parentPhone (OTP) step for DPDP minors only.
   const ageNum = initialValues?.age ?? null;
-  const parentEmailRequired = true; // all students must provide at least one parent contact
   const showParentEmail = true;
   const showParentPhone = ageNum !== null && ageNum < DPDP_MINOR_AGE;
 
@@ -142,6 +141,13 @@ export default function ProfileCompletionGate({
   const [parentEmailError, setParentEmailError] = useState('');
   const [parentPhone, setParentPhone] = useState(initialValues?.parentPhone ?? '');
   const [parentPhoneError, setParentPhoneError] = useState('');
+  // OTP state for DPDP-minor parent verification step
+  const [otpSent, setOtpSent] = useState(initialValues?.parentPhoneVerified ?? false);
+  const [otpVerified, setOtpVerified] = useState(initialValues?.parentPhoneVerified ?? false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpSentTo, setOtpSentTo] = useState<{ email?: string; whatsapp?: string }>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -181,9 +187,7 @@ export default function ProfileCompletionGate({
       return parentEmail.trim().includes('@');
     }
     if (currentStepKey === 'parentPhone') {
-      // Just collect the number (no OTP -- OTP was SMS-based and removed).
-      if (!parentPhone.trim()) return true; // optional
-      return isValidIndiaPhone(parentPhone);
+      return otpVerified;
     }
     return false;
   }
@@ -195,6 +199,49 @@ export default function ProfileCompletionGate({
       if (prev.length >= 6) return prev;
       return [...prev, slug];
     });
+  }
+
+  async function handleSendOtp() {
+    if (otpBusy) return;
+    setOtpBusy(true);
+    setOtpError('');
+    try {
+      const res = await fetch('/api/auth/parent/send-otp', { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setOtpError((json?.error as string | undefined) ?? "Couldn't send code. Please try again.");
+        return;
+      }
+      setOtpSentTo(json.sentTo ?? {});
+      setOtpSent(true);
+    } catch {
+      setOtpError('Network error. Check your connection and try again.');
+    } finally {
+      setOtpBusy(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (otpBusy || otpCode.length < 4) return;
+    setOtpBusy(true);
+    setOtpError('');
+    try {
+      const res = await fetch('/api/auth/parent/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: otpCode }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setOtpError((json?.error as string | undefined) ?? 'Invalid or expired code. Please try again.');
+        return;
+      }
+      setOtpVerified(true);
+    } catch {
+      setOtpError('Network error. Check your connection and try again.');
+    } finally {
+      setOtpBusy(false);
+    }
   }
 
   async function handleSubmit() {
@@ -222,9 +269,6 @@ export default function ProfileCompletionGate({
       if (showParentEmail && parentEmail.trim()) {
         payload.parent_email = parentEmail.trim();
       }
-      if (showParentPhone && parentPhone.trim() && isValidIndiaPhone(parentPhone)) {
-        payload.parent_phone = parentPhone.trim();
-      }
       const res = await fetch('/api/user/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,12 +295,6 @@ export default function ProfileCompletionGate({
 
   function handleContinue() {
     if (!canAdvance() || saving) return;
-    if (currentStepKey === 'parentEmail') {
-      if (parentEmailRequired && !parentEmail.trim().includes('@')) {
-        setParentEmailError('Enter a valid parent email address');
-        return;
-      }
-    }
     if (isLastStep) {
       void handleSubmit();
     } else {
@@ -291,7 +329,7 @@ export default function ProfileCompletionGate({
     schoolName: { label: 'School', value: schoolName.trim() !== '' ? schoolName.trim() : '' },
     whatsappPhone: { label: 'WhatsApp', value: whatsappPhone.trim() !== '' ? 'Added' : '' },
     parentEmail: { label: 'Parent email', value: parentEmail ? 'Added' : '' },
-    parentPhone: { label: 'Parent phone', value: parentPhone.trim() ? 'Added' : '' },
+    parentPhone: { label: 'Parent verified', value: otpVerified ? 'Verified' : '' },
   };
   const mainDoneCount = MAIN_STEPS.filter((s) => stepLabels[s].value !== '').length;
 
@@ -682,28 +720,97 @@ export default function ProfileCompletionGate({
             </section>
           )}
 
-          {/* ── Parent Phone ──────────────────────────────────────────── */}
+          {/* ── Parent Verification OTP (DPDP minors only) ────────────── */}
           {currentStepKey === 'parentPhone' && (
             <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                {"Parent's mobile number"}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                {"Optional -- we send progress updates and session summaries via WhatsApp."}
-              </p>
-              <label
-                htmlFor="gate-parent-phone"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Parent mobile number
-                <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
-              </label>
-              <IndiaPhoneInput
-                id="gate-parent-phone"
-                value={parentPhone}
-                onChange={(val) => { setParentPhone(val); if (parentPhoneError) setParentPhoneError(''); }}
-                error={parentPhoneError}
-              />
+              {otpVerified ? (
+                <>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+                    Parent verified
+                  </h3>
+                  <div className="flex items-center gap-3 rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-4 py-3">
+                    <span className="w-8 h-8 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-white" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400">
+                      Parent contact confirmed
+                    </p>
+                  </div>
+                </>
+              ) : !otpSent ? (
+                <>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                    Confirm parent contact
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    {"We'll send a one-time code to your parent's email or WhatsApp to confirm they are aware of your account."}
+                  </p>
+                  <div className="rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-3 mb-6 space-y-1">
+                    {parentEmail && (
+                      <p className="text-sm text-[#534AB7] dark:text-indigo-300">
+                        📧 {parentEmail}
+                      </p>
+                    )}
+                    {(whatsappPhone || parentPhone) && isValidIndiaPhone(whatsappPhone || parentPhone) && (
+                      <p className="text-sm text-[#534AB7] dark:text-indigo-300">
+                        💬 +{(whatsappPhone || parentPhone).replace(/\D/g, '')}
+                      </p>
+                    )}
+                  </div>
+                  {otpError && (
+                    <p role="alert" className="mb-3 text-xs text-[#E24B4A]">{otpError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { void handleSendOtp(); }}
+                    disabled={otpBusy}
+                    className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+                  >
+                    {otpBusy ? 'Sending...' : 'Send verification code →'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                    Enter the verification code
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {[
+                      otpSentTo.email ? `📧 ${otpSentTo.email}` : '',
+                      otpSentTo.whatsapp ? `💬 ${otpSentTo.whatsapp}` : '',
+                    ].filter(Boolean).join(' and ')}
+                  </p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); if (otpError) setOtpError(''); }}
+                    placeholder="123456"
+                    className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors tracking-widest text-center font-mono mb-3"
+                  />
+                  {otpError && (
+                    <p role="alert" className="mb-3 text-xs text-[#E24B4A]">{otpError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { void handleVerifyOtp(); }}
+                    disabled={otpBusy || otpCode.length < 4}
+                    className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+                  >
+                    {otpBusy ? 'Verifying...' : 'Verify code →'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setOtpSent(false); setOtpCode(''); setOtpError(''); }}
+                    className="w-full min-h-[44px] text-xs text-gray-500 dark:text-gray-400 hover:text-[#534AB7] dark:hover:text-indigo-300 text-center py-2"
+                  >
+                    Resend code
+                  </button>
+                </>
+              )}
             </section>
           )}
 
