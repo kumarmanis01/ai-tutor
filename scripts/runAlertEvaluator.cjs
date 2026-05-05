@@ -4,7 +4,10 @@
    - Checks TelemetrySample for `queue.depth.value` over 5m and 30m windows
    - Creates or updates SystemAlert rows idempotently
 */
-const { prisma } = require('../lib/prisma');
+// Use PrismaClient directly to avoid TypeScript source dependency at runtime.
+// lib/prisma.ts cannot be required from a .cjs file without ts-node.
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 
 (async () => {

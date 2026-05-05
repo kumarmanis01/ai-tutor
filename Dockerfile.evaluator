@@ -1,0 +1,56 @@
+# Dockerfile.evaluator
+#
+# FILE OBJECTIVE:
+# - Build a minimal production image for the one-off alert evaluator script.
+# - Runs build/runAlertEvaluator.cjs against a live Postgres database via DATABASE_URL.
+#
+# LINKED UNIT TEST:
+# - tests/unit/scripts/runAlertEvaluator.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - /docs/COPILOT_GUARDRAILS.md
+# - .github/copilot-instructions.md
+#
+# EDIT LOG:
+# - 2026-05-05T00:00:00Z | copilot | created to fix missing Dockerfile referenced by ci-evaluator-image.yml
+
+# Stage 1: install production dependencies and generate Prisma client
+FROM node:20-slim AS deps
+WORKDIR /app
+
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+ENV HUSKY=0
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+# Install only production dependencies to keep the image lean
+RUN npm ci --omit=dev --ignore-scripts
+
+COPY prisma ./prisma
+# Generate the Prisma client into node_modules
+RUN npx prisma generate
+
+# Stage 2: runtime image
+FROM node:20-slim AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy production node_modules (including generated @prisma/client)
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy the evaluator script (built by CI before docker build)
+COPY build ./build
+
+# The evaluator runs once and exits; no long-running server
+CMD ["node", "build/runAlertEvaluator.cjs"]

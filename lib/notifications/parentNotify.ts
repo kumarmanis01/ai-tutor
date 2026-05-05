@@ -6,6 +6,16 @@
  * - Called from workers/listeners after diagnostic complete, plan generated,
  *   session complete, session missed, and auth (welcome) events.
  * - Channels: email + WhatsApp only. No SMS.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/notifications/parentNotify.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-05T00:00:00Z | copilot | remove unsupported 'from' property from sendMailSafe call (TS2353 fix)
  */
 
 import { prisma } from '@/lib/prisma';
@@ -142,7 +152,7 @@ async function sendEmailForEvent(
       return;
     }
 
-    await sendMailSafe({ from: MAIL_FROM, to: parentEmail, subject, html });
+    await sendMailSafe({ to: parentEmail, subject, html });
   } catch (err) {
     logger.error('[parentNotify] email send failed', {
       className: 'parentNotify',
