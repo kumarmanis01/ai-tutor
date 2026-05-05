@@ -34,6 +34,8 @@ describe('processDiagnosticBootstrap', () => {
     jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: warnMock, error: jest.fn() } }))
     jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }))
     jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn() }))
+    jest.doMock('@/lib/notifications/parentNotify.js', () => ({ notifyParent: jest.fn().mockResolvedValue(undefined), DEFAULT_DASHBOARD_URL: 'https://spinzyacademy.com/parent/dashboard' }))
+    jest.doMock('@/lib/constants/mail.js', () => ({ PARENT_NOTIF_EVENTS: { DIAGNOSTIC_COMPLETE: 'diagnostic_complete', PLAN_GENERATED: 'plan_generated' } }))
 
     const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
 
@@ -78,6 +80,8 @@ describe('processDiagnosticBootstrap', () => {
     // Supply more answers than minValid so we are NOT in partial-abandon mode
     jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }))
     jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/notifications/parentNotify.js', () => ({ notifyParent: jest.fn().mockResolvedValue(undefined), DEFAULT_DASHBOARD_URL: 'https://spinzyacademy.com/parent/dashboard' }))
+    jest.doMock('@/lib/constants/mail.js', () => ({ PARENT_NOTIF_EVENTS: { DIAGNOSTIC_COMPLETE: 'diagnostic_complete', PLAN_GENERATED: 'plan_generated' } }))
 
     const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
 
@@ -126,6 +130,8 @@ describe('processDiagnosticBootstrap', () => {
     jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
     jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }))
     jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/notifications/parentNotify.js', () => ({ notifyParent: jest.fn().mockResolvedValue(undefined), DEFAULT_DASHBOARD_URL: 'https://spinzyacademy.com/parent/dashboard' }))
+    jest.doMock('@/lib/constants/mail.js', () => ({ PARENT_NOTIF_EVENTS: { DIAGNOSTIC_COMPLETE: 'diagnostic_complete', PLAN_GENERATED: 'plan_generated' } }))
 
     const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
 
@@ -166,6 +172,8 @@ describe('processDiagnosticBootstrap', () => {
     jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
     jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }))
     jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/notifications/parentNotify.js', () => ({ notifyParent: jest.fn().mockResolvedValue(undefined), DEFAULT_DASHBOARD_URL: 'https://spinzyacademy.com/parent/dashboard' }))
+    jest.doMock('@/lib/constants/mail.js', () => ({ PARENT_NOTIF_EVENTS: { DIAGNOSTIC_COMPLETE: 'diagnostic_complete', PLAN_GENERATED: 'plan_generated' } }))
 
     const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
 

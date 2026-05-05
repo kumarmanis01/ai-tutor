@@ -41,23 +41,19 @@ async function notifyParentOnSessionComplete(studentId: string, sessionId: strin
   const session = await prisma.structuredSession.findUnique({
     where: { id: sessionId },
     select: {
-      concept: {
+      topic: {
         select: {
           name: true,
-          topic: {
-            select: {
-              chapter: {
-                select: { subject: { select: { name: true } } },
-              },
-            },
+          chapter: {
+            select: { subject: { select: { name: true } } },
           },
         },
       },
     },
   });
 
-  const topicName = session?.concept?.name ?? 'a topic';
-  const subjectName = session?.concept?.topic?.chapter?.subject?.name ?? 'your subject';
+  const topicName = session?.topic?.name ?? 'a topic';
+  const subjectName = session?.topic?.chapter?.subject?.name ?? 'your subject';
   const sessionDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
   await notifyParent(studentId, {

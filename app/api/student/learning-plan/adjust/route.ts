@@ -40,6 +40,12 @@ async function isStudentBehind(planId: string, weeklyGoal: number, currentWeek: 
     return false;
   }
 
+  // Only apply the behind-target check on Wednesday or later (day >= 3).
+  // Early in the week a student simply hasn't had time to reach mid-week pace.
+  const dayOfWeek = new Date().getDay(); // 0 = Sun, 3 = Wed, 6 = Sat
+  const isPastMidWeek = dayOfWeek >= 3;
+  if (!isPastMidWeek) return false;
+
   const completedThisWeek = await prisma.learningPlanItem.count({
     where: { planId, weekNumber: currentWeek, status: 'COMPLETED' },
   });

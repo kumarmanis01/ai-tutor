@@ -153,6 +153,11 @@ export async function GET(req: NextRequest, { params }: Params) {
       const firstAmber = chapterResults.find((c) => c.band === 'AMBER');
       if (firstAmber) recommendedStartChapterId = firstAmber.chapterId;
     }
+    // Final fallback: all chapters GREEN -- recommend the lowest-mastery chapter.
+    if (!recommendedStartChapterId && chapterResults.length > 0) {
+      const lowestMastery = chapterResults.reduce((min, c) => c.masteryPct < min.masteryPct ? c : min);
+      recommendedStartChapterId = lowestMastery.chapterId;
+    }
 
     // Mark recommended chapter.
     for (const ch of chapterResults) {

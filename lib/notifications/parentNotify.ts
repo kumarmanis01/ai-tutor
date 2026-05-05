@@ -10,6 +10,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { sendMailSafe } from '@/lib/mailer';
+import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 import { logger } from '@/lib/logger';
 import {
   MAIL_FROM,
@@ -162,7 +163,6 @@ async function sendWhatsAppForEvent(
   // For events without an approved template yet, we fall back to a short text
   // message (valid only within the 24-hour customer-service window).
   try {
-    const { sendWhatsAppText } = await import('@/lib/whatsapp/sender');
     let text: string;
 
     if (event === PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE) {
@@ -181,7 +181,7 @@ async function sendWhatsAppForEvent(
       return;
     }
 
-    await sendWhatsAppText(whatsappPhone, text);
+    await sendWhatsAppSafe(whatsappPhone, text);
   } catch (err) {
     logger.error('[parentNotify] whatsapp send failed', {
       className: 'parentNotify',
