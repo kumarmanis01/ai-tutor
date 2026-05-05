@@ -34,7 +34,7 @@ export const UserRole = {
 
 export type UserRole = typeof UserRole[keyof typeof UserRole]
 
-export default { PrismaClient, Prisma, UserRole }
+export default { PrismaClient, Prisma, UserRole, ConsentScope }
 
 // Minimal enum-like exports used in tests. These mirror the generated
 // @prisma/client enums so unit tests that import them from

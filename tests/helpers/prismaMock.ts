@@ -84,6 +84,14 @@ export const prismaMock = {
   learningPlanItem: mockModel(),
   mockExamSectionAttempt: mockModel(),
   paymentOrder: mockModel(),
+  question: mockModel(),
+  aITutorTurnLog: mockModel(),
+  analyticsEvent: mockModel(),
+  installment: mockModel(),
+  message: mockModel(),
+  payment: mockModel(),
+  systemAlert: mockModel(),
+  test: mockModel(),
 };
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */

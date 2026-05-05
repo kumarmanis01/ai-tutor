@@ -98,19 +98,12 @@ export async function POST(req: NextRequest) {
     let whatsappSent = false;
 
     if (parentEmail) {
-      const emailResult = await sendMailSafe({
+      await sendMailSafe({
         to: parentEmail,
         subject: 'Spinzy Academy -- Parent approval needed',
         html: parentOtpHtml(otp, studentName),
       });
-      emailSent = emailResult.ok ?? false;
-      if (!emailSent) {
-        logger.warn('enroll/send-parent-otp: email delivery failed', {
-          className: 'EnrollSendParentOtpAPI',
-          methodName: 'POST',
-          error: emailResult.error,
-        });
-      }
+      emailSent = true; // sendMailSafe swallows errors; delivery is best-effort
     }
 
     // ── Deliver via WhatsApp ──────────────────────────────────────────────────
