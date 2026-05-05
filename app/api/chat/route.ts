@@ -17,10 +17,17 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { subjectPrompts } from '@/lib/subjectEngines';
 import { isPremiumUser } from '@/lib/subscription';
+import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium';
 import { checkProfanity } from '@/lib/guardrails';
 import { SessionUser } from '@/lib/types';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { parse as parseAcceptLanguage } from 'accept-language-parser';
+
+function isMissingFreeQuestionColumnError(error: unknown): boolean {
+  const err = error as { code?: string; message?: unknown };
+  const message = String(err?.message ?? '');
+  return err?.code === 'P2022' && message.includes('todaysFreeQuestionsCount');
+}
 
 export async function POST(req: Request) {
   logApiUsage('/api/chat', 'POST');
@@ -56,13 +63,24 @@ export async function POST(req: Request) {
     const premium = await isPremiumUser(userId);
     if (!premium) {
       const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
-      const txResult = await prisma.$transaction(async (tx) => {
-        const user = await tx.user.findUnique({ where: { id: userId } });
-        if (!user) return { notFound: true } as const;
-        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) return { limitReached: true } as const;
-        const updated = await tx.user.update({ where: { id: userId }, data: { todaysFreeQuestionsCount: { decrement: 1 } } });
-        return { updated } as const;
-      });
+      let txResult: { notFound: true } | { limitReached: true } | { updated: { todaysFreeQuestionsCount: number | null } };
+      try {
+        txResult = await prisma.$transaction(async (tx) => {
+          const user = await tx.user.findUnique({ where: { id: userId } });
+          if (!user) return { notFound: true } as const;
+          if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) return { limitReached: true } as const;
+          const updated = await tx.user.update({ where: { id: userId }, data: { todaysFreeQuestionsCount: { decrement: 1 } } });
+          return { updated } as const;
+        });
+      } catch (error) {
+        if (!isMissingFreeQuestionColumnError(error)) throw error;
+        const status = await checkFreeTierCap(userId);
+        if (!status.allowed) {
+          return NextResponse.json({ error: 'free_limit_reached', message: 'Free limit reached.' }, { status: 403 });
+        }
+        await incrementFreeTierUsage(userId);
+        txResult = { updated: { todaysFreeQuestionsCount: Math.max(0, status.sessionsRemaining - 1) } };
+      }
       if ('notFound' in txResult) return NextResponse.json({ error: 'not_found' }, { status: 404 });
       if ('limitReached' in txResult) return NextResponse.json({ error: 'free_limit_reached', message: 'Free limit reached.' }, { status: 403 });
     }
