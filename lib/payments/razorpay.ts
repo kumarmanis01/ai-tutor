@@ -145,12 +145,14 @@ export async function activateSubscription(
           },
           update: {
             sessionsUsed: 0,
+            chapterTestsUsed: 0,
           },
           create: {
             studentId,
             subjectScope: '__ALL__',
             periodStart: now,
             sessionsUsed: 0,
+            chapterTestsUsed: 0,
           },
         })
         .catch(() => {})
