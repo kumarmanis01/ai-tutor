@@ -14,9 +14,11 @@
  * EDIT LOG:
  * - 2026-02-01 | claude | created scheduler for ignored recommendations job
  * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
+ * - 2026-05-05T12:30:00Z | copilot | fix: replace MONTHLY_INTERVAL_MS (overflows 32-bit timer) with msUntilNextMonthlyRun() in self-reschedule
  */
 
 import { logger } from '../lib/logger.js';
+import { safeSetTimeout } from '../lib/safeSetTimeout.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
@@ -54,7 +56,8 @@ const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DATA_DELETION_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const MONTHLY_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // approx 30 days
+// NOTE: MONTHLY_INTERVAL_MS (2_592_000_000) was removed — it exceeds Node.js 32-bit
+// setTimeout limit and caused TimeoutOverflowWarning. Use msUntilNextMonthlyRun() instead.
 const WEEKLY_RATING_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_LATENCY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DAILY_QUESTION_GEN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -476,8 +479,10 @@ async function runMisconceptionPrevalenceJob() {
     logger.error('scheduler.misconceptionPrevalence.error', { error: err instanceof Error ? err.message : String(err) });
   }
 
-  // Schedule next run in ~30 days (approximate monthly cadence)
-  setTimeout(runMisconceptionPrevalenceJob, MONTHLY_INTERVAL_MS);
+  // safeSetTimeout is required here: msUntilNextMonthlyRun() can return up to ~31 days
+  // (~2.6 billion ms) which exceeds Node.js's 32-bit setTimeout limit (2,147,483,647 ms)
+  // and causes TimeoutOverflowWarning + clamping to 1 ms.
+  safeSetTimeout(runMisconceptionPrevalenceJob, msUntilNextMonthlyRun());
 }
 
 /**
@@ -599,9 +604,10 @@ export async function startScheduler() {
   setTimeout(runDataDeletionJob, delayDataDeletion);
 
   // Monthly misconception prevalence job (1st of next month at 04:00 UTC)
+  // safeSetTimeout used: delay can be up to ~31 days, exceeding Node.js 32-bit limit.
   const delayMonthlyMisconception = msUntilNextMonthlyRun(4)
   logger.info('scheduler.scheduled.misconceptionPrevalence', { firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString() })
-  setTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
+  safeSetTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
 
   // Weekly rating aggregation: Sunday 6 AM UTC
   const delayWeeklyRating = msUntilNextWeeklyRun(0, 6)
