@@ -320,7 +320,7 @@ export default function StudentOnboardingPage() {
             <input
               type="text"
               inputMode="numeric"
-              pattern="\d{6}"
+              pattern="[0-9]{6}"
               maxLength={6}
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
