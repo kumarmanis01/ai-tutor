@@ -198,7 +198,7 @@ export default async function DiagnosticPage({
 
   // Resume partial state + pending subject list in parallel.
   // pendingSubjects: subjects the student enrolled in (user.subjects) that don't yet
-  // have a completed diagnostic — used for the post-submit nudge toast.
+  // have a completed diagnostic -- used for the post-submit nudge toast.
   // Falls back to all active subjects for the grade/board when no enrolled list exists.
   const completedSubjectIdSet = new Set(completedDiagnostics.map((d) => d.subjectId));
 
@@ -224,7 +224,7 @@ export default async function DiagnosticPage({
           grade: Number(student.grade),
           board: { slug: { equals: student.board!, mode: 'insensitive' } },
         },
-        // Only include subjects the student has enrolled in — if no enrolled list
+        // Only include subjects the student has enrolled in -- if no enrolled list
         // exists fall back to all subjects (legacy accounts without subject selection).
         ...(enrolledSubjectNames && enrolledSubjectNames.length > 0
           ? { OR: [{ name: { in: enrolledSubjectNames } }, { slug: { in: enrolledSubjectNames } }] }
