@@ -54,11 +54,11 @@ The student is the primary user and core value recipient of the platform. Every 
 
 ### F-STU-001 — Registration & Account Setup (MVP)
 
-Student creates an account with academic profile. Parent linkage enforced for students under 13.
+Student creates an account with academic profile. Parent linkage enforced for students under DPDP Age.
 
 - **AC-01 (MUST):** Student registers via mobile OTP, Google OAuth, or email + password.
 - **AC-02 (MUST):** Collect Name, Age, Grade (1–12), Board (CBSE/ICSE/State), Medium of instruction.
-- **AC-03 (MUST):** If age < 13: parent mobile mandatory; parent OTP verification required before activation.
+- **AC-03 (MUST):** If age < DPDP Age: parent mobile mandatory; parent OTP verification required before activation.
 - **AC-04 (MUST):** Profile marked INCOMPLETE until Board + Grade + Medium + ≥1 subject selected; incomplete profile blocks learning features.
 - **AC-05 (MUST):** Student can select up to 6 subjects; core subjects pre-selected by Grade+Board.
 - **AC-06 (MUST):** Grade is immutable post-registration without admin approval.
