@@ -12,9 +12,11 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | align age gate threshold from <18 to <13 per spec
+ * - 2026-05-05T00:00:00Z | copilot | replace hardcoded age threshold with DPDP_MINOR_AGE constant
  */
 
 import { prisma } from '@/lib/prisma'
+import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 
 export interface ParentGateResult {
   required: boolean
@@ -23,18 +25,17 @@ export interface ParentGateResult {
 }
 
 /**
- * Gate required when age is known and < 13 (DPDP / product policy).
+ * Gate required when age is known and < DPDP_MINOR_AGE (DPDP / product policy).
  * Null/unknown age = no gate.
  */
 function requiresGateByAge(age: number | null | undefined): boolean {
   if (age == null || !Number.isFinite(age)) return false
-  // Product decision: parents required for children under 13.
-  return age < 13
+  return age < DPDP_MINOR_AGE
 }
 
 /**
  * Check if the student requires and has completed parent verification.
- * Required when: User.age indicates age < 18, OR User.requiresParentVerification = true.
+ * Required when: User.age indicates age < DPDP_MINOR_AGE, OR User.requiresParentVerification = true.
  * Verified when: User.parentVerifiedAt is non-null.
  * Null/unknown age = no age-based gate (no DOB-style ambiguity).
  * Never throws -- returns { required: true, verified: false } on DB error.

@@ -22,6 +22,7 @@
  *
  * EDIT LOG:
  * - 2026-05-05T00:00:00Z | copilot | fix: prefix unused parentPhone/parentPhoneError state vars with _ (lint)
+ * - 2026-05-05T00:00:00Z | copilot | fix: replace hardcoded under-13 copy with DPDP_MINOR_AGE constant
  */
 
 import React, { useEffect, useState } from 'react';
@@ -74,10 +75,10 @@ function getMandatorySubjects(board: string, grade: number): string[] {
 
 // Steps in order (includes optional `schoolName` and `whatsappPhone` between `subjects` and parent steps).
 // Parent steps are conditional on age < DPDP_MINOR_AGE.
-type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'schoolName' | 'whatsappPhone' | 'parentEmail' | 'parentPhone';
+type StepKey = 'language' | 'board' | 'grade' | 'age' | 'subjects' | 'schoolName' | 'whatsappPhone' | 'parentEmail' | 'parentPhone';
 
 function buildSteps(showParentEmail: boolean, showParentPhone: boolean): StepKey[] {
-  const steps: StepKey[] = ['language', 'board', 'grade', 'subjects', 'schoolName', 'whatsappPhone'];
+  const steps: StepKey[] = ['language', 'board', 'grade', 'age', 'subjects', 'schoolName', 'whatsappPhone'];
   if (showParentEmail) steps.push('parentEmail');
   if (showParentPhone) steps.push('parentPhone');
   return steps;
@@ -97,6 +98,7 @@ function getInitialStep(
     language: !iv.language,
     board: !iv.board,
     grade: !iv.grade,
+    age: iv.age === null || iv.age === undefined,
     subjects: !Array.isArray(iv.subjects) || iv.subjects.length === 0,
     // whatsappPhone is optional -- never blocks step progression
     whatsappPhone: false,
@@ -121,9 +123,10 @@ export default function ProfileCompletionGate({
   const [mounted, setMounted] = useState(false);
 
   // parentEmail step shown for all students; parentPhone (OTP) step for DPDP minors only.
-  const ageNum = initialValues?.age ?? null;
+  // ageInput is declared here (before steps/showParentPhone) so showParentPhone reacts when the user enters their age.
+  const [ageInput, setAgeInput] = useState<number | null>(() => initialValues?.age ?? null);
   const showParentEmail = true;
-  const showParentPhone = ageNum !== null && ageNum < DPDP_MINOR_AGE;
+  const showParentPhone = ageInput !== null && ageInput < DPDP_MINOR_AGE;
 
   const steps = buildSteps(showParentEmail, showParentPhone);
 
@@ -176,6 +179,7 @@ export default function ProfileCompletionGate({
     if (currentStepKey === 'language') return language !== '';
     if (currentStepKey === 'board') return board !== '';
     if (currentStepKey === 'grade') return grade > 0;
+    if (currentStepKey === 'age') return ageInput !== null && ageInput >= 5 && ageInput <= 25;
     if (currentStepKey === 'subjects') return subjects.length > 0;
     if (currentStepKey === 'schoolName') return true; // optional
     if (currentStepKey === 'whatsappPhone') {
@@ -264,6 +268,7 @@ export default function ProfileCompletionGate({
         class_grade: grade,
         subjects,
       };
+      if (ageInput !== null) payload.age = ageInput;
       if (schoolName.trim()) payload.school_name = schoolName.trim();
       // whatsappPhone is immutable after first save; only include when not already locked
       if (!whatsappPhoneLocked && whatsappPhone.trim()) {
@@ -325,6 +330,7 @@ export default function ProfileCompletionGate({
       value: BOARD_OPTIONS.find((b) => b.slug === board)?.label ?? '',
     },
     grade: { label: 'Class', value: grade > 0 ? `Class ${grade}` : '' },
+    age: { label: 'Age', value: ageInput !== null ? `${ageInput} years` : '' },
     subjects: {
       label: 'Subjects',
       value: subjects.length > 0 ? `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}` : '',
@@ -334,6 +340,9 @@ export default function ProfileCompletionGate({
     parentEmail: { label: 'Parent email', value: parentEmail ? 'Added' : '' },
     parentPhone: { label: 'Parent verified', value: otpVerified ? 'Verified' : '' },
   };
+
+  // parentEmail is required when no valid whatsappPhone has been provided.
+  const parentEmailRequired = !(whatsappPhone.trim() && isValidIndiaPhone(whatsappPhone));
   const mainDoneCount = MAIN_STEPS.filter((s) => stepLabels[s].value !== '').length;
 
   function isStepDone(sk: StepKey): boolean {
@@ -527,6 +536,44 @@ export default function ProfileCompletionGate({
             </section>
           )}
 
+          {/* ── Age ──────────────────────────────────────────────────── */}
+          {currentStepKey === 'age' && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                How old are you?
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Helps Vidya personalise your learning pace and check parental consent requirements.
+              </p>
+              <div>
+                <label
+                  htmlFor="gate-age"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  Your age <span className="text-[#E24B4A]">*</span>
+                </label>
+                <input
+                  id="gate-age"
+                  type="number"
+                  min={5}
+                  max={25}
+                  value={ageInput ?? ''}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setAgeInput(Number.isFinite(val) ? val : null);
+                  }}
+                  placeholder="e.g. 14"
+                  className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+                />
+                {ageInput !== null && (ageInput < 5 || ageInput > 25) && (
+                  <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">
+                    Please enter an age between 5 and 25.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* ── Subjects ──────────────────────────────────────────────── */}
           {currentStepKey === 'subjects' && (
             <section>
@@ -687,7 +734,7 @@ export default function ProfileCompletionGate({
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 {parentEmailRequired
-                  ? "Required for students under 13 -- we send weekly progress reports."
+                  ? `Required for students under ${DPDP_MINOR_AGE} -- we send weekly progress reports.`
                   : "Add a parent email to share your progress reports."}
               </p>
               <div>
