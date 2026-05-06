@@ -1,1119 +1,304 @@
-
-<!--
-FILE OBJECTIVE:
-- Student actor approach document — requirements and acceptance criteria for student-facing features (MVP).
-
-LINKED UNIT TEST:
-- tests/unit/docs/01_student.spec.ts
-
-COPILOT INSTRUCTIONS FOLLOWED:
-- /docs/COPILOT_GUARDRAILS.md
-- /docs/ENGINEERING_PRACTICES.md
-- /.github/copilot-instructions.md
-
-EDIT LOG:
-- 2026-04-16T12:00:00Z | copilot | added Production Run & Deployment section; updated header
-- 2026-04-16T12:50:00Z | copilot | add Phase 2 backlog: admin-triggered mock seeding (API + worker), audit logs, admin UI, tests
-- 2026-04-17T10:30:00Z | copilot | add Phase 2 referral backlog: referral dashboard UI, in-app notifications for voided rewards, fraud review tooling, E2E billing tests
-- 2026-05-04T00:00:00Z | staff-engineer | audit F-STU-020/021/022/023/030/031/032: add Status column to all ACs; all 43 ACs marked with implementation evidence
-- 2026-05-04T00:00:00Z | copilot | align header field names and instruction paths with engineering template
--->
-
 AI HOME TUTOR PLATFORM
 Student Actor
 Approach Document — Full Lifecycle Feature Specification
 
-
-Actor
-Document Version
-Scope
-Stack
-Student
-1.0 — MVP
-MVP Phase 1 — ~1K concurrent
-Node.js + TS + Prisma + Neon + React
-
+Actor	Document Version	Scope	Stack
+Student	1.0 — MVP	MVP Phase 1 — ~1K concurrent	Node.js + TS + Prisma + Neon + React
 
 CONFIDENTIAL — FOR INTERNAL REVIEW ONLY
+
 
 1. Overview
 The student is the primary user and core value recipient of the platform. Every design decision is optimised for three outcomes: measurable learning improvement, sustained daily engagement, and board exam performance. The student interacts exclusively through the React PWA on mobile or desktop.
 
-NORTH STAR
-Weekly Active Learning Sessions per Paid Student > 5. Every feature is evaluated against this metric before building.
-
+NORTH STAR	Weekly Active Learning Sessions per Paid Student > 5. Every feature is evaluated against this metric before building.
 
 1.1 Student Personas — MVP Scope
-Persona
-Grade
-Board
-Primary Pain Point
-Board Exam Aspirant
-9–10
-CBSE / ICSE
-No affordable tutor. Needs exam-focused practice and gap analysis.
-Competitive Exam Preparer
-11–12
-CBSE
-Concept depth + speed. Current tutors teach to rote, not understanding.
-Self-Study Student
-6–8
-State Board
-No study structure. Skips chapters. Falls behind silently.
+Persona	Grade	Board	Primary Pain Point
+---
 
+# AI HOME TUTOR PLATFORM — Student Actor
 
-1.2 Student Journey Stages
-Stage
-Features
-Phase
-Onboarding
-Registration, Diagnostic, Learning Path, Language Preference
-MVP
-Core Learning
-Session Flow, AI Teach Mode, Whiteboard, Doubt Resolution
-MVP
-Assessment
-Chapter Tests, Mock Exams, Spaced Repetition, Readiness Score
-MVP
-Engagement
-Streaks, XP, Progress Reports, Dashboard
-MVP
-Advanced Engagement
-Leaderboard, Study Pods, Brain Games
-Phase 2
-Accessibility
-Voice Mode, Camera Input (OCR), Offline Mode
-Phase 2
+> CONFIDENTIAL — FOR INTERNAL REVIEW ONLY
 
+**Document Version:** 1.0 — MVP  
+**Scope:** MVP Phase 1 — ~1K concurrent  
+**Stack:** Node.js + TypeScript + Prisma + Neon + React
 
-## Phase 2 — Referral & Rewards (Deferred)
+## 1. Overview
 
-The backend billing and redemption logic for referrals is implemented in Phase 1 (see implementation summary in repo). The following items are intentionally deferred to Phase 2 (feature-flagged) to prioritise core learning flows and minimise launch scope:
+The student is the primary user and core value recipient of the platform. Every design decision is optimised for three outcomes: measurable learning improvement, sustained daily engagement, and board exam performance. The student interacts exclusively through the React PWA on mobile or desktop.
 
-- **Referral Dashboard (Student):** UI that shows total referrals sent, converted (paid), rewards earned, and pending rewards with pagination and filters.
-- **Referral Management (Creator):** In-app screens for copying/sharing referral code, viewing referral history, and contest/limits UI.
-- **In-App Notifications for Voided Rewards:** Rich client notifications and UI flows that surface voided/refunded referral events to both referrer and redeemer. (Currently implemented as best-effort push/email sends server-side.)
-- **Fraud Review Tooling:** Admin console for reviewing flagged referrals (same IP/device fingerprints), marking false positives, and manual reward adjustments.
-- **Comprehensive E2E Tests:** Full integration tests covering order creation with referral discount, webhook reconciliation, auto-redemption, and credit application to billing flows.
-- **Analytics & Reporting:** Aggregated metrics for referral conversion rates, abuse signals, and cohort analyses.
+**North Star:** Weekly Active Learning Sessions per Paid Student > 5 — every feature is evaluated against this metric.
 
-These items will be gated behind a feature flag and scheduled in Phase 2 once the core referral billing loop is validated in production.
+### 1.1 Student Personas — MVP Scope
 
+| Persona | Grade | Board | Primary Pain Point |
+|---|---:|---|---|
+| Board Exam Aspirant | 9–10 | CBSE / ICSE | No affordable tutor. Needs exam-focused practice and gap analysis. |
+| Competitive Exam Preparer | 11–12 | CBSE | Concept depth + speed. Current tutors teach to rote, not understanding. |
+| Self-Study Student | 6–8 | State Board | No study structure. Skips chapters. Falls behind silently. |
 
-2. Onboarding & Personalisation
-F-STU-001
-Registration & Account Setup
-MVP
+### 1.2 Student Journey Stages
+
+| Stage | Features | Phase |
+|---|---|---|
+| Onboarding | Registration, Diagnostic, Learning Path, Language Preference | MVP |
+| Core Learning | Session Flow, AI Teach Mode, Whiteboard, Doubt Resolution | MVP |
+| Assessment | Chapter Tests, Mock Exams, Spaced Repetition, Readiness Score | MVP |
+| Engagement | Streaks, XP, Progress Reports, Dashboard | MVP |
+| Advanced Engagement | Leaderboard, Study Pods, Brain Games | Phase 2 |
+| Accessibility | Voice Mode, Camera Input (OCR), Offline Mode | Phase 2 |
+
+## 2. Onboarding & Personalisation
+
+### F-STU-001 — Registration & Account Setup (MVP)
 
 Student creates an account with academic profile. Parent linkage enforced for students under 13.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Student registers via: mobile OTP, Google OAuth, or email + password
-MUST
-✅ DONE — email+password via POST /api/auth/signup; Google OAuth via NextAuth; mobile OTP via MSG91 /api/auth/parent/send-otp + /api/auth/parent/verify-otp
-AC-02
-System collects: Name, Age, Grade (1–12), Board (CBSE/ICSE/State), Medium of instruction (language)
-MUST
-✅ DONE — POST /api/user/onboarding collects all fields; checkProfileCompleteness validates name, grade (1-12), board, subjects, language, age
-AC-03
-If age < 13: parent mobile is mandatory. Parent OTP must be verified before account is activated. Student cannot bypass this.
-MUST
-✅ DONE — DPDP_MINOR_AGE=13 constant enforced in profileGuard.checkProfileCompleteness; parent phone required for age<13; /api/auth/parent/send-otp + verify-otp gate account activation
-AC-04
-Profile is marked INCOMPLETE until: Board + Grade + Medium + at least one subject are selected. INCOMPLETE profile blocks access to all learning features.
-MUST
-✅ DONE — isProfileComplete() in lib/student/profileGuard.ts; tutor/session/start checks profile; diagnostic guard checks profile
-AC-05
-Student can select up to 6 subjects. Core subjects pre-selected based on Grade + Board combination. Student can deselect non-core subjects.
-MUST
-✅ DONE — subject cap enforced in POST /api/user/onboarding (line: if subjects.length > 6 → 400); subject list validated against SubjectDef for student grade+board; core pre-selection is UI-side based on SubjectDef.slug returned by /api/hierarchy
-AC-06
-Grade is immutable post-registration without admin approval. Prevents diagnostic abuse and leaderboard gaming.
-MUST
-✅ DONE — PATCH /api/user/profile strips grade/board unconditionally; comment "grade/board immutable after first save" present
-AC-07
-All other profile fields are editable post-registration from the Profile screen.
-SHOULD
-✅ DONE — PATCH /api/user/profile accepts learningStyle, preferences, examDate; PATCH /api/user/language accepts UI language
-AC-08
-On successful registration: welcome email sent, onboarding checklist shown with 3 steps: Complete profile → Take diagnostic → Start first session.
-SHOULD
-✅ DONE — welcome email fired via sendMailSafe in /api/auth/signup and maybeSendWelcomeEmail in auth.ts; onboarding page at /student/onboarding renders the 3-step checklist
-
-
-F-STU-002
-Diagnostic Assessment
-MVP
-
-Per-subject adaptive baseline test. Establishes knowledge graph starting state. Mandatory before first session.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Diagnostic is mandatory for each subject before the first tutoring session begins. Cannot be skipped.
-MUST
-✅ DONE — hasDiagnosticForSubject() gate in lib/student/diagnosticGuard.ts; enforced in /api/tutor/session/start (returns 403 DIAGNOSTIC_REQUIRED)
-AC-02
-Test is adaptive: 15–25 questions per subject. Each next question's difficulty is determined by the previous answer using IRT (Item Response Theory 3PL model).
-MUST
-✅ DONE — lib/diagnostics/diagnosticQuestionService.ts + lib/diagnostics/selector.ts (IRT 3PL adaptive selection); lib/irt/irt.ts (theta computation)
-AC-03
-Questions span the full grade syllabus to detect both gaps and advanced mastery — not just weak areas.
-MUST
-✅ DONE — question pool drawn from all active TopicDef rows for the subject via SubjectDef → ChapterDef → TopicDef → Question hierarchy
-AC-04
-Time limit: 30 minutes soft cap. Student can pause and resume within 24 hours. After 24 hours the partial diagnostic is auto-submitted.
-MUST
-✅ DONE — /api/student/diagnostic/save-partial (pause to Redis); /api/student/diagnostic/resume (restore state); jobs/diagnosticAutoSubmit.ts (24h BullMQ job scheduled at start)
-AC-05
-On completion, system outputs: Mastery % per chapter, Grade-level placement (below / at / above grade), Recommended starting chapter.
-MUST
-✅ DONE — /api/student/diagnostic/submit returns placement via thetaToPlacement(); diagnosticBootstrapWorker seeds StudentConceptState.masteryScore; GET /api/student/diagnostic/results/[subjectId] aggregates per-chapter mastery with recommended start
-AC-06
-Result is displayed as a visual Knowledge Map — not a numerical score. Avoids discouragement. Colour coded: Red (< 40%), Amber (40–70%), Green (> 70%).
-MUST
-✅ DONE — GET /api/student/diagnostic/results/[subjectId] returns chapters[] with masteryPct, band (RED/AMBER/GREEN), isRecommendedStart, and overall placement
-AC-07
-If student abandons diagnostic with < 10 questions answered: partial data used + system assumes grade-level start for unanswered chapters.
-SHOULD
-✅ DONE — diagnosticAutoSubmit fires after 24h on any partial state; unanswered chapters default to masteryScore=0 (grade-level start) in bootstrap worker
-AC-08
-Retake available after 30 days. Retake uses a different question set. Score gaming detection: rapid-fire answers flagged.
-SHOULD
-✅ DONE — 30-day cooldown enforced in /api/student/diagnostic/start (429 RETAKE_COOLDOWN); retake excludes previous questionIds; rapid-fire flag stored in DiagnosticStatus.gamingFlagged
-AC-09
-Diagnostic results are immediately used to bootstrap the student's knowledge graph (StudentConceptState records created for all concepts).
-MUST
-✅ DONE — /api/student/diagnostic/submit enqueues diagnosticBootstrapJob; worker/services/diagnosticBootstrapWorker.ts creates StudentConceptState rows for all subject concepts
-
-
-F-STU-003
-Learning Path Generation
-MVP
-
-AI generates a personalised, time-bound study plan from diagnostic results + student goals.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Student sets exam date (or selects "No exam — steady learning"). Exam date drives urgency of the plan.
-MUST
-✅ DONE — examDate accepted (ISO string or null) in POST /api/user/onboarding and PATCH /api/user/profile; null = no exam (steady learning)
-AC-02
-Student sets weekly study availability (hours/week). Minimum 3 hrs/week required to generate a valid plan. Below minimum: system warns and suggests minimum.
-MUST
-✅ DONE — studyDaysPerWeek accepted in POST /api/student/onboarding/generate-plan; belowMinimumHours flag returned when weeklyMinutes < 180 (3 hrs); client displays warning
-AC-03
-Plan structure: Weak chapters first (priority order), Sequential curriculum chapters, Mandatory board exam topics locked (cannot be removed), Revision buffer — last 2 weeks always reserved.
-MUST
-✅ DONE — lib/ai/learningPlan.ts generateLearningPlan(): concepts sorted ascending by masteryScore (weak-first) then curriculum order; BoardChapterWeight marks mandatory topics; isMandatory flag set on timeline items
-AC-04
-Plan displayed as a visual timeline: calendar view + chapter sequence with estimated session count per chapter.
-MUST
-✅ DONE — GET /api/student/learning-plan/timeline returns week-by-week payload via lib/student/learningPlanTimeline.ts buildTimeline(); includes weekNumber, orderInWeek, estimated session count
-AC-05
-Plan auto-adjusts weekly based on actual progress: if behind → re-prioritises remaining chapters. If ahead → introduces advanced / extension content.
-MUST
-✅ DONE — GET /api/student/learning-plan/today triggers background plan regeneration when plan is >7 days old (uses current masteryScore for fresh prioritisation); POST /api/student/learning-plan/adjust provides an explicit trigger callable by the client
-AC-06
-Student can manually reorder topics within a given week. Cannot remove mandatory board exam topics.
-SHOULD
-✅ DONE — PATCH /api/student/learning-plan/[itemId] supports action=reorder and action=move via lib/learningPlan/safeSwapOrder.ts
-AC-07
-Plan is fully regenerated if student changes: board, grade, exam date, or subject selection.
-MUST
-✅ DONE — PATCH /api/user/profile triggers generateLearningPlan for all plans when examDate changes; POST /api/user/onboarding triggers generation when subjects change
-AC-08
-"Today's Plan" widget on dashboard always reflects the current plan's recommendation for today.
-MUST
-✅ DONE — GET /api/student/learning-plan/today returns first UPCOMING LearningPlanItem for current week; falls back to getNextAction engine when no plan exists
-
-
-F-STU-004
-Language & Learning Style Preference
-MVP
-
-Student configures teaching language per subject and sets learning style preference.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Student can select teaching language independently per subject. E.g., Math in Hindi, English in English.
-MUST
-✅ DONE — PATCH /api/student/subject-language with {subjectId, language} persists per-subject preference in StudentLearningProfile.recommendations.subjectLanguages
-AC-02
-Available languages per subject shown based on content availability. Unavailable languages greyed out with "Coming soon" label.
-MUST
-✅ DONE — GET /api/student/subject-language returns availableLanguages=['en','hi']; client greys out anything not in that list
-AC-03
-MVP supported languages: English + Hindi. Additional languages (Tamil, Telugu, Bengali, Marathi) added in Phase 2.
-MUST
-✅ DONE — VALID_LANGUAGES=['en','hi'] in /api/student/subject-language/route.ts; PATCH rejects any other value
-AC-04
-Student can switch teaching language at any time. Change takes effect from the next session.
-MUST
-✅ DONE — PATCH /api/student/subject-language immediately upserts StudentLearningProfile; AI tutor reads preference at session start via tutorSession Redis state
-AC-05
-UI shell language is set separately from teaching language.
-SHOULD
-✅ DONE — GET/POST /api/user/language manages User.language (shell); PATCH /api/student/subject-language manages teaching language per-subject — fully independent
-AC-06
-Learning style preference: Visual / Reading / Kinesthetic. AI uses this to select default explanation modality. Student can override per session.
-SHOULD
-✅ DONE — PATCH /api/user/profile accepts learningStyle; VALID_LEARNING_STYLES now includes visual, reading, kinesthetic (plus verbal/practice/mixed for backwards compat); value stored in User.learningStyle and injected into AI system prompt
-AC-07
-Code-switched input (Hinglish, Tanglish) is accepted by the AI — not penalised or corrected.
-MUST
-✅ DONE — lib/ai/prompts/schemas.ts Language type includes 'Hinglish'; tutor system prompt (lib/whatsapp.ts + generateParentReport.ts) explicitly handles Hinglish mode; AI is instructed to accept mixed-language input without correction
-
-
-
-3. Core Learning — Session Flow
-F-STU-010
-Session Initiation
-MVP
-
-Student starts a learning session — by plan, by chapter, or via AI recommendation.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Home screen primary CTA is always "Continue where you left off" — single tap to resume last session or start today's planned topic.
-MUST
-✅ DONE — GET /api/dashboard/continue-learning returns most recently accessed incomplete LearningSession; fallback to learning-plan/today
-AC-02
-Secondary start options: Today's planned topic, Browse syllabus and pick any chapter, "Surprise me" (AI picks highest-priority weak concept).
-MUST
-✅ DONE — GET /api/student/learning-plan/today (today's topic); GET /api/student/surprise-me (weak-concept AI pick with TopicRanker fallback); browse-syllabus is client-side navigation via /api/hierarchy subject tree
-AC-03
-Pre-session screen shows: Topic name, Estimated duration, Prerequisite check (if prerequisite not mastered → warning + option to study prerequisite first or proceed anyway).
-MUST
-✅ DONE — POST /api/tutor/session/start returns {prereqs: [{conceptId, name, mastered}], resumeContext, freeTierUsage}; client renders pre-session screen with unmet prerequisite warning
-AC-04
-Session loads within 3 seconds on a 4G connection. First AI message appears within 5 seconds of session start.
-MUST
-✅ DONE — /api/tutor/session/start logs a warning when response exceeds 3000ms (elapsed > 3000); first AI token delivered via SSE streaming in /api/tutor/turn (Connection: keep-alive, first token target <2s)
-AC-05
-If a session was interrupted mid-way, student is offered three options: Resume from where I left off, Restart topic from beginning, Skip topic (marks as deferred in plan).
-MUST
-✅ DONE — GET /api/session/[sessionId] returns current phase via getSessionView (resume); new POST /api/session/start with same topicId restarts; PATCH /api/student/learning-plan/[itemId] with status=DEFERRED skips and defers in plan
-AC-06
-Session auto-saves state every 60 seconds. No progress is lost on network drop or app close.
-MUST
-✅ DONE — PATCH /api/session/[sessionId] with {action:"heartbeat"} updates meta.lastHeartbeatAt; session phase state is DB-persisted on every phase transition via sessionEngine; client calls heartbeat every 60s
-
-
-F-STU-011
-AI Teach Mode — Pedagogical Flow
-MVP
-
-Seven-stage structured explanation with adaptive branching. The AI's core teaching loop.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Every concept session follows this sequence: Hook → Prerequisite Bridge → Core Explanation → Worked Example → Guided Practice → Independent Practice → Consolidation.
-MUST
-✅ DONE — TutorStage union + STAGE_ORDER array in lib/ai/tutor/stateMachine.ts; all 7 stages driven by STAGE_ADVANCE tag; stage strip rendered in AITutorChatPanel with done/active/pending chips
-AC-02
-AI may not advance a stage until the stage's exit criterion is met. Failing the exit criterion twice triggers Prerequisite Remediation before retry.
-MUST
-✅ DONE — STAGE_ADVANCE tag only fires when AI emits it; applyTagTransitionWithRemediation in stateMachine.ts auto-upgrades STRUGGLE_DETECTED to PREREQ_FAIL at consecutiveWrongAnswers >= 3 (two failures triggers remediation before third retry)
-AC-03
-Student can interrupt AI explanation at any point to ask a doubt. AI pauses, resolves the doubt, then offers to resume or re-explain from the start.
-MUST
-✅ DONE — student can type any message in the input bar at any stage; promptAssembly PEDAGOGICAL_RULES instructs Vidya to handle doubts before continuing; re-explain bar (simpler/harder/example/diagram) available at all explanation stages
-AC-04
-Student can request re-explanation in a different style at any time: "Show me a diagram", "Give me a real-life example", "Explain simpler", "Explain harder".
-MUST
-✅ DONE — ReExplainBar in AITutorChatPanel with 4 chips (Simpler, Deeper, Real-life example, Diagram); sentinels __EXPLAIN_SIMPLER__ / __EXPLAIN_HARDER__ / __EXPLAIN_EXAMPLE__ / __EXPLAIN_DIAGRAM__ routed to promptAssembly buildStageInstructionsLayer; session-level style selector persisted via POST /api/tutor/session/style
-AC-05
-AI never gives direct answers to practice problems. Uses the 3-tier hint system exclusively.
-MUST
-✅ DONE — PEDAGOGICAL_RULES layer: "Never give a direct answer to a practice or test problem. Guide with questions, hints, or worked examples only." + "1b. For avoidance of doubt: never give the student the direct answer."
-AC-06
-AI uses culturally relevant analogies: cricket averages for statistics, train journeys for speed-distance, market prices for percentages. Analogy pool is region-aware (India).
-MUST
-✅ DONE — buildPersonaLayer instructs "Use Indian-context analogies (e.g., cricket, trains, markets) where helpful"; real_life_example re-explain style explicitly requests "specific, vivid real-world scenario from Indian daily life (cricket, trains, markets, festivals)"
-AC-07
-Every explanation cites the board exam objective it addresses: "This concept appears in CBSE Class 10 Board Exam — 6 marks weightage."
-SHOULD
-✅ DONE — boardChapterWeightMarks field in PromptContext; injected into CORE_EXPLANATION, WORKED_EXAMPLE, and CONSOLIDATION stage instructions in buildStageInstructionsLayer; board + grade + marks cited in example sentence
-AC-08
-If student gives 3 consecutive wrong answers: AI detects struggle, inserts prerequisite remediation sub-flow before retrying the original concept.
-MUST
-✅ DONE — applyTagTransitionWithRemediation in stateMachine.ts: tag === 'STRUGGLE_DETECTED' && consecutiveWrongAnswers >= 3 auto-upgrades to PREREQ_FAIL; sets prereqRemediationActive=true + prereqReturnStage; MASTERY_CONFIRMED returns to original stage
-AC-09
-AI detects copy-pasted or suspiciously perfect answers and follows up with a probing question: "Great — can you explain why that works?"
-SHOULD
-✅ DONE — detectCopyPaste imported from lib/ai/tutor/copyPasteDetector; called in services/tutor/turn.ts before LLM call; on detection: short-circuit with answerText "Great -- can you explain in your own words why that works?"; anomalyFlags written to Message row and AITutorTurnLog
-AC-10
-Dialogue tone calibrated by grade: Grade 6–8 → encouraging elder sibling. Grade 9–10 → peer collaborator. Grade 11–12 → focused mentor.
-SHOULD
-✅ DONE — toneNote computed from ctx.grade in buildPersonaLayer (lib/ai/tutor/promptAssembly.ts): grade<=8 elder sibling, grade<=10 peer collaborator, grade 11-12 focused mentor; injected as explicit directive in PERSONA layer
-
-
-F-STU-012
-3-Tier Hint System
-MVP
-
-AI guides students toward the answer through scaffolded hints rather than giving solutions directly.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Tier 1 — Directional Nudge: points student toward relevant concept or formula without revealing approach. E.g., "Think about what formula connects distance, speed, and time."
-MUST
-✅ DONE — buildStageInstructionsLayer in promptAssembly.ts: when isHintRequest && hintsUsed===0, instructs "Point the student toward the relevant concept or formula WITHOUT revealing the approach"
-AC-02
-Tier 2 — Structural Hint: reveals the method or approach without executing it. Asks student to supply components. E.g., "You'll use the quadratic formula — what goes into a, b, c here?"
-MUST
-✅ DONE — buildStageInstructionsLayer: when isHintRequest && hintsUsed===1, instructs "Reveal the method or approach WITHOUT executing it. Ask the student to supply the components."
-AC-03
-Tier 3 — Worked Scaffold: AI works through the first step only. Student must complete the rest independently.
-MUST
-✅ DONE — buildStageInstructionsLayer: when isHintRequest && hintsUsed===2, instructs "Work through the FIRST STEP only, then stop. Student must complete the rest independently."
-AC-04
-Hints are never volunteered unprompted before 90 seconds of student inactivity. After 90 seconds → AI prompts: "Still working on it? Want a hint?" — never auto-delivers the hint.
-MUST
-✅ DONE — INACTIVITY_MS=90_000 in AITutorChatPanel; scheduleInactivity sets a timer that shows the inactivity banner with "Still working on it? Want a hint?"; "Yes" sends __HINT_REQUEST__ explicitly; "No" reschedules timer; banner never auto-delivers the hint
-AC-05
-Student must explicitly request each hint. Hint counter (0/3) visible to student.
-MUST
-✅ DONE — "Get a hint" explicit button in AITutorChatPanel hint bar; "Hints: X / 3" counter displayed; button only fires on click; hint bar hidden during HOOK/PREREQ_BRIDGE/CORE_EXPLANATION/WORKED_EXAMPLE stages
-AC-06
-After all 3 hints exhausted and answer still wrong: AI solves fully with step-by-step explanation, then immediately presents an isomorphic problem (same structure, different numbers/context) for independent retry.
-MUST
-✅ DONE — buildStageInstructionsLayer: when isHintRequest && hintsUsed>=3, instructs full solution + isomorphic problem sequence; hint bar shows "No hints remaining" and disables the button
-AC-07
-Hint usage tracked per concept in knowledge graph. High hint dependency on a concept triggers a "needs consolidation" flag and additional practice allocation.
-SHOULD
-✅ DONE — services/tutor/turn.ts AC-07 block: on every isHintRequest, upserts StudentConceptState incrementing hintCount, hintTier1/2/3, lastHintAt; when hintCount >= HINT_DEPENDENCY_THRESHOLD (env, default 5), sets needsConsolidation=true and upserts AttentionFlag with reason='high_hint_dependency'
-
-
-F-STU-013
-Misconception Detection & Correction
-MVP
-
-AI identifies and corrects specific wrong mental models using contrastive explanation.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Platform maintains a misconception library per subject: common wrong mental models mapped to diagnostic signals (wrong answer patterns + error types).
-MUST
-✅ DONE — Misconception Prisma model with fields: id, name, triggerPatterns (string[]), correction, description, subjectId, conceptId; loadMisconceptions() queries by subjectId+conceptId with module-level cache; migrations applied
-AC-02
-When a student answer matches a misconception signature, AI names and corrects it: "It looks like you might be thinking X — that's a very common confusion."
-MUST
-✅ DONE — detectMisconceptions() in lib/ai/tutor/misconceptionDetector.ts matches student input against triggerPatterns (case-insensitive substring); confidence HIGH (>=2 matches) or LOW (1 match); activeMisconceptionName injected into SESSION_STATE prompt layer
-AC-03
-Correction uses contrastive explanation: show why the wrong model fails with a counterexample, then show why the correct model works. Not just "that's wrong, here's right."
-MUST
-✅ DONE — buildStageInstructionsLayer in promptAssembly.ts: when activeMisconceptionName + activeMisconceptionCorrection set, mandates 3-step sequence: (1) name warmly, (2) counterexample showing why wrong model fails, (3) correct model; "counterexample step is mandatory"
-AC-04
-Detected misconceptions are logged to the student's profile and injected into all future session prompts for that concept cluster.
-MUST
-✅ DONE — services/tutor/turn.ts: studentMisconception.upsert persists every detected misconception to DB; on subsequent turns for same concept, recentMisconceptions queried from StudentMisconception rows and injected as recentMisconceptions[] in STUDENT_PROFILE prompt layer
-AC-05
-Novel misconceptions (no library match) are logged to an analytics event for content team review. Used to enrich the misconception library.
-SHOULD
-✅ DONE — logNovelMisconception() in lib/ai/tutor/misconceptionDetector.ts: structured JSON event 'misconception.novel_detected' with studentId, subjectId, conceptId, and redacted inputSnippet (max 200 chars); called in services/tutor/turn.ts when detectedMisconceptions is empty but input is non-trivial
-AC-06
-MVP seed: minimum 20 misconceptions per subject, hand-crafted by subject experts.
-MUST
-✅ DONE — prisma/seeds/misconceptions_cbse_grade10_science.ts (22 entries) and prisma/seeds/misconceptions_cbse_grade10_mathematics.ts (22 entries) hand-crafted; both exceed the 20-minimum threshold
-
-
-F-STU-014
-Virtual Whiteboard Mode
-MVP
-
-AI draws step-by-step on a shared canvas. Student can draw and submit working for AI evaluation.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Whiteboard activates automatically for: geometry, algebra step-by-step, chemistry equations, physics diagrams.
-MUST
-✅ DONE — WHITEBOARD_SUBJECTS set in AITutorSessionShell.tsx: {mathematics, maths, math, physics, chemistry, geometry, algebra}; needsWhiteboard() checks subjectName.toLowerCase(); side-by-side layout on md+, stacked on mobile
-AC-02
-AI draws incrementally — each step revealed as AI narrates. Not a static image reveal. Steps timed to narration pace.
-MUST
-✅ DONE — AiStepsList in WhiteboardPanel.tsx reveals steps one by one using STEP_REVEAL_MS=600 timer chained in useEffect; CSS keyframe wb-step-in (opacity 0→1, translateY 6px→0, 0.3s ease-out); new AI messages reset visibleSteps to 0 and re-animate
-AC-03
-Student has a separate canvas layer. Student can draw, annotate, and write working without overwriting AI content.
-MUST
-✅ DONE — Two stacked canvas elements: aiCanvasRef (pointer-events-none, aria-hidden, holds replayed visualHint commands) and canvasRef (student drawing layer on top); mouse + touch event handlers on student canvas only
-AC-04
-"Submit my working" button — AI evaluates student's canvas drawing and provides specific feedback.
-MUST
-✅ DONE — "Submit my working" button in WhiteboardPanel; handleSubmit merges both layers to PNG via offscreen canvas; POST /api/student/whiteboard/evaluate with conceptName+dataUrl; LLM returns single encouraging sentence (max 20 words, never says wrong/incorrect/failed); displayed in feedback banner
-AC-05
-Student can erase and redo their working. AI does not re-evaluate until student explicitly submits.
-MUST
-✅ DONE — Toolbar has pencil + eraser tools; handleUndo restores previous ImageData snapshot (up to 20 snapshots kept); handleClear wipes student canvas + AI canvas; feedback cleared on clear; evaluation only fires on explicit "Submit my working" click
-AC-06
-Whiteboard state saved as part of session artifact. Student can revisit whiteboard from session replay.
-SHOULD
-✅ DONE — handleSubmit fire-and-forgets POST /api/student/session-artifact with {sessionId, type:'whiteboard', dataUrl}; persisted to SessionArtifact table; artifact available for session replay query; failure is non-critical and does not block evaluation
-
-
-F-STU-015
-Session Completion & Summary
-MVP
-
-Structured end-of-session summary with progress feedback and next steps.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Summary screen shows: Concepts covered, Questions attempted vs correct %, Time spent, Mastery change (before vs after session), Next recommended session.
-MUST
-✅ DONE — SessionCompletionScreen.tsx renders: StatsRow (attempted, % correct, hints, minutes), MasteryDelta (masteryDelta + masteryAfter), next session CTA populated from /api/home/next-action; data from POST /api/student/session/[sessionId]/complete which computes all metrics from AnswerEvent + LearningSession records
-AC-02
-XP earned in session displayed with animation before summary. Milestone celebrations (level-up, badge unlock) shown in full-screen moment before summary.
-MUST
-✅ DONE — XpSection: +XP circle badge + requestAnimationFrame easeOut 800ms counter + progress bar animation; LevelUpOverlay full-screen modal shown when leveledUp=true, auto-dismisses after 3s (min 1.5s display); BadgesEarnedSection renders all newly earned badges; overlays shown before navigating to main summary layout
-AC-03
-AI generates one personalised closing insight specific to this session's performance. Not a generic message.
-MUST
-✅ DONE — buildSessionInsight() in lib/student/sessionInsight.ts: LLM-generated single sentence (max 25 words); adaptive framing by score band (>=75% celebrate, 50-74% acknowledge progress, <50% warm encouragement); never uses failed/wrong/bad/missed/broke; 5s timeout with motivational fallback; called in POST /api/student/session/[sessionId]/complete
-AC-04
-Student rates the session 1–5 stars (optional free text). Rating stored and feeds AI quality monitoring.
-SHOULD
-✅ DONE — StarRating component in SessionCompletionScreen; 5-star tap interaction; POST /api/student/session/[sessionId]/rate persists rating + ratingFeedback + ratedAt to LearningSession; best-effort (non-blocking); "Thanks for your feedback!" confirmation shown after submit
-AC-05
-"Schedule next session" prompt with AI's recommended time slot (based on student's historical active hours).
-SHOULD
-⚠️ PARTIAL — "Start next session" CTA exists in SessionCompletionScreen and is populated via GET /api/home/next-action (created); CTA shows next recommended topic name from getNextAction(). Time-slot recommendation based on student's historical active hours is NOT yet implemented (requires session-hour distribution analytics and additional UI — deferred to Phase 2)
-AC-06
-Session summary shareable to parent via WhatsApp (Phase 2) or copy-to-clipboard (MVP).
-SHOULD
-✅ DONE — "Copy session summary" button uses buildShareableSessionSummary() + navigator.clipboard.writeText (with execCommand fallback); "Share on WhatsApp" button uses Web Share API with WhatsApp URL fallback via buildWhatsAppShareUrl(); both in SessionCompletionScreen.tsx
-
-
-
-4. Assessment Engine
-F-STU-020
-Chapter Practice Test
-MVP
-
-AI-generated unique tests per chapter. Every attempt uses a different question set.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Chapter test is auto-generated on demand by AI. No two attempts for the same student on the same chapter within 90 days are semantically equivalent (embedding similarity check enforced).
-MUST
-✅ DONE — lib/tests.ts selectQuestionsWithMix: Jaccard similarity approximation excludes semantically equivalent questions; studentId param excludes questions seen in last 90 days
-AC-02
-Question type mix matches board exam pattern: 40% MCQ, 30% short answer (numeric/text), 30% long answer / problem solving.
-MUST
-✅ DONE — lib/tests.ts selectQuestionsWithMix: 40/30/30 MCQ/short/long_answer mix enforced; board-exam time-per-mark ratio computed and returned as timeLimitSeconds
-AC-03
-Time limit is set at board exam time-per-mark ratio. Countdown timer visible. Auto-submits on time expiry.
-MUST
-✅ DONE — POST /api/tests/start returns timeLimitSeconds; components/Test/AttemptRunner.tsx renders countdown + auto-submits on expiry
-AC-04
-Student cannot view correct answers during the test. Answer review available only post-submission.
-MUST
-✅ DONE — AttemptRunner.tsx blocks answer reveal during active test; correct answers only exposed in post-submission Scorecard view
-AC-05
-Post-submission: every wrong answer shows full step-by-step solution + specific explanation of the error made (not generic "incorrect").
-MUST
-✅ DONE — POST /api/tests/submit calls addLLMExplanations for wrong answers; components/Test/QuestionFeedback.tsx renders step-by-step solution + error-specific explanation
-AC-06
-Score < 40% → chapter automatically flagged "needs revision." A targeted revision session is inserted into the student's learning plan within 24 hours.
-MUST
-✅ DONE — POST /api/tests/submit: scorePercent < 40 creates chapter_revision LearningSession with activityType='chapter_revision' and sourceAttemptId; needsRevision flag returned to client
-AC-07
-Score history tracked across attempts. Improvement trend graph visible on chapter detail screen.
-MUST
-✅ DONE — GET /api/student/tests/trend; components/Test/ChapterTrend.tsx fetches trend and renders components/student/progress/ScoreTrendGraph.tsx improvement line chart per chapter
-AC-08
-Student can flag any question as "incorrect or ambiguous." Flagged question quarantined after 3 student flags pending admin review.
-SHOULD
-✅ DONE — POST /api/student/question/[questionId]/flag: upserts SessionQuestionFlag (@@unique studentId+questionId); auto-quarantines to QuestionStatus.QUARANTINED at totalFlags >= 3; AuditLog entry created
-
-
-### Phase 2 — Chapter Trend UX & History
-
-- Rationale: make score history more discoverable on the chapter detail and provide full, paginated history for review and analytics.
-- Tasks:
-	- Add inline mini-sparkline + last-score badge on each chapter card (compact, mobile-first). (A)
-	- Implement a paginated history API endpoint and a dedicated history page for deep review. (B)
-	- Make the detail view adapt to a bottom-sheet on narrow viewports (mobile) while remaining a centered modal on larger screens. (C)
-- Acceptance criteria:
-	- Mini-sparkline displays recent trend and last-score on the chapter card without blocking layout.
-	- "View history" links to a paginated history page that returns `data`, `totalCount`, `limit`, `offset`.
-	- Modal adapts to bottom-sheet on small screens (rounded top, drag-to-dismiss optional) and remains accessible (focus trap, ESC closes, scroll lock).
-
-
-F-STU-021
-Full Syllabus Mock Exam
-MVP
-
-Board-pattern full mock exam under real exam conditions.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Mock exam UI replicates the board exam paper format exactly: section headings, mark allocation per question, official question numbering convention.
-MUST
-✅ DONE — components/mock/MockExamRunner.tsx: section headings, per-question mark allocation, global sequential question numbering (Q1, Q2... across all sections)
-AC-02
-Real exam duration enforced. Clock counts down. Auto-submits when time expires. No pause (except declared accessibility mode).
-MUST
-✅ DONE — MockExamRunner.tsx: durationMin countdown timer; auto-submits all unsubmitted sections on expiry
-AC-03
-Student can navigate freely between questions within a section. Can mark questions for review (flag icon). Cannot navigate between sections once a section is submitted.
-MUST
-✅ DONE — MockExamRunner.tsx: free intra-section navigation; mark-for-review flag per question; submitted sections locked -- cannot navigate back
-AC-04
-Post-exam detailed report: section-wise score, time spent per question (heatmap), percentile vs anonymised platform cohort of same grade + board.
-MUST
-✅ DONE — GET /api/mock/attempt/[attemptId]/report: section scorePercent, timeSpentSeconds per question, percentile vs cohort (hidden when cohortCount < MIN_COHORT); components/mock/MockExamReport.tsx renders heatmap
-AC-05
-AI generates a "Next 2 Weeks Priority Plan" immediately post-mock based on weak section analysis.
-MUST
-✅ DONE — POST /api/mock/attempt/[attemptId]/complete: calls lib/mock/buildPriorityPlan (LLM-generated, encouraging tone, fallback to static plan); stored as attempt.priorityPlan; returned in report
-AC-06
-Minimum 5 unique full mock exams available per subject per grade at MVP launch. New mocks generated monthly by AI.
-MUST
-✅ DONE — lib/mock/ensureMocks.ts ensureMinimumMocks({ minPer: 5 }) runs on seeding; worker/services/seedMocksWorker.ts generates new mocks via AI on schedule
-AC-07
-Mock exam available for offline download as PDF (questions only, no answers). For offline paper practice.
-SHOULD
-✅ DONE — GET /api/mock/[examId]/export: builds PDF via pdf-lib (A4, section headings, questions only, no answers); Content-Disposition attachment header
-
-
-F-STU-022
-Spaced Repetition & Revision Scheduling
-MVP
-
-AI automatically schedules concept revision to prevent forgetting, using SM-18 algorithm.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Every mastered concept (mastery_score > 0.75) gets a revision due date computed by SM-18 spaced repetition algorithm.
-MUST
-✅ DONE — lib/ai/tutor/sm18.ts: pure SM-18 functions (computeRetention, updateStability, computeNextReviewDays); worker/services/sm18Worker.ts nightly batch sets nextReviewAt for all StudentConceptState rows
-AC-02
-Revision cards appear in the student's daily plan automatically. Student cannot permanently dismiss them — can snooze by 1 day only.
-MUST
-✅ DONE — GET /api/student/revisions/due-today: surfaces due cards (nextReviewAt <= now) in daily plan; POST /api/student/revision/snooze: pushes nextReviewAt +24h from now (no permanent dismiss)
-AC-03
-Revision session format: 5 targeted questions on the concept. Duration: ~5 minutes. Not a full re-teach unless the student fails.
-MUST
-✅ DONE — components/student/revision/RevisionFlow.tsx: card-by-card session (~5 min); full re-teach only triggered when score <= 0.8 via enqueueReteachPlan
-AC-04
-Revision score > 80% → memory stability interval increases (next revision scheduled further out). Score < 80% → interval resets + remediation re-teach session inserted.
-MUST
-✅ DONE — POST /api/student/revision/complete: calls updateSM18 with isCorrect=(score>0.8); immediately updates StudentConceptState.nextReviewAt, stability, retention, memoryStrength; score <= 0.8 also enqueues reteach via enqueueReteachPlan
-AC-05
-"Memory strength" indicator visible per concept in the knowledge map (bar chart showing predicted retention %).
-SHOULD
-✅ DONE — components/student/dashboard/RevisionWidget.tsx MemoryStrengthBar: per-concept retention % bar rendered for each due revision card
-AC-06
-Total daily revision load capped at 20 minutes. If more concepts are due, oldest due (lowest retention) are prioritised. Remainder rescheduled to next day.
-MUST
-✅ DONE — lib/student/revisionCap.ts REVISION_DAILY_CAP_MINUTES=20; due-today API returns capReached flag; cards ordered by nextReviewAt asc (oldest due first); addRevisionMinutes tracks ~2 min per card
-AC-07
-Pre-exam mode activates automatically 14 days before exam date. Retention threshold raised to 92% (more aggressive scheduling). Student notified of mode change.
-SHOULD
-✅ DONE — sm18Worker.ts PRE_EXAM_TARGET_RETENTION=0.92 applied when exam within PRE_EXAM_DAYS=14; notifyPreExamStudents sends push notification once per month via Redis rate-limit key
-
-
-F-STU-023
-Exam Readiness Score
-MVP
-
-Live 0–100 readiness score per subject, with predicted board exam score range.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Score (0–100) computed from: Chapter mastery % weighted by board exam chapter marks distribution, Mock exam performance (recency-weighted), Spaced repetition retention scores, Recency of study activity.
-MUST
-✅ DONE — lib/student/examReadiness.ts computeReadinessScore: chapter mastery weighted by BoardChapterWeight.weightMarks + mock scorePercent (recency-weighted) + SM-18 retention; worker/jobs/precomputeReadiness.ts runs after session/test events
-AC-02
-Score updates after every session completion and every test submission. Student sees it on subject dashboard.
-MUST
-✅ DONE — precomputeReadiness job enqueued after session complete + test submit; score cached in Redis (1hr TTL); GET /api/student/exam-readiness serves cached score; SubjectReadinessCard.tsx displayed on dashboard
-AC-03
-Score breakdown shown by chapter: student can see exactly which chapters are dragging down the overall score.
-MUST
-✅ DONE — ReadinessResult.chapters[]: per-chapter masteryScore, boardWeightPct, contribution, status (critical/needs_work/on_track/ready) returned by API; SubjectReadinessCard renders chapter breakdown
-AC-04
-AI-generated predicted score range: "Based on current trajectory, you are likely to score 72–81 in your board exam." Confidence interval narrows as exam date approaches.
-MUST
-✅ DONE — computePredictedScoreRange in lib/student/examReadiness.ts: returns { low, high, confidenceLevel: 95 }; scale = max(0.25, daysToExam/90) narrows interval as exam approaches
-AC-05
-If readiness score drops > 10 points in a week (due to forgetting or missed sessions): student notification triggered. Parent notification also triggered (Phase 2).
-SHOULD
-✅ DONE — worker/services/readinessDropWorker.ts READINESS_DROP_THRESHOLD=10; detects delta >= 10 over 7-day window; sends student push via sendPushSafe (rate-limited per student+subject per month); parent email/SMS also triggered
-
-
-
-5. Engagement & Retention
-F-STU-030
-Daily Learning Streak
-MVP
-
-Consecutive daily activity tracking with streak protection mechanics.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-A day counts as "active" only when: student completes ≥ 1 full tutoring session (all 7 stages) OR completes ≥ 10 spaced repetition revision cards. Prevents gaming with 1-minute logins.
-MUST
-✅ DONE — updateStreak called from POST /api/student/session/[sessionId]/complete (full session); trackRevisionAndMaybeUpdateStreak in lib/student/streak.ts counts toward daily threshold via revision card tracking in revisionCap
-AC-02
-Streak counter displayed prominently on home screen with fire emoji visual. Milestone badges at 7, 14, 30, 60, 100 days.
-MUST
-✅ DONE — GET /api/student/streak; components/student/dashboard/StreakWidget.tsx displays fire emoji + currentStreak; lib/student/badges.ts BADGE_DEFINITIONS: streak_7/14/30/60/100 awarded via checkSessionBadges
-AC-03
-Each student gets 1 streak shield per calendar month. Shield activates automatically on the first missed day to preserve streak. Student notified when shield is used.
-MUST
-✅ DONE — lib/student/streakShield.ts: Redis key streak:shield:used:{id}:{YYYY-MM} per month; isShieldAvailable / consumeShield; shield auto-applied in updateStreak on broken day; sendPushSafe notifies student on activation
-AC-04
-On streak break: message is motivational and forward-looking — not guilt-inducing. "Start a new streak today — your best is still ahead." + "Restart Streak" CTA.
-MUST
-✅ DONE — PUSH_NOTIFICATIONS.streak_broken copy in lib/push/notifications.ts is forward-looking; StreakWidget.tsx renders "Start a new streak today" message with "Restart Streak" CTA on currentStreak=0
-AC-05
-Longest streak ever permanently displayed on profile even after it breaks.
-SHOULD
-✅ DONE — User.longestStreak updated atomically in updateStreak (max(longestStreak, currentStreak)); GET /api/student/streak returns longestStreak; StreakWidget displays both current and best
-AC-06
-Streak milestones unlock cosmetic rewards: avatar items, profile background themes. No academic impact.
-SHOULD
-✅ DONE — lib/student/cosmetics.ts: COSMETIC_ITEMS mapped to streakMilestone; unlockCosmeticsForStreak called from badges.ts on streak milestone badge award; avatar_frame + profile_theme stored in User.cosmeticUnlocks (no academic effect)
-
-
-F-STU-031
-XP, Levels & Badges
-MVP
-
-Gamification layer driving intrinsic motivation through visible effort-based progress.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-XP awarded for: Session completion (base XP by duration), Correct answers (per question difficulty), Streak maintenance (daily multiplier), First-attempt correct (1.5x bonus), Revision card completion.
-MUST
-✅ DONE — POST /api/student/session/[sessionId]/complete: durationXP=min(sessionMin,60)*2 + correctAnswerXP=correctAnswers*10 + firstAttemptBonus=+50% when hintsUsed=0 + streakBonusXP=10% bonus on streak increment (source:'streak_bonus'); POST /api/student/revision/complete: 5 XP per card (source:'revision_complete')
-AC-02
-XP is never deducted. Wrong answers earn 0 XP — not negative. Negative reinforcement is explicitly avoided.
-MUST
-✅ DONE — awardXP in lib/student/xp.ts: amount = max(0, floor(params.amount)); wrong answers produce 0 XP contribution; no deduction path exists
-AC-03
-Level 1–100 with increasing XP thresholds. Level name and avatar frame change at key tiers (10, 20, 30, 50, 75, 100).
-MUST
-✅ DONE — lib/student/xpLevels.ts: 100-level LEVEL_THRESHOLDS with progressive gaps; getLevelTierName returns Starter/Bronze/Silver/Gold/Platinum/Diamond/Legend at tier boundaries; getTierColor returns avatar frame hex per tier
-AC-04
-Badges for: Subject chapter mastery, Streak milestones, Mock exam completion, Speed (fast correct answers), Consistency (5 sessions in 7 days), Comeback (returned after 7-day gap and completed a session).
-MUST
-✅ DONE — lib/student/badges.ts checkSessionBadges: streak_7/14/30/60/100 on streak milestones; consistency (>=5 sessions/7 days); comeback (prev session >7 days ago); speed badge (avgTimeSeconds threshold); mastery badge on masteryAfter >= 0.9; mock_complete via mock complete route
-AC-05
-Badge showcase on student profile: student curates which 5 badges to display publicly.
-SHOULD
-✅ DONE — PATCH /api/user/profile: preferences.badgeShowcase validated as string[] max length 5; stored in User.preferences.badgeShowcase; ProfileWidgets renders showcase
-AC-06
-Level-up is a full-screen celebration animation — cannot be suppressed. It is an earned moment.
-MUST
-✅ DONE — components/student/session/SessionCompletionScreen.tsx LevelUpOverlay: fixed inset-0 z-[100] full-screen overlay rendered when leveledUp=true; requires explicit onDismiss tap to proceed
-
-
-F-STU-032
-Student Dashboard
-MVP
-
-Personalised home screen — central hub for daily learning actions and progress visibility.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Dashboard is the only screen shown after login. No generic home page. Always personalised.
-MUST
-✅ DONE — app/(student)/dashboard/page.tsx: requireActiveSession redirects unauthenticated users to login; dashboard is the only post-login landing screen with personalised data
-AC-02
-Dashboard shows: Today's plan (next recommended action), Current streak + XP this week, Exam readiness score per subject, Recent session history (last 3), Active revision cards due today.
-MUST
-✅ DONE — TodaysLearningCard (today's plan), XPWidget (XP this week), StreakWidget (current streak), SubjectReadinessCard (readiness per subject), RevisionWidget (revision cards due today); recent session history fetched via dashboard API
-AC-03
-Primary CTA is always "Continue Learning" — one tap to resume or start. Never buried.
-MUST
-✅ DONE — TodaysLearningCard renders "Continue Learning" / "Start Learning" as first interactive element; GET /api/dashboard/continue-learning returns most recent incomplete session as primary CTA target
-AC-04
-Exam crunch mode (≤ 14 days to exam): Dashboard UI switches to focused mode — countdown timer prominent, only exam-relevant actions shown.
-SHOULD
-✅ DONE — lib/dashboard/crunch.ts computeCrunchMode (daysToExam <= 14); dashboard page hides XPWidget/WeeklyStrip/SecondaryOptions in crunch mode; countdown banner shown; CrunchModeToggle allows manual override
-AC-05
-Dashboard loads in < 2 seconds including all personalised data. No skeleton loader longer than 2 seconds.
-MUST
-✅ DONE — dashboard page.tsx: all data fetches in parallel via Promise.all; server component renders with cached readiness scores from Redis; no client waterfalls on initial load
-AC-06
-Dark mode support. Font size adjustable (small / medium / large).
-SHOULD
-✅ DONE — tailwind.config.js darkMode: 'class'; all dashboard components use dark: variant classes; PATCH /api/user/profile accepts preferences.fontSize ('small'|'medium'|'large') stored in User.preferences
-
-
-F-STU-033
-Progress Reports
-MVP
-
-Detailed performance history per subject with AI-generated insight.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Report shows: Sessions completed (trend graph last 30 days), Mastery % per chapter (colour-coded), Test scores over time, Time spent studying (weekly heatmap), Concepts mastered count.
-MUST
-DONE — SessionsChart + ChapterMasteryBars + ScoreTrendGraph + StudyTimeHeatmap + conceptsMasteredCount stat card all present on /student/progress. StudyTimeHeatmap and concepts mastered count added in this sprint.
-AC-02
-Filterable by: Subject, Time range (7 / 30 / 90 days / all time).
-MUST
-DONE — ProgressFilters client component drives ?subject= and ?days= URL params; page re-fetches on change.
-AC-03
-AI-generated insight at top of report: specific, data-driven, non-generic. E.g., "You've improved 18% in Algebra this month. Quadratic Equations is still your weakest chapter -- 2 more sessions will close the gap."
-MUST
-DONE -- AiNarrativeWidget fetches /api/student/progress/narrative (OpenAI-generated, data-driven).
-AC-04
-Report downloadable as PDF -- formatted for sharing with parents or teachers.
-SHOULD
-DONE -- "Download PDF" button in AiNarrativeWidget calls /api/student/progress/export; returns PDF binary.
-AC-05
-Progress reports accessible on free tier. Progress visibility is never paywalled.
-MUST
-DONE -- /student/progress has no paywall check; all authenticated students can access it.
-
-
-
-6. Subscription & Payments
-F-STU-040
-Freemium Access Control
-MVP
-
-Free tier with meaningful limits. Quality never degrades -- only quantity is capped.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Free tier: 3 AI tutoring sessions per subject per month (max 20 minutes each), 1 chapter test per subject per month. Diagnostic always free. Learning plan always free. Progress reports always free.
-MUST
-DONE -- FREE_TIER_SESSION_LIMIT=3 enforced via checkFreeTierCap in lib/freemium.ts. Chapter test cap (FREE_TIER_CHAPTER_TEST_LIMIT=1) added in this sprint: new chapterTestsUsed field on FreeTierUsage (migration 20260504000001), checkChapterTestCap + incrementChapterTestUsage helpers, enforced in /api/tests/start. Progress reports and diagnostics have no paywall.
-AC-02
-Session cap counter visible: "2 of 3 free sessions used this month." Never hidden.
-MUST
-DONE -- FreemiumCounter component always visible in dashboard right column for free-tier students with sessions remaining.
-AC-03
-When cap is hit: upgrade prompt shown at session end -- never interrupting an in-progress session. Prompt shows: what unlocks, price, testimonial from same grade student.
-MUST
-DONE -- EndOfSessionCard fetches /api/student/freemium/status after completion; renders upgrade nudge with price and reset date when sessionsRemaining === 0.
-AC-04
-Free users receive full AI quality -- same model, same prompts. Only session count is limited.
-MUST
-DONE -- No tier-based model or prompt switching in the AI tutor pipeline; all session gating is count-only.
-AC-05
-Free tier resets on the 1st of each calendar month. Reset notification sent 3 days before: "Your free sessions reset in 3 days."
-SHOULD
-DONE -- freemiumResetNotifications worker calls getStudentsNearingReset(3) and sends push notifications 3 days before reset.
-
-
-F-STU-041
-Subscription Purchase Flow
-MVP
-
-Student or parent subscribes to a paid plan via Indian payment methods.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Plans: Monthly (full price), Quarterly (10% discount), Annual (25% discount). All prices shown in INR with GST breakdown.
-MUST
-DONE -- standard_quarterly plan (Rs 1,077 billed / Rs 359/month / 10% off) added to lib/billing/plans.ts this sprint. Annual updated to Rs 3,590 (25% off). PLAN_ORDER bug fixed in PlanSelector -- now correctly renders Monthly / Quarterly / Annual. Verify routes updated to accept full plan IDs via resolvePlanByShortId. All plans expose baseRupees + gstRupees for GST breakdown display.
-AC-02
-Payment methods: UPI (PhonePe, GPay, Paytm), Debit/Credit card, Net banking, EMI (3/6/12 months on annual plan only).
-MUST
-DONE -- PaymentMethodSelector component surfaces all Razorpay-supported methods (UPI, card, netbanking, EMI). EMI restricted to annual plan in order route.
-AC-03
-Payment confirmation screen shown before charge. No dark patterns. Amount, plan, renewal date, cancellation terms all visible before confirmation.
-MUST
-DONE -- PaymentConfirmation component shows amount, plan label, renewal date, and cancellation terms before the Razorpay modal is triggered.
-AC-04
-On successful payment: instant access unlock, receipt via SMS + email, personalised welcome message from AI tutor.
-MUST
-DONE -- /api/student/subscription/verify sets subscriptionStatus='premium' + sends receipt email (sendEmail) + SMS (sendSms) immediately after signature verification.
-AC-05
-Failed payment: 3 auto-retry attempts over 3 days, then grace period notification to student + parent, then free tier reversion.
-MUST
-DONE -- paymentDunningWorker retries up to dunningAttempts < 3 over 3 days; graceUntil field on Subscription tracks grace period; free tier reversion on grace expiry.
-AC-06
-Cancel anytime: access continues to end of paid period. No partial refunds (clearly communicated at purchase). Subscription status always visible in profile.
-MUST
-DONE -- Subscription.active remains true until endDate; cancel flow sets active=false on next renewal; no refund logic present (by design). Subscription status shown in /profile.
-AC-07
-Family plan: one subscription covers up to 3 child profiles. Price is 1.8x single price. Managed from parent account.
-SHOULD
-PARTIAL -- Family plan exists (family_monthly Rs 599, family_annual Rs 5,990) with childSlots=2 managed from parent account. Slot count (2 vs spec 3) and multiplier (1.5x vs 1.8x) diverge from spec; full alignment deferred to Phase 2 per family plan enhancement backlog.
-
-Phase 2 — Family Plan Enhancements
-
-The following enhancements are planned for Phase 2 to expand and harden the Family plan experience. These are out of MVP scope but should be implemented once the core billing loop is validated in production.
-
-- **Family seat management:** allow parents to add/remove child profiles (invite flow), transfer seats between parent accounts, and view seat audit logs. Include email/OTP verification for seat claims.
-- **Flexible slot options & pricing experiments:** support configurable slot counts (4+ children) and per-child add‑ons; run A/B pricing experiments to validate the 1.8x multiplier and alternatives.
-- **Upgrade/downgrade proration rules:** implement deterministic proration math, immediate-apply vs scheduled-change options, and safe credit/refund flows. Provide unit and integration tests for edge cases.
-- **Referral & promo integration:** enable referral discounts and promo codes to apply correctly to family subscriptions, with fraud detection and safe rollback paths.
-- **Billing metadata & reconciliation:** extend order metadata schema (Razorpay `notes`) for family subscriptions and implement reconciliation jobs to surface mismatches and auto-retry logic.
-- **Admin tooling & manual adjustments:** admin console to view/modify family subscriptions, revoke seats, apply credits, and inspect referral audits.
-- **End-to-end billing tests:** CI‑gated integration tests for order creation, webhook verification, refund/proration, and referral credit application, including mock payment gateway fixtures.
-- **Migration & data hygiene:** one-time migration script to normalise existing subscriptions to the canonical family schema (childSlots=3, multiplier=1.8) with dry-run and rollback support.
-- **Monitoring & alerts:** metrics and alerts for family churn, failed family payments, reconciliation failures, and suspicious referral activity.
-
-Each Phase 2 item must include acceptance tests (happy, edge, error paths), UI mocks, and an owner assigned in the backlog.
-
-
-F-STU-042
-Referral Programme
-MVP
-
-Student earns rewards for referring friends who convert to paid subscribers.
-AC#
-Acceptance Criterion
-Priority
-Status
-AC-01
-Each student gets a unique referral code. Shareable via WhatsApp share button or copy-to-clipboard.
-MUST
-DONE -- ReferralShareCard component added this sprint: renders invite code pill, copy-to-clipboard button (builds share text with URL), and WhatsApp deep-link (wa.me) button. Displayed on the dashboard right column. Code generated/fetched via POST /api/referral/create (nanoid 8-char code, idempotent per student).
-AC-02
-Referrer reward: 1 month free when referred friend's first payment clears. Applied automatically to next billing cycle -- no manual claiming.
-MUST
-DONE -- Razorpay webhook calls redeemReferral inside the payment transaction; redeemReferral creates a ReferralReward (PENDING) and immediately applies it as creditBalance on the referrer's active subscription (APPLIED). If no active subscription, reward stays PENDING and is applied at next subscription creation.
-AC-03
-Referred friend reward: 20% off first month subscription.
-MUST
-DONE -- Signup route stores preferences.referredBy at account creation. Order route applies 20% discount when: (a) referredBy preference set, (b) referral not redeemed by anyone else OR already redeemed by this user (handles AuthRedeemOnSignIn early redemption), (c) student has no prior subscriptions. Fixed this sprint: previously failed when AuthRedeemOnSignIn marked the referral redeemed before first payment.
-AC-04
-Referral dashboard: total referrals sent, converted (paid), rewards earned, rewards pending.
-SHOULD
-DEFERRED -- Phase 2 per doc. Backend stats available at GET /api/referral/stats. UI dashboard deferred to Phase 2 as documented.
-AC-05
-Fraud detection: same device fingerprint or same IP referrals flagged and voided. Student notified if reward is voided.
-MUST
-DONE -- redeemReferral checks creator IP (stored in referral.metadata.creatorIp at code creation) against redeemer IP; same-IP referrals voided. Post-transaction push + email sent to both parties on void via sendPushSafe + PUSH_NOTIFICATIONS.referral_voided_*.
-
-
-
-7. Phase 2 Features (Scoped, Not Built at MVP)
-SCOPE NOTE
-The following features are fully designed and acceptance-criteria-ready but explicitly excluded from MVP build scope. They are documented here to ensure MVP architecture does not block their addition.
-
-
-Feature
-Code
-Why Deferred
-Voice Interaction (ASR + TTS)
-F-STU-P2-001
-Requires Whisper ASR + ElevenLabs TTS integration. High infra cost at MVP scale. Language model quality for regional languages needs validation before student-facing.
-Camera Input / OCR
-F-STU-P2-002
-Requires GPT-4o vision pipeline + math parsing. Complex error handling for low-quality images. Phase 1 students can type doubts.
-Offline Mode
-F-STU-P2-003
-Requires PWA service worker + content pre-download + offline queue + sync-on-reconnect. Significant frontend complexity.
-Leaderboard
-F-STU-P2-004
-Requires privacy review for minors. National-scale ranking requires sufficient student base to be meaningful.
-Study Pods (Peer Learning)
-F-STU-P2-005
-Requires real-time group chat + AI facilitation + moderation pipeline. Separate safety review needed for minor-to-minor communication.
-Brain Break Mini-Games
-F-STU-P2-006
-Curriculum-aligned game content requires significant design and content creation effort.
-WhatsApp Session Sharing
-F-STU-P2-007
-Requires WhatsApp Business API integration — parent actor dependency.
-Accessibility Mode
-F-STU-P2-008
-ARIA compliance, dyslexia font, extended time mode. Important but not blocking initial launch.
-
-
-Additional Phase 2 — Freemium Observability & Tests
-
-- Feature: Freemium job observability
-	Code: F-STU-P2-009
-	Why Deferred: Requires metrics & dashboard work (Prometheus / StatsD + Grafana) and alerting rules. Not required for MVP delivery of freemium UX but important for operational reliability at scale.
-	Acceptance Criteria:
-	- Emit per-run metrics from `worker/jobs/freemiumResetNotifications`:
-		- `freemium.reset_notifications.eligible` (count of eligible students)
-		- `freemium.reset_notifications.sent` (count of notifications sent)
-		- `freemium.reset_notifications.failures` (count of failed sends)
-	- Dashboards display 7d/30d trends and a firing alert when failures rate > 5% over 1h.
-	- Unit tests exercise metric emission using a metrics mock.
-
-- Feature: Freemium integration test (end-to-end)
-	Code: F-STU-P2-010
-	Why Deferred: Requires test harness seeding and controlled push send mocks. Valuable for regression coverage but not blocking the initial job implementation.
-	Acceptance Criteria:
-	- Integration test seeds `FreeTierUsage` rows for a small set of students with `sessionsUsed > 0` and `subscriptionStatus='free'`.
-	- Run job in test harness and assert that `sendPushSafe` was called expected number of times and DB unchanged (idempotent).
-	- Test included under `tests/integration/worker/` and runnable in CI with a test DB.
-
-- Feature: Scheduler smoke test (CI dry-run)
-	Code: F-STU-P2-011
-	Why Deferred: Running the full scheduler in CI can be noisy; a lightweight smoke test that imports `worker/scheduler` and runs `runFreemiumResetNotifications()` in dry-run mode validates wiring.
-	Acceptance Criteria:
-	- A CI-only test imports the scheduler or job module and invokes the freemium job with push sending mocked.
-	- Test verifies no uncaught exceptions and that the job returns a valid `FreemiumResetResult` object.
-	- Marked as `ciOnly` and excluded from slower integration gates until infra available.
-
-
-
-8. Non-Functional Requirements
-Requirement
-Target
-Notes
-Session load time
-< 3 seconds on 4G
-First AI response within 5 seconds of session start
-AI response latency
-< 8 seconds (text doubt)
-SSE streaming: first token within 2 seconds
-Dashboard load
-< 2 seconds
-Including personalised data from Neon
-Mobile-first
-Works on Android 8+, 2 GB RAM device
-PWA, not native app at MVP
-Availability
-99.5% uptime target
-Excludes Neon scheduled maintenance windows
-Data retention
-Session turns: 90 days hot, archived to R2 after
-India DPDP Act compliance
-Session auto-save
-Every 60 seconds
-Redis session state. Zero progress loss on network drop.
-Concurrent sessions
-1,000 target at MVP
-PM2 cluster x2, Redis-backed session state
-
-
-9. Production Run & Deployment
-
-Overview
-- The application runs as a Node.js production deployment managed by PM2. The web frontend (Next.js) and backend API are served from the compiled `dist/` output; background workers run from `dist/worker`.
-
-Key constraints & entry points
-- Node version: >= 20 (use the system Node or a version manager). Ensure `npm ci --include=dev` is run during CI to produce a reproducible install.
-- Build outputs:
-	- Web/server: `dist/server.js` (Next.js compiled server artifacts / server-side helpers).
-	- Worker entry: `dist/worker/entry.js` (workers compiled with `tsconfig.workers.json`).
-- PM2 processes: use `ecosystem.config.cjs` to declare processes. PM2 must run compiled JS from `dist/` only.
-- Environment injection: production environment variables MUST be provided via server env files or a secrets manager. Do NOT hard-code or use `dotenv` at runtime in production code; rely on PM2 `env_file` (e.g. `.env.production`) or native orchestrator secrets.
-
-Canonical deploy checklist (operator)
-1. Pull latest tag/commit on the deploy host.
-2. Ensure a DB snapshot is taken before running migrations (recommended): create a SQL dump or Neon restore point.
-3. Install dependencies and build:
-
-```bash
-npm ci --include=dev
-npm run build:prod
-node scripts/verify-dist.cjs    # repository verification (forbidden deps, entry points)
-```
-
-4. Apply DB migrations (production-safe):
-
-```bash
-npx prisma migrate deploy --schema=prisma/schema.prisma
-```
-
-5. Start / restart services with PM2 (reads `.env.production` or process env):
-
-```bash
-pm2 start ecosystem.config.cjs --env production
-pm2 restart --update-env
-pm2 status
-pm2 logs --lines 200
-```
-
-Operational notes
-- Verification: run `node scripts/verify-dist.cjs` and confirm there are no forbidden runtime dependencies in `dist/` (e.g., `dotenv`, `ts-node`, `tsconfig-paths`). The deployment pipeline should fail on any violation.
-- Workers: build workers with `tsconfig.workers.json` and start via PM2 entry `dist/worker/entry.js`. Workers must be idempotent and safe to restart.
-- Timeouts & fallbacks: All external calls (OpenAI, Redis, DB) must enforce timeouts and retries with safe fallbacks (see developer guardrails in `/docs/COPILOT_GUARDRAILS.md`).
-- Secrets: keep secrets out of source control. Use a secrets manager or `env_file` with restricted OS permissions. Ensure `NEXTAUTH_SECRET`, `DATABASE_URL`, `OPENAI_API_KEY`, `SENTRY_DSN` (optional) are present.
-- Monitoring & logging: configure Sentry (set `SENTRY_DSN`) and Prometheus exporters. Use `pm2 monit` and centralized log collection (e.g., CloudWatch/S3 + `pm2-logrotate`).
-- Health checks: expose a simple `/health` or `/api/health` endpoint returning 200; alert if the route fails.
-
-Rollback & emergency
-- Before migrations, snapshot DB and note the previous release's commit/tag.
-- If a migration is irreversible, restore DB snapshot then redeploy previous artifact.
-- Use graceful PM2 reloads when possible to drain requests: `pm2 reload ecosystem.config.cjs --only web`.
-
-Security & compliance
-- Do not commit `.env.production` or any secrets. Maintain an allowlist of deploy hosts with SSH key access.
-- Verify third-party services and DSP compliance for student data (India DPDP). Retention policy: session turns 90 days hot, archived to R2.
-
-Post-deploy verification commands
-
-```bash
-pm2 status
-pm2 logs --lines 200
-curl -fS https://localhost:3000/api/health || echo 'health failed'
-node scripts/verify-dist.cjs
-grep -R "dotenv" dist || echo OK
-grep -R "tsconfig-paths" dist || echo OK
-```
-
-These steps describe the intended production run model and the operational checks required before release. Add infra-specific automation (CI/CD) to codify these steps in your pipeline.
 
+- **AC-01 (MUST):** Student registers via mobile OTP, Google OAuth, or email + password.
+- **AC-02 (MUST):** Collect Name, Age, Grade (1–12), Board (CBSE/ICSE/State), Medium of instruction.
+- **AC-03 (MUST):** If age < 13: parent mobile mandatory; parent OTP verification required before activation.
+- **AC-04 (MUST):** Profile marked INCOMPLETE until Board + Grade + Medium + ≥1 subject selected; incomplete profile blocks learning features.
+- **AC-05 (MUST):** Student can select up to 6 subjects; core subjects pre-selected by Grade+Board.
+- **AC-06 (MUST):** Grade is immutable post-registration without admin approval.
+- **AC-07 (SHOULD):** Other profile fields editable from Profile screen.
+- **AC-08 (SHOULD):** On success: send welcome email and show onboarding checklist (Complete profile → Take diagnostic → Start first session).
+
+### F-STU-002 — Diagnostic Assessment (MVP)
+
+Per-subject adaptive baseline test used to bootstrap the student's knowledge graph. Mandatory before first session.
+
+- **AC-01 (MUST):** Diagnostic mandatory per subject; cannot be skipped.
+- **AC-02 (MUST):** Adaptive 15–25 questions per subject; difficulty adjusts via IRT 3PL.
+- **AC-03 (MUST):** Questions span full grade syllabus to detect gaps and advanced mastery.
+- **AC-04 (MUST):** 30-minute soft cap; students may pause/resume within 24 hours; auto-submit after 24 hours.
+- **AC-05 (MUST):** Outputs: Mastery % per chapter, Grade placement, Recommended starting chapter.
+- **AC-06 (MUST):** Results shown as visual Knowledge Map (Red <40%, Amber 40–70%, Green >70%).
+- **AC-07 (SHOULD):** Abandoned diagnostics with <10 Qs: partial data used; assume grade-level start for unanswered chapters.
+- **AC-08 (SHOULD):** Retake available after 30 days; different question set; rapid-fire answer detection.
+- **AC-09 (MUST):** Diagnostic results create StudentConceptState records for all concepts.
+
+### F-STU-003 — Learning Path Generation (MVP)
+
+AI generates a personalised, time-bound study plan from diagnostic results and student goals.
+
+- **AC-01 (MUST):** Student sets exam date (or "No exam — steady learning").
+- **AC-02 (MUST):** Student provides weekly study availability; minimum 3 hrs/week required.
+- **AC-03 (MUST):** Plan: weak chapters prioritized, sequential curriculum, mandatory board topics locked, revision buffer (last 2 weeks).
+- **AC-04 (MUST):** Display: calendar view + chapter sequence with estimated session counts.
+- **AC-05 (MUST):** Plan auto-adjusts weekly based on progress.
+- **AC-06 (SHOULD):** Student may reorder topics within a week (cannot remove mandatory topics).
+- **AC-07 (MUST):** Plan regenerated if board, grade, exam date, or subject selection changes.
+- **AC-08 (MUST):** "Today's Plan" widget reflects current recommendation.
+
+### F-STU-004 — Language & Learning Style Preference (MVP)
+
+- **AC-01 (MUST):** Teaching language selectable per subject (e.g., Math in Hindi).
+- **AC-02 (MUST):** Show available languages per subject; unavailable ones greyed with "Coming soon".
+- **AC-03 (MUST):** MVP supported languages: English and Hindi.
+- **AC-04 (MUST):** Language changes take effect next session.
+- **AC-05 (SHOULD):** UI shell language is separate from teaching language.
+- **AC-06 (SHOULD):** Learning style: Visual / Reading / Kinesthetic; AI uses this to pick explanation modality.
+- **AC-07 (MUST):** Code-switched input (Hinglish, Tanglish) accepted and not penalised.
+
+## 3. Core Learning — Session Flow
+
+### F-STU-010 — Session Initiation (MVP)
+
+- **AC-01 (MUST):** Home CTA: "Continue where you left off" (single tap resume/start).
+- **AC-02 (MUST):** Secondary options: Today's planned topic, Browse syllabus, "Surprise me".
+- **AC-03 (MUST):** Pre-session screen shows topic, estimated duration, prerequisite check.
+- **AC-04 (MUST):** Session loads < 3s on 4G; first AI message < 5s.
+- **AC-05 (MUST):** If interrupted: options to Resume / Restart / Skip (marks deferred).
+- **AC-06 (MUST):** Auto-save every 60s; no progress loss on network drop or app close.
+
+### F-STU-011 — AI Teach Mode — Pedagogical Flow (MVP)
+
+Seven-stage structured explanation with adaptive branching.
+
+- **AC-01 (MUST):** Sequence: Hook → Prerequisite Bridge → Core Explanation → Worked Example → Guided Practice → Independent Practice → Consolidation.
+- **AC-02 (MUST):** AI cannot advance until stage exit criteria met; failing twice triggers remediation.
+- **AC-03 (MUST):** Student may interrupt to ask a doubt; AI pauses and resolves it.
+- **AC-04 (MUST):** Student may request re-explanation in different styles.
+- **AC-05 (MUST):** AI never gives direct answers to practice problems; use 3-tier hint system.
+- **AC-06 (MUST):** Use culturally relevant analogies (India-aware).
+- **AC-07 (SHOULD):** Cite board exam objective where appropriate.
+- **AC-08 (MUST):** 3 consecutive wrong answers trigger prerequisite remediation.
+- **AC-09 (SHOULD):** Detect suspiciously perfect/copy-paste answers and probe further.
+- **AC-10 (SHOULD):** Tone calibrated by grade band.
+
+### F-STU-012 — 3-Tier Hint System (MVP)
+
+- **Tier 1 (MUST):** Directional nudge (point to relevant concept/formula).
+- **Tier 2 (MUST):** Structural hint (reveal approach without executing it).
+- **Tier 3 (MUST):** Worked scaffold (first step only).
+- **AC-04 (MUST):** Hints not volunteered before 90s inactivity; after 90s ask if student wants a hint.
+- **AC-05 (MUST):** Student must explicitly request each hint; show hint counter.
+- **AC-06 (MUST):** After 3 hints exhausted and still wrong: provide full solution and an isomorphic problem.
+- **AC-07 (SHOULD):** Track hint usage per concept; high dependency flags for consolidation.
+
+### F-STU-013 — Misconception Detection & Correction (MVP)
+
+- **AC-01 (MUST):** Maintain subject-level misconception library mapped to diagnostic signatures.
+- **AC-02 (MUST):** When matched, AI names and corrects the misconception.
+- **AC-03 (MUST):** Use contrastive explanations with counterexamples.
+- **AC-04 (MUST):** Log detected misconceptions to student profile and session prompts.
+- **AC-05 (SHOULD):** Log novel misconceptions to analytics for content team review.
+- **AC-06 (MUST):** Seed library: minimum 20 misconceptions per subject.
+
+### F-STU-014 — Virtual Whiteboard Mode (MVP)
+
+- **AC-01 (MUST):** Auto-activate for geometry, algebra step-by-step, chemistry, physics diagrams.
+- **AC-02 (MUST):** AI draws incrementally timed to narration.
+- **AC-03 (MUST):** Student has a separate canvas layer.
+- **AC-04 (MUST):** "Submit my working" button for AI evaluation.
+- **AC-05 (MUST):** Student must explicitly submit for re-evaluation.
+- **AC-06 (SHOULD):** Save whiteboard state as a session artifact.
+
+### F-STU-015 — Session Completion & Summary (MVP)
+
+- **AC-01 (MUST):** Summary shows concepts covered, questions attempted vs correct %, time spent, mastery change, next session.
+- **AC-02 (MUST):** Show XP earned with animation; milestone celebrations displayed.
+- **AC-03 (MUST):** AI generates one personalised closing insight per session.
+- **AC-04 (SHOULD):** Student may rate the session 1–5 stars (optional).
+- **AC-05 (SHOULD):** Suggest schedule for next session based on historical active hours.
+- **AC-06 (SHOULD):** Share summary to parent via WhatsApp (Phase 2) or copy-to-clipboard (MVP).
+
+## 4. Assessment Engine
+
+### F-STU-020 — Chapter Practice Test (MVP)
+
+- **AC-01 (MUST):** AI auto-generates unique tests; ensure semantic diversity (no semantically equivalent attempts within 90 days).
+- **AC-02 (MUST):** Question mix: 40% MCQ, 30% short answer, 30% long answer/problem solving.
+- **AC-03 (MUST):** Time limit based on board exam time-per-mark; auto-submit on expiry.
+- **AC-04 (MUST):** Correct answers hidden during test; review only after submission.
+- **AC-05 (MUST):** Post-submission: wrong answers show step-by-step solution and specific error analysis.
+- **AC-06 (MUST):** Score < 40% flags chapter for revision; insert targeted revision within 24 hours.
+- **AC-07 (MUST):** Track score history and show improvement trends.
+- **AC-08 (SHOULD):** Students may flag ambiguous questions; quarantine after 3 flags.
+
+### F-STU-021 — Full Syllabus Mock Exam (MVP)
+
+- **AC-01 (MUST):** Replicate board exam format exactly in UI.
+- **AC-02 (MUST):** Enforce real exam duration; no pause except accessibility mode.
+- **AC-03 (MUST):** Allow intra-section navigation; restrict inter-section navigation post-submission.
+- **AC-04 (MUST):** Provide post-exam report with time-per-question heatmap and percentile vs cohort.
+- **AC-05 (MUST):** Generate a "Next 2 Weeks Priority Plan" post-mock.
+- **AC-06 (MUST):** Minimum 5 unique full mocks per subject/grade at launch.
+- **AC-07 (SHOULD):** Provide offline PDF (questions only) for practice.
+
+### F-STU-022 — Spaced Repetition & Revision Scheduling (MVP)
+
+- **AC-01 (MUST):** Apply SM-18 algorithm for revision scheduling of mastered concepts.
+- **AC-02 (MUST):** Revision cards appear in daily plan; snooze allowed (1 day only).
+- **AC-03 (MUST):** Revision session: 5 targeted questions (~5 minutes).
+- **AC-04 (MUST):** Revision score >80% increases interval; <80% resets interval + remediation.
+- **AC-05 (SHOULD):** Show memory strength per concept in knowledge map.
+- **AC-06 (MUST):** Cap daily revision at 20 minutes; prioritise lowest retention.
+- **AC-07 (SHOULD):** Pre-exam mode activates 14 days before exam; raise retention threshold to 92%.
+
+### F-STU-023 — Exam Readiness Score (MVP)
+
+- **AC-01 (MUST):** Compute 0–100 readiness from chapter mastery, mock performance, spaced repetition retention, and recency of study.
+- **AC-02 (MUST):** Update score after each session and test submission.
+- **AC-03 (MUST):** Show chapter-level breakdown to identify dragging chapters.
+- **AC-04 (MUST):** Provide AI-predicted score range with confidence interval.
+- **AC-05 (SHOULD):** Trigger notifications if score drops >10 points in a week.
+
+## 5. Engagement & Retention
+
+### F-STU-030 — Daily Learning Streak (MVP)
+
+- **AC-01 (MUST):** A day counts as active only when student completes ≥1 full tutoring session (all 7 stages) OR ≥10 revision cards.
+- **AC-02 (MUST):** Display streak counter and milestone badges (7, 14, 30, 60, 100 days).
+- **AC-03 (MUST):** Each student gets 1 streak shield per calendar month (auto-activate on first missed day).
+- **AC-04 (MUST):** Streak break message is motivational and forward-looking.
+- **AC-05 (SHOULD):** Permanently show longest streak on profile.
+- **AC-06 (SHOULD):** Milestones unlock cosmetic rewards only.
+
+### F-STU-031 — XP, Levels & Badges (MVP)
+
+- **AC-01 (MUST):** Award XP for session completion, correct answers, streaks, first-attempt correct, and revision completion.
+- **AC-02 (MUST):** XP never deducted; wrong answers earn 0 XP.
+- **AC-03 (MUST):** Levels 1–100 with thresholds and visual changes at key tiers.
+- **AC-04 (MUST):** Badges for mastery, streaks, mocks, speed, consistency, comeback.
+- **AC-05 (SHOULD):** Allow students to curate 5 badges on profile.
+- **AC-06 (MUST):** Level-up is a full-screen celebration.
+
+### F-STU-032 — Student Dashboard (MVP)
+
+- **AC-01 (MUST):** Dashboard is the primary post-login screen and personalised.
+- **AC-02 (MUST):** Show Today's plan, current streak + weekly XP, readiness per subject, recent sessions, and active revision cards.
+- **AC-03 (MUST):** Primary CTA: "Continue Learning".
+- **AC-04 (SHOULD):** Exam crunch mode UI for ≤14 days to exam.
+- **AC-05 (MUST):** Dashboard loads < 2s with personalised data.
+- **AC-06 (SHOULD):** Support dark mode and adjustable font sizes.
+
+### F-STU-033 — Progress Reports (MVP)
+
+- **AC-01 (MUST):** Reports show sessions trend, mastery %, test scores, weekly study heatmap, concepts mastered.
+- **AC-02 (MUST):** Filter by subject and time range.
+- **AC-03 (MUST):** Top-of-report AI insight: data-driven and specific.
+- **AC-04 (SHOULD):** Downloadable PDF for sharing with parents/teachers.
+- **AC-05 (MUST):** Reports accessible on free tier.
+
+## 6. Subscription & Payments
+
+### F-STU-040 — Freemium Access Control (MVP)
+
+- **AC-01 (MUST):** Free tier: 3 AI sessions per subject/month (≤20 mins each), 1 chapter test per subject/month; diagnostic and learning plan always free.
+- **AC-02 (MUST):** Show session cap counter.
+- **AC-03 (MUST):** On cap: show upgrade prompt at session end (non-interrupting).
+- **AC-04 (MUST):** Free users receive full AI quality; only quantity limited.
+- **AC-05 (SHOULD):** Free tier resets on 1st of month; notify 3 days before.
+
+### F-STU-041 — Subscription Purchase Flow (MVP)
+
+- **AC-01 (MUST):** Plans: Monthly, Quarterly (10% off), Annual (25% off); display INR with GST.
+- **AC-02 (MUST):** Support UPI, cards, netbanking, and EMI on annual plan.
+- **AC-03 (MUST):** Show payment confirmation screen before charge with clear terms.
+- **AC-04 (MUST):** On success: unlock access, send SMS + email receipt, show personalised AI welcome.
+- **AC-05 (MUST):** Failed payments: 3 auto-retries over 3 days, then grace notifications and free tier revert.
+- **AC-06 (MUST):** Cancel anytime; access continues through paid period.
+- **AC-07 (SHOULD):** Family plan covers up to 3 child profiles at 1.8x single price.
+
+### F-STU-042 — Referral Programme (MVP)
+
+- **AC-01 (MUST):** Unique referral code per student; shareable via WhatsApp or copy-to-clipboard.
+- **AC-02 (MUST):** Referrer reward: 1 month free after referred friend's first cleared payment.
+- **AC-03 (MUST):** Referred friend reward: 20% off first month.
+- **AC-04 (SHOULD):** Referral dashboard for tracking.
+- **AC-05 (MUST):** Fraud detection: flag same device/IP referrals.
+
+## 7. Phase 2 Features (Scoped, Not Built at MVP)
+
+> The features below are designed but excluded from MVP to avoid blocking architecture changes.
+
+| Feature | Code | Why Deferred |
+|---|---|---|
+| Voice Interaction (ASR + TTS) | F-STU-P2-001 | Requires Whisper ASR + ElevenLabs TTS; high infra cost and language validation needed. |
+| Camera Input / OCR | F-STU-P2-002 | Requires GPT-4o vision pipeline + math parsing; complex handling for low-quality images. |
+| Offline Mode | F-STU-P2-003 | Requires PWA service worker, content pre-download, and sync-on-reconnect. |
+| Leaderboard | F-STU-P2-004 | Privacy review required for minors; needs critical mass. |
+| Study Pods (Peer Learning) | F-STU-P2-005 | Requires real-time chat and robust moderation. |
+| Brain Break Mini-Games | F-STU-P2-006 | Requires game design and curriculum alignment. |
+| WhatsApp Session Sharing | F-STU-P2-007 | Requires WhatsApp Business API and parent dependencies. |
+| Accessibility Mode | F-STU-P2-008 | ARIA compliance, dyslexia font, and extended time; important but not blocking MVP. |
+
+## 8. Non-Functional Requirements
+
+| Requirement | Target | Notes |
+|---|---|---|
+| Session load time | < 3 seconds on 4G | First AI response within 5 seconds of session start |
+| AI response latency | < 8 seconds (text doubt) | SSE streaming: first token within 2 seconds |
+| Dashboard load | < 2 seconds | Includes personalised data from Neon |
+| Mobile-first | Works on Android 8+, 2 GB RAM device | PWA (not native) |
+| Availability | 99.5% uptime target | Excludes Neon maintenance windows |
+| Data retention | Session turns: 90 days hot; archive to R2 thereafter | India DPDP Act compliance |
+| Session auto-save | Every 60 seconds | Redis session state; resilient to network loss |
+| Concurrent sessions | 1,000 target at MVP | PM2 cluster x2, Redis-backed session state |
 
 ---
 
-### Phase 2 Backlog — Post-release Operational & Content Tasks
-
-- Rationale: operational safety and content coverage tasks that must be executed post-launch to ensure mock availability and auditable content generation.
-- Key items (post-release):
-	- Admin-triggered seeding job: implement an admin-only API to enqueue a background `seed-mocks` job (dry-run and real modes) to create missing `MockExam` rows per subject/grade/board.
-	- Worker handler & queue: background worker (BullMQ) to run `ensureMinimumMocks({ minPer })`, support LLM fallbacks safely, and persist detailed run results and errors.
-	- Audit logging & ExecutionJob: every seed run must create an `AuditLog`/`ExecutionJob` entry with operator id, parameters, dryRun flag, and a persisted JSON summary for post-run review.
-	- Admin UI controls: Dry-run preview, explicit backup confirmation, two-step “Run” with typed acknowledgement, and run history view with links to persisted summaries.
-	- DB safety / preflight: require an operator DB snapshot / restore point before any non-dry-run run; document canonical operator commands for dev and prod.
-	- Tests & CI: unit + integration tests for dry-run behavior, worker handler, audit records, and idempotency; add CI gating for these tests.
-	- Post-seed verification: automated validation job that samples counts per subject/grade/board and alerts if `minPer` not met or question bank shortages occur.
-	- Monitoring & retention: store run summaries (R2/S3) with retention policy, expose run metrics to operator dashboard, and surface errors to Sentry.
-
-Acceptance criteria:
-	- Admin API supports `dryRun=true` returning a concise preview and `dryRun=false` to enqueue an auditable background job.
-	- Every real run requires explicit backup confirmation in the UI and a persisted `AuditLog` row linking to stored summary JSON.
-	- Worker runs are idempotent and safe to retry; failures are logged and surfaced to operators.
-	- CI includes tests covering dry-run, enqueueing, worker execution (mocked), and audit persistence.
-
-
+Last updated: 2026-05-06
