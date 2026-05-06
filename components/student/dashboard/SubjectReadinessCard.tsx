@@ -4,7 +4,7 @@ interface Props {
   subjectId: string;
 }
 
-export default function SubjectReadinessCard({ subjectName, score }: Props) {
+export function SubjectReadinessCard({ subjectName, score }: Props) {
   const pct = Math.round(score * 100);
   const color =
     pct >= 70 ? 'text-success' : pct >= 40 ? 'text-warning' : 'text-error';
@@ -16,3 +16,5 @@ export default function SubjectReadinessCard({ subjectName, score }: Props) {
     </div>
   );
 }
+
+export default SubjectReadinessCard;
