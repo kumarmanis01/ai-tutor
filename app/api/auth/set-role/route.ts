@@ -4,11 +4,24 @@
  * - Sets the authenticated user's role (student or parent) during the post-auth
  *   role selection step and returns the appropriate onboarding redirect URL.
  * - Called once by the /auth/role page immediately after the user picks their role.
+ * - POST /api/auth/set-role persists the authenticated user's selected onboarding role
+ *   using the Prisma UserRole enum contract and returns the next onboarding redirect.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/auth/set-role.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
  *
  * EDIT LOG:
  * - 2026-05-05 | staff-engineer | created for post-auth role selection flow
+ * - 2026-05-05T00:00:00Z | staff-engineer | created for post-auth role selection flow
+ * - 2026-05-05T00:00:00Z | copilot | mapped selected student role to persisted Prisma user enum value
  */
 
+import { UserRole } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -20,6 +33,11 @@ type AllowedRole = (typeof ALLOWED_ROLES)[number];
 const ROLE_REDIRECT: Record<AllowedRole, string> = {
   student: '/student/onboarding',
   parent: '/parent/onboarding',
+};
+
+const PERSISTED_ROLE_BY_SELECTION: Record<AllowedRole, UserRole> = {
+  student: UserRole.user,
+  parent: UserRole.parent,
 };
 
 export async function POST(req: NextRequest) {
@@ -37,10 +55,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'role must be "student" or "parent"' }, { status: 400 });
   }
 
+  const persistedRole = PERSISTED_ROLE_BY_SELECTION[role];
+
   try {
     await prisma.user.update({
       where: { id: userId },
       data: { role },
+      data: { role: persistedRole },
     });
 
     const redirect = ROLE_REDIRECT[role];
