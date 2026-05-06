@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Centralized protected prefixes
-  const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session'];
+  const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session', '/student', '/diagnostic'];
 
   // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
@@ -76,7 +76,13 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard?parent_verify=1', request.url));
       }
 
-      if (!token.onboardingComplete && !pathname.startsWith('/profile') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/parent')) {
+      if (
+        !token.onboardingComplete &&
+        !pathname.startsWith('/profile') &&
+        !pathname.startsWith('/dashboard') &&
+        !pathname.startsWith('/parent') &&
+        !pathname.startsWith('/student/onboarding')
+      ) {
         return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
       }
 
@@ -92,5 +98,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/session/:path*', '/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*', '/student/:path*'],
+  matcher: ['/session/:path*', '/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*', '/student/:path*', '/diagnostic/:path*'],
 };
