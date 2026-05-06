@@ -105,13 +105,13 @@ F-STU-001
 Registration & Account Setup
 MVP
 
-Student creates an account with academic profile. Parent linkage enforced for students under 13.
+Student creates an account with academic profile. Parent linkage enforced for students under 18.
 AC#
 Acceptance Criterion
 Priority
 Status
 AC-01
-Student registers via: mobile OTP, Google OAuth, or email + password
+Student registers via: Google OAuth, or magic link
 MUST
 ✅ DONE — email+password via POST /api/auth/signup; Google OAuth via NextAuth; mobile OTP via MSG91 /api/auth/parent/send-otp + /api/auth/parent/verify-otp
 AC-02
@@ -119,9 +119,9 @@ System collects: Name, Age, Grade (1–12), Board (CBSE/ICSE/State), Medium of i
 MUST
 ✅ DONE — POST /api/user/onboarding collects all fields; checkProfileCompleteness validates name, grade (1-12), board, subjects, language, age
 AC-03
-If age < 13: parent mobile is mandatory. Parent OTP must be verified before account is activated. Student cannot bypass this.
+If age < 18: parent mobile is mandatory. Parent OTP must be verified before account is activated. Student cannot bypass this.
 MUST
-✅ DONE — DPDP_MINOR_AGE=13 constant enforced in profileGuard.checkProfileCompleteness; parent phone required for age<13; /api/auth/parent/send-otp + verify-otp gate account activation
+✅ DONE — DPDP_MINOR_AGE=18 constant enforced in profileGuard.checkProfileCompleteness; parent phone required for age<18; /api/auth/parent/send-otp + verify-otp gate account activation
 AC-04
 Profile is marked INCOMPLETE until: Board + Grade + Medium + at least one subject are selected. INCOMPLETE profile blocks access to all learning features.
 MUST
