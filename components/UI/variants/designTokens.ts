@@ -16,6 +16,7 @@
  */
 
 import type { Grade } from '@/lib/ai/prompts/schemas';
+import { AGE_PALETTES } from '@/lib/theme/brand';
 import {
   type UIVariantConfig,
   type GradeBand,
@@ -52,49 +53,10 @@ export interface ThemeClassNames {
 // ============================================================================
 
 /**
- * Color palette definitions
+ * Age-band colour palettes sourced from lib/theme/brand.ts (AGE_PALETTES).
+ * Update brand.ts to change colours; this file just re-exports them.
  */
-const COLOR_PALETTES = {
-  vibrant: {
-    primary: '#FF6B6B',
-    primaryHover: '#FF5252',
-    secondary: '#4ECDC4',
-    accent: '#FFE66D',
-    success: '#51CF66',
-    warning: '#FFD43B',
-    error: '#FF6B6B',
-    background: '#FFF9E6',
-    surface: '#FFFFFF',
-    text: '#2D3436',
-    textMuted: '#636E72',
-  },
-  balanced: {
-    primary: '#6366F1',
-    primaryHover: '#4F46E5',
-    secondary: '#06B6D4',
-    accent: '#F59E0B',
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    background: '#F8FAFC',
-    surface: '#FFFFFF',
-    text: '#1E293B',
-    textMuted: '#64748B',
-  },
-  professional: {
-    primary: '#3B82F6',
-    primaryHover: '#2563EB',
-    secondary: '#64748B',
-    accent: '#8B5CF6',
-    success: '#22C55E',
-    warning: '#EAB308',
-    error: '#DC2626',
-    background: '#F1F5F9',
-    surface: '#FFFFFF',
-    text: '#0F172A',
-    textMuted: '#475569',
-  },
-} as const;
+const COLOR_PALETTES = AGE_PALETTES;
 
 /**
  * Background pattern styles

@@ -31,22 +31,20 @@ const steps = [
   },
 ];
 
-// Chat messages demo removed -- AnimatedChatClient uses its own sample messages.
-
 const HowItWorksSection = () => {
   return (
-    <section id="how-it-works" className="py-10 md:py-14 bg-[#EEEDFE]/40">
+    <section id="how-it-works" className="py-10 md:py-14 bg-brand-primary-bg/40">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
         {/* Heading */}
         <div className="text-center mb-8 md:mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#534AB7]/10 text-[#534AB7] rounded-full text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary/10 text-brand-primary rounded-full text-sm font-medium mb-4">
             <Icon name="SparklesIcon" size={20} variant="solid" />
             <span>How Teacher Vidya Works</span>
           </div>
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
             Three steps to board exam confidence
           </h2>
-          <p className="font-accent text-xl md:text-2xl text-[#534AB7] mb-2">
+          <p className="font-accent text-xl md:text-2xl text-brand-primary mb-2">
             तीन कदम और board exam की तैयारी पक्की
           </p>
         </div>
@@ -55,25 +53,25 @@ const HowItWorksSection = () => {
         <div className="grid md:grid-cols-3 gap-8 mb-10">
           {steps.map((step) => (
             <div key={step.number} className="relative flex flex-col items-center text-center md:items-start md:text-left">
-              <div className="w-14 h-14 rounded-2xl bg-[#534AB7] flex items-center justify-center mb-4 flex-shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-brand-primary flex items-center justify-center mb-4 flex-shrink-0">
                 <Icon name={step.icon} size={28} variant="outline" className="text-white" />
               </div>
-              <div className="absolute top-0 left-0 -translate-x-1 -translate-y-1 font-headline font-bold text-5xl text-[#534AB7]/10 select-none leading-none">
+              <div className="absolute top-0 left-0 -translate-x-1 -translate-y-1 font-headline font-bold text-5xl text-brand-primary/10 select-none leading-none">
                 {step.number}
               </div>
               <h3 className="font-headline font-bold text-xl text-secondary mb-1">{step.titleEn}</h3>
-              <p className="font-accent text-sm text-[#534AB7] mb-3">{step.titleHi}</p>
-                  <p className="font-body text-sm md:text-base text-muted-foreground leading-relaxed">
-                    {step.descEn}
-                  </p>
-                  <p className="font-accent text-sm text-[#534AB7] mt-2">{step.descHi}</p>
+              <p className="font-accent text-sm text-brand-primary mb-3">{step.titleHi}</p>
+              <p className="font-body text-sm md:text-base text-muted-foreground leading-relaxed">
+                {step.descEn}
+              </p>
+              <p className="font-accent text-sm text-brand-primary mt-2">{step.descHi}</p>
             </div>
           ))}
         </div>
-            {/* Animated chat demo (client) */}
-            <AnimatedChatClient />
-      </div>
 
+        {/* Animated chat demo (client) */}
+        <AnimatedChatClient />
+      </div>
     </section>
   );
 };
