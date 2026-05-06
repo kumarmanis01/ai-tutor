@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
     const whatsappPhone = rawWhatsappPhone ? rawWhatsappPhone.replace(/[^0-9+]/g, '') : undefined;
     const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
     const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
+    const rawParentWhatsapp = typeof body.parent_whatsapp === 'string' ? body.parent_whatsapp.trim() : undefined;
+    const parentWhatsapp = rawParentWhatsapp ? rawParentWhatsapp.replace(/[^0-9+]/g, '') : undefined;
     const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
     const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
 
@@ -139,6 +141,7 @@ export async function POST(req: NextRequest) {
     if (preferredLanguage) updates.language = preferredLanguage;
     if (token) updates.lastWidgetToken = token;
     if (parentEmail !== undefined) updates.parentEmail = parentEmail || null;
+    if (parentWhatsapp !== undefined) updates.parentPhone = parentWhatsapp || null;
     if (schoolName !== undefined) updates.schoolName = schoolName;
     // whatsappPhone is immutable after first save -- only written when not already set (enforced below after DB lookup)
 
