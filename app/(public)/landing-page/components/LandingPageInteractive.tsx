@@ -21,12 +21,12 @@ const LandingPageInteractive = () => {
         <PricingSection />
         <FAQSection />
         {/* Mid-funnel email capture -- after objections are handled */}
-        <section className="py-10 bg-[#EEEDFE]/50 border-y border-[#534AB7]/10">
+        <section className="py-10 bg-brand-primary-bg/50 border-y border-brand-primary/10">
           <div className="mx-auto px-4 md:px-6 max-w-xl text-center">
             <p className="font-headline font-bold text-xl text-secondary mb-1">
               Ready to try it yourself?
             </p>
-            <p className="font-accent text-sm text-[#534AB7] mb-5">
+            <p className="font-accent text-sm text-brand-primary mb-5">
               आज ही शुरू करें -- बिल्कुल मुफ्त
             </p>
             <OtpSignupForm />

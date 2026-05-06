@@ -203,7 +203,7 @@ const PricingSection = () => {
                     href="/auth/signup"
                     className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
                       plan.recommended
-                        ? 'bg-[#534AB7] text-white hover:bg-[#4239a0] shadow-lg'
+                        ? 'bg-brand-primary text-white hover:bg-brand-primary-hover shadow-lg'
                         : 'bg-secondary text-white hover:bg-secondary/90'
                     }`}
                   >

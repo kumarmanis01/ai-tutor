@@ -84,7 +84,7 @@ const TrustBar = () => {
   ];
 
   return (
-    <section className="bg-white border-y border-[#534AB7]/10 py-6 md:py-8">
+    <section className="bg-white border-y border-brand-primary/10 py-6 md:py-8">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {metrics.map((metric, index) => (

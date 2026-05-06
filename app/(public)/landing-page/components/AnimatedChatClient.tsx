@@ -47,13 +47,13 @@ export default function AnimatedChatClient() {
 
   return (
     <div className="max-w-sm mx-auto" ref={containerRef}>
-      <p className="text-center text-sm font-semibold text-[#534AB7] mb-3 tracking-wide uppercase">
+      <p className="text-center text-sm font-semibold text-brand-primary mb-3 tracking-wide uppercase">
         This is how Teacher Vidya actually teaches
       </p>
 
       <div className="border border-border rounded-2xl bg-white dark:bg-gray-900 p-4 space-y-3 overflow-hidden">
         <div key={replayKey}>
-          <p className="text-xs font-semibold text-[#534AB7] pl-1">Teacher Vidya</p>
+          <p className="text-xs font-semibold text-brand-primary pl-1">Teacher Vidya</p>
 
           {chatMessages.map((msg, i) => (
             <div
@@ -68,8 +68,8 @@ export default function AnimatedChatClient() {
               <div
                 className={`max-w-[85%] px-3 py-2 text-sm leading-snug ${
                   msg.sender === 'vidya'
-                    ? 'bg-[#EEEDFE] text-[#3C3489] rounded-[4px_12px_12px_12px]'
-                    : 'bg-[#534AB7] text-white rounded-[12px_4px_12px_12px]'
+                    ? 'bg-brand-primary-bg text-brand-primary rounded-[4px_12px_12px_12px]'
+                    : 'bg-brand-primary text-white rounded-[12px_4px_12px_12px]'
                 }`}
               >
                 {msg.text}
@@ -84,10 +84,10 @@ export default function AnimatedChatClient() {
               animationDelay: `${chatMessages.length * 1.2}s`,
             }}
           >
-            <div className="bg-[#EEEDFE] rounded-[4px_12px_12px_12px] px-4 py-3 flex gap-1 items-center">
-              <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0s' }} />
-              <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0.2s' }} />
-              <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0.4s' }} />
+            <div className="bg-brand-primary-bg rounded-[4px_12px_12px_12px] px-4 py-3 flex gap-1 items-center">
+              <span className="w-2 h-2 rounded-full bg-brand-primary typing-dot" style={{ animationDelay: '0s' }} />
+              <span className="w-2 h-2 rounded-full bg-brand-primary typing-dot" style={{ animationDelay: '0.2s' }} />
+              <span className="w-2 h-2 rounded-full bg-brand-primary typing-dot" style={{ animationDelay: '0.4s' }} />
             </div>
           </div>
         </div>

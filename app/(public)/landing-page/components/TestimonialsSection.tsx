@@ -26,7 +26,7 @@ const TestimonialsSection = () => {
       id: 1,
       name: 'Sunita Sharma',
       initial: 'S',
-      avatarColor: 'bg-[#534AB7]',
+      avatarColor: 'bg-brand-primary',
       location: 'Jaipur, Rajasthan',
       role: 'Mother of Class 8 Student',
       rating: 5,
@@ -42,7 +42,7 @@ const TestimonialsSection = () => {
       id: 2,
       name: 'Rajesh Kumar',
       initial: 'R',
-      avatarColor: 'bg-[#1D9E75]',
+      avatarColor: 'bg-brand-success',
       location: 'Indore, Madhya Pradesh',
       role: 'Father of Class 10 Student',
       rating: 4,
@@ -58,7 +58,7 @@ const TestimonialsSection = () => {
       id: 3,
       name: 'Priya Patel',
       initial: 'P',
-      avatarColor: 'bg-[#BA7517]',
+      avatarColor: 'bg-brand-warning',
       location: 'Lucknow, Uttar Pradesh',
       role: 'Mother of Class 3 & 9 Students',
       rating: 4,
@@ -95,17 +95,17 @@ const TestimonialsSection = () => {
   };
 
   return (
-    <section id="testimonials" className="py-10 md:py-14 bg-[#EAF3DE]/40">
+    <section id="testimonials" className="py-10 md:py-14 bg-brand-success-bg/40">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
         <div className="text-center mb-8 md:mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1D9E75]/10 text-[#1D9E75] rounded-full text-sm font-semibold mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-success/10 text-brand-success rounded-full text-sm font-semibold mb-4">
             <Icon name="StarIcon" size={18} variant="solid" />
             <span>Real Parent Reviews</span>
           </div>
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-3">
             Parents & Students Love Spinzy Academy
           </h2>
-          <p className="font-accent text-xl md:text-2xl text-[#534AB7] mb-2">
+          <p className="font-accent text-xl md:text-2xl text-brand-primary mb-2">
             माता-पिता और छात्रों को Spinzy Academy पसंद है
           </p>
           <p className="font-body text-lg text-muted-foreground max-w-3xl mx-auto">
@@ -121,8 +121,8 @@ const TestimonialsSection = () => {
               onClick={() => setActiveTestimonial(index)}
               className={`text-left p-5 rounded-2xl border-2 transition-all duration-250 ${
                 activeTestimonial === index
-                  ? 'border-[#534AB7] bg-[#534AB7]/5 shadow-lg'
-                  : 'border-border bg-background hover:border-[#534AB7]/30'
+                  ? 'border-brand-primary bg-brand-primary/5 shadow-lg'
+                  : 'border-border bg-background hover:border-brand-primary/30'
               }`}
             >
               <div className="flex items-start gap-3 mb-3">
@@ -132,7 +132,7 @@ const TestimonialsSection = () => {
                     {testimonial.name}
                   </h3>
                   <p className="font-body text-xs text-muted-foreground">{testimonial.location}</p>
-                  <p className="font-body text-xs text-[#534AB7] mt-0.5">{testimonial.role}</p>
+                  <p className="font-body text-xs text-brand-primary mt-0.5">{testimonial.role}</p>
                 </div>
               </div>
 
@@ -143,7 +143,7 @@ const TestimonialsSection = () => {
                     name="StarIcon"
                     size={14}
                     variant="solid"
-                    className={i < testimonial.rating ? 'text-[#BA7517]' : 'text-muted-foreground/30'}
+                    className={i < testimonial.rating ? 'text-brand-warning' : 'text-muted-foreground/30'}
                   />
                 ))}
               </div>
@@ -160,10 +160,10 @@ const TestimonialsSection = () => {
                   <p className="font-body text-xs text-muted-foreground">Before</p>
                 </div>
                 <div className="flex items-center justify-center">
-                  <Icon name="ArrowRightIcon" size={16} variant="outline" className="text-[#1D9E75]" />
+                  <Icon name="ArrowRightIcon" size={16} variant="outline" className="text-brand-success" />
                 </div>
                 <div className="text-center">
-                  <p className="font-headline font-bold text-base text-[#1D9E75]">
+                  <p className="font-headline font-bold text-base text-brand-success">
                     {testimonial.afterGrade}
                   </p>
                   <p className="font-body text-xs text-muted-foreground">After</p>
@@ -174,7 +174,7 @@ const TestimonialsSection = () => {
         </div>
 
         {/* Active testimonial detail */}
-        <div className="bg-gradient-to-br from-[#534AB7]/10 to-[#1D9E75]/10 rounded-2xl p-6 md:p-10">
+        <div className="bg-gradient-to-br from-brand-primary/10 to-brand-success/10 rounded-2xl p-6 md:p-10">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div>
               <div className="flex items-center gap-4 mb-5">
@@ -182,7 +182,7 @@ const TestimonialsSection = () => {
                 <div>
                   <h3 className="font-headline font-bold text-2xl text-secondary">{active.name}</h3>
                   <p className="font-body text-sm text-muted-foreground">{active.location}</p>
-                  <p className="font-body text-xs text-[#534AB7]">{active.role}</p>
+                  <p className="font-body text-xs text-brand-primary">{active.role}</p>
                 </div>
               </div>
 
@@ -203,8 +203,8 @@ const TestimonialsSection = () => {
             <div className="space-y-4">
               <div className="bg-background rounded-xl p-5 border-2 border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-[#1D9E75]/10 rounded-lg flex items-center justify-center">
-                    <Icon name="ChartBarIcon" size={24} variant="solid" className="text-[#1D9E75]" />
+                  <div className="w-10 h-10 bg-brand-success/10 rounded-lg flex items-center justify-center">
+                    <Icon name="ChartBarIcon" size={24} variant="solid" className="text-brand-success" />
                   </div>
                   <h4 className="font-headline font-bold text-lg text-secondary">Grade Improvement</h4>
                 </div>
@@ -215,9 +215,9 @@ const TestimonialsSection = () => {
                     </p>
                     <p className="font-body text-xs text-muted-foreground">Before</p>
                   </div>
-                  <Icon name="ArrowRightIcon" size={28} variant="outline" className="text-[#1D9E75]" />
+                  <Icon name="ArrowRightIcon" size={28} variant="outline" className="text-brand-success" />
                   <div className="text-center">
-                    <p className="font-headline font-bold text-3xl text-[#1D9E75] mb-1">
+                    <p className="font-headline font-bold text-3xl text-brand-success mb-1">
                       {active.afterGrade}
                     </p>
                     <p className="font-body text-xs text-muted-foreground">After 3 Months</p>
@@ -227,12 +227,12 @@ const TestimonialsSection = () => {
 
               <div className="bg-background rounded-xl p-5 border-2 border-border">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-[#534AB7]/10 rounded-lg flex items-center justify-center">
-                    <Icon name="CurrencyRupeeIcon" size={24} variant="solid" className="text-[#534AB7]" />
+                  <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
+                    <Icon name="CurrencyRupeeIcon" size={24} variant="solid" className="text-brand-primary" />
                   </div>
                   <h4 className="font-headline font-bold text-lg text-secondary">Monthly Savings</h4>
                 </div>
-                <p className="font-headline font-bold text-4xl text-[#534AB7] mb-1">{active.savings}</p>
+                <p className="font-headline font-bold text-4xl text-brand-primary mb-1">{active.savings}</p>
                 <p className="font-body text-xs text-muted-foreground">
                   Saved by switching from traditional tuition to Spinzy Academy
                 </p>
