@@ -46,7 +46,7 @@ const Footer = () => {
             <div className="flex flex-wrap gap-3 items-center mb-4">
               <a
                 href="/auth/signup"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#534AB7] text-white rounded-lg text-sm font-semibold shadow-sm hover:bg-[#4239a0] transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-lg text-sm font-semibold shadow-sm hover:bg-brand-primary-hover transition-colors"
               >
                 Start For Free
               </a>

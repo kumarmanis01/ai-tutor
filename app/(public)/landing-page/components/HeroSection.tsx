@@ -38,16 +38,16 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-[#F0EFFF] via-background to-background">
+    <section className="relative bg-gradient-to-br from-brand-primary-bg via-background to-background">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute top-20 right-10 w-64 h-64 bg-brand-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-7xl mx-auto">
           <div className="text-center lg:text-left space-y-6 md:space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1D9E75]/10 text-[#1D9E75] rounded-full text-sm font-semibold">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-success/10 text-brand-success rounded-full text-sm font-semibold">
               <Icon name="CheckBadgeIcon" size={18} variant="solid" />
               <span>Trusted by 1 Lakh+ Indian families</span>
             </div>
@@ -67,7 +67,7 @@ const HeroSection = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link
                 href="/auth/signup"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-[#534AB7] text-white font-cta font-semibold rounded-lg hover:bg-[#4239a0] transition-all duration-250 text-base md:text-lg shadow-lg"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-brand-primary text-white font-cta font-semibold rounded-lg hover:bg-brand-primary-hover transition-all duration-250 text-base md:text-lg shadow-lg"
               >
                 <Icon name="SparklesIcon" size={20} variant="solid" />
                 <span>Start For Free</span>
@@ -83,15 +83,15 @@ const HeroSection = () => {
 
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-sm md:text-base text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
+                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-brand-success" />
                 {FREE_SESSIONS_TEXT}
               </span>
               <span className="flex items-center gap-1.5">
-                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
+                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-brand-success" />
                 No credit card
               </span>
               <span className="flex items-center gap-1.5">
-                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
+                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-brand-success" />
                 Setup in 2 minutes
               </span>
             </div>
@@ -113,9 +113,9 @@ const HeroSection = () => {
                 alt="Teacher Vidya"
                 width={96}
                 height={96}
-                className="w-24 h-24 rounded-full object-cover ring-2 ring-[#534AB7] ring-offset-2"
+                className="w-24 h-24 rounded-full object-cover ring-2 ring-brand-primary ring-offset-2"
               />
-              <p className="mt-2 text-sm font-semibold text-[#534AB7]">Teacher Vidya</p>
+              <p className="mt-2 text-sm font-semibold text-brand-primary">Teacher Vidya</p>
               <p className="text-xs text-muted-foreground">Your AI home tutor</p>
             </div>
 
@@ -131,8 +131,8 @@ const HeroSection = () => {
 
             <div className="hidden md:block absolute -bottom-6 -left-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[200px]">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
-                  <Icon name="AcademicCapIcon" size={24} variant="solid" className="text-success" />
+                <div className="w-12 h-12 bg-brand-success/10 rounded-full flex items-center justify-center">
+                  <Icon name="AcademicCapIcon" size={24} variant="solid" className="text-brand-success" />
                 </div>
                 <div>
                   <p className="font-headline font-bold text-2xl text-secondary">5L+</p>
@@ -143,12 +143,12 @@ const HeroSection = () => {
 
             <div className="hidden md:block absolute -top-6 -right-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[180px]">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-brand-primary/10 rounded-full flex items-center justify-center">
                   <Icon
                     name="DevicePhoneMobileIcon"
                     size={24}
                     variant="solid"
-                    className="text-primary"
+                    className="text-brand-primary"
                   />
                 </div>
                 <div>
