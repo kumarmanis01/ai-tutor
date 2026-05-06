@@ -257,7 +257,7 @@ export default function EnrollmentForm({ initialData, hierarchy }: Props) {
         router.push('/enroll/diagnostic-queue');
       }
     } catch {
-      setGlobalError("Something went wrong. Please try again.");
+      setGlobalError('Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -271,14 +271,14 @@ export default function EnrollmentForm({ initialData, hierarchy }: Props) {
       const res = await fetch('/api/enroll/send-parent-otp', { method: 'POST' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setOtpError(json?.error || "Could not send code. Please try again.");
+        setOtpError(json?.error || 'Could not send code. Please try again.');
         return;
       }
       setOtpSent(true);
       setOtpChannels(json.channels ?? null);
       startCooldown();
     } catch {
-      setOtpError("Could not send code. Please try again.");
+      setOtpError('Could not send code. Please try again.');
     } finally {
       setOtpSending(false);
     }
