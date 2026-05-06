@@ -1,5 +1,26 @@
 'use client'
 
+/**
+ * FILE OBJECTIVE:
+ * - /student/onboarding page
+ * - Single-page form that captures student academic profile (name, DOB, language,
+ *   board, grade, subjects, WhatsApp). For students under DPDP_MINOR_AGE, shows
+ *   a parent contact section and triggers the parent OTP verification flow before
+ *   activating the account.
+ * - Fetches boards/grades/subjects/languages dynamically from /api/academic-hierarchy.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/onboarding/parentWhatsapp.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-06 | claude | created for Google-auth onboarding flow
+ */
+
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -17,9 +38,24 @@ interface AcademicHierarchy {
   languages: AcademicLanguage[]
 }
 
+// Narrow shape of session.user fields accessed in this component
+interface OnboardingSessionUser {
+  name?: string | null
+  onboardingComplete?: boolean
+  accountStatus?: string
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAX_SUBJECTS = 6
+
+// Server returns errors under these keys; map to UI field names
+const SERVER_KEY_MAP: Record<string, string> = {
+  class_grade: 'grade',
+  preferred_language: 'language',
+  parent_whatsapp: 'parentWhatsapp',
+  parent_email: 'parentEmail',
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,6 +70,22 @@ function calcAge(dob: string): number {
 
 function todayIso(): string {
   return new Date().toISOString().split('T')[0]
+}
+
+/** Prepend +91 if value has digits but no country code prefix */
+function withCountryCode(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return ''
+  if (raw.trimStart().startsWith('+')) return raw.trim()
+  return `+91${digits}`
+}
+
+function mapServerFieldErrors(serverErrors: Record<string, string>): Record<string, string> {
+  const mapped: Record<string, string> = {}
+  for (const [k, v] of Object.entries(serverErrors)) {
+    mapped[SERVER_KEY_MAP[k] ?? k] = v
+  }
+  return mapped
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -92,13 +144,13 @@ export default function StudentOnboardingPage() {
       router.replace('/auth/signup')
       return
     }
-    const user = session?.user as any
+    const user = session?.user as OnboardingSessionUser | undefined
     if (user?.onboardingComplete && user?.accountStatus === 'active') {
       router.replace('/dashboard')
       return
     }
     if (user?.name) {
-      setForm((f) => ({ ...f, name: f.name || user.name }))
+      setForm((f) => ({ ...f, name: f.name || (user.name as string) }))
     }
   }, [status, session, router])
 
@@ -126,9 +178,7 @@ export default function StudentOnboardingPage() {
 
         const data = await response.json() as AcademicHierarchy
         setHierarchy(data)
-        setHierarchyError(null)
-
-        // Default language to first option
+        setHierarchyError('')
         if (data.languages?.length > 0) {
           setForm((f) => ({ ...f, language: f.language || data.languages[0].code }))
         }
@@ -163,12 +213,10 @@ export default function StudentOnboardingPage() {
   const age = form.dob ? calcAge(form.dob) : null
   const isMinor = age !== null && age < DPDP_MINOR_AGE
 
-  // Reset grade/subjects when board changes
   function selectBoard(slug: string) {
     setForm((f) => ({ ...f, boardSlug: slug, grade: '', subjectSlugs: [] }))
   }
 
-  // Reset subjects when grade changes
   function selectGrade(grade: string) {
     setForm((f) => ({ ...f, grade, subjectSlugs: [] }))
   }
@@ -192,9 +240,9 @@ export default function StudentOnboardingPage() {
     if (form.subjectSlugs.length === 0) errs.subjects = 'Select at least 1 subject'
     if (isMinor) {
       const hasEmail = form.parentEmail.includes('@')
-      const hasWhatsapp = form.parentWhatsapp.replace(/\D/g, '').length >= 10
+      const hasWhatsapp = withCountryCode(form.parentWhatsapp).replace(/\D/g, '').length >= 10
       if (!hasEmail && !hasWhatsapp) {
-        errs.parentContact = `Students under ${DPDP_MINOR_AGE} need a parent contact for verification. Please add at least one.`
+        errs.parentContact = `Students under ${DPDP_MINOR_AGE} need a parent contact for verification. Add at least one.`
       }
     }
     setFieldErrors(errs)
@@ -218,9 +266,9 @@ export default function StudentOnboardingPage() {
           board: form.boardSlug,
           preferred_language: form.language,
           subjects: form.subjectSlugs,
-          whatsapp_phone: form.whatsapp || undefined,
+          whatsapp_phone: form.whatsapp ? withCountryCode(form.whatsapp) : undefined,
           parent_email: form.parentEmail || undefined,
-          parent_whatsapp: form.parentWhatsapp || undefined,
+          parent_whatsapp: form.parentWhatsapp ? withCountryCode(form.parentWhatsapp) : undefined,
         }),
       })
 
@@ -228,7 +276,7 @@ export default function StudentOnboardingPage() {
 
       if (!res.ok) {
         if (data.fieldErrors) {
-          setFieldErrors((prev) => ({ ...prev, ...data.fieldErrors }))
+          setFieldErrors((prev) => ({ ...prev, ...mapServerFieldErrors(data.fieldErrors) }))
         } else {
           setGlobalError(data.message ?? "Couldn't save your details. Please try again.")
         }
@@ -566,14 +614,10 @@ export default function StudentOnboardingPage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               WhatsApp number <span className="text-gray-400 font-normal">(optional)</span>
             </label>
-            <input
-              type="tel"
+            <PhoneInput
               value={form.whatsapp}
-              onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))}
-              placeholder="+91 98765 43210"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-transparent text-sm"
+              onChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
+              placeholder="98765 43210"
             />
             <p className="text-xs text-gray-400">For session reminders and progress alerts.</p>
           </div>
@@ -603,6 +647,7 @@ export default function StudentOnboardingPage() {
                              bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                              focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-transparent text-sm"
                 />
+                {fieldErrors.parentEmail && <p className="text-[#E24B4A] text-xs">{fieldErrors.parentEmail}</p>}
               </div>
 
               {/* Parent WhatsApp */}
@@ -610,15 +655,12 @@ export default function StudentOnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Parent WhatsApp number
                 </label>
-                <input
-                  type="tel"
+                <PhoneInput
                   value={form.parentWhatsapp}
-                  onChange={(e) => setForm((f) => ({ ...f, parentWhatsapp: e.target.value }))}
-                  placeholder="+91 98765 43210"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600
-                             bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                             focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-transparent text-sm"
+                  onChange={(v) => setForm((f) => ({ ...f, parentWhatsapp: v }))}
+                  placeholder="98765 43210"
                 />
+                {fieldErrors.parentWhatsapp && <p className="text-[#E24B4A] text-xs">{fieldErrors.parentWhatsapp}</p>}
                 <p className="text-xs text-gray-400">
                   The verification code will be sent to whichever channels you provide. At least one is required.
                 </p>
@@ -649,6 +691,39 @@ export default function StudentOnboardingPage() {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── PhoneInput -- +91 prefix with editable suffix ────────────────────────────
+
+function PhoneInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="flex rounded-xl border border-gray-300 dark:border-gray-600 overflow-hidden
+                    focus-within:ring-2 focus-within:ring-[#534AB7] focus-within:border-transparent">
+      <span className="flex items-center px-3 bg-gray-50 dark:bg-gray-800
+                       text-gray-500 dark:text-gray-400 text-sm font-medium
+                       border-r border-gray-300 dark:border-gray-600 select-none whitespace-nowrap">
+        +91
+      </span>
+      <input
+        type="tel"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+        placeholder={placeholder ?? '98765 43210'}
+        inputMode="numeric"
+        className="flex-1 px-3 py-2.5 bg-white dark:bg-gray-800
+                   text-gray-900 dark:text-white text-sm
+                   focus:outline-none"
+      />
     </div>
   )
 }

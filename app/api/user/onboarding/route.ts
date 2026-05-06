@@ -1,6 +1,27 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST /api/user/onboarding
+ * - Saves student academic profile (grade, board, language, subjects) and optional
+ *   contact fields (whatsapp_phone, parent_email, parent_whatsapp).
+ * - For students under DPDP_MINOR_AGE, requires at least one valid parent contact
+ *   and sets accountStatus = pending_parent_verification until parent OTP is verified.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/onboarding.grade-immutability.test.ts
+ * - tests/unit/api/onboarding/parentWhatsapp.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-03-01 | staff-engineer | consolidated onboarding handler (merged onboarding-phone -> onboarding)
+ * - 2026-05-06 | claude | add parent_whatsapp -> parentPhone field; PII masking; under-13 server validation
+ */
+
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
-// Consolidated onboarding handler (merged onboarding-phone -> onboarding)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { DPDP_MINOR_AGE } from '@/lib/constants/age';
@@ -31,6 +52,8 @@ export async function POST(req: NextRequest) {
       if (typeof masked.token === 'string') masked.token = `***${String(masked.token).slice(-8)}`;
       if (typeof masked.phone === 'string') masked.phone = String(masked.phone).replace(/\d(?=\d{4})/g, '*');
       if (typeof masked.whatsapp_phone === 'string') masked.whatsapp_phone = String(masked.whatsapp_phone).replace(/\d(?=\d{4})/g, '*');
+      if (typeof masked.parent_whatsapp === 'string') masked.parent_whatsapp = String(masked.parent_whatsapp).replace(/\d(?=\d{4})/g, '*');
+      if (typeof masked.parent_email === 'string') masked.parent_email = '***REDACTED***';
       logger.info('/api/user/onboarding received payload (masked)', { className: 'api.user.onboarding', methodName: 'POST', masked });
       const debugEnabled = String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === '1' || String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === 'true';
       if (debugEnabled) {
@@ -63,7 +86,11 @@ export async function POST(req: NextRequest) {
     const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
     const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
     const rawParentWhatsapp = typeof body.parent_whatsapp === 'string' ? body.parent_whatsapp.trim() : undefined;
-    const parentWhatsapp = rawParentWhatsapp ? rawParentWhatsapp.replace(/[^0-9+]/g, '') : undefined;
+    const parentWhatsappNormalized = rawParentWhatsapp ? rawParentWhatsapp.replace(/[^0-9+]/g, '') : undefined;
+    // Require >= 10 digits; discard if shorter (e.g. stray '+' only)
+    const parentWhatsapp = parentWhatsappNormalized && parentWhatsappNormalized.replace(/\D/g, '').length >= 10
+      ? parentWhatsappNormalized
+      : undefined;
     const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
     const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
 
@@ -82,10 +109,21 @@ export async function POST(req: NextRequest) {
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
+    // Reject parent_whatsapp that has digits but fewer than 10 (e.g. '+' only or truncated)
+    if (rawParentWhatsapp && !parentWhatsapp) {
+      fieldErrors.parent_whatsapp = 'Parent WhatsApp must be a valid phone number (at least 10 digits)';
+    }
     // Validate optional school name: trim already applied above; enforce max length
     if (schoolName && schoolName.length > 120) fieldErrors.school_name = 'School name must be 120 characters or fewer';
-    // Parent email is collected in a separate post-onboarding step -- not required here.
-    // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
+    // Under-DPDP_MINOR_AGE: at least one valid parent contact is required before saving.
+    // This prevents setting pending_parent_verification with no deliverable OTP channel.
+    if (age != null && age < DPDP_MINOR_AGE) {
+      const hasParentEmail = !!(parentEmail && parentEmail.includes('@'));
+      const hasParentWhatsapp = !!(parentWhatsapp && parentWhatsapp.replace(/\D/g, '').length >= 10);
+      if (!hasParentEmail && !hasParentWhatsapp) {
+        fieldErrors.parentContact = `Students under ${DPDP_MINOR_AGE} require a parent email or WhatsApp number for account verification.`;
+      }
+    }
     if (Object.keys(fieldErrors).length) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
       logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
