@@ -2,138 +2,151 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500&display=swap');
 
-/* CSS variables (defined before Tailwind layers so they are available at build/runtime) */
+/*
+ * THEME CSS VARIABLES -- KEEP IN SYNC WITH lib/theme/brand.ts
+ *
+ * These variables are the runtime CSS side of the brand config.
+ * To white-label: edit lib/theme/brand.ts first, then mirror the
+ * hex values here. Both files must agree on every colour value.
+ *
+ * Tailwind class mapping (tailwind.config.js):
+ *   bg-primary            -> var(--color-primary)
+ *   bg-primary-bg         -> var(--color-primary-bg)
+ *   text-success          -> var(--color-success)
+ *   bg-success-bg         -> var(--color-success-bg)
+ *   ... etc.
+ */
 :root {
-  /* Primary Colors */
-  --color-primary: #ff9933; /* orange-500 - Saffron orange for CTAs */
-  --color-primary-foreground: #ffffff; /* white */
+  /* --- Primary (#534AB7 indigo) ---------------------------------------- */
+  --color-primary:            #534AB7;  /* brand.ts: BRAND_COLORS.primary      */
+  --color-primary-hover:      #4239A0;  /* brand.ts: BRAND_COLORS.primaryHover */
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-bg:         #EEEDFE;  /* light purple tint                   */
 
-  /* Secondary Colors */
-  --color-secondary: #000080; /* blue-900 - Deep blue for trust */
-  --color-secondary-foreground: #ffffff; /* white */
+  /* --- Secondary (#000080 navy) ---------------------------------------- */
+  --color-secondary:            #000080;
+  --color-secondary-foreground: #FFFFFF;
 
-  /* Accent Colors */
-  --color-accent: #ff6600; /* orange-600 - Bright orange for urgency */
-  --color-accent-foreground: #ffffff; /* white */
+  /* --- Accent (same as primary for this brand) ------------------------- */
+  --color-accent:            #534AB7;
+  --color-accent-foreground: #FFFFFF;
 
-  /* Background Colors */
-  --color-background: #ffffff; /* white - Clean background */
-  --color-foreground: #1a1a1a; /* gray-900 - High contrast text */
+  /* --- Success (#1D9E75 green) ----------------------------------------- */
+  --color-success:            #1D9E75;  /* brand.ts: BRAND_COLORS.success      */
+  --color-success-foreground: #FFFFFF;
+  --color-success-bg:         #EAF3DE;
 
-  /* Surface Colors */
-  --color-card: #ffffff; /* white */
-  --color-card-foreground: #1a1a1a; /* gray-900 */
-  --color-popover: #ffffff; /* white */
-  --color-popover-foreground: #1a1a1a; /* gray-900 */
+  /* --- Warning (#BA7517 amber) ----------------------------------------- */
+  --color-warning:            #BA7517;  /* brand.ts: BRAND_COLORS.warning      */
+  --color-warning-foreground: #FFFFFF;
+  --color-warning-bg:         #FAEEDA;
 
-  /* Muted Colors */
-  --color-muted: #f8f9fa; /* gray-50 - Light gray for sections */
-  --color-muted-foreground: #666666; /* gray-600 - Medium gray text */
+  /* --- Error / Danger (#E24B4A red) ------------------------------------ */
+  --color-error:            #E24B4A;    /* brand.ts: BRAND_COLORS.error        */
+  --color-error-foreground: #FFFFFF;
+  --color-error-bg:         #FCEBEB;
+  --color-destructive:            #E24B4A;
+  --color-destructive-foreground: #FFFFFF;
 
-  /* Utility Colors */
-  --color-border: #e5e7eb; /* gray-200 */
-  --color-input: #e5e7eb; /* gray-200 */
-  --color-ring: #ff9933; /* orange-500 - Focus ring */
+  /* --- Neutrals -------------------------------------------------------- */
+  --color-background:      #FFFFFF;
+  --color-foreground:      #1A1A1A;
+  --color-card:            #FFFFFF;
+  --color-card-foreground: #1A1A1A;
+  --color-popover:            #FFFFFF;
+  --color-popover-foreground: #1A1A1A;
+  --color-muted:            #F8F9FA;
+  --color-muted-foreground: #666666;
+  --color-border: #E5E7EB;
+  --color-input:  #E5E7EB;
+  --color-ring:   #534AB7;
 
-  /* Status Colors */
-  --color-success: #28a745; /* green-600 - Positive testimonials */
-  --color-success-foreground: #ffffff; /* white */
-  --color-warning: #ffc107; /* amber-400 - Limited offers */
-  --color-warning-foreground: #1a1a1a; /* gray-900 */
-  --color-error: #dc3545; /* red-600 - Form validation */
-  --color-error-foreground: #ffffff; /* white */
-  --color-destructive: #dc3545; /* red-600 */
-  --color-destructive-foreground: #ffffff; /* white */
+  /* --- Typography ------------------------------------------------------ */
+  --font-headline: 'Poppins', sans-serif;  /* brand.ts: BRAND_TYPOGRAPHY */
+  --font-body:     'Inter', sans-serif;
+  --font-cta:      'Poppins', sans-serif;
+  --font-accent:   'Noto Sans Devanagari', sans-serif;
 
-  /* Typography */
-  --font-headline: 'Poppins', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-cta: 'Poppins', sans-serif;
-  --font-accent: 'Noto Sans Devanagari', sans-serif;
-
-  /* Spacing */
-  --radius: 0.5rem;
+  /* --- Border radius --------------------------------------------------- */
+  --radius:    0.5rem;    /* brand.ts: BRAND_RADIUS.md  */
+  --radius-sm: 0.25rem;  /* brand.ts: BRAND_RADIUS.sm  */
+  --radius-md: 0.5rem;   /* brand.ts: BRAND_RADIUS.md  */
+  --radius-lg: 0.75rem;  /* brand.ts: BRAND_RADIUS.lg  */
+  --radius-xl: 1rem;     /* brand.ts: BRAND_RADIUS.xl  */
 }
 
-/* Dark theme overrides - toggled by adding `class="dark"` to <html> or <body> */
+/* Dark theme -- toggled by adding class="dark" to <html> */
 .dark {
-  --color-background: #0b1220; /* near-black */
-  --color-foreground: #e6eef8; /* very light text */
-
-  --color-card: #0f1724;
-  --color-card-foreground: #e6eef8;
-  --color-popover: #071025;
-  --color-popover-foreground: #e6eef8;
-
-  --color-muted: #071025;
-  --color-muted-foreground: #9aa6b2;
-
+  /* brand.ts: BRAND_DARK_COLORS */
+  --color-background:      #0B1220;
+  --color-foreground:      #E6EEF8;
+  --color-card:            #0F1724;
+  --color-card-foreground: #E6EEF8;
+  --color-popover:            #071025;
+  --color-popover-foreground: #E6EEF8;
+  --color-muted:            #071025;
+  --color-muted-foreground: #9AA6B2;
   --color-border: #122031;
-  --color-input: #122831;
-  --color-ring: rgba(37,99,235,0.18);
+  --color-input:  #122831;
+  --color-ring:   #7B74D4;
 
-  --color-primary: #2563eb; /* keep primary bright in dark */
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #1e293b;
-  --color-secondary-foreground: #e6eef8;
-  --color-accent: #7c3aed;
-  --color-accent-foreground: #ffffff;
+  --color-primary:            #7B74D4;   /* lighter indigo for dark-mode legibility */
+  --color-primary-hover:      #9089DE;
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-bg:         #1A1845;
 
-  --color-success: #16a34a;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
+  --color-secondary:            #1E293B;
+  --color-secondary-foreground: #E6EEF8;
+
+  --color-accent:            #7B74D4;
+  --color-accent-foreground: #FFFFFF;
+
+  --color-success:            #22C55E;
+  --color-success-foreground: #FFFFFF;
+  --color-success-bg:         #14532D;
+
+  --color-warning:            #F59E0B;
+  --color-warning-foreground: #FFFFFF;
+  --color-warning-bg:         #451A03;
+
+  --color-error:            #EF4444;
+  --color-error-foreground: #FFFFFF;
+  --color-error-bg:         #450A0A;
+  --color-destructive:            #EF4444;
+  --color-destructive-foreground: #FFFFFF;
 
   --font-headline: 'Poppins', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-body:     'Inter', sans-serif;
 }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Basic element defaults that use the variables directly (avoid @apply on classes that may not yet exist) */
+/* Element defaults using theme variables */
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-body);
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-headline);
 }
 
-/* Small utility fallbacks so custom names referenced by components are always available */
+/* Utility fallbacks for custom Tailwind tokens */
 @layer utilities {
-  .bg-background {
-    background-color: var(--color-background);
-  }
-  .text-foreground {
-    color: var(--color-foreground);
-  }
-  .text-muted {
-    color: var(--color-muted);
-  }
-  .text-muted-foreground {
-    color: var(--color-muted-foreground);
-  }
-  .border-border {
-    border-color: var(--color-border) !important;
-  }
-  .border-input {
-    border-color: var(--color-input) !important;
-  }
-  .ring-ring {
-    box-shadow: 0 0 0 3px var(--color-ring);
-  }
-  .bg-primary {
-    background-color: var(--color-primary);
-  }
-  .text-primary {
-    color: var(--color-primary);
-  }
+  .bg-background        { background-color: var(--color-background); }
+  .text-foreground      { color: var(--color-foreground); }
+  .text-muted           { color: var(--color-muted); }
+  .text-muted-foreground { color: var(--color-muted-foreground); }
+  .border-border        { border-color: var(--color-border) !important; }
+  .border-input         { border-color: var(--color-input) !important; }
+  .ring-ring            { box-shadow: 0 0 0 3px var(--color-ring); }
+  .bg-primary           { background-color: var(--color-primary); }
+  .text-primary         { color: var(--color-primary); }
+  .bg-primary-bg        { background-color: var(--color-primary-bg); }
+  .bg-success-bg        { background-color: var(--color-success-bg); }
+  .bg-warning-bg        { background-color: var(--color-warning-bg); }
+  .bg-error-bg          { background-color: var(--color-error-bg); }
 }
