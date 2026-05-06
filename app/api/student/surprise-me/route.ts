@@ -76,7 +76,7 @@ export async function GET(req: Request) {
         select: { id: true },
       })
       if (!weakConcept) {
-        // Topic has no teachable concepts yet — fall through to ranker fallback
+        // Topic has no teachable concepts yet -- fall through to ranker fallback
       } else {
         const action = {
           topicId: weakConcept.id,
