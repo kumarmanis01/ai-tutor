@@ -105,20 +105,46 @@ export default function StudentOnboardingPage() {
   // ── Fetch hierarchy ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (status === 'loading' || status === 'unauthenticated') return
-    fetch('/api/academic-hierarchy')
-      .then((r) => r.json())
-      .then((data: AcademicHierarchy) => {
+
+    const loadHierarchy = async () => {
+      try {
+        const response = await fetch('/api/academic-hierarchy')
+
+        if (!response.ok) {
+          let errorMessage = "Couldn't load form options. Please refresh and try again."
+
+          try {
+            const errorPayload = await response.json() as { error?: string; message?: string }
+            errorMessage = errorPayload.message || errorPayload.error || errorMessage
+          } catch {
+            // Intentionally ignore JSON parsing failures for error payloads and
+            // fall back to the default user-facing message.
+          }
+
+          throw new Error(errorMessage)
+        }
+
+        const data = await response.json() as AcademicHierarchy
         setHierarchy(data)
+        setHierarchyError(null)
+
         // Default language to first option
         if (data.languages?.length > 0) {
           setForm((f) => ({ ...f, language: f.language || data.languages[0].code }))
         }
+
         setView('form')
-      })
-      .catch(() => {
-        setHierarchyError("Couldn't load form options. Please refresh and try again.")
+      } catch (error) {
+        setHierarchyError(
+          error instanceof Error
+            ? error.message
+            : "Couldn't load form options. Please refresh and try again.",
+        )
         setView('form')
-      })
+      }
+    }
+
+    void loadHierarchy()
   }, [status])
 
   // ── OTP resend countdown ────────────────────────────────────────────────────
