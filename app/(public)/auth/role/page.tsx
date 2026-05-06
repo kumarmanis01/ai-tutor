@@ -35,15 +35,10 @@ export default async function RoleSelectionPage() {
   }
 
   const role = session.user.role ?? 'user';
-  const onboardingComplete = session.user.onboardingComplete ?? false;
-  const accountStatus = session.user.accountStatus ?? 'active';
 
-  // Existing student: go to onboarding if not complete, dashboard otherwise.
-  // pending_parent_verification stays on the onboarding page until OTP is done.
+  // Existing student: always go to dashboard.
+  // Middleware redirects incomplete onboarding to /dashboard?onboarding=1.
   if (role === 'student') {
-    if (!onboardingComplete || accountStatus === 'pending_parent_verification') {
-      redirect('/student/onboarding');
-    }
     redirect('/dashboard');
   }
 
