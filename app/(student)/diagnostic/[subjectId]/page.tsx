@@ -45,7 +45,7 @@ export default async function DiagnosticPage({
   const [student, completedDiagnostics] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { board: true, grade: true, language: true },
+      select: { board: true, grade: true, language: true, subjects: true },
     }),
     prisma.diagnosticSession.findMany({
       where: { studentId: userId, status: 'COMPLETED' },
@@ -197,9 +197,23 @@ export default async function DiagnosticPage({
   });
 
   // Resume partial state + pending subject list in parallel.
-  // pendingSubjects: other subjects for this board/grade without a completed diagnostic
-  // (used to show a nudge toast on the results screen).
+  // pendingSubjects: subjects the student enrolled in (user.subjects) that don't yet
+  // have a completed diagnostic — used for the post-submit nudge toast.
+  // Falls back to all active subjects for the grade/board when no enrolled list exists.
   const completedSubjectIdSet = new Set(completedDiagnostics.map((d) => d.subjectId));
+
+  // Parse user.subjects (handles both String[] and Postgres wire-format string)
+  let enrolledSubjectNames: string[] | null = null;
+  if (student.subjects) {
+    if (Array.isArray(student.subjects) && student.subjects.length > 0) {
+      enrolledSubjectNames = (student.subjects as string[]).filter(Boolean);
+    } else if (typeof student.subjects === 'string' && (student.subjects as string).length > 0) {
+      const cleaned = (student.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim();
+      const parts = cleaned.length > 0 ? cleaned.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      if (parts.length > 0) enrolledSubjectNames = parts;
+    }
+  }
+
   const [partial, pendingSubjectRows] = await Promise.all([
     getPartialDiagnostic(userId, subjectId),
     prisma.subjectDef.findMany({
@@ -210,6 +224,11 @@ export default async function DiagnosticPage({
           grade: Number(student.grade),
           board: { slug: { equals: student.board!, mode: 'insensitive' } },
         },
+        // Only include subjects the student has enrolled in — if no enrolled list
+        // exists fall back to all subjects (legacy accounts without subject selection).
+        ...(enrolledSubjectNames && enrolledSubjectNames.length > 0
+          ? { OR: [{ name: { in: enrolledSubjectNames } }, { slug: { in: enrolledSubjectNames } }] }
+          : {}),
       },
       select: { name: true },
     }),

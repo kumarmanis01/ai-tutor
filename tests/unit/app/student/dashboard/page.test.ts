@@ -11,6 +11,8 @@
  *
  * EDIT LOG:
  * - 2026-04-21T12:00:00Z | staff-engineer | added tests for grade parsing, dedup preference, and diagnosticHref
+ * - 2026-05-06T00:00:00Z | copilot | add assertions for SecondaryStartOptions
+ *                          todaysHref mapping in resume and homework states
  */
 /**
  * Tests verify:
@@ -73,7 +75,7 @@ jest.mock('@/components/student/dashboard/TodaysLearningCard', () => ({
 }))
 jest.mock('@/components/student/dashboard/SecondaryStartOptions', () => ({
   __esModule: true,
-  default: () => React.createElement('div', { 'data-testid': 'SecondaryStartOptions' }),
+  default: (props: any) => React.createElement('div', { 'data-testid': 'SecondaryStartOptions' }, JSON.stringify(props)),
 }))
 jest.mock('@/components/student/dashboard/XPWidget', () => ({
   XPWidget: () => React.createElement('div', { 'data-testid': 'XPWidget' }),
@@ -376,5 +378,61 @@ describe('StudentHomeDashboardPage', () => {
     expect(html).toContain('UpgradeFlow')
     // FreemiumCounter should NOT render
     expect(html).not.toContain('FreemiumCounter')
+  })
+
+  it('should pass /session/[sessionId] as secondary today href for resume state', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue({
+      ruleId: 'resume_session',
+      sessionId: 'sess-42',
+      topicId: 'topic-1',
+      topicName: 'Integers',
+      subject: 'Math',
+      chapter: 'Numbers',
+      resumePhase: 'PRACTICE',
+    })
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    const element = await Page()
+    const html = renderToStaticMarkup(element)
+
+    expect(html).toContain('/session/sess-42')
+  })
+
+  it('should pass /homework/[assignmentId] as secondary today href for homework state', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue({
+      ruleId: 'homework_pending',
+      assignmentId: 'hw-77',
+      topicName: 'Fractions worksheet',
+    })
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    const element = await Page()
+    const html = renderToStaticMarkup(element)
+
+    expect(html).toContain('/homework/hw-77')
   })
 })

@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render secondary dashboard start actions (Today's topic, Browse topics,
+ *   Surprise me) and route to a valid actionable destination.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/dashboard/page.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-06T00:00:00Z | copilot | wire todaysHref from dashboard card state,
+ *                          make Today's topic selected by default, and add
+ *                          no-op-safe Surprise me fallback routing
+ */
+
 'use client'
 
 import React, { useState } from 'react'
@@ -5,9 +23,20 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/lib/toast'
 
-export default function SecondaryStartOptions({ todaysConceptId }: { todaysConceptId?: string | null }) {
+const FALLBACK_BROWSE_HREF = '/learn/learning-path'
+const DASHBOARD_HREF = '/dashboard'
+
+export default function SecondaryStartOptions({
+  todaysConceptId,
+  todaysHref,
+}: {
+  todaysConceptId?: string | null
+  todaysHref?: string
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const resolvedTodaysHref =
+    todaysHref ?? (todaysConceptId ? `/session/pre/${encodeURIComponent(todaysConceptId)}` : DASHBOARD_HREF)
 
   async function handleSurprise() {
     if (loading) return
@@ -20,16 +49,16 @@ export default function SecondaryStartOptions({ todaysConceptId }: { todaysConce
         return
       }
       if (res.status === 204) {
-        toast('No suggestions available right now. Try browsing topics.')
-        setLoading(false)
+        toast('No surprise suggestion available right now. Opening today\'s topic.')
+        router.push(resolvedTodaysHref !== DASHBOARD_HREF ? resolvedTodaysHref : FALLBACK_BROWSE_HREF)
         return
       }
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to get suggestion')
       const action = json?.action
       if (!action || !action.topicId) {
-        toast('No suggestion returned')
-        setLoading(false)
+        toast('No surprise suggestion returned. Opening today\'s topic.')
+        router.push(resolvedTodaysHref !== DASHBOARD_HREF ? resolvedTodaysHref : FALLBACK_BROWSE_HREF)
         return
       }
       // Navigate to the pre-session screen for the suggested topic
@@ -44,14 +73,14 @@ export default function SecondaryStartOptions({ todaysConceptId }: { todaysConce
   return (
     <div className="mt-3 flex items-center gap-3">
       <Link
-        href={todaysConceptId ? `/session/pre/${encodeURIComponent(todaysConceptId)}` : '/dashboard'}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        href={resolvedTodaysHref}
+        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-[#534AB7] bg-[#EEEDFE] text-sm font-semibold text-[#534AB7] hover:bg-[#e5e3fc]"
       >
         Today's topic
       </Link>
 
       <Link
-        href="/learn/learning-path"
+        href={FALLBACK_BROWSE_HREF}
         className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
       >
         Browse topics

@@ -19,8 +19,14 @@
   *                               `class.grade` filter; prefer learning-plan subject when
   *                               deduplicating by name; use `/diagnostic/[subjectId]`
   *                               for diagnostic CTA; add unit tests covering behaviors
+  *   2026-05-06T00:00:00Z | copilot | fix: resolve nextAction.topicId to first non-suspended Concept.id
+  *                               before setting cardProps.recommendation.conceptId; prevents both
+  *                               "Today's topic" and "Surprise me" from silently redirecting to /dashboard
+    *   2026-05-06T00:00:00Z | copilot | fix: compute canonical secondary today-action href from
+    *                               current card state (start/resume/homework) so secondary CTA
+    *                               never falls back to /dashboard when today's work is actionable
  */
-
+ 
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -337,10 +343,20 @@ export default async function StudentHomeDashboardPage() {
         },
       }
     } else if (nextAction.topicId) {
+      // Resolve topicId → first non-suspended Concept.id.
+      // The pre-session page (/session/pre/[conceptId]) performs
+      // prisma.concept.findUnique({ where: { id } }) and redirects
+      // to /dashboard when given a TopicDef.id instead of a Concept.id,
+      // making both "Today's topic" and "Surprise me" appear to do nothing.
+      const firstConcept = await prisma.concept.findFirst({
+        where: { topicId: nextAction.topicId, isSuspended: false },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      })
       cardProps = {
         type: 'start',
         recommendation: {
-          conceptId: nextAction.topicId,
+          conceptId: firstConcept?.id ?? nextAction.topicId,
           topicTitle: nextAction.topicName ?? 'Start a session',
           subject: nextAction.subject ?? '',
           estimatedTimeMin: 20,
@@ -358,6 +374,15 @@ export default async function StudentHomeDashboardPage() {
   if (cardProps.type === 'empty' && allDiagnosticsComplete) {
     cardProps = { type: 'plan_loading' }
   }
+
+  const todaysActionHref =
+    cardProps.type === 'start' && cardProps.recommendation?.conceptId
+      ? `/session/pre/${encodeURIComponent(cardProps.recommendation.conceptId)}`
+      : cardProps.type === 'resume' && cardProps.session?.sessionId
+        ? `/session/${encodeURIComponent(cardProps.session.sessionId)}`
+        : cardProps.type === 'homework' && cardProps.homework?.id
+          ? `/homework/${encodeURIComponent(cardProps.homework.id)}`
+          : '/dashboard'
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -386,7 +411,12 @@ export default async function StudentHomeDashboardPage() {
           {/* F-STU-032 AC-03: Primary CTA */}
 
           <TodaysLearningCard {...cardProps} />
-          {!isCrunchMode && <SecondaryStartOptions todaysConceptId={cardProps.recommendation?.conceptId} />}
+          {!isCrunchMode && (
+            <SecondaryStartOptions
+              todaysConceptId={cardProps.recommendation?.conceptId}
+              todaysHref={todaysActionHref}
+            />
+          )}
 
           {/* F-STU-031: XP + Level + source breakdown (hidden in crunch mode) */}
           {!isCrunchMode && (

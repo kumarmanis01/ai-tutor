@@ -72,13 +72,13 @@ const HeroSection = () => {
                 <Icon name="SparklesIcon" size={20} variant="solid" />
                 <span>Start For Free</span>
               </Link>
-              <button
+              {/*<button
                 onClick={handleSeeHow}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-background border-2 border-secondary text-secondary font-cta font-semibold rounded-lg hover:bg-secondary hover:text-white transition-all duration-250 text-base md:text-lg"
               >
                 <Icon name="PlayCircleIcon" size={24} variant="solid" />
                 <span>View sample lesson</span>
-              </button>
+              </button>*/}
             </div>
 
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-sm md:text-base text-muted-foreground">
