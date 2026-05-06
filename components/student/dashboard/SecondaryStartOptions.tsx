@@ -14,6 +14,8 @@
  * - 2026-05-06T00:00:00Z | copilot | wire todaysHref from dashboard card state,
  *                          make Today's topic selected by default, and add
  *                          no-op-safe Surprise me fallback routing
+ * - 2026-05-06T00:00:00Z | copilot | on Surprise me API failure, route to today's
+ *                          actionable href (or browse fallback) instead of no-op
  */
 
 'use client'
@@ -65,6 +67,7 @@ export default function SecondaryStartOptions({
       router.push(`/session/pre/${encodeURIComponent(action.topicId)}`)
     } catch (err: any) {
       toast(String(err?.message || 'Could not pick a surprise topic'))
+      router.push(resolvedTodaysHref !== DASHBOARD_HREF ? resolvedTodaysHref : FALLBACK_BROWSE_HREF)
     } finally {
       setLoading(false)
     }

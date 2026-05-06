@@ -18,9 +18,13 @@
  *   - 'homework' -- pending homework must be done first
  *   - 'ahead'    -- plan exists but no item this week
  *   - 'empty'    -- no plan + no diagnostic taken yet (onboarding checklist)
+ *
+ * EDIT LOG:
+ *   - 2026-05-06T00:00:00Z | copilot | auto-refresh plan-loading state every 15s so dashboard
+ *     updates automatically when background learning-plan generation completes
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from '@/lib/toast';
@@ -120,9 +124,11 @@ function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; 
                 type="button"
                 onClick={async () => {
                   if (moving) return;
+                  const planItemId = rec.planItemId;
+                  if (!planItemId) return;
                   setMoving(true);
                   try {
-                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`, {
+                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(planItemId)}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ action: 'move', direction: 'prev' }),
@@ -147,9 +153,11 @@ function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; 
                 type="button"
                 onClick={async () => {
                   if (moving) return;
+                  const planItemId = rec.planItemId;
+                  if (!planItemId) return;
                   setMoving(true);
                   try {
-                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`, {
+                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(planItemId)}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ action: 'move', direction: 'next' }),
@@ -315,6 +323,16 @@ function AheadState() {
 // ── Plan loading state (diagnostic complete, bootstrap job in progress) ────────
 
 function PlanLoadingState() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [router]);
+
   return (
     <article className="rounded-2xl border border-[#534AB7]/20 dark:border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 border-l-4 border-l-[#534AB7] overflow-hidden">
       <div className="p-5">
@@ -322,7 +340,7 @@ function PlanLoadingState() {
           Great work completing your diagnostic!
         </p>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Teacher Vidya is building your personalised learning plan. This usually takes a few minutes -- refresh this page to check if your first session is ready.
+          Teacher Vidya is building your personalised learning plan in the background. This card auto-updates every 15 seconds and will show your first session as soon as it is ready.
         </p>
         <Link
           href="/learn/learning-path"

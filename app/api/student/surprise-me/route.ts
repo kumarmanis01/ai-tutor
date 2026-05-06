@@ -16,6 +16,8 @@ import { NextResponse } from 'next/server'
  *                          Concept.id in both code paths so navigation to
  *                          /session/pre/[conceptId] succeeds instead of silently
  *                          redirecting back to /dashboard
+ * - 2026-05-06T00:00:00Z | copilot | harden endpoint: degrade gracefully to empty
+ *                          suggestion on ranking/query failures instead of returning 500
  */
 
 import { getServerSessionForHandlers } from '@/lib/session'
@@ -45,15 +47,23 @@ export async function GET(req: Request) {
 
   try {
     // 1. Try to pick the most urgent weak topic (mastery < 0.4 & practiceCount > 5)
-    const weak = await prisma.studentTopicProgress.findFirst({
-      where: { studentId: userId, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
-      orderBy: [{ mastery: 'asc' }, { practiceCount: 'desc' }],
-      include: {
-        topic: {
-          include: { chapter: { include: { subject: true } } },
+    let weak: Awaited<ReturnType<typeof prisma.studentTopicProgress.findFirst>> | null = null
+    try {
+      weak = await prisma.studentTopicProgress.findFirst({
+        where: { studentId: userId, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
+        orderBy: [{ mastery: 'asc' }, { practiceCount: 'desc' }],
+        include: {
+          topic: {
+            include: { chapter: { include: { subject: true } } },
+          },
         },
-      },
-    })
+      })
+    } catch (err) {
+      logger.warn('[surprise-me] weak-topic query failed, continuing to fallback ranker', {
+        userId,
+        error: String((err as any)?.message ?? err),
+      })
+    }
 
     if (weak) {
       const topic = weak.topic
@@ -84,9 +94,17 @@ export async function GET(req: Request) {
     }
 
     // 2. Fallback: use TopicRanker (similar to P5 in getNextAction)
-    const ordered = await getOrderedTopicsForStudent(userId)
-    const scored = await rankTopics(userId, { preloadedOrderedTopics: ordered })
-    const best = scored?.[0]
+    let best: Awaited<ReturnType<typeof rankTopics>>[number] | null = null
+    try {
+      const ordered = await getOrderedTopicsForStudent(userId)
+      const scored = await rankTopics(userId, { preloadedOrderedTopics: ordered })
+      best = scored?.[0] ?? null
+    } catch (err) {
+      logger.warn('[surprise-me] ranker failed; returning empty suggestion', {
+        userId,
+        error: String((err as any)?.message ?? err),
+      })
+    }
     if (best) {
       const bestConcept = await prisma.concept.findFirst({
         where: { topicId: best.topicId, isSuspended: false },
@@ -109,12 +127,12 @@ export async function GET(req: Request) {
       }
     }
 
-    const res = NextResponse.json({ action: null, source: 'surprise_me' }, { status: 204 })
+    const res = new NextResponse(null, { status: 204 })
     logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
     return res
   } catch (err) {
     logger.error('[surprise-me] error', { userId, error: String((err as any)?.message ?? err) })
-    const res = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const res = new NextResponse(null, { status: 204 })
     logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
     return res
   }
