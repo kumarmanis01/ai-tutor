@@ -21,7 +21,7 @@ function AuthContent() {
 
         {/* Google Sign In -- only auth option */}
         <button
-          onClick={() => signIn('google', { callbackUrl: '/auth/role' })}
+          onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
           className="w-full flex items-center justify-center gap-3 px-4 py-4 min-h-[44px]
                      border border-gray-300 dark:border-gray-600 rounded-xl
                      bg-white dark:bg-gray-900 hover:bg-gray-50
