@@ -162,21 +162,21 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
 
             <div className="flex items-center gap-2 md:gap-3">
               {/* Login -- visible at all screen sizes to logged-out visitors */}
-              {!session && (
+              {/* {!session && (
                 <Link
                   href="/auth/signin"
                   className="text-sm font-medium text-gray-600 hover:text-[#534AB7] dark:text-gray-300 dark:hover:text-[#EEEDFE] transition-colors px-3 py-2"
                 >
                   Login
                 </Link>
-              )}
+              )} */}
 
               {/* Start Free -- navigates directly to /auth/signup */}
               <Link
                 href="/auth/signup"
                 className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                Get started
+                Start Learning Now!
               </Link>
             </div>
           </div>

@@ -26,7 +26,7 @@ function AuthContent() {
     try {
       const result = await signIn('email', {
         email,
-        callbackUrl: '/auth/role',
+        callbackUrl: '/student/onboarding',
         redirect: false,
       })
       if (result?.error) {
