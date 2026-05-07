@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created unit tests for doubts prompt builder
+ * - 2026-05-07T00:00:00Z | copilot | update tone-guideline assertion to match current prompt wording
  */
 
 import {
@@ -58,8 +59,8 @@ describe('Doubts Prompt Builder', () => {
 
     it('includes encouraging tone guidelines', () => {
       const prompt = buildDoubtsPrompt(baseInput);
-      expect(prompt).toContain('ENCOURAGING TONE');
-      expect(prompt).toContain('Great question');
+      expect(prompt).toContain('TONE RULES');
+      expect(prompt).toContain('Warm, encouraging, never condescending');
     });
 
     it('rewrites problematic intents silently', () => {
