@@ -51,11 +51,24 @@ interface SessionContainerProps {
   initialFocus?: { focus?: string; itemId?: string };
 }
 
-export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initialFocus }: SessionContainerProps) {
+export function SessionContainer({
+  topicId,
+  reasonLabel,
+  estimatedTimeMin,
+  initialFocus,
+}: SessionContainerProps) {
   const {
-    session, phase, content,
-    loading, error, submitting,
-    startSession, advancePhase, navigateToPhase, submitPractice, submitTest,
+    session,
+    phase,
+    content,
+    loading,
+    error,
+    submitting,
+    startSession,
+    advancePhase,
+    navigateToPhase,
+    submitPractice,
+    submitTest,
   } = useSession();
 
   const [phaseReadyToProceed, setPhaseReadyToProceed] = React.useState(false);
@@ -65,8 +78,8 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initi
 
   useEffect(() => {
     // If a deep-link focus.itemId is provided (e.g., ?focus=next&itemId=...), prefer it.
-    const initialTopic = initialFocus?.itemId ?? topicId
-    startSession(initialTopic)
+    const initialTopic = initialFocus?.itemId ?? topicId;
+    startSession(initialTopic);
   }, [topicId, initialFocus?.itemId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentPhaseKey = session?.currentPhase as SessionPhaseClient | undefined;
@@ -76,7 +89,11 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initi
     setTestAllAnswered(false);
     setTestResultSet(false);
     testSubmitHandlerRef.current = null;
-    if (currentPhaseKey === 'OVERVIEW' || currentPhaseKey === 'EXPLANATION' || currentPhaseKey === 'HOMEWORK') {
+    if (
+      currentPhaseKey === 'OVERVIEW' ||
+      currentPhaseKey === 'EXPLANATION' ||
+      currentPhaseKey === 'HOMEWORK'
+    ) {
       setPhaseReadyToProceed(true);
     }
   }, [currentPhaseKey]);
@@ -123,9 +140,12 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initi
           <p className="text-sm text-muted-foreground">
             {isEngineDisabled
               ? 'Set ENABLE_SESSION_ENGINE=1 to enable structured sessions.'
-              : error ?? 'Unable to load this session.'}
+              : (error ?? 'Unable to load this session.')}
           </p>
-          <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
+          <Link
+            href="/dashboard"
+            className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+          >
             Return to Dashboard
           </Link>
         </div>
@@ -152,7 +172,10 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initi
           <div className="text-4xl">⏰</div>
           <h2 className="text-lg font-semibold text-foreground">Session expired</h2>
           <p className="text-sm text-muted-foreground">Start a fresh session to continue.</p>
-          <button onClick={() => startSession(topicId)} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
+          <button
+            onClick={() => startSession(topicId)}
+            className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+          >
             Start New Session
           </button>
         </div>
@@ -168,7 +191,11 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initi
           <div className="text-4xl">⚙️</div>
           <h2 className="text-lg font-semibold text-foreground">Preparing content...</h2>
           <p className="text-sm text-muted-foreground">{content.message}</p>
-          <button onClick={advancePhase} disabled={submitting} className="px-5 py-2.5 bg-muted text-muted-foreground rounded-lg text-sm">
+          <button
+            onClick={advancePhase}
+            disabled={submitting}
+            className="px-5 py-2.5 bg-muted text-muted-foreground rounded-lg text-sm"
+          >
             Skip this phase
           </button>
         </div>
@@ -182,14 +209,24 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initi
   if (!PhaseComponent) return null;
 
   const phaseProps = buildPhaseProps(
-    currentPhase, content, session.topicName,
-    reasonLabel, estimatedTimeMin,
-    advancePhase, submitPractice, submitTest, submitting,
-    onReadyToProceed, onTestStateChange, onRegisterTestSubmit,
+    currentPhase,
+    content,
+    session.topicName,
+    reasonLabel,
+    estimatedTimeMin,
+    advancePhase,
+    submitPractice,
+    submitTest,
+    submitting,
+    onReadyToProceed,
+    onTestStateChange,
+    onRegisterTestSubmit
   );
 
-  const footerLabel = currentPhase === 'TEST' && testResultSet ? 'Continue' : FOOTER_LABELS[currentPhase];
-  const footerDisabled = currentPhase === 'TEST' && !testResultSet ? !testAllAnswered : !phaseReadyToProceed;
+  const footerLabel =
+    currentPhase === 'TEST' && testResultSet ? 'Continue' : FOOTER_LABELS[currentPhase];
+  const footerDisabled =
+    currentPhase === 'TEST' && !testResultSet ? !testAllAnswered : !phaseReadyToProceed;
 
   const footer = {
     nextLabel: footerLabel,
@@ -217,39 +254,56 @@ function buildPhaseProps(
   reasonLabel: string | null | undefined,
   estimatedTimeMin: number | undefined,
   advancePhase: () => Promise<void>,
-  submitPractice: (a: { questionId: string; answer: string }[]) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
-  submitTest: (a: { questionId: string; answer: string }[]) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
+  submitPractice: (
+    a: { questionId: string; answer: string }[]
+  ) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
+  submitTest: (
+    a: { questionId: string; answer: string }[]
+  ) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
   submitting: boolean,
   onReadyToProceed: (ready: boolean) => void,
   onTestStateChange: (allAnswered: boolean, resultSet: boolean) => void,
-  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void,
+  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void
 ): Record<string, unknown> {
   switch (phase) {
     case 'OVERVIEW':
       return {
         content: content as OverviewContent,
-        reasonLabel, estimatedTimeMin,
-        onReadyToProceed, loading: submitting,
+        reasonLabel,
+        estimatedTimeMin,
+        onReadyToProceed,
+        loading: submitting,
       };
     case 'EXPLANATION':
       return {
         content: content as ExplanationContent,
-        topicName, onReadyToProceed, loading: submitting,
+        topicName,
+        onReadyToProceed,
+        loading: submitting,
       };
     case 'PRACTICE':
       return {
         content: content as PracticeContent,
-        topicName, onSubmit: submitPractice, onReadyToProceed, submitting,
+        topicName,
+        onSubmit: submitPractice,
+        onReadyToProceed,
+        submitting,
       };
     case 'TEST':
       return {
         content: content as TestContent,
-        topicName, onSubmit: submitTest, onReadyToProceed, onTestStateChange, onRegisterTestSubmit, submitting,
+        topicName,
+        onSubmit: submitTest,
+        onReadyToProceed,
+        onTestStateChange,
+        onRegisterTestSubmit,
+        submitting,
       };
     case 'HOMEWORK':
       return {
         content: content as HomeworkContent,
-        onReadyToProceed, loading: submitting,
+        onReadyToProceed,
+        loading: submitting,
       };
     default:
       return {};

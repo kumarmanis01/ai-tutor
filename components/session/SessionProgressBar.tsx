@@ -28,7 +28,6 @@ export function SessionProgressBar({
   totalPhases,
   onStepClick,
 }: SessionProgressBarProps) {
-  // Hooks must be called before any early return -- react-hooks/rules-of-hooks
   const steps = PHASE_ORDER.slice(0, totalPhases);
   const stripRef = useRef<HTMLDivElement>(null);
 
