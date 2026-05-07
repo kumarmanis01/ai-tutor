@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Apply authentication and route canonicalization for protected UI and API paths
+ *   without duplicating stale onboarding or parent-verification redirects.
+ *
+ * LINKED UNIT TEST:
+ * - tests/auto/middleware.ts.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-07T00:00:00Z | copilot | remove stale JWT-based onboarding redirects for /session routes
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { logger } from '@/lib/logger';
@@ -67,22 +83,9 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
       }
 
-      // Under-13 gate: block access until parent phone is verified.
-      if (
-        (token as any).accountStatus === 'pending_parent_verification' &&
-        !pathname.startsWith('/dashboard') &&
-        !pathname.startsWith('/profile')
-      ) {
-        return NextResponse.redirect(new URL('/dashboard?parent_verify=1', request.url));
-      }
-
-      if (!token.onboardingComplete && !pathname.startsWith('/profile') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/parent')) {
-        return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
-      }
-
-  const res = NextResponse.next();
-  res.headers.set('x-pathname', pathname);
-  return res;
+      const res = NextResponse.next();
+      res.headers.set('x-pathname', pathname);
+      return res;
     }
   }
 
