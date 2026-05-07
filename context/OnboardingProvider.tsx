@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import { useSession } from 'next-auth/react';
 import { HttpOnboardingService, OnboardingProfile, OnboardingService, OnboardingValues } from '@/lib/onboardingService';
 import { logger } from '@/lib/logger';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 
 type State = {
   isOpen: boolean;
@@ -158,7 +159,7 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     values.subjects.length === 0 ||
     needsParentEmail;
 
-  const isRequired = !!session?.user && (needsProfileValues || (values.age != null && Number(values.age) < 13 && !parentVerified));
+  const isRequired = !!session?.user && (needsProfileValues || (values.age != null && Number(values.age) < DPDP_MINOR_AGE && !parentVerified));
 
   const close = useCallback(() => {
     if (isRequired && !allowDismiss) return; // Cannot dismiss when onboarding is required (unless explicitly allowed)
@@ -184,7 +185,7 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     if (v.age != null && Number(v.age) >= 1 && Number(v.age) < 18 && (!v.parent_email || !String(v.parent_email).trim() || !v.parent_email.includes('@'))) {
       errs.parent_email = 'Parent or guardian email is required for students under 18.';
     }
-    if (v.age != null && Number(v.age) < 13 && !parentVerified) {
+    if (v.age != null && Number(v.age) < DPDP_MINOR_AGE && !parentVerified) {
       if (!v.parent_phone || !String(v.parent_phone).trim()) errs.parent_phone = 'Parent phone is required for under-13';
       // OTP is verified via dedicated endpoint, but we validate presence here to block bypass.
       if (!v.parent_otp || !String(v.parent_otp).trim()) errs.parent_otp = 'Enter OTP to verify parent phone';
@@ -204,7 +205,7 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
       }
 
       // Under-13: verify parent OTP before saving profile (cannot bypass).
-      if (v.age != null && Number(v.age) < 13 && !parentVerified) {
+      if (v.age != null && Number(v.age) < DPDP_MINOR_AGE && !parentVerified) {
         const verifyRes = await fetch('/api/auth/parent/verify-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

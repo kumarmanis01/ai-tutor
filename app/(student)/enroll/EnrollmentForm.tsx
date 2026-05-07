@@ -14,6 +14,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {DPDP_MINOR_AGE} from '@/lib/constants/age';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -180,7 +181,7 @@ export default function EnrollmentForm({ initialData, hierarchy }: Props) {
   const selectedClass = selectedBoard?.classes.find((c) => String(c.grade) === grade) ?? null;
   const availableSubjects = selectedClass?.subjects ?? [];
   const ageFromDob = dob ? calcAge(dob) : null;
-  const needsParentFields = ageFromDob !== null && ageFromDob < 13;
+  const needsParentFields = ageFromDob !== null && ageFromDob < DPDP_MINOR_AGE;
 
   // Reset grade/subjects when board changes
   useEffect(() => {
