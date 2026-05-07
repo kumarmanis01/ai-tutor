@@ -1,12 +1,16 @@
+#!/usr/bin/env node
 // CommonJS runner for marking a user admin (compatible with package.json type: module)
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
+const { PrismaClient, UserRole } = require('@prisma/client');
 
 // Load .env.local/.env into process.env for local script runs (set defaults only)
 function loadEnvFileIfPresent() {
   try {
     const root = path.resolve(__dirname, '..');
-    const candidates = ['.env.local', '.env'];
+    const candidates = ['.env.production', '.env.local', '.env'];
     for (const name of candidates) {
       const p = path.join(root, name);
       if (!fs.existsSync(p)) continue;
@@ -38,7 +42,7 @@ function loadEnvFileIfPresent() {
 }
 
 loadEnvFileIfPresent();
-const { prisma } = require('../lib/prisma');
+const prisma = new PrismaClient();
 
 const logger = {
   info: (...args) => console.log('[INFO]', ...args),
@@ -58,7 +62,7 @@ async function main() {
     logger.error(`User not found for email: ${email}`);
     process.exit(1);
   }
-  await prisma.user.update({ where: { email }, data: { role: 'admin' } });
+  await prisma.user.update({ where: { email }, data: { role: UserRole.admin } });
   logger.info(`User ${email} marked as admin.`);
 }
 
