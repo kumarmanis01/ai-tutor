@@ -618,7 +618,7 @@ export default function EnrollmentForm({ initialData, hierarchy }: Props) {
                 <div>
                   <p className="text-sm font-semibold text-[#534AB7] dark:text-[#9d97e3]">Parent approval required</p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                    As per India's DPDP Act, students under 13 need a parent's approval. We'll send a verification code to your parent.
+                    As per India's DPDP Act, students under ${DPDP_MINOR_AGE} need a parent's approval. We'll send a verification code to your parent.
                   </p>
                 </div>
               </div>

@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     // DPDP: if under-age, at least one parent contact is required
     if (needsParentConsent && !parentEmail && !parentPhone) {
       res = NextResponse.json(
-        { error: 'validation_error', fields: { parentEmail: 'Parent contact required for students under 13 (DPDP)' } },
+        { error: 'validation_error', fields: { parentEmail: 'Parent contact required for students under ${DPDP_MINOR_AGE} (DPDP)' } },
         { status: 400 },
       );
       logger.logAPI(req, res, { className: 'EnrollSaveAPI', methodName: 'POST' }, start);
