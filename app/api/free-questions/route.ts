@@ -7,8 +7,7 @@ import { SessionUser } from '@/lib/types';
 import { isPremiumUser } from '@/lib/subscription';
 import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium';
 import { logApiUsage } from '@/utils/logApiUsage';
-
-const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
+import { DAILY_FREE_QUESTION_LIMIT } from '@/lib/constants/freeTier';
 
 function isMissingFreeQuestionColumnError(error: unknown): boolean {
   const err = error as { code?: string; message?: unknown };
@@ -37,7 +36,7 @@ export async function GET() {
 
     const premium = await isPremiumUser(userId);
     if (premium) {
-      return NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_LIMIT });
+      return NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_QUESTION_LIMIT });
     }
 
     try {
@@ -46,9 +45,9 @@ export async function GET() {
       if (!user) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
       return NextResponse.json({
-        remaining: user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT,
+        remaining: user.todaysFreeQuestionsCount ?? DAILY_FREE_QUESTION_LIMIT,
         isPremium: false,
-        total: DAILY_FREE_LIMIT,
+        total: DAILY_FREE_QUESTION_LIMIT,
       });
     } catch (error) {
       if (!isMissingFreeQuestionColumnError(error)) throw error;
@@ -57,7 +56,7 @@ export async function GET() {
       return NextResponse.json({
         remaining: status.sessionsRemaining,
         isPremium: false,
-        total: DAILY_FREE_LIMIT,
+        total: DAILY_FREE_QUESTION_LIMIT,
       });
     }
   } catch (err) {
@@ -86,7 +85,7 @@ export async function POST(req: Request) {
 
     const premium = await isPremiumUser(userId);
     if (premium) {
-      res = NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_LIMIT });
+      res = NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_QUESTION_LIMIT });
       logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
       return res;
     }
@@ -98,7 +97,7 @@ export async function POST(req: Request) {
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) return { notFound: true } as const;
 
-        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
+        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_QUESTION_LIMIT) <= 0) {
           return { limitReached: true } as const;
         }
 
@@ -121,7 +120,7 @@ export async function POST(req: Request) {
 
       await incrementFreeTierUsage(userId);
       const remaining = Math.max(0, status.sessionsRemaining - 1);
-      res = NextResponse.json({ remaining, total: DAILY_FREE_LIMIT });
+      res = NextResponse.json({ remaining, total: DAILY_FREE_QUESTION_LIMIT });
       logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
       return res;
     }
@@ -139,7 +138,7 @@ export async function POST(req: Request) {
 
     res = NextResponse.json({
       remaining: result.updated.todaysFreeQuestionsCount,
-      total: DAILY_FREE_LIMIT,
+      total: DAILY_FREE_QUESTION_LIMIT,
     });
     logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
     return res;

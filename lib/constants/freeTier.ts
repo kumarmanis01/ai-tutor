@@ -18,3 +18,6 @@ export const FREE_SESSIONS_TEXT_HI = 'मुफ़्त में शुरू 
 
 const FREE_TIER_COPY = { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI };
 export default FREE_TIER_COPY;
+
+/** Indian DPDP Act 2023 -- parental consent required below this age. */
+export const DAILY_FREE_QUESTION_LIMIT = 5;

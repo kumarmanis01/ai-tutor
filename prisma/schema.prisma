@@ -65,7 +65,7 @@ model User {
   lastSessionDate          DateTime?
   welcomeEmailSent         Boolean                  @default(false)
   passwordHash             String?
-  todaysFreeQuestionsCount Int                      @default(3)
+  todaysFreeQuestionsCount Int                      @default(5)
   subscriptionStatus       String                   @default("free")
   subscriptionExpiry       DateTime?
   status                   String?

@@ -22,6 +22,7 @@ import { checkProfanity } from '@/lib/guardrails';
 import { SessionUser } from '@/lib/types';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { parse as parseAcceptLanguage } from 'accept-language-parser';
+import { DAILY_FREE_QUESTION_LIMIT } from '@/lib/constants/freeTier';
 
 function isMissingFreeQuestionColumnError(error: unknown): boolean {
   const err = error as { code?: string; message?: unknown };
@@ -62,13 +63,13 @@ export async function POST(req: Request) {
     const userId = sessionUser.id as string;
     const premium = await isPremiumUser(userId);
     if (!premium) {
-      const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
+
       let txResult: { notFound: true } | { limitReached: true } | { updated: { todaysFreeQuestionsCount: number | null } };
       try {
         txResult = await prisma.$transaction(async (tx) => {
           const user = await tx.user.findUnique({ where: { id: userId } });
           if (!user) return { notFound: true } as const;
-          if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) return { limitReached: true } as const;
+          if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_QUESTION_LIMIT) <= 0) return { limitReached: true } as const;
           const updated = await tx.user.update({ where: { id: userId }, data: { todaysFreeQuestionsCount: { decrement: 1 } } });
           return { updated } as const;
         });

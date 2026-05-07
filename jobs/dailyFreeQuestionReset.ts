@@ -17,10 +17,10 @@ import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock';
 import logAuditEvent from '@/lib/audit/log';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { DAILY_FREE_QUESTION_LIMIT } from '@/lib/constants/freeTier';
 
 const CLASS_NAME = 'DailyFreeQuestionReset';
 const JOB_NAME = 'daily_free_question_reset';
-const DAILY_FREE_LIMIT = 3;
 
 /**
  * Result of running the daily reset job.
@@ -88,11 +88,11 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
         },
         // Only update users who have consumed some questions (optimization)
         todaysFreeQuestionsCount: {
-          lt: DAILY_FREE_LIMIT,
+          lt: DAILY_FREE_QUESTION_LIMIT,
         },
       },
       data: {
-        todaysFreeQuestionsCount: DAILY_FREE_LIMIT,
+        todaysFreeQuestionsCount: DAILY_FREE_QUESTION_LIMIT,
       },
     });
 

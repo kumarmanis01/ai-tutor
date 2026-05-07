@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 import { PLANS } from '@/lib/billing/plans';
+import {DAILY_FREE_QUESTION_LIMIT} from '@/lib/constants/freeTier';
 
 interface PricingPlan {
   id: string;
@@ -32,13 +33,13 @@ const PricingSection = () => {
       description: 'Try AI Tutor with limited features',
       descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
       features: [
-        '5 questions per day',
+        `${DAILY_FREE_QUESTION_LIMIT} doubts per day`,
         'Basic explanations',
         'Hindi + English support',
         'NCERT notes access',
       ],
       featuresHi: [
-        'प्रतिदिन 5 सवाल',
+        `प्रतिदिन ${DAILY_FREE_QUESTION_LIMIT} सवाल`,
         'बुनियादी समाधान',
         'हिंदी + अंग्रेजी सहायता',
         'NCERT नोट्स एक्सेस',
