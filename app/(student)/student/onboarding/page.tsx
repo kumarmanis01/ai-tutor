@@ -19,6 +19,8 @@
  *
  * EDIT LOG:
  * - 2026-05-06 | claude | created for Google-auth onboarding flow
+ * - 2026-05-07T00:00:00Z | copilot | replace hardcoded colors with theme classes and refresh onboarding visual styling
+ * - 2026-05-07T00:00:00Z | copilot | move onboarding form/modal style recipes to lib/theme/componentClasses for theme-level reuse
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -26,6 +28,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Logo from '@/components/Logo'
 import { DPDP_MINOR_AGE } from '@/lib/constants/age'
+import { ONBOARDING_THEME_CLASSES } from '@/lib/theme/componentClasses'
 
 // ── Types from academic-hierarchy API ─────────────────────────────────────────
 
@@ -48,6 +51,28 @@ interface OnboardingSessionUser {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAX_SUBJECTS = 6
+const {
+  pageBackground: PAGE_BACKGROUND_CLASS,
+  pageAccent: PAGE_ACCENT_CLASS,
+  container: CONTAINER_CLASS,
+  fieldLabel: FIELD_LABEL_CLASS,
+  input: INPUT_CLASS,
+  primaryButton: PRIMARY_BUTTON_CLASS,
+  secondaryAction: SECONDARY_ACTION_CLASS,
+  segmentBase: SEGMENT_BASE_CLASS,
+  segmentSelected: SEGMENT_SELECTED_CLASS,
+  subjectDisabled: SUBJECT_DISABLED_CLASS,
+  inlineError: INLINE_ERROR_CLASS,
+  bannerError: BANNER_ERROR_CLASS,
+  bannerWarning: BANNER_WARNING_CLASS,
+  bannerSuccessIcon: BANNER_SUCCESS_ICON_CLASS,
+  phoneWrapper: PHONE_WRAPPER_CLASS,
+  phonePrefix: PHONE_PREFIX_CLASS,
+  phoneInput: PHONE_INPUT_CLASS,
+  otpInput: OTP_INPUT_CLASS,
+  decorativeCard: DECORATIVE_CARD_CLASS,
+  sectionCard: SECTION_CARD_CLASS,
+} = ONBOARDING_THEME_CLASSES
 
 // Server returns errors under these keys; map to UI field names
 const SERVER_KEY_MAP: Record<string, string> = {
@@ -347,8 +372,11 @@ export default function StudentOnboardingPage() {
   // ── Loading states ──────────────────────────────────────────────────────────
   if (status === 'loading' || view === 'loading-hierarchy') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+      <div className={`${PAGE_BACKGROUND_CLASS} flex items-center justify-center`}>
+        <div className="space-y-3 text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading your onboarding form...</p>
+        </div>
       </div>
     )
   }
@@ -356,15 +384,15 @@ export default function StudentOnboardingPage() {
   // ── Done ────────────────────────────────────────────────────────────────────
   if (view === 'done') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className={`${PAGE_BACKGROUND_CLASS} flex items-center justify-center px-4`}>
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-[#EAF3DE] rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-8 h-8 text-[#1D9E75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className={`${BANNER_SUCCESS_ICON_CLASS} mx-auto`}>
+            <svg className="h-8 w-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Account verified!</h2>
-          <p className="text-sm text-gray-500">Taking you to your dashboard...</p>
+          <h2 className="font-brand text-xl font-bold text-foreground">Account verified!</h2>
+          <p className="text-sm text-muted-foreground">Taking you to your dashboard...</p>
         </div>
       </div>
     )
@@ -378,19 +406,29 @@ export default function StudentOnboardingPage() {
     const sentDesc = sentChannels.length > 0 ? sentChannels.join(' and ') : 'your parent'
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
-        <div className="w-full max-w-sm space-y-6">
+      <div className={`${PAGE_BACKGROUND_CLASS} relative flex items-center justify-center overflow-hidden px-4`}>
+        <div className={PAGE_ACCENT_CLASS} />
+        <div className="relative w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
             <div className="flex justify-center mb-4">
               <Logo variant="auth" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Parent verification</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <h1 className="font-brand text-xl font-bold text-foreground">Parent verification</h1>
+            <p className="text-sm text-muted-foreground">
               We sent a 6-digit code to {sentDesc}. Ask your parent to share it with you.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className={DECORATIVE_CARD_CLASS}>
+            <div className={`${SECTION_CARD_CLASS} space-y-5`}>
+              <div className="rounded-2xl border border-primary/15 bg-primary-bg px-4 py-3 text-left">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Approval step</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Enter the code from your parent to finish account setup.
+                </p>
+              </div>
+
+              <div className="space-y-3">
             <input
               type="text"
               inputMode="numeric"
@@ -399,39 +437,35 @@ export default function StudentOnboardingPage() {
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] rounded-xl
-                         border border-gray-300 dark:border-gray-600
-                         bg-white dark:bg-gray-900
-                         text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-transparent"
+              className={OTP_INPUT_CLASS}
             />
-            {otpError && <p className="text-[#E24B4A] text-sm text-center">{otpError}</p>}
-          </div>
+                {otpError && <p className="text-center text-sm text-error">{otpError}</p>}
+              </div>
 
-          <button
-            onClick={handleOtpVerify}
-            disabled={otpSubmitting || otpCode.length !== 6}
-            className="w-full py-3 min-h-[44px] rounded-xl bg-[#534AB7] hover:bg-[#4239a0]
-                       text-white font-semibold text-sm transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {otpSubmitting ? 'Verifying...' : 'Verify code'}
-          </button>
-
-          <div className="text-center">
-            {otpCountdown > 0 ? (
-              <p className="text-xs text-gray-400">
-                Resend code in {Math.floor(otpCountdown / 60)}:{String(otpCountdown % 60).padStart(2, '0')}
-              </p>
-            ) : (
               <button
-                onClick={() => { sendOtp(); setOtpCode('') }}
-                disabled={otpSending}
-                className="text-sm text-[#534AB7] hover:underline disabled:opacity-50"
+                onClick={handleOtpVerify}
+                disabled={otpSubmitting || otpCode.length !== 6}
+                className={PRIMARY_BUTTON_CLASS}
               >
-                {otpSending ? 'Sending...' : 'Resend code'}
+                {otpSubmitting ? 'Verifying...' : 'Verify code'}
               </button>
-            )}
+
+              <div className="text-center">
+                {otpCountdown > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Resend code in {Math.floor(otpCountdown / 60)}:{String(otpCountdown % 60).padStart(2, '0')}
+                  </p>
+                ) : (
+                  <button
+                    onClick={() => { sendOtp(); setOtpCode('') }}
+                    disabled={otpSending}
+                    className={SECONDARY_ACTION_CLASS}
+                  >
+                    {otpSending ? 'Sending...' : 'Resend code'}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -440,66 +474,76 @@ export default function StudentOnboardingPage() {
 
   // ── Form view ───────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4">
-      <div className="w-full max-w-lg mx-auto space-y-6">
+    <div className={`${PAGE_BACKGROUND_CLASS} relative overflow-hidden px-4 py-8`}>
+      <div className={PAGE_ACCENT_CLASS} />
+      <div className={CONTAINER_CLASS}>
 
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4">
             <Logo variant="auth" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Set up your profile</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="inline-flex items-center rounded-full border border-primary/15 bg-primary-bg px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Student onboarding
+          </span>
+          <h1 className="font-brand text-2xl font-bold text-foreground">Set up your profile</h1>
+          <p className="mx-auto max-w-md text-sm text-muted-foreground">
             Help Vidya personalise your learning experience.
           </p>
         </div>
 
         {hierarchyError && (
-          <div className="bg-[#FCEBEB] border border-[#E24B4A]/20 rounded-xl px-4 py-3 text-sm text-[#E24B4A]">
+          <div className={BANNER_ERROR_CLASS}>
             {hierarchyError}
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-5 space-y-5">
+        <div className={DECORATIVE_CARD_CLASS}>
+          <div className={SECTION_CARD_CLASS}>
+
+          <div className="rounded-2xl border border-primary/15 bg-gradient-to-r from-primary-bg via-card to-brand-primary-bg/20 px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Personalise your path</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Share your board, class, and subjects so Vidya can shape the right starting point.
+            </p>
+          </div>
 
           {/* Name */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Your name <span className="text-gray-400 font-normal">(optional)</span>
+            <label htmlFor="student-name" className={FIELD_LABEL_CLASS}>
+              Your name <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
             <input
+              id="student-name"
               type="text"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="e.g. Rahul"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-transparent text-sm"
+              className={INPUT_CLASS}
             />
           </div>
 
           {/* Date of Birth */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Date of birth <span className="text-[#E24B4A]">*</span>
+            <label htmlFor="student-dob" className={FIELD_LABEL_CLASS}>
+              Date of birth <span className="text-error">*</span>
             </label>
             <input
+              id="student-dob"
               type="date"
               value={form.dob}
               max={todayIso()}
               onChange={(e) => setForm((f) => ({ ...f, dob: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-transparent text-sm"
+              className={INPUT_CLASS}
             />
-            {fieldErrors.dob && <p className="text-[#E24B4A] text-xs">{fieldErrors.dob}</p>}
+            {fieldErrors.dob && <p className={INLINE_ERROR_CLASS}>{fieldErrors.dob}</p>}
           </div>
 
           {/* Learning Language */}
           {hierarchy?.languages && hierarchy.languages.length > 0 && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Learning language <span className="text-[#E24B4A]">*</span>
+              <label className={FIELD_LABEL_CLASS}>
+                Learning language <span className="text-error">*</span>
               </label>
               <div className="flex gap-3">
                 {hierarchy.languages.map((lang) => (
@@ -507,25 +551,25 @@ export default function StudentOnboardingPage() {
                     key={lang.code}
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, language: lang.code }))}
-                    className={`flex-1 py-2.5 min-h-[44px] rounded-xl border-2 text-sm font-medium transition-colors
+                    className={`min-h-[44px] flex-1 px-3 py-2.5 ${SEGMENT_BASE_CLASS}
                       ${form.language === lang.code
-                        ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-[#534AB7]/50'
+                        ? SEGMENT_SELECTED_CLASS
+                        : ''
                       }`}
                   >
                     {lang.name}
                   </button>
                 ))}
               </div>
-              {fieldErrors.language && <p className="text-[#E24B4A] text-xs">{fieldErrors.language}</p>}
+              {fieldErrors.language && <p className={INLINE_ERROR_CLASS}>{fieldErrors.language}</p>}
             </div>
           )}
 
           {/* Board */}
           {hierarchy?.boards && hierarchy.boards.length > 0 && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Board <span className="text-[#E24B4A]">*</span>
+              <label className={FIELD_LABEL_CLASS}>
+                Board <span className="text-error">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {hierarchy.boards.map((b) => (
@@ -533,25 +577,25 @@ export default function StudentOnboardingPage() {
                     key={b.id}
                     type="button"
                     onClick={() => selectBoard(b.slug)}
-                    className={`px-4 py-2 min-h-[44px] rounded-xl border-2 text-sm font-medium transition-colors
+                    className={`min-h-[44px] px-4 py-2 ${SEGMENT_BASE_CLASS}
                       ${form.boardSlug === b.slug
-                        ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-[#534AB7]/50'
+                        ? SEGMENT_SELECTED_CLASS
+                        : ''
                       }`}
                   >
                     {b.name}
                   </button>
                 ))}
               </div>
-              {fieldErrors.board && <p className="text-[#E24B4A] text-xs">{fieldErrors.board}</p>}
+              {fieldErrors.board && <p className={INLINE_ERROR_CLASS}>{fieldErrors.board}</p>}
             </div>
           )}
 
           {/* Grade -- shown after board is selected */}
           {form.boardSlug && availableGrades.length > 0 && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Class <span className="text-[#E24B4A]">*</span>
+              <label className={FIELD_LABEL_CLASS}>
+                Class <span className="text-error">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {availableGrades.map((c) => (
@@ -559,26 +603,26 @@ export default function StudentOnboardingPage() {
                     key={c.id}
                     type="button"
                     onClick={() => selectGrade(String(c.grade))}
-                    className={`w-12 h-11 rounded-xl border-2 text-sm font-medium transition-colors
+                    className={`h-11 w-12 ${SEGMENT_BASE_CLASS}
                       ${form.grade === String(c.grade)
-                        ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-[#534AB7]/50'
+                        ? SEGMENT_SELECTED_CLASS
+                        : ''
                       }`}
                   >
                     {c.grade}
                   </button>
                 ))}
               </div>
-              {fieldErrors.grade && <p className="text-[#E24B4A] text-xs">{fieldErrors.grade}</p>}
+              {fieldErrors.grade && <p className={INLINE_ERROR_CLASS}>{fieldErrors.grade}</p>}
             </div>
           )}
 
           {/* Subjects -- shown after grade is selected */}
           {form.grade && availableSubjects.length > 0 && (
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Subjects <span className="text-[#E24B4A]">*</span>
-                <span className="text-gray-400 font-normal ml-1">
+              <label className={FIELD_LABEL_CLASS}>
+                Subjects <span className="text-error">*</span>
+                <span className="ml-1 font-normal text-muted-foreground">
                   ({form.subjectSlugs.length}/{MAX_SUBJECTS} selected)
                 </span>
               </label>
@@ -592,12 +636,12 @@ export default function StudentOnboardingPage() {
                       type="button"
                       onClick={() => toggleSubject(s.slug)}
                       disabled={disabled}
-                      className={`px-3 py-1.5 min-h-[36px] rounded-lg border text-xs font-medium transition-colors
+                      className={`min-h-[36px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors
                         ${selected
-                          ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
+                          ? 'border-primary bg-primary-bg text-primary shadow-sm'
                           : disabled
-                            ? 'border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-[#534AB7]/50'
+                            ? SUBJECT_DISABLED_CLASS
+                            : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-brand-primary-bg/30'
                         }`}
                     >
                       {s.name}
@@ -605,29 +649,30 @@ export default function StudentOnboardingPage() {
                   )
                 })}
               </div>
-              {fieldErrors.subjects && <p className="text-[#E24B4A] text-xs">{fieldErrors.subjects}</p>}
+              {fieldErrors.subjects && <p className={INLINE_ERROR_CLASS}>{fieldErrors.subjects}</p>}
             </div>
           )}
 
           {/* WhatsApp (optional) */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              WhatsApp number <span className="text-gray-400 font-normal">(optional)</span>
+            <label htmlFor="student-whatsapp" className={FIELD_LABEL_CLASS}>
+              WhatsApp number <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
             <PhoneInput
+              inputId="student-whatsapp"
               value={form.whatsapp}
               onChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
               placeholder="98765 43210"
             />
-            <p className="text-xs text-gray-400">For session reminders and progress alerts.</p>
+            <p className="text-xs text-muted-foreground">For session reminders and progress alerts.</p>
           </div>
 
           {/* Parent contact -- shown when student is under DPDP age gate */}
           {isMinor && (
-            <div className="pt-2 border-t border-[#FAEEDA] dark:border-gray-800 space-y-4">
-              <div className="bg-[#FAEEDA] dark:bg-amber-950/30 rounded-xl px-4 py-3">
-                <p className="text-sm font-semibold text-[#BA7517]">Parent verification required</p>
-                <p className="text-xs text-[#BA7517]/80 mt-0.5">
+            <div className="space-y-4 border-t border-warning/15 pt-2">
+              <div className={BANNER_WARNING_CLASS}>
+                <p className="text-sm font-semibold text-warning">Parent verification required</p>
+                <p className="mt-0.5 text-xs text-warning/80">
                   Students under {DPDP_MINOR_AGE} need a parent to approve the account.
                   We will send a one-time code to verify.
                 </p>
@@ -635,53 +680,51 @@ export default function StudentOnboardingPage() {
 
               {/* Parent Email */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="parent-email" className={FIELD_LABEL_CLASS}>
                   Parent email
                 </label>
                 <input
+                  id="parent-email"
                   type="email"
                   value={form.parentEmail}
                   onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))}
                   placeholder="parent@example.com"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600
-                             bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                             focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-transparent text-sm"
+                  className={INPUT_CLASS}
                 />
-                {fieldErrors.parentEmail && <p className="text-[#E24B4A] text-xs">{fieldErrors.parentEmail}</p>}
+                {fieldErrors.parentEmail && <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentEmail}</p>}
               </div>
 
               {/* Parent WhatsApp */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="parent-whatsapp" className={FIELD_LABEL_CLASS}>
                   Parent WhatsApp number
                 </label>
                 <PhoneInput
+                  inputId="parent-whatsapp"
                   value={form.parentWhatsapp}
                   onChange={(v) => setForm((f) => ({ ...f, parentWhatsapp: v }))}
                   placeholder="98765 43210"
                 />
-                {fieldErrors.parentWhatsapp && <p className="text-[#E24B4A] text-xs">{fieldErrors.parentWhatsapp}</p>}
-                <p className="text-xs text-gray-400">
+                {fieldErrors.parentWhatsapp && <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentWhatsapp}</p>}
+                <p className="text-xs text-muted-foreground">
                   The verification code will be sent to whichever channels you provide. At least one is required.
                 </p>
               </div>
 
               {fieldErrors.parentContact && (
-                <p className="text-[#E24B4A] text-xs">{fieldErrors.parentContact}</p>
+                <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentContact}</p>
               )}
             </div>
           )}
 
           {globalError && (
-            <p className="text-[#E24B4A] text-sm text-center">{globalError}</p>
+            <p className="text-center text-sm text-error">{globalError}</p>
           )}
 
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full py-3 min-h-[44px] rounded-xl bg-[#534AB7] hover:bg-[#4239a0]
-                       text-white font-semibold text-sm transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed"
+            className={PRIMARY_BUTTON_CLASS}
           >
             {submitting
               ? 'Saving...'
@@ -689,6 +732,7 @@ export default function StudentOnboardingPage() {
                 ? 'Save and send verification code'
                 : 'Start learning'}
           </button>
+          </div>
         </div>
       </div>
     </div>
@@ -698,31 +742,29 @@ export default function StudentOnboardingPage() {
 // ── PhoneInput -- +91 prefix with editable suffix ────────────────────────────
 
 function PhoneInput({
+  inputId,
   value,
   onChange,
   placeholder,
 }: {
+  inputId?: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
 }) {
   return (
-    <div className="flex rounded-xl border border-gray-300 dark:border-gray-600 overflow-hidden
-                    focus-within:ring-2 focus-within:ring-[#534AB7] focus-within:border-transparent">
-      <span className="flex items-center px-3 bg-gray-50 dark:bg-gray-800
-                       text-gray-500 dark:text-gray-400 text-sm font-medium
-                       border-r border-gray-300 dark:border-gray-600 select-none whitespace-nowrap">
+    <div className={PHONE_WRAPPER_CLASS}>
+      <span className={PHONE_PREFIX_CLASS}>
         +91
       </span>
       <input
+        id={inputId}
         type="tel"
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
         placeholder={placeholder ?? '98765 43210'}
         inputMode="numeric"
-        className="flex-1 px-3 py-2.5 bg-white dark:bg-gray-800
-                   text-gray-900 dark:text-white text-sm
-                   focus:outline-none"
+        className={PHONE_INPUT_CLASS}
       />
     </div>
   )
