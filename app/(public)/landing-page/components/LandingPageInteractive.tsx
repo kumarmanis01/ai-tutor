@@ -8,6 +8,8 @@ import FAQSection from './FAQSection';
 import OtpSignupForm from '@/components/auth/OtpSignupForm';
 import FinalCTA from './FinalCTA';
 import Footer from './Footer';
+import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
+import { FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 const LandingPageInteractive = () => {
   return (
@@ -27,11 +29,11 @@ const LandingPageInteractive = () => {
               Ready to try it yourself?
             </p>
             <p className="font-accent text-sm text-brand-primary mb-5">
-              आज ही शुरू करें -- बिल्कुल मुफ्त
+              {FREE_SESSIONS_TEXT_HI}
             </p>
             <OtpSignupForm />
             <p className="text-xs text-muted-foreground mt-3">
-              3 free sessions every month. No credit card required.
+              {FREE_SESSIONS_TEXT}
             </p>
           </div>
         </section>

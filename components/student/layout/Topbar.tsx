@@ -24,7 +24,13 @@ import { getTierColor } from '@/lib/student/xpLevels';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-type TopbarStats = { streak: number; longestStreak?: number; level: number; shieldAvailable: boolean };
+type TopbarStats = {
+  streak: number;
+  longestStreak?: number;
+  level: number;
+  shieldAvailable: boolean;
+};
+
 type UserProfile = {
   id?: string;
   name?: string | null;
@@ -45,23 +51,25 @@ export default function Topbar() {
   const { data: stats } = useSWR<TopbarStats>(
     session ? '/api/student/topbar-stats' : null,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 
   // Fetch canonical user profile for display (name, school, grade, board, plan)
-  const { data: profile } = useSWR<UserProfile>(
-    session ? '/api/user/profile' : null,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  );
+  const { data: profile } = useSWR<UserProfile>(session ? '/api/user/profile' : null, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
 
-  const name: string =
-    (session?.user as { name?: string | null })?.name ?? '';
+  const name: string = (session?.user as { name?: string | null })?.name ?? '';
+  const firstName = name.trim().split(' ')[0] ?? '';
   const initial = name.trim() ? name.trim().charAt(0).toUpperCase() : 'S';
 
   const streak = stats?.streak ?? 0;
   const level = stats?.level ?? 1;
   const shieldAvailable = stats?.shieldAvailable ?? false;
+
+  // Show upgrade button once profile has loaded and has no active plan
+  const isFree = profile !== undefined && !profile?.plan;
 
   const closeStreak = useCallback(() => {
     setStreakOpen(false);
@@ -76,7 +84,6 @@ export default function Topbar() {
   return (
     <header className="sticky top-0 z-50 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-slate-800 min-h-[44px]">
       <div className="px-4 h-full flex items-center justify-between gap-3 py-2">
-
         {/* Mobile left: menu icon (only on small screens) */}
         <button
           data-testid="mobile-menu-button"
@@ -85,8 +92,18 @@ export default function Topbar() {
           aria-label="Open menu"
           className="mr-2 md:hidden p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 min-h-[44px] min-w-[44px]"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-            <path fillRule="evenodd" d="M3 5h14a1 1 0 100-2H3a1 1 0 100 2zm14 6H3a1 1 0 100 2h14a1 1 0 100-2zm0 6H3a1 1 0 100 2h14a1 1 0 100-2z" clipRule="evenodd" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden
+          >
+            <path
+              fillRule="evenodd"
+              d="M3 5h14a1 1 0 100-2H3a1 1 0 100 2zm14 6H3a1 1 0 100 2h14a1 1 0 100-2zm0 6H3a1 1 0 100 2h14a1 1 0 100-2z"
+              clipRule="evenodd"
+            />
           </svg>
         </button>
         {/* Left: logo */}
@@ -95,13 +112,26 @@ export default function Topbar() {
           className="flex items-center flex-shrink-0 min-h-[44px] min-w-[44px] -ml-1 px-1"
           aria-label="Spinzy home"
         >
-          <span className="hidden sm:flex"><Logo variant="navbar" /></span>
-          <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
+          <span className="hidden sm:flex">
+            <Logo variant="navbar" />
+          </span>
+          <span className="flex sm:hidden">
+            <Logo variant="navbar-mobile" />
+          </span>
         </Link>
+
+        {/* Middle mobile: first-name greeting */}
+        {firstName && (
+          <span className="flex-1 md:hidden text-sm font-semibold text-gray-800 dark:text-white truncate">
+            Hi, {firstName}!
+          </span>
+        )}
 
         {/* Middle (md+): student name & meta (school, grade, board, plan) */}
         <div className="hidden md:flex flex-col ml-3">
-          <span className="text-sm font-medium text-gray-900 dark:text-white">{profile?.name ?? name}</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-white">
+            {profile?.name ?? name}
+          </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {profile?.schoolName ? `${profile.schoolName}` : ''}
             {profile?.grade ? ` · Grade ${profile.grade}` : ''}
@@ -112,6 +142,16 @@ export default function Topbar() {
 
         {/* Right: badges + avatar */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Upgrade button -- shown for free-tier users only; goes to /subscribe */}
+          {isFree && (
+            <Link
+              href="/subscribe"
+              className="hidden sm:inline-flex items-center gap-1 rounded-full bg-[#F97316] px-3 py-1 text-xs font-semibold text-white min-h-[36px] hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
+              aria-label="Upgrade to Premium"
+            >
+              ✨ Upgrade
+            </Link>
+          )}
 
           {/* Streak badge -- tap to open StreakWidget popover */}
           {(streak > 0 || shieldAvailable) && (
@@ -126,13 +166,13 @@ export default function Topbar() {
               >
                 🔥 {streak}
                 {shieldAvailable && (
-                  <span className="text-xs ml-0.5" aria-hidden="true">🛡️</span>
+                  <span className="text-xs ml-0.5" aria-hidden="true">
+                    🛡️
+                  </span>
                 )}
               </button>
 
-              {streakOpen && (
-                <StreakWidget onClose={closeStreak} />
-              )}
+              {streakOpen && <StreakWidget onClose={closeStreak} />}
             </div>
           )}
 
@@ -178,31 +218,92 @@ export default function Topbar() {
 
       {/* Mobile Menu Sheet */}
       {menuOpen && (
-        <div data-testid="mobile-menu-sheet" className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2">
+        <div
+          data-testid="mobile-menu-sheet"
+          className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2"
+        >
           <div className="flex items-center justify-between mb-2 px-2">
             <div className="text-sm font-semibold">Menu</div>
-            <button type="button" onClick={() => setMenuOpen(false)} className="text-gray-600">✕</button>
+            <button type="button" onClick={() => setMenuOpen(false)} className="text-gray-600">
+              ✕
+            </button>
           </div>
           <nav>
-            <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Dashboard</Link>
-            <Link href="/learn" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Learn</Link>
-            <Link href="/rooms" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Rooms</Link>
-            <Link href="/profile" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Profile</Link>
+            <Link
+              href="/dashboard"
+              onClick={() => setMenuOpen(false)}
+              className="block px-3 py-2 text-sm"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/learn"
+              onClick={() => setMenuOpen(false)}
+              className="block px-3 py-2 text-sm"
+            >
+              Learn
+            </Link>
+            <Link
+              href="/rooms"
+              onClick={() => setMenuOpen(false)}
+              className="block px-3 py-2 text-sm"
+            >
+              Rooms
+            </Link>
+            <Link
+              href="/profile"
+              onClick={() => setMenuOpen(false)}
+              className="block px-3 py-2 text-sm"
+            >
+              Profile
+            </Link>
+            {isFree && (
+              <Link
+                href="/subscribe"
+                onClick={() => setMenuOpen(false)}
+                className="block px-3 py-2 text-sm font-semibold text-[#F97316] min-h-[44px] flex items-center"
+              >
+                ✨ Upgrade to Premium
+              </Link>
+            )}
           </nav>
         </div>
       )}
 
       {/* Mobile Profile Sheet */}
       {profileOpen && (
-        <div data-testid="mobile-profile-sheet" className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2">
+        <div
+          data-testid="mobile-profile-sheet"
+          className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2"
+        >
           <div className="flex items-center justify-between mb-2 px-2">
             <div className="text-sm font-semibold">Profile</div>
-            <button type="button" onClick={() => setProfileOpen(false)} className="text-gray-600">✕</button>
+            <button type="button" onClick={() => setProfileOpen(false)} className="text-gray-600">
+              ✕
+            </button>
           </div>
           <nav>
-            <Link href="/profile" onClick={() => setProfileOpen(false)} className="block px-3 py-2 text-sm">View profile</Link>
-            <Link href="/settings" onClick={() => setProfileOpen(false)} className="block px-3 py-2 text-sm">Settings</Link>
-            <Link href="/help" onClick={() => setProfileOpen(false)} className="block px-3 py-2 text-sm">Help</Link>
+            <Link
+              href="/profile"
+              onClick={() => setProfileOpen(false)}
+              className="block px-3 py-2 text-sm"
+            >
+              View profile
+            </Link>
+            <Link
+              href="/settings"
+              onClick={() => setProfileOpen(false)}
+              className="block px-3 py-2 text-sm"
+            >
+              Settings
+            </Link>
+            <Link
+              href="/help"
+              onClick={() => setProfileOpen(false)}
+              className="block px-3 py-2 text-sm"
+            >
+              Help
+            </Link>
           </nav>
         </div>
       )}

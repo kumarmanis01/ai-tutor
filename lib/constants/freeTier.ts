@@ -13,8 +13,8 @@
  * - 2026-04-15T11:32:00Z | copilot | created
  */
 
-export const FREE_SESSIONS_TEXT = '3 free sessions every month';
-export const FREE_SESSIONS_TEXT_HI = 'हर माह 3 मुफ्त सेशन';
+export const FREE_SESSIONS_TEXT = 'Start For Free';
+export const FREE_SESSIONS_TEXT_HI = 'मुफ़्त में शुरू करें';
 
 const FREE_TIER_COPY = { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI };
 export default FREE_TIER_COPY;
