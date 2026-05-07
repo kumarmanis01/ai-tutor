@@ -27,7 +27,9 @@
     *                               never falls back to /dashboard when today's work is actionable *   2026-05-07T00:00:00Z | copilot | fix: unwrap { action, traceId } dev-mode wrapper from
  *                               getNextAction() before accessing .ruleId/.topicId; without
  *                               this, every branch was skipped in dev and the dashboard always
- *                               fell through to plan_loading even after a plan was generated */
+     *                               fell through to plan_loading even after a plan was generated
+     *   2026-05-07T06:45:00Z | copilot | fix: only emit start recommendation when topicId resolves
+     *                               to active Concept.id; otherwise keep non-start state and log warning */
  
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
@@ -36,6 +38,7 @@ import { requireActiveSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getNextAction } from '@/lib/homeEngine/getNextAction'
 import { computeReadinessScore } from '@/lib/student/examReadiness'
+import { logger } from '@/lib/logger'
 import TodaysLearningCard, {
   type TodaysLearningCardProps,
 } from '@/components/student/dashboard/TodaysLearningCard'
@@ -364,15 +367,23 @@ export default async function StudentHomeDashboardPage() {
         orderBy: { createdAt: 'asc' },
         select: { id: true },
       })
-      cardProps = {
-        type: 'start',
-        recommendation: {
-          conceptId: firstConcept?.id ?? resolvedAction.topicId,
-          topicTitle: resolvedAction.topicName ?? 'Start a session',
-          subject: resolvedAction.subject ?? '',
-          estimatedTimeMin: 20,
-        },
-        ctaLabel: isCrunchMode ? 'Study for exam' : undefined,
+      if (firstConcept?.id) {
+        cardProps = {
+          type: 'start',
+          recommendation: {
+            conceptId: firstConcept.id,
+            topicTitle: resolvedAction.topicName ?? 'Start a session',
+            subject: resolvedAction.subject ?? '',
+            estimatedTimeMin: 20,
+          },
+          ctaLabel: isCrunchMode ? 'Study for exam' : undefined,
+        }
+      } else {
+        logger.warn('dashboard.start_action.skipped_missing_concept', {
+          userId,
+          topicId: resolvedAction.topicId,
+          ruleId: resolvedAction.ruleId,
+        })
       }
     }
   }

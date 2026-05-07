@@ -1,10 +1,18 @@
 /**
- * Pre-session screen -- v2
+ * FILE OBJECTIVE:
+ * - Server pre-session page for /session/pre/[conceptId]. Loads concept/topic context,
+ *   prerequisite mastery, and resumable session metadata before rendering PreSessionScreen.
  *
- * Server component. Loads concept data, prerequisites with mastery scores,
- * and any incomplete session for this concept. Renders PreSessionScreen.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/session/pre/page.test.ts
  *
- * URL: /session/pre/[conceptId]
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-07T00:00:00Z | copilot | accept TopicDef.id fallback by resolving first active Concept
+ *                          to prevent /session/pre redirects from bouncing back to dashboard
  */
 
 import { redirect } from 'next/navigation';
@@ -42,35 +50,46 @@ export default async function PreSessionPage({ params }: Props) {
     redirect(`/auth/signin?callbackUrl=/session/pre/${encodeURIComponent(conceptId)}`);
   }
 
-  // Load concept + topic + chapter + subject + board chapter weight
-  const concept = await prisma.concept.findUnique({
-    where: { id: conceptId },
-    select: {
-      id: true,
-      name: true,
-      irt_b: true,
-      prerequisiteConceptIds: true,
-      topicId: true,
-      subjectId: true,
-      topic: {
-        select: {
-          id: true,
-          name: true,
-          chapter: {
-            select: {
-              id: true,
-              name: true,
-              boardChapterWeights: { select: { weightMarks: true }, take: 1 },
-              subject: { select: { id: true, name: true } },
-            },
+  // Load concept + topic + chapter + subject + board chapter weight.
+  // Primary path expects a Concept.id. Defensive fallback also accepts a TopicDef.id
+  // and resolves to the first active concept for that topic.
+  const conceptSelect = {
+    id: true,
+    name: true,
+    irt_b: true,
+    prerequisiteConceptIds: true,
+    topicId: true,
+    subjectId: true,
+    topic: {
+      select: {
+        id: true,
+        name: true,
+        chapter: {
+          select: {
+            id: true,
+            name: true,
+            boardChapterWeights: { select: { weightMarks: true }, take: 1 },
+            subject: { select: { id: true, name: true } },
           },
         },
       },
     },
+  };
+
+  const conceptById = await prisma.concept.findUnique({
+    where: { id: conceptId },
+    select: conceptSelect,
+  });
+
+  const concept = conceptById ?? await prisma.concept.findFirst({
+    where: { topicId: conceptId, isSuspended: false },
+    orderBy: { createdAt: 'asc' },
+    select: conceptSelect,
   });
 
   if (!concept) redirect('/dashboard');
 
+  const resolvedConceptId = concept.id;
   const topicId = concept.topicId;
   const subjectId = concept.subjectId;
   const subjectName = concept.topic.chapter.subject.name;
@@ -83,6 +102,9 @@ export default async function PreSessionPage({ params }: Props) {
   const prereqIds: string[] = concept.prerequisiteConceptIds ?? [];
   let prerequisites: PrereqInfo[] = [];
   if (prereqIds.length > 0) {
+    type PrereqConceptRow = { id: string; name: string };
+    type PrereqStateRow = { conceptId: string; masteryScore: number };
+
     const [prereqConcepts, prereqStates] = await Promise.all([
       prisma.concept.findMany({
         where: { id: { in: prereqIds } },
@@ -92,9 +114,10 @@ export default async function PreSessionPage({ params }: Props) {
         where: { studentId: userId, conceptId: { in: prereqIds } },
         select: { conceptId: true, masteryScore: true },
       }),
-    ]);
-    const masteryMap = new Map(prereqStates.map((s) => [s.conceptId, s.masteryScore]));
-    prerequisites = prereqConcepts.map((c) => ({
+    ]) as [PrereqConceptRow[], PrereqStateRow[]];
+
+    const masteryMap = new Map(prereqStates.map((s: PrereqStateRow) => [s.conceptId, s.masteryScore]));
+    prerequisites = prereqConcepts.map((c: PrereqConceptRow) => ({
       id: c.id,
       name: c.name,
       masteryScore: masteryMap.get(c.id) ?? 0,
@@ -132,7 +155,7 @@ export default async function PreSessionPage({ params }: Props) {
   // Look up the LearningPlanItem for this concept (for "Skip to next topic")
   const planItem = await prisma.learningPlanItem.findFirst({
     where: {
-      conceptId,
+      conceptId: resolvedConceptId,
       plan: { studentId: userId },
       status: { in: ['UPCOMING', 'IN_PROGRESS'] },
     },
@@ -146,7 +169,7 @@ export default async function PreSessionPage({ params }: Props) {
 
   return (
     <PreSessionScreen
-      conceptId={conceptId}
+      conceptId={resolvedConceptId}
       conceptName={concept.name}
       topicId={topicId}
       subjectId={subjectId}

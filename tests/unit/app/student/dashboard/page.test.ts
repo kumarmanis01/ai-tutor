@@ -13,6 +13,8 @@
  * - 2026-04-21T12:00:00Z | staff-engineer | added tests for grade parsing, dedup preference, and diagnosticHref
  * - 2026-05-06T00:00:00Z | copilot | add assertions for SecondaryStartOptions
  *                          todaysHref mapping in resume and homework states
+ * - 2026-05-07T06:45:00Z | copilot | add regression tests for nextAction topicId -> conceptId
+ *                          mapping; ensure missing concept never emits broken /session/pre url
  */
 /**
  * Tests verify:
@@ -61,9 +63,11 @@ jest.mock('@/lib/diagnostics/stateStore', () => ({
   getSubjectDiagnosticStatus: getSubjectDiagnosticStatusMock,
 }))
 
+const loggerWarnMock = jest.fn()
+
 jest.mock('@/lib/redis', () => ({ getRedis: jest.fn().mockReturnValue(null) }))
 jest.mock('@/lib/logger', () => ({
-  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+  logger: { info: jest.fn(), warn: loggerWarnMock, error: jest.fn() },
 }))
 
 // ── UI components (client components -- mock to avoid hook errors in SSR) ────
@@ -137,6 +141,16 @@ function makeDiagnosticStatus(subjectKey: string) {
   return { subjectKey, status: 'pending', retakeEligibleAt: null }
 }
 
+function getConceptFindFirstMock(): jest.Mock {
+  const prismaWithConcept = prismaMock as unknown as {
+    concept?: { findFirst: jest.Mock }
+  }
+  if (!prismaWithConcept.concept) {
+    prismaWithConcept.concept = { findFirst: jest.fn() }
+  }
+  return prismaWithConcept.concept.findFirst
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('StudentHomeDashboardPage', () => {
@@ -144,6 +158,8 @@ describe('StudentHomeDashboardPage', () => {
     jest.clearAllMocks()
     resetPrismaMock()
     redirectMock.mockImplementation(() => { throw new Error('REDIRECT') })
+    getConceptFindFirstMock().mockReset()
+    getConceptFindFirstMock().mockResolvedValue(null)
   })
 
   it('should render without throwing and call all expected Prisma models', async () => {
@@ -434,5 +450,70 @@ describe('StudentHomeDashboardPage', () => {
     const html = renderToStaticMarkup(element)
 
     expect(html).toContain('/homework/hw-77')
+  })
+
+  it('should pass resolved concept id to start card when nextAction returns topic id', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue({
+      ruleId: 'next_new_topic',
+      topicId: 'topic-123',
+      topicName: 'Integers',
+      subject: 'Math',
+    })
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+    getConceptFindFirstMock().mockResolvedValue({ id: 'concept-777' })
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    const element = await Page()
+    const html = renderToStaticMarkup(element)
+
+    expect(html).toContain('/session/pre/concept-777')
+    expect(html).not.toContain('/session/pre/topic-123')
+  })
+
+  it('should skip start card when nextAction topic id has no active concept', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue({
+      ruleId: 'next_new_topic',
+      topicId: 'topic-missing-concept',
+      topicName: 'Polynomials',
+      subject: 'Math',
+    })
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+    getConceptFindFirstMock().mockResolvedValue(null)
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    const element = await Page()
+    const html = renderToStaticMarkup(element)
+
+    expect(html).not.toContain('/session/pre/topic-missing-concept')
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      'dashboard.start_action.skipped_missing_concept',
+      expect.objectContaining({
+        userId: MOCK_USER_ID,
+        topicId: 'topic-missing-concept',
+        ruleId: 'next_new_topic',
+      }),
+    )
   })
 })
