@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | enforce Google sub/email_verified linking and restore jwt/session id propagation for onboarding auth
+ * - 2026-05-07T00:00:00Z | copilot | fix jwt subjects parsing type guard to avoid never narrowing on Prisma String[]
  */
 
 // src/lib/auth.ts
@@ -589,10 +590,11 @@ export const authOptions: any = {
             token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
 
             let subjectCount = 0;
-            if (Array.isArray(dbUser.subjects)) {
-              subjectCount = (dbUser.subjects as string[]).filter(Boolean).length;
-            } else if (typeof dbUser.subjects === 'string' && dbUser.subjects.length > 0) {
-              subjectCount = dbUser.subjects
+            const rawSubjects: unknown = dbUser.subjects;
+            if (Array.isArray(rawSubjects)) {
+              subjectCount = (rawSubjects as string[]).filter(Boolean).length;
+            } else if (typeof rawSubjects === 'string' && rawSubjects.length > 0) {
+              subjectCount = rawSubjects
                 .replace(/^\{/, '').replace(/\}$/, '').split(',')
                 .filter((s: string) => s.trim().length > 0).length;
             }
