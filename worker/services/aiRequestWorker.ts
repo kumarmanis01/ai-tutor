@@ -1,9 +1,9 @@
 /**
  * FILE OBJECTIVE:
  * - Worker processor for AI request queue (`ai-requests`).
- * - Handles job types: ASK, CHAT, NARRATIVE.
+ * - Handles job types: ASK, CHAT, NARRATIVE, AI_DOUBT.
  * - Runs intent classification, calls `callLLM` (with `suppressLog`),
- *   runs hallucination detection, persists validated assistant replies,
+ *   runs hallucination detection, persists validated responses,
  *   and records an audited, redacted AIContentLog entry.
  *
  * LINKED UNIT TEST:
@@ -15,6 +15,7 @@
  *
  * EDIT LOG:
  * - 2026-04-11T00:00:00Z | copilot | created AI request worker
+ * - 2026-05-07T00:00:00Z | copilot | add AI_DOUBT job type for student doubts endpoint
  */
 
 import { Job } from 'bullmq'
@@ -58,6 +59,7 @@ export async function processAIRequest(job: Job<AIJobData>) {
   const type = String(data?.type ?? data?.jobType ?? '').toUpperCase()
   const payload = data?.payload ?? {}
   const messages = payload.messages ?? []
+  const explicitPrompt = typeof payload.prompt === 'string' ? payload.prompt : ''
   const model = payload.model ?? process.env.MODEL_DEFAULT ?? 'gpt-4o-mini'
   const meta = payload.meta ?? {}
 
@@ -125,8 +127,8 @@ export async function processAIRequest(job: Job<AIJobData>) {
     logger.warn('processAIRequest: intent classification failed', { error: String(e) })
   }
 
-  // Build a single prompt from messages
-  const prompt = messagesToPrompt(messages)
+  // Prefer pre-built prompt when provided (e.g., doubts flow); otherwise assemble from messages.
+  const prompt = explicitPrompt || messagesToPrompt(messages)
 
   // Call LLM with suppressLog=true so worker controls persistence and redaction
   let llmResult: any = null
@@ -214,6 +216,56 @@ export async function processAIRequest(job: Job<AIJobData>) {
     } })
   } catch (e) {
     logger.warn('processAIRequest: failed to write validated AIContentLog', { error: String(e) })
+  }
+
+  // Special handling for AI_DOUBT job type: persist to StudentQuestion + QuestionAnswer
+  if (type === 'AI_DOUBT') {
+    try {
+      const questionId = meta?.questionId
+      const studentId = meta?.studentId
+
+      if (questionId && studentId) {
+        // Parse expected JSON response (from doubts prompt)
+        let parsedResponse = { response: content, followUpQuestion: '', confidenceLevel: 'medium' }
+        try {
+          const parsed = JSON.parse(content)
+          if (parsed?.response) parsedResponse = parsed
+        } catch {
+          // Use raw content as response if JSON parsing fails
+          parsedResponse = { response: content, followUpQuestion: '', confidenceLevel: 'medium' }
+        }
+
+        // Update StudentQuestion
+        await prisma.studentQuestion.update({
+          where: { id: questionId },
+          data: {
+            status: 'answered',
+            answeredAt: new Date(),
+            answerSummary: parsedResponse.response,
+            aiMetadata: {
+              followUpQuestion: parsedResponse.followUpQuestion,
+              confidenceLevel: parsedResponse.confidenceLevel,
+              processedByWorker: true,
+            },
+          },
+        })
+
+        // Record in QuestionAnswer
+        await prisma.questionAnswer.create({
+          data: {
+            questionId,
+            responder: 'ai',
+            content: parsedResponse.response,
+            contentJson: parsedResponse,
+          },
+        })
+
+        logger.info('processAIRequest: AI_DOUBT persisted', { questionId, studentId })
+        return { status: 'completed', questionId, aiResponse: parsedResponse }
+      }
+    } catch (e) {
+      logger.warn('processAIRequest: failed to persist AI_DOUBT response', { error: String(e) })
+    }
   }
 
   return { status: 'completed' }

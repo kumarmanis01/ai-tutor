@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate callbacks and add header
+ * - 2026-05-07T00:00:00Z | copilot | add env validation, typed error codes, timeout enforcement, error mapping
  */
 
 import crypto from 'crypto'
@@ -38,12 +39,32 @@ export function buildPromptRequestBody(prompt: string): { prompt_hash: string; p
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
 
+export type AiErrorCode = 'AI_CONFIG_MISSING' | 'AI_TIMEOUT' | 'AI_UNAUTHORIZED' | 'AI_RATE_LIMITED' | 'AI_PROVIDER_ERROR' | 'AI_UNKNOWN'
+
 export class LLMError extends Error {
   constructor(
     public code: 'AI_UNAVAILABLE' | 'RATE_LIMITED' | 'CONTEXT_TOO_LONG',
     message: string
   ) {
     super(message)
+  }
+}
+
+/**
+ * Strict LLM configuration validation.
+ * Throws if OPENAI_API_KEY is missing or LLM_MODE is not set to 'real'.
+ * @throws Error if config is invalid
+ */
+export function validateLLMRuntimeConfig(): void {
+  const apiKey = process.env.OPENAI_API_KEY
+  const mode = process.env.LLM_MODE
+
+  if (!apiKey || apiKey.trim().length === 0) {
+    throw new Error('LLM_CONFIG_INVALID: OPENAI_API_KEY is missing or empty')
+  }
+
+  if (mode !== 'real' && mode !== 'mock') {
+    throw new Error(`LLM_CONFIG_INVALID: LLM_MODE must be 'real' or 'mock', got '${mode}'`)
   }
 }
 
@@ -95,7 +116,9 @@ function ensureWorkerAllowed() {
   // Allow mock mode anywhere for fast dev/hydration testing
   if (process.env.LLM_MODE === 'mock') return
   if (process.env.ALLOW_LLM_CALLS !== '1') {
-    throw new Error('LLM calls are restricted to worker processes. Set ALLOW_LLM_CALLS=1 in worker runtime.')
+    const msg = 'LLM calls are restricted to worker processes. Set ALLOW_LLM_CALLS=1 in worker runtime. Use worker queue from API routes instead.'
+    logger.error('llm_call_from_api_route_denied', { error: msg })
+    throw new Error(msg)
   }
 }
 

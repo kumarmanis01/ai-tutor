@@ -1,16 +1,45 @@
+/**
+ * FILE OBJECTIVE:
+ * - Handle student doubt submissions with auth, safety checks, and persisted Q&A records.
+ * - Keep LLM execution in worker context while supporting low-latency responses by briefly waiting for worker completion.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/doubts/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-07T00:00:00Z | copilot | move doubts LLM to worker queue and add short synchronous wait for fast responses
+ */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import {
   buildDoubtsPrompt,
-  isValidDoubtsResponse,
   isOffTopicQuestion,
   getOffTopicRedirect,
 } from '@/lib/ai/prompts/doubts';
 import type { StudentIntent, ConversationMessage } from '@/lib/ai/prompts/schemas';
 
 export const dynamic = 'force-dynamic';
+
+const FALLBACK_RESPONSE = {
+  response: `I am having a little trouble connecting right now, so I cannot give you a full explanation at this moment.\n\nPlease try asking again in a few seconds -- I want to give you a proper, detailed answer with examples, not a quick summary. Your question deserves a real explanation!`,
+  followUpQuestion: `Could you try asking again? I want to make sure I explain your question properly with examples.`,
+  confidenceLevel: 'low' as const,
+};
+
+const STATUS_PROCESSING = 'processing';
+const STATUS_ANSWERED = 'answered';
+const DOUBTS_SYNC_WAIT_MS = Number(process.env.DOUBTS_SYNC_WAIT_MS ?? 5000);
+const DOUBTS_POLL_INTERVAL_MS = Number(process.env.DOUBTS_POLL_INTERVAL_MS ?? 250);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /**
  * POST /api/doubts
@@ -24,8 +53,9 @@ export const dynamic = 'force-dynamic';
  *   questionId?: string  // existing StudentQuestion id for follow-ups
  * }
  *
- * Creates a StudentQuestion record and returns the AI response.
- * Falls back to a helpful static response if LLM is unavailable.
+ * Enqueues a worker job to generate AI response via LLM (worker-only).
+ * Returns 202 ACCEPTED with jobId, or 200 with fallback if enqueue fails.
+ * Returns async response polling endpoint for frontend.
  */
 export async function POST(req: Request) {
   const start = Date.now();
@@ -105,20 +135,7 @@ export async function POST(req: Request) {
   const board = userProfile?.board ?? 'CBSE';
   const language = userProfile?.language ?? 'en';
 
-  // Build the prompt using the existing prompt builder
-  const prompt = buildDoubtsPrompt({
-    grade: (isNaN(gradeNum) ? 8 : gradeNum) as any,
-    board: board as any,
-    language: language as any,
-    subject: studentSubject,
-    chapter: studentChapter,
-    topic: studentTopic,
-    studentQuestion: question,
-    studentIntent: intent ?? 'conceptual_clarity',
-    conversationHistory,
-  });
-
-  // Create or update StudentQuestion record
+  // Create StudentQuestion record in 'processing' state
   let sq;
   if (questionId) {
     // Follow-up on existing question
@@ -144,81 +161,130 @@ export async function POST(req: Request) {
     });
   }
 
-  // Try LLM call -- if unavailable, return a helpful fallback
-  let aiResponse: { response: string; followUpQuestion: string; confidenceLevel: string };
-
+  // Enqueue AI worker job (LLM calls are worker-only)
   try {
-    // Dynamic import to avoid pulling in OpenAI client at build time
-    const { callLLM } = await import('@/lib/callLLM');
-    const llmResult = await callLLM({
-      prompt,
-      meta: {
-        promptType: 'doubts',
-        board,
-        grade: gradeNum,
-        subject: studentSubject,
-        chapter: studentChapter,
-        topic: studentTopic,
-        suppressLog: false,
-      },
-      timeoutMs: 15_000,
+    const { getAIRequestQueue } = await import('@/queues/aiQueue');
+    const q = getAIRequestQueue();
+
+    const prompt = buildDoubtsPrompt({
+      grade: (isNaN(gradeNum) ? 8 : gradeNum) as any,
+      board: board as any,
+      language: language as any,
+      subject: studentSubject,
+      chapter: studentChapter,
+      topic: studentTopic,
+      studentQuestion: question,
+      studentIntent: intent ?? 'conceptual_clarity',
+      conversationHistory,
     });
 
-    const parsed = JSON.parse(llmResult.content);
-    if (isValidDoubtsResponse(parsed)) {
-      aiResponse = parsed;
-    } else {
-      throw new Error('Invalid LLM response structure');
+    const job = await q.add('AI_DOUBT', {
+      type: 'AI_DOUBT',
+      payload: {
+        prompt,
+        messages: [{ role: 'user', content: question }],
+        meta: {
+          promptType: 'doubts',
+          board,
+          grade: gradeNum,
+          subject: studentSubject,
+          chapter: studentChapter,
+          topic: studentTopic,
+          questionId: sq.id,
+          studentId: user.id,
+          language,
+        },
+      },
+    });
+
+    // Low-latency hybrid: briefly wait for worker completion before falling back to async polling.
+    const waitStart = Date.now();
+    let latest = await prisma.studentQuestion.findUnique({
+      where: { id: sq.id },
+      select: { status: true, answerSummary: true, aiMetadata: true },
+    });
+
+    while (latest?.status === STATUS_PROCESSING && Date.now() - waitStart < DOUBTS_SYNC_WAIT_MS) {
+      await sleep(DOUBTS_POLL_INTERVAL_MS);
+      latest = await prisma.studentQuestion.findUnique({
+        where: { id: sq.id },
+        select: { status: true, answerSummary: true, aiMetadata: true },
+      });
     }
+
+    if (latest?.status === STATUS_ANSWERED && latest.answerSummary) {
+      const metadata = (latest.aiMetadata && typeof latest.aiMetadata === 'object')
+        ? (latest.aiMetadata as Record<string, unknown>)
+        : {};
+
+      res = NextResponse.json({
+        questionId: sq.id,
+        response: latest.answerSummary,
+        followUpQuestion: String(metadata.followUpQuestion ?? ''),
+        confidenceLevel: String(metadata.confidenceLevel ?? 'medium'),
+      });
+      logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    res = NextResponse.json(
+      {
+        status: 'queued',
+        jobId: job.id,
+        questionId: sq.id,
+        message: 'Your question is being answered. Check back soon!',
+      },
+      { status: 202 },
+    );
+    logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+    return res;
   } catch (err: any) {
-    logger.warn('DoubtsAPI: LLM unavailable, using fallback', {
+    logger.warn('DoubtsAPI: Failed to enqueue AI job, returning fallback', {
       error: err?.message,
       questionId: sq.id,
+      userId: user.id,
     });
 
-    // Fallback response when LLM is not available
-    const topicLabel = studentTopic || studentSubject || 'this topic';
-    aiResponse = {
-      response: `I am having a little trouble connecting right now, so I cannot give you a full explanation of ${topicLabel} at this moment.\n\nPlease try asking again in a few seconds -- I want to give you a proper, detailed answer with examples, not a quick summary. Your question deserves a real explanation!`,
-      followUpQuestion: `Could you try asking again? I want to make sure I explain ${topicLabel} properly with examples.`,
-      confidenceLevel: 'low',
-    };
-  }
+    // Fallback: return generic safe response + update question status
+    const aiResponse = FALLBACK_RESPONSE;
 
-  // Update StudentQuestion with answer
-  await prisma.studentQuestion.update({
-    where: { id: sq.id },
-    data: {
-      status: 'answered',
-      answeredAt: new Date(),
-      answerSummary: aiResponse.response,
-      answerStepsJson: null,
-      aiMetadata: {
-        ...(typeof sq.aiMetadata === 'object' && sq.aiMetadata !== null ? sq.aiMetadata : {}),
-        followUpQuestion: aiResponse.followUpQuestion,
-        confidenceLevel: aiResponse.confidenceLevel,
+    await prisma.studentQuestion.update({
+      where: { id: sq.id },
+      data: {
+        status: 'answered',
+        answeredAt: new Date(),
+        answerSummary: aiResponse.response,
+        answerStepsJson: null,
+        aiMetadata: {
+          ...(typeof sq.aiMetadata === 'object' && sq.aiMetadata !== null ? sq.aiMetadata : {}),
+          followUpQuestion: aiResponse.followUpQuestion,
+          confidenceLevel: aiResponse.confidenceLevel,
+          fallback: true,
+          fallbackReason: 'queue_unavailable',
+        },
       },
-    },
-  });
+    });
 
-  // Also record the AI answer in QuestionAnswer
-  await prisma.questionAnswer.create({
-    data: {
+    // Record the fallback answer
+    await prisma.questionAnswer.create({
+      data: {
+        questionId: sq.id,
+        responder: 'ai',
+        content: aiResponse.response,
+        contentJson: aiResponse,
+      },
+    });
+
+    res = NextResponse.json({
       questionId: sq.id,
-      responder: 'ai',
-      content: aiResponse.response,
-      contentJson: aiResponse,
-    },
-  });
-
-  res = NextResponse.json({
-    questionId: sq.id,
-    response: aiResponse.response,
-    followUpQuestion: aiResponse.followUpQuestion,
-    confidenceLevel: aiResponse.confidenceLevel,
-  });
-  logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
-  return res;
+      response: aiResponse.response,
+      followUpQuestion: aiResponse.followUpQuestion,
+      confidenceLevel: aiResponse.confidenceLevel,
+      fallback: true,
+    });
+    logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+    return res;
+  }
 }
 
 /**
