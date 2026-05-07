@@ -38,11 +38,13 @@
  *                                  rankTopics never runs while a session is active
  * - 2026-04-23T00:00:00Z | copilot        | fix(strict): guard redis in cache invalidation and add typed progress rows
  * - 2026-05-07T00:00:00Z | copilot | fix(p5): score only topics that have at least one active Concept to prevent unresolved topicId -> conceptId start actions
+ * - 2026-05-07T00:00:00Z | copilot | feat(observability): emit warning + email alert when frontier topics have no active concepts
  */
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
+import { sendTopicRankerCoverageAlertSafe } from '@/lib/mailer';
 import { computeMomentumScore } from '@/lib/learning/momentumScore';
 import { getWeakTopicIds } from '@/lib/learning/getWeakTopics';
 import {
@@ -258,6 +260,26 @@ export async function rankTopics(
     : [];
   const activeConceptTopicIds = new Set(activeConceptTopics.map((row) => row.topicId));
   const rankableFrontierTopics = frontierTopics.filter((topic) => activeConceptTopicIds.has(topic.topicId));
+  const filteredOutTopicIds = frontierTopics
+    .filter((topic) => !activeConceptTopicIds.has(topic.topicId))
+    .map((topic) => topic.topicId);
+
+  if (filteredOutTopicIds.length > 0) {
+    logger.warn('[TOPIC_RANKER] filtered topics without active concept', {
+      studentId,
+      frontierSize: frontierTopics.length,
+      rankableFrontierSize: rankableFrontierTopics.length,
+      filteredTopicCount: filteredOutTopicIds.length,
+      filteredTopicIds: filteredOutTopicIds,
+    });
+
+    void sendTopicRankerCoverageAlertSafe({
+      studentId,
+      frontierSize: frontierTopics.length,
+      rankableFrontierSize: rankableFrontierTopics.length,
+      filteredTopicIds: filteredOutTopicIds,
+    });
+  }
 
   // ── Score each frontier topic ──────────────────────────────────────────────
   const now = Date.now();
@@ -339,6 +361,7 @@ export async function rankTopics(
     frontierStartIndex,
     frontierSize: frontierTopics.length,
     rankableFrontierSize: rankableFrontierTopics.length,
+    filteredTopicCount: filteredOutTopicIds.length,
     topResult: scored[0]
       ? { topicId: scored[0].topicId, score: scored[0].score, signals: scored[0].signals }
       : null,

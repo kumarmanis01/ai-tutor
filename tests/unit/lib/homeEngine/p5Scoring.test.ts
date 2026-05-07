@@ -54,12 +54,17 @@ jest.mock('@/lib/curriculum/curriculumGraph', () => ({
   arePrerequisitesMet: jest.fn(),
 }));
 
+jest.mock('@/lib/mailer', () => ({
+  sendTopicRankerCoverageAlertSafe: jest.fn(),
+}));
+
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { prisma } from '@/lib/prisma';
 import { computeMomentumScore } from '@/lib/learning/momentumScore';
 import { getWeakTopicIds } from '@/lib/learning/getWeakTopics';
 import { getCurriculumGraph, arePrerequisitesMet } from '@/lib/curriculum/curriculumGraph';
+import { sendTopicRankerCoverageAlertSafe } from '@/lib/mailer';
 import { rankTopics, WEIGHTS, FRONTIER_SIZE } from '@/lib/recommendations/topicRanker';
 import type { OrderedTopic } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 
@@ -98,6 +103,7 @@ function setDefaultMocks() {
   (getWeakTopicIds as jest.Mock).mockResolvedValue(new Set<string>());
   (getCurriculumGraph as jest.Mock).mockResolvedValue({ topics: [], edges: [] });
   (arePrerequisitesMet as jest.Mock).mockReturnValue(true);
+  (sendTopicRankerCoverageAlertSafe as jest.Mock).mockResolvedValue(undefined);
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -339,6 +345,14 @@ describe('rankTopics — P5 scoring', () => {
         }),
       }),
     );
+    expect(sendTopicRankerCoverageAlertSafe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studentId: STUDENT_ID,
+        frontierSize: 2,
+        rankableFrontierSize: 1,
+        filteredTopicIds: ['topic-without-concept'],
+      }),
+    );
   });
 
   it('returns empty when frontier has no active concepts', async () => {
@@ -352,5 +366,29 @@ describe('rankTopics — P5 scoring', () => {
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
     expect(results).toHaveLength(0);
+    expect(sendTopicRankerCoverageAlertSafe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studentId: STUDENT_ID,
+        frontierSize: 2,
+        rankableFrontierSize: 0,
+        filteredTopicIds: ['topic-1', 'topic-2'],
+      }),
+    );
+  });
+
+  it('does not send coverage alert when all frontier topics have active concepts', async () => {
+    const topics = [
+      makeTopic('topic-1', 1, 1),
+      makeTopic('topic-2', 1, 2),
+    ];
+
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([
+      { topicId: 'topic-1' },
+      { topicId: 'topic-2' },
+    ]);
+
+    await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
+
+    expect(sendTopicRankerCoverageAlertSafe).not.toHaveBeenCalled();
   });
 });
