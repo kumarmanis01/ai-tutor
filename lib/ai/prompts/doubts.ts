@@ -30,7 +30,7 @@ import { getEffectiveIntent, shouldRewriteIntent } from './schemas';
  */
 export const DOUBTS_OUTPUT_SCHEMA = `{
   "response": "string - The complete answer to the student's question",
-  "followUpQuestion": "string - A question to check understanding or encourage further thinking",
+  "followUpQuestion": "string - Two questions to check understanding or encourage further thinking",
   "confidenceLevel": "high | medium | low - Internal confidence (not shown to student)"
 }`;
 
