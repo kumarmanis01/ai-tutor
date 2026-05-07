@@ -10,6 +10,11 @@
  *
  * EDIT LOG:
  * - 2026-02-23 | claude | extracted from p5_nextNewTopic for shared use
+ * - 2026-05-07T00:00:00Z | copilot | fix: match subjects by slug OR name (OR filter) because
+ *                               onboarding stores lowercase slugs (e.g. 'mathematics') while
+ *                               SubjectDef.name may be title-cased ('Mathematics'); previously
+ *                               the name-only filter returned empty topics, causing P5 to return
+ *                               all_topics_complete and the dashboard to show plan_loading
  */
 
 import { prisma } from '@/lib/prisma';
@@ -36,9 +41,16 @@ export async function getOrderedTopicsForStudent(studentId: string) {
   const grade = user?.grade ? parseInt(String(user.grade), 10) : NaN;
   if (!user?.board || isNaN(grade)) return [];
 
+  // Subjects are stored as lowercase slugs (e.g. 'mathematics') from the
+  // onboarding route, but SubjectDef.name may be title-cased ('Mathematics').
+  // Match by either name OR slug so the filter works regardless of casing or
+  // slug/display-name mismatch -- mirrors the same OR pattern used on the dashboard.
+  const subjectSlugs = Array.isArray(user.subjects)
+    ? (user.subjects as string[]).filter(Boolean)
+    : []
   const subjectNameFilter =
-    Array.isArray(user.subjects) && (user.subjects as string[]).length > 0
-      ? { name: { in: user.subjects as string[] } }
+    subjectSlugs.length > 0
+      ? { OR: [{ name: { in: subjectSlugs } }, { slug: { in: subjectSlugs } }] }
       : {};
 
   return prisma.topicDef.findMany({

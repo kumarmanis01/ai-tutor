@@ -24,8 +24,10 @@
   *                               "Today's topic" and "Surprise me" from silently redirecting to /dashboard
     *   2026-05-06T00:00:00Z | copilot | fix: compute canonical secondary today-action href from
     *                               current card state (start/resume/homework) so secondary CTA
-    *                               never falls back to /dashboard when today's work is actionable
- */
+    *                               never falls back to /dashboard when today's work is actionable *   2026-05-07T00:00:00Z | copilot | fix: unwrap { action, traceId } dev-mode wrapper from
+ *                               getNextAction() before accessing .ruleId/.topicId; without
+ *                               this, every branch was skipped in dev and the dashboard always
+ *                               fell through to plan_loading even after a plan was generated */
  
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
@@ -319,46 +321,55 @@ export default async function StudentHomeDashboardPage() {
   }
 
   if (nextAction) {
-    if (nextAction.ruleId === 'resume_session' && nextAction.sessionId) {
+    // Unwrap dev-mode { action, traceId } wrapper -- production returns NextAction directly.
+    // getNextAction() returns { action, traceId } in non-production environments, but the
+    // dashboard consumed it as if it were a bare NextAction, causing ruleId to be undefined
+    // and every branch to be skipped → cardProps fell back to plan_loading.
+    const resolvedAction =
+      typeof nextAction === 'object' && 'action' in nextAction
+        ? nextAction.action
+        : nextAction
+
+    if (resolvedAction?.ruleId === 'resume_session' && resolvedAction.sessionId) {
       cardProps = {
         type: 'resume',
         session: {
-          sessionId: nextAction.sessionId,
-          topicId: nextAction.topicId ?? '',
-          topicName: nextAction.topicName ?? 'Continue where you left off',
-          subject: nextAction.subject ?? '',
-          chapter: nextAction.chapter ?? '',
-          currentPhase: nextAction.resumePhase ?? 'OVERVIEW',
+          sessionId: resolvedAction.sessionId,
+          topicId: resolvedAction.topicId ?? '',
+          topicName: resolvedAction.topicName ?? 'Continue where you left off',
+          subject: resolvedAction.subject ?? '',
+          chapter: resolvedAction.chapter ?? '',
+          currentPhase: resolvedAction.resumePhase ?? 'OVERVIEW',
         },
       }
-    } else if (nextAction.ruleId === 'homework_pending' && nextAction.assignmentId) {
+    } else if (resolvedAction?.ruleId === 'homework_pending' && resolvedAction.assignmentId) {
       cardProps = {
         type: 'homework',
         homework: {
-          id: nextAction.assignmentId,
-          topicName: nextAction.topicName ?? 'Homework',
+          id: resolvedAction.assignmentId,
+          topicName: resolvedAction.topicName ?? 'Homework',
           questionCount: 5,
           dueDate: new Date(Date.now() + 86400000).toISOString(),
           status: 'PENDING',
         },
       }
-    } else if (nextAction.topicId) {
+    } else if (resolvedAction?.topicId) {
       // Resolve topicId → first non-suspended Concept.id.
       // The pre-session page (/session/pre/[conceptId]) performs
       // prisma.concept.findUnique({ where: { id } }) and redirects
       // to /dashboard when given a TopicDef.id instead of a Concept.id,
       // making both "Today's topic" and "Surprise me" appear to do nothing.
       const firstConcept = await prisma.concept.findFirst({
-        where: { topicId: nextAction.topicId, isSuspended: false },
+        where: { topicId: resolvedAction.topicId, isSuspended: false },
         orderBy: { createdAt: 'asc' },
         select: { id: true },
       })
       cardProps = {
         type: 'start',
         recommendation: {
-          conceptId: firstConcept?.id ?? nextAction.topicId,
-          topicTitle: nextAction.topicName ?? 'Start a session',
-          subject: nextAction.subject ?? '',
+          conceptId: firstConcept?.id ?? resolvedAction.topicId,
+          topicTitle: resolvedAction.topicName ?? 'Start a session',
+          subject: resolvedAction.subject ?? '',
           estimatedTimeMin: 20,
         },
         ctaLabel: isCrunchMode ? 'Study for exam' : undefined,

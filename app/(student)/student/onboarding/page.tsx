@@ -146,7 +146,7 @@ export default function StudentOnboardingPage() {
     }
     const user = session?.user as OnboardingSessionUser | undefined
     if (user?.onboardingComplete && user?.accountStatus === 'active') {
-      router.replace('/dashboard')
+      router.replace('/student/onboarding/exam-date')
       return
     }
     if (user?.name) {
@@ -287,7 +287,7 @@ export default function StudentOnboardingPage() {
         await sendOtp()
         setView('otp')
       } else {
-        router.replace('/dashboard')
+        router.replace('/student/onboarding/exam-date')
       }
     } catch {
       setGlobalError("Couldn't save your details. Please try again.")
@@ -333,7 +333,7 @@ export default function StudentOnboardingPage() {
       const data = await res.json()
       if (res.ok) {
         setView('done')
-        setTimeout(() => router.replace('/dashboard'), 1500)
+        setTimeout(() => router.replace('/student/onboarding/exam-date'), 1500)
       } else {
         setOtpError(data.error ?? 'Invalid or expired code. Please try again.')
       }

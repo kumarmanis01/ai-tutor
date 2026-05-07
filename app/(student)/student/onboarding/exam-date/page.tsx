@@ -132,7 +132,7 @@ export default function ExamDatePage() {
 
       if (!firstSubjectId) {
         // No subjects resolved -- go to dashboard so the student can complete profile
-        router.push('/dashboard');
+        router.replace('/dashboard');
         return;
       }
 
@@ -143,7 +143,7 @@ export default function ExamDatePage() {
         return;
       }
 
-      router.push(`/diagnostic/${firstSubjectId}`);
+      router.replace(`/diagnostic/${firstSubjectId}`);
     } catch {
       setError('Network error. Please check your connection.');
     } finally {
