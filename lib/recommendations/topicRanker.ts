@@ -37,6 +37,7 @@
  *                                  query) before rankTopics is ever called -- so
  *                                  rankTopics never runs while a session is active
  * - 2026-04-23T00:00:00Z | copilot        | fix(strict): guard redis in cache invalidation and add typed progress rows
+ * - 2026-05-07T00:00:00Z | copilot | fix(p5): score only topics that have at least one active Concept to prevent unresolved topicId -> conceptId start actions
  */
 
 import { prisma } from '@/lib/prisma';
@@ -72,6 +73,10 @@ const MASTERY_THRESHOLD_SUFFICIENT = 0.4;
 
 /** Topics studied within this many hours receive a recency penalty. */
 const RECENCY_HOURS = 24;
+
+type ConceptTopicRow = {
+  topicId: string;
+};
 
 // ─── Score weights ────────────────────────────────────────────────────────────
 
@@ -238,11 +243,27 @@ export async function rankTopics(
     frontierStartIndex + FRONTIER_SIZE,
   );
 
+  // Guardrail: only score topics that can immediately start a session.
+  // A topic without at least one active Concept cannot resolve to /session/pre/[conceptId].
+  const frontierTopicIds = frontierTopics.map((topic) => topic.topicId);
+  const activeConceptTopics = frontierTopicIds.length > 0
+    ? await prisma.concept.findMany({
+        where: {
+          topicId: { in: frontierTopicIds },
+          isSuspended: false,
+        },
+        select: { topicId: true },
+        distinct: ['topicId'],
+      }) as ConceptTopicRow[]
+    : [];
+  const activeConceptTopicIds = new Set(activeConceptTopics.map((row) => row.topicId));
+  const rankableFrontierTopics = frontierTopics.filter((topic) => activeConceptTopicIds.has(topic.topicId));
+
   // ── Score each frontier topic ──────────────────────────────────────────────
   const now = Date.now();
   const scored: ScoredTopic[] = [];
 
-  for (const topic of frontierTopics) {
+  for (const topic of rankableFrontierTopics) {
     const progress = progressByTopic.get(topic.topicId);
     const mastery = progress?.mastery ?? 0;
     const practiceCount = progress?.practiceCount ?? 0;
@@ -317,6 +338,7 @@ export async function rankTopics(
     studentId,
     frontierStartIndex,
     frontierSize: frontierTopics.length,
+    rankableFrontierSize: rankableFrontierTopics.length,
     topResult: scored[0]
       ? { topicId: scored[0].topicId, score: scored[0].score, signals: scored[0].signals }
       : null,

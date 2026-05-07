@@ -10,6 +10,7 @@
  *   3. Applies WEAK_TOPIC_BOOST for struggling topics (mastery < 0.4 AND in weakTopicIds)
  *   4. Applies PREREQUISITE_PENALTY when prerequisites are not met
  *   5. Caps scoring to FRONTIER_SIZE (50) topics from the frontier
+ *   6. Scores only topics that have at least one active Concept
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -19,6 +20,7 @@
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: { findUnique: jest.fn() },
+    concept: { findMany: jest.fn() },
     studentLearningProfile: { findUnique: jest.fn() },
     studentTopicProgress: { findMany: jest.fn(), aggregate: jest.fn() },
     learningSession: { count: jest.fn() },
@@ -89,6 +91,7 @@ function makeTopic(
 /** Shared default mocks used by most tests. */
 function setDefaultMocks() {
   (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+  (prisma.concept.findMany as jest.Mock).mockResolvedValue([]);
   (prisma.studentLearningProfile.findUnique as jest.Mock).mockResolvedValue(null);
   (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([]);
   (computeMomentumScore as jest.Mock).mockResolvedValue({ score: 0 });
@@ -119,6 +122,10 @@ describe('rankTopics — P5 scoring', () => {
 
     // topic-B flagged as weak → +40 boost
     (getWeakTopicIds as jest.Mock).mockResolvedValue(new Set(['topic-B']));
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([
+      { topicId: 'topic-A' },
+      { topicId: 'topic-B' },
+    ]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -141,6 +148,10 @@ describe('rankTopics — P5 scoring', () => {
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
       { topicId: 'mastered-topic', mastery: 0.9, practiceCount: 6, lastStudiedAt: null },
     ]);
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([
+      { topicId: 'mastered-topic' },
+      { topicId: 'next-topic' },
+    ]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -155,6 +166,7 @@ describe('rankTopics — P5 scoring', () => {
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
       { topicId: 'nearly-mastered', mastery: 0.85, practiceCount: 3, lastStudiedAt: null },
     ]);
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'nearly-mastered' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -169,6 +181,7 @@ describe('rankTopics — P5 scoring', () => {
       { topicId: 'struggling-topic', mastery: 0.3, practiceCount: 7, lastStudiedAt: null },
     ]);
     (getWeakTopicIds as jest.Mock).mockResolvedValue(new Set(['struggling-topic']));
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'struggling-topic' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -181,6 +194,7 @@ describe('rankTopics — P5 scoring', () => {
     const topics = [makeTopic('normal-topic', 1, 1)];
 
     (getWeakTopicIds as jest.Mock).mockResolvedValue(new Set<string>());
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'normal-topic' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -192,6 +206,7 @@ describe('rankTopics — P5 scoring', () => {
     const topics = [makeTopic('gated-topic', 1, 1)];
 
     (arePrerequisitesMet as jest.Mock).mockReturnValue(false);
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'gated-topic' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -203,6 +218,7 @@ describe('rankTopics — P5 scoring', () => {
     const topics = [makeTopic('open-topic', 1, 1)];
 
     (arePrerequisitesMet as jest.Mock).mockReturnValue(true);
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'open-topic' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -219,6 +235,9 @@ describe('rankTopics — P5 scoring', () => {
 
     // No progress — all topics are unstarted, frontier starts at index 0.
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue(
+      topics.map((topic) => ({ topicId: topic.id })),
+    );
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -237,6 +256,11 @@ describe('rankTopics — P5 scoring', () => {
       { topicId: 'started-1', mastery: 0.9, practiceCount: 6, lastStudiedAt: null },
       { topicId: 'started-2', mastery: 0.9, practiceCount: 6, lastStudiedAt: null },
     ]);
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([
+      { topicId: 'started-1' },
+      { topicId: 'started-2' },
+      { topicId: 'unstarted-3' },
+    ]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -253,6 +277,7 @@ describe('rankTopics — P5 scoring', () => {
     const topics = [makeTopic('any-topic', 1, 1)];
 
     (computeMomentumScore as jest.Mock).mockResolvedValue({ score: 0.5 });
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'any-topic' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -264,6 +289,7 @@ describe('rankTopics — P5 scoring', () => {
     const topics = [makeTopic('any-topic', 1, 1)];
 
     (computeMomentumScore as jest.Mock).mockResolvedValue({ score: 0 });
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'any-topic' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -277,6 +303,7 @@ describe('rankTopics — P5 scoring', () => {
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
       { topicId: 'mastered', mastery: 1.0, practiceCount: 10, lastStudiedAt: null },
     ]);
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'mastered' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
@@ -286,9 +313,44 @@ describe('rankTopics — P5 scoring', () => {
   // ── 8. BASE signal is always present ───────────────────────────────────────
   it('includes the BASE signal for every scored topic', async () => {
     const topics = [makeTopic('base-topic', 1, 1)];
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'base-topic' }]);
 
     const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
 
     expect(results[0].signals.base).toBe(WEIGHTS.BASE);
+  });
+
+  it('filters out topics that do not have an active concept', async () => {
+    const topics = [
+      makeTopic('topic-with-concept', 1, 1),
+      makeTopic('topic-without-concept', 1, 2),
+    ];
+
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([{ topicId: 'topic-with-concept' }]);
+
+    const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
+
+    expect(results.map((r) => r.topicId)).toEqual(['topic-with-concept']);
+    expect(prisma.concept.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isSuspended: false,
+          topicId: { in: expect.arrayContaining(['topic-with-concept', 'topic-without-concept']) },
+        }),
+      }),
+    );
+  });
+
+  it('returns empty when frontier has no active concepts', async () => {
+    const topics = [
+      makeTopic('topic-1', 1, 1),
+      makeTopic('topic-2', 1, 2),
+    ];
+
+    (prisma.concept.findMany as jest.Mock).mockResolvedValue([]);
+
+    const results = await rankTopics(STUDENT_ID, { preloadedOrderedTopics: topics });
+
+    expect(results).toHaveLength(0);
   });
 });
