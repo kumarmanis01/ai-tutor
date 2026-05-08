@@ -347,8 +347,8 @@ export interface ConversationMessage {
 export interface DoubtsOutputSchema {
   /** The AI tutor's response */
   readonly response: string;
-  /** Follow-up question to check understanding */
-  readonly followUpQuestion: string;
+  /** Follow-up questions to check understanding */
+  readonly followUpQuestions: readonly string[];
   /** Internal confidence level (NOT shown to student) */
   readonly confidenceLevel: ConfidenceLevel;
 }

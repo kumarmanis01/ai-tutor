@@ -14,6 +14,7 @@
  * - 2026-05-07T00:00:00Z | copilot | add coverage for fast-answer and queued-response doubts API paths
  * - 2026-05-08T00:00:00Z | copilot | replace queued path tests with direct synchronous LLM and fallback coverage
  * - 2026-05-08T00:00:00Z | copilot | add quota success, limit reached, retry-safe, and refund-on-failure test coverage
+ * - 2026-05-08T00:00:00Z | copilot | update doubts API fixtures to use follow-up question arrays
  */
 
 describe('doubts route direct LLM flow', () => {
@@ -33,7 +34,7 @@ describe('doubts route direct LLM flow', () => {
       success: true,
       data: {
         response: 'Real numbers include rational and irrational numbers.',
-        followUpQuestion: 'Can you name one irrational number?',
+        followUpQuestions: ['Can you name one irrational number?', 'Can you name one rational number?'],
         confidenceLevel: 'high',
       },
       error: null,
@@ -95,6 +96,7 @@ describe('doubts route direct LLM flow', () => {
     const body = await res.json()
     expect(body.questionId).toBe('q-1')
     expect(body.response).toContain('Real numbers')
+    expect(body.followUpQuestions).toEqual(['Can you name one irrational number?', 'Can you name one rational number?'])
     expect(body.confidenceLevel).toBe('high')
     expect(generateDoubtResponseMock).toHaveBeenCalledTimes(1)
     expect(updateMock).toHaveBeenCalledTimes(1)
@@ -183,7 +185,7 @@ describe('doubts route direct LLM flow', () => {
             content: 'What is photosynthesis?',
             answerSummary: 'Photosynthesis is the process plants use to make food.',
             aiMetadata: {
-              followUpQuestion: 'Can you list the inputs of photosynthesis?',
+              followUpQuestions: ['Can you list the inputs of photosynthesis?'],
               confidenceLevel: 'high',
             },
           }),
@@ -212,6 +214,7 @@ describe('doubts route direct LLM flow', () => {
     expect(body.retried).toBe(true)
     expect(body.questionId).toBe('q-3')
     expect(body.response).toContain('Photosynthesis')
+    expect(body.followUpQuestions).toEqual(['Can you list the inputs of photosynthesis?'])
     expect(consumeDailyFreeQuestionQuotaMock).not.toHaveBeenCalled()
     expect(generateDoubtResponseMock).not.toHaveBeenCalled()
   })
@@ -285,6 +288,9 @@ describe('doubts route direct LLM flow', () => {
     const body = await res.json()
     expect(body.fallback).toBe(true)
     expect(body.response).toContain('I am having a little trouble connecting right now')
+    expect(body.followUpQuestions).toEqual([
+      'Could you try asking again? I want to make sure I explain your question properly with examples.',
+    ])
     expect(body.status).toBeUndefined()
     expect(body.questionId).toBe('q-2')
     expect(generateDoubtResponseMock).toHaveBeenCalledTimes(1)

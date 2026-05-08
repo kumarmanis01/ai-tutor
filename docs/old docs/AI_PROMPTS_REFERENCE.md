@@ -173,7 +173,7 @@ Plus grade-specific language guidance and language instructions (Hindi / Hinglis
 User prompt is built by `buildDoubtsPrompt(input)`: student context (grade, board, subject, chapter, topic, language), conversation history, student question, intent-specific guidelines (`getIntentGuidelines`), response guidelines (explanation first, encouraging tone, age-appropriate, follow-up question, stay on topic, confidence level). Output schema:
 
 ```json
-{ "response": "string", "followUpQuestion": "string", "confidenceLevel": "high | medium | low" }
+{ "response": "string", "followUpQuestions": ["string"], "confidenceLevel": "high | medium | low" }
 ```
 
 ### 3.3 Notes — `lib/ai/prompts/notes.ts`  

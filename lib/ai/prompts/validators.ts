@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created JSON validators for schema-first prompt architecture
+ * - 2026-05-08T00:00:00Z | copilot | validate doubts follow-up questions as a non-empty string array
  */
 
 import type {
@@ -303,6 +304,10 @@ export function validatePracticeOutput(data: unknown): ValidationResult<Practice
 
 const VALID_CONFIDENCE_LEVELS: ConfidenceLevel[] = ['high', 'medium', 'low'];
 
+function isValidFollowUpQuestions(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string' && item.length > 0);
+}
+
 /**
  * Validate DoubtsOutputSchema
  */
@@ -319,8 +324,8 @@ export function validateDoubtsOutput(data: unknown): ValidationResult<DoubtsOutp
     errors.push('response: must be a non-empty string');
   }
   
-  if (typeof obj.followUpQuestion !== 'string' || obj.followUpQuestion.length === 0) {
-    errors.push('followUpQuestion: must be a non-empty string');
+  if (!isValidFollowUpQuestions(obj.followUpQuestions)) {
+    errors.push('followUpQuestions: must be a non-empty array of non-empty strings');
   }
   
   if (

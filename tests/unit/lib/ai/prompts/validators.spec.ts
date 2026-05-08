@@ -193,7 +193,7 @@ describe('JSON Validators', () => {
   describe('validateDoubtsOutput', () => {
     const validDoubts = {
       response: 'Great question! Here is the explanation...',
-      followUpQuestion: 'Does this make sense?',
+      followUpQuestions: ['Does this make sense?'],
       confidenceLevel: 'high',
     };
 
@@ -209,10 +209,10 @@ describe('JSON Validators', () => {
       expect(result.errors[0]).toContain('response');
     });
 
-    it('rejects empty followUpQuestion', () => {
-      const result = validateDoubtsOutput({ ...validDoubts, followUpQuestion: '' });
+    it('rejects empty followUpQuestions array', () => {
+      const result = validateDoubtsOutput({ ...validDoubts, followUpQuestions: [] });
       expect(result.valid).toBe(false);
-      expect(result.errors[0]).toContain('followUpQuestion');
+      expect(result.errors[0]).toContain('followUpQuestions');
     });
 
     it('rejects invalid confidenceLevel', () => {
@@ -265,7 +265,7 @@ describe('JSON Validators', () => {
     it('parses and validates doubts response', () => {
       const rawResponse = JSON.stringify({
         response: 'R',
-        followUpQuestion: 'F',
+        followUpQuestions: ['F'],
         confidenceLevel: 'high',
       });
 

@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created unit tests for doubts prompt builder
  * - 2026-05-07T00:00:00Z | copilot | update tone-guideline assertion to match current prompt wording
+ * - 2026-05-08T00:00:00Z | copilot | update doubts prompt tests for follow-up question array output
  */
 
 import {
@@ -53,7 +54,7 @@ describe('Doubts Prompt Builder', () => {
     it('includes output schema', () => {
       const prompt = buildDoubtsPrompt(baseInput);
       expect(prompt).toContain('response');
-      expect(prompt).toContain('followUpQuestion');
+      expect(prompt).toContain('followUpQuestions');
       expect(prompt).toContain('confidenceLevel');
     });
 
@@ -113,7 +114,7 @@ describe('Doubts Prompt Builder', () => {
     it('returns true for valid response', () => {
       const valid = {
         response: 'Here is the explanation',
-        followUpQuestion: 'Does this help?',
+        followUpQuestions: ['Does this help?'],
         confidenceLevel: 'high',
       };
       expect(isValidDoubtsResponse(valid)).toBe(true);
@@ -121,7 +122,7 @@ describe('Doubts Prompt Builder', () => {
 
     it('returns false for missing response', () => {
       const invalid = {
-        followUpQuestion: 'Does this help?',
+        followUpQuestions: ['Does this help?'],
         confidenceLevel: 'high',
       };
       expect(isValidDoubtsResponse(invalid)).toBe(false);
@@ -130,7 +131,7 @@ describe('Doubts Prompt Builder', () => {
     it('returns false for invalid confidence level', () => {
       const invalid = {
         response: 'Here is the explanation',
-        followUpQuestion: 'Does this help?',
+        followUpQuestions: ['Does this help?'],
         confidenceLevel: 'very_high',
       };
       expect(isValidDoubtsResponse(invalid)).toBe(false);
@@ -175,7 +176,7 @@ describe('Doubts Prompt Builder', () => {
       const redirect = getOffTopicRedirect('Science');
       
       expect(redirect.response).toContain('focus on Science');
-      expect(redirect.followUpQuestion).toContain('Science');
+      expect(redirect.followUpQuestions).toEqual(['What part of your Science studies can I help you with today?']);
       expect(redirect.confidenceLevel).toBe('high');
     });
 
@@ -191,7 +192,7 @@ describe('Doubts Prompt Builder', () => {
   describe('DOUBTS_OUTPUT_SCHEMA', () => {
     it('defines all required fields', () => {
       expect(DOUBTS_OUTPUT_SCHEMA).toContain('response');
-      expect(DOUBTS_OUTPUT_SCHEMA).toContain('followUpQuestion');
+      expect(DOUBTS_OUTPUT_SCHEMA).toContain('followUpQuestions');
       expect(DOUBTS_OUTPUT_SCHEMA).toContain('confidenceLevel');
     });
   });

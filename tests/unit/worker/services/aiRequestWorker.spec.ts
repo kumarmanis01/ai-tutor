@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | add AI_DOUBT worker coverage for explicit prompt and persistence path
+ * - 2026-05-08T00:00:00Z | copilot | update AI_DOUBT worker fixture to use follow-up question arrays
  */
 
 describe('processAIRequest AI_DOUBT', () => {
@@ -23,7 +24,7 @@ describe('processAIRequest AI_DOUBT', () => {
     const callLLMMock = jest.fn().mockResolvedValue({
       content: JSON.stringify({
         response: 'A real number can be rational or irrational.',
-        followUpQuestion: 'Can you give one rational number?',
+        followUpQuestions: ['Can you give one rational number?'],
         confidenceLevel: 'high',
       }),
       usage: { prompt_tokens: 10, completion_tokens: 12 },

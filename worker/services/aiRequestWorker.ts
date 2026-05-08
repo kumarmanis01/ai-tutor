@@ -16,6 +16,7 @@
  * EDIT LOG:
  * - 2026-04-11T00:00:00Z | copilot | created AI request worker
  * - 2026-05-07T00:00:00Z | copilot | add AI_DOUBT job type for student doubts endpoint
+ * - 2026-05-08T00:00:00Z | copilot | persist doubts follow-up questions as an array while tolerating legacy single-string responses
  */
 
 import { Job } from 'bullmq'
@@ -27,6 +28,24 @@ import { callLLM } from '@/lib/callLLM'
 type AIJobData = {
   type: string
   payload: any
+}
+
+type ParsedDoubtResponse = {
+  response: string
+  followUpQuestions: string[]
+  confidenceLevel: 'high' | 'medium' | 'low'
+}
+
+function normalizeFollowUpQuestions(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return [value]
+  }
+
+  return []
 }
 
 function messagesToPrompt(messages: any[]): string {
@@ -226,13 +245,19 @@ export async function processAIRequest(job: Job<AIJobData>) {
 
       if (questionId && studentId) {
         // Parse expected JSON response (from doubts prompt)
-        let parsedResponse = { response: content, followUpQuestion: '', confidenceLevel: 'medium' }
+        let parsedResponse: ParsedDoubtResponse = { response: content, followUpQuestions: [], confidenceLevel: 'medium' }
         try {
           const parsed = JSON.parse(content)
-          if (parsed?.response) parsedResponse = parsed
+          if (parsed?.response) {
+            parsedResponse = {
+              response: typeof parsed.response === 'string' ? parsed.response : content,
+              followUpQuestions: normalizeFollowUpQuestions(parsed.followUpQuestions ?? parsed.followUpQuestion),
+              confidenceLevel: parsed.confidenceLevel === 'high' || parsed.confidenceLevel === 'low' ? parsed.confidenceLevel : 'medium',
+            }
+          }
         } catch {
           // Use raw content as response if JSON parsing fails
-          parsedResponse = { response: content, followUpQuestion: '', confidenceLevel: 'medium' }
+          parsedResponse = { response: content, followUpQuestions: [], confidenceLevel: 'medium' }
         }
 
         // Update StudentQuestion
@@ -243,7 +268,7 @@ export async function processAIRequest(job: Job<AIJobData>) {
             answeredAt: new Date(),
             answerSummary: parsedResponse.response,
             aiMetadata: {
-              followUpQuestion: parsedResponse.followUpQuestion,
+              followUpQuestions: parsedResponse.followUpQuestions,
               confidenceLevel: parsedResponse.confidenceLevel,
               processedByWorker: true,
             },

@@ -12,6 +12,7 @@
  * - 2026-04-07 | claude | created to close F-STU-011 AC-03 gap
  * - 2026-04-07 | claude | fix: add object-cover to avatars and use items-start on message rows to prevent avatar stretching
  * - 2026-04-22 | redesign | remove internal floating FAB; accept isOpen/onClose props
+ * - 2026-05-08T00:00:00Z | copilot | render doubts follow-up questions as clickable bubbles and submit them as new questions
  */
 
 import React, { useRef, useEffect } from 'react';
@@ -20,7 +21,7 @@ import Image from 'next/image';
 interface Message {
   role: 'student' | 'vidya';
   text: string;
-  followUp?: string;
+  followUps?: string[];
 }
 
 interface ConversationMessage {
@@ -37,6 +38,14 @@ interface DoubtPanelProps {
 }
 
 export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: DoubtPanelProps) {
+    function normalizeFollowUpQuestions(value: unknown): string[] {
+      if (!Array.isArray(value)) {
+        return [];
+      }
+
+      return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    }
+
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -74,11 +83,13 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       }));
   }
 
-  async function send() {
-    const q = input.trim();
+  async function send(nextQuestion?: string) {
+    const q = (nextQuestion ?? input).trim();
     if (!q || loading) return;
 
-    setInput('');
+    if (!nextQuestion) {
+      setInput('');
+    }
     setMessages((prev) => [...prev, { role: 'student', text: q }]);
     setLoading(true);
 
@@ -104,7 +115,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       const data = (await res.json()) as {
         questionId: string;
         response: string;
-        followUpQuestion: string;
+        followUpQuestions?: string[];
       };
 
       if (!questionId) setQuestionId(data.questionId);
@@ -114,7 +125,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         {
           role: 'vidya',
           text: data.response,
-          followUp: data.followUpQuestion,
+          followUps: normalizeFollowUpQuestions(data.followUpQuestions),
         },
       ]);
     } catch {
@@ -216,8 +227,22 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
                 >
                   {msg.text}
                 </div>
-                {msg.role === 'vidya' && msg.followUp && (
-                  <p className="text-xs text-[#534AB7] dark:text-indigo-300 px-1">{msg.followUp}</p>
+                {msg.role === 'vidya' && Array.isArray(msg.followUps) && msg.followUps.length > 0 && (
+                  <div className="flex flex-wrap gap-2 px-1">
+                    {msg.followUps.map((followUpQuestion, followUpIndex) => (
+                      <button
+                        key={`${i}-follow-up-${followUpIndex}`}
+                        type="button"
+                        onClick={() => {
+                          void send(followUpQuestion);
+                        }}
+                        disabled={loading}
+                        className="min-h-[44px] rounded-full bg-[#EEEDFE] px-3 py-2 text-left text-xs font-medium text-[#534AB7] transition-colors hover:bg-[#dcd9fd] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#534AB7]/15 dark:text-indigo-300 dark:hover:bg-[#534AB7]/25"
+                      >
+                        {followUpQuestion}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

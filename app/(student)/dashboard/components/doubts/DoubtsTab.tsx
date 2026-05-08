@@ -6,7 +6,7 @@ interface DoubtsMessage {
   id: string;
   from: 'user' | 'ai';
   text: string;
-  followUp?: string;
+  followUps?: string[];
 }
 
 interface DoubtsTabProps {
@@ -29,6 +29,15 @@ const EXAMPLE_QUESTIONS = [
   "How do I find the area of a triangle?",
   "What is photosynthesis?",
 ];
+
+const getFollowUpQuestions = (data: Record<string, unknown>): string[] => {
+  const followUpQuestions = data.followUpQuestions;
+  if (!Array.isArray(followUpQuestions)) {
+    return [];
+  }
+
+  return followUpQuestions.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+};
 
 /**
  * DoubtsTab - Ask AI questions via /api/doubts with inline chat display.
@@ -91,7 +100,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
         id: `a-${Date.now()}`,
         from: 'ai',
         text: data.response || 'I could not generate a response. Please try again.',
-        followUp: data.followUpQuestion,
+        followUps: getFollowUpQuestions(data),
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch {
@@ -112,9 +121,70 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
     setQuestion(example);
   }, []);
 
-  const handleFollowUpClick = useCallback((followUp: string) => {
-    setQuestion(followUp);
-  }, []);
+  const handleFollowUpClick = useCallback(async (followUp: string) => {
+    if (loading) return;
+    // Mimic student typing and submitting — bypass the textarea
+    const trimmed = followUp.trim();
+    if (!trimmed) return;
+
+    const userMsg: DoubtsMessage = {
+      id: `u-${Date.now()}`,
+      from: 'user',
+      text: trimmed,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setLoading(true);
+
+    onAskQuestion?.(trimmed, selectedSubject || undefined);
+
+    try {
+      const res = await fetch('/api/doubts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: trimmed,
+          subject: selectedSubject || undefined,
+          intent: 'conceptual_clarity',
+          questionId: currentQuestionId || undefined,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `e-${Date.now()}`,
+            from: 'ai',
+            text: data?.error || 'Something went wrong. Please try again!',
+          },
+        ]);
+        return;
+      }
+
+      if (data.questionId) setCurrentQuestionId(data.questionId);
+
+      const aiMsg: DoubtsMessage = {
+        id: `a-${Date.now()}`,
+        from: 'ai',
+        text: data.response || 'I could not generate a response. Please try again.',
+        followUps: getFollowUpQuestions(data),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `e-${Date.now()}`,
+          from: 'ai',
+          text: 'Network error. Please check your connection and try again.',
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, selectedSubject, currentQuestionId, onAskQuestion]);
 
   const startNewConversation = useCallback(() => {
     setMessages([]);
@@ -172,15 +242,31 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
                 }`}>
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                 </div>
-                {/* Follow-up question suggestion */}
-                {msg.from === 'ai' && msg.followUp && (
-                  <button
-                    type="button"
-                    onClick={() => handleFollowUpClick(msg.followUp!)}
-                    className="mt-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs transition-all"
-                  >
-                    {msg.followUp}
-                  </button>
+                {/* Follow-up question suggestion — clicking submits immediately as a new question */}
+                {msg.from === 'ai' && Array.isArray(msg.followUps) && msg.followUps.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {msg.followUps.map((followUpQuestion, followUpIndex) => (
+                      <button
+                        key={`${msg.id}-follow-up-${followUpIndex}`}
+                        type="button"
+                        onClick={() => handleFollowUpClick(followUpQuestion)}
+                        disabled={loading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary rounded-full text-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label={`Ask follow-up: ${followUpQuestion}`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="w-3 h-3 shrink-0"
+                          aria-hidden="true"
+                        >
+                          <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
+                        </svg>
+                        {followUpQuestion}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

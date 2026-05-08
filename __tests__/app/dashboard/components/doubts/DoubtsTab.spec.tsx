@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { DoubtsTab } from '@/app/dashboard/components/doubts/DoubtsTab';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { DoubtsTab } from '@/app/(student)/dashboard/components/doubts/DoubtsTab';
 
 // Mock fetch for /api/doubts calls
 const mockFetch = jest.fn();
@@ -11,7 +11,11 @@ describe('DoubtsTab', () => {
     jest.clearAllMocks();
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ questionId: 'q1', response: 'Great question!', followUpQuestion: 'Want to know more?' }),
+      json: () => Promise.resolve({
+        questionId: 'q1',
+        response: 'Great question!',
+        followUpQuestions: ['Want to know more?', 'Can you try an example now?'],
+      }),
     });
   });
 
@@ -87,6 +91,31 @@ describe('DoubtsTab', () => {
 
     expect(mockOnAskQuestion).toHaveBeenCalledWith('What is 2+2?', undefined);
     expect(mockFetch).toHaveBeenCalledWith('/api/doubts', expect.objectContaining({ method: 'POST' }));
+  });
+
+  it('renders follow-up bubbles and submits a clicked follow-up question', async () => {
+    render(<DoubtsTab />);
+
+    const textarea = screen.getByPlaceholderText(/Type your question here/i);
+    fireEvent.change(textarea, { target: { value: 'Explain fractions' } });
+    fireEvent.click(screen.getByText('Ask My Tutor'));
+
+    const followUpButton = await screen.findByRole('button', {
+      name: 'Ask follow-up: Want to know more?',
+    });
+
+    fireEvent.click(followUpButton);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mockFetch).toHaveBeenLastCalledWith(
+      '/api/doubts',
+      expect.objectContaining({
+        body: expect.stringContaining('Want to know more?'),
+      }),
+    );
   });
 
   it('includes selected subject when submitting', () => {

@@ -15,6 +15,7 @@
  * - 2026-05-07T00:00:00Z | copilot | move doubts LLM to worker queue and add short synchronous wait for fast responses
  * - 2026-05-08T00:00:00Z | copilot | restore direct synchronous doubts LLM path and remove queued/check-back response
  * - 2026-05-08T00:00:00Z | copilot | enforce daily free-question quota in doubts route with consume/refund and retry-safe behavior
+ * - 2026-05-08T00:00:00Z | copilot | return and persist doubts follow-up questions as an array for clickable UI bubbles
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -32,7 +33,7 @@ export const dynamic = 'force-dynamic';
 
 const FALLBACK_RESPONSE = {
   response: `I am having a little trouble connecting right now, so I cannot give you a full explanation at this moment.\n\nPlease try asking again in a few seconds -- I want to give you a proper, detailed answer with examples, not a quick summary. Your question deserves a real explanation!`,
-  followUpQuestion: `Could you try asking again? I want to make sure I explain your question properly with examples.`,
+  followUpQuestions: [`Could you try asking again? I want to make sure I explain your question properly with examples.`],
   confidenceLevel: 'low' as const,
 };
 
@@ -45,6 +46,33 @@ const ERROR_NOT_FOUND = 'not_found';
 const ERROR_QUESTION_NOT_FOUND = 'Question not found';
 
 type QuotaRefundMethod = 'column' | 'freemium';
+
+type DoubtsMetadata = {
+  followUpQuestions?: string[];
+  followUpQuestion?: string;
+  confidenceLevel?: string;
+};
+
+function normalizeFollowUpQuestions(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return [value];
+  }
+
+  return [];
+}
+
+function getStoredFollowUpQuestions(metadata: DoubtsMetadata | null | undefined): string[] {
+  const normalizedFollowUps = normalizeFollowUpQuestions(metadata?.followUpQuestions);
+  if (normalizedFollowUps.length > 0) {
+    return normalizedFollowUps;
+  }
+
+  return normalizeFollowUpQuestions(metadata?.followUpQuestion);
+}
 
 /**
  * POST /api/doubts
@@ -120,7 +148,7 @@ export async function POST(req: Request) {
     res = NextResponse.json({
       questionId: sq.id,
       response: redirect.response,
-      followUpQuestion: redirect.followUpQuestion,
+      followUpQuestions: redirect.followUpQuestions,
       confidenceLevel: redirect.confidenceLevel,
       offTopic: true,
     });
@@ -160,13 +188,15 @@ export async function POST(req: Request) {
 
     if (isRetryRequest) {
       const metadata = typeof sq.aiMetadata === 'object' && sq.aiMetadata !== null
-        ? (sq.aiMetadata as { followUpQuestion?: string; confidenceLevel?: string })
+        ? (sq.aiMetadata as DoubtsMetadata)
         : {};
 
       res = NextResponse.json({
         questionId: sq.id,
         response: sq.answerSummary,
-        followUpQuestion: metadata.followUpQuestion ?? FALLBACK_RESPONSE.followUpQuestion,
+        followUpQuestions: getStoredFollowUpQuestions(metadata).length > 0
+          ? getStoredFollowUpQuestions(metadata)
+          : FALLBACK_RESPONSE.followUpQuestions,
         confidenceLevel: metadata.confidenceLevel ?? FALLBACK_RESPONSE.confidenceLevel,
         retried: true,
       });
@@ -254,7 +284,7 @@ export async function POST(req: Request) {
         answerStepsJson: null,
         aiMetadata: {
           ...(typeof sq.aiMetadata === 'object' && sq.aiMetadata !== null ? sq.aiMetadata : {}),
-          followUpQuestion: aiResponse.followUpQuestion,
+          followUpQuestions: aiResponse.followUpQuestions,
           confidenceLevel: aiResponse.confidenceLevel,
           directLLM: true,
         },
@@ -273,7 +303,7 @@ export async function POST(req: Request) {
     res = NextResponse.json({
       questionId: sq.id,
       response: aiResponse.response,
-      followUpQuestion: aiResponse.followUpQuestion,
+      followUpQuestions: aiResponse.followUpQuestions,
       confidenceLevel: aiResponse.confidenceLevel,
     });
     logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
@@ -301,7 +331,7 @@ export async function POST(req: Request) {
         answerStepsJson: null,
         aiMetadata: {
           ...(typeof sq.aiMetadata === 'object' && sq.aiMetadata !== null ? sq.aiMetadata : {}),
-          followUpQuestion: aiResponse.followUpQuestion,
+          followUpQuestions: aiResponse.followUpQuestions,
           confidenceLevel: aiResponse.confidenceLevel,
           fallback: true,
           fallbackReason: FALLBACK_REASON_LLM_UNAVAILABLE,
@@ -322,7 +352,7 @@ export async function POST(req: Request) {
     res = NextResponse.json({
       questionId: sq.id,
       response: aiResponse.response,
-      followUpQuestion: aiResponse.followUpQuestion,
+      followUpQuestions: aiResponse.followUpQuestions,
       confidenceLevel: aiResponse.confidenceLevel,
       fallback: true,
     });

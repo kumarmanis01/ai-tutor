@@ -14,6 +14,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created doubts prompt builder with anti-abuse guardrails
+ * - 2026-05-08T00:00:00Z | copilot | change doubts follow-up contract from single string to follow-up question array
  */
 
 import type {
@@ -30,9 +31,16 @@ import { getEffectiveIntent, shouldRewriteIntent } from './schemas';
  */
 export const DOUBTS_OUTPUT_SCHEMA = `{
   "response": "string - The complete answer to the student's question",
-  "followUpQuestion": "string - Two questions to check understanding or encourage further thinking",
+  "followUpQuestions": [
+    "string - First follow-up question to check understanding or encourage further thinking",
+    "string - Optional second follow-up question to deepen thinking"
+  ],
   "confidenceLevel": "high | medium | low - Internal confidence (not shown to student)"
 }`;
+
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string' && item.length > 0);
+}
 
 /**
  * Get intent-specific response guidelines
@@ -180,11 +188,11 @@ MANDATORY RESPONSE STRUCTURE -- follow this order every time:
 4. SUMMARY (1-2 sentences)
    - Wrap up the key idea in a simple takeaway sentence.
 
-FOLLOW-UP QUESTION (goes in the followUpQuestion field, not in response):
-   - Ask 1 to 2 questions that either:
+FOLLOW-UP QUESTIONS (go in the followUpQuestions field, not in response):
+  - Return 1 to 2 questions that either:
      a) Check understanding: "Can you tell me one place you have seen this in real life?"
      b) Deepen thinking: "Now that you know this, why do you think plants need sunlight to do this?"
-   - Keep it friendly and specific to what you just explained.
+  - Keep each question friendly and specific to what you just explained.
    - Do NOT ask a generic "any other questions?" type question.
 
 TONE RULES:
@@ -218,7 +226,7 @@ export function isValidDoubtsResponse(data: unknown): data is DoubtsOutputSchema
   
   return (
     typeof obj.response === 'string' &&
-    typeof obj.followUpQuestion === 'string' &&
+    isNonEmptyStringArray(obj.followUpQuestions) &&
     typeof obj.confidenceLevel === 'string' &&
     ['high', 'medium', 'low'].includes(obj.confidenceLevel as string)
   );
@@ -255,7 +263,7 @@ export function isOffTopicQuestion(question: string, _subject: string): boolean 
 export function getOffTopicRedirect(subject: string): DoubtsOutputSchema {
   return {
     response: `That's an interesting thought! But let's focus on ${subject} for now. Is there anything about your current topic you'd like help with? I'm here to help you learn! 📚`,
-    followUpQuestion: `What part of your ${subject} studies can I help you with today?`,
+    followUpQuestions: [`What part of your ${subject} studies can I help you with today?`],
     confidenceLevel: 'high',
   };
 }
