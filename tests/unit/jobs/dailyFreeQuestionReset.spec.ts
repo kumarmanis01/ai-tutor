@@ -13,10 +13,13 @@
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | created tests for daily free question reset job
+ * - 2026-05-07T00:00:00Z | copilot | add schedule tests for midnight UTC and daily cadence
+ * - 2026-05-07T00:00:00Z | copilot | add minute-based schedule configuration coverage
+ * - 2026-05-07T00:00:00Z | copilot | update default schedule test for UTC+5 midnight equivalent
  */
 
 import { DAILY_FREE_QUESTION_LIMIT } from '@/lib/constants/freeTier';
-import { runDailyFreeQuestionReset } from '@/jobs/dailyFreeQuestionReset';
+import { runDailyFreeQuestionReset, scheduleDailyFreeQuestionReset } from '@/jobs/dailyFreeQuestionReset';
 import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock';
 import logAuditEvent from '@/lib/audit/log';
 import { prisma } from '@/lib/prisma';
@@ -141,5 +144,63 @@ describe('runDailyFreeQuestionReset', () => {
     );
 
     expect(releaseJobLock).toHaveBeenCalledWith('daily_free_question_reset');
+  });
+});
+
+describe('scheduleDailyFreeQuestionReset', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    delete process.env.FREE_QUESTION_RESET_HOUR;
+    delete process.env.FREE_QUESTION_RESET_MINUTE;
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('schedules first run at default UTC+5 midnight equivalent and repeats every 24h', () => {
+    jest.setSystemTime(new Date('2026-05-07T18:50:00.000Z'));
+
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+    scheduleDailyFreeQuestionReset();
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 10 * 60 * 1000);
+
+    const callback = setTimeoutSpy.mock.calls[0]?.[0] as (() => void) | undefined;
+    expect(callback).toBeDefined();
+    callback?.();
+
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 24 * 60 * 60 * 1000);
+  });
+
+  it('uses FREE_QUESTION_RESET_HOUR when configured', () => {
+    process.env.FREE_QUESTION_RESET_HOUR = '5';
+    jest.setSystemTime(new Date('2026-05-07T04:30:00.000Z'));
+
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+
+    scheduleDailyFreeQuestionReset();
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 30 * 60 * 1000);
+  });
+
+  it('uses FREE_QUESTION_RESET_MINUTE for exact UTC scheduling', () => {
+    process.env.FREE_QUESTION_RESET_HOUR = '18';
+    process.env.FREE_QUESTION_RESET_MINUTE = '30';
+    jest.setSystemTime(new Date('2026-05-07T18:20:00.000Z'));
+
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+
+    scheduleDailyFreeQuestionReset();
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 10 * 60 * 1000);
   });
 });

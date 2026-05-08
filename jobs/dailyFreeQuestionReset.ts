@@ -1,16 +1,19 @@
 /**
  * FILE OBJECTIVE:
- * - Daily job to reset free question counts for all non-premium users at midnight UTC.
+ * - Daily job to reset free question counts for all non-premium users at configured UTC time.
  *
  * LINKED UNIT TEST:
  * - tests/unit/jobs/dailyFreeQuestionReset.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2025-01-XX | copilot | created daily free question reset job
+ * - 2026-05-07T00:00:00Z | copilot | add minute-level UTC scheduler config for exact reset timing
+ * - 2026-05-07T00:00:00Z | copilot | set default scheduler to UTC+5 midnight equivalent
  */
 
 import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock';
@@ -154,7 +157,9 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
  * Call this once during worker startup.
  */
 export function scheduleDailyFreeQuestionReset(): void {
-  const resetHour = Number(process.env.FREE_QUESTION_RESET_HOUR || '0'); // Default: midnight UTC
+  // UTC+5 midnight is 19:00 UTC of the previous day.
+  const resetHour = Number(process.env.FREE_QUESTION_RESET_HOUR || '19');
+  const resetMinute = Number(process.env.FREE_QUESTION_RESET_MINUTE || '0'); // Default: :00 UTC
   
   const scheduleReset = async () => {
     try {
@@ -177,10 +182,10 @@ export function scheduleDailyFreeQuestionReset(): void {
     }
   };
 
-  // Compute milliseconds until next midnight (resetHour:00 UTC)
+  // Compute milliseconds until next configured UTC run time (resetHour:resetMinute UTC)
   const now = new Date();
   const next = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), resetHour, 0, 0, 0)
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), resetHour, resetMinute, 0, 0)
   );
   if (next.getTime() <= now.getTime()) {
     next.setUTCDate(next.getUTCDate() + 1);
@@ -191,6 +196,7 @@ export function scheduleDailyFreeQuestionReset(): void {
     className: CLASS_NAME,
     methodName: 'scheduleDailyFreeQuestionReset',
     resetHour,
+    resetMinute,
     firstDelaySeconds: Math.round(firstDelay / 1000),
     nextRunAt: next.toISOString(),
   });
