@@ -8,15 +8,31 @@
  * - AI pauses the current phase implicitly; student closes panel to resume.
  * - Controlled externally via isOpen / onClose -- trigger lives in SessionBottomBar.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/session/DoubtPanel.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
  * EDIT LOG:
  * - 2026-04-07 | claude | created to close F-STU-011 AC-03 gap
  * - 2026-04-07 | claude | fix: add object-cover to avatars and use items-start on message rows to prevent avatar stretching
  * - 2026-04-22 | redesign | remove internal floating FAB; accept isOpen/onClose props
  * - 2026-05-08T00:00:00Z | copilot | render doubts follow-up questions as clickable bubbles and submit them as new questions
+ * - 2026-05-08T00:00:00Z | copilot | open subscription paywall for free-limit doubts responses instead of showing a connection error
  */
 
 import React, { useRef, useEffect } from 'react';
 import Image from 'next/image';
+import ContentModal from '@/components/UI/ContentModal';
+import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
+
+const DOUBTS_API_PATH = '/api/doubts';
+const FREE_LIMIT_REACHED_ERROR = 'free_limit_reached';
+const GENERIC_CONNECTION_ERROR = 'I could not connect right now. Please try again in a moment.';
+const PAYWALL_MODAL_TITLE = 'Continue asking Teacher Vidya';
 
 interface Message {
   role: 'student' | 'vidya';
@@ -38,18 +54,19 @@ interface DoubtPanelProps {
 }
 
 export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: DoubtPanelProps) {
-    function normalizeFollowUpQuestions(value: unknown): string[] {
-      if (!Array.isArray(value)) {
-        return [];
-      }
-
-      return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  function normalizeFollowUpQuestions(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
     }
+
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  }
 
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [questionId, setQuestionId] = React.useState<string | null>(null);
+  const [isPaywallOpen, setIsPaywallOpen] = React.useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -83,7 +100,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       }));
   }
 
-  async function send(nextQuestion?: string) {
+  async function submitDoubt(nextQuestion?: string) {
     const q = (nextQuestion ?? input).trim();
     if (!q || loading) return;
 
@@ -104,19 +121,27 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       };
       if (questionId) body.questionId = questionId;
 
-      const res = await fetch('/api/doubts', {
+      const res = await fetch(DOUBTS_API_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error('Request failed');
-
-      const data = (await res.json()) as {
-        questionId: string;
-        response: string;
+      const data = await res.json().catch(() => ({})) as {
+        error?: string;
+        questionId?: string;
+        response?: string;
         followUpQuestions?: string[];
       };
+
+      if (!res.ok) {
+        if (data.error === FREE_LIMIT_REACHED_ERROR) {
+          setIsPaywallOpen(true);
+          return;
+        }
+
+        throw new Error('Request failed');
+      }
 
       if (!questionId) setQuestionId(data.questionId);
 
@@ -133,7 +158,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         ...prev,
         {
           role: 'vidya',
-          text: 'I could not connect right now. Please try again in a moment.',
+          text: GENERIC_CONNECTION_ERROR,
         },
       ]);
     } finally {
@@ -144,12 +169,21 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      send();
+      void submitDoubt();
     }
   }
 
   return (
     <>
+      <ContentModal
+        open={isPaywallOpen}
+        title={PAYWALL_MODAL_TITLE}
+        onClose={() => setIsPaywallOpen(false)}
+        className="max-w-xl"
+      >
+        <UpgradeFlow />
+      </ContentModal>
+
       {/* Backdrop */}
       {isOpen && (
         <div
@@ -166,8 +200,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         aria-modal="true"
         className={`fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-background rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
-        }`}
-        style={{ maxHeight: '80vh', minHeight: '320px' }}
+        } max-h-[80vh] min-h-[320px]`}
       >
         {/* Panel header */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/50 flex-shrink-0">
@@ -234,7 +267,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
                         key={`${i}-follow-up-${followUpIndex}`}
                         type="button"
                         onClick={() => {
-                          void send(followUpQuestion);
+                          void submitDoubt(followUpQuestion);
                         }}
                         disabled={loading}
                         className="min-h-[44px] rounded-full bg-[#EEEDFE] px-3 py-2 text-left text-xs font-medium text-[#534AB7] transition-colors hover:bg-[#dcd9fd] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#534AB7]/15 dark:text-indigo-300 dark:hover:bg-[#534AB7]/25"
@@ -260,16 +293,13 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
               <div className="bg-[#EEEDFE] dark:bg-[#534AB7]/15 px-3.5 py-3 rounded-2xl rounded-tl-sm">
                 <span className="flex gap-1 items-center">
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce"
-                    style={{ animationDelay: '0ms' }}
+                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce [animation-delay:0ms]"
                   />
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce"
-                    style={{ animationDelay: '150ms' }}
+                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce [animation-delay:150ms]"
                   />
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce"
-                    style={{ animationDelay: '300ms' }}
+                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce [animation-delay:300ms]"
                   />
                 </span>
               </div>
@@ -289,7 +319,6 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
               rows={1}
               disabled={loading}
               className="flex-1 resize-none rounded-xl border border-border bg-muted/50 px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#534AB7]/40 disabled:opacity-50 min-h-[44px] max-h-[120px]"
-              style={{ height: 'auto' }}
               onInput={(e) => {
                 const t = e.currentTarget;
                 t.style.height = 'auto';
@@ -298,7 +327,9 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
             />
             <button
               type="button"
-              onClick={send}
+              onClick={() => {
+                void submitDoubt();
+              }}
               disabled={!input.trim() || loading}
               aria-label="Send doubt"
               className="flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-[#534AB7] text-white disabled:opacity-40 hover:bg-[#3C3489] transition-colors"

@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DoubtsTab } from '@/app/(student)/dashboard/components/doubts/DoubtsTab';
@@ -90,7 +91,10 @@ describe('DoubtsTab', () => {
     fireEvent.click(submitButton);
 
     expect(mockOnAskQuestion).toHaveBeenCalledWith('What is 2+2?', undefined);
-    expect(mockFetch).toHaveBeenCalledWith('/api/doubts', expect.objectContaining({ method: 'POST' }));
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/doubts', expect.objectContaining({ method: 'POST' }));
+    });
+    expect(await screen.findByText('Great question!')).toBeInTheDocument();
   });
 
   it('renders follow-up bubbles and submits a clicked follow-up question', async () => {
@@ -118,7 +122,7 @@ describe('DoubtsTab', () => {
     );
   });
 
-  it('includes selected subject when submitting', () => {
+  it('includes selected subject when submitting', async () => {
     const mockOnAskQuestion = jest.fn();
     render(<DoubtsTab onAskQuestion={mockOnAskQuestion} />);
 
@@ -130,6 +134,7 @@ describe('DoubtsTab', () => {
     fireEvent.click(screen.getByText('Ask My Tutor'));
 
     expect(mockOnAskQuestion).toHaveBeenCalledWith('What is 2+2?', 'math');
+    expect(await screen.findByText('Great question!')).toBeInTheDocument();
   });
 
   it('disables submit button when textarea is empty', () => {
@@ -139,19 +144,22 @@ describe('DoubtsTab', () => {
     expect(submitButton).toBeDisabled();
   });
 
-  it('clears textarea after submission', () => {
+  it('clears textarea after submission', async () => {
     render(<DoubtsTab />);
 
     const textarea = screen.getByPlaceholderText(/Type your question here/i) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'Test question' } });
     fireEvent.click(screen.getByText('Ask My Tutor'));
 
-    expect(textarea.value).toBe('');
+    await waitFor(() => {
+      expect(textarea.value).toBe('');
+    });
+    expect(await screen.findByText('Great question!')).toBeInTheDocument();
   });
 
-  it('renders encouraging footer message', () => {
+  it('renders example question guidance', () => {
     render(<DoubtsTab />);
 
-    expect(screen.getByText(/Asking questions is how we learn/i)).toBeInTheDocument();
+    expect(screen.getByText(/Not sure what to ask\? Try one of these:/i)).toBeInTheDocument();
   });
 });
