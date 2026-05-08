@@ -171,7 +171,7 @@ export default function StudentOnboardingPage() {
     }
     const user = session?.user as OnboardingSessionUser | undefined
     if (user?.onboardingComplete && user?.accountStatus === 'active') {
-      router.replace('/student/onboarding/exam-date')
+      router.replace('/dashboard')
       return
     }
     if (user?.name) {
