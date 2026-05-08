@@ -3,6 +3,16 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DoubtsTab } from '@/app/(student)/dashboard/components/doubts/DoubtsTab';
 
+jest.mock('@/components/UI/ContentModal', () => ({
+  __esModule: true,
+  default: ({ open, title, children }: { open: boolean; title: string; children: React.ReactNode }) =>
+    open ? <div role="dialog" aria-label={title}>{children}</div> : null,
+}));
+
+jest.mock('@/components/student/subscription/UpgradeFlow', () => ({
+  UpgradeFlow: () => <div data-testid="upgrade-flow">Upgrade flow</div>,
+}));
+
 // Mock fetch for /api/doubts calls
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -161,5 +171,61 @@ describe('DoubtsTab', () => {
     render(<DoubtsTab />);
 
     expect(screen.getByText(/Not sure what to ask\? Try one of these:/i)).toBeInTheDocument();
+  });
+
+  it('should open the paywall modal when handleSubmit receives free_limit_reached', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: () => Promise.resolve({ error: 'free_limit_reached' }),
+    });
+
+    render(<DoubtsTab />);
+
+    const textarea = screen.getByPlaceholderText(/Type your question here/i);
+    fireEvent.change(textarea, { target: { value: 'What is gravity?' } });
+    fireEvent.click(screen.getByText('Ask My Tutor'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Continue asking Teacher Vidya' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('upgrade-flow')).toBeInTheDocument();
+    expect(screen.queryByText(/Something went wrong/i)).not.toBeInTheDocument();
+  });
+
+  it('should open the paywall modal when a follow-up click receives free_limit_reached', async () => {
+    // First call succeeds and returns follow-up buttons
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          questionId: 'q1',
+          response: 'Great question!',
+          followUpQuestions: ['Can you give an example?'],
+        }),
+      })
+      // Second call (follow-up submit) hits the free limit
+      .mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'free_limit_reached' }),
+      });
+
+    render(<DoubtsTab />);
+
+    const textarea = screen.getByPlaceholderText(/Type your question here/i);
+    fireEvent.change(textarea, { target: { value: 'Explain gravity' } });
+    fireEvent.click(screen.getByText('Ask My Tutor'));
+
+    const followUpButton = await screen.findByRole('button', {
+      name: 'Ask follow-up: Can you give an example?',
+    });
+    fireEvent.click(followUpButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Continue asking Teacher Vidya' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('upgrade-flow')).toBeInTheDocument();
+    expect(screen.queryByText(/Something went wrong/i)).not.toBeInTheDocument();
   });
 });

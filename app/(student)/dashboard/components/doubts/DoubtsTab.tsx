@@ -1,6 +1,24 @@
+/**
+ * FILE OBJECTIVE:
+ * - Dashboard tab for students to ask AI-powered doubts via /api/doubts.
+ * - Shows a paywall modal when the free daily question limit is reached.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/app/dashboard/components/doubts/DoubtsTab.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-08T00:00:00Z | copilot | open paywall modal on free_limit_reached; fix inline style lint violations
+ */
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import ContentModal from '@/components/UI/ContentModal';
+import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
 
 interface DoubtsMessage {
   id: string;
@@ -22,6 +40,10 @@ const SUBJECTS = [
   { id: 'social', label: 'Social Studies', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
   { id: 'other', label: 'Other', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
 ];
+
+const DOUBTS_API_PATH = '/api/doubts';
+const FREE_LIMIT_REACHED_ERROR = 'free_limit_reached';
+const PAYWALL_MODAL_TITLE = 'Continue asking Teacher Vidya';
 
 const EXAMPLE_QUESTIONS = [
   "Can you explain fractions with an example?",
@@ -49,6 +71,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
   const [messages, setMessages] = useState<DoubtsMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
   const handleSubmit = useCallback(async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -68,7 +91,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
     onAskQuestion?.(trimmed, selectedSubject || undefined);
 
     try {
-      const res = await fetch('/api/doubts', {
+      const res = await fetch(DOUBTS_API_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,12 +105,16 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (data?.error === FREE_LIMIT_REACHED_ERROR) {
+          setIsPaywallOpen(true);
+          return;
+        }
         setMessages((prev) => [
           ...prev,
           {
             id: `e-${Date.now()}`,
             from: 'ai',
-            text: data?.error || 'Something went wrong. Please try again!',
+            text: 'Something went wrong. Please try again!',
           },
         ]);
         return;
@@ -138,7 +165,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
     onAskQuestion?.(trimmed, selectedSubject || undefined);
 
     try {
-      const res = await fetch('/api/doubts', {
+      const res = await fetch(DOUBTS_API_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,12 +179,16 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (data?.error === FREE_LIMIT_REACHED_ERROR) {
+          setIsPaywallOpen(true);
+          return;
+        }
         setMessages((prev) => [
           ...prev,
           {
             id: `e-${Date.now()}`,
             from: 'ai',
-            text: data?.error || 'Something went wrong. Please try again!',
+            text: 'Something went wrong. Please try again!',
           },
         ]);
         return;
@@ -195,7 +226,15 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="space-y-4 pb-24 px-4 sm:px-6">
+    <>
+      <ContentModal
+        open={isPaywallOpen}
+        title={PAYWALL_MODAL_TITLE}
+        onClose={() => setIsPaywallOpen(false)}
+      >
+        <UpgradeFlow />
+      </ContentModal>
+      <div className="space-y-4 pb-24 px-4 sm:px-6">
       {/* Header */}
       <div className="text-center pt-4">
         <h1 className="text-2xl font-bold text-foreground">Ask a Question</h1>
@@ -277,9 +316,9 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
                 <span className="flex items-center gap-1">
                   Thinking
                   <span className="inline-flex gap-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:0ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:300ms]" />
                   </span>
                 </span>
               </div>
@@ -362,6 +401,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
         </p>
       </div>
     </div>
+    </>
   );
 }
 
