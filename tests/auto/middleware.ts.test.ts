@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | add regression coverage for stale-token session-route redirects
+ * - 2026-05-08T00:00:00Z | copilot | add /student auth guard coverage (redirect unauthenticated to /)
  */
 
 import fs from 'fs';
@@ -59,5 +60,25 @@ describe('exists middleware.ts', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('x-pathname')).toBe('/session/topic-123');
+  });
+
+  it('redirects unauthenticated student routes to root', async () => {
+    mockedGetToken.mockResolvedValue(null);
+
+    const request = new NextRequest('https://example.com/student/onboarding');
+    const response = await middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe('https://example.com/');
+  });
+
+  it('allows authenticated student routes', async () => {
+    mockedGetToken.mockResolvedValue({ role: 'student' });
+
+    const request = new NextRequest('https://example.com/student/onboarding');
+    const response = await middleware(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-pathname')).toBe('/student/onboarding');
   });
 });

@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | remove stale JWT-based onboarding redirects for /session routes
+ * - 2026-05-08T00:00:00Z | copilot | enforce auth guard for /student/* paths and redirect unauthenticated requests to /
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -58,7 +59,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Centralized protected prefixes
-  const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session'];
+  const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session', '/student'];
 
   // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
