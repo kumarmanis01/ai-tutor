@@ -15,6 +15,7 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created unified prompt builder with OpenAI integration
  * - 2026-02-04 | claude | integrated with existing callLLM infrastructure
+ * - 2026-05-08 | copilot | mark doubts prompt calls as allowApiDirect for real-time /api/doubts responses
  */
 
 import type {
@@ -90,6 +91,7 @@ export interface PromptResult<T> {
  */
 interface LLMCallMeta {
   promptType: PromptType;
+  allowApiDirect?: boolean;
   board?: string;
   grade?: string;
   subject?: string;
@@ -396,6 +398,7 @@ export async function generateDoubtResponse(
   // Build meta for callLLM logging and model selection
   const llmMeta: LLMCallMeta = {
     promptType: 'doubts',
+    allowApiDirect: true,
     board: input.board,
     grade: String(input.grade),
     subject: input.subject,

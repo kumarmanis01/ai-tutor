@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Expose free-question quota read and consume endpoints for authenticated students.
+ * - Delegate quota mutation logic to shared server-side quota service for consistency across ask APIs.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/free-questions/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-08T00:00:00Z | copilot | refactor POST handler to use shared free-question quota consume service
+ */
+
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
@@ -5,9 +22,10 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
 import { isPremiumUser } from '@/lib/subscription';
-import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium';
+import { checkFreeTierCap } from '@/lib/freemium';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { DAILY_FREE_QUESTION_LIMIT } from '@/lib/constants/freeTier';
+import { consumeDailyFreeQuestionQuota } from '@/lib/freeQuestionQuota';
 
 function isMissingFreeQuestionColumnError(error: unknown): boolean {
   const err = error as { code?: string; message?: unknown };
@@ -83,61 +101,23 @@ export async function POST(req: Request) {
       return res;
     }
 
-    const premium = await isPremiumUser(userId);
-    if (premium) {
-      res = NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_QUESTION_LIMIT });
-      logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
-      return res;
-    }
+    const result = await consumeDailyFreeQuestionQuota(userId);
 
-    // Atomic decrement of user's remaining free questions.
-    let result: { notFound: true } | { limitReached: true } | { updated: { todaysFreeQuestionsCount: number | null } };
-    try {
-      result = await prisma.$transaction(async (tx) => {
-        const user = await tx.user.findUnique({ where: { id: userId } });
-        if (!user) return { notFound: true } as const;
-
-        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_QUESTION_LIMIT) <= 0) {
-          return { limitReached: true } as const;
-        }
-
-        const updated = await tx.user.update({
-          where: { id: userId },
-          data: { todaysFreeQuestionsCount: { decrement: 1 } },
-        });
-
-        return { updated } as const;
-      });
-    } catch (error) {
-      if (!isMissingFreeQuestionColumnError(error)) throw error;
-
-      const status = await checkFreeTierCap(userId);
-      if (!status.allowed) {
-        res = NextResponse.json({ error: 'free_limit_reached' }, { status: 403 });
-        logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
-        return res;
-      }
-
-      await incrementFreeTierUsage(userId);
-      const remaining = Math.max(0, status.sessionsRemaining - 1);
-      res = NextResponse.json({ remaining, total: DAILY_FREE_QUESTION_LIMIT });
-      logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
-      return res;
-    }
-
-    if ('notFound' in result) {
+    if (result.status === 'not_found') {
       res = NextResponse.json({ error: 'not_found' }, { status: 404 });
       logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
       return res;
     }
-    if ('limitReached' in result) {
+
+    if (result.status === 'limit_reached') {
       res = NextResponse.json({ error: 'free_limit_reached' }, { status: 403 });
       logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
       return res;
     }
 
     res = NextResponse.json({
-      remaining: result.updated.todaysFreeQuestionsCount,
+      remaining: result.remaining,
+      isPremium: result.isPremium,
       total: DAILY_FREE_QUESTION_LIMIT,
     });
     logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);

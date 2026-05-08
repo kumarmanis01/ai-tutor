@@ -1,7 +1,7 @@
 /**
  * FILE OBJECTIVE:
- * - Handle student doubt submissions with auth, safety checks, and persisted Q&A records.
- * - Keep LLM execution in worker context while supporting low-latency responses by briefly waiting for worker completion.
+ * - Handle student doubt submissions with auth, safety checks, direct LLM responses, and persisted Q&A records.
+ * - Return immediate Vidya responses to keep the doubts chat experience real-time for students.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/api/doubts/route.spec.ts
@@ -9,20 +9,24 @@
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | move doubts LLM to worker queue and add short synchronous wait for fast responses
+ * - 2026-05-08T00:00:00Z | copilot | restore direct synchronous doubts LLM path and remove queued/check-back response
+ * - 2026-05-08T00:00:00Z | copilot | enforce daily free-question quota in doubts route with consume/refund and retry-safe behavior
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { generateDoubtResponse } from '@/lib/ai/prompts/promptBuilder';
 import {
-  buildDoubtsPrompt,
   isOffTopicQuestion,
   getOffTopicRedirect,
 } from '@/lib/ai/prompts/doubts';
 import type { StudentIntent, ConversationMessage } from '@/lib/ai/prompts/schemas';
+import { consumeDailyFreeQuestionQuota, refundDailyFreeQuestionQuota } from '@/lib/freeQuestionQuota';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,14 +36,15 @@ const FALLBACK_RESPONSE = {
   confidenceLevel: 'low' as const,
 };
 
+const QUESTION_TYPE_DOUBT = 'doubt';
 const STATUS_PROCESSING = 'processing';
 const STATUS_ANSWERED = 'answered';
-const DOUBTS_SYNC_WAIT_MS = Number(process.env.DOUBTS_SYNC_WAIT_MS ?? 5000);
-const DOUBTS_POLL_INTERVAL_MS = Number(process.env.DOUBTS_POLL_INTERVAL_MS ?? 250);
+const FALLBACK_REASON_LLM_UNAVAILABLE = 'llm_unavailable';
+const ERROR_FREE_LIMIT_REACHED = 'free_limit_reached';
+const ERROR_NOT_FOUND = 'not_found';
+const ERROR_QUESTION_NOT_FOUND = 'Question not found';
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+type QuotaRefundMethod = 'column' | 'freemium';
 
 /**
  * POST /api/doubts
@@ -53,9 +58,7 @@ function sleep(ms: number): Promise<void> {
  *   questionId?: string  // existing StudentQuestion id for follow-ups
  * }
  *
- * Enqueues a worker job to generate AI response via LLM (worker-only).
- * Returns 202 ACCEPTED with jobId, or 200 with fallback if enqueue fails.
- * Returns async response polling endpoint for frontend.
+ * Generates direct AI response in-request and returns fallback if generation fails.
  */
 export async function POST(req: Request) {
   const start = Date.now();
@@ -104,7 +107,7 @@ export async function POST(req: Request) {
     const sq = await prisma.studentQuestion.create({
       data: {
         studentId: user.id,
-        type: 'doubt',
+        type: QUESTION_TYPE_DOUBT,
         subject: studentSubject,
         grade: (user as any).grade ?? null,
         content: question,
@@ -137,36 +140,91 @@ export async function POST(req: Request) {
 
   // Create StudentQuestion record in 'processing' state
   let sq;
+  let quotaRefundMethod: QuotaRefundMethod | null = null;
   if (questionId) {
     // Follow-up on existing question
     sq = await prisma.studentQuestion.findFirst({
       where: { id: questionId, studentId: user.id },
     });
     if (!sq) {
-      res = NextResponse.json({ error: 'Question not found' }, { status: 404 });
+      res = NextResponse.json({ error: ERROR_QUESTION_NOT_FOUND }, { status: 404 });
       logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
       return res;
     }
+
+    const existingContent = typeof sq.content === 'string' ? sq.content.trim() : '';
+    const incomingContent = question.trim();
+    const isAnswered = sq.status === STATUS_ANSWERED;
+    const hasStoredAnswer = typeof sq.answerSummary === 'string' && sq.answerSummary.trim().length > 0;
+    const isRetryRequest = isAnswered && hasStoredAnswer && existingContent === incomingContent;
+
+    if (isRetryRequest) {
+      const metadata = typeof sq.aiMetadata === 'object' && sq.aiMetadata !== null
+        ? (sq.aiMetadata as { followUpQuestion?: string; confidenceLevel?: string })
+        : {};
+
+      res = NextResponse.json({
+        questionId: sq.id,
+        response: sq.answerSummary,
+        followUpQuestion: metadata.followUpQuestion ?? FALLBACK_RESPONSE.followUpQuestion,
+        confidenceLevel: metadata.confidenceLevel ?? FALLBACK_RESPONSE.confidenceLevel,
+        retried: true,
+      });
+      logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    const consumeResult = await consumeDailyFreeQuestionQuota(user.id);
+    if (consumeResult.status === 'not_found') {
+      res = NextResponse.json({ error: ERROR_NOT_FOUND }, { status: 404 });
+      logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    if (consumeResult.status === 'limit_reached') {
+      res = NextResponse.json({ error: ERROR_FREE_LIMIT_REACHED }, { status: 403 });
+      logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    if (consumeResult.charged && consumeResult.method !== 'premium') {
+      quotaRefundMethod = consumeResult.method;
+    }
   } else {
+    const consumeResult = await consumeDailyFreeQuestionQuota(user.id);
+    if (consumeResult.status === 'not_found') {
+      res = NextResponse.json({ error: ERROR_NOT_FOUND }, { status: 404 });
+      logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    if (consumeResult.status === 'limit_reached') {
+      res = NextResponse.json({ error: ERROR_FREE_LIMIT_REACHED }, { status: 403 });
+      logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    if (consumeResult.charged && consumeResult.method !== 'premium') {
+      quotaRefundMethod = consumeResult.method;
+    }
+
     sq = await prisma.studentQuestion.create({
       data: {
         studentId: user.id,
-        type: 'doubt',
+        type: QUESTION_TYPE_DOUBT,
         subject: studentSubject,
         grade: String(gradeNum),
         content: question,
-        status: 'processing',
+        status: STATUS_PROCESSING,
         aiMetadata: { intent: intent ?? 'conceptual_clarity', chapter: studentChapter, topic: studentTopic },
       },
     });
   }
 
-  // Enqueue AI worker job (LLM calls are worker-only)
+  // Direct LLM flow for immediate chat-like response.
   try {
-    const { getAIRequestQueue } = await import('@/queues/aiQueue');
-    const q = getAIRequestQueue();
-
-    const prompt = buildDoubtsPrompt({
+    const doubtResult = await generateDoubtResponse(
+      {
       grade: (isNaN(gradeNum) ? 8 : gradeNum) as any,
       board: board as any,
       language: language as any,
@@ -176,74 +234,60 @@ export async function POST(req: Request) {
       studentQuestion: question,
       studentIntent: intent ?? 'conceptual_clarity',
       conversationHistory,
-    });
+      },
+      user.id,
+      sq.id,
+    );
 
-    const job = await q.add('AI_DOUBT', {
-      type: 'AI_DOUBT',
-      payload: {
-        prompt,
-        messages: [{ role: 'user', content: question }],
-        meta: {
-          promptType: 'doubts',
-          board,
-          grade: gradeNum,
-          subject: studentSubject,
-          chapter: studentChapter,
-          topic: studentTopic,
-          questionId: sq.id,
-          studentId: user.id,
-          language,
+    if (!doubtResult.success || !doubtResult.data) {
+      throw new Error(doubtResult.error ?? 'Doubt response generation failed');
+    }
+
+    const aiResponse = doubtResult.data;
+
+    await prisma.studentQuestion.update({
+      where: { id: sq.id },
+      data: {
+        status: STATUS_ANSWERED,
+        answeredAt: new Date(),
+        answerSummary: aiResponse.response,
+        answerStepsJson: null,
+        aiMetadata: {
+          ...(typeof sq.aiMetadata === 'object' && sq.aiMetadata !== null ? sq.aiMetadata : {}),
+          followUpQuestion: aiResponse.followUpQuestion,
+          confidenceLevel: aiResponse.confidenceLevel,
+          directLLM: true,
         },
       },
     });
 
-    // Low-latency hybrid: briefly wait for worker completion before falling back to async polling.
-    const waitStart = Date.now();
-    let latest = await prisma.studentQuestion.findUnique({
-      where: { id: sq.id },
-      select: { status: true, answerSummary: true, aiMetadata: true },
+    await prisma.questionAnswer.create({
+      data: {
+        questionId: sq.id,
+        responder: 'ai',
+        content: aiResponse.response,
+        contentJson: aiResponse,
+      },
     });
 
-    while (latest?.status === STATUS_PROCESSING && Date.now() - waitStart < DOUBTS_SYNC_WAIT_MS) {
-      await sleep(DOUBTS_POLL_INTERVAL_MS);
-      latest = await prisma.studentQuestion.findUnique({
-        where: { id: sq.id },
-        select: { status: true, answerSummary: true, aiMetadata: true },
-      });
-    }
-
-    if (latest?.status === STATUS_ANSWERED && latest.answerSummary) {
-      const metadata = (latest.aiMetadata && typeof latest.aiMetadata === 'object')
-        ? (latest.aiMetadata as Record<string, unknown>)
-        : {};
-
-      res = NextResponse.json({
-        questionId: sq.id,
-        response: latest.answerSummary,
-        followUpQuestion: String(metadata.followUpQuestion ?? ''),
-        confidenceLevel: String(metadata.confidenceLevel ?? 'medium'),
-      });
-      logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
-      return res;
-    }
-
-    res = NextResponse.json(
-      {
-        status: 'queued',
-        jobId: job.id,
-        questionId: sq.id,
-        message: 'Your question is being answered. Check back soon!',
-      },
-      { status: 202 },
-    );
+    res = NextResponse.json({
+      questionId: sq.id,
+      response: aiResponse.response,
+      followUpQuestion: aiResponse.followUpQuestion,
+      confidenceLevel: aiResponse.confidenceLevel,
+    });
     logger.logAPI(req, res, { className: 'DoubtsAPI', methodName: 'POST' }, start);
     return res;
   } catch (err: any) {
-    logger.warn('DoubtsAPI: Failed to enqueue AI job, returning fallback', {
+    logger.warn('DoubtsAPI: Failed to generate direct AI response, returning fallback', {
       error: err?.message,
       questionId: sq.id,
       userId: user.id,
     });
+
+    if (quotaRefundMethod) {
+      await refundDailyFreeQuestionQuota(user.id, quotaRefundMethod);
+    }
 
     // Fallback: return generic safe response + update question status
     const aiResponse = FALLBACK_RESPONSE;
@@ -251,7 +295,7 @@ export async function POST(req: Request) {
     await prisma.studentQuestion.update({
       where: { id: sq.id },
       data: {
-        status: 'answered',
+        status: STATUS_ANSWERED,
         answeredAt: new Date(),
         answerSummary: aiResponse.response,
         answerStepsJson: null,
@@ -260,7 +304,7 @@ export async function POST(req: Request) {
           followUpQuestion: aiResponse.followUpQuestion,
           confidenceLevel: aiResponse.confidenceLevel,
           fallback: true,
-          fallbackReason: 'queue_unavailable',
+          fallbackReason: FALLBACK_REASON_LLM_UNAVAILABLE,
         },
       },
     });
@@ -320,7 +364,7 @@ export async function GET(req: Request) {
   } else {
     // List recent questions
     const questions = await prisma.studentQuestion.findMany({
-      where: { studentId: user.id, type: 'doubt' },
+      where: { studentId: user.id, type: QUESTION_TYPE_DOUBT },
       orderBy: { createdAt: 'desc' },
       take: 20,
       select: {

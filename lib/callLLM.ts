@@ -12,6 +12,8 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate callbacks and add header
  * - 2026-05-07T00:00:00Z | copilot | add env validation, typed error codes, timeout enforcement, error mapping
+ * - 2026-05-08T00:00:00Z | copilot | allow explicit direct doubts API LLM calls while keeping worker-only guard for other prompt types
+ * - 2026-05-08T11:35:00Z | copilot | normalize AIContentLog grade metadata to Int/null to satisfy Prisma schema
  */
 
 import crypto from 'crypto'
@@ -35,6 +37,17 @@ export function redactedPreview(text: string): string {
 /** Build the requestBody shape stored in AIContentLog -- never the raw prompt. Exported for testing. */
 export function buildPromptRequestBody(prompt: string): { prompt_hash: string; prompt_redacted_preview: string } {
   return { prompt_hash: hashPrompt(prompt), prompt_redacted_preview: redactedPreview(prompt) }
+}
+
+function normalizeGradeForLog(grade: unknown): number | null {
+  if (typeof grade === 'number' && Number.isFinite(grade)) {
+    return Math.trunc(grade)
+  }
+  if (typeof grade === 'string') {
+    const parsed = Number.parseInt(grade, 10)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
 }
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
@@ -112,9 +125,10 @@ async function prepareRetrievalContext(meta: any, charLimit = 2000) {
 
 // Safety: only allow calling LLMs from worker processes. Workers must set
 // `ALLOW_LLM_CALLS=1` in their environment (see worker/bootstrap.ts).
-function ensureWorkerAllowed() {
+function ensureWorkerAllowed(allowApiDirect = false) {
   // Allow mock mode anywhere for fast dev/hydration testing
   if (process.env.LLM_MODE === 'mock') return
+  if (allowApiDirect) return
   if (process.env.ALLOW_LLM_CALLS !== '1') {
     const msg = 'LLM calls are restricted to worker processes. Set ALLOW_LLM_CALLS=1 in worker runtime. Use worker queue from API routes instead.'
     logger.error('llm_call_from_api_route_denied', { error: msg })
@@ -123,7 +137,7 @@ function ensureWorkerAllowed() {
 }
 
 let client: any = null
-function getClient() {
+function getClient(allowApiDirect = false) {
   if (process.env.LLM_MODE === 'mock') {
     // Return a minimal dummy client shape used by callers, but real calls are short-circuited.
     return {
@@ -132,7 +146,7 @@ function getClient() {
     }
   }
   if (!client) {
-    ensureWorkerAllowed()
+    ensureWorkerAllowed(allowApiDirect)
     client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   }
   return client
@@ -238,8 +252,9 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
     const content = JSON.stringify(mockObj)
     return { content, usage: {}, costUsd: 0, latencyMs: 0, model: 'mock' }
   }
-  ensureWorkerAllowed()
-  const client = getClient()
+  const allowDirectDoubtsApiCall = Boolean(meta?.allowApiDirect) && meta?.promptType === 'doubts'
+  ensureWorkerAllowed(allowDirectDoubtsApiCall)
+  const client = getClient(allowDirectDoubtsApiCall)
   const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
 
   const callType = (meta?.callType || meta?.promptType || 'general') as string
@@ -425,7 +440,7 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 model: selectedModel,
                 promptType: promptType,
                 board: meta?.board,
-                grade: meta?.grade,
+                grade: normalizeGradeForLog(meta?.grade),
                 subject: meta?.subject,
                 chapter: meta?.chapter,
                 topic: meta?.topic,
@@ -516,7 +531,7 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
               model: selectedModel,
               promptType: promptType,
               board: meta?.board,
-              grade: meta?.grade,
+              grade: normalizeGradeForLog(meta?.grade),
               subject: meta?.subject,
               chapter: meta?.chapter,
               topic: meta?.topic,
