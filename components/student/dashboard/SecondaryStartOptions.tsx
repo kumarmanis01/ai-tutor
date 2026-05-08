@@ -1,10 +1,10 @@
 /**
  * FILE OBJECTIVE:
- * - Render secondary dashboard start actions (Today's topic, Browse topics,
+ * - Render secondary dashboard start actions (Today's topic, Browse syllabus,
  *   Surprise me) and route to a valid actionable destination.
  *
  * LINKED UNIT TEST:
- * - tests/unit/app/student/dashboard/page.test.ts
+ * - tests/unit/components/student/dashboard/SecondaryStartOptions.test.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
@@ -19,6 +19,8 @@
  * - 2026-05-08T00:00:00Z | copilot | align secondary CTA behavior with F-STU-010 AC-02:
  *                          default Today's topic fallback to browse syllabus and
  *                          rename Browse topics label to Browse syllabus
+ * - 2026-05-08T00:00:00Z | copilot | add direct component tests for Browse
+ *                          syllabus and Surprise me success/fallback routing
  */
 
 'use client'
