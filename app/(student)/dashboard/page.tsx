@@ -17,6 +17,8 @@
  * - 2026-05-06T00:00:00Z | copilot | map topicId to Concept.id for start/surprise pre-session routing
  * - 2026-05-07T06:45:00Z | copilot | avoid broken start recommendation when no active concept resolves
  * - 2026-05-08T00:00:00Z | copilot | align secondary Today's topic href to learning plan intent (AC-02)
+ * - 2026-05-08T00:00:00Z | copilot | fix secondary Today's topic fallback drift by preferring
+ *                          IN_PROGRESS plan item before UPCOMING fallbacks
  */
  
 import type { Metadata } from 'next'
@@ -393,13 +395,42 @@ export default async function StudentHomeDashboardPage() {
     orderBy: { generatedAt: 'desc' },
     select: { id: true },
   })
-  const todaysPlanItem = todaysPlan
+  const firstSession = await prisma.structuredSession.findFirst({
+    where: { studentId: userId },
+    orderBy: { startedAt: 'asc' },
+    select: { startedAt: true },
+  })
+  const daysSinceFirst = firstSession
+    ? Math.floor((Date.now() - firstSession.startedAt.getTime()) / 86_400_000)
+    : 0
+  const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
+
+  const inProgressPlanItem = todaysPlan
+    ? await prisma.learningPlanItem.findFirst({
+        where: { planId: todaysPlan.id, status: 'IN_PROGRESS' },
+        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+        select: { conceptId: true },
+      })
+    : null
+  const currentWeekUpcomingPlanItem = !inProgressPlanItem && todaysPlan
+    ? await prisma.learningPlanItem.findFirst({
+        where: {
+          planId: todaysPlan.id,
+          status: 'UPCOMING',
+          weekNumber: { lte: currentWeek },
+        },
+        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+        select: { conceptId: true },
+      })
+    : null
+  const fallbackUpcomingPlanItem = !inProgressPlanItem && !currentWeekUpcomingPlanItem && todaysPlan
     ? await prisma.learningPlanItem.findFirst({
         where: { planId: todaysPlan.id, status: 'UPCOMING' },
         orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
         select: { conceptId: true },
       })
     : null
+  const todaysPlanItem = inProgressPlanItem ?? currentWeekUpcomingPlanItem ?? fallbackUpcomingPlanItem
   const secondaryTodaysHref =
     todaysPlanItem?.conceptId
       ? `/session/pre/${encodeURIComponent(todaysPlanItem.conceptId)}`
