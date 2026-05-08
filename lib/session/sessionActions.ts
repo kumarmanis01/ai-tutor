@@ -7,6 +7,7 @@
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Architecture refactor
+ * - 2026-05-08 | copilot | add practice hydration status/trigger actions for pending PRACTICE fallback
  */
 
 export interface SessionActionResult {
@@ -21,6 +22,18 @@ export interface SubmitActionResult {
   correctAnswers: number;
   totalAnswers: number;
   results: { questionId: string; isCorrect: boolean; correctAnswer: string | null }[];
+}
+
+export interface PracticeHydrationStatusResult {
+  hasActiveQuestions: boolean;
+  isHydrationRunning: boolean;
+  runningJobId: string | null;
+}
+
+export interface PracticeHydrationTriggerResult {
+  enqueued: boolean;
+  reason: string;
+  jobId: string | null;
 }
 
 export async function startSessionAction(topicId: string): Promise<SessionActionResult> {
@@ -85,4 +98,28 @@ export async function submitTestAction(
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Failed to submit test');
   return data as SubmitActionResult;
+}
+
+export async function getPracticeHydrationStatusAction(
+  sessionId: string,
+): Promise<PracticeHydrationStatusResult> {
+  const res = await fetch(`/api/session/${sessionId}/practice/hydrate`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed to load hydration status');
+  return data as PracticeHydrationStatusResult;
+}
+
+export async function triggerPracticeHydrationAction(
+  sessionId: string,
+): Promise<PracticeHydrationTriggerResult> {
+  const res = await fetch(`/api/session/${sessionId}/practice/hydrate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed to enqueue practice hydration');
+  return data as PracticeHydrationTriggerResult;
 }

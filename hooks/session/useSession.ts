@@ -8,6 +8,7 @@
  * EDIT LOG:
  * - 2026-03-08 | claude | created as part of Session Architecture refactor
  *                         (replaces hooks/useStructuredSession.ts)
+ * - 2026-05-08 | copilot | add practice hydration status/trigger methods for pending PRACTICE fallback UI
  */
 
 import { useState, useCallback } from 'react';
@@ -17,8 +18,12 @@ import {
   navigateToPhaseAction,
   submitPracticeAction,
   submitTestAction,
+  getPracticeHydrationStatusAction,
+  triggerPracticeHydrationAction,
   type SessionActionResult,
   type SubmitActionResult,
+  type PracticeHydrationStatusResult,
+  type PracticeHydrationTriggerResult,
 } from '@/lib/session/sessionActions';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
 import type { PhaseContentData } from '@/lib/session/getPhaseContent';
@@ -128,5 +133,44 @@ export function useSession() {
     }
   }, [state.session?.sessionId]);
 
-  return { ...state, startSession, advancePhase, navigateToPhase, submitPractice, submitTest };
+  const getPracticeHydrationStatus = useCallback(
+    async (): Promise<PracticeHydrationStatusResult | null> => {
+      const sessionId = state.session?.sessionId;
+      if (!sessionId) return null;
+      try {
+        return await getPracticeHydrationStatusAction(sessionId);
+      } catch {
+        return null;
+      }
+    },
+    [state.session?.sessionId],
+  );
+
+  const triggerPracticeHydration = useCallback(
+    async (): Promise<PracticeHydrationTriggerResult | null> => {
+      const sessionId = state.session?.sessionId;
+      if (!sessionId) return null;
+      setState((s) => ({ ...s, submitting: true }));
+      try {
+        const result = await triggerPracticeHydrationAction(sessionId);
+        setState((s) => ({ ...s, submitting: false }));
+        return result;
+      } catch {
+        setState((s) => ({ ...s, submitting: false }));
+        return null;
+      }
+    },
+    [state.session?.sessionId],
+  );
+
+  return {
+    ...state,
+    startSession,
+    advancePhase,
+    navigateToPhase,
+    submitPractice,
+    submitTest,
+    getPracticeHydrationStatus,
+    triggerPracticeHydration,
+  };
 }
