@@ -68,6 +68,8 @@
     "clear-auth": "cross-env CONFIRM=true tsx scripts/clear-auth-tables.ts",
     "pretest": "node scripts/prisma-generate-with-retry.cjs",
     "test": "jest",
+    "test:focused:proactive": "node scripts/run-focused-tests.cjs --suite proactive",
+    "test:focused:proactive:pwsh": "powershell -File scripts\\run-focused-tests.ps1 -Suite proactive",
     "test:ci": "npm run lint:orig && npm run type-check:orig && npm run test:unit",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
