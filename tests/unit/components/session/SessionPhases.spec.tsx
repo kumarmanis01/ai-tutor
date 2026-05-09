@@ -14,6 +14,7 @@
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | created tests for overview, explanation, practice, test, and homework phases
  * - 2026-05-07T00:30:00Z | copilot | aligned assertions with current phase implementations and interaction flows
+ * - 2026-05-09T00:00:00Z | copilot | added regression coverage for practice instant feedback when correctAnswer is stored as option text
  */
 
 import React from 'react';
@@ -89,6 +90,47 @@ describe('Session phase components', () => {
     expect(screen.getByText('Zero is an integer.')).toBeTruthy();
     expect(screen.getByText('Teacher Vidya')).toBeTruthy();
     expect(onReady).toHaveBeenCalledWith(true);
+  });
+
+  it('shows correct instant feedback when correctAnswer is option text and choice key is submitted', () => {
+    jest.useFakeTimers();
+
+    const onSubmit = jest
+      .fn<(answers: { questionId: string; answer: string }[]) => Promise<SubmitActionResult | null>>()
+      .mockResolvedValue(null);
+
+    render(
+      <PracticePhase
+        topicName="Introduction to Integers"
+        onReadyToProceed={jest.fn()}
+        onSubmit={onSubmit}
+        content={{
+          type: 'practice',
+          questions: [
+            {
+              id: 'q1',
+              type: 'mcq',
+              prompt: 'What is 2 + 2?',
+              choices: ['4', '5'],
+              difficulty: 'easy',
+              correctAnswer: '4',
+            },
+            {
+              id: 'q2',
+              type: 'mcq',
+              prompt: 'What is 1 + 1?',
+              choices: ['2', '3'],
+              difficulty: 'easy',
+              correctAnswer: '2',
+            },
+          ],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('4'));
+
+    expect(screen.getByText('Great job!')).toBeTruthy();
   });
 
   it('submits practice answers after final question and unlocks continuation', async () => {
