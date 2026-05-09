@@ -14,6 +14,7 @@ COPILOT INSTRUCTIONS FOLLOWED:
 EDIT LOG:
 - 2026-05-09T00:00:00Z | copilot | initial audit created
 - 2026-05-09T01:00:00Z | copilot | Gap 1 FIXED — narrative API now serves from Redis cache; worker writes result on completion
+- 2026-05-09T02:00:00Z | copilot | Gap 6 FIXED — model-specific subject filter shapes for heatmap and trendRows queries; Gap 7 FIXED — deduplicate subjectNames on read
 -->
 
 # /student/progress — Requirement vs. Implementation Gap Audit
@@ -264,66 +265,62 @@ prisma.structuredSession.findMany({
 
 ---
 
-## Gap 6 — subjectFilter applied to wrong relation paths (multiple queries) 🟡
+## Gap 6 — subjectFilter applied to wrong relation paths (multiple queries) ✅ FIXED 2026-05-09
 
 **Cross-cutting bug affecting AC-02 (filter by subject)**
 
-`subjectFilter` is defined once as:
+The generic `subjectFilter` variable has been removed and replaced with model-specific
+constants inline at each query:
 
-```ts
-const subjectFilter = activeSubject
-  ? { subject: { equals: activeSubject, mode: 'insensitive' as const } }
-  : {};
-```
-
-It is then spread into:
-
-| Query target | Spread location | Correct path |
+| Query target | Old (broken) | Fixed |
 |---|---|---|
-| `structuredSession` (heatmap) | root `where` | `topic.chapter.subject.name` |
-| `testResult.AttemptQuestions.question` (trend) | `question: { ...subjectFilter }` | `chapter.subject.name` |
+| `structuredSession` (heatmap) | `{ subject: { equals: ... } }` at root | `sessionSubjectFilter` via `topic→chapter→subject→name` |
+| `testResult.question` (trend) | `{ ...subjectFilter }` spread into `question` | `questionClause` merges `chapter: { not: null, subject: { name: ... } }` |
 
-When `activeSubject` is non-empty, both queries will fail at the Prisma layer (unknown field `subject` on the model). The subject filter feature (AC-02) is **completely broken for these two widgets**.
-
-### Fix required
-
-Define model-specific filter shapes instead of reusing one generic object:
+### Fix applied
 
 ```ts
-// For structuredSession (heatmap)
+// structuredSession filter — heatmap query
 const sessionSubjectFilter = activeSubject
   ? { topic: { chapter: { subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } } }
   : {};
 
-// For testResult question filter
-const questionSubjectFilter = activeSubject
-  ? { chapter: { subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } }
-  : {};
+// question clause — trendRows query (merges chapter: { not: null } constraint)
+const questionClause = activeSubject
+  ? { chapter: { not: null, subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } }
+  : { chapter: { not: null } };
 ```
 
-**Files to change:**
-- `app/(student)/student/progress/page.tsx` — replace generic `subjectFilter` with model-specific filter shapes
+**Files changed:**
+- `app/(student)/student/progress/page.tsx` — removed generic `subjectFilter`; replaced with `sessionSubjectFilter` and `questionClause`
+- `tests/unit/app/student/progress/subjectFilter.spec.ts` — **new** — 16 test cases covering all filter shapes and dedup logic
 
 ---
 
-## Gap 7 — Duplicate subject entries in profile 🟡
+## Gap 7 — Duplicate subject entries in profile ✅ FIXED 2026-05-09 (read side)
 
 **UI section:** Chapter mastery card shows "Mathematics" twice  
 **Requirement:** Each subject should appear once  
-**Status:** Data bug in `User.subjects` array
+**Status:** Read-side fix applied (bundled with Gap 6); write-side dedup still open
 
 ### Root cause
 
-No deduplication exists when subjects are added to `User.subjects` (a Prisma Json array). If the student enrolled in "Mathematics" twice (double-submit, retry), both entries are stored.
+No deduplication existed when reading subjects from `User.subjects` (a Prisma Json array). If the student enrolled in "Mathematics" twice (double-submit, retry), both entries were stored and both were passed through to `subjectDefs`, rendering the subject card twice.
 
-### Fix required
+### Fix applied
 
-- Add `[...new Set(subjects)]` when reading subjects in `page.tsx` before passing to `subjectDefs`.
-- Add deduplication on write in the profile/enrolment save path.
+```ts
+// Gap 7 fix: deduplicate subjects on read to prevent duplicate subject cards.
+const subjectNames = [...new Set(
+  (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
+)];
+```
 
-**Files to change:**
-- `app/(student)/student/progress/page.tsx` — deduplicate `subjectNames` after fetching from DB
-- Enrolment/profile save route — deduplicate on write
+**Files changed:**
+- `app/(student)/student/progress/page.tsx` — `subjectNames` now uses `[...new Set(...)]`
+
+**Remaining (write-side, still open):**
+- Add deduplication on write in the profile/enrolment save path so duplicates are never stored.
 
 ---
 
@@ -344,9 +341,9 @@ Add the standard header block at the top of the export route.
 | # | Gap | Severity | Effort | Self-heals? | Status |
 |---|-----|----------|--------|-------------|--------|
 | 1 | Narrative API contract mismatch | 🔴 Critical | Medium | No | ✅ FIXED 2026-05-09 |
-| 6 | subjectFilter wrong relation paths | 🔴 Critical | Low | No | 🔴 Open |
+| 6 | subjectFilter wrong relation paths | 🔴 Critical | Low | No | ✅ FIXED 2026-05-09 |
 | 2 | Chapter mastery — curriculum data missing | 🟠 High | Medium | No | 🔴 Open |
-| 7 | Duplicate subjects in profile | 🟡 Medium | Low | No | 🔴 Open |
+| 7 | Duplicate subjects in profile (read side) | 🟡 Medium | Low | Partial | ✅ FIXED (read) 2026-05-09 |
 | 3 | Session history empty | 🟠 High | None | Yes — on first session | 🟠 Open (self-heals) |
 | 4 | Practice test trend empty + filter bug | 🟠 High | Low (filter) | Partial | 🔴 Open |
 | 5 | Study time heatmap empty + filter bug | 🟠 High | Low (filter) | Partial | 🔴 Open |
@@ -363,7 +360,7 @@ Add the standard header block at the top of the export route.
 | AC-01 | Test scores over time | ❌ Empty (no test results yet) | ✅ After first chapter test |
 | AC-01 | Time spent studying (weekly heatmap) | ❌ Empty (no sessions yet) | ✅ After first completed session |
 | AC-01 | Concepts mastered count | ✅ Shows 0 correctly | ✅ |
-| AC-02 | Filterable by subject | ❌ Prisma query errors at runtime | ✅ After subjectFilter fix |
+| AC-02 | Filterable by subject | ✅ FIXED — model-specific filter shapes applied | ✅ Working |
 | AC-02 | Filterable by time range | ✅ Working | ✅ |
 | AC-03 | AI-generated narrative insight | ✅ FIXED — cache HIT serves AI text; MISS returns fallback while worker generates | ✅ Working |
 | AC-04 | Download as PDF | ✅ Working | ✅ |

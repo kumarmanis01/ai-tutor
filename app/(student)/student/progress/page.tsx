@@ -20,6 +20,9 @@
  * - 2026-03-15 | claude | created for Task 29 progress report page
  * - 2026-04-07 | claude | F-STU-033 AC-02: subject + time-range filters via URL params
  * - 2026-05-04 | copilot | apply subject filter to heatmap and concepts mastered count
+ * - 2026-05-09T00:00:00Z | copilot | fix Gap 6 (PROGRESS_PAGE_GAP_AUDIT.md): replace generic subjectFilter
+ *     with model-specific filter shapes for structuredSession (heatmap) and
+ *     testResult/question (trend); deduplicate subjectNames on read (Gap 7)
  */
 
 import type { Metadata } from 'next';
@@ -75,9 +78,18 @@ export default async function ProgressPage({
   // ── Parallel: student profile + chart sessions + completed sessions + trend ──
   const sessionDateFilter = sinceDate ? { gte: sinceDate } : undefined;
 
-  const subjectFilter = activeSubject
-    ? { subject: { equals: activeSubject, mode: 'insensitive' as const } }
+  // Gap 6 fix: structuredSession has no top-level 'subject' field.
+  // Filter through topic → chapter → subject for heatmap queries.
+  const sessionSubjectFilter = activeSubject
+    ? { topic: { chapter: { subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } } }
     : {};
+
+  // Gap 6 fix: Question model has no top-level 'subject' field.
+  // When a subject filter is active, merge with { chapter: { not: null } } through chapter → subject.
+  // When no filter is active, keep original { chapter: { not: null } } constraint.
+  const questionClause = activeSubject
+    ? { chapter: { not: null, subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } }
+    : { chapter: { not: null } };
 
   const conceptSubjectFilter = activeSubject
     ? {
@@ -131,10 +143,7 @@ export default async function ProgressPage({
         finishedAt: { not: null },
         AttemptQuestions: {
           some: {
-            question: {
-              chapter: { not: null },
-              ...subjectFilter,
-            },
+            question: questionClause,
           },
         },
       },
@@ -147,7 +156,7 @@ export default async function ProgressPage({
       where: {
         studentId: userId,
         completedAt: { not: null, gte: heatmapSince },
-        ...subjectFilter,
+        ...sessionSubjectFilter,
       },
       select: { startedAt: true, completedAt: true },
     }),
@@ -162,7 +171,10 @@ export default async function ProgressPage({
   ]);
 
   // ── Subject defs ────────────────────────────────────────────────────────────
-  const subjectNames = (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean);
+  // Gap 7 fix: deduplicate subjects on read to prevent duplicate subject cards.
+  const subjectNames = [...new Set(
+    (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
+  )];
   const subjectDefs = subjectNames.length
     ? await prisma.subjectDef.findMany({
         where: {
