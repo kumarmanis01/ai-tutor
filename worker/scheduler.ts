@@ -15,6 +15,7 @@
  * - 2026-02-01 | claude | created scheduler for ignored recommendations job
  * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
  * - 2026-05-05T12:30:00Z | copilot | fix: replace MONTHLY_INTERVAL_MS (overflows 32-bit timer) with msUntilNextMonthlyRun() in self-reschedule
+ * - 2026-05-09T00:00:00Z | copilot | add nightly 00:00 UTC unit+integration test execution and email report automation
  */
 
 import { logger } from '../lib/logger.js';
@@ -39,6 +40,7 @@ import { runWeeklyRatingAggregation } from './jobs/weeklyRatingAggregation.js';
 import { runDailyLatencyReport } from './jobs/dailyLatencyReport.js';
 import { runDailyQuestionGenMetrics } from './jobs/dailyQuestionGenMetrics.js';
 import { runDiagnosticReadinessCheck } from './jobs/diagnosticReadinessCheck.js';
+import { runNightlyTestReportAndEmail } from './jobs/nightlyTestReport.js';
 import { aggregateDay } from './services/analyticsAggregator.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
@@ -62,6 +64,9 @@ const WEEKLY_RATING_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_LATENCY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DAILY_QUESTION_GEN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ANALYTICS_AGGREGATE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const NIGHTLY_TEST_REPORT_TARGET_HOUR_UTC = 0;
+
+let nightlyTestReportRunning = false;
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -554,6 +559,29 @@ async function runAnalyticsAggregatorJob() {
 }
 
 /**
+ * Nightly VPS test report (00:00 UTC): run unit + integration suites and email report.
+ */
+async function runNightlyTestReportJob() {
+  if (nightlyTestReportRunning) {
+    logger.warn('scheduler.nightlyTests.skipped.alreadyRunning')
+    setTimeout(runNightlyTestReportJob, msUntilNextRun(NIGHTLY_TEST_REPORT_TARGET_HOUR_UTC))
+    return
+  }
+
+  nightlyTestReportRunning = true
+  try {
+    await runNightlyTestReportAndEmail()
+  } catch (error) {
+    logger.error('scheduler.nightlyTests.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  } finally {
+    nightlyTestReportRunning = false
+    setTimeout(runNightlyTestReportJob, msUntilNextRun(NIGHTLY_TEST_REPORT_TARGET_HOUR_UTC))
+  }
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -571,6 +599,7 @@ export async function startScheduler() {
   const delayDailyMaintenance = msUntilNextRun(1); // 1 AM UTC for task expiry + recovery
   const delayReadinessPrecompute = msUntilNextRun(21) + 30 * 60 * 1000; // 21:30 UTC = 3 AM IST
   const delayCostReport = msUntilNextRun(0) + 30 * 60 * 1000; // 00:30 UTC = 6 AM IST
+  const delayNightlyTestReport = msUntilNextRun(NIGHTLY_TEST_REPORT_TARGET_HOUR_UTC); // 00:00 UTC
   const delayWeeklyPlanAdjust = msUntilNextWeeklyRun(0, 5); // Sunday 5 AM UTC
 
   logger.info('scheduler.scheduled', {
@@ -581,6 +610,7 @@ export async function startScheduler() {
     weeklyParentFirstRun: new Date(Date.now() + delayWeeklyParent).toISOString(),
     readinessPrecomputeFirstRun: new Date(Date.now() + delayReadinessPrecompute).toISOString(),
     costReportFirstRun: new Date(Date.now() + delayCostReport).toISOString(),
+    nightlyTestReportFirstRun: new Date(Date.now() + delayNightlyTestReport).toISOString(),
   });
 
   // Register this process in WorkerLifecycle so the health page can detect it
@@ -596,6 +626,7 @@ export async function startScheduler() {
   setTimeout(runWeeklyParentJob, delayWeeklyParent);
   setTimeout(runReadinessPrecompute, delayReadinessPrecompute);
   setTimeout(runCostReportJob, delayCostReport);
+  setTimeout(runNightlyTestReportJob, delayNightlyTestReport);
   setTimeout(runWeeklyPlanAdjustJob, delayWeeklyPlanAdjust);
 
   // Data deletion: 02:00 AM IST = 20:30 UTC
