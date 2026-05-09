@@ -24,6 +24,9 @@
  * - 2026-05-09T14:45:00Z | copilot | fix: on Surprise me 204 or missing action,
  *                          route to /dashboard (home) not resolvedTodaysHref which may be
  *                          /learn/learning-path; never fallback Surprise me to syllabus browser
+ * - 2026-05-09T16:05:00Z | copilot | replace hardcoded CTA colors with theme
+ *                          token classes (primary/primary-bg/brand-primary) for
+ *                          rebrand-safe styling consistency
  */
 
 'use client'
@@ -84,7 +87,7 @@ export default function SecondaryStartOptions({
     <div className="mt-3 flex items-center gap-3">
       <Link
         href={resolvedTodaysHref}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-[#534AB7] bg-[#EEEDFE] text-sm font-semibold text-[#534AB7] hover:bg-[#e5e3fc]"
+        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-primary bg-primary-bg text-sm font-semibold text-primary hover:bg-brand-primary/15"
       >
         Today's topic
       </Link>
@@ -100,7 +103,7 @@ export default function SecondaryStartOptions({
         type="button"
         onClick={handleSurprise}
         disabled={loading}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-[#534AB7] text-white text-sm font-medium hover:bg-[#4840a3] disabled:opacity-60"
+        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover disabled:opacity-60"
       >
         {loading ? 'Picking...' : 'Surprise me'}
       </button>

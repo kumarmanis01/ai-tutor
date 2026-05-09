@@ -18,6 +18,8 @@ EDIT LOG:
   XP breakdown rendering, readiness card rewrite)
 - 2026-05-09T15:50:00Z | copilot | mark Focus Area P1 implemented in dashboard and
   update remaining status/checklist
+- 2026-05-09T16:10:00Z | copilot | mark P2 color hardcoding fix complete for
+  SecondaryStartOptions using theme token classes
 -->
 
 # Student Dashboard Audit Report
@@ -35,7 +37,7 @@ EDIT LOG:
 | 2. XP source breakdown not rendered | 🔴 Critical | Data fetched but hidden from UI | ✅ Fixed |
 | 3. Subject Readiness Card broken | 🔴 Critical | Uses old design tokens, missing props | ✅ Fixed |
 | 4. Focus Area missing | 🟠 High | Wireframe shows, not implemented | ✅ Fixed |
-| 5. Secondary buttons hardcoded colors | 🟡 Medium | Should use design tokens | Refactor |
+| 5. Secondary buttons hardcoded colors | 🟡 Medium | Should use design tokens | ✅ Fixed |
 | 6. "This Week" complete | 🟢 Low | All spec requirements met | No action |
 | 7. "You are all caught up" correct | 🟢 Low | Correctly shows when no revisions due | No action |
 
@@ -285,11 +287,11 @@ Focus Area
 
 ### GAP 5: Secondary Start Options Use Hardcoded Colors 🟡
 
-**Status:** ⏳ Pending
+**Status:** ✅ Fixed
 
 **File:** `components/student/dashboard/SecondaryStartOptions.tsx` (lines 81–104)
 
-**Current:**
+**Previous:**
 ```tsx
 <Link
   href={resolvedTodaysHref}
@@ -308,20 +310,12 @@ Focus Area
 - Use CSS variables or Tailwind theme config
 - Or use component wrapper: `<PrimaryButton>`, `<SecondaryButton>`
 
-**Fix:**
-- Extract to `lib/constants/theme.ts`:
-  ```ts
-  export const BRAND_COLORS = {
-    PRIMARY: '#534AB7',
-    PRIMARY_LIGHT: '#EEEDFE',
-    ...
-  }
-  ```
-- Use in component:
-  ```tsx
-  className={`border-[${BRAND_COLORS.PRIMARY}] bg-[${BRAND_COLORS.PRIMARY_LIGHT}]`}
-  ```
-- Or better: Create reusable button components
+**Implemented:**
+- Replaced hardcoded CTA colors in `SecondaryStartOptions.tsx` with theme token classes:
+  - `border-primary`, `bg-primary-bg`, `text-primary`
+  - `bg-primary`, `text-primary-foreground`, `hover:bg-primary-hover`
+  - `hover:bg-brand-primary/15`
+- This uses centralized theme tokens from Tailwind config synced with `lib/theme/brand.ts`.
 
 ---
 
@@ -357,9 +351,9 @@ Focus Area
 | ✅ Done | XP source display | XPWidget | `XPWidget.tsx` | Completed |
 | ✅ Done | Readiness Card rewrite | SubjectReadinessCard | `SubjectReadinessCard.tsx` | Completed |
 | ✅ Done | Focus Area section | FocusAreaCard + Dashboard | New + `page.tsx` | Completed |
-| 🟡 P2 | Color hardcoding | SecondaryStartOptions | `SecondaryStartOptions.tsx` | 1.5 hrs |
+| ✅ Done | Color hardcoding | SecondaryStartOptions | `SecondaryStartOptions.tsx` | Completed |
 
-**Remaining Estimated Effort:** ~1.5 hours
+**Remaining Estimated Effort:** ~0 hours
 
 ---
 
@@ -369,7 +363,7 @@ Focus Area
 - [x] Render XP source breakdown in XPWidget
 - [x] Rewrite SubjectReadinessCard (design tokens + dark mode)
 - [x] Implement FocusAreaCard + integrate into dashboard
-- [ ] Extract brand colors to `lib/constants/theme.ts`
+- [x] Extract brand colors to `lib/theme/brand.ts` tokens usage in dashboard CTAs
 - [x] Run `npm run build` + `npm test` after each change
 - [x] Update unit tests for each component
 - [ ] Verify against wireframe screen 7
