@@ -1218,7 +1218,7 @@ model StudentEngagementStats {
   totalSessionsCompleted Int       @default(0)
   learningPoints         Int       @default(0)
   /// Set to 'CRITICAL' by the severe-disengagement cron when consecutiveMissedDays >= 7. Cleared when student resumes.
-  escalationStatus       String?   @default(null)
+  escalationStatus       String?
   updatedAt              DateTime  @updatedAt
   student                User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
