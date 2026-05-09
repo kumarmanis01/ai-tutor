@@ -14,7 +14,8 @@
  * EDIT LOG:
  * - 2026-04-15T00:10:00Z | staff-engineer | add Topbar unit tests for mobile sheets and badges
  * - 2026-05-09T00:00:00Z | copilot | update tests for adaptive focus topbar, Ask Vidya CTA, and mobile search/menu/profile sheets
- * - 2026-05-09T00:00:00Z | copilot | add dedicated topbar-focus API payload mock assertions
+ * - 2026-05-09T00:00:00Z | copilot | assert focus values from combined topbar-stats payload
+ * - 2026-05-09T00:00:00Z | copilot | switch mocks to combined topbar-stats response contract
  */
 
 import React from 'react';
@@ -36,15 +37,14 @@ jest.mock('swr', () => ({
   __esModule: true,
   default: (key: string) => {
     if (key === '/api/student/topbar-stats') {
-      return { data: { streak: 5, level: 3, shieldAvailable: true } };
-    }
-    if (key === '/api/user/profile') {
-      return { data: { name: 'Sam Student', grade: '9', board: 'CBSE', plan: null } };
-    }
-    if (key === '/api/student/topbar-focus') {
       const isExamRoute = mockedUsePathname() === '/dashboard/tests';
       return {
         data: {
+          streak: 5,
+          longestStreak: 7,
+          level: 3,
+          shieldAvailable: true,
+          cosmeticUnlocks: [],
           focus: {
             mode: isExamRoute ? 'exam' : 'active',
             focusLabel: isExamRoute
@@ -61,6 +61,9 @@ jest.mock('swr', () => ({
           generatedAt: '2026-05-09T00:00:00.000Z',
         },
       };
+    }
+    if (key === '/api/user/profile') {
+      return { data: { name: 'Sam Student', grade: '9', board: 'CBSE', plan: null } };
     }
     return { data: undefined };
   },

@@ -18,6 +18,7 @@
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | rebuild student top bar with adaptive focus, mobile two-line architecture, Framer Motion transitions, and sticky Ask Vidya strip
  * - 2026-05-09T00:00:00Z | copilot | wire topbar to dedicated backend focus contract payload endpoint
+ * - 2026-05-09T00:00:00Z | copilot | consume combined topbar-stats payload for stats and focus in one SWR request
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,7 +30,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Flame, Menu, Search, Sparkles, UserCircle2, X } from 'lucide-react';
 import StreakWidget from '../dashboard/StreakWidget';
 import Logo from '../../Logo';
-import type { StudentTopbarFocusResponse } from '../../../lib/api/student/topbarContract';
+import type { StudentTopbarStatsResponse } from '../../../lib/api/student/topbarContract';
 
 const fetcher = (url: string) => fetch(url).then((response) => response.json());
 
@@ -89,15 +90,6 @@ const MODE_FOCUS: Record<TopbarMode, FocusConfig> = {
   },
 };
 
-const TOPBAR_FOCUS_ENDPOINT = '/api/student/topbar-focus';
-
-type TopbarStats = {
-  streak: number;
-  longestStreak?: number;
-  level: number;
-  shieldAvailable: boolean;
-};
-
 type UserProfile = {
   name?: string | null;
   grade?: string | null;
@@ -119,7 +111,7 @@ export default function Topbar() {
 
   const streakBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  const { data: stats } = useSWR<TopbarStats>(
+  const { data: topbarData } = useSWR<StudentTopbarStatsResponse>(
     session ? '/api/student/topbar-stats' : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000 }
@@ -127,12 +119,6 @@ export default function Topbar() {
 
   const { data: profile } = useSWR<UserProfile>(
     session ? '/api/user/profile' : null,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 }
-  );
-
-  const { data: focusPayload } = useSWR<StudentTopbarFocusResponse>(
-    session ? TOPBAR_FOCUS_ENDPOINT : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
@@ -153,9 +139,9 @@ export default function Topbar() {
   const firstName = displayName.split(' ')[0] || 'Student';
   const initial = (displayName.charAt(0) || 'S').toUpperCase();
 
-  const streak = stats?.streak ?? 0;
-  const level = stats?.level ?? 1;
-  const shieldAvailable = stats?.shieldAvailable ?? false;
+  const streak = topbarData?.streak ?? 0;
+  const level = topbarData?.level ?? 1;
+  const shieldAvailable = topbarData?.shieldAvailable ?? false;
 
   const fallbackMode: TopbarMode = useMemo(() => {
     if (pathname.startsWith('/dashboard/tests') || pathname.startsWith('/tests')) return 'exam';
@@ -164,19 +150,19 @@ export default function Topbar() {
     return 'active';
   }, [pathname, streak]);
 
-  const mode: TopbarMode = (focusPayload?.focus.mode ?? fallbackMode) as TopbarMode;
+  const mode: TopbarMode = (topbarData?.focus.mode ?? fallbackMode) as TopbarMode;
 
   const focusConfig = MODE_FOCUS[mode];
   const resolvedFocus = {
-    focusLabel: focusPayload?.focus.focusLabel ?? focusConfig.focusLabel,
-    etaLabel: focusPayload?.focus.etaLabel ?? focusConfig.etaLabel,
-    askLabel: focusPayload?.focus.askLabel ?? focusConfig.askLabel,
-    momentumLabel: focusPayload?.focus.momentumLabel ?? focusConfig.momentumLabel,
-    contextTag: focusPayload?.focus.contextTag ?? focusConfig.contextTag,
-    actionHref: focusPayload?.focus.actionHref ?? TOPBAR_ROUTES.learn,
+    focusLabel: topbarData?.focus.focusLabel ?? focusConfig.focusLabel,
+    etaLabel: topbarData?.focus.etaLabel ?? focusConfig.etaLabel,
+    askLabel: topbarData?.focus.askLabel ?? focusConfig.askLabel,
+    momentumLabel: topbarData?.focus.momentumLabel ?? focusConfig.momentumLabel,
+    contextTag: topbarData?.focus.contextTag ?? focusConfig.contextTag,
+    actionHref: topbarData?.focus.actionHref ?? TOPBAR_ROUTES.learn,
   };
 
-  const searchPlaceholder = focusPayload?.focus.searchPlaceholder ?? SEARCH_HINTS[mode];
+  const searchPlaceholder = topbarData?.focus.searchPlaceholder ?? SEARCH_HINTS[mode];
   const shouldShowStickyAsk = showStickyAsk && (mode === 'active' || mode === 'weak');
   const isFree = profile !== undefined && !profile?.plan;
 
