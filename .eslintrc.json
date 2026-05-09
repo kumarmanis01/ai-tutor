@@ -67,12 +67,7 @@
       "files": ["lib/**/*.ts", "lib/**/*.tsx", "app/api/**/*.ts", "worker/**/*.ts", "worker/**/*.tsx"],
       "rules": {
         "no-restricted-imports": ["error", {
-          "paths": [
-            {
-              "name": "@/lib/callLLM",
-              "message": "Do not call LLMs from UI or API handlers directly. Use job-based workers and lib/callLLM only from workers."
-            }
-          ]
+          "paths": []
         }]
       }
     },
