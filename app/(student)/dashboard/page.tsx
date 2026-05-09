@@ -19,6 +19,8 @@
  * - 2026-05-08T00:00:00Z | copilot | align secondary Today's topic href to learning plan intent (AC-02)
  * - 2026-05-08T00:00:00Z | copilot | fix secondary Today's topic fallback drift by preferring
  *                          IN_PROGRESS plan item before UPCOMING fallbacks
+ * - 2026-05-09T15:45:00Z | copilot | add Focus Area section from weakest readiness chapter
+ *                          and wire CTA to subject progress view
  */
  
 import type { Metadata } from 'next'
@@ -37,6 +39,7 @@ import { XPWidget } from '@/components/student/dashboard/XPWidget'
 import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip'
 import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
+import { FocusAreaCard } from '@/components/student/dashboard/FocusAreaCard'
 import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
@@ -280,6 +283,38 @@ export default async function StudentHomeDashboardPage() {
     readinessResults.push(...batchRows)
   }
 
+  const weakestFocusArea = readinessResults
+    .flatMap((subject) =>
+      subject.chapters.map((chapter) => ({
+        subjectId: subject.subjectId,
+        subjectName: subject.subjectName,
+        chapterId: chapter.chapterId,
+        chapterName: chapter.chapterName,
+        masteryScore: chapter.masteryScore,
+        status: chapter.status,
+      })),
+    )
+    .sort((a, b) => a.masteryScore - b.masteryScore)[0]
+
+  const focusArea = weakestFocusArea
+    ? (() => {
+        const masteryPercent = Math.round(weakestFocusArea.masteryScore * 100)
+        const targetPercent = 75
+        const gapToTarget = Math.max(0, targetPercent - masteryPercent)
+        const sessionsNeeded = Math.max(1, Math.ceil(gapToTarget / 20))
+        return {
+          subjectId: weakestFocusArea.subjectId,
+          subjectName: weakestFocusArea.subjectName,
+          chapterId: weakestFocusArea.chapterId,
+          chapterName: weakestFocusArea.chapterName,
+          masteryPercent,
+          status: weakestFocusArea.status,
+          sessionsNeeded,
+          estimatedMinutes: sessionsNeeded * 15,
+        }
+      })()
+    : null
+
   // ── Weekly study strip data ──────────────────────────────────────────────────
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const now = new Date()
@@ -292,7 +327,7 @@ export default async function StudentHomeDashboardPage() {
     return d.toISOString().split('T')[0]
   })
   const activeDateSet = new Set(
-    weeklyActivity.map((s) => s.startedAt.toISOString().split('T')[0])
+    weeklyActivity.map((s: { startedAt: Date }) => s.startedAt.toISOString().split('T')[0])
   )
   const weeklyStripData = {
     days: weekDays.map((date, i) => ({
@@ -544,6 +579,21 @@ export default async function StudentHomeDashboardPage() {
                 ))}
               </div>
             </section>
+          )}
+
+          {/* Focus Area: weakest chapter across subjects (hidden in crunch mode) */}
+          {!isCrunchMode && focusArea && (
+            <FocusAreaCard
+              subjectId={focusArea.subjectId}
+              subjectName={focusArea.subjectName}
+              chapterId={focusArea.chapterId}
+              chapterName={focusArea.chapterName}
+              masteryPercent={focusArea.masteryPercent}
+              status={focusArea.status}
+              sessionsNeeded={focusArea.sessionsNeeded}
+              estimatedMinutes={focusArea.estimatedMinutes}
+              href={`/student/progress/${focusArea.subjectId}?focusChapter=${encodeURIComponent(focusArea.chapterId)}`}
+            />
           )}
         </div>
       </div>

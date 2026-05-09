@@ -16,6 +16,8 @@ EDIT LOG:
 - 2026-05-09T14:30:00Z | audit | comprehensive dashboard gap analysis vs wireframe & spec
 - 2026-05-09T15:30:00Z | copilot | status refresh after P0 fixes (Surprise fallback,
   XP breakdown rendering, readiness card rewrite)
+- 2026-05-09T15:50:00Z | copilot | mark Focus Area P1 implemented in dashboard and
+  update remaining status/checklist
 -->
 
 # Student Dashboard Audit Report
@@ -32,7 +34,7 @@ EDIT LOG:
 | 1. Surprise Me fallback logic | 🔴 Critical | Wrong routing on no suggestion | ✅ Fixed |
 | 2. XP source breakdown not rendered | 🔴 Critical | Data fetched but hidden from UI | ✅ Fixed |
 | 3. Subject Readiness Card broken | 🔴 Critical | Uses old design tokens, missing props | ✅ Fixed |
-| 4. Focus Area missing | 🟠 High | Wireframe shows, not implemented | Needs implementation |
+| 4. Focus Area missing | 🟠 High | Wireframe shows, not implemented | ✅ Fixed |
 | 5. Secondary buttons hardcoded colors | 🟡 Medium | Should use design tokens | Refactor |
 | 6. "This Week" complete | 🟢 Low | All spec requirements met | No action |
 | 7. "You are all caught up" correct | 🟢 Low | Correctly shows when no revisions due | No action |
@@ -238,7 +240,7 @@ export function SubjectReadinessCard({ subjectName, score }: Props) {
 
 ### GAP 4: Focus Area Section Missing 🟠
 
-**Status:** ⏳ Pending
+**Status:** ✅ Fixed
 
 **Files:**
 - Dashboard: `app/(student)/dashboard/page.tsx`
@@ -254,7 +256,7 @@ The dashboard renders:
 - ✅ Weekly Study Strip
 - ✅ Revision Widget
 - ✅ Subject Readiness Cards (right column)
-- ❌ **No "Focus Area" section**
+- ✅ **Focus Area section** (weakest chapter across subjects)
 
 **Wireframe Screen 7 Shows:**
 A dedicated "Focus Area" card below the Readiness cards:
@@ -269,18 +271,15 @@ Focus Area
 └─────────────────────────────────┘
 ```
 
-**What Should Happen:**
-- Extract the **lowest-mastery chapter** across all subjects
-- Display it as a **priority card** in the dashboard
-- CTA routes to a targeted mini-plan for that chapter
-- Only show if no crunch mode
+**What Is Implemented:**
+- Extract the **lowest-mastery chapter** across all subjects from readiness breakdown
+- Display a **Focus Area card** with mastery %, sessions-needed estimate, and time estimate
+- CTA routes to subject progress with focus chapter query: `/student/progress/[subjectId]?focusChapter=[chapterId]`
+- Hidden in exam crunch mode, shown in normal dashboard mode
 
-**Fix Required:**
-- Add a new component: `components/student/dashboard/FocusAreaCard.tsx`
-- Identify weakest chapter from `readinessResults` per subject
-- Pick the **lowest across all subjects**
-- Render card with session count + time estimate
-- Add to dashboard layout (post-Revision, pre-Readiness or vice versa)
+**Implemented In:**
+- `components/student/dashboard/FocusAreaCard.tsx`
+- `app/(student)/dashboard/page.tsx`
 
 ---
 
@@ -357,10 +356,10 @@ Focus Area
 | ✅ Done | Surprise Me fallback | SecondaryStartOptions | `SecondaryStartOptions.tsx` | Completed |
 | ✅ Done | XP source display | XPWidget | `XPWidget.tsx` | Completed |
 | ✅ Done | Readiness Card rewrite | SubjectReadinessCard | `SubjectReadinessCard.tsx` | Completed |
-| 🟠 P1 | Focus Area section | FocusAreaCard + Dashboard | New + `page.tsx` | 3 hrs |
+| ✅ Done | Focus Area section | FocusAreaCard + Dashboard | New + `page.tsx` | Completed |
 | 🟡 P2 | Color hardcoding | SecondaryStartOptions | `SecondaryStartOptions.tsx` | 1.5 hrs |
 
-**Remaining Estimated Effort:** ~4.5 hours
+**Remaining Estimated Effort:** ~1.5 hours
 
 ---
 
@@ -369,10 +368,10 @@ Focus Area
 - [x] Fix Surprise Me 204 fallback logic
 - [x] Render XP source breakdown in XPWidget
 - [x] Rewrite SubjectReadinessCard (design tokens + dark mode)
-- [ ] Implement FocusAreaCard + integrate into dashboard
+- [x] Implement FocusAreaCard + integrate into dashboard
 - [ ] Extract brand colors to `lib/constants/theme.ts`
-- [ ] Run `npm run build` + `npm test` after each change
-- [ ] Update unit tests for each component
+- [x] Run `npm run build` + `npm test` after each change
+- [x] Update unit tests for each component
 - [ ] Verify against wireframe screen 7
 - [ ] Test on mobile (360px) and desktop (1024px+)
 - [ ] Test dark mode on all components
