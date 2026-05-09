@@ -1,70 +1,97 @@
 /**
  * FILE OBJECTIVE:
- * - Unit tests for `Topbar` component: verifies logo, streak badge, and mobile sheet behavior.
+ * - Unit tests for redesigned student `Topbar` component covering core continuity
+ *   signals (focus chip and Ask Vidya CTA) and mobile sheet interactions.
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/student/layout/Topbar.spec.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-04-15T00:10:00Z | staff-engineer | add Topbar unit tests for mobile sheets and badges
+ * - 2026-05-09T00:00:00Z | copilot | update tests for adaptive focus topbar, Ask Vidya CTA, and mobile search/menu/profile sheets
  */
 
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+const mockedUsePathname = jest.fn(() => '/dashboard');
+
+jest.mock('next/navigation', () => ({
+  usePathname: () => mockedUsePathname(),
+}));
 
 // Mock next-auth session
 jest.mock('next-auth/react', () => ({
   useSession: () => ({ data: { user: { name: 'Sam Student' } }, status: 'authenticated' }),
 }));
 
-// Mock SWR to return predictable topbar stats
+// Mock SWR responses for both stats and profile calls.
 jest.mock('swr', () => ({
   __esModule: true,
-  default: () => ({ data: { streak: 5, level: 3, shieldAvailable: true } }),
+  default: (key: string) => {
+    if (key === '/api/student/topbar-stats') {
+      return { data: { streak: 5, level: 3, shieldAvailable: true } };
+    }
+    if (key === '/api/user/profile') {
+      return { data: { name: 'Sam Student', grade: '9', board: 'CBSE', plan: null } };
+    }
+    return { data: undefined };
+  },
 }));
 
-import Topbar from '@/components/student/layout/Topbar';
+import Topbar from '../../../../../components/student/layout/Topbar';
 
 describe('Topbar (component)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockedUsePathname.mockReturnValue('/dashboard');
   });
 
-  it('renders logo and streak badge', () => {
+  it('renders continuation focus and Ask Vidya CTA on desktop', () => {
     render(<Topbar />);
 
-    expect(screen.getByLabelText('Spinzy home')).toBeInTheDocument();
-    expect(screen.getByLabelText('5 day streak -- tap for details')).toBeInTheDocument();
-    expect(screen.getByText(/Lv 3/)).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Spinzy home').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Continue: Algebra - Example 3').length).toBeGreaterThan(0);
+    expect(screen.getByText('Stuck on a step? Ask Vidya')).toBeTruthy();
+    expect(screen.getByText('5-day learning consistency')).toBeTruthy();
   });
 
-  it('opens mobile menu and profile sheets when buttons clicked', () => {
+  it('switches to exam mode copy on tests route', () => {
+    mockedUsePathname.mockReturnValue('/dashboard/tests');
+    render(<Topbar />);
+
+    expect(screen.getAllByText('Revision: Physics numericals before Monday test').length).toBeGreaterThan(0);
+    expect(screen.getByText('Ask Vidya for quick revision')).toBeTruthy();
+  });
+
+  it('opens mobile menu and profile sheets when buttons are clicked', () => {
     render(<Topbar />);
 
     const menuBtn = screen.getByTestId('mobile-menu-button');
     fireEvent.click(menuBtn);
-    expect(screen.getByTestId('mobile-menu-sheet')).toBeInTheDocument();
+    expect(screen.getByTestId('mobile-menu-sheet')).toBeTruthy();
 
     const profileBtn = screen.getByTestId('mobile-profile-button');
     fireEvent.click(profileBtn);
-    expect(screen.getByTestId('mobile-profile-sheet')).toBeInTheDocument();
+    expect(screen.getByTestId('mobile-profile-sheet')).toBeTruthy();
   });
 
-  it('opens streak widget and returns focus to opener on Escape', () => {
+  it('opens streak widget and returns focus to opener on Escape key', () => {
     render(<Topbar />);
 
-    const streakBtn = screen.getByLabelText('5 day streak -- tap for details');
+    const streakBtn = screen.getByLabelText('5-day learning consistency - open details');
     fireEvent.click(streakBtn);
 
     // Popover should render with role=dialog or label
-    expect(screen.getByLabelText(/Streak details|Loading streak/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Streak details|Loading streak/)).toBeTruthy();
 
     // Close via Escape key and assert focus returns to opener
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
-    expect(streakBtn).toHaveFocus();
+    expect(document.activeElement).toBe(streakBtn);
   });
 });

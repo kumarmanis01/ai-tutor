@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | staff-engineer | add file header and top padding to avoid Topbar overlap
+ * - 2026-05-09T00:00:00Z | copilot | increase content top offset for redesigned two-line mobile and taller desktop topbar
  */
 
 import React, { Suspense } from 'react';
@@ -211,7 +212,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
               showProfileGate={showProfileGate}
               initialProfileData={initialProfileData}
             >
-              <div id="student-main" className="pt-[44px] pb-16 md:pb-0">
+              <div id="student-main" className="pt-[104px] pb-16 lg:pt-[68px] md:pb-0">
                 {children}
               </div>
             </StudentLayoutShell>
