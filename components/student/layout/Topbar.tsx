@@ -209,7 +209,7 @@ export default function Topbar() {
               className="inline-flex min-h-[44px] min-w-[44px] items-center"
               aria-label="Spinzy home"
             >
-              <Logo variant="navbar-mobile" />
+              <Logo variant="account-navbar-mobile" />
             </Link>
           </div>
 
@@ -283,7 +283,7 @@ export default function Topbar() {
               className="inline-flex min-h-[44px] items-center"
               aria-label="Spinzy home"
             >
-              <Logo variant="navbar" />
+              <Logo variant="account-navbar" />
             </Link>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">
