@@ -5,6 +5,9 @@
  * - Runs intent classification, calls `callLLM` (with `suppressLog`),
  *   runs hallucination detection, persists validated responses,
  *   and records an audited, redacted AIContentLog entry.
+ * - NARRATIVE jobs: writes generated text to Redis under payload.cacheKey
+ *   (TTL = payload.cacheTtlSeconds, default 6 h) so the progress narrative API
+ *   can serve it synchronously on the next request.
  *
  * LINKED UNIT TEST:
  * - tests/unit/worker/services/aiRequestWorker.spec.ts
@@ -17,6 +20,7 @@
  * - 2026-04-11T00:00:00Z | copilot | created AI request worker
  * - 2026-05-07T00:00:00Z | copilot | add AI_DOUBT job type for student doubts endpoint
  * - 2026-05-08T00:00:00Z | copilot | persist doubts follow-up questions as an array while tolerating legacy single-string responses
+ * - 2026-05-09T00:00:00Z | copilot | fix Gap 1 (PROGRESS_PAGE_GAP_AUDIT.md): write NARRATIVE result to Redis cache
  */
 
 import { Job } from 'bullmq'
@@ -24,6 +28,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { classifyIntent, getSafeResponseForIntent, formatResponseForStudent, checkForHallucinations } from '@/lib/ai/guardrails'
 import { callLLM } from '@/lib/callLLM'
+import { getRedis } from '@/lib/redis'
 
 type AIJobData = {
   type: string
@@ -235,6 +240,30 @@ export async function processAIRequest(job: Job<AIJobData>) {
     } })
   } catch (e) {
     logger.warn('processAIRequest: failed to write validated AIContentLog', { error: String(e) })
+  }
+
+  // Special handling for NARRATIVE job type: write result to Redis cache.
+  // The progress narrative API (GET /api/student/progress/narrative) checks this
+  // key before enqueueing; once populated the UI will serve fresh AI content.
+  if (type === 'NARRATIVE') {
+    const cacheKey = payload.cacheKey
+    const ttl = typeof payload.cacheTtlSeconds === 'number' ? payload.cacheTtlSeconds : 6 * 60 * 60
+    if (cacheKey && content) {
+      try {
+        const redis = getRedis()
+        if (redis) {
+          await redis.set(cacheKey, content, 'EX', ttl)
+          logger.info('processAIRequest: NARRATIVE cached', {
+            event: 'progress_narrative_cached',
+            context: { cacheKey, ttl },
+          })
+        }
+      } catch (e) {
+        // Non-fatal: widget will show fallback on next visit then retry enqueue
+        logger.warn('processAIRequest: failed to cache NARRATIVE result', { error: String(e) })
+      }
+    }
+    return { status: 'completed', type: 'NARRATIVE' }
   }
 
   // Special handling for AI_DOUBT job type: persist to StudentQuestion + QuestionAnswer
