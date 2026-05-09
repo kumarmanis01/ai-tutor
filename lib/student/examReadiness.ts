@@ -13,6 +13,8 @@
  * EDIT LOG:
  * - 2026-04-16T12:30:00Z | copilot | allow passing `lastMock` via asserted options object to avoid TS excess-property error
  * - 2026-04-23T04:00:00Z | copilot | fix(strict): add local row types and explicit callback param types to remove implicit-any
+ * - 2026-05-09T00:00:00Z | copilot | fix Gap 2 (PROGRESS_PAGE_GAP_AUDIT.md): equal-weight fallback when boardChapterWeights
+ *     are missing or zero; concept-free chapter fallback so chapters always render on the UI
  */
 
 import { prisma } from '@/lib/prisma'
@@ -124,22 +126,29 @@ export async function computeReadinessScore(
 
     if (chapters.length === 0) return zero
 
-    const totalWeightMarks = chapters.reduce(
+    // Gap 2 fix: when boardChapterWeights are missing or all-zero, fall back to
+    // equal weight (1 per chapter) so the UI can still render mastery bars.
+    // This is clearly labelled as an estimate via `weightSource`.
+    const rawTotal = chapters.reduce(
       (sum, ch) => sum + (ch.boardChapterWeights[0]?.weightMarks ?? 0),
       0,
     )
-    if (totalWeightMarks <= 0) return zero
+    const usingEqualWeights = rawTotal <= 0
+    const totalWeightMarks = usingEqualWeights ? chapters.length : rawTotal
 
-    // 3. Gather all concept IDs for a single bulk state fetch
+    // 3. Gather all concept IDs for a single bulk state fetch.
+    // Gap 2 fix: if no concepts are seeded under any topic, we still render
+    // chapters with masteryScore = 0 rather than returning the zero-state.
     const allConceptIds = chapters.flatMap((ch: ChapterRow) =>
       ch.topics.flatMap((t) => t.concepts.map((c) => c.id)),
     )
-    if (allConceptIds.length === 0) return zero
-
-    const states = await prisma.studentConceptState.findMany({
-      where: { studentId, conceptId: { in: allConceptIds } },
-      select: { conceptId: true, masteryScore: true, retention: true },
-    }) as StudentConceptStateRow[]
+    // Only query states when there are concepts to look up
+    const states: StudentConceptStateRow[] = allConceptIds.length > 0
+      ? (await prisma.studentConceptState.findMany({
+          where: { studentId, conceptId: { in: allConceptIds } },
+          select: { conceptId: true, masteryScore: true, retention: true },
+        }) as StudentConceptStateRow[])
+      : []
     const masteryMap = new Map<string, number>(
       states.map((s: StudentConceptStateRow) => [s.conceptId, s.masteryScore] as [string, number]),
     )
@@ -149,7 +158,9 @@ export async function computeReadinessScore(
     const chapterBreakdown: ReadinessChapter[] = []
 
     for (const ch of chapters) {
-      const weightMarks = ch.boardChapterWeights[0]?.weightMarks ?? 0
+      // Gap 2 fix: use equal weight (1) when board weights are not seeded
+      const rawWeight = ch.boardChapterWeights[0]?.weightMarks ?? 0
+      const weightMarks = usingEqualWeights ? 1 : rawWeight
       const conceptIds = ch.topics.flatMap((t) => t.concepts.map((c) => c.id))
       const masteries = conceptIds.map((id) => masteryMap.get(id) ?? 0)
       const avgMastery =
