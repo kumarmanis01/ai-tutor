@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render student XP level/progress and a source-wise weekly XP breakdown on the dashboard.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/dashboard/XPWidget.test.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-09T15:00:00Z | copilot | render deterministic source-wise XP breakdown rows,
+ *                          filter zero-value sources, and add readable fallback labels
+ */
+
 'use client'
 
 import { getProgressPercent, getXPToNextLevel, LEVEL_THRESHOLDS, getLevelTierName } from '@/lib/student/xpLevels'
@@ -10,6 +26,22 @@ const XP_SOURCE_LABELS: Record<string, string> = {
   badge: 'Badge earned',
   session_complete: 'Session completion',
   first_attempt: 'First-attempt bonus',
+}
+
+const XP_SOURCE_ORDER = [
+  'session_correct',
+  'session_complete',
+  'first_attempt',
+  'streak_bonus',
+  'revision_complete',
+  'badge',
+] as const
+
+function formatUnknownSourceLabel(source: string): string {
+  return source
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 export interface XPWidgetProps {
@@ -62,6 +94,14 @@ export function XPWidget({
   const remaining = getXPToNextLevel(totalXp) ?? 0
   const progressPct = getProgressPercent(totalXp)
   const tierName = getLevelTierName(level)
+  const xpSourceEntries = Object.entries(xpBySource ?? {}).filter(([, amount]) => amount > 0)
+  const xpSourceOrderIndex = new Map<string, number>(XP_SOURCE_ORDER.map((source, index) => [source, index]))
+  const sortedXpSourceEntries = xpSourceEntries.sort(([sourceA], [sourceB]) => {
+    const indexA = xpSourceOrderIndex.get(sourceA) ?? Number.MAX_SAFE_INTEGER
+    const indexB = xpSourceOrderIndex.get(sourceB) ?? Number.MAX_SAFE_INTEGER
+    if (indexA !== indexB) return indexA - indexB
+    return sourceA.localeCompare(sourceB)
+  })
 
   return (
     <section aria-label="XP progress" className="w-full max-w-full">
@@ -102,27 +142,20 @@ export function XPWidget({
         </p>
 
         {/* F-STU-031 AC-01: XP source breakdown (shown when data available) */}
-        {xpBySource && Object.keys(xpBySource).length > 0 && (
+        {sortedXpSourceEntries.length > 0 && (
           <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-2.5">
             <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide">
               This week&apos;s XP breakdown
             </p>
-            <ul className="flex flex-wrap gap-1.5">
-              {Object.entries(xpBySource)
-                .sort((a, b) => b[1] - a[1])
-                .map(([source, amount]) => (
-                  <li
-                    key={source}
-                    className="flex items-center gap-1 bg-[#534AB7]/10 dark:bg-[#534AB7]/20 rounded-full px-2 py-0.5"
-                  >
-                    <span className="text-[11px] text-[#534AB7] dark:text-indigo-300 font-medium">
-                      {XP_SOURCE_LABELS[source] ?? source}
-                    </span>
-                    <span className="text-[11px] font-bold text-[#534AB7] dark:text-indigo-300">
-                      +{amount}
-                    </span>
-                  </li>
-                ))}
+            <ul className="space-y-1.5">
+              {sortedXpSourceEntries.map(([source, amount]) => (
+                <li key={source} className="flex items-center justify-between rounded-md bg-[#534AB7]/10 dark:bg-[#534AB7]/20 px-2.5 py-1">
+                  <span className="text-xs text-[#534AB7] dark:text-indigo-300 font-medium">
+                    {XP_SOURCE_LABELS[source] ?? formatUnknownSourceLabel(source)}
+                  </span>
+                  <span className="text-xs font-bold text-[#534AB7] dark:text-indigo-300">+{amount}</span>
+                </li>
+              ))}
             </ul>
           </div>
         )}
