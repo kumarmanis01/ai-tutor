@@ -5,13 +5,25 @@
  *   and next-topic recommendation card.
  * - Uses existing /api/home/next-action for recommendation (no engine changes).
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/session/EndOfSessionCard.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2026-03-08 | claude | extracted from components/Session/phases/CompletePhase.tsx
+ * - 2026-05-09T10:30:00Z | copilot | remove inline monthly price fallback and throw when standard plan display is unavailable
  */
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PLANS } from '@/lib/billing/plans';
+
+const STANDARD_MONTHLY_PLAN_ID = 'standard_monthly';
+const STANDARD_MONTHLY_PLAN_DISPLAY_MISSING_ERROR =
+  'Missing billing plan display for standard_monthly';
 
 interface NextActionHint {
   topicId: string | null;
@@ -83,12 +95,11 @@ export function EndOfSessionCard({
   }, []);
 
   const standardMonthlyDisplay = useMemo(() => {
-    try {
-      const plan = PLANS.standard_monthly;
-      return plan?.perMonthDisplay ?? '₹399/month';
-    } catch {
-      return '₹399/month';
+    const plan = PLANS[STANDARD_MONTHLY_PLAN_ID];
+    if (!plan?.perMonthDisplay) {
+      throw new Error(STANDARD_MONTHLY_PLAN_DISPLAY_MISSING_ERROR);
     }
+    return plan.perMonthDisplay;
   }, []);
 
   /** AC-06: build plain-text summary and copy to clipboard. */
