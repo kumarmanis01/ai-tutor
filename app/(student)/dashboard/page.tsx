@@ -487,13 +487,13 @@ export default async function StudentHomeDashboardPage() {
         {/* ── Right column (40%) ─────────────────────────────────────────── */}
         <div className="flex flex-col gap-5 md:w-2/5">
           {/* F-STU-040 AC-02: Session cap counter (free tier only) */}
-          {!isPremium && sessionsRemaining > 0 && (
+          {/* {!isPremium && sessionsRemaining > 0 && (
             <FreemiumCounter
               sessionsUsed={sessionsUsed}
               sessionsRemaining={sessionsRemaining}
               periodStart={periodStart}
             />
-          )}
+          )} */}
 
           {/* F-STU-041: Upgrade prompt when cap hit */}
           {!isPremium && sessionsRemaining === 0 && (
@@ -505,7 +505,7 @@ export default async function StudentHomeDashboardPage() {
           )}
 
           {/* F-STU-042 AC-01: Referral share card -- copy or WhatsApp share */}
-          <ReferralShareCard />
+          {/* <ReferralShareCard /> */}
 
           {/* F-STU-023 AC-02/03: Exam readiness per subject -- links to chapter breakdown */}
           {readinessResults.length > 0 && (
