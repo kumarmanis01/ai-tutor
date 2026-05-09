@@ -17,6 +17,7 @@ EDIT LOG:
 - 2026-05-09T02:00:00Z | copilot | Gap 6 FIXED — model-specific subject filter shapes for heatmap and trendRows queries; Gap 7 FIXED — deduplicate subjectNames on read
 - 2026-05-09T03:00:00Z | copilot | Gap 7 confirmed fully fixed — write-side already protected in onboarding and enroll/save routes
 - 2026-05-09T04:00:00Z | copilot | Gap 2 FIXED — equal-weight fallback in examReadiness.ts when boardChapterWeights missing; concept-free chapter fallback
+- 2026-05-09T05:00:00Z | copilot | Gap 3 FIXED — meta.score written to StructuredSession in student session complete route; score never persisted was a code bug not just a data gap
 -->
 
 # /student/progress — Requirement vs. Implementation Gap Audit
@@ -133,15 +134,15 @@ With equal weights, every chapter gets `boardWeightPct = 100 / n` and mastery ba
 
 ---
 
-## Gap 3 — Session history is empty 🟠
+## Gap 3 — Session history score column always showed `--` ✅ FIXED 2026-05-09
 
 **UI section:** "Session history" table (right column)  
 **Requirement:** F-STU-033 AC-01 — Sessions completed, test scores over time  
-**Status:** EXPECTED for new accounts; empty state UX is adequate but score data is sparse
+**Status:** FIXED 2026-05-09 — score now written to StructuredSession.meta on every completed session
 
-### Root cause
+### Root cause (historical)
 
-`TestScoreHistory` receives rows from:
+The progress page reads `session.meta.score` from `StructuredSession`:
 
 ```ts
 prisma.structuredSession.findMany({
@@ -150,20 +151,37 @@ prisma.structuredSession.findMany({
 })
 ```
 
-Score is read from `session.meta.score`. This field is only written when the session completion flow explicitly calls `POST /api/student/session/[sessionId]/complete` with a computed score. For sessions abandoned or auto-closed, `meta.score` is `null` and the score column shows `--`.
+`POST /api/student/session/[sessionId]/complete` (the V2 session complete route)
+computed `correctAnswers / totalQuestions` and returned `accuracy` in the HTTP
+response body but **never wrote it to `StructuredSession.meta`**. Every completed
+session therefore showed `--` in the score column — even for students with
+many completed sessions. This was a code bug, not merely a new-account data gap.
 
-### Secondary issue — score source mismatch
+### Fix applied
 
-F-STU-033 AC-01 mentions "Test scores over time" as a separate metric from "Sessions completed". The implementation merges both into a single session history table. Chapter practice test scores (from the `testResult` table) are shown separately in `ScoreTrendGraph` but are a completely different data source.
+**File:** `app/api/student/session/[sessionId]/complete/route.ts`
 
-### Fix required
+After computing `accuracy`, the route now reads `learningSession.meta.structuredSessionId`
+(set by `createBridgedLearningSession` in the session engine bridge) and writes
+`meta.score = Math.round(accuracy * 100)` to the corresponding `StructuredSession`.
+The write is isolated in a try/catch — any DB error is logged as `warn` and does
+not affect the HTTP response. Existing `meta` fields are preserved via object spread.
 
-- This will self-heal as the student completes sessions. No code change required for the empty state.
-- **Improve score coverage:** Ensure `meta.score` is written even for auto-closed sessions (e.g., on session timeout). Check `POST /api/student/session/[sessionId]/complete` to confirm score is always written.
-- Consider splitting "Session history" and "Test scores" into visually distinct sections to match AC-01 wording.
+```ts
+const structuredSessionId = (learningSession?.meta as any)?.structuredSessionId
+if (structuredSessionId && typeof structuredSessionId === 'string') {
+  const scorePercent = Math.round(accuracy * 100)
+  const existing = await prisma.structuredSession.findUnique(...)
+  if (existing) {
+    await prisma.structuredSession.update({
+      where: { id: structuredSessionId },
+      data: { meta: { ...existing.meta, score: scorePercent } },
+    })
+  }
+}
+```
 
-**Files to change:**
-- Session complete route — verify `meta.score` is always written on completion
+**Unit tests:** `tests/unit/api/student/session/complete.spec.ts` (10 tests, all pass)
 
 ---
 
@@ -339,7 +357,7 @@ Add the standard header block at the top of the export route.
 | 6 | subjectFilter wrong relation paths | 🔴 Critical | Low | No | ✅ FIXED 2026-05-09 |
 | 2 | Chapter mastery — curriculum data missing | 🟠 High | Medium | No | ✅ FIXED 2026-05-09 |
 | 7 | Duplicate subjects in profile | 🟡 Medium | Low | No | ✅ FIXED 2026-05-09 |
-| 3 | Session history empty | 🟠 High | None | Yes — on first session | 🟠 Open (self-heals) |
+| 3 | Session history score always `--` | 🟠 High | `complete/route.ts` | No — code bug | ✅ FIXED 2026-05-09 |
 | 4 | Practice test trend empty + filter bug | 🟠 High | Low (filter) | Partial | 🔴 Open |
 | 5 | Study time heatmap empty + filter bug | 🟠 High | Low (filter) | Partial | 🔴 Open |
 | 8 | PDF export missing file header | 🟡 Low | Trivial | No | 🔴 Open |

@@ -5,13 +5,18 @@
  *   correct answers, first-attempt bonus, streak multiplier), updates streak,
  *   awards badges, and returns the session summary to the client.
  * - AC-01 (F-STU-031): XP calculation sources documented inline.
+ * - Gap 3 fix (PROGRESS_PAGE_GAP_AUDIT.md): writes computed score (0-100) to
+ *   StructuredSession.meta.score via the learningSession bridge so the
+ *   /student/progress session history table can display it.
  *
  * EDIT LOG:
  * - 2026-03-15 | v2-migration | created for session completion flow
- * - 2026-05-04 | staff-engineer | AC-01 F-STU-031: add duration XP, first-attempt
- *   bonus, streak daily multiplier; fix leveledUp/newLevel to reflect final XP
- *   award (streak bonus can trigger level-up independently)
- */
+  * - 2026-05-04 | staff-engineer | AC-01 F-STU-031: add duration XP, first-attempt
+  *   bonus, streak daily multiplier; fix leveledUp/newLevel to reflect final XP
+  *   award (streak bonus can trigger level-up independently)
+  * - 2026-05-09T00:00:00Z | copilot | fix Gap 3: write meta.score to StructuredSession
+  *   via bridge so progress page session history can display session scores
+  */
 
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
@@ -172,7 +177,39 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       avgTimeSeconds,
     })
 
-    const res = NextResponse.json(
+      // Gap 3 fix: write score (0-100 integer) to StructuredSession.meta so the
+      // /student/progress session history table can display it.
+      // The sessionId here is a LearningSession.id; we get the StructuredSession.id
+      // from the bridge meta field written by createBridgedLearningSession.
+      const structuredSessionId = (learningSession?.meta as any)?.structuredSessionId
+      if (structuredSessionId && typeof structuredSessionId === 'string') {
+        const scorePercent = Math.round(accuracy * 100)
+        try {
+          const existing = await prisma.structuredSession.findUnique({
+            where: { id: structuredSessionId },
+            select: { meta: true },
+          })
+          if (existing) {
+            await prisma.structuredSession.update({
+              where: { id: structuredSessionId },
+              data: {
+                meta: {
+                  ...((existing.meta as object) ?? {}),
+                  score: scorePercent,
+                },
+              },
+            })
+          }
+        } catch (scoreWriteErr) {
+          // Non-fatal: log but do not surface to client
+          logger.warn('StudentSessionCompleteAPI: failed to write score to StructuredSession.meta', {
+            event: 'session_score_write_error',
+            context: { userId, sessionId, structuredSessionId, error: String(scoreWriteErr) },
+          })
+        }
+      }
+
+      const res = NextResponse.json(
       {
         xpEarned,
         totalXp,
