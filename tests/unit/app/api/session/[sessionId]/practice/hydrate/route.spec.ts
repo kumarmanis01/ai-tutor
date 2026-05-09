@@ -13,7 +13,10 @@
  * EDIT LOG:
  * - 2026-05-08T00:00:00Z | copilot | add tests for practice hydration status + manual enqueue endpoint
  * - 2026-05-09T00:00:00Z | copilot | assert hydration request emails are sent to the operations inbox
+ * - 2026-05-09T00:00:00Z | copilot | replace hardcoded hydration alert inbox with centralized email constant
  */
+
+import { PRACTICE_HYDRATION_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
 
 describe('GET /api/session/[sessionId]/practice/hydrate', () => {
   beforeEach(() => {
@@ -149,7 +152,7 @@ describe('POST /api/session/[sessionId]/practice/hydrate', () => {
     expect(body.reason).toBe('enqueued');
     expect(sendMailSafe).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: 'spinzydigital@gmail.com',
+        to: PRACTICE_HYDRATION_ALERT_EMAIL,
         subject: expect.stringContaining('Practice hydration requested for topic t1'),
       }),
     );

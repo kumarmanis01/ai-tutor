@@ -26,6 +26,7 @@ import Razorpay from 'razorpay';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 import { redeemReferral } from '@/lib/referral';
 import { redeemCoupon } from '@/lib/coupon';
+import { RAZORPAY_WEBHOOK_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 
 function getWebhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET ?? process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -296,7 +297,7 @@ export async function POST(req: Request) {
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
         const subject = `Payment failed -- action required`;
-        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We couldn't complete your recent payment. Please update your payment method and retry here: <a href="${retryLink}">Update payment</a>. If you need help, contact ${process.env.SUPPORT_EMAIL ?? 'support@spinzyacademy.com'}.</p>`;
+        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We couldn't complete your recent payment. Please update your payment method and retry here: <a href="${retryLink}">Update payment</a>. If you need help, contact ${process.env.SUPPORT_EMAIL ?? RAZORPAY_WEBHOOK_SUPPORT_EMAIL}.</p>`;
         await sendMailSafe({ to: parent.email, subject, html });
       }
       if (parent?.phone) {

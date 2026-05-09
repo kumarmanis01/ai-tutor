@@ -1,4 +1,5 @@
 import Icon from '@/components/UI/AppIcon';
+import { LANDING_FOOTER_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 
 const Footer = () => {
   const footerLinks = {
@@ -94,8 +95,8 @@ const Footer = () => {
               </a>
 
               <a
-                href="mailto:support@spinzyacademy.com"
-                aria-label="Email support@spinzyacademy.com"
+                href={`mailto:${LANDING_FOOTER_SUPPORT_EMAIL}`}
+                aria-label={`Email ${LANDING_FOOTER_SUPPORT_EMAIL}`}
                 className="inline-flex items-center justify-center w-11 h-11 bg-white/10 hover:bg-white/20 rounded-lg transition-colors shadow-sm"
               >
                 <Icon name="EnvelopeIcon" size={20} variant="solid" />

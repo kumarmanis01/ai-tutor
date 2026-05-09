@@ -1,4 +1,5 @@
 import React from 'react';
+import { CONTACT_US_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 
 export default function ContactPage() {
   return (
@@ -12,8 +13,8 @@ export default function ContactPage() {
       </p>
       <h2 className="text-xl font-semibold mt-6 mb-2">Email</h2>
       <p className="mb-4">
-        <a href="mailto:support@spinzyacademy.com" className="text-blue-600 underline">
-          support@spinzyacademy.com
+        <a href={`mailto:${CONTACT_US_SUPPORT_EMAIL}`} className="text-blue-600 underline">
+          {CONTACT_US_SUPPORT_EMAIL}
         </a>
       </p>
       <h2 className="text-xl font-semibold mt-6 mb-2">Phone</h2>

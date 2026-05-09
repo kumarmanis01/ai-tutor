@@ -15,10 +15,11 @@ import { PLANS, rupeesToPaise } from '@/lib/billing/plans'
 import { createInvoiceForPayment } from '@/lib/invoices'
 import applyCreditsToCharge from '@/lib/billing/credits'
 import { recordPaymentEvent } from '@/lib/payments/audit'
+import { PAYMENT_DUNNING_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails'
 
 function toIso(d: Date) { return d.toISOString() }
 const DEFAULT_APP_URL = 'https://spinzyacademy.com'
-const DEFAULT_SUPPORT_EMAIL = 'support@spinzyacademy.com'
+const DEFAULT_SUPPORT_EMAIL = PAYMENT_DUNNING_SUPPORT_EMAIL
 const RENEWAL_REMINDER_DAYS = 7
 
 // Local row types for strict-mode

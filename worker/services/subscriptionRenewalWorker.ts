@@ -17,8 +17,9 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
+import { SUBSCRIPTION_RENEWAL_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails'
 
-const DEFAULT_SUPPORT_EMAIL = 'support@spinzyacademy.com'
+const DEFAULT_SUPPORT_EMAIL = SUBSCRIPTION_RENEWAL_SUPPORT_EMAIL
 
 /**
  * Retry schedule (relative to first attempt):

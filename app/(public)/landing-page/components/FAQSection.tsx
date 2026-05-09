@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
 import { PLANS } from '@/lib/billing/plans';
+import { LANDING_FAQ_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 
 interface FAQ {
   id: number;
@@ -203,11 +204,11 @@ const FAQSection = () => {
                   <span>+91 89207 54675</span>
                 </a>
                 <a
-                  href="mailto:support@spinzyacademy.com"
+                  href={`mailto:${LANDING_FAQ_SUPPORT_EMAIL}`}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors font-semibold"
                 >
                   <Icon name="EnvelopeIcon" size={20} variant="solid" />
-                  <span>support@spinzyacademy.com</span>
+                  <span>{LANDING_FAQ_SUPPORT_EMAIL}</span>
                 </a>
               </div>
             </div>

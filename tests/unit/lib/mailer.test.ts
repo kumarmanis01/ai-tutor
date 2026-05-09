@@ -12,14 +12,20 @@
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | add tests for topic-ranker coverage alert email send and dedupe suppression
+ * - 2026-05-09T00:00:00Z | copilot | replace hardcoded feedback email literal with centralized constant
  */
+
+import {
+  MAILER_NO_REPLY_EMAIL,
+  MAILER_TOPIC_RANKER_ALERT_EMAIL,
+} from '@/lib/email/functionalityEmails';
 
 describe('sendTopicRankerCoverageAlertSafe', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
     process.env.RESEND_API_KEY = 're_test_key';
-    process.env.EMAIL_FROM = 'Spinzy Academy <no-reply@send.spinzyacademy.com>';
+    process.env.EMAIL_FROM = `Spinzy Academy <${MAILER_NO_REPLY_EMAIL}>`;
   });
 
   it('sends email to feedback inbox when dedupe key is accepted', async () => {
@@ -50,7 +56,7 @@ describe('sendTopicRankerCoverageAlertSafe', () => {
     expect(setMock).toHaveBeenCalled();
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: ['feedback@spinzyacademy.com'],
+        to: [MAILER_TOPIC_RANKER_ALERT_EMAIL],
       }),
     );
     expect(sendMock).toHaveBeenCalledWith(

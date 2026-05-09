@@ -26,6 +26,7 @@ import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopic
 import { ApprovalStatus, JobStatus } from '@/lib/ai-engine/types';
 import { sendMailSafe } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
+import { PRACTICE_HYDRATION_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
 
 export const dynamic = 'force-dynamic';
 
@@ -239,7 +240,7 @@ export async function POST(
   const hydrationState = await getPracticeHydrationState(session.topicId);
 
   void sendMailSafe({
-    to: 'spinzydigital@gmail.com',
+    to: PRACTICE_HYDRATION_ALERT_EMAIL,
     subject: `Practice hydration requested for topic ${session.topicId}`,
     text: [
       'A practice hydration request was submitted.',

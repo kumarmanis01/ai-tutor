@@ -18,6 +18,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { logger } from '@/lib/logger';
+import { UPGRADE_FLOW_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 import PlanSelector from './PlanSelector';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
@@ -320,7 +321,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         {failureMsg || 'Something went wrong. Please try again.'}
       </p>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-        If you were charged, please contact us at support@spinzy.in
+        If you were charged, please contact us at {UPGRADE_FLOW_SUPPORT_EMAIL}
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         {retryCount < MAX_RETRIES && (
@@ -333,7 +334,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
           </button>
         )}
         <a
-          href="mailto:support@spinzy.in"
+          href={`mailto:${UPGRADE_FLOW_SUPPORT_EMAIL}`}
           className="flex-1 min-h-[44px] inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
         >
           Contact support

@@ -18,6 +18,7 @@ import { sendMailSafe } from '@/lib/mailer';
 import { contentJobFailureAlertHtml } from '@/lib/email/templates';
 import { prisma } from '@/lib/prisma';
 import { JobStatus } from '@/lib/ai-engine/types';
+import { CONTENT_JOB_ADMIN_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
 
 const MAX_AUTO_RETRIES = 2;
 const AUTO_RETRY_DELAY_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -124,7 +125,7 @@ export async function sendJobFailureAlert(opts: {
   willRetryAt?: Date;
 }): Promise<void> {
   const adminEmail =
-    process.env.ADMIN_ALERT_EMAIL ?? 'oncall@spinzy.com';
+    process.env.ADMIN_ALERT_EMAIL ?? CONTENT_JOB_ADMIN_ALERT_EMAIL;
   const adminUrl =
     `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/admin/jobs`;
 

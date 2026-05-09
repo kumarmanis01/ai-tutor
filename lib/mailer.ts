@@ -17,8 +17,12 @@ import { Resend } from 'resend';
 import { createHash } from 'crypto';
 import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
+import {
+  MAILER_NO_REPLY_EMAIL,
+  MAILER_TOPIC_RANKER_ALERT_EMAIL,
+} from '@/lib/email/functionalityEmails';
 
-const TOPIC_RANKER_ALERT_RECIPIENT = 'feedback@spinzyacademy.com';
+const TOPIC_RANKER_ALERT_RECIPIENT = MAILER_TOPIC_RANKER_ALERT_EMAIL;
 const TOPIC_RANKER_ALERT_TTL_SECONDS = 4 * 60 * 60;
 const TOPIC_RANKER_ALERT_TOPIC_SAMPLE_LIMIT = 20;
 
@@ -60,7 +64,7 @@ export interface MailOptions {
  */
 export async function sendMail(opts: MailOptions): Promise<string> {
   const from =
-    process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@send.spinzyacademy.com>';
+    process.env.EMAIL_FROM ?? `Spinzy Academy <${MAILER_NO_REPLY_EMAIL}>`;
   const { data, error } = await getClient().emails.send({
     from,
     to: Array.isArray(opts.to) ? opts.to : [opts.to],

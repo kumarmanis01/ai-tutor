@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - Execute nightly VPS unit and integration test checks via the shared Jest infra wrapper and email the result summary to health@spinzyacademy.com.
+ * - Execute nightly VPS unit and integration test checks via the shared Jest infra wrapper and email the result summary to the configured health inbox.
  *
  * LINKED UNIT TEST:
  * - tests/unit/worker/jobs/nightlyTestReport.spec.ts
@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | created nightly test execution and email reporting job for scheduler automation
+ * - 2026-05-09T00:00:00Z | copilot | replace hardcoded recipient email with centralized constant
  */
 
 import { spawn } from 'child_process';
@@ -18,8 +19,9 @@ import fs from 'fs';
 import path from 'path';
 import { logger } from '@/lib/logger';
 import { sendMailSafe } from '@/lib/mailer';
+import { NIGHTLY_TEST_REPORT_RECIPIENT_EMAIL } from '@/lib/email/functionalityEmails';
 
-const NIGHTLY_REPORT_RECIPIENT = 'health@spinzyacademy.com';
+const NIGHTLY_REPORT_RECIPIENT = NIGHTLY_TEST_REPORT_RECIPIENT_EMAIL;
 const RUNNER_SCRIPT_RELATIVE_PATH = path.join('scripts', 'run-focused-tests.cjs');
 const MAX_LOG_TAIL_CHARS = 12_000;
 const NODE_MEMORY_LIMIT = '--max-old-space-size=4096';

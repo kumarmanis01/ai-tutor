@@ -1,4 +1,5 @@
 import React from 'react';
+import { REFUND_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 
 export default function RefundPage() {
   return (
@@ -23,8 +24,8 @@ export default function RefundPage() {
         <li>Refunds are available within 7 days of your initial purchase.</li>
         <li>
           To request a refund, please contact our support team at{' '}
-          <a href="mailto:support@spinzyacademy.com" className="text-blue-600 underline">
-            support@spinzyacademy.com
+          <a href={`mailto:${REFUND_SUPPORT_EMAIL}`} className="text-blue-600 underline">
+            {REFUND_SUPPORT_EMAIL}
           </a>{' '}
           with your order details.
         </li>

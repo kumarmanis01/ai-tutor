@@ -24,6 +24,7 @@ import EmailProvider from 'next-auth/providers/email'; // Enables email login/si
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import { sendMail } from '@/lib/mailer';
 import { welcomeEmailHtml, magicLinkHtml } from '@/lib/email/templates';
+import { AUTH_NO_REPLY_EMAIL } from '@/lib/email/functionalityEmails';
 import { logger } from '@/lib/logger';
 import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
@@ -117,7 +118,7 @@ async function maybeSendWelcomeEmail(email: string, name?: string) {
 //     }),
 //     // Enable email magic-link login via Resend
 //     EmailProvider({
-//       from: process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@spinzyacademy.com>',
+//       from: process.env.EMAIL_FROM ?? `Spinzy Academy <${AUTH_NO_REPLY_EMAIL}>`,
 //       sendVerificationRequest: async ({ identifier, url }) => {
 //         await sendMail({
 //           to: identifier,
@@ -416,7 +417,7 @@ export const authOptions: any = {
       checks: ['pkce', 'state'], 
     }),
     EmailProvider({
-      from: process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@spinzyacademy.com>',
+      from: process.env.EMAIL_FROM ?? `Spinzy Academy <${AUTH_NO_REPLY_EMAIL}>`,
       sendVerificationRequest: async ({ identifier, url }) => {
         await sendMail({
           to: identifier,

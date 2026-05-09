@@ -46,10 +46,8 @@ module.exports = {
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
         RESEND_API_KEY: process.env.RESEND_API_KEY,
-        // EMAIL_FROM must use verified Resend sending domain
-        // Correct: "Spinzy Academy <no-reply@send.spinzyacademy.com>"
-        // Wrong:   "Spinzy Academy <no-reply@spinzyacademy.com>"
-        // Verified domain in Resend: send.spinzyacademy.com
+        // EMAIL_FROM must use the verified Resend sending domain.
+        // Example format: "Brand Name <no-reply@verified-domain>"
         EMAIL_FROM: process.env.EMAIL_FROM,
         VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
         VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
@@ -100,10 +98,8 @@ module.exports = {
         REDIS_URL: process.env.REDIS_URL,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         RESEND_API_KEY: process.env.RESEND_API_KEY,
-        // EMAIL_FROM must use verified Resend sending domain
-        // Correct: "Spinzy Academy <no-reply@send.spinzyacademy.com>"
-        // Wrong:   "Spinzy Academy <no-reply@spinzyacademy.com>"
-        // Verified domain in Resend: send.spinzyacademy.com
+        // EMAIL_FROM must use the verified Resend sending domain.
+        // Example format: "Brand Name <no-reply@verified-domain>"
         EMAIL_FROM: process.env.EMAIL_FROM,
         ONCALL_EMAIL: process.env.ONCALL_EMAIL,
         ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
@@ -147,10 +143,8 @@ module.exports = {
         REDIS_URL: process.env.REDIS_URL,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         RESEND_API_KEY: process.env.RESEND_API_KEY,
-        // EMAIL_FROM must use verified Resend sending domain
-        // Correct: "Spinzy Academy <no-reply@send.spinzyacademy.com>"
-        // Wrong:   "Spinzy Academy <no-reply@spinzyacademy.com>"
-        // Verified domain in Resend: send.spinzyacademy.com
+        // EMAIL_FROM must use the verified Resend sending domain.
+        // Example format: "Brand Name <no-reply@verified-domain>"
         EMAIL_FROM: process.env.EMAIL_FROM,
         ONCALL_EMAIL: process.env.ONCALL_EMAIL,
         ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',

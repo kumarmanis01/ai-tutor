@@ -6,14 +6,19 @@
  * Import from here rather than hard-coding strings at call sites.
  */
 
+import {
+  MAIL_CONSTANTS_NO_REPLY_EMAIL,
+  MAIL_CONSTANTS_SUPPORT_EMAIL,
+} from '@/lib/email/functionalityEmails';
+
 // ── Addresses ─────────────────────────────────────────────────────────────────
 
 export const MAIL_FROM =
-  process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@send.spinzyacademy.com>';
+  process.env.EMAIL_FROM ?? `Spinzy Academy <${MAIL_CONSTANTS_NO_REPLY_EMAIL}>`;
 
-export const MAIL_SUPPORT = 'support@spinzyacademy.com';
+export const MAIL_SUPPORT = MAIL_CONSTANTS_SUPPORT_EMAIL;
 
-export const MAIL_NOREPLY = 'no-reply@send.spinzyacademy.com';
+export const MAIL_NOREPLY = MAIL_CONSTANTS_NO_REPLY_EMAIL;
 
 // ── Email subjects ─────────────────────────────────────────────────────────────
 // Use {name} placeholder where the recipient or student name should be inserted.

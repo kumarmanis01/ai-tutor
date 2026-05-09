@@ -17,6 +17,8 @@
  *   these exports for runtime JS usage (e.g., chart colours).
  */
 
+import { BRAND_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
+
 // ============================================================================
 // BRAND META
 // ============================================================================
@@ -26,7 +28,7 @@ export const BRAND_META = {
   productName: 'Spinzy AI Tutor',
   tutorName: 'Vidya',
   tagline: 'Turn doubts into confidence',
-  supportEmail: 'support@spinzy.in',
+  supportEmail: BRAND_SUPPORT_EMAIL,
   pricing: { amount: '399', currency: 'INR', symbol: '₹' },
   logoPath: '/logos/spinzy-logo.svg',
   logoIconPath: '/logos/icon-192.png',
