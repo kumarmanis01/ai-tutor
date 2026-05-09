@@ -19,6 +19,7 @@ EDIT LOG:
 - 2026-05-04T00:00:00Z | copilot | align header field names and instruction paths with engineering template
 - 2026-05-08T00:00:00Z | copilot | audit and align F-STU-010 AC-02 CTA behavior
 - 2026-05-08T00:00:00Z | copilot | add direct unit tests for SecondaryStartOptions (browse + surprise)
+- 2026-05-09T00:00:00Z | copilot | audit F-STU-033 progress reports and note homework submission now closes linked learning sessions for progress metrics
 -->
 
 AI HOME TUTOR PLATFORM
@@ -793,7 +794,7 @@ Status
 AC-01
 Report shows: Sessions completed (trend graph last 30 days), Mastery % per chapter (colour-coded), Test scores over time, Time spent studying (weekly heatmap), Concepts mastered count.
 MUST
-DONE — SessionsChart + ChapterMasteryBars + ScoreTrendGraph + StudyTimeHeatmap + conceptsMasteredCount stat card all present on /student/progress. StudyTimeHeatmap and concepts mastered count added in this sprint.
+DONE — SessionsChart + ChapterMasteryBars + ScoreTrendGraph + StudyTimeHeatmap + conceptsMasteredCount stat card all present on /student/progress. Homework submission now closes the linked LearningSession so completed homework is reflected in progress metrics.
 AC-02
 Filterable by: Subject, Time range (7 / 30 / 90 days / all time).
 MUST

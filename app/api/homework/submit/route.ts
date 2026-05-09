@@ -5,6 +5,9 @@ import { normalizeAnswer } from '@/lib/tests';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { logger } from '@/lib/logger';
 import { recordSessionEvent, recordSessionEvents } from '@/lib/session/sessionEvents';
+import { awardXP } from '@/lib/student/xp';
+import { updateStreak } from '@/lib/student/streak';
+import { checkSessionBadges } from '@/lib/student/badges';
 import type { HomeworkQuestion } from '@/lib/session/homework';
 
 export const dynamic = 'force-dynamic';
@@ -133,6 +136,94 @@ export async function POST(req: Request) {
       userId: user.id,
       topicId: assignment.topicId,
       error: err,
+    });
+  }
+
+  const xpEarned = correctCount * 10;
+
+  try {
+    await awardXP({
+      studentId: user.id,
+      amount: xpEarned,
+      source: 'session_correct',
+      sessionId: assignment.sessionId ?? undefined,
+    });
+    logger.info('[HOMEWORK_XP_AWARDED]', {
+      studentId: user.id,
+      assignmentId: assignment.id,
+      sessionId: assignment.sessionId,
+      xpEarned,
+      correctCount,
+      totalCount,
+    });
+  } catch (err) {
+    logger.error('[HOMEWORK_XP_AWARD_FAILED]', {
+      studentId: user.id,
+      assignmentId: assignment.id,
+      sessionId: assignment.sessionId,
+      error: err,
+    });
+  }
+
+  if (assignment.sessionId) {
+    const now = new Date();
+
+    try {
+      const learningSession = await prisma.learningSession.findFirst({
+        where: { id: assignment.sessionId, studentId: user.id },
+        select: { startedAt: true, endedAt: true },
+      });
+
+      if (learningSession) {
+        const endedAt = learningSession.endedAt ?? now;
+        const durationMs = Math.max(0, endedAt.getTime() - learningSession.startedAt.getTime());
+        const actualTimeSpent = Math.max(0, Math.floor(durationMs / 60000));
+
+        await prisma.learningSession.update({
+          where: { id: assignment.sessionId },
+          data: {
+            isCompleted: true,
+            completionPercentage: 100,
+            endedAt,
+            actualTimeSpent,
+            lastAccessed: now,
+          },
+        });
+
+        logger.info('[HOMEWORK_SESSION_COMPLETED]', {
+          studentId: user.id,
+          sessionId: assignment.sessionId,
+          assignmentId: assignment.id,
+          actualTimeSpent,
+        });
+      }
+    } catch (err) {
+      logger.error('[HOMEWORK_SESSION_COMPLETION_FAILED]', {
+        studentId: user.id,
+        sessionId: assignment.sessionId,
+        assignmentId: assignment.id,
+        error: err,
+      });
+    }
+
+    const streakResult = await updateStreak(user.id);
+    const masteryAfter = await prisma.studentTopicProgress.findUnique({
+      where: {
+        studentId_topicId: {
+          studentId: user.id,
+          topicId: assignment.topicId,
+        },
+      },
+      select: { mastery: true },
+    });
+
+    void checkSessionBadges({
+      studentId: user.id,
+      sessionId: assignment.sessionId,
+      currentStreak: streakResult?.currentStreak ?? 0,
+      masteryAfter: masteryAfter?.mastery ?? 0,
+      accuracy: totalCount > 0 ? correctCount / totalCount : 0,
+      avgTimeSeconds: 0,
     });
   }
 
