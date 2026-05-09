@@ -21,6 +21,9 @@
  *                          rename Browse topics label to Browse syllabus
  * - 2026-05-08T00:00:00Z | copilot | add direct component tests for Browse
  *                          syllabus and Surprise me success/fallback routing
+ * - 2026-05-09T14:45:00Z | copilot | fix: on Surprise me 204 or missing action,
+ *                          route to /dashboard (home) not resolvedTodaysHref which may be
+ *                          /learn/learning-path; never fallback Surprise me to syllabus browser
  */
 
 'use client'
@@ -55,23 +58,23 @@ export default function SecondaryStartOptions({
         return
       }
       if (res.status === 204) {
-        toast('No surprise suggestion available right now. Opening today\'s topic.')
-        router.push(resolvedTodaysHref)
+        toast('No weak topic available right now. Heading home.')
+        router.push('/dashboard')
         return
       }
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to get suggestion')
       const action = json?.action
       if (!action || !action.topicId) {
-        toast('No surprise suggestion returned. Opening today\'s topic.')
-        router.push(resolvedTodaysHref)
+        toast('Couldn\'t find a weak topic. Heading home.')
+        router.push('/dashboard')
         return
       }
       // Navigate to the pre-session screen for the suggested topic
       router.push(`/session/pre/${encodeURIComponent(action.topicId)}`)
     } catch (err: any) {
       toast(String(err?.message || 'Could not pick a surprise topic'))
-      router.push(resolvedTodaysHref)
+      router.push('/dashboard')
     } finally {
       setLoading(false)
     }

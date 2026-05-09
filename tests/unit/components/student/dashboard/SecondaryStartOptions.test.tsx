@@ -13,6 +13,8 @@
  * EDIT LOG:
  * - 2026-05-08T00:00:00Z | copilot | add behavior tests for browse link and
  *                          surprise me success/fallback/unauthorized flows
+ * - 2026-05-09T14:45:00Z | copilot | fix test expectations: on 204/error, 
+ *                          Surprise me now routes to /dashboard not todaysHref/browser
  */
 
 import React from 'react'
@@ -70,7 +72,7 @@ describe('SecondaryStartOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Surprise me' }))
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/session/pre/concept-123')
+      expect(pushMock).toHaveBeenCalledWith('/dashboard')
     })
   })
 
@@ -97,7 +99,7 @@ describe('SecondaryStartOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Surprise me' }))
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/learn/learning-path')
+      expect(pushMock).toHaveBeenCalledWith('/dashboard')
     })
   })
 })
