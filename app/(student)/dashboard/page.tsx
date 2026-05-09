@@ -27,7 +27,7 @@ import Link from 'next/link'
 import { requireActiveSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getNextAction } from '@/lib/homeEngine/getNextAction'
-import { computeReadinessScore } from '@/lib/student/examReadiness'
+import { computeReadinessScore, type ReadinessChapter } from '@/lib/student/examReadiness'
 import { logger } from '@/lib/logger'
 import TodaysLearningCard, {
   type TodaysLearningCardProps,
@@ -244,6 +244,7 @@ export default async function StudentHomeDashboardPage() {
     subjectName: string
     score: number
     predictedRange?: any
+    chapters: ReadinessChapter[]
     diagnosticDone: boolean
     retakeEligibleAt: string | null
   }
@@ -268,6 +269,7 @@ export default async function StudentHomeDashboardPage() {
           subjectName: sub.name,
           score: result.score,
           predictedRange: (result as any).predictedRange ?? undefined,
+          chapters: result.chapters ?? [],
           // Diagnostic status lives in StudentLearningProfile.recommendations
           // (lowercase 'completed'), not in the DiagnosticSession Prisma model.
           diagnosticDone: diagStatus?.status === 'completed',
@@ -536,6 +538,7 @@ export default async function StudentHomeDashboardPage() {
                       diagnosticDone={r.diagnosticDone}
                       predictedRange={r.predictedRange}
                       retakeEligibleAt={r.retakeEligibleAt}
+                      chapters={r.chapters}
                     />
                   </Link>
                 ))}

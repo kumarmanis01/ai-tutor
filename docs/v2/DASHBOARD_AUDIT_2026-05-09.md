@@ -14,6 +14,8 @@ COPILOT INSTRUCTIONS FOLLOWED:
 
 EDIT LOG:
 - 2026-05-09T14:30:00Z | audit | comprehensive dashboard gap analysis vs wireframe & spec
+- 2026-05-09T15:30:00Z | copilot | status refresh after P0 fixes (Surprise fallback,
+  XP breakdown rendering, readiness card rewrite)
 -->
 
 # Student Dashboard Audit Report
@@ -27,9 +29,9 @@ EDIT LOG:
 
 | Gap | Severity | Impact | Status |
 |-----|----------|--------|--------|
-| 1. Surprise Me fallback logic | 🔴 Critical | Wrong routing on no suggestion | Needs fix |
-| 2. XP source breakdown not rendered | 🔴 Critical | Data fetched but hidden from UI | Needs fix |
-| 3. Subject Readiness Card broken | 🔴 Critical | Uses old design tokens, missing props | Needs rewrite |
+| 1. Surprise Me fallback logic | 🔴 Critical | Wrong routing on no suggestion | ✅ Fixed |
+| 2. XP source breakdown not rendered | 🔴 Critical | Data fetched but hidden from UI | ✅ Fixed |
+| 3. Subject Readiness Card broken | 🔴 Critical | Uses old design tokens, missing props | ✅ Fixed |
 | 4. Focus Area missing | 🟠 High | Wireframe shows, not implemented | Needs implementation |
 | 5. Secondary buttons hardcoded colors | 🟡 Medium | Should use design tokens | Refactor |
 | 6. "This Week" complete | 🟢 Low | All spec requirements met | No action |
@@ -40,6 +42,8 @@ EDIT LOG:
 ## Gap Analysis
 
 ### GAP 1: Surprise Me Routes to Wrong Destination 🔴
+
+**Status:** ✅ Fixed
 
 **File:** `components/student/dashboard/SecondaryStartOptions.tsx` (lines 51–73)  
 **Spec Reference:** [F-STU-010 AC-02](../01_student.md#f-stu-010)
@@ -80,6 +84,8 @@ if (res.status === 204) {
 ---
 
 ### GAP 2: XP Source Breakdown Not Displayed 🔴
+
+**Status:** ✅ Fixed
 
 **Files:**
 - Fetch: `app/(student)/dashboard/page.tsx` (line 141–148)
@@ -145,6 +151,8 @@ Level 5 · Gold                XP this week: 245
 ---
 
 ### GAP 3: Subject Readiness Card Completely Broken 🔴
+
+**Status:** ✅ Fixed
 
 **File:** `components/student/dashboard/SubjectReadinessCard.tsx` (full file ~17 lines)
 
@@ -230,6 +238,8 @@ export function SubjectReadinessCard({ subjectName, score }: Props) {
 
 ### GAP 4: Focus Area Section Missing 🟠
 
+**Status:** ⏳ Pending
+
 **Files:**
 - Dashboard: `app/(student)/dashboard/page.tsx`
 - Wireframe: Screen 7
@@ -275,6 +285,8 @@ Focus Area
 ---
 
 ### GAP 5: Secondary Start Options Use Hardcoded Colors 🟡
+
+**Status:** ⏳ Pending
 
 **File:** `components/student/dashboard/SecondaryStartOptions.tsx` (lines 81–104)
 
@@ -342,21 +354,21 @@ Focus Area
 
 | Priority | Gap | Component | File(s) | Est. Effort |
 |----------|-----|-----------|---------|------------|
-| 🔴 P0 | Surprise Me fallback | SecondaryStartOptions | `SecondaryStartOptions.tsx` | 0.5 hrs |
-| 🔴 P0 | XP source display | XPWidget | `XPWidget.tsx` | 2 hrs |
-| 🔴 P0 | Readiness Card rewrite | SubjectReadinessCard | `SubjectReadinessCard.tsx` | 3 hrs |
+| ✅ Done | Surprise Me fallback | SecondaryStartOptions | `SecondaryStartOptions.tsx` | Completed |
+| ✅ Done | XP source display | XPWidget | `XPWidget.tsx` | Completed |
+| ✅ Done | Readiness Card rewrite | SubjectReadinessCard | `SubjectReadinessCard.tsx` | Completed |
 | 🟠 P1 | Focus Area section | FocusAreaCard + Dashboard | New + `page.tsx` | 3 hrs |
 | 🟡 P2 | Color hardcoding | SecondaryStartOptions | `SecondaryStartOptions.tsx` | 1.5 hrs |
 
-**Total Estimated Effort:** ~10 hours
+**Remaining Estimated Effort:** ~4.5 hours
 
 ---
 
 ## Implementation Checklist
 
-- [ ] Fix Surprise Me 204 fallback logic
-- [ ] Render XP source breakdown in XPWidget
-- [ ] Rewrite SubjectReadinessCard (design tokens + dark mode)
+- [x] Fix Surprise Me 204 fallback logic
+- [x] Render XP source breakdown in XPWidget
+- [x] Rewrite SubjectReadinessCard (design tokens + dark mode)
 - [ ] Implement FocusAreaCard + integrate into dashboard
 - [ ] Extract brand colors to `lib/constants/theme.ts`
 - [ ] Run `npm run build` + `npm test` after each change
