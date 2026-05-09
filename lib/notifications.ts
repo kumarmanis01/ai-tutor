@@ -439,6 +439,17 @@ async function markEscalationStatus(studentId: string, status: string | null): P
   }
 }
 
+function buildAuditMetadata(context: NotificationEvent['context']): Record<string, string | number | boolean> {
+  const metadata: Record<string, string | number | boolean> = {};
+
+  for (const [key, value] of Object.entries(context)) {
+    if (value === undefined) continue;
+    metadata[key] = value;
+  }
+
+  return metadata;
+}
+
 // ── Audit log ─────────────────────────────────────────────────────────────────
 
 /**
@@ -466,7 +477,7 @@ export async function logNotificationEvent(
             dryRun:       event.dryRun ?? false,
             studentId:    event.studentId,
             parentId:     event.parentId ?? null,
-            metadata:     event.context as Record<string, unknown>,
+            metadata:     buildAuditMetadata(event.context),
           },
         });
       } catch (err) {

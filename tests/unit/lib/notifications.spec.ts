@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | staff-engineer | created per AC-08 of 09_notification_architecture.md
+ * - 2026-05-09T00:00:00Z | staff-engineer | added audit metadata sanitization coverage for Prisma JSON input
  */
 
 import {
@@ -330,6 +331,33 @@ describe('logNotificationEvent()', () => {
     await logNotificationEvent(event, result);
     const call = prisma.notificationAudit.create.mock.calls[0][0];
     expect(call.data.studentId).toBe('student-1');
+  });
+
+  it('should strip undefined values from audit metadata', async () => {
+    const { prisma } = jest.requireMock('@/lib/prisma') as any;
+    const event = {
+      ...baseEvent,
+      context: {
+        studentName: 'Aarav',
+        parentName: undefined,
+        dashboardUrl: 'https://example.com',
+        ctaUrl: undefined,
+      },
+    };
+    const result = {
+      eventType: NOTIFICATION_EVENT_TYPES.SIGNUP_COMPLETED,
+      channels: [{ channel: 'email' as const, actor: 'student' as const, templateId: 'STUDENT_WELCOME', status: 'sent' as const }],
+      skippedDryRun: false,
+    };
+
+    await logNotificationEvent(event, result);
+    const call = prisma.notificationAudit.create.mock.calls[0][0];
+    expect(call.data.metadata).toEqual({
+      studentName: 'Aarav',
+      dashboardUrl: 'https://example.com',
+    });
+    expect(call.data.metadata).not.toHaveProperty('parentName');
+    expect(call.data.metadata).not.toHaveProperty('ctaUrl');
   });
 
   it('should not crash when notificationAudit.create throws', async () => {
