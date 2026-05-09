@@ -9,6 +9,7 @@
  * - 2026-03-08 | claude | created as part of Session Architecture refactor
  *                         (replaces hooks/useStructuredSession.ts)
  * - 2026-05-08 | copilot | add practice hydration status/trigger methods for pending PRACTICE fallback UI
+ * - 2026-05-09T00:00:00Z | copilot | submitTest now accepts testId and forwards it to API for deterministic grading
  */
 
 import { useState, useCallback } from 'react';
@@ -101,12 +102,15 @@ export function useSession() {
   );
 
   const submitTest = useCallback(
-    async (answers: { questionId: string; answer: string }[]): Promise<SubmitActionResult | null> => {
+    async (
+      testId: string,
+      answers: { questionId: string; answer: string }[],
+    ): Promise<SubmitActionResult | null> => {
       const sessionId = state.session?.sessionId;
       if (!sessionId) return null;
       setState((s) => ({ ...s, submitting: true }));
       try {
-        const result = await submitTestAction(sessionId, answers);
+        const result = await submitTestAction(sessionId, answers, testId);
         setState((s) => ({ ...s, submitting: false }));
         return result;
       } catch {

@@ -18,6 +18,7 @@
  * - 2026-03-08 | claude | refactored to use phaseRouter + SessionLayout + useSession
  *                          (was components/Session/SessionContainer.tsx)
  * - 2026-05-08 | copilot | replace pending PRACTICE skip CTA with hydrate status + manual generate + polling refresh
+ * - 2026-05-09T00:00:00Z | copilot | submit TEST answers with testId to keep backend grading aligned with displayed test version
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -434,6 +435,7 @@ function buildPhaseProps(
     a: { questionId: string; answer: string }[]
   ) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
   submitTest: (
+    testId: string,
     a: { questionId: string; answer: string }[]
   ) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
   submitting: boolean,
@@ -469,7 +471,8 @@ function buildPhaseProps(
       return {
         content: content as TestContent,
         topicName,
-        onSubmit: submitTest,
+        onSubmit: (answers: { questionId: string; answer: string }[]) =>
+          submitTest((content as TestContent).testId, answers),
         onReadyToProceed,
         onTestStateChange,
         onRegisterTestSubmit,

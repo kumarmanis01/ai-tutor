@@ -8,6 +8,7 @@
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Architecture refactor
  * - 2026-05-08 | copilot | add practice hydration status/trigger actions for pending PRACTICE fallback
+ * - 2026-05-09T00:00:00Z | copilot | submit test payload now carries testId so backend grades against the displayed test version
  */
 
 export interface SessionActionResult {
@@ -89,11 +90,12 @@ export async function navigateToPhaseAction(
 export async function submitTestAction(
   sessionId: string,
   answers: { questionId: string; answer: string }[],
+  testId?: string,
 ): Promise<SubmitActionResult> {
   const res = await fetch(`/api/session/${sessionId}/test/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify({ answers, testId }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Failed to submit test');
