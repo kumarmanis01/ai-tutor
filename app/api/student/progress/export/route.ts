@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Expose GET /api/student/progress/export to generate a student progress PDF.
+ * - Aggregates recent progress signals and returns a downloadable PDF response.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/student/progress/export.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-09T09:00:00Z | copilot | added mandatory file header to close Gap 8 in progress-page audit
+ */
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'

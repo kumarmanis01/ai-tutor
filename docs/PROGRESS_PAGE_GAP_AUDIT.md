@@ -18,6 +18,10 @@ EDIT LOG:
 - 2026-05-09T03:00:00Z | copilot | Gap 7 confirmed fully fixed — write-side already protected in onboarding and enroll/save routes
 - 2026-05-09T04:00:00Z | copilot | Gap 2 FIXED — equal-weight fallback in examReadiness.ts when boardChapterWeights missing; concept-free chapter fallback
 - 2026-05-09T05:00:00Z | copilot | Gap 3 FIXED — meta.score written to StructuredSession in student session complete route; score never persisted was a code bug not just a data gap
+- 2026-05-09T06:00:00Z | copilot | Gap 4 documentation corrected — trend subject-filter bug marked fixed under Gap 6; consolidated priority status updated
+- 2026-05-09T07:00:00Z | copilot | Gap 4 marked fully fixed as code defect; remaining empty trend state documented as expected new-account data condition
+- 2026-05-09T08:00:00Z | copilot | Gap 5 marked fully fixed as code defect; remaining empty heatmap state documented as expected new-account data condition
+- 2026-05-09T09:00:00Z | copilot | Gap 8 FIXED — added mandatory FILE OBJECTIVE header to progress export route and added route unit tests
 -->
 
 # /student/progress — Requirement vs. Implementation Gap Audit
@@ -185,11 +189,11 @@ if (structuredSessionId && typeof structuredSessionId === 'string') {
 
 ---
 
-## Gap 4 — Practice test trend is empty 🟠
+## Gap 4 — Practice test trend empty for new accounts 🟠
 
 **UI section:** "Practice test trend" line chart (right column)  
 **Requirement:** F-STU-033 AC-01 — Test scores over time  
-**Status:** EXPECTED for new accounts; will self-heal after first chapter test
+**Status:** ✅ FIXED (code) — query/filter path is correct; empty state is expected until first finished test
 
 ### Root cause
 
@@ -203,7 +207,7 @@ prisma.testResult.findMany({
     finishedAt: { not: null },
     AttemptQuestions: {
       some: {
-        question: { chapter: { not: null }, ...subjectFilter },
+        question: questionClause,
       },
     },
   },
@@ -211,31 +215,19 @@ prisma.testResult.findMany({
 })
 ```
 
-No `testResult` records exist yet. Requires the student to complete at least one chapter practice test via the test-taking flow.
+No `testResult` records exist yet for newly created accounts. The chart will populate after at least one completed chapter practice test exists.
 
-### Secondary bug — `subjectFilter` applied to wrong model field 🟡
+### Resolution ✅
 
-When `?subject=Mathematics` is in the URL, `subjectFilter` is:
+The subject-filter defect for trend rows is fixed under **Gap 6** via
+model-specific relation-path filters (`questionClause` through `question.chapter.subject.name`).
 
-```ts
-{ subject: { equals: 'Mathematics', mode: 'insensitive' } }
-```
+The remaining empty-chart behavior is a **data-availability state**, not a code defect.
 
-This is spread directly into `question: { chapter: { not: null }, ...subjectFilter }`. The `Question` model does **not** have a `subject` field — subject is accessible only through `question.chapter.subject`. This will cause a Prisma runtime error or return zero rows when any subject filter is active.
+### Current action
 
-The correct filter should be:
-
-```ts
-{ chapter: { not: null, subject: { name: { equals: activeSubject, mode: 'insensitive' } } } }
-```
-
-### Fix required
-
-- Empty state is acceptable for new accounts.
-- **Fix subject filter on `testResult` query** — correct the Prisma where clause to filter through `question.chapter.subject.name`.
-
-**Files to change:**
-- `app/(student)/student/progress/page.tsx` — fix `subjectFilter` for `trendRows` query (line ~130)
+- Keep the existing empty state for genuinely new accounts.
+- Optional QA step: seed one finished `testResult` fixture to validate non-empty rendering in local/dev.
 
 ---
 
@@ -243,7 +235,7 @@ The correct filter should be:
 
 **UI section:** "Study time — last 4 weeks" heatmap (right column)  
 **Requirement:** F-STU-033 AC-01 — Time spent studying (weekly heatmap)  
-**Status:** EXPECTED for new accounts; will self-heal
+**Status:** ✅ FIXED (code) — query/filter path is correct; empty state is expected until completed sessions exist
 
 ### Root cause
 
@@ -251,29 +243,18 @@ Heatmap is built from `completedAt` sessions in the last 28 days. No completed s
 
 Duration per session is computed as `completedAt - startedAt`. If a student spends 30 minutes but the session is recorded as 0 minutes (same-second start/complete), the cell shows no intensity. This can happen in test environments.
 
-### Secondary bug — `subjectFilter` applied to wrong model field 🟡
+### Update — filter bug is already fixed ✅
 
-The heatmap query spreads `subjectFilter` directly into `structuredSession.where`:
+The subject-filter defect for heatmap sessions is already fixed under **Gap 6**
+via model-specific relation-path filters (`sessionSubjectFilter` through
+`topic.chapter.subject.name`).
 
-```ts
-prisma.structuredSession.findMany({
-  where: {
-    studentId: userId,
-    completedAt: { not: null, gte: heatmapSince },
-    ...subjectFilter, // { subject: { equals: 'Mathematics' } } — WRONG
-  },
-})
-```
+The remaining empty heatmap behavior is a **data-availability state**, not a code defect.
 
-`structuredSession` has no `subject` field. The subject is reachable through `topic.chapter.subject.name`. This query will throw a Prisma validation error at runtime when `?subject=` is in the URL.
+### Current action
 
-### Fix required
-
-- Empty state acceptable for new accounts.
-- **Fix subject filter on heatmap query** — filter through `topic.chapter.subject.name`.
-
-**Files to change:**
-- `app/(student)/student/progress/page.tsx` — fix `subjectFilter` for `heatmapSessions` query
+- Keep the existing empty state for genuinely new accounts.
+- Optional QA step: seed one completed `structuredSession` in the last 28 days to validate non-empty heatmap rendering in local/dev.
 
 ---
 
@@ -341,11 +322,16 @@ New duplicates cannot be written via any current API path.
 
 **File:** `app/api/student/progress/export/route.ts`  
 **Requirement:** `.github/copilot-instructions.md` — every file must have a FILE OBJECTIVE header  
-**Status:** Header missing; CI will flag this
+**Status:** ✅ FIXED 2026-05-09
 
-### Fix required
+### Fix applied
 
-Add the standard header block at the top of the export route.
+Added the standard FILE OBJECTIVE header block at the top of the export route,
+including LINKED UNIT TEST, instruction references, and EDIT LOG entry.
+
+**Files changed:**
+- `app/api/student/progress/export/route.ts` — added mandatory top-of-file header
+- `tests/unit/api/student/progress/export.spec.ts` — new route unit tests (auth guard, success PDF response, error path)
 
 ---
 
@@ -358,9 +344,9 @@ Add the standard header block at the top of the export route.
 | 2 | Chapter mastery — curriculum data missing | 🟠 High | Medium | No | ✅ FIXED 2026-05-09 |
 | 7 | Duplicate subjects in profile | 🟡 Medium | Low | No | ✅ FIXED 2026-05-09 |
 | 3 | Session history score always `--` | 🟠 High | `complete/route.ts` | No — code bug | ✅ FIXED 2026-05-09 |
-| 4 | Practice test trend empty + filter bug | 🟠 High | Low (filter) | Partial | 🔴 Open |
-| 5 | Study time heatmap empty + filter bug | 🟠 High | Low (filter) | Partial | 🔴 Open |
-| 8 | PDF export missing file header | 🟡 Low | Trivial | No | 🔴 Open |
+| 4 | Practice test trend empty for new accounts | 🟠 High | N/A (code fixed) | Yes | ✅ CLOSED — filter bug fixed; waits for first test result data |
+| 5 | Study time heatmap empty for new accounts | 🟠 High | N/A (code fixed) | Yes | ✅ CLOSED — filter bug fixed; waits for completed session data |
+| 8 | PDF export missing file header | 🟡 Low | Trivial | No | ✅ FIXED 2026-05-09 |
 
 ---
 
@@ -387,5 +373,4 @@ Add the standard header block at the top of the export route.
 2. `app/(student)/student/progress/page.tsx` — fix subjectFilter shapes; deduplicate subjects
 3. `lib/student/examReadiness.ts` — add equal-weight fallback when boardChapterWeights missing
 4. Profile/enrolment save route — deduplicate User.subjects on write
-5. `app/api/student/progress/export/route.ts` — add FILE OBJECTIVE header
-6. Prisma seed — ensure chapterDef + boardChapterWeights + topics + concepts are seeded for all active subjects
+5. Prisma seed — ensure chapterDef + boardChapterWeights + topics + concepts are seeded for all active subjects
