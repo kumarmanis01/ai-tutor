@@ -14,6 +14,7 @@
  * EDIT LOG:
  * - 2026-04-15T00:10:00Z | staff-engineer | add Topbar unit tests for mobile sheets and badges
  * - 2026-05-09T00:00:00Z | copilot | update tests for adaptive focus topbar, Ask Vidya CTA, and mobile search/menu/profile sheets
+ * - 2026-05-09T00:00:00Z | copilot | add dedicated topbar-focus API payload mock assertions
  */
 
 import React from 'react';
@@ -40,6 +41,27 @@ jest.mock('swr', () => ({
     if (key === '/api/user/profile') {
       return { data: { name: 'Sam Student', grade: '9', board: 'CBSE', plan: null } };
     }
+    if (key === '/api/student/topbar-focus') {
+      const isExamRoute = mockedUsePathname() === '/dashboard/tests';
+      return {
+        data: {
+          focus: {
+            mode: isExamRoute ? 'exam' : 'active',
+            focusLabel: isExamRoute
+              ? 'Revision: Real payload exam focus'
+              : 'Continue: Real payload focus',
+            etaLabel: isExamRoute ? '2 short tasks today' : '9 mins left',
+            askLabel: isExamRoute ? 'Ask Vidya for quick revision' : 'Ask Vidya from payload',
+            momentumLabel: isExamRoute ? 'You are on track' : 'Payload momentum label',
+            contextTag: isExamRoute ? 'Exam mode' : 'Payload mode',
+            searchPlaceholder: 'Payload search hint',
+            actionHref: '/learn',
+            sourceRuleId: isExamRoute ? 'spaced_revision' : 'resume_session',
+          },
+          generatedAt: '2026-05-09T00:00:00.000Z',
+        },
+      };
+    }
     return { data: undefined };
   },
 }));
@@ -56,16 +78,15 @@ describe('Topbar (component)', () => {
     render(<Topbar />);
 
     expect(screen.getAllByLabelText('Spinzy home').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Continue: Algebra - Example 3').length).toBeGreaterThan(0);
-    expect(screen.getByText('Stuck on a step? Ask Vidya')).toBeTruthy();
-    expect(screen.getByText('5-day learning consistency')).toBeTruthy();
+    expect(screen.getAllByText('Continue: Real payload focus').length).toBeGreaterThan(0);
+    expect(screen.getByText('Ask Vidya from payload')).toBeTruthy();
   });
 
   it('switches to exam mode copy on tests route', () => {
     mockedUsePathname.mockReturnValue('/dashboard/tests');
     render(<Topbar />);
 
-    expect(screen.getAllByText('Revision: Physics numericals before Monday test').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Revision: Real payload exam focus').length).toBeGreaterThan(0);
     expect(screen.getByText('Ask Vidya for quick revision')).toBeTruthy();
   });
 

@@ -17,6 +17,7 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | rebuild student top bar with adaptive focus, mobile two-line architecture, Framer Motion transitions, and sticky Ask Vidya strip
+ * - 2026-05-09T00:00:00Z | copilot | wire topbar to dedicated backend focus contract payload endpoint
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -28,6 +29,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Flame, Menu, Search, Sparkles, UserCircle2, X } from 'lucide-react';
 import StreakWidget from '../dashboard/StreakWidget';
 import Logo from '../../Logo';
+import type { StudentTopbarFocusResponse } from '../../../lib/api/student/topbarContract';
 
 const fetcher = (url: string) => fetch(url).then((response) => response.json());
 
@@ -87,6 +89,8 @@ const MODE_FOCUS: Record<TopbarMode, FocusConfig> = {
   },
 };
 
+const TOPBAR_FOCUS_ENDPOINT = '/api/student/topbar-focus';
+
 type TopbarStats = {
   streak: number;
   longestStreak?: number;
@@ -127,6 +131,12 @@ export default function Topbar() {
     { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 
+  const { data: focusPayload } = useSWR<StudentTopbarFocusResponse>(
+    session ? TOPBAR_FOCUS_ENDPOINT : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
+  );
+
   useEffect(() => {
     function handleScroll() {
       setShowStickyAsk(window.scrollY > 120);
@@ -147,15 +157,26 @@ export default function Topbar() {
   const level = stats?.level ?? 1;
   const shieldAvailable = stats?.shieldAvailable ?? false;
 
-  const mode: TopbarMode = useMemo(() => {
+  const fallbackMode: TopbarMode = useMemo(() => {
     if (pathname.startsWith('/dashboard/tests') || pathname.startsWith('/tests')) return 'exam';
     if (pathname.startsWith('/dashboard/doubts') || pathname.startsWith('/doubts')) return 'weak';
     if (streak === 0) return 'recovery';
     return 'active';
   }, [pathname, streak]);
 
+  const mode: TopbarMode = (focusPayload?.focus.mode ?? fallbackMode) as TopbarMode;
+
   const focusConfig = MODE_FOCUS[mode];
-  const searchPlaceholder = SEARCH_HINTS[mode];
+  const resolvedFocus = {
+    focusLabel: focusPayload?.focus.focusLabel ?? focusConfig.focusLabel,
+    etaLabel: focusPayload?.focus.etaLabel ?? focusConfig.etaLabel,
+    askLabel: focusPayload?.focus.askLabel ?? focusConfig.askLabel,
+    momentumLabel: focusPayload?.focus.momentumLabel ?? focusConfig.momentumLabel,
+    contextTag: focusPayload?.focus.contextTag ?? focusConfig.contextTag,
+    actionHref: focusPayload?.focus.actionHref ?? TOPBAR_ROUTES.learn,
+  };
+
+  const searchPlaceholder = focusPayload?.focus.searchPlaceholder ?? SEARCH_HINTS[mode];
   const shouldShowStickyAsk = showStickyAsk && (mode === 'active' || mode === 'weak');
   const isFree = profile !== undefined && !profile?.plan;
 
@@ -210,7 +231,7 @@ export default function Topbar() {
             <p className="truncate text-sm font-semibold text-foreground">
               {greetingLabel}, {firstName}
             </p>
-            <p className="truncate text-xs text-muted-foreground">{focusConfig.contextTag}</p>
+            <p className="truncate text-xs text-muted-foreground">{resolvedFocus.contextTag}</p>
           </div>
 
           <div className="flex items-center gap-1">
@@ -261,10 +282,10 @@ export default function Topbar() {
             animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <p className="truncate text-sm font-medium text-foreground">{focusConfig.focusLabel}</p>
-            <p className="truncate text-xs text-muted-foreground">{focusConfig.etaLabel}</p>
+            <p className="truncate text-sm font-medium text-foreground">{resolvedFocus.focusLabel}</p>
+            <p className="truncate text-xs text-muted-foreground">{resolvedFocus.etaLabel}</p>
             <p className="sr-only" aria-live="polite">
-              Today focus updated: {focusConfig.focusLabel}
+              Today focus updated: {resolvedFocus.focusLabel}
             </p>
           </motion.div>
         </div>
@@ -282,7 +303,7 @@ export default function Topbar() {
               <p className="truncate text-sm font-semibold text-foreground">
                 {greetingLabel}, {firstName}
               </p>
-              <p className="truncate text-xs text-muted-foreground">{focusConfig.momentumLabel}</p>
+              <p className="truncate text-xs text-muted-foreground">{resolvedFocus.momentumLabel}</p>
             </div>
           </div>
 
@@ -302,15 +323,15 @@ export default function Topbar() {
               >
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex rounded-full bg-brand-primary-bg px-2 py-0.5 text-brand-primary">
-                    {focusConfig.contextTag}
+                    {resolvedFocus.contextTag}
                   </span>
-                  <span>{focusConfig.etaLabel}</span>
+                  <span>{resolvedFocus.etaLabel}</span>
                 </div>
-                <p className="truncate text-sm font-medium text-foreground">{focusConfig.focusLabel}</p>
+                <p className="truncate text-sm font-medium text-foreground">{resolvedFocus.focusLabel}</p>
               </motion.div>
             </AnimatePresence>
             <p className="sr-only" aria-live="polite">
-              Today focus updated: {focusConfig.focusLabel}
+              Today focus updated: {resolvedFocus.focusLabel}
             </p>
           </motion.div>
 
@@ -327,11 +348,11 @@ export default function Topbar() {
             </div>
 
             <Link
-              href={TOPBAR_ROUTES.doubts}
+              href={resolvedFocus.actionHref}
               className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary-fg shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Sparkles className="h-4 w-4" aria-hidden="true" />
-              <span>{focusConfig.askLabel}</span>
+              <span>{resolvedFocus.askLabel}</span>
             </Link>
 
             <motion.div
@@ -403,11 +424,11 @@ export default function Topbar() {
             className="border-t border-border bg-background/95 px-3 pb-2 pt-2 backdrop-blur-sm lg:hidden"
           >
             <Link
-              href={TOPBAR_ROUTES.doubts}
+              href={resolvedFocus.actionHref}
               className="mx-auto inline-flex min-h-[44px] w-[72%] items-center justify-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary-fg shadow-sm"
             >
               <Sparkles className="h-4 w-4" aria-hidden="true" />
-              <span>{focusConfig.askLabel}</span>
+              <span>{resolvedFocus.askLabel}</span>
             </Link>
           </motion.div>
         ) : null}
