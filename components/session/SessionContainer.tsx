@@ -6,6 +6,14 @@
  * - Uses SessionLayout for consistent header/footer shell.
  * - Uses useSession() hook for all API lifecycle calls.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/session/SessionContainer.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
  * Architecture (per spec):
  *   SessionContainer
  *     ├─ useSession()        -- data
@@ -19,6 +27,7 @@
  *                          (was components/Session/SessionContainer.tsx)
  * - 2026-05-08 | copilot | replace pending PRACTICE skip CTA with hydrate status + manual generate + polling refresh
  * - 2026-05-09T00:00:00Z | copilot | submit TEST answers with testId to keep backend grading aligned with displayed test version
+ * - 2026-05-09T00:00:00Z | copilot | fix TEST footer gating so Continue is enabled after result is available
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -403,7 +412,7 @@ export function SessionContainer({
   const footerLabel =
     currentPhase === 'TEST' && testResultSet ? 'Continue' : FOOTER_LABELS[currentPhase];
   const footerDisabled =
-    currentPhase === 'TEST' && !testResultSet ? !testAllAnswered : !phaseReadyToProceed;
+    currentPhase === 'TEST' ? (testResultSet ? false : !testAllAnswered) : !phaseReadyToProceed;
 
   const footer = {
     nextLabel: footerLabel,
