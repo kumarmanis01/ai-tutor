@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- refactor(student-topbar): merge focus into combined topbar stats contract
+  - Removed standalone `GET /api/student/topbar-focus`
+  - `GET /api/student/topbar-stats` now returns both momentum stats and the focus payload consumed by the student top bar
+  - Updated student top bar client state to use the combined response in one SWR request
+  - Added table-driven integration coverage for `resume_session`, `spaced_revision`, and `inactive_return` focus mappings
+
 - chore(prompts): centralize prompt templates under `prompts/` and integrate templates into worker services
   - Added: `prompts/base_context.md`, `prompts/chapters.md`, `prompts/topics.md`, `prompts/notes.md`, `prompts/questions.*.md`, `prompts/quality_control.md`, `prompts/additional_examples.md`, `prompts/prompt_config.json`
   - Integrated prompt templates into `worker/services/*Worker.ts` (syllabus, notes, questions) with placeholder substitution and fallbacks

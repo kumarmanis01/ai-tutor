@@ -20,10 +20,17 @@
  *                               filter by resolveTargetDifficulty(mastery) with a graceful
  *                               fallback to any-difficulty when content at the target band
  *                               is not yet available. No schema changes.
+ *   2026-05-09 | copilot      | resolvePractice: promote GeneratedQuestion rows into Question
+ *                               table when Question table is empty for a topic, so questions
+ *                               are visible immediately after job completion or admin approval
+ *                               without requiring a separate sync step.
+ *   2026-05-09 | copilot      | skip rejected GeneratedTest rows during practice promotion so
+ *                               admin rejections remain hidden to students.
  */
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { ApprovalStatus } from '@/lib/ai-engine/types';
 import {
   type SessionPhase,
   PHASE_METADATA,
@@ -282,6 +289,102 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
       orderBy: { createdAt: 'desc' },
       select: questionSelect,
     });
+  }
+
+  if (questions.length === 0) {
+    // Fallback: promote GeneratedQuestion rows into the Question table when the Question
+    // bank is empty. This handles cases where the worker soft-sync was not yet in place,
+    // where the soft-sync failed transiently, or where admin approved a GeneratedTest but
+    // the sync had not yet been triggered. quarantined/rejected rows are preserved via
+    // upsert update:{} -- only new rows are created with ACTIVE status.
+    try {
+      const generatedRows = await prisma.generatedQuestion.findMany({
+        where: { test: { topicId, status: { not: ApprovalStatus.Rejected } } },
+        select: {
+          id: true,
+          type: true,
+          question: true,
+          options: true,
+          answer: true,
+          test: {
+            select: {
+              difficulty: true,
+              topicId: true,
+              topic: {
+                select: {
+                  chapter: {
+                    select: {
+                      name: true,
+                      subject: {
+                        select: {
+                          name: true,
+                          class: {
+                            select: {
+                              grade: true,
+                              board: { select: { slug: true } },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (generatedRows.length > 0) {
+        for (const gq of generatedRows) {
+          const correctAnswer =
+            typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer ?? '');
+          const ch = gq.test.topic?.chapter;
+          const sub = ch?.subject;
+          const cls = sub?.class;
+          await prisma.question.upsert({
+            where: { id: gq.id },
+            update: {},
+            create: {
+              id: gq.id,
+              type: gq.type || 'mcq',
+              prompt: gq.question,
+              choices: gq.options ?? undefined,
+              correctAnswer,
+              difficulty: gq.test.difficulty ?? null,
+              subject: sub?.name ?? null,
+              chapter: ch?.name ?? null,
+              grade: cls?.grade != null ? String(cls.grade) : null,
+              board: cls?.board?.slug ?? null,
+              topicId: gq.test.topicId ?? null,
+              source: 'generated',
+              // status defaults to ACTIVE via schema @default(ACTIVE)
+            },
+          });
+        }
+
+        logger.info('[PHASE_CONTENT] resolvePractice: promoted GeneratedQuestion rows on-demand', {
+          topicId,
+          promoted: generatedRows.length,
+        });
+
+        // Re-query after promotion so the caller gets questions in this same request.
+        questions = await prisma.question.findMany({
+          // quarantined questions excluded -- do not remove this filter
+          where: { topicId, status: 'ACTIVE' },
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: questionSelect,
+        });
+      }
+    } catch (syncErr) {
+      // Non-fatal: log and fall through to pending state so the student sees
+      // the "generating" UI rather than a hard error.
+      logger.error('[PHASE_CONTENT] resolvePractice: on-demand GeneratedQuestion promotion failed', {
+        topicId,
+        error: String(syncErr),
+      });
+    }
   }
 
   if (questions.length === 0) {

@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-01-22T02:00:00Z | copilot | Phase 2: Created topic hydration enqueue functions
+ * - 2026-05-08T00:00:00Z | copilot | add force + questionsPerDifficulty support for proactive session-triggered questions hydration
  */
 
 import { prisma } from '@/lib/prisma';
@@ -40,8 +41,11 @@ interface TopicHydrationInput {
   topicId: string;
   language?: string;
   difficulty?: string;
-  /** When true, bypass the content_exists idempotency check so new versions are generated for topics that already have approved notes. */
+  /** For questions hydration only: validated in worker and capped by policy. */
+  questionsPerDifficulty?: number;
+  /** When true, bypass content-exists idempotency checks for re-hydration. */
   force?: boolean;
+  /** When true, bypass the content_exists idempotency check so new versions are generated for topics that already have approved notes. */
 }
 
 /**
@@ -178,11 +182,11 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
  * - Questions hydration is TOPIC-scoped
  */
 export async function enqueueQuestionsHydration(input: TopicHydrationInput): Promise<HydrationResult> {
-  const { topicId } = input;
+  const { topicId, force = false, questionsPerDifficulty } = input;
   const language = normalizeLanguage(input.language) ?? 'en';
   const difficulty = normalizeDifficulty(input.difficulty) ?? 'medium';
 
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueQuestionsHydration called', { topicId, language, difficulty });
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueQuestionsHydration called', { topicId, language, difficulty, force, questionsPerDifficulty });
 
   // 1️⃣ Global pause guard
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
@@ -198,18 +202,20 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
     return { created: false, reason: 'resolve_not_found' };
   }
 
-  // 3️⃣ Idempotency: if approved questions exist for this topic+language+difficulty, skip
-  const existingQuestions = await prisma.generatedTest.findFirst({
-    where: {
-      topicId,
-      language,
-      difficulty,
-      status: 'approved'
+  // 3️⃣ Idempotency: if approved questions exist for this topic+language+difficulty, skip unless force=true
+  if (!force) {
+    const existingQuestions = await prisma.generatedTest.findFirst({
+      where: {
+        topicId,
+        language,
+        difficulty,
+        status: 'approved'
+      }
+    });
+    if (existingQuestions) {
+      if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: questions_exist', { topicId, language, difficulty });
+      return { created: false, reason: 'content_exists' };
     }
-  });
-  if (existingQuestions) {
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: questions_exist', { topicId, language, difficulty });
-    return { created: false, reason: 'content_exists' };
   }
 
   // 4️⃣ Prevent duplicate queued/running jobs for the same topic/language/difficulty
@@ -238,6 +244,10 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
     subject: topic.chapter.subject.name,
     subjectId: topic.chapter.subject.id,
     chapterId: topic.chapter.id,
+    inputParams:
+      typeof questionsPerDifficulty === 'number' && questionsPerDifficulty > 0
+        ? { questionsPerDifficulty }
+        : undefined,
     status: JobStatus.Pending
   };
   const generatedId = randomUUID();
@@ -251,7 +261,16 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
       data: {
         queue: CONTENT_HYDRATION_QUEUE,
         payload: { type: 'QUESTIONS', payload: { jobId: job.id } },
-        meta: { hydrationJobId: job.id, topicId, language, difficulty }
+        meta: {
+          hydrationJobId: job.id,
+          topicId,
+          language,
+          difficulty,
+          questionsPerDifficulty:
+            typeof questionsPerDifficulty === 'number' && questionsPerDifficulty > 0
+              ? questionsPerDifficulty
+              : undefined,
+        }
       }
     });
     if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created Outbox row for questions', { jobId: job.id, outboxId: outbox.id });

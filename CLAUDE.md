@@ -319,6 +319,19 @@ Before ending ANY session:
 
 This must be the LAST step of every task, not optional.
 
+## Jest Execution Infra (Mandatory)
+
+To avoid PowerShell quoting/path failures and local PATH drift, all Jest commands must run through the shared Node-based infra wrapper:
+
+- Primary wrapper: scripts/run-focused-tests.cjs
+- PowerShell wrapper (when node is not on PATH): scripts/run-focused-tests.ps1
+
+Rules:
+- Do not invoke jest directly from package scripts for standard unit/integration/coverage/watch flows.
+- Use the wrapper for full-repo runs and focused file runs.
+- Optional suite presets are allowed, but they are convenience-only; the wrapper is infra for all Jest execution.
+- In PowerShell sessions with missing node on PATH, run tests through scripts/run-focused-tests.ps1 and pass -NodePath only when auto-resolution fails.
+
 ---
 
 ## Pre-existing errors policy

@@ -16,6 +16,8 @@
  * - 2026-01-22T02:25:00Z | copilot | Phase 3: Created questions worker handler
  * - 2026-01-22T03:30:00Z | copilot | Fixed schema: use GeneratedTest+GeneratedQuestion instead of questionsJson; added title; propagate failures to ExecutionJob
  * - 2026-01-22T04:45:00Z | copilot | Generate questions for ALL 3 difficulty levels (easy, medium, hard) in one job
+ * - 2026-05-04T00:00:00Z | copilot | Soft-approve: promote GeneratedQuestion rows to Question table after job completion so practice questions are immediately available without admin approval. Admin can still quarantine/reject individual rows.
+ * - 2026-05-09T00:00:00Z | copilot | skip rejected GeneratedTest rows when soft-promoting GeneratedQuestion rows into Question table
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -782,6 +784,98 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
 
     for (const id of persisted) {
       createdTestIds.push(id);
+    }
+
+    // Soft-approve: promote GeneratedQuestion rows to the student-facing Question table
+    // so practice questions are immediately available without waiting for admin review.
+    // Non-fatal -- if this sync fails, questions are still in GeneratedQuestion; admin can
+    // reconcile later. Admin can quarantine/reject individual Question rows afterwards.
+    if (createdTestIds.length > 0) {
+      try {
+        const generatedRows = await prisma.generatedQuestion.findMany({
+          where: { testId: { in: createdTestIds }, test: { status: { not: ApprovalStatus.Rejected } } },
+          select: {
+            id: true,
+            type: true,
+            question: true,
+            options: true,
+            answer: true,
+            test: {
+              select: {
+                difficulty: true,
+                topicId: true,
+                topic: {
+                  select: {
+                    chapter: {
+                      select: {
+                        name: true,
+                        subject: {
+                          select: {
+                            name: true,
+                            class: {
+                              select: {
+                                grade: true,
+                                board: { select: { slug: true } },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        let promoted = 0;
+        for (const gq of generatedRows) {
+          const correctAnswer =
+            typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer ?? '');
+          const ch = gq.test.topic?.chapter;
+          const sub = ch?.subject;
+          const cls = sub?.class;
+
+          // Upsert: create with ACTIVE status (schema default) if not yet in Question table.
+          // update: {} preserves any existing admin moderation state (QUARANTINED / REJECTED).
+          await prisma.question.upsert({
+            where: { id: gq.id },
+            update: {},
+            create: {
+              id: gq.id,
+              type: gq.type || 'mcq',
+              prompt: gq.question,
+              choices: gq.options ?? undefined,
+              correctAnswer,
+              difficulty: gq.test.difficulty ?? null,
+              subject: sub?.name ?? null,
+              chapter: ch?.name ?? null,
+              grade: cls?.grade != null ? String(cls.grade) : null,
+              board: cls?.board?.slug ?? null,
+              topicId: gq.test.topicId ?? null,
+              source: 'generated',
+              // status defaults to ACTIVE via schema @default(ACTIVE) -- no admin approval required
+            },
+          });
+          promoted++;
+        }
+
+        logger.info('[QUESTIONS_WORKER] soft-approve: GeneratedQuestion rows promoted to Question table', {
+          jobId,
+          topicId,
+          testIds: createdTestIds,
+          promotedCount: promoted,
+        });
+      } catch (syncErr) {
+        // Non-fatal: questions exist in GeneratedQuestion; they just will not appear in practice
+        // until the admin runs a manual sync or the next hydration job completes successfully.
+        logger.error('[QUESTIONS_WORKER] soft-approve sync failed -- questions will be unavailable until next sync', {
+          jobId,
+          topicId,
+          error: String(syncErr),
+        });
+      }
     }
   } catch (err) {
     const errMsg = (err as any)?.message ?? String(err);

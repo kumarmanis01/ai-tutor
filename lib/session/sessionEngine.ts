@@ -29,12 +29,15 @@
  *   2026-03-07 | Manish Kumar | full rewrite: add OVERVIEW phase, move progress
  *                               update into engine, centralise StudentTopicProgress
  *                               touch, strengthen error handling and JSDoc.
+ *   2026-05-08 | copilot      | proactively enqueue questions hydration on session start/resume
+ *                               when no ACTIVE practice questions exist for the topic.
  */
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { contentReadinessService } from '@/lib/session/contentReadinessService';
 import { contentHydrationTrigger } from '@/lib/session/contentHydrationTrigger';
+import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
 import { generateHomework, type HomeworkResult } from '@/lib/session/homework';
 import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/transitionSessionPhase';
 import { validatePhaseCompletion } from '@/lib/session/phaseCompletionValidator';
@@ -72,6 +75,7 @@ const DISPLAYABLE_PHASES = PHASE_ORDER.filter((p) => p !== 'COMPLETE');
 
 /** GAP-05: Sessions older than this are expired and archived. Default 48 hours. */
 const SESSION_EXPIRY_MS = Number(process.env.SESSION_EXPIRY_HOURS ?? 48) * 60 * 60 * 1000;
+const PRACTICE_HYDRATION_QUESTION_COUNT = 10;
 
 const PHASE_INDEX = new Map(PHASE_ORDER.map((p, i) => [p, i]));
 
@@ -230,6 +234,7 @@ export async function startSession(
       // Fall through to create new session below
     } else {
       // Fresh session -- resume
+      proactivelyHydratePracticeQuestions(topicId, studentId, 'session_resume');
       touchBridgedLearningSession(existing.id).catch((err) =>
         logger.warn('[SESSION_BRIDGE_TOUCH_FAILED]', { sessionId: existing.id, error: err }),
       );
@@ -252,6 +257,8 @@ export async function startSession(
     contentHydrationTrigger.triggerForTopic(topicId);
   }
 
+  proactivelyHydratePracticeQuestions(topicId, studentId, 'session_start');
+
   // ── Create new session starting at OVERVIEW ─────────────────────────────
   const session = await prisma.structuredSession.create({
     data: {
@@ -271,6 +278,47 @@ export async function startSession(
   logger.info('[SESSION_STARTED]', { studentId, sessionId: session.id, topicId });
 
   return toSessionView(session);
+}
+
+function proactivelyHydratePracticeQuestions(
+  topicId: string,
+  studentId: string,
+  triggerReason: 'session_start' | 'session_resume',
+): void {
+  void (async () => {
+    try {
+      const activePracticeQuestionCount = await prisma.question.count({
+        where: { topicId, status: 'ACTIVE' },
+      });
+
+      if (activePracticeQuestionCount > 0) {
+        return;
+      }
+
+      const enqueueResult = await enqueueQuestionsHydration({
+        topicId,
+        language: 'en',
+        difficulty: 'medium',
+        force: true,
+        questionsPerDifficulty: PRACTICE_HYDRATION_QUESTION_COUNT,
+      });
+
+      logger.info('[SESSION_PRACTICE_HYDRATION_ENQUEUE]', {
+        topicId,
+        studentId,
+        triggerReason,
+        requestedQuestionCount: PRACTICE_HYDRATION_QUESTION_COUNT,
+        enqueueResult,
+      });
+    } catch (error) {
+      logger.error('[SESSION_PRACTICE_HYDRATION_ENQUEUE_FAILED]', {
+        topicId,
+        studentId,
+        triggerReason,
+        error,
+      });
+    }
+  })();
 }
 
 /**

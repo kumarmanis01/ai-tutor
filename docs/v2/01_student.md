@@ -17,6 +17,8 @@ EDIT LOG:
 - 2026-04-17T10:30:00Z | copilot | add Phase 2 referral backlog: referral dashboard UI, in-app notifications for voided rewards, fraud review tooling, E2E billing tests
 - 2026-05-04T00:00:00Z | staff-engineer | audit F-STU-020/021/022/023/030/031/032: add Status column to all ACs; all 43 ACs marked with implementation evidence
 - 2026-05-04T00:00:00Z | copilot | align header field names and instruction paths with engineering template
+- 2026-05-08T00:00:00Z | copilot | audit and align F-STU-010 AC-02 CTA behavior
+- 2026-05-08T00:00:00Z | copilot | add direct unit tests for SecondaryStartOptions (browse + surprise)
 -->
 
 AI HOME TUTOR PLATFORM
@@ -291,7 +293,7 @@ MUST
 AC-02
 Secondary start options: Today's planned topic, Browse syllabus and pick any chapter, "Surprise me" (AI picks highest-priority weak concept).
 MUST
-✅ DONE — GET /api/student/learning-plan/today (today's topic); GET /api/student/surprise-me (weak-concept AI pick with TopicRanker fallback); browse-syllabus is client-side navigation via /api/hierarchy subject tree
+✅ DONE — Today button resolves from learning-plan recommendation in app/(student)/dashboard/page.tsx; Browse syllabus routes to /learn/learning-path curriculum picker in components/student/dashboard/SecondaryStartOptions.tsx; Surprise me uses GET /api/student/surprise-me and navigates to /session/pre/[conceptId] with safe fallback routing; covered by tests/unit/components/student/dashboard/SecondaryStartOptions.test.tsx and tests/unit/app/student/dashboard/page.test.ts
 AC-03
 Pre-session screen shows: Topic name, Estimated duration, Prerequisite check (if prerequisite not mastered → warning + option to study prerequisite first or proceed anyway).
 MUST

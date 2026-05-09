@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, file header
+ * - 2026-05-08T00:00:00Z | copilot | align practice readiness with resolver by counting only ACTIVE questions
  */
 
 import { prisma } from '@/lib/prisma';
@@ -40,7 +41,7 @@ async function isTopicReady(topicId: string): Promise<ContentReadinessResult> {
       .count({ where: { topicId, lifecycle: 'active' } })
       .then((n: number) => n > 0),
     prisma.question
-      .count({ where: { topicId } })
+      .count({ where: { topicId, status: 'ACTIVE' } })
       .then((n: number) => n > 0),
     prisma.generatedQuestion
       .count({ where: { test: { topicId, lifecycle: 'active' } } })

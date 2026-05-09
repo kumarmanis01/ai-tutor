@@ -13,6 +13,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-08T00:00:00Z | copilot | assert Google provider enforces account chooser prompt via authorization params
  * - 2026-05-07T00:00:00Z | copilot | add coverage for Google sub/email_verified sign-in flow and session id propagation
  */
 
@@ -65,7 +66,9 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-const { authOptions } = require('@/lib/auth');
+function loadAuthOptions() {
+  return require('@/lib/auth').authOptions;
+}
 
 describe('lib/auth OAuth callbacks', () => {
   beforeEach(() => {
@@ -74,8 +77,25 @@ describe('lib/auth OAuth callbacks', () => {
     prismaMock.auditLog.create.mockResolvedValue({});
   });
 
+  it('should configure Google provider to always show the account chooser', () => {
+    jest.resetModules();
+
+    const googleProviderMock = require('next-auth/providers/google').default;
+    loadAuthOptions();
+
+    expect(googleProviderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorization: {
+          params: {
+            prompt: 'select_account',
+          },
+        },
+      }),
+    );
+  });
+
   it('should reject Google sign in when email is not verified', async () => {
-    const signIn = authOptions.callbacks.signIn;
+    const signIn = loadAuthOptions().callbacks.signIn;
 
     const result = await signIn({
       user: { email: 'student@example.com', name: 'Student' },
@@ -90,7 +110,7 @@ describe('lib/auth OAuth callbacks', () => {
   });
 
   it('should create and link a new Google user when none exists', async () => {
-    const signIn = authOptions.callbacks.signIn;
+    const signIn = loadAuthOptions().callbacks.signIn;
 
     prismaMock.account.findFirst
       .mockResolvedValueOnce(null)
@@ -123,7 +143,7 @@ describe('lib/auth OAuth callbacks', () => {
   });
 
   it('should link Google account to an existing email user', async () => {
-    const signIn = authOptions.callbacks.signIn;
+    const signIn = loadAuthOptions().callbacks.signIn;
 
     prismaMock.account.findFirst
       .mockResolvedValueOnce(null)
@@ -150,7 +170,7 @@ describe('lib/auth OAuth callbacks', () => {
   });
 
   it('should populate token identity fields in jwt callback', async () => {
-    const jwt = authOptions.callbacks.jwt;
+    const jwt = loadAuthOptions().callbacks.jwt;
 
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'db-user-1',
@@ -171,7 +191,7 @@ describe('lib/auth OAuth callbacks', () => {
   });
 
   it('should expose session.user.id from token fields', async () => {
-    const sessionCb = authOptions.callbacks.session;
+    const sessionCb = loadAuthOptions().callbacks.session;
 
     const session = await sessionCb({
       session: { user: {} },

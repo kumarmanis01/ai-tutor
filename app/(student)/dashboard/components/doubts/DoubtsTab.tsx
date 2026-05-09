@@ -150,7 +150,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
 
   const handleFollowUpClick = useCallback(async (followUp: string) => {
     if (loading) return;
-    // Mimic student typing and submitting — bypass the textarea
+    // Mimic student typing and submitting -- bypass the textarea
     const trimmed = followUp.trim();
     if (!trimmed) return;
 
@@ -281,7 +281,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
                 }`}>
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                 </div>
-                {/* Follow-up question suggestion — clicking submits immediately as a new question */}
+                {/* Follow-up question suggestion -- clicking submits immediately as a new question */}
                 {msg.from === 'ai' && Array.isArray(msg.followUps) && msg.followUps.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {msg.followUps.map((followUpQuestion, followUpIndex) => (

@@ -27,6 +27,9 @@
  * EDIT LOG:
  *   2026-03-07 | Manish Kumar | created (GAP-02 second half: TEST phase
  *                               submission path, enables mastery weight 0.3).
+ *   2026-05-09T00:00:00Z | copilot | accept optional testId and grade against
+ *                               the exact delivered test version to prevent
+ *                               question-id mismatches returning 0/0.
  */
 
 import { NextResponse } from 'next/server';
@@ -44,6 +47,7 @@ export const dynamic = 'force-dynamic';
 
 interface SubmitBody {
   answers: { questionId: string; answer: string }[];
+  testId?: string;
 }
 
 interface GradedAnswer {
@@ -136,17 +140,27 @@ export async function POST(
   // ── Idempotency gate ──────────────────────────────────────────────────────
   if (sessionMeta.testResult) {
     const cached = sessionMeta.testResult as TestResult;
-    logger.info('[TEST_SUBMIT_IDEMPOTENT]', { sessionId, studentId: user.id });
-    res = NextResponse.json({
-      score: cached.score,
-      percentage: Math.round(cached.score * 100),
-      correctAnswers: cached.correctAnswers,
-      totalAnswers: cached.totalAnswers,
-      results: cached.answers,
-      nextPhase: 'HOMEWORK',
-    });
-    logger.logAPI(req, res, { className: 'TestSubmitAPI', methodName: 'POST' }, start);
-    return res;
+    const shouldRegradeEmptyCachedResult =
+      cached.totalAnswers === 0 && Array.isArray(body.answers) && body.answers.length > 0;
+
+    if (shouldRegradeEmptyCachedResult) {
+      logger.warn('[TEST_SUBMIT_RETRY_EMPTY_CACHED_RESULT]', {
+        sessionId,
+        studentId: user.id,
+      });
+    } else {
+      logger.info('[TEST_SUBMIT_IDEMPOTENT]', { sessionId, studentId: user.id });
+      res = NextResponse.json({
+        score: cached.score,
+        percentage: Math.round(cached.score * 100),
+        correctAnswers: cached.correctAnswers,
+        totalAnswers: cached.totalAnswers,
+        results: cached.answers,
+        nextPhase: 'HOMEWORK',
+      });
+      logger.logAPI(req, res, { className: 'TestSubmitAPI', methodName: 'POST' }, start);
+      return res;
+    }
   }
 
   // ── Phase guard ───────────────────────────────────────────────────────────
@@ -167,11 +181,32 @@ export async function POST(
     select: { id: true, type: true, options: true, answer: true },
   };
 
-  let test = await prisma.generatedTest.findFirst({
-    where: { topicId: session.topicId, lifecycle: 'active', status: 'approved' },
-    orderBy: [{ version: 'desc' }],
-    include: { questions: questionSelect },
-  });
+  const requestedTestId =
+    typeof body.testId === 'string' && body.testId.trim().length > 0 ? body.testId.trim() : null;
+
+  let test = requestedTestId
+    ? await prisma.generatedTest.findFirst({
+      where: { id: requestedTestId, topicId: session.topicId, lifecycle: 'active' },
+      include: { questions: questionSelect },
+    })
+    : null;
+
+  if (requestedTestId && (!test || test.questions.length === 0)) {
+    logger.warn('[TEST_SUBMIT_REQUESTED_TEST_NOT_FOUND]', {
+      sessionId,
+      studentId: user.id,
+      topicId: session.topicId,
+      requestedTestId,
+    });
+  }
+
+  if (!test || test.questions.length === 0) {
+    test = await prisma.generatedTest.findFirst({
+      where: { topicId: session.topicId, lifecycle: 'active', status: 'approved' },
+      orderBy: [{ version: 'desc' }],
+      include: { questions: questionSelect },
+    });
+  }
 
   if (!test || test.questions.length === 0) {
     test = await prisma.generatedTest.findFirst({

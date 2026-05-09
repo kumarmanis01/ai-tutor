@@ -17,6 +17,8 @@
  * EDIT LOG:
  * - 2026-03-08 | claude | refactored to use phaseRouter + SessionLayout + useSession
  *                          (was components/Session/SessionContainer.tsx)
+ * - 2026-05-08 | copilot | replace pending PRACTICE skip CTA with hydrate status + manual generate + polling refresh
+ * - 2026-05-09T00:00:00Z | copilot | submit TEST answers with testId to keep backend grading aligned with displayed test version
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -69,11 +71,30 @@ export function SessionContainer({
     navigateToPhase,
     submitPractice,
     submitTest,
+    getPracticeHydrationStatus,
+    triggerPracticeHydration,
   } = useSession();
 
   const [phaseReadyToProceed, setPhaseReadyToProceed] = React.useState(false);
   const [testAllAnswered, setTestAllAnswered] = React.useState(false);
   const [testResultSet, setTestResultSet] = React.useState(false);
+  const [practicePendingStatus, setPracticePendingStatus] = React.useState<{
+    isChecking: boolean;
+    isGenerating: boolean;
+    hasActiveQuestions: boolean;
+    isHydrationRunning: boolean;
+    runningJobId: string | null;
+    errorMessage: string | null;
+  }>({
+    isChecking: false,
+    isGenerating: false,
+    hasActiveQuestions: false,
+    isHydrationRunning: false,
+    runningJobId: null,
+    errorMessage: null,
+  });
+  const [practicePollingSeed, setPracticePollingSeed] = React.useState(0);
+  const practiceAutoTriggerAttemptedRef = useRef<string | null>(null);
   const testSubmitHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -114,6 +135,133 @@ export function SessionContainer({
     }
     advancePhase();
   }, [session?.currentPhase, testResultSet, advancePhase]);
+
+  React.useEffect(() => {
+    if (!session || !content || content.type !== 'pending' || session.currentPhase !== 'PRACTICE') {
+      return;
+    }
+
+    let isCancelled = false;
+    let timeoutRef: ReturnType<typeof setTimeout> | null = null;
+    let pollAttempt = 0;
+
+    const schedulePoll = (delayMs: number) => {
+      timeoutRef = setTimeout(() => {
+        void pollHydrationStatus();
+      }, delayMs);
+    };
+
+    const pollHydrationStatus = async () => {
+      if (isCancelled) return;
+
+      setPracticePendingStatus((prev) => ({ ...prev, isChecking: true, errorMessage: null }));
+      const status = await getPracticeHydrationStatus();
+      if (!status || isCancelled) {
+        setPracticePendingStatus((prev) => ({
+          ...prev,
+          isChecking: false,
+          errorMessage: 'Unable to check question generation status right now.',
+        }));
+        return;
+      }
+
+      setPracticePendingStatus((prev) => ({
+        ...prev,
+        isChecking: false,
+        hasActiveQuestions: status.hasActiveQuestions,
+        isHydrationRunning: status.isHydrationRunning,
+        runningJobId: status.runningJobId,
+      }));
+
+      if (status.hasActiveQuestions) {
+        void startSession(topicId);
+        return;
+      }
+
+      // Auto-trigger generation once per sessionId when PRACTICE is pending and no job is running.
+      if (!status.isHydrationRunning && session?.sessionId) {
+        const alreadyAttemptedForSession =
+          practiceAutoTriggerAttemptedRef.current === session.sessionId;
+        if (!alreadyAttemptedForSession) {
+          practiceAutoTriggerAttemptedRef.current = session.sessionId;
+          setPracticePendingStatus((prev) => ({ ...prev, isGenerating: true, errorMessage: null }));
+          const autoResult = await triggerPracticeHydration();
+          if (isCancelled) return;
+
+          if (!autoResult) {
+            setPracticePendingStatus((prev) => ({
+              ...prev,
+              isGenerating: false,
+              errorMessage: 'Auto-generation could not start. You can trigger it manually.',
+            }));
+            return;
+          }
+
+          const generationStarted =
+            autoResult.reason === 'enqueued' || autoResult.reason === 'already_running';
+          setPracticePendingStatus((prev) => ({
+            ...prev,
+            isGenerating: false,
+            isHydrationRunning: generationStarted,
+            runningJobId: autoResult.jobId,
+            errorMessage: null,
+          }));
+
+          if (generationStarted) {
+            pollAttempt += 1;
+            const firstBackoff = Math.min(15000, 2000 * 2 ** Math.min(pollAttempt, 3));
+            schedulePoll(firstBackoff);
+          }
+          return;
+        }
+      }
+
+      if (status.isHydrationRunning) {
+        pollAttempt += 1;
+        const backoff = Math.min(15000, 2000 * 2 ** Math.min(pollAttempt, 3));
+        schedulePoll(backoff);
+      }
+    };
+
+    void pollHydrationStatus();
+
+    return () => {
+      isCancelled = true;
+      if (timeoutRef) clearTimeout(timeoutRef);
+    };
+  }, [
+    session,
+    content,
+    getPracticeHydrationStatus,
+    startSession,
+    topicId,
+    practicePollingSeed,
+    triggerPracticeHydration,
+  ]);
+
+  const handleGeneratePracticeQuestions = useCallback(async () => {
+    setPracticePendingStatus((prev) => ({ ...prev, isGenerating: true, errorMessage: null }));
+    const result = await triggerPracticeHydration();
+
+    if (!result) {
+      setPracticePendingStatus((prev) => ({
+        ...prev,
+        isGenerating: false,
+        errorMessage: 'Could not start question generation. Please try again.',
+      }));
+      return;
+    }
+
+    setPracticePendingStatus((prev) => ({
+      ...prev,
+      isGenerating: false,
+      isHydrationRunning: result.reason === 'enqueued' || result.reason === 'already_running',
+      runningJobId: result.jobId,
+      errorMessage: null,
+    }));
+
+    setPracticePollingSeed((v) => v + 1);
+  }, [triggerPracticeHydration]);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading || (!session && !error)) {
@@ -185,19 +333,48 @@ export function SessionContainer({
 
   // ── Pending content ───────────────────────────────────────────────────────
   if (content.type === 'pending') {
+    if (currentPhase === 'PRACTICE') {
+      return (
+        <SessionLayout session={session} phase={phase}>
+          <div className="max-w-2xl mx-auto px-4 py-10 text-center space-y-4">
+            <div className="text-4xl">⚙️</div>
+            <h2 className="text-lg font-semibold text-foreground">Practice questions are not ready yet</h2>
+            <p className="text-sm text-muted-foreground">
+              No practice questions are currently available for this topic. Click the button below to generate a fresh practice set.
+            </p>
+            {practicePendingStatus.isHydrationRunning && (
+              <p className="text-xs text-muted-foreground">
+                We are generating your practice questions now. This page refreshes automatically when they are ready.
+              </p>
+            )}
+            {practicePendingStatus.errorMessage && (
+              <p className="text-xs text-red-600">{practicePendingStatus.errorMessage}</p>
+            )}
+            <button
+              onClick={handleGeneratePracticeQuestions}
+              disabled={
+                submitting ||
+                practicePendingStatus.isGenerating ||
+                practicePendingStatus.isHydrationRunning ||
+                practicePendingStatus.isChecking
+              }
+              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-60"
+            >
+              {practicePendingStatus.isGenerating || practicePendingStatus.isHydrationRunning
+                ? 'Generating practice questions...'
+                : 'Generate Practice Questions'}
+            </button>
+          </div>
+        </SessionLayout>
+      );
+    }
+
     return (
       <SessionLayout session={session} phase={phase}>
         <div className="max-w-2xl mx-auto px-4 py-10 text-center space-y-4">
           <div className="text-4xl">⚙️</div>
           <h2 className="text-lg font-semibold text-foreground">Preparing content...</h2>
           <p className="text-sm text-muted-foreground">{content.message}</p>
-          <button
-            onClick={advancePhase}
-            disabled={submitting}
-            className="px-5 py-2.5 bg-muted text-muted-foreground rounded-lg text-sm"
-          >
-            Skip this phase
-          </button>
         </div>
       </SessionLayout>
     );
@@ -258,6 +435,7 @@ function buildPhaseProps(
     a: { questionId: string; answer: string }[]
   ) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
   submitTest: (
+    testId: string,
     a: { questionId: string; answer: string }[]
   ) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
   submitting: boolean,
@@ -293,7 +471,8 @@ function buildPhaseProps(
       return {
         content: content as TestContent,
         topicName,
-        onSubmit: submitTest,
+        onSubmit: (answers: { questionId: string; answer: string }[]) =>
+          submitTest((content as TestContent).testId, answers),
         onReadyToProceed,
         onTestStateChange,
         onRegisterTestSubmit,

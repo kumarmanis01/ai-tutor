@@ -15,6 +15,7 @@ EDIT LOG:
 - 2026-04-08T00:00:00Z | copilot | add ESLint & style guardrails to reduce repeated lint violations
 - 2026-04-18T00:00:00Z | copilot | add reference to ENGINEERING_PRACTICES.md as primary code-quality source of truth
 - 2026-05-04T00:00:00Z | copilot | add env file, theme branding, and constants centralization guardrails
+- 2026-05-09T00:00:00Z | copilot | add mandatory Jest infra wrapper policy for all test execution
 -->
 
 # HARD GUARDRAILS — Copilot Instructions (Summary)
@@ -532,6 +533,14 @@ This section groups branch, push, and PR conflict guidance together for maintain
 - **If you need to ignore a command's failure in PowerShell:**
   - `cmd; if ($LASTEXITCODE -ne 0) { Write-Host 'ignored error' }`
 - **Portable scripts:** Prefer explicit exit-code checks or use Node/Git tooling flags (e.g., `--no-verify`) instead of shell idioms. Document the required shell when a script requires Bash.
+
+## Jest Infra Policy (Mandatory)
+
+- Treat Jest invocation as shared infrastructure, not suite-specific tooling.
+- Use `scripts/run-focused-tests.cjs` for all standard Jest execution paths (full run, unit, coverage, watch, focused files).
+- In PowerShell environments where `node` is not on PATH, use `scripts/run-focused-tests.ps1` as the default entrypoint.
+- Do not add new package scripts that invoke `jest` directly unless there is an explicit, documented exception.
+- Optional suite presets are allowed only as convenience aliases on top of the same infra wrapper.
 
 <!--
 INSERTION CHOICE:

@@ -5,9 +5,18 @@
  * - Uses usePracticeQuestions hook and normaliseChoices from sessionUtils.
  * - TutorTipPanel shown above questions.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/session/SessionPhases.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
  * EDIT LOG:
  * - 2026-03-08 | claude | moved to components/session/phases/ + uses hooks/session +
  *                          sessionUtils + TutorTipPanel (closes Gap #14)
+ * - 2026-05-09T00:00:00Z | copilot | align local feedback grading with submit API normalization for key/text answers
  */
 
 import React, { useState, useCallback } from 'react';
@@ -88,6 +97,53 @@ function ResultsScreen({ result }: { result: SubmitActionResult }) {
 
 const FEEDBACK_CORRECT = 'Great job!';
 const FEEDBACK_INCORRECT = 'Almost there -- try again.';
+const CHOICE_KEY_FIRST_CHAR_CODE = 'a'.charCodeAt(0);
+
+function normalizeAnswerForFeedback(input?: string | null): string {
+  return (input ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[\u2018\u2019\u201C\u201D]/g, '"');
+}
+
+function isChoiceKey(input: string): boolean {
+  return /^[a-d]$/i.test(input.trim());
+}
+
+function isAnswerCorrectForFeedback(
+  question: { correctAnswer?: string | null },
+  studentAnswer: string,
+  choices: { key: string; label: string }[]
+): boolean {
+  const correctAnswer = normalizeAnswerForFeedback(question.correctAnswer);
+  const student = normalizeAnswerForFeedback(studentAnswer);
+
+  if (!correctAnswer) return false;
+  if (student === correctAnswer) return true;
+
+  if (choices.length === 0) return false;
+
+  // Student sent key (a/b/c/d), stored answer may be option text.
+  if (isChoiceKey(student)) {
+    const studentIndex = student.charCodeAt(0) - CHOICE_KEY_FIRST_CHAR_CODE;
+    const studentChoiceText = choices[studentIndex]?.label;
+    if (studentChoiceText && normalizeAnswerForFeedback(studentChoiceText) === correctAnswer) {
+      return true;
+    }
+  }
+
+  // Student sent option text, stored answer may be key.
+  if (isChoiceKey(correctAnswer)) {
+    const correctIndex = correctAnswer.charCodeAt(0) - CHOICE_KEY_FIRST_CHAR_CODE;
+    const correctChoiceText = choices[correctIndex]?.label;
+    if (correctChoiceText && student === normalizeAnswerForFeedback(correctChoiceText)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export function PracticePhase({
   content,
@@ -109,8 +165,12 @@ export function PracticePhase({
   const handleAnswer = useCallback(
     async (questionId: string, answer: string) => {
       const question = questions[currentIndex];
-      const correctAnswer = (question as { correctAnswer?: string }).correctAnswer;
-      const isCorrect = correctAnswer !== undefined && correctAnswer === answer;
+      const questionChoices = normaliseChoices(question.choices);
+      const isCorrect = isAnswerCorrectForFeedback(
+        question as { correctAnswer?: string | null },
+        answer,
+        questionChoices
+      );
       setFeedback(isCorrect ? 'correct' : 'incorrect');
 
       const newAnswers = [...answers, { questionId, answer }];

@@ -15,6 +15,11 @@
  *                          todaysHref mapping in resume and homework states
  * - 2026-05-07T06:45:00Z | copilot | add regression tests for nextAction topicId -> conceptId
  *                          mapping; ensure missing concept never emits broken /session/pre url
+ * - 2026-05-08T00:00:00Z | copilot | align SecondaryStartOptions assertions with AC-02:
+ *                          secondary today href follows learning-plan item and
+ *                          falls back to browse syllabus when plan item missing
+ * - 2026-05-08T00:00:00Z | copilot | add regression for IN_PROGRESS plan-item
+ *                          selection in secondary Today's topic CTA
  */
 /**
  * Tests verify:
@@ -396,7 +401,7 @@ describe('StudentHomeDashboardPage', () => {
     expect(html).not.toContain('FreemiumCounter')
   })
 
-  it('should pass /session/[sessionId] as secondary today href for resume state', async () => {
+  it('should pass planned concept pre-session href as secondary today href in resume state', async () => {
     requireActiveSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'resume_session',
@@ -413,6 +418,8 @@ describe('StudentHomeDashboardPage', () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.learningPlan.findFirst.mockResolvedValue({ id: 'plan-42' })
+    prismaMock.learningPlanItem.findFirst.mockResolvedValue({ conceptId: 'concept-plan-9' })
     prismaMock.structuredSession.findMany.mockResolvedValue([])
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
@@ -423,10 +430,11 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
-    expect(html).toContain('/session/sess-42')
+    expect(html).toContain('/session/pre/concept-plan-9')
+    expect(html).not.toContain('/session/sess-42')
   })
 
-  it('should pass /homework/[assignmentId] as secondary today href for homework state', async () => {
+  it('should pass browse-syllabus href as secondary today fallback when no plan item exists', async () => {
     requireActiveSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'homework_pending',
@@ -439,6 +447,8 @@ describe('StudentHomeDashboardPage', () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.learningPlan.findFirst.mockResolvedValue(null)
+    prismaMock.learningPlanItem.findFirst.mockResolvedValue(null)
     prismaMock.structuredSession.findMany.mockResolvedValue([])
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
@@ -449,7 +459,41 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
-    expect(html).toContain('/homework/hw-77')
+    expect(html).toContain('/learn/learning-path')
+    expect(html).not.toContain('/homework/hw-77')
+  })
+
+  it('should prefer IN_PROGRESS plan item for secondary today href before browse fallback', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue({
+      ruleId: 'homework_pending',
+      assignmentId: 'hw-77',
+      topicName: 'Fractions worksheet',
+    })
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
+    prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.learningPlan.findFirst.mockResolvedValue({ id: 'plan-42' })
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue({ startedAt: new Date() })
+    prismaMock.learningPlanItem.findFirst
+      .mockResolvedValueOnce({ conceptId: 'concept-in-progress-22' })
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    const element = await Page()
+    const html = renderToStaticMarkup(element)
+
+    expect(html).toContain('/session/pre/concept-in-progress-22')
+    expect(html).not.toContain('/learn/learning-path')
   })
 
   it('should pass resolved concept id to start card when nextAction returns topic id', async () => {

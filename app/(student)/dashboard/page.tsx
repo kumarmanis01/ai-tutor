@@ -1,35 +1,25 @@
 /**
- * Student Dashboard -- v2 (rebuilt)
+ * FILE OBJECTIVE:
+ * - Server-render the student dashboard with primary/secondary learning CTAs,
+ *   readiness cards, and freemium/subscription widgets.
  *
- * F-STU-032 AC-01: Dashboard is the only screen shown after login.
- * F-STU-032 AC-02: Shows Today's plan, Streak+XP, Revision cards, Subject readiness.
- * F-STU-032 AC-03: Primary CTA is always "Continue Learning" -- one tap.
- * F-STU-032 AC-05: Dashboard loads in <2 seconds -- all data in Promise.all.
- * F-STU-040 AC-02: Freemium session cap counter always visible for free-tier students.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/dashboard/page.test.ts
  *
- * Layout:
- *   Mobile (default):  single column
- *   Desktop (md:):     left 60% = today/XP/weekly/revisions, right 40% = readiness/upgrade
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
- *   2026-04-14 | gap-fix P1   | restore full widget set, wire server data, freemium counter
- *   2026-04-15 | copilot | filter dashboard subjects by student's learning plans when present
-  *   2026-04-21T12:00:00Z | staff-engineer | fix: parse `user.grade` to integer before using in Prisma
-  *                               `class.grade` filter; prefer learning-plan subject when
-  *                               deduplicating by name; use `/diagnostic/[subjectId]`
-  *                               for diagnostic CTA; add unit tests covering behaviors
-  *   2026-05-06T00:00:00Z | copilot | fix: resolve nextAction.topicId to first non-suspended Concept.id
-  *                               before setting cardProps.recommendation.conceptId; prevents both
-  *                               "Today's topic" and "Surprise me" from silently redirecting to /dashboard
-    *   2026-05-06T00:00:00Z | copilot | fix: compute canonical secondary today-action href from
-    *                               current card state (start/resume/homework) so secondary CTA
-    *                               never falls back to /dashboard when today's work is actionable *   2026-05-07T00:00:00Z | copilot | fix: unwrap { action, traceId } dev-mode wrapper from
- *                               getNextAction() before accessing .ruleId/.topicId; without
- *                               this, every branch was skipped in dev and the dashboard always
-     *                               fell through to plan_loading even after a plan was generated
-     *   2026-05-07T06:45:00Z | copilot | fix: only emit start recommendation when topicId resolves
-     *                               to active Concept.id; otherwise keep non-start state and log warning */
+ * - 2026-03-15T00:00:00Z | v2-migration | full rebuild; replaces v1 dashboard
+ * - 2026-04-21T12:00:00Z | staff-engineer | parse user.grade for Prisma class filter and improve diagnostic CTA/tests
+ * - 2026-05-06T00:00:00Z | copilot | map topicId to Concept.id for start/surprise pre-session routing
+ * - 2026-05-07T06:45:00Z | copilot | avoid broken start recommendation when no active concept resolves
+ * - 2026-05-08T00:00:00Z | copilot | align secondary Today's topic href to learning plan intent (AC-02)
+ * - 2026-05-08T00:00:00Z | copilot | fix secondary Today's topic fallback drift by preferring
+ *                          IN_PROGRESS plan item before UPCOMING fallbacks
+ */
  
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
@@ -68,6 +58,7 @@ function computeCrunchMode(examDate: Date | null | undefined): boolean {
 }
 
 const FREE_TIER_SESSION_CAP = 3
+const FALLBACK_BROWSE_HREF = '/learn/learning-path'
 
 export default async function StudentHomeDashboardPage() {
   const authSession = await requireActiveSession()
@@ -397,14 +388,55 @@ export default async function StudentHomeDashboardPage() {
     cardProps = { type: 'plan_loading' }
   }
 
-  const todaysActionHref =
-    cardProps.type === 'start' && cardProps.recommendation?.conceptId
-      ? `/session/pre/${encodeURIComponent(cardProps.recommendation.conceptId)}`
-      : cardProps.type === 'resume' && cardProps.session?.sessionId
-        ? `/session/${encodeURIComponent(cardProps.session.sessionId)}`
-        : cardProps.type === 'homework' && cardProps.homework?.id
-          ? `/homework/${encodeURIComponent(cardProps.homework.id)}`
-          : '/dashboard'
+  // AC-02 (F-STU-010): Secondary "Today's topic" should follow today's planned
+  // learning-plan item, not the primary card's resume/homework route.
+  const todaysPlan = await prisma.learningPlan.findFirst({
+    where: { studentId: userId },
+    orderBy: { generatedAt: 'desc' },
+    select: { id: true },
+  })
+  const firstSession = await prisma.structuredSession.findFirst({
+    where: { studentId: userId },
+    orderBy: { startedAt: 'asc' },
+    select: { startedAt: true },
+  })
+  const daysSinceFirst = firstSession
+    ? Math.floor((Date.now() - firstSession.startedAt.getTime()) / 86_400_000)
+    : 0
+  const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
+
+  const inProgressPlanItem = todaysPlan
+    ? await prisma.learningPlanItem.findFirst({
+        where: { planId: todaysPlan.id, status: 'IN_PROGRESS' },
+        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+        select: { conceptId: true },
+      })
+    : null
+  const currentWeekUpcomingPlanItem = !inProgressPlanItem && todaysPlan
+    ? await prisma.learningPlanItem.findFirst({
+        where: {
+          planId: todaysPlan.id,
+          status: 'UPCOMING',
+          weekNumber: { lte: currentWeek },
+        },
+        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+        select: { conceptId: true },
+      })
+    : null
+  const fallbackUpcomingPlanItem = !inProgressPlanItem && !currentWeekUpcomingPlanItem && todaysPlan
+    ? await prisma.learningPlanItem.findFirst({
+        where: { planId: todaysPlan.id, status: 'UPCOMING' },
+        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+        select: { conceptId: true },
+      })
+    : null
+  const todaysPlanItem = inProgressPlanItem ?? currentWeekUpcomingPlanItem ?? fallbackUpcomingPlanItem
+  const secondaryTodaysHref =
+    todaysPlanItem?.conceptId
+      ? `/session/pre/${encodeURIComponent(todaysPlanItem.conceptId)}`
+      : cardProps.type === 'start' && cardProps.recommendation?.conceptId
+        ? `/session/pre/${encodeURIComponent(cardProps.recommendation.conceptId)}`
+        : FALLBACK_BROWSE_HREF
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -436,7 +468,7 @@ export default async function StudentHomeDashboardPage() {
           {!isCrunchMode && (
             <SecondaryStartOptions
               todaysConceptId={cardProps.recommendation?.conceptId}
-              todaysHref={todaysActionHref}
+              todaysHref={secondaryTodaysHref}
             />
           )}
 
@@ -455,13 +487,13 @@ export default async function StudentHomeDashboardPage() {
         {/* ── Right column (40%) ─────────────────────────────────────────── */}
         <div className="flex flex-col gap-5 md:w-2/5">
           {/* F-STU-040 AC-02: Session cap counter (free tier only) */}
-          {!isPremium && sessionsRemaining > 0 && (
+          {/* {!isPremium && sessionsRemaining > 0 && (
             <FreemiumCounter
               sessionsUsed={sessionsUsed}
               sessionsRemaining={sessionsRemaining}
               periodStart={periodStart}
             />
-          )}
+          )} */}
 
           {/* F-STU-041: Upgrade prompt when cap hit */}
           {!isPremium && sessionsRemaining === 0 && (
@@ -473,7 +505,7 @@ export default async function StudentHomeDashboardPage() {
           )}
 
           {/* F-STU-042 AC-01: Referral share card -- copy or WhatsApp share */}
-          <ReferralShareCard />
+          {/* <ReferralShareCard /> */}
 
           {/* F-STU-023 AC-02/03: Exam readiness per subject -- links to chapter breakdown */}
           {readinessResults.length > 0 && (
