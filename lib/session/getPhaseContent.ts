@@ -26,6 +26,8 @@
  *                               without requiring a separate sync step.
  *   2026-05-09 | copilot      | skip rejected GeneratedTest rows during practice promotion so
  *                               admin rejections remain hidden to students.
+ *   2026-05-09 | copilot      | include correctAnswer in PRACTICE phase question select/mapping
+ *                               so UI instant feedback can evaluate correctly.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -68,6 +70,7 @@ export interface PracticeContent {
     prompt: string;
     choices: unknown;
     difficulty: string | null;
+    correctAnswer: string | null;
   }[];
 }
 
@@ -269,7 +272,14 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
  */
 async function resolvePractice(topicId: string, studentMastery: number | null): Promise<PhaseContentData> {
   const targetDifficulty = resolveTargetDifficulty(studentMastery);
-  const questionSelect = { id: true, type: true, prompt: true, choices: true, difficulty: true } as const;
+  const questionSelect = {
+    id: true,
+    type: true,
+    prompt: true,
+    choices: true,
+    difficulty: true,
+    correctAnswer: true,
+  } as const;
 
   // Primary: questions at the student's target difficulty band.
   let questions = await prisma.question.findMany({

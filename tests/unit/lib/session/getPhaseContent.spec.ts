@@ -13,7 +13,11 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | add practice promotion test to cover GeneratedQuestion fallback and rejection-aware lookup
+ * - 2026-05-09T00:00:00Z | copilot | assert PRACTICE phase query/result include correctAnswer for client feedback grading
+ * - 2026-05-09T00:00:00Z | copilot | add Jest globals import and relative dynamic import path for TS diagnostics compatibility
  */
+
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 jest.mock('@/lib/ai/adaptiveDifficulty', () => ({
   resolveTargetDifficulty: jest.fn(() => 'medium'),
@@ -69,6 +73,7 @@ describe('resolvePhaseContent', () => {
           prompt: 'What is 2 + 2?',
           choices: ['3', '4'],
           difficulty: 'medium',
+          correctAnswer: '4',
         },
       ]);
     prisma.generatedQuestion.findMany.mockResolvedValue([
@@ -98,13 +103,21 @@ describe('resolvePhaseContent', () => {
     ]);
     prisma.question.upsert.mockResolvedValue({ id: 'generated-1' });
 
-    const { resolvePhaseContent } = await import('@/lib/session/getPhaseContent');
+    const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('PRACTICE', 'topic-1', 'session-1', 'student-1', null);
 
     expect(prisma.generatedQuestion.findMany).toHaveBeenCalledWith({
       where: { test: { topicId: 'topic-1', status: { not: 'rejected' } } },
       select: expect.any(Object),
     });
+    expect(prisma.question.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        select: expect.objectContaining({
+          correctAnswer: true,
+        }),
+      }),
+    );
     expect(prisma.question.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'generated-1' },
@@ -120,6 +133,7 @@ describe('resolvePhaseContent', () => {
     if (result.type === 'practice') {
       expect(result.questions).toHaveLength(1);
       expect(result.questions[0].id).toBe('question-1');
+      expect(result.questions[0].correctAnswer).toBe('4');
     }
   });
 });

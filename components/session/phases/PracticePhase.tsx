@@ -17,6 +17,8 @@
  * - 2026-03-08 | claude | moved to components/session/phases/ + uses hooks/session +
  *                          sessionUtils + TutorTipPanel (closes Gap #14)
  * - 2026-05-09T00:00:00Z | copilot | align local feedback grading with submit API normalization for key/text answers
+ * - 2026-05-09T00:00:00Z | copilot | revert UI suppression workaround; rely on API flow to supply correctAnswer
+ * - 2026-05-09T00:00:00Z | copilot | replace inline-style score bar with semantic progress element (lint compliance)
  */
 
 import React, { useState, useCallback } from 'react';
@@ -55,12 +57,12 @@ function ResultsScreen({ result }: { result: SubmitActionResult }) {
         <p className="text-sm text-muted-foreground">
           {result.correctAnswers} of {result.totalAnswers} correct
         </p>
-        <div className="mt-3 w-full bg-muted rounded-full h-2">
-          <div
-            className={`h-2 rounded-full transition-all ${scoreBgColour(pct)}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <progress
+          className={`mt-3 w-full h-2 rounded-full overflow-hidden ${scoreBgColour(pct)}`}
+          value={pct}
+          max={100}
+          aria-label="Practice score progress"
+        />
       </div>
 
       <div className="space-y-2">
@@ -166,8 +168,9 @@ export function PracticePhase({
     async (questionId: string, answer: string) => {
       const question = questions[currentIndex];
       const questionChoices = normaliseChoices(question.choices);
+      const feedbackQuestion = question as { correctAnswer?: string | null };
       const isCorrect = isAnswerCorrectForFeedback(
-        question as { correctAnswer?: string | null },
+        feedbackQuestion,
         answer,
         questionChoices
       );
