@@ -1,9 +1,26 @@
+/**
+ * FILE OBJECTIVE:
+ * - Reject a generated test, cascade the rejection to its promoted question rows,
+ *   and optionally queue regeneration for the same topic.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/tests/[id]/reject.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-09T00:00:00Z | copilot | cascade GeneratedTest rejection to promoted Question rows so rejected content stays hidden
+ */
+
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
+import { QuestionStatus } from '@prisma/client';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,8 +46,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const test = await prisma.generatedTest.findUnique({ where: { id } });
   if (!test) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const generatedQuestionIds = await prisma.generatedQuestion.findMany({
+    where: { testId: id },
+    select: { id: true },
+  });
+
   await prisma.$transaction([
     prisma.generatedTest.update({ where: { id }, data: { status: ApprovalStatus.Rejected } }),
+    prisma.question.updateMany({
+      where: { id: { in: generatedQuestionIds.map((row) => row.id) } },
+      data: { status: QuestionStatus.REJECTED },
+    }),
     prisma.auditLog.create({ data: { adminId, targetEntity: 'GeneratedTest', targetId: id, action: 'CONTENT_REJECT', previousValue: { status: test.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
   ]);
 

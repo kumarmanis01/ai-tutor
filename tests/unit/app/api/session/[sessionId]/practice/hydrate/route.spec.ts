@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-05-08T00:00:00Z | copilot | add tests for practice hydration status + manual enqueue endpoint
+ * - 2026-05-09T00:00:00Z | copilot | assert hydration request emails are sent to the operations inbox
  */
 
 describe('GET /api/session/[sessionId]/practice/hydrate', () => {
@@ -110,6 +111,7 @@ describe('POST /api/session/[sessionId]/practice/hydrate', () => {
 
   it('enqueues questions hydration with force and 10-question target when no job is running', async () => {
     const enqueueQuestionsHydration = jest.fn(async () => ({ created: true, jobId: 'h2' }));
+    const sendMailSafe = jest.fn();
 
     jest.doMock('@/lib/session', () => ({
       getServerSessionForHandlers: jest.fn(async () => ({ user: { id: 'student-1' } })),
@@ -117,6 +119,9 @@ describe('POST /api/session/[sessionId]/practice/hydrate', () => {
     jest.doMock('@/lib/session/sessionEngine', () => ({ isSessionEngineEnabled: jest.fn(() => true) }));
     jest.doMock('@/lib/execution-pipeline/enqueueTopicHydration', () => ({
       enqueueQuestionsHydration,
+    }));
+    jest.doMock('@/lib/mailer', () => ({
+      sendMailSafe,
     }));
     jest.doMock('@/lib/prisma', () => ({
       prisma: {
@@ -142,6 +147,12 @@ describe('POST /api/session/[sessionId]/practice/hydrate', () => {
     expect(res.status).toBe(200);
     expect(body.enqueued).toBe(true);
     expect(body.reason).toBe('enqueued');
+    expect(sendMailSafe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'spinzydigital@gmail.com',
+        subject: expect.stringContaining('Practice hydration requested for topic t1'),
+      }),
+    );
     expect(enqueueQuestionsHydration).toHaveBeenCalledWith({
       topicId: 't1',
       language: 'en',
