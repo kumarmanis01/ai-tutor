@@ -21,3 +21,8 @@ test('resolveFiles returns proactive preset', () => {
   expect(files).toContain('tests/unit/app/api/admin/tests/[id]/reject.spec.ts');
   expect(files).toContain('tests/unit/lib/session/getPhaseContent.spec.ts');
 });
+
+test('resolveFiles defaults to all tests when suite and files are omitted', () => {
+  const files = runner.resolveFiles({ suite: null, files: [], jestArgs: [] });
+  expect(files).toEqual([]);
+});

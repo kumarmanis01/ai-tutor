@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - Run focused Jest specs via the active Node executable without shell-dependent quoting, so Windows PowerShell path edge cases do not break test runs.
+ * - Run Jest through a shell-safe Node entrypoint for all test invocations in this repo, avoiding PowerShell path/quoting issues while supporting optional suite presets.
  *
  * LINKED UNIT TEST:
  * - __tests__/scripts/run-focused-tests.cjs.test.ts
@@ -10,6 +10,8 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | created focused jest runner with stable suite presets and argument parsing
+ * - 2026-05-09T00:00:00Z | copilot | generalized runner to repo-wide Jest infra (all tests default) with optional preset suite support
+ * - 2026-05-09T00:00:00Z | copilot | enforce --runTestsByPath for file-targeted runs so bracketed route test paths execute correctly
  */
 'use strict';
 
@@ -17,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const DEFAULT_JEST_ARGS = ['--runInBand', '--watchAll=false'];
+const DEFAULT_JEST_ARGS = [];
 
 const SUITE_PRESETS = {
   proactive: [
@@ -73,7 +75,7 @@ function resolveFiles(parsed) {
     }
     return preset;
   }
-  throw new Error('No test files provided. Pass file paths or --suite <name>.');
+  return [];
 }
 
 function validateFiles(repoRoot, files) {
@@ -93,7 +95,10 @@ function runFocusedTests(argv) {
   const repoRoot = path.resolve(__dirname, '..');
   const parsed = parseCli(argv);
   const files = resolveFiles(parsed);
-  validateFiles(repoRoot, files);
+  const hasFileTargets = files.length > 0;
+  if (hasFileTargets) {
+    validateFiles(repoRoot, files);
+  }
 
   const jestBin = path.resolve(repoRoot, 'node_modules', 'jest', 'bin', 'jest.js');
   if (!fs.existsSync(jestBin)) {
@@ -101,7 +106,9 @@ function runFocusedTests(argv) {
   }
 
   const nodeExe = process.execPath || 'node';
-  const args = [jestBin, ...files, ...DEFAULT_JEST_ARGS, ...parsed.jestArgs];
+  const args = hasFileTargets
+    ? [jestBin, '--runTestsByPath', ...files, ...DEFAULT_JEST_ARGS, ...parsed.jestArgs]
+    : [jestBin, ...DEFAULT_JEST_ARGS, ...parsed.jestArgs];
 
   const result = spawnSync(nodeExe, args, {
     stdio: 'inherit',

@@ -1,6 +1,6 @@
 <#
 FILE OBJECTIVE:
-- Run focused Jest suites in PowerShell by resolving a local Node runtime explicitly, even when node is not on PATH.
+- Run repo Jest commands in PowerShell by resolving a local Node runtime explicitly, even when node is not on PATH.
 
 LINKED UNIT TEST:
 - __tests__/scripts/run-focused-tests.ps1.test.ts
@@ -10,12 +10,14 @@ COPILOT INSTRUCTIONS FOLLOWED:
 
 EDIT LOG:
 - 2026-05-09T00:00:00Z | copilot | created PowerShell wrapper that auto-resolves node.exe and invokes focused Jest runner
+- 2026-05-09T00:00:00Z | copilot | generalized wrapper default to full test run with optional suite and file overrides
 #>
 
 param(
-  [string]$Suite = 'proactive',
+  [string]$Suite = '',
   [string]$NodePath = '',
-  [string[]]$TestFiles = @()
+  [string[]]$TestFiles = @(),
+  [string[]]$JestArgs = @()
 )
 
 Set-StrictMode -Version Latest
@@ -64,8 +66,13 @@ $env:NODE_ENV = 'test'
 $arguments = @($runner)
 if ($TestFiles.Count -gt 0) {
   $arguments += $TestFiles
-} else {
+} elseif ($Suite) {
   $arguments += @('--suite', $Suite)
+}
+
+if ($JestArgs.Count -gt 0) {
+  $arguments += '--'
+  $arguments += $JestArgs
 }
 
 Write-Host "[run-focused-tests] node=$nodeExe"
