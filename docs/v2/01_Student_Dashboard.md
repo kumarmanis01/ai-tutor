@@ -13,6 +13,18 @@
 | Wireframe | docs\wireframes\student_dashboard_redesign.html |
 | Visual display expecetd | docs\wireframes\New Dashboard Visiual.png |
 
+Design Decisions Explained
+Information hierarchy — 3 tiers of urgency:
+Tier 1 (top): What do I do right now? — Today's study plan with sequenced, ranked topics across all subjects. The active topic is visually elevated with the purple accent. Start/Continue CTAs are per-topic, not global.
+Tier 2 (middle): How am I tracking overall? — Subject Readiness as a 3-column grid. Each subject card is self-contained: overall %, per-chapter breakdown, days to exam, predicted board score. Scales cleanly to any number of subjects by wrapping the grid.
+Tier 3 (bottom): What should I prioritise long-term? — AI Focus Priority queue ranked by exam impact × days remaining — this replaces the single Focus Area card and gives the student a ranked action list across all subjects, not just one.
+Scalability decisions:
+The subject readiness grid uses grid-template-columns: 1fr 1fr 1fr — at 4 subjects it wraps naturally to 2×2. At 5–6 you'd switch to a compact list view within the card. Today's Plan handles N topics by virtue of being a scrollable ranked list — the AI decides how many topics fit the daily time budget.
+Color encoding — consistent semantic system:
+Red = Critical (< 20% mastery or < 30 days to exam), Amber = Weak (20–60%), Green = Good/On track (> 60%). Purple = Mathematics (brand), Blue = Physics, Amber-brown = Chemistry. Colors are not decorative — they encode meaning.
+What was removed and why:
+The "You're all caught up" empty-state card and the raw XP progress bar as a standalone block are collapsed into the greeting header, which is a more natural home. The weekly streak calendar now also shows subject time-split and per-subject weekly minutes — the same real estate doing 3x the informational work.
+
 ## Priority Legend
 
 | Code | Label | Meaning |
