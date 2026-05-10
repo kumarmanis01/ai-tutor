@@ -26,6 +26,12 @@
  * - 2026-05-10T00:00:00Z | staff-engineer | replace single todaysHref prop with
  *                          todaysTopics array to support multi-subject plans;
  *                          show one link per subject when multiple plans exist
+ * - 2026-05-10T00:00:00Z | staff-engineer | fix: Today's topic is the visually
+ *                          selected (solid primary) default; Browse/Surprise use
+ *                          outlined secondary styling; empty Today's topic
+ *                          navigates to learning path instead of being disabled;
+ *                          Surprise me 204 navigates to learning path (not /dashboard
+ *                          where the user already is) so something visibly changes
  */
 
 'use client'
@@ -56,22 +62,22 @@ export default function SecondaryStartOptions({
         return
       }
       if (res.status === 204) {
-        toast('No weak topic available right now. Heading home.')
-        router.push('/dashboard')
+        toast('No weak topic found -- showing your syllabus instead.')
+        router.push(FALLBACK_BROWSE_HREF)
         return
       }
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to get suggestion')
       const action = json?.action
       if (!action || !action.topicId) {
-        toast("Couldn't find a weak topic. Heading home.")
-        router.push('/dashboard')
+        toast("Couldn't find a weak topic -- showing your syllabus instead.")
+        router.push(FALLBACK_BROWSE_HREF)
         return
       }
       router.push(`/session/pre/${encodeURIComponent(action.topicId)}`)
     } catch (err: any) {
       toast(String(err?.message || 'Could not pick a surprise topic'))
-      router.push('/dashboard')
+      router.push(FALLBACK_BROWSE_HREF)
     } finally {
       setLoading(false)
     }
@@ -79,19 +85,18 @@ export default function SecondaryStartOptions({
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
+      {/* Today's topic: solid primary = visually selected/default action */}
       {todaysTopics.length === 0 ? (
         <Link
           href={FALLBACK_BROWSE_HREF}
-          className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-200 text-sm font-medium text-gray-400 cursor-default pointer-events-none"
-          aria-disabled="true"
-          tabIndex={-1}
+          className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover"
         >
           Today&apos;s topic
         </Link>
       ) : todaysTopics.length === 1 ? (
         <Link
           href={todaysTopics[0].href}
-          className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-primary bg-primary-bg text-sm font-semibold text-primary hover:bg-brand-primary/15"
+          className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover"
         >
           Today&apos;s topic
         </Link>
@@ -100,16 +105,17 @@ export default function SecondaryStartOptions({
           <Link
             key={topic.subject}
             href={topic.href}
-            className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-primary bg-primary-bg text-sm font-semibold text-primary hover:bg-brand-primary/15"
+            className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover"
           >
             {topic.subject}
           </Link>
         ))
       )}
 
+      {/* Browse and Surprise: outlined secondary -- not the default action */}
       <Link
         href={FALLBACK_BROWSE_HREF}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
       >
         Browse syllabus
       </Link>
@@ -118,7 +124,7 @@ export default function SecondaryStartOptions({
         type="button"
         onClick={handleSurprise}
         disabled={loading}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover disabled:opacity-60"
+        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 disabled:opacity-60"
       >
         {loading ? 'Picking...' : 'Surprise me'}
       </button>

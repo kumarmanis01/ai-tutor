@@ -68,11 +68,11 @@ describe('SecondaryStartOptions', () => {
     expect(physicsLink).toHaveAttribute('href', '/session/pre/concept-physics')
   })
 
-  it('renders disabled Today\'s topic when no topics provided', () => {
+  it('renders clickable Today\'s topic falling back to learning path when no topics provided', () => {
     render(<SecondaryStartOptions todaysTopics={[]} />)
 
     const link = screen.getByRole('link', { name: "Today's topic" })
-    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(link).toHaveAttribute('href', '/learn/learning-path')
   })
 
   it('navigates to suggested pre-session concept on Surprise me success', async () => {
@@ -90,7 +90,7 @@ describe('SecondaryStartOptions', () => {
     })
   })
 
-  it('routes to /dashboard when Surprise me returns no content (204)', async () => {
+  it('navigates to learning path when Surprise me returns no content (204)', async () => {
     ;(global as any).fetch.mockResolvedValue({
       status: 204,
       ok: true,
@@ -101,7 +101,7 @@ describe('SecondaryStartOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Surprise me' }))
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/dashboard')
+      expect(pushMock).toHaveBeenCalledWith('/learn/learning-path')
     })
   })
 
@@ -121,14 +121,14 @@ describe('SecondaryStartOptions', () => {
     })
   })
 
-  it('routes to /dashboard when no topics provided and Surprise me fails', async () => {
+  it('navigates to learning path when no topics provided and Surprise me fails', async () => {
     ;(global as any).fetch.mockRejectedValue(new Error('network-down'))
 
     render(<SecondaryStartOptions />)
     fireEvent.click(screen.getByRole('button', { name: 'Surprise me' }))
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/dashboard')
+      expect(pushMock).toHaveBeenCalledWith('/learn/learning-path')
     })
   })
 })
