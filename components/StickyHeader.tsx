@@ -171,12 +171,12 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                 </Link>
               )} */}
 
-              {/* Start Free -- navigates directly to /auth/signup */}
+              {/* Authenticated users go to their dashboard; others go to signup */}
               <Link
-                href="/auth/signup"
+                href={session ? '/student/onboarding' : '/auth/signup'}
                 className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                Start Learning Now!
+                {session ? 'Go to Dashboard' : 'Start Learning Now!'}
               </Link>
             </div>
           </div>
