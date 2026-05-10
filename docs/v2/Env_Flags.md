@@ -69,7 +69,7 @@ referenced in application source files (not Next.js internals) are included.
 - WHATSAPP_API_TOKEN: WhatsApp API bearer token.
 - WHATSAPP_PHONE_ID: WhatsApp phone id used to send messages.
 - WHATSAPP_ENABLED: Feature flag (1 = enabled) for WhatsApp flows.
-- WHATSAPP_VERIFY_TOKEN: Verify token for incoming WhatsApp webhooks.
+- WHATSAPP_WEBHOOK_VERIFY_TOKEN: Verify token for incoming WhatsApp webhooks.
 
 **Storage (S3 / Cloud R2 / S3 presign)**
 - S3_BUCKET: S3 bucket name for AWS uploads (server-side).

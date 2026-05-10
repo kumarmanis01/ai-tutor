@@ -12,6 +12,7 @@
 /// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
 /// - 2026-05-04T00:00:00Z | copilot | add ParentStudent.relationship and ConsentScope.COMMUNITY_FEATURES for parent registration/consent completeness
+/// - 2026-05-09T00:00:00Z | staff-engineer | add NotificationAudit, NotificationChannel/Severity/EventType enums, escalationStatus on StudentEngagementStats
 generator client {
   provider = "prisma-client-js"
 }
@@ -1216,6 +1217,8 @@ model StudentEngagementStats {
   lastActiveDate         DateTime? /// Calendar date (midnight UTC) of last day with ≥1 completed session
   totalSessionsCompleted Int       @default(0)
   learningPoints         Int       @default(0)
+  /// Set to 'CRITICAL' by the severe-disengagement cron when consecutiveMissedDays >= 7. Cleared when student resumes.
+  escalationStatus       String?
   updatedAt              DateTime  @updatedAt
   student                User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
@@ -2950,4 +2953,80 @@ model MockExamSectionAttempt {
 
   @@unique([attemptId, sectionId])
   @@index([attemptId])
+}
+
+// ── Phase 09 — Notification Architecture ─────────────────────────────────────
+
+/// Channels through which notifications are dispatched.
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  PUSH
+  IN_APP
+}
+
+/// Urgency tier matching the three-level severity framework in docs/v2/09_notification_architecture.md
+enum NotificationSeverity {
+  INFORMATIONAL
+  IMPORTANT
+  CRITICAL
+}
+
+/// Canonical set of events that the notification router handles.
+enum NotificationEventType {
+  SIGNUP_COMPLETED
+  DIAGNOSTIC_COMPLETED
+  PLAN_GENERATED
+  DAILY_REMINDER
+  STUDY_COMPLETED
+  STREAK_MILESTONE
+  WEAK_TOPIC_SINGLE
+  WEAK_TOPIC_PATTERN
+  IMPROVEMENT_DETECTED
+  CONCEPT_MASTERED
+  MISSED_ONE_DAY
+  MISSED_THREE_DAYS
+  DISENGAGED_CRITICAL
+  EXAM_COUNTDOWN
+  REVISION_PLAN_READY
+  MOCK_TEST_SCHEDULED
+  MOCK_TEST_COMPLETED
+  EXAM_RISK_ALERT
+  CONFUSION_PATTERN
+  DAILY_DIGEST
+  WEEKLY_REPORT
+  MONTHLY_REPORT
+  TRIAL_ENDING
+  TRIAL_ENDED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  SECURITY_ALERT
+  NEW_DEVICE_LOGIN
+}
+
+/// Immutable audit record for every notification send attempt (sent, failed, capped, or dry_run).
+/// Queryable by student/parent/date range for compliance and frequency cap enforcement visibility.
+model NotificationAudit {
+  id           String                @id @default(cuid())
+  eventType    NotificationEventType
+  templateId   String
+  recipientId  String
+  channel      NotificationChannel
+  /// 'sent' | 'failed' | 'capped' | 'dry_run'
+  status       String
+  errorMessage String?
+  /// When true the notification was evaluated but not actually dispatched (dry-run mode)
+  dryRun       Boolean               @default(false)
+  studentId    String?
+  parentId     String?
+  metadata     Json?
+  sentAt       DateTime              @default(now())
+  createdAt    DateTime              @default(now())
+
+  // Supports query: queryable by recipient + time range (compliance audit)
+  @@index([recipientId, sentAt])
+  // Supports query: queryable by event type + time range (analytics + frequency cap inspection)
+  @@index([eventType, sentAt])
+  // Supports query: queryable by student (parent dashboard, admin)
+  @@index([studentId, sentAt])
 }
