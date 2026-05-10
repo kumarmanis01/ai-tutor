@@ -11,12 +11,14 @@
  *
  * EDIT LOG:
  * - 2026-03-15 | v2-migration | created for session completion flow
-  * - 2026-05-04 | staff-engineer | AC-01 F-STU-031: add duration XP, first-attempt
-  *   bonus, streak daily multiplier; fix leveledUp/newLevel to reflect final XP
-  *   award (streak bonus can trigger level-up independently)
-  * - 2026-05-09T00:00:00Z | copilot | fix Gap 3: write meta.score to StructuredSession
-  *   via bridge so progress page session history can display session scores
-  */
+ * - 2026-05-04 | staff-engineer | AC-01 F-STU-031: add duration XP, first-attempt
+ *   bonus, streak daily multiplier; fix leveledUp/newLevel to reflect final XP
+ *   award (streak bonus can trigger level-up independently)
+ * - 2026-05-09T00:00:00Z | copilot | fix Gap 3: write meta.score to StructuredSession
+ *   via bridge so progress page session history can display session scores
+ * - 2026-05-10 | staff-engineer | wire session-complete notifications: student email/
+ *   WhatsApp celebration + parent email/WhatsApp; fire-and-forget after response build
+ */
 
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
@@ -26,6 +28,9 @@ import { updateStreak } from '@/lib/student/streak'
 import { buildSessionInsight } from '@/lib/student/sessionInsight'
 import { checkSessionBadges } from '@/lib/student/badges'
 import { logger } from '@/lib/logger'
+import { notifyStudentOnSessionComplete } from '@/lib/notifications/studentNotify'
+import { notifyParent, DEFAULT_DASHBOARD_URL } from '@/lib/notifications/parentNotify'
+import { PARENT_NOTIF_EVENTS } from '@/lib/constants/mail'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,6 +79,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     let masteryAfter = 0.3
     let masteryDelta = 0
     let conceptName: string | null = null
+    let subjectName: string | null = null
 
     if (conceptId) {
       const [state, concept] = await Promise.all([
@@ -81,7 +87,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
           where: { studentId_conceptId: { studentId: userId, conceptId } },
           select: { masteryScore: true },
         }),
-        prisma.concept.findUnique({ where: { id: conceptId }, select: { name: true } }),
+        prisma.concept.findUnique({
+          where: { id: conceptId },
+          select: { name: true, subject: { select: { name: true } } },
+        }),
       ])
       if (state) {
         masteryAfter = state.masteryScore
@@ -94,6 +103,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         masteryDelta = masteryAfter - preSessionMastery
       }
       conceptName = concept?.name ?? null
+      subjectName = concept?.subject?.name ?? null
     }
 
     let sessionDurationMinutes = 0
@@ -177,39 +187,78 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       avgTimeSeconds,
     })
 
-      // Gap 3 fix: write score (0-100 integer) to StructuredSession.meta so the
-      // /student/progress session history table can display it.
-      // The sessionId here is a LearningSession.id; we get the StructuredSession.id
-      // from the bridge meta field written by createBridgedLearningSession.
-      const structuredSessionId = (learningSession?.meta as any)?.structuredSessionId
-      if (structuredSessionId && typeof structuredSessionId === 'string') {
-        const scorePercent = Math.round(accuracy * 100)
-        try {
-          const existing = await prisma.structuredSession.findUnique({
+    // Gap 3 fix: write score (0-100 integer) to StructuredSession.meta so the
+    // /student/progress session history table can display it.
+    // The sessionId here is a LearningSession.id; we get the StructuredSession.id
+    // from the bridge meta field written by createBridgedLearningSession.
+    const structuredSessionId = (learningSession?.meta as any)?.structuredSessionId
+    if (structuredSessionId && typeof structuredSessionId === 'string') {
+      const scorePercent = Math.round(accuracy * 100)
+      try {
+        const existing = await prisma.structuredSession.findUnique({
+          where: { id: structuredSessionId },
+          select: { meta: true },
+        })
+        if (existing) {
+          await prisma.structuredSession.update({
             where: { id: structuredSessionId },
-            select: { meta: true },
-          })
-          if (existing) {
-            await prisma.structuredSession.update({
-              where: { id: structuredSessionId },
-              data: {
-                meta: {
-                  ...((existing.meta as object) ?? {}),
-                  score: scorePercent,
-                },
+            data: {
+              meta: {
+                ...((existing.meta as object) ?? {}),
+                score: scorePercent,
               },
-            })
-          }
-        } catch (scoreWriteErr) {
-          // Non-fatal: log but do not surface to client
-          logger.warn('StudentSessionCompleteAPI: failed to write score to StructuredSession.meta', {
-            event: 'session_score_write_error',
-            context: { userId, sessionId, structuredSessionId, error: String(scoreWriteErr) },
+            },
           })
         }
+      } catch (scoreWriteErr) {
+        // Non-fatal: log but do not surface to client
+        logger.warn('StudentSessionCompleteAPI: failed to write score to StructuredSession.meta', {
+          event: 'session_score_write_error',
+          context: { userId, sessionId, structuredSessionId, error: String(scoreWriteErr) },
+        })
       }
+    }
 
-      const res = NextResponse.json(
+    const badgeNames = badgesEarned.map((b) => b.name)
+    const sessionDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+
+    // Fire-and-forget: send session-complete celebration to student and parent.
+    // Errors inside each notifier are caught and logged; never block the response.
+    notifyStudentOnSessionComplete(userId, {
+      xpEarned,
+      totalXp,
+      currentStreak,
+      conceptName,
+      masteryDelta,
+      masteryAfter,
+      accuracy,
+      badgeNames,
+      sessionDurationMinutes,
+      leveledUp,
+      newLevel,
+    }).catch((err) =>
+      logger.warn('StudentSessionCompleteAPI: student notification failed', {
+        event: 'session_student_notif_error',
+        context: { userId, sessionId, error: String(err) },
+      }),
+    )
+
+    notifyParent(userId, {
+      event: PARENT_NOTIF_EVENTS.SESSION_COMPLETE,
+      data: {
+        topicName: conceptName ?? 'a topic',
+        subjectName: subjectName ?? 'your subject',
+        sessionDate,
+        dashboardUrl: DEFAULT_DASHBOARD_URL,
+      },
+    }).catch((err) =>
+      logger.warn('StudentSessionCompleteAPI: parent notification failed', {
+        event: 'session_parent_notif_error',
+        context: { userId, sessionId, error: String(err) },
+      }),
+    )
+
+    const res = NextResponse.json(
       {
         xpEarned,
         totalXp,
