@@ -44,6 +44,11 @@ import {
 } from '@/lib/session/sessionEngine';
 import { resolveTargetDifficulty } from '@/lib/ai/adaptiveDifficulty';
 
+// ─── Session Meta Keys ────────────────────────────────────────────────────────
+
+const META_PRACTICE_IDS = 'servedPracticeIds';
+const META_TEST_IDS = 'servedTestIds';
+
 const PRACTICE_QUESTION_TARGET_COUNT = 5;
 
 // ─── Return Types ─────────────────────────────────────────────────────────────
@@ -230,9 +235,9 @@ export async function resolvePhaseContent(
     case 'EXPLANATION':
       return resolveExplanation(topicId);
     case 'PRACTICE':
-      return resolvePractice(topicId, studentMastery ?? null);
+      return resolvePractice(topicId, studentMastery ?? null, sessionId);
     case 'TEST':
-      return resolveTest(topicId, studentMastery ?? null);
+      return resolveTest(topicId, studentMastery ?? null, sessionId);
     case 'HOMEWORK':
       return resolveHomework(sessionId, studentId);
     case 'COMPLETE':
@@ -357,8 +362,12 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
  * Adaptive difficulty: queries the target band first (derived from studentMastery).
  * Falls back to any difficulty for the topic when the target band has no questions yet,
  * so the student is never blocked by a content gap.
+ *
+ * Cross-phase dedup: on first serve, selected question IDs are written to
+ * StructuredSession.meta.servedPracticeIds so TEST and HOMEWORK can exclude them.
+ * On refresh, those same IDs are loaded and returned deterministically (no re-randomisation).
  */
-async function resolvePractice(topicId: string, studentMastery: number | null): Promise<PhaseContentData> {
+async function resolvePractice(topicId: string, studentMastery: number | null, sessionId: string): Promise<PhaseContentData> {
   const targetDifficulty = resolveTargetDifficulty(studentMastery);
   const questionSelect = {
     id: true,
@@ -368,6 +377,43 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
     difficulty: true,
     correctAnswer: true,
   } as const;
+
+  // ── Deterministic reload: if questions were already served in this session, return them. ──
+  // This prevents re-randomisation on page refresh and provides a stable list for
+  // cross-phase dedup (TEST and HOMEWORK can read meta.servedPracticeIds to exclude these).
+  const sessionMeta = await prisma.structuredSession.findUnique({
+    where: { id: sessionId },
+    select: { meta: true },
+  });
+  const existingMeta = (sessionMeta?.meta && typeof sessionMeta.meta === 'object')
+    ? sessionMeta.meta as Record<string, unknown>
+    : {};
+  const savedPracticeIds = Array.isArray(existingMeta[META_PRACTICE_IDS])
+    ? (existingMeta[META_PRACTICE_IDS] as string[])
+    : null;
+
+  if (savedPracticeIds && savedPracticeIds.length > 0) {
+    const lockedQuestions = await prisma.question.findMany({
+      // quarantined questions excluded -- do not remove this filter
+      where: { id: { in: savedPracticeIds }, topicId, status: 'ACTIVE' },
+      select: questionSelect,
+    }) as PracticeQuestionRow[];
+
+    if (lockedQuestions.length > 0) {
+      logger.info('[PRACTICE_RESOLVE] Returning locked questions from session meta', {
+        sessionId,
+        topicId,
+        count: lockedQuestions.length,
+      });
+      return { type: 'practice', questions: lockedQuestions };
+    }
+    // Locked IDs no longer active (e.g. quarantined): fall through to fresh selection.
+    logger.warn('[PRACTICE_RESOLVE] Locked question IDs are no longer active, re-selecting', {
+      sessionId,
+      topicId,
+      savedPracticeIds,
+    });
+  }
 
   // Primary: questions at the student's target difficulty band.
   let questions: PracticeQuestionRow[] = await prisma.question.findMany({
@@ -561,22 +607,87 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
     return { type: 'pending', message: 'Practice questions are being generated for this topic.' };
   }
 
+  // Save selected IDs to session meta so TEST and HOMEWORK can exclude them (cross-phase dedup).
+  // Idempotent: only writes when savedPracticeIds was null/empty (checked above).
+  const selectedIds = questions.map((q) => q.id);
+  try {
+    const updatedMeta = { ...existingMeta, [META_PRACTICE_IDS]: selectedIds };
+    await prisma.structuredSession.update({
+      where: { id: sessionId },
+      data: { meta: updatedMeta },
+    });
+  } catch (metaSaveErr) {
+    // Non-fatal: cross-phase dedup degrades gracefully if this write fails.
+    logger.warn('[PRACTICE_RESOLVE] Failed to save servedPracticeIds to session meta', {
+      sessionId,
+      topicId,
+      error: String(metaSaveErr),
+    });
+  }
+
   return { type: 'practice', questions };
 }
 
 /**
  * TEST -- approved GeneratedTest with questions; difficulty-aware with fallback.
  *
+ * Cross-phase dedup: loads servedPracticeIds from session meta and filters those IDs
+ * from the test question list. If filtering removes all questions from a test, falls
+ * through to the next test candidate (best-effort -- never leaves the student with 0 questions).
+ * Saves the final served test question IDs to meta.servedTestIds for HOMEWORK to exclude.
+ *
  * Lookup order:
  *   1. Approved test at student's target difficulty band.
  *   2. Any approved test for the topic (difficulty fallback).
  *   3. Draft test at any difficulty (content-in-progress fallback).
  */
-async function resolveTest(topicId: string, studentMastery: number | null): Promise<PhaseContentData> {
+async function resolveTest(topicId: string, studentMastery: number | null, sessionId: string): Promise<PhaseContentData> {
   const targetDifficulty = resolveTargetDifficulty(studentMastery);
   const questionSelect = {
     select: { id: true, type: true, question: true, options: true, explanation: true },
   };
+
+  // Load session meta once to get practice question IDs for cross-phase dedup.
+  const sessionMeta = await prisma.structuredSession.findUnique({
+    where: { id: sessionId },
+    select: { meta: true },
+  });
+  const existingMeta = (sessionMeta?.meta && typeof sessionMeta.meta === 'object')
+    ? sessionMeta.meta as Record<string, unknown>
+    : {};
+  const practiceIds = new Set<string>(
+    Array.isArray(existingMeta[META_PRACTICE_IDS])
+      ? (existingMeta[META_PRACTICE_IDS] as string[])
+      : [],
+  );
+
+  /**
+   * Filter a test question list by practiceIds; falls back to the full list
+   * if filtering would remove every question (prevents an empty test).
+   * Inlined per call-site so TypeScript preserves the Prisma-inferred element type.
+   */
+  function dedupeTestQuestions(
+    qs: { id: string; type: string; question: string; options: unknown; explanation: string | null }[],
+  ): typeof qs {
+    if (practiceIds.size === 0) return qs;
+    const filtered = qs.filter((q) => !practiceIds.has(q.id));
+    return filtered.length > 0 ? filtered : qs;
+  }
+
+  async function saveTestIds(ids: string[]): Promise<void> {
+    try {
+      await prisma.structuredSession.update({
+        where: { id: sessionId },
+        data: { meta: { ...existingMeta, [META_TEST_IDS]: ids } },
+      });
+    } catch (err) {
+      logger.warn('[TEST_RESOLVE] Failed to save servedTestIds to session meta', {
+        sessionId,
+        topicId,
+        error: String(err),
+      });
+    }
+  }
 
   // Primary: approved test at the student's target difficulty.
   const approvedAtBand = await prisma.generatedTest.findFirst({
@@ -586,7 +697,9 @@ async function resolveTest(topicId: string, studentMastery: number | null): Prom
   });
 
   if (approvedAtBand && approvedAtBand.questions.length > 0) {
-    return { type: 'test', testId: approvedAtBand.id, title: approvedAtBand.title, difficulty: approvedAtBand.difficulty, questions: approvedAtBand.questions };
+    const questions = dedupeTestQuestions(approvedAtBand.questions);
+    await saveTestIds(questions.map((q) => q.id));
+    return { type: 'test', testId: approvedAtBand.id, title: approvedAtBand.title, difficulty: approvedAtBand.difficulty, questions };
   }
 
   // Fallback: any approved test (ignores difficulty band).
@@ -597,7 +710,9 @@ async function resolveTest(topicId: string, studentMastery: number | null): Prom
   });
 
   if (approvedAny && approvedAny.questions.length > 0) {
-    return { type: 'test', testId: approvedAny.id, title: approvedAny.title, difficulty: approvedAny.difficulty, questions: approvedAny.questions };
+    const questions = dedupeTestQuestions(approvedAny.questions);
+    await saveTestIds(questions.map((q) => q.id));
+    return { type: 'test', testId: approvedAny.id, title: approvedAny.title, difficulty: approvedAny.difficulty, questions };
   }
 
   // Final fallback: draft (content review in progress).
@@ -608,7 +723,9 @@ async function resolveTest(topicId: string, studentMastery: number | null): Prom
   });
 
   if (draft && draft.questions.length > 0) {
-    return { type: 'test', testId: draft.id, title: draft.title, difficulty: draft.difficulty, questions: draft.questions };
+    const questions = dedupeTestQuestions(draft.questions);
+    await saveTestIds(questions.map((q) => q.id));
+    return { type: 'test', testId: draft.id, title: draft.title, difficulty: draft.difficulty, questions };
   }
 
   logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'TEST', topicId, targetDifficulty });
