@@ -370,19 +370,19 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
   } as const;
 
   // Primary: questions at the student's target difficulty band.
-  let questions = await prisma.question.findMany({
+  let questions: PracticeQuestionRow[] = await prisma.question.findMany({
     // quarantined questions excluded -- do not remove this filter
     where: { topicId, difficulty: targetDifficulty, status: 'ACTIVE' },
     select: questionSelect,
-  });
-  
+  }) as PracticeQuestionRow[];
+
   logger.info('[PRACTICE_RESOLVE] Primary query', {
     topicId,
     targetDifficulty,
     found: questions.length,
     ids: questions.map((q) => q.id),
   });
-  
+
   questions = pickRandomQuestions(
     dedupePracticeQuestions(questions),
     PRACTICE_QUESTION_TARGET_COUNT,
@@ -397,29 +397,29 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
   // Fallback: any available questions for the topic (content may not yet cover all bands),
   // or use it to top up when dedupe removes duplicate rows from the primary difficulty band.
   if (questions.length < PRACTICE_QUESTION_TARGET_COUNT) {
-    const fallbackQuestions = await prisma.question.findMany({
+    const fallbackQuestions: PracticeQuestionRow[] = await prisma.question.findMany({
       // quarantined questions excluded -- do not remove this filter
       where: { topicId, status: 'ACTIVE' },
       select: questionSelect,
-    });
-    
+    }) as PracticeQuestionRow[];
+
     logger.info('[PRACTICE_RESOLVE] Fallback query', {
       topicId,
       found: fallbackQuestions.length,
     });
-    
+
     const merged = [...questions, ...fallbackQuestions];
     logger.info('[PRACTICE_RESOLVE] Merged arrays', {
       topicId,
       merged: merged.length,
       mergedIds: merged.map((q) => q.id),
     });
-    
+
     questions = pickRandomQuestions(
       dedupePracticeQuestions(merged),
       PRACTICE_QUESTION_TARGET_COUNT,
     );
-    
+
     logger.info('[PRACTICE_RESOLVE] After fallback dedup+pick', {
       topicId,
       selected: questions.length,
@@ -484,7 +484,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
           },
         });
         const existingKeys = new Set<string>(
-          existingActiveQuestions.map((q) => getPracticeQuestionKey(q)),
+          (existingActiveQuestions as PracticeQuestionRow[]).map((q) => getPracticeQuestionKey(q)),
         );
         const promotedKeys = new Set<string>();
         let promotedCount = 0;
@@ -540,7 +540,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
           // quarantined questions excluded -- do not remove this filter
           where: { topicId, status: 'ACTIVE' },
           select: questionSelect,
-        });
+        }) as PracticeQuestionRow[];
         questions = pickRandomQuestions(
           dedupePracticeQuestions(questions),
           PRACTICE_QUESTION_TARGET_COUNT,

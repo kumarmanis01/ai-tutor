@@ -885,7 +885,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           },
         });
         const existingContentKeys = new Set<string>(
-          existingActiveQuestions.map((q) =>
+          existingActiveQuestions.map((q: { prompt: string; choices: unknown; correctAnswer: string | null }) =>
             buildQuestionContentKey({
               question: q.prompt,
               options: q.choices,

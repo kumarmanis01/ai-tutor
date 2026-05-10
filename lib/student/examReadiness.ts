@@ -89,6 +89,17 @@ function readinessLabel(score: number): ReadinessLabel {
  *
  * Caches result in Redis (TTL 3600s). Never throws -- returns zero-state on error.
  */
+export async function invalidateReadinessCache(studentId: string, subjectId: string): Promise<void> {
+  try {
+    const redis = getRedis()
+    if (redis) {
+      await redis.del(`readiness:${studentId}:${subjectId}`)
+    }
+  } catch {
+    // non-fatal
+  }
+}
+
 export async function computeReadinessScore(
   studentId: string,
   subjectId: string,

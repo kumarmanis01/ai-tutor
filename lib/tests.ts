@@ -313,7 +313,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
     return [];
   }
 
-  const topicIds = [...new Set(rows.map((r) => r.test.topicId).filter((id): id is string => Boolean(id)))];
+  const topicIds = [...new Set(rows.map((r: { test: { topicId: string | null } }) => r.test.topicId).filter((id: string | null): id is string => Boolean(id)))];
   const existingQuestions = topicIds.length
     ? await prisma.question.findMany({
         where: {
@@ -329,7 +329,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
       })
     : [];
   const existingKeyToId = new Map<string, string>(
-    existingQuestions.map((q) => [
+    existingQuestions.map((q: { id: string; prompt: string; choices: unknown; correctAnswer: string | null }) => [
       buildQuestionSyncKey({
         prompt: q.prompt,
         choices: q.choices,
