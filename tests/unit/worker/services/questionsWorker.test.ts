@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | add source-level regression coverage for rejection-aware GeneratedQuestion promotion
+ * - 2026-05-10T00:00:00Z | copilot | add source-level regression coverage for worker dedupe helpers and deduped persistence path
  */
 
 import fs from 'fs';
@@ -25,5 +26,15 @@ describe('worker/services/questionsWorker.ts', () => {
 
     expect(source).toContain('status: { not: ApprovalStatus.Rejected }');
     expect(source).toContain('promote GeneratedQuestion rows to Question table after job completion');
+  });
+
+  it('deduplicates generated questions before persistence and promotion', () => {
+    const filePath = path.join(process.cwd(), 'worker', 'services', 'questionsWorker.ts');
+    const source = fs.readFileSync(filePath, 'utf8');
+
+    expect(source).toContain('function dedupeQuestionsForPersistence');
+    expect(source).toContain('parsed.questions = dedupeQuestionsForPersistence(parsed.questions);');
+    expect(source).toContain('const existingContentKeys = new Set<string>(');
+    expect(source).toContain('const promotedContentKeys = new Set<string>();');
   });
 });

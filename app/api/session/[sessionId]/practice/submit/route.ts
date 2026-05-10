@@ -23,9 +23,9 @@
  *
  *   Question loading
  *   ----------------
- *   Questions are loaded from the same Question bank query as resolvePractice()
- *   in getPhaseContent.ts (topicId, createdAt desc, take 20). Only answers
- *   whose questionId exists in that set are graded -- unknown IDs are skipped.
+ *   Questions are loaded by submitted questionIds (scoped to topicId + ACTIVE)
+ *   so grading always matches the exact PRACTICE set the student received,
+ *   independent of recency or pool reshuffling.
  *
  *   Mastery
  *   -------
@@ -39,6 +39,8 @@
  * EDIT LOG:
  *   2026-03-07 | Manish Kumar | created (fixes GAP-02: PRACTICE phase had no
  *                               submission path, leaving mastery weight of 0.1 unused).
+ *   2026-05-10 | copilot      | dedupe submitted answers by questionId and grade only
+ *                               against submitted IDs to prevent duplicate grading paths.
  */
 
 import { NextResponse } from 'next/server';
@@ -82,6 +84,24 @@ interface PracticeResult {
   totalAnswers: number;
   gradedAt: string;
   answers: { questionId: string; isCorrect: boolean; correctAnswer: string | null }[];
+}
+
+function dedupeSubmittedAnswers(
+  answers: { questionId: string; answer: string }[],
+): { questionId: string; answer: string }[] {
+  const seen = new Set<string>();
+  const deduped: { questionId: string; answer: string }[] = [];
+
+  for (const answer of answers) {
+    const key = String(answer.questionId ?? '').trim();
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(answer);
+  }
+
+  return deduped;
 }
 
 // ─── Route Handler ────────────────────────────────────────────────────────────
@@ -141,6 +161,16 @@ export async function POST(
     return res;
   }
 
+  const dedupedSubmittedAnswers = dedupeSubmittedAnswers(body.answers);
+  if (dedupedSubmittedAnswers.length === 0) {
+    res = NextResponse.json(
+      { error: 'answers[] must contain at least one valid questionId' },
+      { status: 400 },
+    );
+    logger.logAPI(req, res, { className: 'PracticeSubmitAPI', methodName: 'POST' }, start);
+    return res;
+  }
+
   // ── Load session ──────────────────────────────────────────────────────────
 
   const session = await prisma.structuredSession.findFirst({
@@ -193,15 +223,17 @@ export async function POST(
   }
 
   // ── Load practice questions ───────────────────────────────────────────────
-  // Same source as resolvePractice() in getPhaseContent.ts.
-  // take: 20 (generous) -- only submitted questionIds that exist in the map
-  // are graded; unknown IDs are silently skipped.
+  // Grade only against the submitted question IDs within the current topic.
+  // Unknown IDs are silently skipped.
 
+  const submittedQuestionIds = dedupedSubmittedAnswers.map((a) => a.questionId);
   const practiceQuestions = await prisma.question.findMany({
     // quarantined questions excluded -- do not remove this filter
-    where: { topicId: session.topicId, status: 'ACTIVE' },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
+    where: {
+      topicId: session.topicId,
+      status: 'ACTIVE',
+      id: { in: submittedQuestionIds },
+    },
     select: { id: true, type: true, choices: true, correctAnswer: true },
   });
 
@@ -215,7 +247,7 @@ export async function POST(
   let totalCount = 0;
   const gradedAnswers: GradedAnswer[] = [];
 
-  for (const ans of body.answers) {
+  for (const ans of dedupedSubmittedAnswers) {
     const question = questionMap.get(ans.questionId);
     if (!question) continue; // unknown question -- skip silently
 

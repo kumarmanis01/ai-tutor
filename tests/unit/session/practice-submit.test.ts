@@ -275,4 +275,31 @@ describe('POST /api/session/[sessionId]/practice/submit', () => {
     expect(data.correctAnswers).toBe(1);
     expect(data.results).toHaveLength(1);
   });
+
+  it('deduplicates duplicate submitted questionIds and queries only submitted IDs', async () => {
+    const body = {
+      answers: [
+        { questionId: 'q-1', answer: 'Newton' },
+        { questionId: 'q-1', answer: 'Pascal' },
+        { questionId: 'q-2', answer: 'Photosynthesis' },
+      ],
+    };
+
+    const res = await POST(makeRequest(body), makeParams());
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.totalAnswers).toBe(2);
+    expect(data.correctAnswers).toBe(2);
+
+    expect(prisma.question.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          topicId: TOPIC_ID,
+          status: 'ACTIVE',
+          id: { in: ['q-1', 'q-2'] },
+        }),
+      }),
+    );
+  });
 });

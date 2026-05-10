@@ -18,6 +18,7 @@
  * - 2026-01-22T04:45:00Z | copilot | Generate questions for ALL 3 difficulty levels (easy, medium, hard) in one job
  * - 2026-05-04T00:00:00Z | copilot | Soft-approve: promote GeneratedQuestion rows to Question table after job completion so practice questions are immediately available without admin approval. Admin can still quarantine/reject individual rows.
  * - 2026-05-09T00:00:00Z | copilot | skip rejected GeneratedTest rows when soft-promoting GeneratedQuestion rows into Question table
+ * - 2026-05-10T00:00:00Z | copilot | enforce deduplication in worker persistence and soft-promotion paths so duplicate question content is not emitted from generation jobs
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -55,6 +56,60 @@ function logRawToConsole(jobId: string, llmResult: any) {
 /** All difficulty levels to generate */
 const DIFFICULTY_LEVELS = ['easy', 'medium', 'hard'] as const;
 type DifficultyLevel = typeof DIFFICULTY_LEVELS[number];
+
+function normalizeQuestionText(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function stableQuestionValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableQuestionValue(item)).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj)
+      .sort()
+      .map((key) => `${key}:${stableQuestionValue(obj[key])}`)
+      .join(',')}}`;
+  }
+
+  if (typeof value === 'string') {
+    return normalizeQuestionText(value);
+  }
+
+  return String(value ?? '');
+}
+
+function buildQuestionContentKey(question: {
+  question?: unknown;
+  options?: unknown;
+  answer?: unknown;
+}): string {
+  const prompt = normalizeQuestionText(question.question);
+  const options = stableQuestionValue(question.options);
+  const answer = stableQuestionValue(question.answer);
+  return `${prompt}::${options}::${answer}`;
+}
+
+function dedupeQuestionsForPersistence(questions: any[]): any[] {
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+
+  for (const question of questions) {
+    const key = buildQuestionContentKey(question);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(question);
+  }
+
+  return deduped;
+}
 
 /**
  * Returns the validated question count per difficulty level.
@@ -604,6 +659,32 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       parsed.questions = parsed.questions.slice(0, resolvedQuestionsCount);
     }
 
+    const beforeDedupCount = Array.isArray(parsed?.questions) ? parsed.questions.length : 0;
+    parsed.questions = dedupeQuestionsForPersistence(parsed.questions);
+    if (parsed.questions.length < beforeDedupCount) {
+      logger.info('[QUESTIONS_DEDUPED]', {
+        jobId,
+        topicId,
+        difficulty,
+        beforeDedupCount,
+        afterDedupCount: parsed.questions.length,
+      });
+    }
+
+    if (parsed.questions.length === 0) {
+      logger.error('[QUESTION_GENERATION_FAILURE]', {
+        topic: topic.name,
+        difficulty,
+        errorCode: 'all_questions_deduped_out',
+        validationErrors: null,
+        jobId,
+        topicId,
+      });
+      questionsFailed++;
+      results.push({ difficulty, testId: null, questionCount: 0 });
+      continue;
+    }
+
     logger.info('[VALIDATION] questionsWorker: questionCountByDifficulty', {
       jobId,
       difficulty,
@@ -792,6 +873,27 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     // reconcile later. Admin can quarantine/reject individual Question rows afterwards.
     if (createdTestIds.length > 0) {
       try {
+        const existingActiveQuestions = await prisma.question.findMany({
+          where: {
+            topicId,
+            status: 'ACTIVE',
+          },
+          select: {
+            prompt: true,
+            choices: true,
+            correctAnswer: true,
+          },
+        });
+        const existingContentKeys = new Set<string>(
+          existingActiveQuestions.map((q) =>
+            buildQuestionContentKey({
+              question: q.prompt,
+              options: q.choices,
+              answer: q.correctAnswer,
+            }),
+          ),
+        );
+
         const generatedRows = await prisma.generatedQuestion.findMany({
           where: { testId: { in: createdTestIds }, test: { status: { not: ApprovalStatus.Rejected } } },
           select: {
@@ -830,7 +932,17 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         });
 
         let promoted = 0;
+        const promotedContentKeys = new Set<string>();
         for (const gq of generatedRows) {
+          const contentKey = buildQuestionContentKey({
+            question: gq.question,
+            options: gq.options,
+            answer: gq.answer,
+          });
+          if (existingContentKeys.has(contentKey) || promotedContentKeys.has(contentKey)) {
+            continue;
+          }
+
           const correctAnswer =
             typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer ?? '');
           const ch = gq.test.topic?.chapter;
@@ -858,6 +970,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
               // status defaults to ACTIVE via schema @default(ACTIVE) -- no admin approval required
             },
           });
+          promotedContentKeys.add(contentKey);
           promoted++;
         }
 

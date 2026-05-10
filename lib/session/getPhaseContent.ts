@@ -28,6 +28,10 @@
  *                               admin rejections remain hidden to students.
  *   2026-05-09 | copilot      | include correctAnswer in PRACTICE phase question select/mapping
  *                               so UI instant feedback can evaluate correctly.
+ *   2026-05-10 | copilot      | dedupe PRACTICE question rows by normalized prompt+choices+answer
+ *                               to prevent repeated questions within a single session.
+ *   2026-05-10 | copilot      | switch PRACTICE selection from recency ordering to random sampling
+ *                               so sessions do not always serve the latest rows.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -39,6 +43,8 @@ import {
   UPCOMING_PHASES_ORDER,
 } from '@/lib/session/sessionEngine';
 import { resolveTargetDifficulty } from '@/lib/ai/adaptiveDifficulty';
+
+const PRACTICE_QUESTION_TARGET_COUNT = 5;
 
 // ─── Return Types ─────────────────────────────────────────────────────────────
 
@@ -114,6 +120,77 @@ export type PhaseContentData =
   | HomeworkContent
   | CompleteContent
   | PendingContent;
+
+type PracticeQuestionRow = PracticeContent['questions'][number];
+
+function normalizeTextForQuestionKey(input?: string | null): string {
+  return (input ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function stableValueForQuestionKey(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableValueForQuestionKey(item)).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj)
+      .sort()
+      .map((key) => `${key}:${stableValueForQuestionKey(obj[key])}`)
+      .join(',')}}`;
+  }
+
+  if (typeof value === 'string') {
+    return normalizeTextForQuestionKey(value);
+  }
+
+  return String(value ?? '');
+}
+
+function getPracticeQuestionKey(question: PracticeQuestionRow): string {
+  const promptKey = normalizeTextForQuestionKey(question.prompt);
+  const choicesKey = stableValueForQuestionKey(question.choices);
+  const answerKey = normalizeTextForQuestionKey(question.correctAnswer);
+  return `${promptKey}::${choicesKey}::${answerKey}`;
+}
+
+function dedupePracticeQuestions(questions: PracticeQuestionRow[]): PracticeQuestionRow[] {
+  const seen = new Set<string>();
+  const deduped: PracticeQuestionRow[] = [];
+
+  for (const question of questions) {
+    const key = getPracticeQuestionKey(question);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(question);
+  }
+
+  return deduped;
+}
+
+function pickRandomQuestions(
+  questions: PracticeQuestionRow[],
+  count: number,
+): PracticeQuestionRow[] {
+  if (questions.length <= count) {
+    return questions;
+  }
+
+  const shuffled = [...questions];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const swapIndex = Math.floor(Math.random() * (i + 1));
+    const current = shuffled[i];
+    shuffled[i] = shuffled[swapIndex];
+    shuffled[swapIndex] = current;
+  }
+
+  return shuffled.slice(0, count);
+}
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -285,20 +362,25 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
   let questions = await prisma.question.findMany({
     // quarantined questions excluded -- do not remove this filter
     where: { topicId, difficulty: targetDifficulty, status: 'ACTIVE' },
-    take: 5,
-    orderBy: { createdAt: 'desc' },
     select: questionSelect,
   });
+  questions = pickRandomQuestions(
+    dedupePracticeQuestions(questions),
+    PRACTICE_QUESTION_TARGET_COUNT,
+  );
 
-  // Fallback: any available questions for the topic (content may not yet cover all bands).
-  if (questions.length === 0) {
-    questions = await prisma.question.findMany({
+  // Fallback: any available questions for the topic (content may not yet cover all bands),
+  // or use it to top up when dedupe removes duplicate rows from the primary difficulty band.
+  if (questions.length < PRACTICE_QUESTION_TARGET_COUNT) {
+    const fallbackQuestions = await prisma.question.findMany({
       // quarantined questions excluded -- do not remove this filter
       where: { topicId, status: 'ACTIVE' },
-      take: 5,
-      orderBy: { createdAt: 'desc' },
       select: questionSelect,
     });
+    questions = pickRandomQuestions(
+      dedupePracticeQuestions([...questions, ...fallbackQuestions]),
+      PRACTICE_QUESTION_TARGET_COUNT,
+    );
   }
 
   if (questions.length === 0) {
@@ -346,9 +428,38 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
       });
 
       if (generatedRows.length > 0) {
+        const existingActiveQuestions = await prisma.question.findMany({
+          where: { topicId, status: 'ACTIVE' },
+          select: {
+            id: true,
+            type: true,
+            prompt: true,
+            choices: true,
+            difficulty: true,
+            correctAnswer: true,
+          },
+        });
+        const existingKeys = new Set<string>(
+          existingActiveQuestions.map((q) => getPracticeQuestionKey(q)),
+        );
+        const promotedKeys = new Set<string>();
+        let promotedCount = 0;
+
         for (const gq of generatedRows) {
           const correctAnswer =
             typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer ?? '');
+          const contentKey = getPracticeQuestionKey({
+            id: gq.id,
+            type: gq.type || 'mcq',
+            prompt: gq.question,
+            choices: gq.options ?? undefined,
+            difficulty: gq.test.difficulty ?? null,
+            correctAnswer,
+          });
+          if (existingKeys.has(contentKey) || promotedKeys.has(contentKey)) {
+            continue;
+          }
+
           const ch = gq.test.topic?.chapter;
           const sub = ch?.subject;
           const cls = sub?.class;
@@ -371,21 +482,25 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
               // status defaults to ACTIVE via schema @default(ACTIVE)
             },
           });
+          promotedKeys.add(contentKey);
+          promotedCount++;
         }
 
         logger.info('[PHASE_CONTENT] resolvePractice: promoted GeneratedQuestion rows on-demand', {
           topicId,
-          promoted: generatedRows.length,
+          promoted: promotedCount,
         });
 
         // Re-query after promotion so the caller gets questions in this same request.
         questions = await prisma.question.findMany({
           // quarantined questions excluded -- do not remove this filter
           where: { topicId, status: 'ACTIVE' },
-          take: 5,
-          orderBy: { createdAt: 'desc' },
           select: questionSelect,
         });
+        questions = pickRandomQuestions(
+          dedupePracticeQuestions(questions),
+          PRACTICE_QUESTION_TARGET_COUNT,
+        );
       }
     } catch (syncErr) {
       // Non-fatal: log and fall through to pending state so the student sees
