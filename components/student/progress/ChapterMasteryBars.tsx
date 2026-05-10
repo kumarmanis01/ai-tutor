@@ -1,17 +1,18 @@
 /**
- * ChapterMasteryBars -- per-subject, per-chapter mastery progress bars.
+ * FILE OBJECTIVE:
+ * - Render the per-subject chapter mastery breakdown with accessible rows,
+ *   mastery bars, and board-weight indicators.
  *
- * Chapters are ordered lowest mastery first (most needs attention at top).
- * Each row links to /session/pre/[weakestConceptId] for targeted practice.
- * Board chapter weight is shown as a grey chip.
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/progress/ChapterMasteryBars.spec.tsx
  *
- * Colour rules (from CLAUDE.md):
- *   >70% mastery → green  (#1D9E75)
- *   40-70%       → amber  (#BA7517)
- *   <40%         → red    (#E24B4A)
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page
+ * - 2026-05-10T00:00:00Z | copilot | remove inline styles, add estimated-weight label, and improve row accessibility
  */
 
 import Link from 'next/link';
@@ -23,6 +24,8 @@ export interface ChapterRow {
   masteryScore: number;
   /** chapter weight as % of total exam marks */
   boardWeightPct: number;
+  /** source of the displayed board weight */
+  weightSource: 'board' | 'estimated';
   /** conceptId for the lowest-mastery concept in this chapter, or null */
   weakestConceptId: string | null;
   /** Average memory strength for the chapter (0-1) */
@@ -41,51 +44,50 @@ interface ChapterMasteryBarsProps {
 }
 
 function chapterColor(mastery100: number) {
-  if (mastery100 > 70) return { bar: '#1D9E75', text: 'text-[#1D9E75]' };
-  if (mastery100 >= 40) return { bar: '#BA7517', text: 'text-[#BA7517]' };
-  return { bar: '#E24B4A', text: 'text-[#E24B4A]' };
+  if (mastery100 > 70) return { barClass: 'bg-[#1D9E75]', text: 'text-[#1D9E75]' };
+  if (mastery100 >= 40) return { barClass: 'bg-[#BA7517]', text: 'text-[#BA7517]' };
+  return { barClass: 'bg-[#E24B4A]', text: 'text-[#E24B4A]' };
+}
+
+function percentWidthClass(percent: number): string {
+  const rounded = Math.max(0, Math.min(100, Math.round(percent / 5) * 5));
+  return `w-pct-${rounded}`;
 }
 
 function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
   const mastery100 = Math.round(chapter.masteryScore * 100);
-  const { bar, text } = chapterColor(mastery100);
+  const { barClass, text } = chapterColor(mastery100);
   const href = chapter.weakestConceptId
     ? `/session/pre/${chapter.weakestConceptId}`
-    : '#';
+    : null;
 
-  return (
-    <a
-      href={href}
-      className="flex items-center gap-3 py-3 min-h-[44px] border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/40 rounded-lg px-1 transition-colors"
-      aria-label={`${chapter.chapterName}: ${mastery100}% mastery -- tap to practise`}
-    >
+  const content = (
+    <>
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-center mb-1.5">
           <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate pr-2">
             {chapter.chapterName}
           </span>
-          <span className={`${text} text-xs font-semibold flex-shrink-0`}>
-            {mastery100}%
-          </span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className={`${text} text-xs font-semibold`}>
+              {mastery100}%
+            </span>
+            {chapter.weightSource === 'estimated' && (
+              <span className="text-[10px] font-medium uppercase tracking-wide text-[#BA7517] bg-[#FAEEDA] dark:bg-[#BA7517]/15 px-1.5 py-0.5 rounded-full">
+                est.
+              </span>
+            )}
+          </div>
         </div>
-        <div
-          className="h-2 rounded-full bg-gray-100 dark:bg-slate-600 overflow-hidden"
-          role="progressbar"
-          aria-valuenow={mastery100}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
+        <div className="h-2 rounded-full bg-gray-100 dark:bg-slate-600 overflow-hidden" aria-hidden="true">
           <div
-            className="h-full rounded-full"
-            style={{ width: `${mastery100}%`, backgroundColor: bar }}
+            className={`h-full rounded-full ${percentWidthClass(mastery100)} ${barClass}`}
           />
         </div>
-        {/* Memory strength (visual only) */}
         <div className="mt-2">
-          <div className="h-1 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden" aria-hidden>
+          <div className="h-1 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden" aria-hidden="true">
             <div
-              className="h-full rounded-full"
-              style={{ width: `${Math.round((chapter.memoryStrength ?? 0) * 100)}%`, backgroundColor: '#534AB7' }}
+              className={`h-full rounded-full ${percentWidthClass(Math.round((chapter.memoryStrength ?? 0) * 100))} bg-[#534AB7]`}
             />
           </div>
         </div>
@@ -93,7 +95,27 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
       <span className="flex-shrink-0 text-[10px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
         {chapter.boardWeightPct.toFixed(0)}%
       </span>
-    </a>
+    </>
+  );
+
+  const rowClassName = 'flex items-center gap-3 py-3 min-h-[44px] border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/40 rounded-lg px-1 transition-colors';
+
+  if (!href) {
+    return (
+      <div className={rowClassName} aria-label={`${chapter.chapterName}: ${mastery100}% mastery`}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className={rowClassName}
+      aria-label={`${chapter.chapterName}: ${mastery100}% mastery -- tap to practise`}
+    >
+      {content}
+    </Link>
   );
 }
 

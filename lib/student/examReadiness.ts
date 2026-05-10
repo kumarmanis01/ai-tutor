@@ -54,6 +54,7 @@ export interface ReadinessChapter {
   boardWeightPct: number // chapter weight as % of total exam marks
   contribution: number   // masteryScore × boardWeightPct (0-100 scale)
   status: ReadinessLabel
+  weightSource: 'board' | 'estimated'
 }
 
 export interface ReadinessResult {
@@ -178,6 +179,7 @@ export async function computeReadinessScore(
         boardWeightPct: Math.round(boardWeightPct * 10) / 10,
         contribution: Math.round(contribution * 10) / 10,
         status: readinessLabel(Math.round(avgMastery * 100)),
+        weightSource: usingEqualWeights ? 'estimated' : 'board',
       })
     }
 

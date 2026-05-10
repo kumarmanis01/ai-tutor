@@ -1,20 +1,14 @@
 /**
- * Progress report page -- /student/progress
+ * FILE OBJECTIVE:
+ * - Render the student progress page and assemble mastery, trend, heatmap,
+ *   and session history data for the selected subject and time range.
  *
- * Server component. Never paywalled -- all students see this regardless of subscription.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/progress/subjectFilter.spec.ts
  *
- * URL params:
- *   ?subject=<name>  -- filter chapter mastery + session history to one subject
- *   ?days=<7|30|90|0>  -- time window (0 = all time, default 30)
- *
- * Sections (top to bottom):
- *   0. Filter bar (ProgressFilters client component)
- *   1. AI Narrative Insight ("Vidya's insight") -- client widget, fetches independently
- *   2. Sessions Chart -- bucketed into 4 bars for the selected period
- *   3. Chapter Mastery Bars -- per subject (or single subject when filtered)
- *   4. Test Score History -- last 10 sessions in selected period
- *
- * Desktop layout (md:): left 60% = sections 1-2 | right 40% = sections 3-4
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page
@@ -23,6 +17,7 @@
  * - 2026-05-09T00:00:00Z | copilot | fix Gap 6 (PROGRESS_PAGE_GAP_AUDIT.md): replace generic subjectFilter
  *     with model-specific filter shapes for structuredSession (heatmap) and
  *     testResult/question (trend); deduplicate subjectNames on read (Gap 7)
+ * - 2026-05-10T00:00:00Z | copilot | normalize subject matching against slug/name and use read helper for filtered mastery
  */
 
 import type { Metadata } from 'next';
@@ -44,6 +39,7 @@ import ProgressFilters from '@/components/student/progress/ProgressFilters';
 import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/ScoreTrendGraph';
 import StudyTimeHeatmap, { type HeatmapDay } from '@/components/student/progress/StudyTimeHeatmap';
 import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
+import { subjectDefMatchesActiveSubject } from '@/lib/student/progressPage';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,15 +177,13 @@ export default async function ProgressPage({
           OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
           lifecycle: 'active',
         },
-        select: { id: true, name: true },
+        select: { id: true, name: true, slug: true },
       })
     : [];
 
   // Apply subject filter to the mastery query.
   const filteredSubjectDefs = activeSubject
-    ? subjectDefs.filter(
-        (s) => s.name.toLowerCase() === activeSubject.toLowerCase(),
-      )
+    ? subjectDefs.filter((s) => subjectDefMatchesActiveSubject(s, activeSubject))
     : subjectDefs;
 
   // ── Readiness per subject (parallel, Redis-cached) ─────────────────────────
@@ -256,6 +250,7 @@ export default async function ProgressPage({
         chapterName: ch.chapterName,
         masteryScore: ch.masteryScore,
         boardWeightPct: ch.boardWeightPct,
+        weightSource: ch.weightSource,
         weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
         memoryStrength: (() => {
           const cIds = (conceptsByChapter.get(ch.chapterId) ?? [] as string[])

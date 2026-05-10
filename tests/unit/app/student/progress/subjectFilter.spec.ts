@@ -5,6 +5,7 @@
  *   and questionClause routes through chapter→subject, instead of using a
  *   non-existent top-level 'subject' field.
  * - Verifies Gap 7 fix: subjectNames is deduplicated before DB lookup.
+ * - Verifies page-level subject normalization against slug/name values.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/student/progress/subjectFilter.spec.ts
@@ -16,6 +17,11 @@
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | created — Gap 6 & 7 fix coverage (PROGRESS_PAGE_GAP_AUDIT.md)
  */
+
+import {
+  normalizeSubjectKey,
+  subjectDefMatchesActiveSubject,
+} from '@/lib/student/progressPage'
 
 // These tests exercise the filter-shape logic extracted from page.tsx in isolation
 // (pure functions with no DB / Next.js dependencies).
@@ -156,5 +162,38 @@ describe('deduplicateSubjectNames', () => {
   it('preserves order of first occurrence', () => {
     const result = deduplicateSubjectNames(['Chemistry', 'Math', 'Chemistry', 'Biology', 'Math']);
     expect(result).toEqual(['Chemistry', 'Math', 'Biology']);
+  });
+});
+
+// ── subject matching helpers (progress page lookup path) ────────────────────
+
+describe('normalizeSubjectKey / subjectDefMatchesActiveSubject', () => {
+  it('normalizes whitespace, underscores, and hyphens consistently', () => {
+    expect(normalizeSubjectKey('  Social-Studies ')).toBe('social studies');
+    expect(normalizeSubjectKey('Computer_Science')).toBe('computer science');
+  });
+
+  it('matches subject names and slugs case-insensitively', () => {
+    expect(
+      subjectDefMatchesActiveSubject(
+        { name: 'Mathematics', slug: 'maths' },
+        'maths',
+      ),
+    ).toBe(true);
+    expect(
+      subjectDefMatchesActiveSubject(
+        { name: 'Computer Science', slug: 'computer-science' },
+        'computer science',
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects mismatched subjects', () => {
+    expect(
+      subjectDefMatchesActiveSubject(
+        { name: 'Physics', slug: 'physics' },
+        'chemistry',
+      ),
+    ).toBe(false);
   });
 });
