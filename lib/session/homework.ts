@@ -94,14 +94,20 @@ export interface HomeworkResult {
  * student can always advance from HOMEWORK → COMPLETE.
  *
  * Throws only on infrastructure failures (e.g. DB write error).
+ *
+ * @param excludeIds - Question IDs already served in PRACTICE or TEST phases.
+ *                     These are filtered out of every strategy so the student
+ *                     does not see the same question in multiple phases.
  */
 export async function generateHomework(
   studentId: string,
   topicId: string,
   sessionId?: string,
+  excludeIds?: Set<string>,
 ): Promise<HomeworkResult> {
+  const exclusions = excludeIds ?? new Set<string>();
   // First attempt at gathering questions.
-  let questions = await gatherQuestions(topicId);
+  let questions = await gatherQuestions(topicId, exclusions);
 
   // One retry after a short delay -- handles transient DB hiccups where a
   // very recently completed hydration job has not yet been committed.
@@ -113,7 +119,7 @@ export async function generateHomework(
       reason: 'no_questions_on_first_attempt',
     });
     await delay(RETRY_DELAY_MS);
-    questions = await gatherQuestions(topicId);
+    questions = await gatherQuestions(topicId, exclusions);
   }
 
   const isStub = questions.length === 0;
@@ -161,8 +167,11 @@ export async function generateHomework(
 /**
  * Attempt to gather questions for the topic via three strategies.
  * Returns an empty array when all strategies fail -- never throws.
+ *
+ * @param excludeIds - Question IDs already served in PRACTICE or TEST phases (cross-phase dedup).
+ *                     Applied in all three strategies before the id-level dedup within each strategy.
  */
-async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
+async function gatherQuestions(topicId: string, excludeIds: Set<string>): Promise<HomeworkQuestion[]> {
   // ── Strategy 1: promoted Question bank (topicId FK) ─────────────────────
   type BankQuestion = {
     id: string;
@@ -173,7 +182,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
     difficulty: string | null;
   };
 
-  const bankQuestions: BankQuestion[] = await prisma.question.findMany({
+  const allBankQuestions: BankQuestion[] = await prisma.question.findMany({
     // quarantined questions excluded -- do not remove this filter
     where: { topicId, status: 'ACTIVE' },
     take: MAX_QUESTIONS * 2,
@@ -187,6 +196,8 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
       difficulty: true,
     },
   });
+  // Cross-phase dedup: exclude IDs already served in PRACTICE or TEST.
+  const bankQuestions = allBankQuestions.filter((q) => !excludeIds.has(q.id));
 
   if (bankQuestions.length >= MIN_QUESTIONS) {
     return shuffle(bankQuestions)
@@ -231,7 +242,10 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
     take: 3,
   })) as GenTestRow[];
 
-  const genQuestions = genTests.flatMap((t: GenTestRow) => t.questions);
+  // Cross-phase dedup: exclude IDs already served in PRACTICE or TEST.
+  const genQuestions = genTests
+    .flatMap((t: GenTestRow) => t.questions)
+    .filter((gq: GenQuestionRow) => !excludeIds.has(gq.id));
 
   const combined: HomeworkQuestion[] = [
     ...bankQuestions.map((q) => ({
@@ -307,10 +321,11 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
         take: 3,
       })) as GenTestRow[];
 
-      // Deduplicate against the topic-level questions already in `seen`.
+      // Deduplicate against the topic-level questions already in `seen`,
+      // and also cross-phase dedup against excludeIds.
       const siblingQuestions: HomeworkQuestion[] = siblingTests
         .flatMap((t: GenTestRow) => t.questions)
-        .filter((gq: GenQuestionRow) => !seen.has(gq.id))
+        .filter((gq: GenQuestionRow) => !seen.has(gq.id) && !excludeIds.has(gq.id))
         .map((gq: GenQuestionRow) => ({
           id: gq.id,
           type: gq.type || 'mcq',

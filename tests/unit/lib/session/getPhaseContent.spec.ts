@@ -47,6 +47,10 @@ jest.mock('@/lib/prisma', () => ({
     homeworkAssignment: {
       findFirst: jest.fn(),
     },
+    structuredSession: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
   },
 }));
 
@@ -61,6 +65,12 @@ jest.mock('@/lib/logger', () => ({
 describe('resolvePhaseContent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Safe defaults so unexpected calls don't return undefined and crash tests.
+    const prisma = require('@/lib/prisma').prisma;
+    prisma.structuredSession.findUnique.mockResolvedValue({ meta: null });
+    prisma.structuredSession.update.mockResolvedValue({});
+    prisma.question.findMany.mockResolvedValue([]);
+    prisma.generatedTest.findFirst.mockResolvedValue(null);
   });
 
   it('promotes generated practice questions when the question bank is empty', async () => {
@@ -315,6 +325,110 @@ describe('resolvePhaseContent', () => {
       expect(resultIds).not.toContain('dup-2');
       expect(resultIds).not.toContain('dup-3');
       expect(resultIds).toContain('dup-1');
+    }
+  });
+
+  it('saves practice question IDs to session meta on first serve', async () => {
+    const prisma = require('@/lib/prisma').prisma;
+
+    prisma.question.findMany.mockResolvedValueOnce([
+      { id: 'p-1', type: 'mcq', prompt: 'Q1', choices: ['A'], difficulty: 'medium', correctAnswer: 'A' },
+      { id: 'p-2', type: 'mcq', prompt: 'Q2', choices: ['B'], difficulty: 'medium', correctAnswer: 'B' },
+    ]);
+
+    const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
+    const result = await resolvePhaseContent('PRACTICE', 'topic-1', 'session-1', 'student-1', null);
+
+    expect(result.type).toBe('practice');
+    expect(prisma.structuredSession.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'session-1' },
+        data: expect.objectContaining({
+          meta: expect.objectContaining({ servedPracticeIds: expect.arrayContaining(['p-1', 'p-2']) }),
+        }),
+      }),
+    );
+  });
+
+  it('returns locked questions from session meta on page refresh (deterministic)', async () => {
+    const prisma = require('@/lib/prisma').prisma;
+
+    // Simulate that the session already has saved practice IDs from a prior GET.
+    prisma.structuredSession.findUnique.mockResolvedValue({
+      meta: { servedPracticeIds: ['locked-1', 'locked-2'] },
+    });
+    prisma.question.findMany.mockResolvedValue([
+      { id: 'locked-1', type: 'mcq', prompt: 'Locked Q1', choices: ['X'], difficulty: 'medium', correctAnswer: 'X' },
+      { id: 'locked-2', type: 'mcq', prompt: 'Locked Q2', choices: ['Y'], difficulty: 'easy', correctAnswer: 'Y' },
+    ]);
+
+    const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
+    const result = await resolvePhaseContent('PRACTICE', 'topic-1', 'session-1', 'student-1', null);
+
+    expect(result.type).toBe('practice');
+    if (result.type === 'practice') {
+      expect(result.questions.map((q) => q.id).sort()).toEqual(['locked-1', 'locked-2']);
+    }
+    // No meta update should happen when returning locked questions.
+    expect(prisma.structuredSession.update).not.toHaveBeenCalled();
+  });
+
+  it('excludes practice question IDs from the TEST phase (cross-phase dedup)', async () => {
+    const prisma = require('@/lib/prisma').prisma;
+
+    // Practice IDs already locked in session meta.
+    prisma.structuredSession.findUnique.mockResolvedValue({
+      meta: { servedPracticeIds: ['shared-q1', 'shared-q2'] },
+    });
+
+    // Test contains 3 questions: 2 overlap with practice, 1 is new.
+    prisma.generatedTest.findFirst.mockResolvedValue({
+      id: 'test-1',
+      title: 'Topic Test',
+      difficulty: 'medium',
+      questions: [
+        { id: 'shared-q1', type: 'mcq', question: 'Shared Q1', options: ['A'], explanation: null },
+        { id: 'shared-q2', type: 'mcq', question: 'Shared Q2', options: ['B'], explanation: null },
+        { id: 'new-q3', type: 'mcq', question: 'New Q3', options: ['C'], explanation: null },
+      ],
+    });
+
+    const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
+    const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
+
+    expect(result.type).toBe('test');
+    if (result.type === 'test') {
+      const ids = result.questions.map((q) => q.id);
+      expect(ids).not.toContain('shared-q1');
+      expect(ids).not.toContain('shared-q2');
+      expect(ids).toContain('new-q3');
+    }
+  });
+
+  it('falls back to unfiltered test questions when all would be excluded by practice dedup', async () => {
+    const prisma = require('@/lib/prisma').prisma;
+
+    // All test question IDs match practice IDs -- should not return empty test.
+    prisma.structuredSession.findUnique.mockResolvedValue({
+      meta: { servedPracticeIds: ['q1', 'q2'] },
+    });
+    prisma.generatedTest.findFirst.mockResolvedValue({
+      id: 'test-only',
+      title: 'Mini Test',
+      difficulty: 'medium',
+      questions: [
+        { id: 'q1', type: 'mcq', question: 'Q1', options: ['A'], explanation: null },
+        { id: 'q2', type: 'mcq', question: 'Q2', options: ['B'], explanation: null },
+      ],
+    });
+
+    const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
+    const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
+
+    // All filtered out -- should fall back to all test questions rather than pending.
+    expect(result.type).toBe('test');
+    if (result.type === 'test') {
+      expect(result.questions).toHaveLength(2);
     }
   });
 });

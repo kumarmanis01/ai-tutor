@@ -433,7 +433,35 @@ export async function advanceSession(
       // generateHomeworkWithRetry() guarantees a HomeworkAssignment row is
       // created (stub if necessary) so resolvePhaseContent never returns
       // PendingContent and the student is never permanently stuck here.
-      const hw = await generateHomeworkWithRetry(studentId, updated.topicId, sessionId);
+
+      // Cross-phase dedup: load question IDs already served in PRACTICE and TEST
+      // so homework does not repeat questions the student just saw.
+      let homeworkExcludeIds = new Set<string>();
+      try {
+        const sessionForMeta = await prisma.structuredSession.findUnique({
+          where: { id: sessionId },
+          select: { meta: true },
+        });
+        const metaObj = (sessionForMeta?.meta && typeof sessionForMeta.meta === 'object')
+          ? sessionForMeta.meta as Record<string, unknown>
+          : {};
+        const practiceIds = Array.isArray(metaObj['servedPracticeIds'])
+          ? (metaObj['servedPracticeIds'] as string[])
+          : [];
+        const testIds = Array.isArray(metaObj['servedTestIds'])
+          ? (metaObj['servedTestIds'] as string[])
+          : [];
+        homeworkExcludeIds = new Set([...practiceIds, ...testIds]);
+      } catch (metaErr) {
+        logger.warn('[SESSION_HOMEWORK_META_LOAD_FAILED]', {
+          sessionId,
+          studentId,
+          error: String(metaErr),
+          note: 'Proceeding without cross-phase dedup.',
+        });
+      }
+
+      const hw = await generateHomeworkWithRetry(studentId, updated.topicId, sessionId, homeworkExcludeIds);
       if (hw) {
         homeworkId = hw.id;
         if (hw.isStub) {
@@ -681,9 +709,10 @@ async function generateHomeworkWithRetry(
   studentId: string,
   topicId: string,
   sessionId: string,
+  excludeIds?: Set<string>,
 ): Promise<HomeworkResult | null> {
   try {
-    return await generateHomework(studentId, topicId, sessionId);
+    return await generateHomework(studentId, topicId, sessionId, excludeIds);
   } catch (firstErr) {
     logger.warn('[SESSION_HOMEWORK_RETRY]', {
       sessionId,
@@ -697,7 +726,7 @@ async function generateHomeworkWithRetry(
   await new Promise<void>((resolve) => setTimeout(resolve, HOMEWORK_RETRY_DELAY_MS));
 
   try {
-    return await generateHomework(studentId, topicId, sessionId);
+    return await generateHomework(studentId, topicId, sessionId, excludeIds);
   } catch (secondErr) {
     logger.error('[SESSION_HOMEWORK_RETRY_FAILED]', {
       sessionId,
