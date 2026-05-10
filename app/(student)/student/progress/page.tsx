@@ -80,11 +80,12 @@ export default async function ProgressPage({
     ? { topic: { chapter: { subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } } }
     : {};
 
-  // Gap 6 fix: Question model has no top-level 'subject' field.
-  // When a subject filter is active, merge with { chapter: { not: null } } through chapter → subject.
-  // When no filter is active, keep original { chapter: { not: null } } constraint.
+  // Gap 6 fix (corrected): Question.chapter and Question.subject are both plain String?
+  // fields -- not relations. The previous nested approach put 'subject' inside a
+  // StringNullableFilter for 'chapter', which Prisma silently ignored. The correct
+  // subject filter targets the top-level Question.subject string field.
   const questionClause = activeSubject
-    ? { chapter: { not: null, subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } }
+    ? { chapter: { not: null }, subject: { equals: activeSubject, mode: 'insensitive' as const } }
     : { chapter: { not: null } };
 
   const conceptSubjectFilter = activeSubject
@@ -110,14 +111,20 @@ export default async function ProgressPage({
       where: {
         studentId: userId,
         ...(sessionDateFilter ? { startedAt: sessionDateFilter } : {}),
+        ...sessionSubjectFilter,
       },
       select: { startedAt: true },
     }),
     prisma.structuredSession.findMany({
       where: {
         studentId: userId,
-        completedAt: { not: null },
-        ...(sessionDateFilter ? { completedAt: sessionDateFilter } : {}),
+        // Merge not-null + optional date-range into a single DateTimeNullableFilter so the
+        // spread cannot overwrite the not-null constraint when a date range is active.
+        completedAt: {
+          not: null,
+          ...(sinceDate ? { gte: sinceDate } : {}),
+        },
+        ...sessionSubjectFilter,
       },
       select: {
         id: true,

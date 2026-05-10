@@ -34,9 +34,13 @@ function buildSessionSubjectFilter(activeSubject: string) {
     : {};
 }
 
+// Question.chapter and Question.subject are both plain String? fields, not relations.
+// The subject filter must target the top-level Question.subject string field so that
+// Prisma can translate it to SQL. Nesting 'subject' inside the chapter StringFilter
+// produces an unrecognized key that Prisma silently ignores at runtime.
 function buildQuestionClause(activeSubject: string) {
   return activeSubject
-    ? { chapter: { not: null, subject: { name: { equals: activeSubject, mode: 'insensitive' as const } } } }
+    ? { chapter: { not: null }, subject: { equals: activeSubject, mode: 'insensitive' as const } }
     : { chapter: { not: null } };
 }
 
@@ -96,13 +100,11 @@ describe('questionClause (trendRows / testResult query)', () => {
     expect(buildQuestionClause('')).toEqual({ chapter: { not: null } });
   });
 
-  it('routes through chapter → subject when a subject is active', () => {
+  it('puts subject filter at the top level (Question.subject is a String?, not a relation)', () => {
     const clause = buildQuestionClause('Biology');
     expect(clause).toEqual({
-      chapter: {
-        not: null,
-        subject: { name: { equals: 'Biology', mode: 'insensitive' } },
-      },
+      chapter: { not: null },
+      subject: { equals: 'Biology', mode: 'insensitive' },
     });
   });
 
@@ -111,14 +113,18 @@ describe('questionClause (trendRows / testResult query)', () => {
     expect(clause.chapter.not).toBeNull();
   });
 
-  it('does NOT contain a top-level "subject" key (which would fail Prisma validation)', () => {
+  it('has a top-level "subject" key — not nested inside "chapter"', () => {
     const clause = buildQuestionClause('History') as Record<string, unknown>;
-    expect(clause).not.toHaveProperty('subject');
+    // subject must be at the top level so Prisma maps it to Question.subject
+    expect(clause).toHaveProperty('subject');
+    // subject must NOT be nested inside the chapter StringFilter
+    const chapterFilter = clause.chapter as Record<string, unknown>;
+    expect(chapterFilter).not.toHaveProperty('subject');
   });
 
   it('uses case-insensitive mode', () => {
     const clause = buildQuestionClause('biology') as any;
-    expect(clause.chapter.subject.name.mode).toBe('insensitive');
+    expect(clause.subject.mode).toBe('insensitive');
   });
 });
 
