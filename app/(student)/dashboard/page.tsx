@@ -61,7 +61,6 @@ function computeCrunchMode(examDate: Date | null | undefined): boolean {
 }
 
 const FREE_TIER_SESSION_CAP = 3
-const FALLBACK_BROWSE_HREF = '/learn/learning-path'
 
 export default async function StudentHomeDashboardPage() {
   const authSession = await requireActiveSession()
@@ -109,10 +108,10 @@ export default async function StudentHomeDashboardPage() {
       where: { studentId: userId, subjectScope: '__ALL__', periodStart: currentPeriodStart },
       select: { sessionsUsed: true, periodStart: true },
     }),
-    // Fetch learning plans for this student (used to scope dashboard subjects)
+    // Fetch learning plans for this student (scopes subjects + resolves today's topics)
     prisma.learningPlan.findMany({
       where: { studentId: userId },
-      select: { subjectId: true },
+      select: { id: true, subjectId: true },
     }),
     prisma.structuredSession.findMany({
       where: {
@@ -425,13 +424,9 @@ export default async function StudentHomeDashboardPage() {
     cardProps = { type: 'plan_loading' }
   }
 
-  // AC-02 (F-STU-010): Secondary "Today's topic" should follow today's planned
-  // learning-plan item, not the primary card's resume/homework route.
-  const todaysPlan = await prisma.learningPlan.findFirst({
-    where: { studentId: userId },
-    orderBy: { generatedAt: 'desc' },
-    select: { id: true },
-  })
+  // AC-02 (F-STU-010): Secondary "Today's topic" resolves one item per enrolled
+  // subject plan: IN_PROGRESS first, then current-week UPCOMING, then any UPCOMING.
+  // Plans are processed in parallel; item priority within each plan is sequential.
   const firstSession = await prisma.structuredSession.findFirst({
     where: { studentId: userId },
     orderBy: { startedAt: 'asc' },
@@ -442,38 +437,49 @@ export default async function StudentHomeDashboardPage() {
     : 0
   const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
 
-  const inProgressPlanItem = todaysPlan
-    ? await prisma.learningPlanItem.findFirst({
-        where: { planId: todaysPlan.id, status: 'IN_PROGRESS' },
-        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-        select: { conceptId: true },
-      })
-    : null
-  const currentWeekUpcomingPlanItem = !inProgressPlanItem && todaysPlan
-    ? await prisma.learningPlanItem.findFirst({
-        where: {
-          planId: todaysPlan.id,
-          status: 'UPCOMING',
-          weekNumber: { lte: currentWeek },
-        },
-        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-        select: { conceptId: true },
-      })
-    : null
-  const fallbackUpcomingPlanItem = !inProgressPlanItem && !currentWeekUpcomingPlanItem && todaysPlan
-    ? await prisma.learningPlanItem.findFirst({
-        where: { planId: todaysPlan.id, status: 'UPCOMING' },
-        orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-        select: { conceptId: true },
-      })
-    : null
-  const todaysPlanItem = inProgressPlanItem ?? currentWeekUpcomingPlanItem ?? fallbackUpcomingPlanItem
-  const secondaryTodaysHref =
-    todaysPlanItem?.conceptId
-      ? `/session/pre/${encodeURIComponent(todaysPlanItem.conceptId)}`
-      : cardProps.type === 'start' && cardProps.recommendation?.conceptId
-        ? `/session/pre/${encodeURIComponent(cardProps.recommendation.conceptId)}`
-        : FALLBACK_BROWSE_HREF
+  type TodaysTopic = { subject: string; href: string }
+  const todaysTopics: TodaysTopic[] = (
+    await Promise.all(
+      learningPlans.map(async (plan): Promise<TodaysTopic | null> => {
+        const subjectInfo = subjects.find((s) => s.id === plan.subjectId)
+
+        const inProgressItem = await prisma.learningPlanItem.findFirst({
+          where: { planId: plan.id, status: 'IN_PROGRESS' },
+          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          select: { conceptId: true },
+        })
+        if (inProgressItem?.conceptId) {
+          return {
+            subject: subjectInfo?.name ?? 'Your subject',
+            href: `/session/pre/${encodeURIComponent(inProgressItem.conceptId)}`,
+          }
+        }
+
+        const currentWeekItem = await prisma.learningPlanItem.findFirst({
+          where: { planId: plan.id, status: 'UPCOMING', weekNumber: { lte: currentWeek } },
+          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          select: { conceptId: true },
+        })
+        if (currentWeekItem?.conceptId) {
+          return {
+            subject: subjectInfo?.name ?? 'Your subject',
+            href: `/session/pre/${encodeURIComponent(currentWeekItem.conceptId)}`,
+          }
+        }
+
+        const fallbackItem = await prisma.learningPlanItem.findFirst({
+          where: { planId: plan.id, status: 'UPCOMING' },
+          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          select: { conceptId: true },
+        })
+        if (!fallbackItem?.conceptId) return null
+        return {
+          subject: subjectInfo?.name ?? 'Your subject',
+          href: `/session/pre/${encodeURIComponent(fallbackItem.conceptId)}`,
+        }
+      }),
+    )
+  ).filter((t): t is TodaysTopic => t !== null)
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -503,10 +509,7 @@ export default async function StudentHomeDashboardPage() {
 
           <TodaysLearningCard {...cardProps} />
           {!isCrunchMode && (
-            <SecondaryStartOptions
-              todaysConceptId={cardProps.recommendation?.conceptId}
-              todaysHref={secondaryTodaysHref}
-            />
+            <SecondaryStartOptions todaysTopics={todaysTopics} />
           )}
 
           {/* F-STU-031: XP + Level + source breakdown (hidden in crunch mode) */}

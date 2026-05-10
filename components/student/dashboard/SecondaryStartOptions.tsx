@@ -6,10 +6,6 @@
  * LINKED UNIT TEST:
  * - tests/unit/components/student/dashboard/SecondaryStartOptions.test.tsx
  *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
  * EDIT LOG:
  * - 2026-05-06T00:00:00Z | copilot | wire todaysHref from dashboard card state,
  *                          make Today's topic selected by default, and add
@@ -27,6 +23,15 @@
  * - 2026-05-09T16:05:00Z | copilot | replace hardcoded CTA colors with theme
  *                          token classes (primary/primary-bg/brand-primary) for
  *                          rebrand-safe styling consistency
+ * - 2026-05-10T00:00:00Z | staff-engineer | replace single todaysHref prop with
+ *                          todaysTopics array to support multi-subject plans;
+ *                          show one link per subject when multiple plans exist
+ * - 2026-05-10T00:00:00Z | staff-engineer | fix: Today's topic is the visually
+ *                          selected (solid primary) default; Browse/Surprise use
+ *                          outlined secondary styling; empty Today's topic
+ *                          navigates to learning path instead of being disabled;
+ *                          Surprise me 204 navigates to learning path (not /dashboard
+ *                          where the user already is) so something visibly changes
  */
 
 'use client'
@@ -39,16 +44,12 @@ import { toast } from '@/lib/toast'
 const FALLBACK_BROWSE_HREF = '/learn/learning-path'
 
 export default function SecondaryStartOptions({
-  todaysConceptId,
-  todaysHref,
+  todaysTopics = [],
 }: {
-  todaysConceptId?: string | null
-  todaysHref?: string
+  todaysTopics?: { subject: string; href: string }[]
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const resolvedTodaysHref =
-    todaysHref ?? (todaysConceptId ? `/session/pre/${encodeURIComponent(todaysConceptId)}` : FALLBACK_BROWSE_HREF)
 
   async function handleSurprise() {
     if (loading) return
@@ -61,40 +62,60 @@ export default function SecondaryStartOptions({
         return
       }
       if (res.status === 204) {
-        toast('No weak topic available right now. Heading home.')
-        router.push('/dashboard')
+        toast('No weak topic found -- showing your syllabus instead.')
+        router.push(FALLBACK_BROWSE_HREF)
         return
       }
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to get suggestion')
       const action = json?.action
       if (!action || !action.topicId) {
-        toast('Couldn\'t find a weak topic. Heading home.')
-        router.push('/dashboard')
+        toast("Couldn't find a weak topic -- showing your syllabus instead.")
+        router.push(FALLBACK_BROWSE_HREF)
         return
       }
-      // Navigate to the pre-session screen for the suggested topic
       router.push(`/session/pre/${encodeURIComponent(action.topicId)}`)
     } catch (err: any) {
       toast(String(err?.message || 'Could not pick a surprise topic'))
-      router.push('/dashboard')
+      router.push(FALLBACK_BROWSE_HREF)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="mt-3 flex items-center gap-3">
-      <Link
-        href={resolvedTodaysHref}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-primary bg-primary-bg text-sm font-semibold text-primary hover:bg-brand-primary/15"
-      >
-        Today's topic
-      </Link>
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {/* Today's topic: solid primary = visually selected/default action */}
+      {todaysTopics.length === 0 ? (
+        <Link
+          href={FALLBACK_BROWSE_HREF}
+          className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover"
+        >
+          Today&apos;s topic
+        </Link>
+      ) : todaysTopics.length === 1 ? (
+        <Link
+          href={todaysTopics[0].href}
+          className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover"
+        >
+          Today&apos;s topic
+        </Link>
+      ) : (
+        todaysTopics.map((topic) => (
+          <Link
+            key={topic.subject}
+            href={topic.href}
+            className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover"
+          >
+            {topic.subject}
+          </Link>
+        ))
+      )}
 
+      {/* Browse and Surprise: outlined secondary -- not the default action */}
       <Link
         href={FALLBACK_BROWSE_HREF}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
       >
         Browse syllabus
       </Link>
@@ -103,7 +124,7 @@ export default function SecondaryStartOptions({
         type="button"
         onClick={handleSurprise}
         disabled={loading}
-        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover disabled:opacity-60"
+        className="inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 disabled:opacity-60"
       >
         {loading ? 'Picking...' : 'Surprise me'}
       </button>
