@@ -160,14 +160,25 @@ function getPracticeQuestionKey(question: PracticeQuestionRow): string {
 function dedupePracticeQuestions(questions: PracticeQuestionRow[]): PracticeQuestionRow[] {
   const seen = new Set<string>();
   const deduped: PracticeQuestionRow[] = [];
+  const skipped: { id: string; key: string }[] = [];
 
   for (const question of questions) {
     const key = getPracticeQuestionKey(question);
     if (seen.has(key)) {
+      skipped.push({ id: question.id, key });
       continue;
     }
     seen.add(key);
     deduped.push(question);
+  }
+
+  if (skipped.length > 0) {
+    logger.info('[DEDUPE] Removed duplicate practice questions', {
+      inputCount: questions.length,
+      dedupeCount: skipped.length,
+      outputCount: deduped.length,
+      skipped,
+    });
   }
 
   return deduped;
@@ -364,10 +375,24 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
     where: { topicId, difficulty: targetDifficulty, status: 'ACTIVE' },
     select: questionSelect,
   });
+  
+  logger.info('[PRACTICE_RESOLVE] Primary query', {
+    topicId,
+    targetDifficulty,
+    found: questions.length,
+    ids: questions.map((q) => q.id),
+  });
+  
   questions = pickRandomQuestions(
     dedupePracticeQuestions(questions),
     PRACTICE_QUESTION_TARGET_COUNT,
   );
+
+  logger.info('[PRACTICE_RESOLVE] After primary dedup+pick', {
+    topicId,
+    selected: questions.length,
+    ids: questions.map((q) => q.id),
+  });
 
   // Fallback: any available questions for the topic (content may not yet cover all bands),
   // or use it to top up when dedupe removes duplicate rows from the primary difficulty band.
@@ -377,10 +402,29 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
       where: { topicId, status: 'ACTIVE' },
       select: questionSelect,
     });
+    
+    logger.info('[PRACTICE_RESOLVE] Fallback query', {
+      topicId,
+      found: fallbackQuestions.length,
+    });
+    
+    const merged = [...questions, ...fallbackQuestions];
+    logger.info('[PRACTICE_RESOLVE] Merged arrays', {
+      topicId,
+      merged: merged.length,
+      mergedIds: merged.map((q) => q.id),
+    });
+    
     questions = pickRandomQuestions(
-      dedupePracticeQuestions([...questions, ...fallbackQuestions]),
+      dedupePracticeQuestions(merged),
       PRACTICE_QUESTION_TARGET_COUNT,
     );
+    
+    logger.info('[PRACTICE_RESOLVE] After fallback dedup+pick', {
+      topicId,
+      selected: questions.length,
+      ids: questions.map((q) => q.id),
+    });
   }
 
   if (questions.length === 0) {
