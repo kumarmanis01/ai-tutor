@@ -46,11 +46,11 @@ export async function GET(req: Request) {
   }
 
   try {
-    // 1. Try to pick the most urgent weak topic (mastery < 0.4 & practiceCount > 5)
+    // 1. Try to pick the most urgent weak topic (mastery < 0.4 & at least one practice)
     let weak: Awaited<ReturnType<typeof prisma.studentTopicProgress.findFirst>> | null = null
     try {
       weak = await prisma.studentTopicProgress.findFirst({
-        where: { studentId: userId, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
+        where: { studentId: userId, mastery: { lt: 0.4 }, practiceCount: { gt: 0 } },
         orderBy: [{ mastery: 'asc' }, { practiceCount: 'desc' }],
         include: {
           topic: {
@@ -125,6 +125,39 @@ export async function GET(req: Request) {
         logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
         return res
       }
+    }
+
+    // 3. Last resort: scan first 20 curriculum topics for any with an active concept.
+    // This handles brand-new students with no practice history whose frontier topics
+    // were all filtered out by the concept-coverage guard in rankTopics.
+    try {
+      const ordered = await getOrderedTopicsForStudent(userId)
+      for (const topic of ordered.slice(0, 20)) {
+        const lastResortConcept = await prisma.concept.findFirst({
+          where: { topicId: topic.id, isSuspended: false },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true },
+        })
+        if (lastResortConcept) {
+          const action = {
+            topicId: lastResortConcept.id,
+            topicName: topic.name,
+            subject: topic.chapter?.subject?.name ?? null,
+            chapter: topic.chapter?.name ?? null,
+            ruleId: 'surprise_me_first_available',
+            reasonLabel: `Try ${topic.name}`,
+            actionType: 'notes',
+          }
+          const res = NextResponse.json({ action, source: 'surprise_me' }, { status: 200 })
+          logger.logAPI(req, res, { className: 'SurpriseMeAPI', methodName: 'GET' }, start)
+          return res
+        }
+      }
+    } catch (err) {
+      logger.warn('[surprise-me] last-resort scan failed', {
+        userId,
+        error: String((err as any)?.message ?? err),
+      })
     }
 
     const res = new NextResponse(null, { status: 204 })
