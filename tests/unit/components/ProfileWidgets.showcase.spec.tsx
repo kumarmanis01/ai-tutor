@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-18T00:00:00Z | copilot | add showcase selection test
+ * - 2026-05-10T00:00:00Z | copilot | add overflow guard assertions for badge cards and action area
  */
 
 import React from 'react';
@@ -43,6 +44,15 @@ describe('ProfileWidgets showcase', () => {
     (global as any).fetch = mockFetch;
 
     render(<ProfileWidgets badges={badges as any} showLeaderboard={false} showChallenge={false} /> as any);
+
+    const grid = await screen.findByTestId('badges-grid');
+    expect(grid.className).toContain('max-w-full');
+
+    const badgeCard = await screen.findByTestId('badge-card');
+    expect(badgeCard.className).toContain('overflow-hidden');
+
+    const badgeCardActions = await screen.findByTestId('badge-card-actions');
+    expect(badgeCardActions.className).toContain('w-full');
 
     // wait for manage button
     const manage = await screen.findByRole('button', { name: /Manage Showcase/i });

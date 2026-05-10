@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-18T00:00:00Z | copilot | add Manage Showcase modal and save to preferences.badgeShowcase
+ * - 2026-05-10T00:00:00Z | copilot | prevent badge action overflow by using responsive row layout and container overflow guards
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -137,7 +138,7 @@ export default function ProfileWidgets({
           </button>
         </div>
 
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex gap-3 flex-wrap max-w-full overflow-hidden" data-testid="badges-grid">
           {orderedBadges && orderedBadges.length > 0 ? (
             orderedBadges.map((b) => {
               const highlighted = Array.isArray(prefs?.badgeShowcase) && prefs.badgeShowcase.includes(b.id);
@@ -145,18 +146,19 @@ export default function ProfileWidgets({
                 <div
                   key={b.id}
                   id={`badge-${b.id}`}
-                  className={`flex items-center gap-3 bg-white dark:bg-gray-900 px-3 py-2 rounded shadow-sm ${
+                  className={`w-full min-w-0 max-w-full overflow-hidden flex flex-col gap-3 bg-white dark:bg-gray-900 px-3 py-2 rounded shadow-sm sm:flex-row sm:items-center ${
                     highlighted ? 'ring-2 ring-primary' : ''
                   }`}
+                  data-testid="badge-card"
                 >
-                  <span className="text-2xl">{b.icon ?? '🏅'}</span>
-                  <div className="min-w-0">
+                  <span className="text-2xl shrink-0">{b.icon ?? '🏅'}</span>
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{b.name}</div>
                     {b.description && (
                       <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{b.description}</div>
                     )}
                   </div>
-                  <div className="ml-auto">
+                  <div className="w-full sm:w-auto sm:ml-auto" data-testid="badge-card-actions">
                     <ShareBadge badgeId={b.id} title={b.name} description={b.description ?? undefined} />
                   </div>
                 </div>

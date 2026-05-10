@@ -1,4 +1,19 @@
 'use client';
+/**
+ * FILE OBJECTIVE:
+ * - Render badge share actions and track share intent before opening external share channels.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/ShareBadge.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-10T00:00:00Z | copilot | add responsive wrap-safe layout and accessibility sizing to prevent profile badge share UI bleed
+ */
+
 import { useState } from 'react';
 import { logger } from '@/lib/logger';
 
@@ -67,10 +82,10 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareTextBase} ${shareUrl}`)}`;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full max-w-full flex-wrap items-center gap-2 sm:w-auto" data-testid="share-badge-actions">
       <button
         onClick={handleWebShare}
-        className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-70"
+        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-70"
         disabled={loading}
       >
         {loading ? 'Sharing...' : 'Share'}
@@ -80,7 +95,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         href={waLink(url ?? window.location.href)}
         target="_blank"
         rel="noreferrer"
-        className="px-3 py-1 rounded bg-green-500 text-white"
+        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-3 py-2 rounded bg-green-500 text-white"
       >
         WhatsApp
       </a>
@@ -89,7 +104,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         href={twitterLink(url ?? window.location.href)}
         target="_blank"
         rel="noreferrer"
-        className="px-3 py-1 rounded bg-sky-500 text-white"
+        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-3 py-2 rounded bg-sky-500 text-white"
       >
         Twitter
       </a>
@@ -98,7 +113,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         href={fbLink(url ?? window.location.href)}
         target="_blank"
         rel="noreferrer"
-        className="px-3 py-1 rounded bg-blue-800 text-white"
+        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-3 py-2 rounded bg-blue-800 text-white"
       >
         Facebook
       </a>
