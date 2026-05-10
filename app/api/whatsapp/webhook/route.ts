@@ -6,7 +6,7 @@
  * - Fail-safe: never throws to WhatsApp -- always returns 200.
  *
  * Environment variables:
- *   WHATSAPP_VERIFY_TOKEN  - Token for webhook verification handshake
+ *   WHATSAPP_WEBHOOK_VERIFY_TOKEN  - Token for webhook verification handshake
  *   WHATSAPP_ENABLED       - "1" to enable
  *
  * EDIT LOG:
@@ -18,7 +18,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { setWhatsAppOptIn } from '@/lib/whatsapp';
 
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || '';
+const WHATSAPP_WEBHOOK_VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '';
 const WHATSAPP_ENABLED = process.env.WHATSAPP_ENABLED === '1';
 
 // Keywords that trigger opt-in/opt-out
@@ -39,13 +39,13 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('hub.verify_token');
   const challenge = req.nextUrl.searchParams.get('hub.challenge');
 
-  if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
+  if (mode === 'subscribe' && token === WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
     logger.info('whatsapp.webhook.verified');
     // Must return the challenge as plain text
     return new NextResponse(challenge, { status: 200, headers: { 'Content-Type': 'text/plain' } });
   }
 
-  logger.warn('whatsapp.webhook.verificationFailed', { mode, tokenMatch: token === WHATSAPP_VERIFY_TOKEN });
+  logger.warn('whatsapp.webhook.verificationFailed', { mode, tokenMatch: token === WHATSAPP_WEBHOOK_VERIFY_TOKEN });
   return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
 }
 
