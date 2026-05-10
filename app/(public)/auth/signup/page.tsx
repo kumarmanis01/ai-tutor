@@ -1,13 +1,24 @@
 'use client'
 
-import { Suspense, useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useSearchParams } from 'next/navigation'
+import { Suspense, useState, useEffect } from 'react'
+import { signIn, useSession } from 'next-auth/react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Logo from '@/components/Logo'
 import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier'
 
 function AuthContent() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Redirect authenticated users so they don't re-trigger an OAuth flow
+  // on top of an existing session, which causes OAuthAccountNotLinked errors.
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      router.replace('/student/onboarding')
+    }
+  }, [status, session, router])
+
   const [email, setEmail] = useState(
     searchParams.get('email') ||
     (typeof window !== 'undefined' ? sessionStorage.getItem('spinzy_signup_email') || '' : '')

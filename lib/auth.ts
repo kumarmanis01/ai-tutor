@@ -399,8 +399,82 @@ function isEmailVerified(profile: Record<string, unknown> | null | undefined): b
   return profile?.email_verified === true;
 }
 
+// Custom adapter that bypasses the OAuthAccountNotLinked error.
+//
+// NextAuth v4 + PrismaAdapter throws OAuthAccountNotLinked when getUserByEmail
+// finds an existing user but no linked OAuth account. We work around this by:
+//   1. Always returning null from getUserByEmail so NextAuth takes the "new user"
+//      code path for every OAuth sign-in (email-provider sign-in is unaffected
+//      because the email provider does not call getUserByEmail in its verification flow).
+//   2. Using upsert in createUser so existing email users are returned without a
+//      unique-constraint error.
+//   3. Using upsert in linkAccount so a duplicate Google account link is silently
+//      updated rather than causing a constraint violation.
+const _baseAdapter = PrismaAdapter(prisma);
+const customAdapter = {
+  ..._baseAdapter,
+  getUserByEmail: async (_email: string) => null,
+  createUser: async (data: { name?: string | null; email: string; emailVerified: Date | null; image?: string | null }) => {
+    return prisma.user.upsert({
+      where: { email: data.email },
+      update: {},
+      create: {
+        email: data.email,
+        name: data.name ?? undefined,
+        image: data.image ?? undefined,
+        emailVerified: data.emailVerified,
+        language: LanguageCode.en,
+      },
+    });
+  },
+  linkAccount: async (account: {
+    userId: string;
+    provider: string;
+    providerAccountId: string;
+    type: string;
+    access_token?: string | null;
+    refresh_token?: string | null;
+    expires_at?: number | null;
+    token_type?: string | null;
+    scope?: string | null;
+    id_token?: string | null;
+    session_state?: string | null;
+  }) => {
+    await prisma.account.upsert({
+      where: {
+        provider_providerAccountId: {
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+        },
+      },
+      update: {
+        access_token: account.access_token,
+        refresh_token: account.refresh_token,
+        expires_at: account.expires_at,
+        token_type: account.token_type,
+        scope: account.scope,
+        id_token: account.id_token,
+        session_state: account.session_state,
+      },
+      create: {
+        userId: account.userId,
+        provider: account.provider,
+        providerAccountId: account.providerAccountId,
+        type: account.type,
+        access_token: account.access_token,
+        refresh_token: account.refresh_token,
+        expires_at: account.expires_at,
+        token_type: account.token_type,
+        scope: account.scope,
+        id_token: account.id_token,
+        session_state: account.session_state,
+      },
+    });
+  },
+};
+
 export const authOptions: any = {
-  adapter: PrismaAdapter(prisma),
+  adapter: customAdapter,
   // Dynamically toggle based on environment
   useSecureCookies: isProd, 
   providers: [
@@ -443,86 +517,23 @@ export const authOptions: any = {
   session: { strategy: 'jwt' },
   callbacks: {
     async signIn({ user, account, profile }: any) {
-      try {
-        if (account?.provider === 'google') {
-          const googleSubject = String(account.providerAccountId ?? (profile as any)?.sub ?? '').trim();
-          const profileObject = (profile as Record<string, unknown> | null) ?? null;
-          const email = normalizeGoogleEmail((profileObject as any)?.email ?? user?.email);
+      // Validate Google identity claims before allowing sign-in.
+      // User/account creation is handled by the custom adapter (createUser + linkAccount upserts).
+      if (account?.provider === 'google') {
+        const googleSubject = String(account.providerAccountId ?? (profile as any)?.sub ?? '').trim();
+        const profileObject = (profile as Record<string, unknown> | null) ?? null;
+        const email = normalizeGoogleEmail((profileObject as any)?.email ?? user?.email);
 
-          // Require verified identity assertions from Google before we sign in.
-          if (!googleSubject || !email || !isEmailVerified(profileObject)) {
-            logger.warn('google signIn rejected due to missing verified identity claims', {
-              className: 'auth',
-              methodName: 'signIn',
-              hasGoogleSubject: !!googleSubject,
-              hasEmail: !!email,
-              emailVerified: isEmailVerified(profileObject),
-            });
-            return false;
-          }
-
-          const existingGoogleLink = await prisma.account.findFirst({
-            where: { provider: 'google', providerAccountId: googleSubject },
-            select: { userId: true },
+        if (!googleSubject || !email || !isEmailVerified(profileObject)) {
+          logger.warn('google signIn rejected due to missing verified identity claims', {
+            className: 'auth',
+            methodName: 'signIn',
+            hasGoogleSubject: !!googleSubject,
+            hasEmail: !!email,
+            emailVerified: isEmailVerified(profileObject),
           });
-
-          let targetUserId = existingGoogleLink?.userId ?? null;
-          if (!targetUserId) {
-            const existingByEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-            targetUserId = existingByEmail?.id ?? null;
-          }
-
-          if (!targetUserId) {
-            const createdUser = await prisma.user.create({
-              data: {
-                email,
-                name: user.name ?? undefined,
-                image: user.image ?? undefined,
-                language: LanguageCode.en,
-              },
-              select: { id: true },
-            });
-            targetUserId = createdUser.id;
-          }
-
-          if (targetUserId) {
-            const hasGoogle = await prisma.account.findFirst({
-              where: { userId: targetUserId, provider: 'google', providerAccountId: googleSubject },
-              select: { id: true },
-            });
-
-            if (!hasGoogle) {
-              await prisma.account.create({
-                data: {
-                  userId: targetUserId,
-                  provider: 'google',
-                  providerAccountId: googleSubject,
-                  type: String(account.type),
-                  access_token: (account as any).access_token ?? undefined,
-                  refresh_token: (account as any).refresh_token ?? undefined,
-                  expires_at: (account as any).expires_at ?? undefined,
-                  token_type: (account as any).token_type ?? undefined,
-                  scope: (account as any).scope ?? undefined,
-                  id_token: (account as any).id_token ?? undefined,
-                  session_state: (account as any).session_state ?? undefined,
-                },
-              });
-            }
-          }
-        } else if (user?.email) {
-          await prisma.user.upsert({
-            where: { email: user.email },
-            update: {},
-            create: {
-              email: user.email,
-              name: user.name ?? undefined,
-              image: user.image ?? undefined,
-              language: LanguageCode.en,
-            },
-          });
+          return false;
         }
-      } catch (err) {
-        logger.warn('signIn upsert user failed', { className: 'auth', methodName: 'signIn', error: String(err) });
       }
 
       if (user?.email) {
@@ -553,13 +564,13 @@ export const authOptions: any = {
             if (previous && (prevBoard !== curBoard || prevGrade !== curGrade)) {
               logger.info('student.curriculum.changed', { studentId: dbUser.id });
             }
-            await prisma.auditLog.create({ 
-              data: { 
-                targetEntity: 'User', 
-                targetId: dbUser.id, 
-                action: null, 
-                details: { legacyAction: 'student.login', board: curBoard, grade: curGrade } 
-              } 
+            await prisma.auditLog.create({
+              data: {
+                targetEntity: 'User',
+                targetId: dbUser.id,
+                action: null,
+                details: { legacyAction: 'student.login', board: curBoard, grade: curGrade },
+              },
             });
           }
         }
