@@ -1,0 +1,409 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);background:var(--color-background-tertiary);color:var(--color-text-primary)}
+.dash{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto;gap:10px;padding:12px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px 16px}
+.label{font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--color-text-tertiary);text-transform:uppercase}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;border:0.5px solid}
+.chip-red{background:#FCEBEB;color:#A32D2D;border-color:#F09595}
+.chip-amber{background:#FAEEDA;color:#633806;border-color:#EF9F27}
+.chip-green{background:#EAF3DE;color:#27500A;border-color:#97C459}
+.chip-blue{background:#E6F1FB;color:#0C447C;border-color:#85B7EB}
+.chip-purple{background:#EEEDFE;color:#3C3489;border-color:#AFA9EC}
+.prog-track{height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .3s}
+.btn-primary{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:9px;border-radius:8px;background:#534AB7;color:#fff;font-size:13px;font-weight:500;border:none;cursor:pointer}
+.btn-ghost{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border-radius:8px;background:transparent;color:var(--color-text-secondary);font-size:12px;border:0.5px solid var(--color-border-secondary);cursor:pointer;white-space:nowrap}
+.subject-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.score-ring{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.topic-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.topic-row:last-child{border-bottom:none;padding-bottom:0}
+.day-dot{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--color-text-tertiary)}
+.day-circle{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px}
+.readiness-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.readiness-row:last-child{border-bottom:none}
+.stat-mini{display:flex;flex-direction:column;align-items:center;gap:2px}
+.stat-mini .val{font-size:15px;font-weight:500}
+.stat-mini .lbl{font-size:10px;color:var(--color-text-tertiary)}
+.section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.link-sm{font-size:11px;color:#534AB7;cursor:pointer;border:none;background:none;padding:0}
+.xp-bar-wrap{background:var(--color-background-secondary);border-radius:8px;padding:10px 12px}
+</style>
+
+<h2 class="sr-only">Student learning dashboard showing today's study plan, subject readiness, and weekly progress across Mathematics, Physics, and Chemistry</h2>
+
+<div class="dash">
+
+  <!-- ══ ROW 1: Greeting + Today + Streak ══════════════════ -->
+
+  <!-- Greeting + XP (col 1) -->
+  <div class="card" style="grid-column:1;grid-row:1">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <div style="font-size:17px;font-weight:500">Good morning, Arjun</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">Wednesday · 3 subjects active</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--color-text-tertiary)">Level 4</div>
+        <div style="font-size:18px;font-weight:500;color:#534AB7">2,340 XP</div>
+      </div>
+    </div>
+    <div class="xp-bar-wrap">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--color-text-secondary)">2,340 / 3,000 XP to Level 5</span>
+        <span style="font-size:11px;font-weight:500;color:#534AB7">78%</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="width:78%;background:#534AB7"></div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:12px">
+      <div style="flex:1;background:var(--color-background-secondary);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:18px;font-weight:500">12</div>
+        <div style="font-size:10px;color:var(--color-text-tertiary)">day streak</div>
+      </div>
+      <div style="flex:1;background:var(--color-background-secondary);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:18px;font-weight:500">4/5</div>
+        <div style="font-size:10px;color:var(--color-text-tertiary)">sessions this week</div>
+      </div>
+      <div style="flex:1;background:var(--color-background-secondary);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:18px;font-weight:500">~85m</div>
+        <div style="font-size:10px;color:var(--color-text-tertiary)">today's plan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's plan (col 2-3, row 1) -->
+  <div class="card" style="grid-column:2/4;grid-row:1">
+    <div class="section-hd">
+      <div>
+        <div style="font-size:14px;font-weight:500">Today's study plan</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:1px">3 topics · ~85 min · AI-optimised for your weak areas</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-ghost"><i class="ti ti-adjustments-horizontal" style="font-size:14px" aria-hidden="true"></i> Customise</button>
+        <button class="btn-ghost"><i class="ti ti-sparkles" style="font-size:14px" aria-hidden="true"></i> Surprise me</button>
+      </div>
+    </div>
+
+    <!-- Topic 1 — active -->
+    <div style="border:1px solid #AFA9EC;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#EEEDFE">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:#534AB7;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:500">1</div>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:#3C3489">Introduction to integers</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+              <span class="chip chip-purple">Mathematics</span>
+              <span style="font-size:11px;color:#534AB7">~30 min · In progress</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary" style="width:auto;padding:7px 14px;font-size:12px"><i class="ti ti-player-play" style="font-size:13px" aria-hidden="true"></i> Continue</button>
+      </div>
+      <div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;color:#534AB7">Session progress</span>
+          <span style="font-size:11px;font-weight:500;color:#3C3489">40%</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:40%;background:#534AB7"></div></div>
+      </div>
+    </div>
+
+    <!-- Topic 2 -->
+    <div style="border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--color-text-secondary)">2</div>
+          <div>
+            <div style="font-size:13px;font-weight:500">Newton's laws of motion</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+              <span class="chip chip-blue">Physics</span>
+              <span style="font-size:11px;color:var(--color-text-tertiary)">~25 min · Not started</span>
+              <span class="chip chip-red">Critical</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-ghost" style="font-size:12px"><i class="ti ti-player-play" style="font-size:13px" aria-hidden="true"></i> Start</button>
+      </div>
+    </div>
+
+    <!-- Topic 3 -->
+    <div style="border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:10px 12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--color-text-secondary)">3</div>
+          <div>
+            <div style="font-size:13px;font-weight:500">Mole concept & Avogadro's law</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+              <span class="chip chip-amber">Chemistry</span>
+              <span style="font-size:11px;color:var(--color-text-tertiary)">~30 min · Not started</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-ghost" style="font-size:12px"><i class="ti ti-player-play" style="font-size:13px" aria-hidden="true"></i> Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ROW 2: Subject Readiness (full width) ══════════════ -->
+  <div class="card" style="grid-column:1/4;grid-row:2">
+    <div class="section-hd">
+      <div style="font-size:14px;font-weight:500">Subject readiness</div>
+      <button class="link-sm">Full report →</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+
+      <!-- Mathematics -->
+      <div style="border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="subject-dot" style="background:#534AB7"></div>
+            <span style="font-size:13px;font-weight:500">Mathematics</span>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:20px;font-weight:500;color:#A32D2D">12%</div>
+            <span class="chip chip-red" style="font-size:10px">Critical</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px">Board exam: Jun 5 · <span style="color:#A32D2D">28 days</span></div>
+        <div class="prog-track" style="margin-bottom:10px"><div class="prog-fill" style="width:12%;background:#E24B4A"></div></div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Practical Geometry</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:5%;background:#E24B4A"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#A32D2D;width:28px;text-align:right">5%</span>
+            <span class="chip chip-red" style="font-size:10px;padding:1px 5px">Critical</span>
+          </div>
+        </div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Exponents</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:18%;background:#E24B4A"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#A32D2D;width:28px;text-align:right">18%</span>
+            <span class="chip chip-red" style="font-size:10px;padding:1px 5px">Critical</span>
+          </div>
+        </div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Integers</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:40%;background:#EF9F27"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#633806;width:28px;text-align:right">40%</span>
+            <span class="chip chip-amber" style="font-size:10px;padding:1px 5px">Weak</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px">Predicted board score: <span style="font-weight:500;color:#A32D2D">0–1 / 100</span></div>
+      </div>
+
+      <!-- Physics -->
+      <div style="border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="subject-dot" style="background:#185FA5"></div>
+            <span style="font-size:13px;font-weight:500">Physics</span>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:20px;font-weight:500;color:#633806">34%</div>
+            <span class="chip chip-amber" style="font-size:10px">Weak</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px">Board exam: Jun 8 · <span style="color:#633806">31 days</span></div>
+        <div class="prog-track" style="margin-bottom:10px"><div class="prog-fill" style="width:34%;background:#EF9F27"></div></div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Newton's laws</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:10%;background:#E24B4A"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#A32D2D;width:28px;text-align:right">10%</span>
+            <span class="chip chip-red" style="font-size:10px;padding:1px 5px">Critical</span>
+          </div>
+        </div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Optics</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:45%;background:#EF9F27"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#633806;width:28px;text-align:right">45%</span>
+            <span class="chip chip-amber" style="font-size:10px;padding:1px 5px">Weak</span>
+          </div>
+        </div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Electricity</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:62%;background:#639922"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#3B6D11;width:28px;text-align:right">62%</span>
+            <span class="chip chip-green" style="font-size:10px;padding:1px 5px">Good</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px">Predicted board score: <span style="font-weight:500;color:#633806">28–42 / 100</span></div>
+      </div>
+
+      <!-- Chemistry -->
+      <div style="border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="subject-dot" style="background:#BA7517"></div>
+            <span style="font-size:13px;font-weight:500">Chemistry</span>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:20px;font-weight:500;color:#27500A">71%</div>
+            <span class="chip chip-green" style="font-size:10px">On track</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px">Board exam: Jun 12 · <span style="color:var(--color-text-secondary)">35 days</span></div>
+        <div class="prog-track" style="margin-bottom:10px"><div class="prog-fill" style="width:71%;background:#639922"></div></div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Mole concept</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:55%;background:#EF9F27"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#633806;width:28px;text-align:right">55%</span>
+            <span class="chip chip-amber" style="font-size:10px;padding:1px 5px">Weak</span>
+          </div>
+        </div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Acids & bases</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:80%;background:#639922"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#27500A;width:28px;text-align:right">80%</span>
+            <span class="chip chip-green" style="font-size:10px;padding:1px 5px">Good</span>
+          </div>
+        </div>
+        <div class="readiness-row">
+          <div style="flex:1;font-size:12px">Periodic table</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="prog-track" style="width:60px"><div class="prog-fill" style="width:90%;background:#639922"></div></div>
+            <span style="font-size:11px;font-weight:500;color:#27500A;width:28px;text-align:right">90%</span>
+            <span class="chip chip-green" style="font-size:10px;padding:1px 5px">Strong</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px">Predicted board score: <span style="font-weight:500;color:#27500A">68–82 / 100</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ ROW 3: Focus Priority + Weekly calendar ════════════ -->
+
+  <!-- AI Focus Priority (col 1-2) -->
+  <div class="card" style="grid-column:1/3;grid-row:3">
+    <div class="section-hd">
+      <div>
+        <div style="font-size:14px;font-weight:500">AI focus priority</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:1px">Ranked by exam impact × days remaining</div>
+      </div>
+      <span class="chip chip-purple" style="font-size:11px"><i class="ti ti-sparkles" style="font-size:12px" aria-hidden="true"></i> AI-ranked</span>
+    </div>
+    <div class="topic-row" style="padding-top:0">
+      <div style="width:20px;height:20px;border-radius:50%;background:#FCEBEB;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#A32D2D;flex-shrink:0">1</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">Practical Geometry <span style="color:var(--color-text-tertiary);font-weight:400">· Mathematics</span></div>
+        <div style="font-size:11px;color:var(--color-text-tertiary)">0% mastery · 4 sessions needed · exam in 28d</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="chip chip-red">Highest risk</span>
+        <button class="btn-ghost" style="font-size:11px;padding:5px 10px"><i class="ti ti-player-play" style="font-size:12px" aria-hidden="true"></i> Study</button>
+      </div>
+    </div>
+    <div class="topic-row">
+      <div style="width:20px;height:20px;border-radius:50%;background:#FCEBEB;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#A32D2D;flex-shrink:0">2</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">Newton's laws <span style="color:var(--color-text-tertiary);font-weight:400">· Physics</span></div>
+        <div style="font-size:11px;color:var(--color-text-tertiary)">10% mastery · 3 sessions needed · exam in 31d</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="chip chip-red">Critical</span>
+        <button class="btn-ghost" style="font-size:11px;padding:5px 10px"><i class="ti ti-player-play" style="font-size:12px" aria-hidden="true"></i> Study</button>
+      </div>
+    </div>
+    <div class="topic-row">
+      <div style="width:20px;height:20px;border-radius:50%;background:#FAEEDA;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#633806;flex-shrink:0">3</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">Mole concept <span style="color:var(--color-text-tertiary);font-weight:400">· Chemistry</span></div>
+        <div style="font-size:11px;color:var(--color-text-tertiary)">55% mastery · 2 sessions needed · exam in 35d</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="chip chip-amber">Weak</span>
+        <button class="btn-ghost" style="font-size:11px;padding:5px 10px"><i class="ti ti-player-play" style="font-size:12px" aria-hidden="true"></i> Study</button>
+      </div>
+    </div>
+    <div class="topic-row">
+      <div style="width:20px;height:20px;border-radius:50%;background:#FAEEDA;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#633806;flex-shrink:0">4</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">Exponents <span style="color:var(--color-text-tertiary);font-weight:400">· Mathematics</span></div>
+        <div style="font-size:11px;color:var(--color-text-tertiary)">18% mastery · 2 sessions needed · exam in 28d</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="chip chip-amber">Weak</span>
+        <button class="btn-ghost" style="font-size:11px;padding:5px 10px"><i class="ti ti-player-play" style="font-size:12px" aria-hidden="true"></i> Study</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly calendar (col 3) -->
+  <div class="card" style="grid-column:3;grid-row:3">
+    <div class="section-hd">
+      <div style="font-size:14px;font-weight:500">This week</div>
+      <span style="font-size:11px;color:var(--color-text-secondary)">4 of 5 done</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:14px">
+      <div class="day-dot">
+        <div class="day-circle" style="background:#EAF3DE;color:#27500A"><i class="ti ti-check" style="font-size:12px" aria-hidden="true"></i></div>
+        Mon
+      </div>
+      <div class="day-dot">
+        <div class="day-circle" style="background:#EAF3DE;color:#27500A"><i class="ti ti-check" style="font-size:12px" aria-hidden="true"></i></div>
+        Tue
+      </div>
+      <div class="day-dot">
+        <div class="day-circle" style="background:#534AB7;color:#fff;font-weight:500">W</div>
+        <span style="color:#534AB7">Wed</span>
+      </div>
+      <div class="day-dot">
+        <div class="day-circle" style="background:var(--color-background-secondary);color:var(--color-text-tertiary)">T</div>
+        Thu
+      </div>
+      <div class="day-dot">
+        <div class="day-circle" style="background:var(--color-background-secondary);color:var(--color-text-tertiary)">F</div>
+        Fri
+      </div>
+      <div class="day-dot">
+        <div class="day-circle" style="background:var(--color-background-secondary);color:var(--color-text-tertiary)">S</div>
+        Sat
+      </div>
+      <div class="day-dot">
+        <div class="day-circle" style="border:1.5px solid #534AB7;color:#534AB7;background:transparent">S</div>
+        <span style="color:#534AB7">Sun</span>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--color-text-secondary)">Today's subject split</div>
+    <div style="display:flex;gap:3px;height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px">
+      <div style="flex:30;background:#534AB7"></div>
+      <div style="flex:25;background:#185FA5"></div>
+      <div style="flex:30;background:#BA7517"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-secondary)"><div style="width:8px;height:8px;border-radius:2px;background:#534AB7"></div>Maths 30m</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-secondary)"><div style="width:8px;height:8px;border-radius:2px;background:#185FA5"></div>Physics 25m</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-secondary)"><div style="width:8px;height:8px;border-radius:2px;background:#BA7517"></div>Chem 30m</div>
+    </div>
+
+    <div style="border-top:0.5px solid var(--color-border-tertiary);margin:12px 0 10px"></div>
+    <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--color-text-secondary)">Weekly time invested</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:52px;font-size:11px;color:var(--color-text-tertiary)">Maths</div>
+        <div class="prog-track" style="flex:1"><div class="prog-fill" style="width:60%;background:#534AB7"></div></div>
+        <div style="font-size:11px;width:26px;text-align:right;color:var(--color-text-secondary)">90m</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:52px;font-size:11px;color:var(--color-text-tertiary)">Physics</div>
+        <div class="prog-track" style="flex:1"><div class="prog-fill" style="width:40%;background:#185FA5"></div></div>
+        <div style="font-size:11px;width:26px;text-align:right;color:var(--color-text-secondary)">60m</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:52px;font-size:11px;color:var(--color-text-tertiary)">Chemistry</div>
+        <div class="prog-track" style="flex:1"><div class="prog-fill" style="width:50%;background:#BA7517"></div></div>
+        <div style="font-size:11px;width:26px;text-align:right;color:var(--color-text-secondary)">75m</div>
+      </div>
+    </div>
+  </div>
+
+</div>
