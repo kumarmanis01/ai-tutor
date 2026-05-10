@@ -4,9 +4,9 @@
  * FILE OBJECTIVE:
  * - /student/onboarding page
  * - Single-page form that captures student academic profile (name, DOB, language,
- *   board, grade, subjects, WhatsApp). For students under DPDP_MINOR_AGE, shows
- *   a parent contact section and triggers the parent OTP verification flow before
- *   activating the account.
+ *   board, grade, subjects, WhatsApp). Always shows parent contact fields, while
+ *   only students under DPDP_MINOR_AGE must complete the parent verification flow
+ *   before activating the account.
  * - Fetches boards/grades/subjects/languages dynamically from /api/academic-hierarchy.
  *
  * LINKED UNIT TEST:
@@ -21,11 +21,12 @@
  * - 2026-05-06 | claude | created for Google-auth onboarding flow
  * - 2026-05-07T00:00:00Z | copilot | replace hardcoded colors with theme classes and refresh onboarding visual styling
  * - 2026-05-07T00:00:00Z | copilot | move onboarding form/modal style recipes to lib/theme/componentClasses for theme-level reuse
+ * - 2026-05-10T00:00:00Z | copilot | always show parent contact fields so older students can add parent info in edit mode
  */
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Logo from '@/components/Logo'
 import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 import { ONBOARDING_THEME_CLASSES } from '@/lib/theme/componentClasses'
@@ -134,6 +135,8 @@ interface FormState {
 export default function StudentOnboardingPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isEditMode = searchParams.get('edit') === '1'
 
   const [view, setView] = useState<View>('loading-hierarchy')
   const [hierarchy, setHierarchy] = useState<AcademicHierarchy | null>(null)
@@ -170,14 +173,17 @@ export default function StudentOnboardingPage() {
       return
     }
     const user = session?.user as OnboardingSessionUser | undefined
-    if (user?.onboardingComplete && user?.accountStatus === 'active') {
+    if (!isEditMode && user?.onboardingComplete && user?.accountStatus === 'active') {
       router.replace('/dashboard')
       return
     }
     if (user?.name) {
-      setForm((f) => ({ ...f, name: f.name || (user.name as string) }))
+      setForm((f) => {
+        if (f.name) return f
+        return { ...f, name: user.name as string }
+      })
     }
-  }, [status, session, router])
+  }, [isEditMode, status, session, router])
 
   // ── Fetch hierarchy ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -667,55 +673,58 @@ export default function StudentOnboardingPage() {
             <p className="text-xs text-muted-foreground">For session reminders and progress alerts.</p>
           </div>
 
-          {/* Parent contact -- shown when student is under DPDP age gate */}
-          {isMinor && (
-            <div className="space-y-4 border-t border-warning/15 pt-2">
-              <div className={BANNER_WARNING_CLASS}>
-                <p className="text-sm font-semibold text-warning">Parent verification required</p>
-                <p className="mt-0.5 text-xs text-warning/80">
-                  Students under {DPDP_MINOR_AGE} need a parent to approve the account.
-                  We will send a one-time code to verify.
-                </p>
-              </div>
-
-              {/* Parent Email */}
-              <div className="space-y-1">
-                <label htmlFor="parent-email" className={FIELD_LABEL_CLASS}>
-                  Parent email
-                </label>
-                <input
-                  id="parent-email"
-                  type="email"
-                  value={form.parentEmail}
-                  onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))}
-                  placeholder="parent@example.com"
-                  className={INPUT_CLASS}
-                />
-                {fieldErrors.parentEmail && <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentEmail}</p>}
-              </div>
-
-              {/* Parent WhatsApp */}
-              <div className="space-y-1">
-                <label htmlFor="parent-whatsapp" className={FIELD_LABEL_CLASS}>
-                  Parent WhatsApp number
-                </label>
-                <PhoneInput
-                  inputId="parent-whatsapp"
-                  value={form.parentWhatsapp}
-                  onChange={(v) => setForm((f) => ({ ...f, parentWhatsapp: v }))}
-                  placeholder="98765 43210"
-                />
-                {fieldErrors.parentWhatsapp && <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentWhatsapp}</p>}
-                <p className="text-xs text-muted-foreground">
-                  The verification code will be sent to whichever channels you provide. At least one is required.
-                </p>
-              </div>
-
-              {fieldErrors.parentContact && (
-                <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentContact}</p>
-              )}
+          {/* Parent contact -- always visible; required only for students under the age gate */}
+          <div className="space-y-4 border-t border-warning/15 pt-2">
+            <div className={BANNER_WARNING_CLASS}>
+              <p className="text-sm font-semibold text-warning">
+                {isMinor ? 'Parent verification required' : 'Parent contact information'}
+              </p>
+              <p className="mt-0.5 text-xs text-warning/80">
+                {isMinor
+                  ? `Students under ${DPDP_MINOR_AGE} need a parent to approve the account. We will send a one-time code to verify.`
+                  : 'You can add a parent email or WhatsApp number now so it is ready if you ever need it later.'}
+              </p>
             </div>
-          )}
+
+            {/* Parent Email */}
+            <div className="space-y-1">
+              <label htmlFor="parent-email" className={FIELD_LABEL_CLASS}>
+                Parent email
+              </label>
+              <input
+                id="parent-email"
+                type="email"
+                value={form.parentEmail}
+                onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))}
+                placeholder="parent@example.com"
+                className={INPUT_CLASS}
+              />
+              {fieldErrors.parentEmail && <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentEmail}</p>}
+            </div>
+
+            {/* Parent WhatsApp */}
+            <div className="space-y-1">
+              <label htmlFor="parent-whatsapp" className={FIELD_LABEL_CLASS}>
+                Parent WhatsApp number
+              </label>
+              <PhoneInput
+                inputId="parent-whatsapp"
+                value={form.parentWhatsapp}
+                onChange={(v) => setForm((f) => ({ ...f, parentWhatsapp: v }))}
+                placeholder="98765 43210"
+              />
+              {fieldErrors.parentWhatsapp && <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentWhatsapp}</p>}
+              <p className="text-xs text-muted-foreground">
+                {isMinor
+                  ? 'The verification code will be sent to whichever channels you provide. At least one is required.'
+                  : 'Adding a parent contact is optional for older students.'}
+              </p>
+            </div>
+
+            {fieldErrors.parentContact && (
+              <p className={INLINE_ERROR_CLASS}>{fieldErrors.parentContact}</p>
+            )}
+            </div>
 
           {globalError && (
             <p className="text-center text-sm text-error">{globalError}</p>

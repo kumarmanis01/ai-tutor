@@ -1,7 +1,8 @@
 /**
  * FILE OBJECTIVE:
  * - Unit tests for the student onboarding page visual shell.
- * - Verifies the form renders after hierarchy loading and uses theme-based classes.
+ * - Verifies the form renders after hierarchy loading, uses theme-based classes,
+ *   and honors edit mode for active users.
  *
  * LINKED UNIT TEST:
  * - Self-referencing: __tests__/app/student/onboarding/page.spec.tsx
@@ -13,6 +14,8 @@
  *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | add coverage for onboarding theme class usage
+ * - 2026-05-10T00:00:00Z | copilot | add regression coverage for always-visible parent contact inputs
+ * - 2026-05-10T00:00:00Z | copilot | replace jest-dom matcher assertions with plain DOM checks
  */
 
 import React from 'react'
@@ -21,15 +24,20 @@ import { render, screen, waitFor } from '@testing-library/react'
 import StudentOnboardingPage from '@/app/(student)/student/onboarding/page'
 
 const replaceMock = jest.fn()
+const searchParamsMock = {
+  get: jest.fn(),
+}
+const routerMock = {
+  replace: replaceMock,
+}
 
 jest.mock('next-auth/react', () => ({
   useSession: jest.fn(),
 }))
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    replace: replaceMock,
-  }),
+  useRouter: () => routerMock,
+  useSearchParams: () => searchParamsMock,
 }))
 
 jest.mock('@/components/Logo', () => ({
@@ -44,6 +52,7 @@ const mockUseSession = useSession as jest.MockedFunction<typeof useSession>
 describe('StudentOnboardingPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    searchParamsMock.get.mockReturnValue(null)
     mockUseSession.mockReturnValue({
       data: {
         user: {
@@ -89,7 +98,7 @@ describe('StudentOnboardingPage', () => {
 
     await screen.findByText('Set up your profile')
 
-    expect(screen.getByText('Student onboarding')).toBeInTheDocument()
+    expect(screen.getByText('Student onboarding')).not.toBeNull()
     expect(container.firstChild).toHaveClass('bg-background', 'text-foreground')
 
     const panel = container.querySelector('.bg-card\/95')
@@ -100,6 +109,37 @@ describe('StudentOnboardingPage', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/academic-hierarchy')
+    })
+  })
+
+  it('shows parent contact fields even before the age gate is known', async () => {
+    render(<StudentOnboardingPage />)
+
+    await screen.findByText('Set up your profile')
+
+    expect(screen.getByText('Parent contact information')).not.toBeNull()
+    expect(screen.getByLabelText('Parent email')).not.toBeNull()
+    expect(screen.getByLabelText('Parent WhatsApp number')).not.toBeNull()
+  })
+
+  it('does not redirect active users to the dashboard when edit mode is enabled', async () => {
+    searchParamsMock.get.mockImplementation((key: string) => (key === 'edit' ? '1' : null))
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          name: 'Aarav',
+          onboardingComplete: true,
+          accountStatus: 'active',
+        },
+      },
+      status: 'authenticated',
+      update: jest.fn(),
+    } as never)
+
+    render(<StudentOnboardingPage />)
+
+    await waitFor(() => {
+      expect(replaceMock).not.toHaveBeenCalledWith('/dashboard')
     })
   })
 })

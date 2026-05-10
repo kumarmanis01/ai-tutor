@@ -128,7 +128,7 @@ export default function ProfilePage() {
               )}
             </div>
             <Link
-              href="/student/onboarding"
+              href="/student/onboarding?edit=1"
               className="mt-4 inline-block px-5 py-2 min-h-[44px] leading-[28px] bg-[#534AB7] text-white text-sm font-semibold rounded-xl hover:bg-[#4840a3] transition-colors"
             >
               Update Profile
