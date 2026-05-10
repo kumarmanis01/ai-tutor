@@ -36,7 +36,7 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
           where: { id: req.userId },
           data: {
             name: 'Deleted User',
-            email: `deleted_${req.id}@deleted.spinzy.com`,
+            email: `deleted_${req.id}@deleted.spinzyacademy.com`,
             phone: null,
             age: null,
             parentEmail: null,

@@ -108,7 +108,7 @@ function setupBasePrismaMocks(overrides: {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  process.env.ONCALL_EMAIL = 'oncall@spinzy.com';
+  process.env.ONCALL_EMAIL = 'oncall@spinzyacademy.com';
 });
 
 afterEach(() => {
@@ -162,7 +162,7 @@ describe('Rolling average anomaly detection', () => {
     expect(result.alertSent).toBe(true);
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
     const emailArgs = mockSendEmail.mock.calls[0][0];
-    expect(emailArgs.to).toBe('oncall@spinzy.com');
+    expect(emailArgs.to).toBe('oncall@spinzyacademy.com');
     expect(emailArgs.subject).toContain('Cost spike');
   });
 

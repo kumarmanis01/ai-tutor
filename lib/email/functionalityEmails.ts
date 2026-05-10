@@ -33,8 +33,8 @@ export const MAIL_CONSTANTS_NO_REPLY_EMAIL = 'no-reply@send.spinzyacademy.com';
 
 export const MAILER_TOPIC_RANKER_ALERT_EMAIL = 'feedback@spinzyacademy.com';
 export const NIGHTLY_TEST_REPORT_RECIPIENT_EMAIL = 'health@spinzyacademy.com';
-export const TEMPLATES_LEGACY_SUPPORT_EMAIL = 'support@spinzy.in';
-export const BRAND_SUPPORT_EMAIL = 'support@spinzy.in';
-export const UPGRADE_FLOW_SUPPORT_EMAIL = 'support@spinzy.in';
-export const CONTENT_JOB_ADMIN_ALERT_EMAIL = 'oncall@spinzy.com';
+export const TEMPLATES_LEGACY_SUPPORT_EMAIL = 'support@spinzyacademy.com';
+export const BRAND_SUPPORT_EMAIL = 'support@spinzyacademy.com';
+export const UPGRADE_FLOW_SUPPORT_EMAIL = 'support@spinzyacademy.com';
+export const CONTENT_JOB_ADMIN_ALERT_EMAIL = 'oncall@spinzyacademy.com';
 export const PRACTICE_HYDRATION_ALERT_EMAIL = 'spinzydigital@gmail.com';
