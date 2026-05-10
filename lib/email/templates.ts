@@ -646,3 +646,76 @@ export function sessionCompleteForParentHtml(data: {
     </div>
   `;
 }
+
+export function sessionCompleteForStudentHtml(data: {
+  studentName: string;
+  conceptName: string | null;
+  xpEarned: number;
+  totalXp: number;
+  currentStreak: number;
+  masteryDelta: number;
+  accuracy: number;
+  badgeNames: string[];
+  sessionDurationMinutes: number;
+  leveledUp: boolean;
+  newLevel: number | null;
+  dashboardUrl: string;
+}): string {
+  const topicLabel = data.conceptName ? `<strong>${data.conceptName}</strong>` : "today's topic";
+
+  const levelUpBanner = data.leveledUp && data.newLevel
+    ? `<div style="background:#EEEDFE;border-radius:12px;padding:14px 20px;margin:16px 0;text-align:center;">
+        <p style="margin:0;font-size:15px;color:#534AB7;font-weight:700;">
+          Level ${data.newLevel} unlocked! Keep climbing.
+        </p>
+      </div>`
+    : '';
+
+  const masteryLine = data.masteryDelta > 0.05
+    ? `<li style="margin-bottom:6px;">Your understanding of ${topicLabel} improved this session.</li>`
+    : '';
+
+  const practicePerformanceLine = data.accuracy >= 0.8
+    ? '<li style="margin-bottom:6px;">Strong practice performance -- your consistency is building real understanding.</li>'
+    : data.accuracy >= 0.5
+    ? '<li style="margin-bottom:6px;">Good effort on practice today -- every session builds your confidence.</li>'
+    : '<li style="margin-bottom:6px;">You showed up and practised -- that is the first step to improvement.</li>';
+
+  const streakLine = data.currentStreak >= 2
+    ? `<li style="margin-bottom:6px;">${data.currentStreak}-day streak -- your best is still ahead. Keep it going!</li>`
+    : '';
+
+  const badgesHtml = data.badgeNames.length > 0
+    ? `<div style="margin:16px 0;">
+        <p style="margin:0 0 6px;font-size:13px;color:#555;font-weight:600;">Badges earned this session:</p>
+        <p style="margin:0;font-size:14px;color:#534AB7;">${data.badgeNames.join(', ')}</p>
+      </div>`
+    : '';
+
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#1D9E75;">Great session today, ${data.studentName}!</h2>
+      <p>You completed a ${data.sessionDurationMinutes}-minute session on ${topicLabel} with Vidya.</p>
+
+      <div style="background:#EEEDFE;border-radius:12px;padding:16px 20px;margin:20px 0;text-align:center;">
+        <p style="margin:0;font-size:28px;font-weight:700;color:#534AB7;">+${data.xpEarned} XP</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#555;">Total: ${data.totalXp} XP</p>
+      </div>
+
+      ${levelUpBanner}
+
+      <ul style="padding-left:20px;line-height:1.8;color:#374151;font-size:14px;margin:16px 0;">
+        ${masteryLine}
+        ${practicePerformanceLine}
+        ${streakLine}
+      </ul>
+
+      ${badgesHtml}
+
+      <a href="${data.dashboardUrl}" style="${BTN}">Continue learning</a>
+
+      ${FOOTER}
+    </div>
+  `;
+}
