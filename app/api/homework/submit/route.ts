@@ -168,33 +168,58 @@ export async function POST(req: Request) {
   if (assignment.sessionId) {
     const now = new Date();
 
+    // Advance the StructuredSession to COMPLETE so the progress page session
+    // history can count it. HomeworkAssignment.sessionId is a StructuredSession
+    // id -- the previous code incorrectly looked it up as a LearningSession id,
+    // so sessions were never marked complete after homework submission.
     try {
-      const learningSession = await prisma.learningSession.findFirst({
+      const structuredSession = await prisma.structuredSession.findFirst({
         where: { id: assignment.sessionId, studentId: user.id },
-        select: { startedAt: true, endedAt: true },
+        select: { state: true, startedAt: true, meta: true },
       });
 
-      if (learningSession) {
-        const endedAt = learningSession.endedAt ?? now;
-        const durationMs = Math.max(0, endedAt.getTime() - learningSession.startedAt.getTime());
-        const actualTimeSpent = Math.max(0, Math.floor(durationMs / 60000));
-
-        await prisma.learningSession.update({
+      if (structuredSession && structuredSession.state === 'HOMEWORK') {
+        await prisma.structuredSession.update({
           where: { id: assignment.sessionId },
           data: {
-            isCompleted: true,
-            completionPercentage: 100,
-            endedAt,
-            actualTimeSpent,
-            lastAccessed: now,
+            state: 'COMPLETE',
+            completedAt: now,
+            meta: {
+              ...((structuredSession.meta as Record<string, unknown>) ?? {}),
+              score: Math.round(score * 100),
+              completedViaHomework: true,
+            },
           },
         });
 
+        // Also complete the bridged LearningSession (linked via meta.structuredSessionId).
+        const bridgedSession = await prisma.learningSession.findFirst({
+          where: {
+            studentId: user.id,
+            activityType: 'structured_session',
+            meta: { path: ['structuredSessionId'], equals: assignment.sessionId },
+            isCompleted: false,
+          },
+          select: { id: true, startedAt: true },
+        });
+        if (bridgedSession) {
+          const durationMs = Math.max(0, now.getTime() - bridgedSession.startedAt.getTime());
+          await prisma.learningSession.update({
+            where: { id: bridgedSession.id },
+            data: {
+              isCompleted: true,
+              completionPercentage: 100,
+              endedAt: now,
+              actualTimeSpent: Math.max(0, Math.floor(durationMs / 60000)),
+              lastAccessed: now,
+            },
+          });
+        }
+
         logger.info('[HOMEWORK_SESSION_COMPLETED]', {
           studentId: user.id,
-          sessionId: assignment.sessionId,
+          structuredSessionId: assignment.sessionId,
           assignmentId: assignment.id,
-          actualTimeSpent,
         });
       }
     } catch (err) {

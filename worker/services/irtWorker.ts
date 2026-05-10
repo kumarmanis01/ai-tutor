@@ -6,6 +6,7 @@ import type { IRTUpdateJobData } from '@/jobs/irtUpdate'
 import { sendPushSafe } from '@/lib/push/send.js'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery.js'
+import { invalidateReadinessCache } from '@/lib/student/examReadiness.js'
 
 const MASTERY_THRESHOLD = 0.75
 
@@ -96,6 +97,16 @@ export async function processIRTUpdate(job: Job<IRTUpdateJobData>): Promise<void
       thetaAfter: result.newTheta,
       masteryAfter: result.newMastery,
     })
+
+    // Invalidate the 1-hour readiness cache so the progress page reflects the
+    // new mastery immediately. Concept.subjectId is denormalized for this lookup.
+    const conceptForCache = await prisma.concept.findUnique({
+      where: { id: conceptId },
+      select: { subjectId: true },
+    })
+    if (conceptForCache?.subjectId) {
+      void invalidateReadinessCache(studentId, conceptForCache.subjectId)
+    }
 
     // Check for chapter mastery milestone (best-effort, non-blocking)
     if (result.newMastery >= MASTERY_THRESHOLD && current.masteryScore < MASTERY_THRESHOLD) {

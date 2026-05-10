@@ -105,7 +105,7 @@ export default async function ProgressPage({
   const [studentProfile, chartSessions, completedSessions, trendRows, heatmapSessions, conceptsMasteredCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { subjects: true },
+      select: { subjects: true, grade: true, board: true },
     }),
     prisma.structuredSession.findMany({
       where: {
@@ -178,11 +178,27 @@ export default async function ProgressPage({
   const subjectNames = [...new Set(
     (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
   )];
+
+  // Filter subjectDefs to the student's own grade+board so we don't pull in
+  // chapters from other grade levels (e.g. Grade 7 Mathematics when the student
+  // is in Grade 6). Mirrors the pattern used in getOrderedTopicsForStudent.
+  const gradeNum = studentProfile?.grade ? parseInt(String(studentProfile.grade), 10) : NaN;
+  const boardSlug = studentProfile?.board ?? null;
+  const classFilter = !isNaN(gradeNum) && boardSlug
+    ? {
+        class: {
+          grade: gradeNum,
+          board: { slug: { equals: boardSlug, mode: 'insensitive' as const } },
+        },
+      }
+    : {};
+
   const subjectDefs = subjectNames.length
     ? await prisma.subjectDef.findMany({
         where: {
           OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
           lifecycle: 'active',
+          ...classFilter,
         },
         select: { id: true, name: true, slug: true },
       })

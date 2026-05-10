@@ -359,11 +359,11 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
   } as const;
 
   // Primary: questions at the student's target difficulty band.
-  let questions = await prisma.question.findMany({
+  let questions: PracticeQuestionRow[] = await prisma.question.findMany({
     // quarantined questions excluded -- do not remove this filter
     where: { topicId, difficulty: targetDifficulty, status: 'ACTIVE' },
     select: questionSelect,
-  });
+  }) as PracticeQuestionRow[];
   questions = pickRandomQuestions(
     dedupePracticeQuestions(questions),
     PRACTICE_QUESTION_TARGET_COUNT,
@@ -372,11 +372,11 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
   // Fallback: any available questions for the topic (content may not yet cover all bands),
   // or use it to top up when dedupe removes duplicate rows from the primary difficulty band.
   if (questions.length < PRACTICE_QUESTION_TARGET_COUNT) {
-    const fallbackQuestions = await prisma.question.findMany({
+    const fallbackQuestions: PracticeQuestionRow[] = await prisma.question.findMany({
       // quarantined questions excluded -- do not remove this filter
       where: { topicId, status: 'ACTIVE' },
       select: questionSelect,
-    });
+    }) as PracticeQuestionRow[];
     questions = pickRandomQuestions(
       dedupePracticeQuestions([...questions, ...fallbackQuestions]),
       PRACTICE_QUESTION_TARGET_COUNT,
@@ -440,7 +440,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
           },
         });
         const existingKeys = new Set<string>(
-          existingActiveQuestions.map((q) => getPracticeQuestionKey(q)),
+          (existingActiveQuestions as PracticeQuestionRow[]).map((q) => getPracticeQuestionKey(q)),
         );
         const promotedKeys = new Set<string>();
         let promotedCount = 0;
@@ -496,7 +496,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
           // quarantined questions excluded -- do not remove this filter
           where: { topicId, status: 'ACTIVE' },
           select: questionSelect,
-        });
+        }) as PracticeQuestionRow[];
         questions = pickRandomQuestions(
           dedupePracticeQuestions(questions),
           PRACTICE_QUESTION_TARGET_COUNT,
