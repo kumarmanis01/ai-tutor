@@ -14,6 +14,7 @@
  * - 2026-05-08T00:00:00Z | copilot | add tests for practice hydration status + manual enqueue endpoint
  * - 2026-05-09T00:00:00Z | copilot | assert hydration request emails are sent to the operations inbox
  * - 2026-05-09T00:00:00Z | copilot | replace hardcoded hydration alert inbox with centralized email constant
+ * - 2026-05-10T00:00:00Z | copilot | add dedup regression test for on-demand GeneratedQuestion promotion
  */
 
 import { PRACTICE_HYDRATION_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
@@ -68,6 +69,95 @@ describe('GET /api/session/[sessionId]/practice/hydrate', () => {
     expect(body.hasActiveQuestions).toBe(false);
     expect(body.isHydrationRunning).toBe(true);
     expect(body.runningJobId).toBe('h1');
+  });
+
+  it('promotes only unique GeneratedQuestion content when no active questions and no running job', async () => {
+    const questionFindMany = jest
+      .fn(async () => [])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const questionUpsert = jest.fn(async () => ({}));
+
+    jest.doMock('@/lib/session', () => ({
+      getServerSessionForHandlers: jest.fn(async () => ({ user: { id: 'student-1' } })),
+    }));
+    jest.doMock('@/lib/session/sessionEngine', () => ({ isSessionEngineEnabled: jest.fn(() => true) }));
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        structuredSession: {
+          findFirst: jest.fn(async () => ({ id: 's1', topicId: 't1', state: 'PRACTICE' })),
+        },
+        question: {
+          count: jest.fn(async () => 0),
+          findMany: questionFindMany,
+          upsert: questionUpsert,
+        },
+        generatedQuestion: {
+          findMany: jest.fn(async () => [
+            {
+              id: 'gq-1',
+              type: 'mcq',
+              question: 'What is 2 + 2?',
+              options: ['3', '4'],
+              answer: '4',
+              test: {
+                difficulty: 'medium',
+                topicId: 't1',
+                topic: {
+                  chapter: {
+                    name: 'Numbers',
+                    subject: {
+                      name: 'Math',
+                      class: {
+                        grade: 7,
+                        board: { slug: 'cbse' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              id: 'gq-2',
+              type: 'mcq',
+              question: 'What is 2 + 2?',
+              options: ['3', '4'],
+              answer: '4',
+              test: {
+                difficulty: 'medium',
+                topicId: 't1',
+                topic: {
+                  chapter: {
+                    name: 'Numbers',
+                    subject: {
+                      name: 'Math',
+                      class: {
+                        grade: 7,
+                        board: { slug: 'cbse' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ]),
+        },
+        hydrationJob: {
+          findFirst: jest.fn(async () => null),
+        },
+      },
+    }));
+    jest.doMock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), info: jest.fn(), error: jest.fn() } }));
+
+    const { GET } = await import('@/app/api/session/[sessionId]/practice/hydrate/route');
+    const res = await GET(new Request('http://localhost') as any, {
+      params: Promise.resolve({ sessionId: 's1' }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.hasActiveQuestions).toBe(true);
+    expect(questionUpsert).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -7,6 +7,7 @@
  *
  * EDIT LOG:
  * - 2026-04-06T13:00:00Z | senior-staff-engineer | created tests for selectQuestions
+ * - 2026-05-10T00:00:00Z | copilot | add regression test for GeneratedQuestion fallback dedupe before upsert
  */
 
 import { selectQuestions } from '@/lib/tests';
@@ -57,5 +58,68 @@ describe('selectQuestions', () => {
     await selectQuestions({ subject: 'math' }, 3);
 
     expect(prisma.generatedQuestion.findMany).toHaveBeenCalled();
+  });
+
+  it('deduplicates duplicate generated-question content during fallback sync', async () => {
+    prisma.question.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 'gq-1' }]);
+    prisma.generatedQuestion.findMany.mockResolvedValue([
+      {
+        id: 'gq-1',
+        type: 'mcq',
+        question: 'What is 2 + 2?',
+        options: ['3', '4'],
+        answer: '4',
+        test: {
+          difficulty: 'medium',
+          topicId: 'topic-1',
+          topic: {
+            id: 'topic-1',
+            chapter: {
+              name: 'Numbers',
+              subject: {
+                name: 'Math',
+                class: {
+                  grade: 7,
+                  board: { slug: 'cbse' },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        id: 'gq-2',
+        type: 'mcq',
+        question: 'What is 2 + 2?',
+        options: ['3', '4'],
+        answer: '4',
+        test: {
+          difficulty: 'medium',
+          topicId: 'topic-1',
+          topic: {
+            id: 'topic-1',
+            chapter: {
+              name: 'Numbers',
+              subject: {
+                name: 'Math',
+                class: {
+                  grade: 7,
+                  board: { slug: 'cbse' },
+                },
+              },
+            },
+          },
+        },
+      },
+    ]);
+    prisma.question.upsert.mockResolvedValue({});
+
+    await selectQuestions({ subject: 'math' }, 1);
+
+    expect(prisma.question.upsert).toHaveBeenCalledTimes(1);
   });
 });

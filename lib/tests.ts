@@ -124,6 +124,44 @@ export function isSemanticallyDuplicate(candidatePrompt: string, usedPrompts: st
   return false;
 }
 
+function normalizeQuestionSyncText(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function stableQuestionSyncValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableQuestionSyncValue(item)).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj)
+      .sort()
+      .map((key) => `${key}:${stableQuestionSyncValue(obj[key])}`)
+      .join(',')}}`;
+  }
+
+  if (typeof value === 'string') {
+    return normalizeQuestionSyncText(value);
+  }
+
+  return String(value ?? '');
+}
+
+function buildQuestionSyncKey(entry: {
+  prompt?: unknown;
+  choices?: unknown;
+  correctAnswer?: unknown;
+}): string {
+  const prompt = normalizeQuestionSyncText(entry.prompt);
+  const choices = stableQuestionSyncValue(entry.choices);
+  const correctAnswer = stableQuestionSyncValue(entry.correctAnswer);
+  return `${prompt}::${choices}::${correctAnswer}`;
+}
+
 /**
  * Selects questions from the bank using simple weighted filters.
  * Falls back to GeneratedQuestion (hydration pipeline) if the Question table is empty.
@@ -275,13 +313,54 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
     return [];
   }
 
+  const topicIds = [...new Set(rows.map((r) => r.test.topicId).filter((id): id is string => Boolean(id)))];
+  const existingQuestions = topicIds.length
+    ? await prisma.question.findMany({
+        where: {
+          status: 'ACTIVE',
+          topicId: { in: topicIds },
+        },
+        select: {
+          id: true,
+          prompt: true,
+          choices: true,
+          correctAnswer: true,
+        },
+      })
+    : [];
+  const existingKeyToId = new Map<string, string>(
+    existingQuestions.map((q) => [
+      buildQuestionSyncKey({
+        prompt: q.prompt,
+        choices: q.choices,
+        correctAnswer: q.correctAnswer,
+      }),
+      q.id,
+    ]),
+  );
+  const promotedKeys = new Set<string>();
+
   // Upsert into Question table so AttemptQuestion FK constraints work
-  const ids: string[] = [];
+  const ids = new Set<string>();
   for (const gq of rows) {
     const ch = gq.test.topic?.chapter;
     const sub = ch?.subject;
     const cls = sub?.class;
     const correctAnswer = typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer);
+    const contentKey = buildQuestionSyncKey({
+      prompt: gq.question,
+      choices: gq.options,
+      correctAnswer,
+    });
+
+    const existingId = existingKeyToId.get(contentKey);
+    if (existingId) {
+      ids.add(existingId);
+      continue;
+    }
+    if (promotedKeys.has(contentKey)) {
+      continue;
+    }
 
     const topicId = gq.test.topicId || gq.test.topic?.id || null;
     await prisma.question.upsert({
@@ -302,12 +381,13 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
         source: 'generated',
       },
     });
-    ids.push(gq.id);
+    promotedKeys.add(contentKey);
+    ids.add(gq.id);
   }
 
   return prisma.question.findMany({
     // quarantined questions excluded -- do not remove this filter
-    where: { id: { in: ids }, status: 'ACTIVE' },
+    where: { id: { in: Array.from(ids) }, status: 'ACTIVE' },
     take,
   });
 }

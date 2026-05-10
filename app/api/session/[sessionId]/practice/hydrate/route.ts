@@ -16,6 +16,7 @@
  * - 2026-05-09T00:00:00Z | copilot | sync GeneratedQuestion rows into Question table before returning hasActiveQuestions;
  *                                    prevents duplicate job triggers when Question table is empty but GeneratedQuestion has data
  * - 2026-05-09T00:00:00Z | copilot | send hydration-request notification email and skip rejected GeneratedTest rows during promotion
+ * - 2026-05-10T00:00:00Z | copilot | enforce content-signature dedupe during on-demand promotion so duplicate GeneratedQuestion rows are not inserted into Question table
  */
 
 import { NextResponse } from 'next/server';
@@ -31,6 +32,44 @@ import { PRACTICE_HYDRATION_ALERT_EMAIL } from '@/lib/email/functionalityEmails'
 export const dynamic = 'force-dynamic';
 
 const HYDRATION_REQUESTED_QUESTION_COUNT = 10;
+
+function normalizeQuestionText(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function stableQuestionValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableQuestionValue(item)).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj)
+      .sort()
+      .map((key) => `${key}:${stableQuestionValue(obj[key])}`)
+      .join(',')}}`;
+  }
+
+  if (typeof value === 'string') {
+    return normalizeQuestionText(value);
+  }
+
+  return String(value ?? '');
+}
+
+function buildQuestionContentKey(question: {
+  prompt?: unknown;
+  choices?: unknown;
+  correctAnswer?: unknown;
+}): string {
+  const prompt = normalizeQuestionText(question.prompt);
+  const choices = stableQuestionValue(question.choices);
+  const correctAnswer = stableQuestionValue(question.correctAnswer);
+  return `${prompt}::${choices}::${correctAnswer}`;
+}
 
 type SessionRow = {
   id: string;
@@ -51,6 +90,24 @@ async function loadOwnedSession(sessionId: string, studentId: string): Promise<S
  * Returns the number of rows promoted (0 if GeneratedQuestion is empty for this topic).
  */
 async function promoteGeneratedQuestions(topicId: string): Promise<number> {
+  const existingActiveQuestions = await prisma.question.findMany({
+    where: { topicId, status: 'ACTIVE' },
+    select: {
+      prompt: true,
+      choices: true,
+      correctAnswer: true,
+    },
+  });
+  const existingContentKeys = new Set<string>(
+    existingActiveQuestions.map((q) =>
+      buildQuestionContentKey({
+        prompt: q.prompt,
+        choices: q.choices,
+        correctAnswer: q.correctAnswer,
+      }),
+    ),
+  );
+
   const generatedRows = await prisma.generatedQuestion.findMany({
     where: { test: { topicId, status: { not: ApprovalStatus.Rejected } } },
     select: {
@@ -91,9 +148,19 @@ async function promoteGeneratedQuestions(topicId: string): Promise<number> {
   if (generatedRows.length === 0) return 0;
 
   let promoted = 0;
+  const promotedContentKeys = new Set<string>();
   for (const gq of generatedRows) {
     const correctAnswer =
       typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer ?? '');
+    const contentKey = buildQuestionContentKey({
+      prompt: gq.question,
+      choices: gq.options,
+      correctAnswer,
+    });
+    if (existingContentKeys.has(contentKey) || promotedContentKeys.has(contentKey)) {
+      continue;
+    }
+
     const ch = gq.test.topic?.chapter;
     const sub = ch?.subject;
     const cls = sub?.class;
@@ -118,6 +185,7 @@ async function promoteGeneratedQuestions(topicId: string): Promise<number> {
         source: 'generated',
       },
     });
+    promotedContentKeys.add(contentKey);
     promoted++;
   }
 
