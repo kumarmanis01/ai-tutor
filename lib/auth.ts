@@ -502,7 +502,7 @@ export const authOptions: any = {
   adapter: customAdapter,
   useSecureCookies: isProd,
   pages: {
-    signIn: '/auth/signin',
+    signIn: '/auth/signup',
     error: '/auth/error',
   },
   providers: [
