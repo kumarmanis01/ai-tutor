@@ -15,6 +15,7 @@
  * - 2026-05-09T00:00:00Z | copilot | assert hydration request emails are sent to the operations inbox
  * - 2026-05-09T00:00:00Z | copilot | replace hardcoded hydration alert inbox with centralized email constant
  * - 2026-05-10T00:00:00Z | copilot | add dedup regression test for on-demand GeneratedQuestion promotion
+ * - 2026-05-11T00:00:00Z | copilot | add PRACTICE-phase guard regression for manual hydration trigger
  */
 
 import { PRACTICE_HYDRATION_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
@@ -253,5 +254,64 @@ describe('POST /api/session/[sessionId]/practice/hydrate', () => {
       force: true,
       questionsPerDifficulty: 10,
     });
+  });
+
+  it('returns 409 when session is not in PRACTICE phase', async () => {
+    jest.doMock('@/lib/session', () => ({
+      getServerSessionForHandlers: jest.fn(async () => ({ user: { id: 'student-1' } })),
+    }));
+    jest.doMock('@/lib/session/sessionEngine', () => ({ isSessionEngineEnabled: jest.fn(() => true) }));
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        structuredSession: {
+          findFirst: jest.fn(async () => ({ id: 's1', topicId: 't1', state: 'OVERVIEW' })),
+        },
+      },
+    }));
+    jest.doMock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), info: jest.fn(), error: jest.fn() } }));
+
+    const { POST } = await import('@/app/api/session/[sessionId]/practice/hydrate/route');
+    const res = await POST(new Request('http://localhost', { method: 'POST' }) as any, {
+      params: Promise.resolve({ sessionId: 's1' }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.error).toContain('PRACTICE phase');
+  });
+
+  it('rejects manual hydration when the session is not in PRACTICE phase', async () => {
+    const enqueueQuestionsHydration = jest.fn();
+    const sendMailSafe = jest.fn();
+
+    jest.doMock('@/lib/session', () => ({
+      getServerSessionForHandlers: jest.fn(async () => ({ user: { id: 'student-1' } })),
+    }));
+    jest.doMock('@/lib/session/sessionEngine', () => ({ isSessionEngineEnabled: jest.fn(() => true) }));
+    jest.doMock('@/lib/execution-pipeline/enqueueTopicHydration', () => ({
+      enqueueQuestionsHydration,
+    }));
+    jest.doMock('@/lib/mailer', () => ({
+      sendMailSafe,
+    }));
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        structuredSession: {
+          findFirst: jest.fn(async () => ({ id: 's1', topicId: 't1', state: 'EXPLANATION' })),
+        },
+      },
+    }));
+    jest.doMock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), info: jest.fn(), error: jest.fn() } }));
+
+    const { POST } = await import('@/app/api/session/[sessionId]/practice/hydrate/route');
+    const res = await POST(new Request('http://localhost', { method: 'POST' }) as any, {
+      params: Promise.resolve({ sessionId: 's1' }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.error).toContain('PRACTICE phase');
+    expect(enqueueQuestionsHydration).not.toHaveBeenCalled();
+    expect(sendMailSafe).not.toHaveBeenCalled();
   });
 });

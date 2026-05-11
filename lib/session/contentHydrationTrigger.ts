@@ -1,12 +1,18 @@
 /**
- * ContentHydrationTrigger (GAP-03)
+ * FILE OBJECTIVE:
+ * - Trigger topic-level hydration jobs when content is missing.
+ * - Enqueue notes, a single questions job, and tests without blocking the caller.
  *
- * When ContentReadinessService returns MISSING, triggers HydrationJob creation
- * for the topic (notes, practice questions, test assembly).
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/session/contentHydrationTrigger.spec.ts
  *
- * - Fire-and-forget: does not block the caller.
- * - Logs hydration request for observability.
- * - Uses lib/execution-pipeline enqueue functions (idempotent, HydrationJob + Outbox).
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | collapse questions hydration fan-out to one job because the worker already handles all difficulty levels
  */
 
 import { logger } from '@/lib/logger';
@@ -15,8 +21,6 @@ import {
   enqueueQuestionsHydration,
   enqueueTestsHydration,
 } from '@/lib/execution-pipeline/enqueueTopicHydration';
-
-const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 
 /**
  * Trigger full topic hydration (notes, questions, tests).
@@ -48,20 +52,18 @@ export function triggerForTopic(
         reason: notesRes.created === false ? notesRes.reason : undefined,
       });
 
-      // Questions (en, each difficulty)
-      for (const d of DIFFICULTIES) {
-        const qRes = await enqueueQuestionsHydration({
-          topicId,
-          language: 'en',
-          difficulty: d,
-        });
-        results.push({
-          type: `questions_${d}`,
-          created: qRes.created,
-          jobId: qRes.created ? qRes.jobId : undefined,
-          reason: qRes.created === false ? qRes.reason : undefined,
-        });
-      }
+      // Questions (en, single job). The worker already generates easy/medium/hard variants.
+      const qRes = await enqueueQuestionsHydration({
+        topicId,
+        language: 'en',
+        difficulty: 'medium',
+      });
+      results.push({
+        type: 'questions',
+        created: qRes.created,
+        jobId: qRes.created ? qRes.jobId : undefined,
+        reason: qRes.created === false ? qRes.reason : undefined,
+      });
 
       // Tests (en, medium)
       const testsRes = await enqueueTestsHydration({

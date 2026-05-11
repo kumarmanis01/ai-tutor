@@ -17,6 +17,8 @@
  *                                    prevents duplicate job triggers when Question table is empty but GeneratedQuestion has data
  * - 2026-05-09T00:00:00Z | copilot | send hydration-request notification email and skip rejected GeneratedTest rows during promotion
  * - 2026-05-10T00:00:00Z | copilot | enforce content-signature dedupe during on-demand promotion so duplicate GeneratedQuestion rows are not inserted into Question table
+ * - 2026-05-11T00:00:00Z | copilot | add PRACTICE phase guard to POST endpoint; manual hydrate only callable during active PRACTICE phase with pending content
+ * - 2026-05-11T00:00:00Z | copilot | require PRACTICE phase before accepting manual hydration requests
  */
 
 import { NextResponse } from 'next/server';
@@ -301,6 +303,16 @@ export async function POST(
   const session = await loadOwnedSession(sessionId, studentId);
   if (!session) {
     const res = NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    logger.logAPI(req, res, { className: 'PracticeHydrateAPI', methodName: 'POST' }, start);
+    return res;
+  }
+
+  // Gate: manual hydration only allowed when session is in PRACTICE phase with pending content
+  if (session.state !== 'PRACTICE') {
+    const res = NextResponse.json(
+      { error: 'Practice hydration only available during PRACTICE phase' },
+      { status: 409 },
+    );
     logger.logAPI(req, res, { className: 'PracticeHydrateAPI', methodName: 'POST' }, start);
     return res;
   }

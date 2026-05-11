@@ -28,6 +28,7 @@
  * - 2026-05-08 | copilot | replace pending PRACTICE skip CTA with hydrate status + manual generate + polling refresh
  * - 2026-05-09T00:00:00Z | copilot | submit TEST answers with testId to keep backend grading aligned with displayed test version
  * - 2026-05-09T00:00:00Z | copilot | fix TEST footer gating so Continue is enabled after result is available
+ * - 2026-05-11T00:00:00Z | copilot | retry pending PRACTICE hydration checks after transient failures instead of leaving the CTA stuck disabled
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -166,11 +167,17 @@ export function SessionContainer({
       setPracticePendingStatus((prev) => ({ ...prev, isChecking: true, errorMessage: null }));
       const status = await getPracticeHydrationStatus();
       if (!status || isCancelled) {
-        setPracticePendingStatus((prev) => ({
-          ...prev,
-          isChecking: false,
-          errorMessage: 'Unable to check question generation status right now.',
-        }));
+        // Transient failure -- keep the previous running state and schedule retry
+        if (!isCancelled) {
+          pollAttempt += 1;
+          const retryDelayMs = Math.min(15000, 2000 * 2 ** Math.min(pollAttempt, 3));
+          setPracticePendingStatus((prev) => ({
+            ...prev,
+            isChecking: false,
+            errorMessage: 'Checking status... (will retry automatically)',
+          }));
+          schedulePoll(retryDelayMs);
+        }
         return;
       }
 

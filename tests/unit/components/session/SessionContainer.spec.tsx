@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | added regression test for TEST Continue footer enablement after submit
+ * - 2026-05-11T00:00:00Z | copilot | add pending PRACTICE retry regression for transient hydration-status failures
  */
 
 import React from 'react';
@@ -157,5 +158,70 @@ describe('SessionContainer', () => {
 
     const continueButton = await screen.findByRole('button', { name: 'Continue' });
     expect(continueButton.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('should retry pending PRACTICE status checks after a transient failure', async () => {
+    jest.useFakeTimers();
+    try {
+      const getPracticeHydrationStatus = jest
+        .fn(async () => null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          hasActiveQuestions: false,
+          isHydrationRunning: true,
+          runningJobId: 'job-1',
+        });
+
+      mockUseSession.mockReturnValue({
+        session: {
+          sessionId: 'session-1',
+          topicName: 'Number Systems',
+          subject: 'Math',
+          chapter: 'Foundations',
+          currentPhase: 'PRACTICE',
+          phaseIndex: 2,
+          totalPhases: 5,
+        },
+        phase: { type: 'pending' },
+        content: {
+          type: 'pending',
+          message: 'Practice content is being prepared',
+        },
+        loading: false,
+        error: null,
+        submitting: false,
+        startSession: mockStartSession,
+        advancePhase: mockAdvancePhase,
+        navigateToPhase: mockNavigateToPhase,
+        submitPractice: mockSubmitPractice,
+        submitTest: mockSubmitTest,
+        getPracticeHydrationStatus,
+        triggerPracticeHydration: mockTriggerPracticeHydration,
+      });
+      mockPhaseRouter.mockReturnValue(null);
+
+      const { unmount } = render(<SessionContainer topicId="topic-1" />);
+
+      const generateButton = screen.getByRole('button', { name: 'Generate Practice Questions' });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(getPracticeHydrationStatus).toHaveBeenCalledTimes(1);
+      expect(generateButton.hasAttribute('disabled')).toBe(false);
+
+      await act(async () => {
+        jest.advanceTimersByTime(4500);
+        await Promise.resolve();
+      });
+
+      expect(getPracticeHydrationStatus).toHaveBeenCalledTimes(2);
+      expect(generateButton.hasAttribute('disabled')).toBe(true);
+
+      unmount();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
