@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Accept both full plan IDs (e.g. 'standard_quarterly') and short IDs (e.g. 'quarterly').
+  // Accept both full plan IDs (e.g. 'standard_annual') and short IDs (e.g. 'annual').
   // resolvePlanByShortId handles both forms so the client can use either.
   const resolvedPlan = (PLANS as any)[planId] ?? resolvePlanByShortId(planId, false);
   if (!resolvedPlan) {
