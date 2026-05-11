@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - POST /api/tutor/session/start — create a new AI tutor learning session after
+ * - POST /api/tutor/session/start -- create a new AI tutor learning session after
  *   checking rollout eligibility, diagnostic gate, monthly free-tier cap, and
  *   daily study duration limit.
  *
