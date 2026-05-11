@@ -11,9 +11,12 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-05-11T00:00:00Z | copilot | harden Google sign-in: derive isProd from NEXTAUTH_URL, add PKCE cookie override,
- *     fix isEmailVerified to handle absent profile and string "true", fix linkAccount to return account,
- *     add pages.error routing, retry UI on signup/signin pages
+ * - 2026-05-11T00:00:00Z | claude | fix Google sign-in: remove redundant explicit PKCE checks and cookie overrides
+ *     (useSecureCookies:isProd drives security; overrides caused OAuthCallback errors in production),
+ *     tighten isEmailVerified to normalize strings case-insensitively and reject unknown types,
+ *     route OAuth errors to /auth/signup (the primary user-facing entry point)
+ * - 2026-05-11T00:00:00Z | copilot | harden Google sign-in: derive isProd from NEXTAUTH_URL, fix linkAccount to return
+ *     account, add pages.error routing, retry UI on signup/signin pages
  * - 2026-05-08T00:00:00Z | copilot | enforce Google account chooser globally via authorization prompt select_account
  * - 2026-05-07T00:00:00Z | copilot | enforce Google sub/email_verified linking and restore jwt/session id propagation for onboarding auth
  * - 2026-05-07T00:00:00Z | copilot | fix jwt subjects parsing type guard to avoid never narrowing on Prisma String[]
@@ -413,14 +416,16 @@ function normalizeGoogleEmail(input: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-// Google accounts are always email-verified. Accept boolean true OR string "true".
-// Treat absent profile or absent field as verified -- PKCE+state already proved identity.
-// Only explicitly reject when email_verified is the literal boolean false.
+// Absent profile or absent field: allow through -- state check already proved the Google identity.
+// For email_verified: accept boolean true, or string 'true' (case-insensitive).
+// Any other type (unexpected string, object, number) is treated as unverified.
 function isEmailVerified(profile: Record<string, unknown> | null | undefined): boolean {
   if (!profile) return true;
   const val = profile.email_verified;
   if (val === undefined || val === null) return true;
-  return val !== false && val !== 'false';
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') return val.toLowerCase() === 'true';
+  return false;
 }
 
 // Custom adapter that bypasses the OAuthAccountNotLinked error.

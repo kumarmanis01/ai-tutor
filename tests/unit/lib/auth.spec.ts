@@ -13,6 +13,8 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | claude | add tests for email_verified absent/null (new allowed cases) and
+ *     unrecognized string (new rejected case) to lock in tightened isEmailVerified logic
  * - 2026-05-11T00:00:00Z | copilot | add coverage for absent profile and string email_verified branches; align assertions
  *     with current signIn callback (adapter ops happen outside the callback, not inside)
  * - 2026-05-08T00:00:00Z | copilot | assert Google provider enforces account chooser prompt via authorization params
@@ -165,6 +167,50 @@ describe('lib/auth OAuth callbacks', () => {
     });
 
     expect(result).toBe(true);
+  });
+
+  it('should allow Google sign-in when email_verified field is absent from profile', async () => {
+    const signIn = loadAuthOptions().callbacks.signIn;
+
+    prismaMock.user.findUnique
+      .mockResolvedValueOnce({ id: 'user-3', email: 'student@example.com', welcomeEmailSent: true })
+      .mockResolvedValueOnce({ id: 'user-3', email: 'student@example.com', board: null, grade: null });
+
+    const result = await signIn({
+      user: { email: 'student@example.com', name: 'Student' },
+      account: { provider: 'google', providerAccountId: 'sub-def', type: 'oauth' },
+      profile: { email: 'student@example.com', sub: 'sub-def' }, // no email_verified key
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it('should allow Google sign-in when email_verified is null', async () => {
+    const signIn = loadAuthOptions().callbacks.signIn;
+
+    prismaMock.user.findUnique
+      .mockResolvedValueOnce({ id: 'user-4', email: 'student@example.com', welcomeEmailSent: true })
+      .mockResolvedValueOnce({ id: 'user-4', email: 'student@example.com', board: null, grade: null });
+
+    const result = await signIn({
+      user: { email: 'student@example.com', name: 'Student' },
+      account: { provider: 'google', providerAccountId: 'sub-ghi', type: 'oauth' },
+      profile: { email: 'student@example.com', email_verified: null, sub: 'sub-ghi' },
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it('should reject Google sign-in when email_verified is an unrecognized string', async () => {
+    const signIn = loadAuthOptions().callbacks.signIn;
+
+    const result = await signIn({
+      user: { email: 'student@example.com', name: 'Student' },
+      account: { provider: 'google', providerAccountId: 'sub-jkl', type: 'oauth' },
+      profile: { email: 'student@example.com', email_verified: 'FALSE', sub: 'sub-jkl' },
+    });
+
+    expect(result).toBe(false);
   });
 
   it('should reject Google sign-in when profile is present but email is missing', async () => {
