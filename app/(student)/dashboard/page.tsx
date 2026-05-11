@@ -21,6 +21,7 @@
  *                          IN_PROGRESS plan item before UPCOMING fallbacks
  * - 2026-05-09T15:45:00Z | copilot | add Focus Area section from weakest readiness chapter
  *                          and wire CTA to subject progress view
+ * - 2026-05-11T18:00:00Z | copilot | remove unused FreemiumCounter, ReferralShareCard imports (V1 pre-rollout)
  */
  
 import type { Metadata } from 'next'
@@ -41,10 +42,8 @@ import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
 import { FocusAreaCard } from '@/components/student/dashboard/FocusAreaCard'
 import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
-import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
 import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
-import ReferralShareCard from '@/components/student/referral/ReferralShareCard'
 
 export const dynamic = 'force-dynamic'
 
