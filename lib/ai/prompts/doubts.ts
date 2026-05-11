@@ -15,10 +15,12 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created doubts prompt builder with anti-abuse guardrails
  * - 2026-05-08T00:00:00Z | copilot | change doubts follow-up contract from single string to follow-up question array
+ * - 2026-05-11T00:00:00Z | claude | remove duplicate isValidDoubtsResponse (covered by validateDoubtsOutput in validators.ts)
  */
 
 import type {
   DoubtsInputContract,
+  DoubtsOutputSchema,
   StudentIntent,
   ConversationMessage,
 } from './schemas';

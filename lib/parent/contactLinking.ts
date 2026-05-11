@@ -197,7 +197,7 @@ export async function getParentChannelVerificationStatus(params: {
     select: { phone: true },
   })
 
-  const consumedKeySet = new Set(consumedRecords.map((row) => row.phone))
+  const consumedKeySet = new Set(consumedRecords.map((row: { phone: string }) => row.phone))
   const emailVerified = emailKeys.some((key) => consumedKeySet.has(key))
   const whatsappVerified = whatsappKeys.some((key) => consumedKeySet.has(key))
 

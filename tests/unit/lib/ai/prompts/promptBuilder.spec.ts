@@ -12,6 +12,9 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created unit tests for promptBuilder integration
+ * - 2026-05-11T00:00:00Z | claude | update doubts fixtures to match production DoubtsOutputSchema
+ *   (response/followUpQuestions/confidenceLevel); fix intent->studentIntent field name; update
+ *   assertions and off-topic/rewrite test expectations to match guardrail behaviour
  */
 
 import {
@@ -314,7 +317,7 @@ describe('PromptBuilder', () => {
       chapter: 'Quadratic Equations',
       topic: 'Solving by Factoring',
       studentQuestion: 'Why do we set factors equal to zero?',
-      intent: 'conceptual_clarity',
+      studentIntent: 'conceptual_clarity',
       conversationHistory: [],
     };
 

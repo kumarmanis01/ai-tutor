@@ -22,6 +22,8 @@
  * - 2026-04-22 | redesign | remove internal floating FAB; accept isOpen/onClose props
  * - 2026-05-08T00:00:00Z | copilot | render doubts follow-up questions as clickable bubbles and submit them as new questions
  * - 2026-05-08T00:00:00Z | copilot | open subscription paywall for free-limit doubts responses instead of showing a connection error
+ * - 2026-05-11T00:00:00Z | claude | add timestamp to Message state (stable per-message); align ConversationMessage
+ *   interface with schemas.ts contract; add data.response fallback to GENERIC_CONNECTION_ERROR
  */
 
 import React, { useRef, useEffect } from 'react';
@@ -37,6 +39,7 @@ const PAYWALL_MODAL_TITLE = 'Continue asking Teacher Vidya';
 interface Message {
   role: 'student' | 'vidya';
   text: string;
+  timestamp: string;
   followUps?: string[];
 }
 
@@ -87,6 +90,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         {
           role: 'vidya',
           text: `Hi! I am Teacher Vidya. What is confusing you about "${topicName}"? Ask me anything -- no question is too small.`,
+          timestamp: new Date().toISOString(),
         },
       ]);
     }
@@ -98,7 +102,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       .map((m) => ({
         role: m.role === 'student' ? 'student' : 'tutor',
         content: m.text,
-        timestamp: new Date().toISOString(),
+        timestamp: m.timestamp,
       }));
   }
 
@@ -109,7 +113,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
     if (!nextQuestion) {
       setInput('');
     }
-    setMessages((prev) => [...prev, { role: 'student', text: q }]);
+    setMessages((prev) => [...prev, { role: 'student', text: q, timestamp: new Date().toISOString() }]);
     setLoading(true);
 
     try {
@@ -152,6 +156,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         {
           role: 'vidya',
           text: data.response ?? GENERIC_CONNECTION_ERROR,
+          timestamp: new Date().toISOString(),
           followUps: normalizeFollowUpQuestions(data.followUpQuestions),
         },
       ]);
@@ -161,6 +166,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         {
           role: 'vidya',
           text: GENERIC_CONNECTION_ERROR,
+          timestamp: new Date().toISOString(),
         },
       ]);
     } finally {

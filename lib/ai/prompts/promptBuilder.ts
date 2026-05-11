@@ -15,7 +15,9 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created unified prompt builder with OpenAI integration
  * - 2026-02-04 | claude | integrated with existing callLLM infrastructure
- * - 2026-05-08 | copilot | mark doubts prompt calls as allowApiDirect for real-time /api/doubts responses
+ * - 2026-05-11T00:00:00Z | claude | wire full guardrail stack into generateDoubtResponse: classifyIntent,
+ *   processPrompt (rewrite), checkForHallucinations; remove allowApiDirect bypass; replace
+ *   isOffTopicQuestion pre-check with classifyIntent BLOCK/REDIRECT/REWRITE dispatch
  */
 
 import type {
