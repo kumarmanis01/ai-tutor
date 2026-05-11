@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created barrel export for prompt architecture
+ * - 2026-05-11T00:00:00Z | claude | remove isValidDoubtsResponse export (function deleted from doubts.ts)
  */
 
 // ============================================================================
@@ -91,7 +92,6 @@ export {
 export {
   DOUBTS_OUTPUT_SCHEMA,
   buildDoubtsPrompt,
-  isValidDoubtsResponse,
   isOffTopicQuestion,
   getOffTopicRedirect,
 } from './doubts';
