@@ -43,6 +43,7 @@ interface Message {
 interface ConversationMessage {
   role: 'student' | 'tutor';
   content: string;
+  timestamp: string;
 }
 
 interface DoubtPanelProps {
@@ -97,6 +98,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       .map((m) => ({
         role: m.role === 'student' ? 'student' : 'tutor',
         content: m.text,
+        timestamp: new Date().toISOString(),
       }));
   }
 
@@ -149,7 +151,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         ...prev,
         {
           role: 'vidya',
-          text: data.response,
+          text: data.response ?? GENERIC_CONNECTION_ERROR,
           followUps: normalizeFollowUpQuestions(data.followUpQuestions),
         },
       ]);

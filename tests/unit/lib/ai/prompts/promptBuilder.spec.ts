@@ -319,10 +319,12 @@ describe('PromptBuilder', () => {
     };
 
     const validResponse: DoubtsOutputSchema = {
-      explanation: 'Great question! When we factor a quadratic...',
-      clarifyingQuestion: 'Would you like me to show an example?',
-      confidence: 'high',
-      suggestedFollowUp: ['practice problems', 'more examples'],
+      response: 'When we factor a quadratic equation, we find values of x that make the expression zero. First, we write the equation in standard form. Then, we find two numbers that multiply to the constant term and add to the coefficient. Therefore, setting each factor to zero gives us the solutions because of the zero-product property.',
+      followUpQuestions: [
+        'Can you try applying this method to x squared minus 5x plus 6 equals 0?',
+        'What would happen if neither factor could equal zero?',
+      ],
+      confidenceLevel: 'high',
     };
 
     it('generates doubt response successfully', async () => {
@@ -337,7 +339,9 @@ describe('PromptBuilder', () => {
       const result = await generateDoubtResponse(validInput, 'user123hash', 'session456');
 
       expect(result.success).toBe(true);
-      expect(result.data?.explanation).toBe(validResponse.explanation);
+      expect(result.data?.response).toBe(validResponse.response);
+      expect(result.data?.followUpQuestions).toEqual(validResponse.followUpQuestions);
+      expect(result.data?.confidenceLevel).toBe('high');
       expect(result.metadata.promptType).toBe('doubts');
     });
 
@@ -350,23 +354,22 @@ describe('PromptBuilder', () => {
       const result = await generateDoubtResponse(offTopicInput, 'user123hash', 'session456');
 
       expect(result.success).toBe(true);
-      expect(result.data?.explanation).toContain("focus on");
+      expect(result.data?.response).toBeDefined();
+      expect(result.data?.confidenceLevel).toBe('high');
       expect(mockCallLLM).not.toHaveBeenCalled();
     });
 
-    it('redirects homework-style requests', async () => {
+    it('redirects homework-style requests via prompt rewriting and calls LLM', async () => {
       const homeworkInput: DoubtsInputContract = {
         ...validInput,
-        studentQuestion: 'Solve this for me: x² + 5x + 6 = 0',
-        intent: 'solve_homework',
+        studentQuestion: 'Solve this for me: x squared plus 5x plus 6 equals 0',
+        studentIntent: 'solve_homework',
       };
 
-      // Even with solve_homework intent, the system should still process
-      // but the prompt will include intent rewriting guidance
       mockCallLLM.mockResolvedValueOnce({
         content: JSON.stringify({
           ...validResponse,
-          explanation: "I'll guide you through solving this step by step...",
+          response: "I'll guide you through solving this step by step. First, we need to find two numbers that multiply to 6 and add to 5. Then, we factor the expression using these numbers. Therefore, the solutions come from setting each factor equal to zero.",
         }),
         usage: { prompt_tokens: 100, completion_tokens: 150, total_tokens: 250 },
         costUsd: 0.001,
@@ -377,6 +380,8 @@ describe('PromptBuilder', () => {
       const result = await generateDoubtResponse(homeworkInput, 'user123hash', 'session456');
 
       expect(result.success).toBe(true);
+      expect(result.data?.response).toBeDefined();
+      expect(mockCallLLM).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -30,7 +30,20 @@ import type {
 import { buildSystemPrompt } from './global';
 import { buildNotesPrompt } from './notes';
 import { buildPracticePrompt } from './practice';
-import { buildDoubtsPrompt, isOffTopicQuestion, getOffTopicRedirect } from './doubts';
+import { buildDoubtsPrompt } from './doubts';
+import {
+  classifyIntent,
+  InterventionType,
+  StudentIntentCategory,
+} from '@/lib/ai/guardrails/intentClassifier';
+import { processPrompt } from '@/lib/ai/guardrails/promptRewriter';
+import { checkForHallucinations } from '@/lib/ai/guardrails/hallucinationDetector';
+import {
+  getUnsafeContentResponse,
+  getOffTopicResponse,
+  getHomeworkRedirectResponse,
+  getTechnicalErrorResponse,
+} from '@/lib/ai/guardrails/safeResponses';
 import { validateLLMResponse, type PromptType } from './validators';
 import { callLLM } from '@/lib/callLLM';
 import { logger } from '@/lib/logger';
@@ -377,28 +390,75 @@ export async function generateDoubtResponse(
   sessionId: string
 ): Promise<PromptResult<DoubtsOutputSchema>> {
   const metadata = generateMetadata('doubts', userIdHash, sessionId);
-  
-  // Pre-check: Is this an off-topic/inappropriate question?
-  if (isOffTopicQuestion(input.studentQuestion, input.subject)) {
-    const redirect = getOffTopicRedirect(input.subject);
+
+  // Step 1: Intent classification via full guardrail stack
+  const intentResult = classifyIntent(input.studentQuestion, input.grade, input.subject);
+
+  if (intentResult.interventionType === InterventionType.BLOCK) {
+    logger.info('generateDoubtResponse: unsafe content blocked by guardrail', {
+      event: 'guardrail_block',
+      context: { riskLevel: intentResult.riskLevel, matchedPatterns: intentResult.matchedPatterns, requestId: metadata.requestId },
+    });
     return {
       success: true,
-      data: redirect,
+      data: {
+        response: getUnsafeContentResponse(input.grade),
+        followUpQuestions: [`What ${input.subject} topic would you like help with today?`],
+        confidenceLevel: 'high',
+      },
       error: null,
       validationErrors: [],
       metadata,
     };
   }
-  
-  // Build prompts
+
+  if (intentResult.interventionType === InterventionType.REDIRECT) {
+    const isHomeworkDump = intentResult.primaryIntent === StudentIntentCategory.HOMEWORK_DUMP;
+    const redirectText = isHomeworkDump
+      ? getHomeworkRedirectResponse(input.grade, input.subject)
+      : getOffTopicResponse(input.grade, input.subject);
+    logger.info('generateDoubtResponse: question redirected by guardrail', {
+      event: 'guardrail_redirect',
+      context: { primaryIntent: intentResult.primaryIntent, riskLevel: intentResult.riskLevel, requestId: metadata.requestId },
+    });
+    return {
+      success: true,
+      data: {
+        response: redirectText,
+        followUpQuestions: [`What part of ${input.subject} can I help you understand better?`],
+        confidenceLevel: 'high',
+      },
+      error: null,
+      validationErrors: [],
+      metadata,
+    };
+  }
+
+  // Step 2: Prompt rewriting for shortcut-seeking intent
+  let effectiveQuestion = input.studentQuestion;
+  if (intentResult.interventionType === InterventionType.REWRITE) {
+    const rewriteResult = processPrompt(input.studentQuestion, input.grade, input.subject, input.topic);
+    if (rewriteResult.wasRewritten) {
+      effectiveQuestion = rewriteResult.prompt;
+      logger.info('generateDoubtResponse: prompt rewritten by guardrail', {
+        event: 'guardrail_rewrite',
+        context: { strategy: rewriteResult.strategyApplied, requestId: metadata.requestId },
+      });
+    }
+  }
+
+  // Step 3: Build prompts with (possibly rewritten) student question
+  const effectiveInput: DoubtsInputContract = effectiveQuestion !== input.studentQuestion
+    ? { ...input, studentQuestion: effectiveQuestion }
+    : input;
+
   const systemPrompt = buildSystemPrompt(input.grade, input.language);
-  const userPrompt = buildDoubtsPrompt(input);
+  const userPrompt = buildDoubtsPrompt(effectiveInput);
   const fullPrompt = buildFullPrompt(systemPrompt, userPrompt);
-  
+
   // Build meta for callLLM logging and model selection
   const llmMeta: LLMCallMeta = {
     promptType: 'doubts',
-    allowApiDirect: true,
     board: input.board,
     grade: String(input.grade),
     subject: input.subject,
@@ -435,8 +495,38 @@ export async function generateDoubtResponse(
       
       // Validate response
       const validation = validateLLMResponse<DoubtsOutputSchema>(rawResponse, 'doubts');
-      
+
       if (validation.valid && validation.data) {
+        // Step 4: Hallucination check on the validated response
+        const hallucinationCheck = checkForHallucinations(validation.data.response, {
+          grade: input.grade,
+          board: input.board,
+          subject: input.subject,
+          topic: input.topic,
+          originalQuestion: input.studentQuestion,
+        });
+
+        if (hallucinationCheck.shouldBlock) {
+          logger.warn('generateDoubtResponse: response blocked by hallucination check', {
+            event: 'guardrail_hallucination_block',
+            context: { riskScore: hallucinationCheck.riskScore, issues: hallucinationCheck.issues.map(i => i.type), requestId: metadata.requestId },
+          });
+          return {
+            success: true,
+            data: {
+              response: getTechnicalErrorResponse(input.grade),
+              followUpQuestions: ['Would you like me to try explaining this another way?'],
+              confidenceLevel: 'low',
+            },
+            error: null,
+            validationErrors: hallucinationCheck.issues.map(i => i.description),
+            metadata,
+            costUsd,
+            latencyMs,
+            model,
+          };
+        }
+
         return {
           success: true,
           data: validation.data,

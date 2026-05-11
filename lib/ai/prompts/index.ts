@@ -91,7 +91,6 @@ export {
 export {
   DOUBTS_OUTPUT_SCHEMA,
   buildDoubtsPrompt,
-  isValidDoubtsResponse,
   isOffTopicQuestion,
   getOffTopicRedirect,
 } from './doubts';

@@ -19,7 +19,6 @@
 
 import type {
   DoubtsInputContract,
-  DoubtsOutputSchema,
   StudentIntent,
   ConversationMessage,
 } from './schemas';
@@ -37,10 +36,6 @@ export const DOUBTS_OUTPUT_SCHEMA = `{
   ],
   "confidenceLevel": "high | medium | low - Internal confidence (not shown to student)"
 }`;
-
-function isNonEmptyStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string' && item.length > 0);
-}
 
 /**
  * Get intent-specific response guidelines
@@ -213,23 +208,6 @@ ${DOUBTS_OUTPUT_SCHEMA}
 
 Do NOT include any text before or after the JSON.
 Do NOT wrap in markdown code blocks.`;
-}
-
-/**
- * Validate that a parsed response matches DoubtsOutputSchema
- * Basic structural validation (detailed validation in validators.ts)
- */
-export function isValidDoubtsResponse(data: unknown): data is DoubtsOutputSchema {
-  if (!data || typeof data !== 'object') return false;
-  
-  const obj = data as Record<string, unknown>;
-  
-  return (
-    typeof obj.response === 'string' &&
-    isNonEmptyStringArray(obj.followUpQuestions) &&
-    typeof obj.confidenceLevel === 'string' &&
-    ['high', 'medium', 'low'].includes(obj.confidenceLevel as string)
-  );
 }
 
 /**
