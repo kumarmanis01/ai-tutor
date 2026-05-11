@@ -34,6 +34,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { buildQuestionContentKey } from '@/lib/session/questionContentKey';
 
 const MIN_QUESTIONS = 5;
 const MAX_QUESTIONS = 10;
@@ -95,19 +96,22 @@ export interface HomeworkResult {
  *
  * Throws only on infrastructure failures (e.g. DB write error).
  *
- * @param excludeIds - Question IDs already served in PRACTICE or TEST phases.
- *                     These are filtered out of every strategy so the student
- *                     does not see the same question in multiple phases.
+ * @param excludeIds         - Question IDs already served in PRACTICE or TEST phases.
+ * @param excludeContentKeys - Normalized content keys for questions already served.
+ *                             Catches same-content questions that appear with different
+ *                             IDs across Question and GeneratedQuestion tables.
  */
 export async function generateHomework(
   studentId: string,
   topicId: string,
   sessionId?: string,
   excludeIds?: Set<string>,
+  excludeContentKeys?: Set<string>,
 ): Promise<HomeworkResult> {
   const exclusions = excludeIds ?? new Set<string>();
+  const exclusionKeys = excludeContentKeys ?? new Set<string>();
   // First attempt at gathering questions.
-  let questions = await gatherQuestions(topicId, exclusions);
+  let questions = await gatherQuestions(topicId, exclusions, exclusionKeys);
 
   // One retry after a short delay -- handles transient DB hiccups where a
   // very recently completed hydration job has not yet been committed.
@@ -119,7 +123,7 @@ export async function generateHomework(
       reason: 'no_questions_on_first_attempt',
     });
     await delay(RETRY_DELAY_MS);
-    questions = await gatherQuestions(topicId, exclusions);
+    questions = await gatherQuestions(topicId, exclusions, exclusionKeys);
   }
 
   const isStub = questions.length === 0;
@@ -168,10 +172,15 @@ export async function generateHomework(
  * Attempt to gather questions for the topic via three strategies.
  * Returns an empty array when all strategies fail -- never throws.
  *
- * @param excludeIds - Question IDs already served in PRACTICE or TEST phases (cross-phase dedup).
- *                     Applied in all three strategies before the id-level dedup within each strategy.
+ * @param excludeIds         - Question IDs already served in PRACTICE or TEST phases.
+ * @param excludeContentKeys - Content keys for questions already served.
+ *                             Catches same-content questions with different IDs.
  */
-async function gatherQuestions(topicId: string, excludeIds: Set<string>): Promise<HomeworkQuestion[]> {
+async function gatherQuestions(
+  topicId: string,
+  excludeIds: Set<string>,
+  excludeContentKeys: Set<string>,
+): Promise<HomeworkQuestion[]> {
   // ── Strategy 1: promoted Question bank (topicId FK) ─────────────────────
   type BankQuestion = {
     id: string;
@@ -196,8 +205,15 @@ async function gatherQuestions(topicId: string, excludeIds: Set<string>): Promis
       difficulty: true,
     },
   });
-  // Cross-phase dedup: exclude IDs already served in PRACTICE or TEST.
-  const bankQuestions = allBankQuestions.filter((q) => !excludeIds.has(q.id));
+  // Cross-phase dedup: exclude by ID and content key.
+  const bankQuestions = allBankQuestions.filter((q) => {
+    if (excludeIds.has(q.id)) return false;
+    if (excludeContentKeys.size > 0) {
+      const key = buildQuestionContentKey({ prompt: q.prompt, choices: q.choices, correctAnswer: q.correctAnswer });
+      if (excludeContentKeys.has(key)) return false;
+    }
+    return true;
+  });
 
   if (bankQuestions.length >= MIN_QUESTIONS) {
     return shuffle(bankQuestions)
@@ -242,10 +258,17 @@ async function gatherQuestions(topicId: string, excludeIds: Set<string>): Promis
     take: 3,
   })) as GenTestRow[];
 
-  // Cross-phase dedup: exclude IDs already served in PRACTICE or TEST.
+  // Cross-phase dedup: exclude by ID and content key.
   const genQuestions = genTests
     .flatMap((t: GenTestRow) => t.questions)
-    .filter((gq: GenQuestionRow) => !excludeIds.has(gq.id));
+    .filter((gq: GenQuestionRow) => {
+      if (excludeIds.has(gq.id)) return false;
+      if (excludeContentKeys.size > 0) {
+        const key = buildQuestionContentKey({ question: gq.question, options: gq.options, answer: gq.answer });
+        if (excludeContentKeys.has(key)) return false;
+      }
+      return true;
+    });
 
   const combined: HomeworkQuestion[] = [
     ...bankQuestions.map((q) => ({
@@ -321,11 +344,18 @@ async function gatherQuestions(topicId: string, excludeIds: Set<string>): Promis
         take: 3,
       })) as GenTestRow[];
 
-      // Deduplicate against the topic-level questions already in `seen`,
-      // and also cross-phase dedup against excludeIds.
+      // Deduplicate against topic-level questions already in `seen`,
+      // and cross-phase dedup against excludeIds and content keys.
       const siblingQuestions: HomeworkQuestion[] = siblingTests
         .flatMap((t: GenTestRow) => t.questions)
-        .filter((gq: GenQuestionRow) => !seen.has(gq.id) && !excludeIds.has(gq.id))
+        .filter((gq: GenQuestionRow) => {
+          if (seen.has(gq.id) || excludeIds.has(gq.id)) return false;
+          if (excludeContentKeys.size > 0) {
+            const key = buildQuestionContentKey({ question: gq.question, options: gq.options, answer: gq.answer });
+            if (excludeContentKeys.has(key)) return false;
+          }
+          return true;
+        })
         .map((gq: GenQuestionRow) => ({
           id: gq.id,
           type: gq.type || 'mcq',

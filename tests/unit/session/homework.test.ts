@@ -240,4 +240,46 @@ describe('generateHomework()', () => {
       generateHomework(STUDENT_ID, TOPIC_ID, SESSION_ID),
     ).rejects.toThrow('DB connection lost');
   });
+
+  // ── Case 7: excludeIds removes all bank questions → falls back to stub ───
+
+  it('excludes questions by ID and creates stub when all bank questions are in excludeIds', async () => {
+    mockBankQuestions(fiveBankQuestions);
+    (prisma.generatedTest.findMany as jest.Mock).mockResolvedValue([]);
+    mockTopicDef(null);
+
+    const excludeIds = new Set(fiveBankQuestions.map((q) => q.id));
+    const result = await generateHomework(STUDENT_ID, TOPIC_ID, SESSION_ID, excludeIds);
+
+    expect(result.isStub).toBe(true);
+    expect(result.questionCount).toBe(0);
+  });
+
+  // ── Case 8: excludeContentKeys removes same-content different-ID questions ─
+
+  it('excludes questions by content key when ID differs but content matches', async () => {
+    // Bank has 5 questions with content matching what was already served in practice.
+    // Their IDs are different (simulating a Question table vs GeneratedQuestion table scenario).
+    mockBankQuestions(fiveBankQuestions);
+    (prisma.generatedTest.findMany as jest.Mock).mockResolvedValue([]);
+    mockTopicDef(null);
+
+    // Build content keys matching the bank question content.
+    const { buildQuestionContentKey } = await import('../../../lib/session/questionContentKey');
+    const excludeContentKeys = new Set(
+      fiveBankQuestions.map((q) =>
+        buildQuestionContentKey({ prompt: q.prompt, choices: q.choices, correctAnswer: q.correctAnswer }),
+      ),
+    );
+
+    // IDs are NOT in excludeIds, but content keys match -- should still be excluded.
+    const result = await generateHomework(
+      STUDENT_ID, TOPIC_ID, SESSION_ID,
+      new Set<string>(), // empty ID exclusion
+      excludeContentKeys,
+    );
+
+    expect(result.isStub).toBe(true);
+    expect(result.questionCount).toBe(0);
+  });
 });
