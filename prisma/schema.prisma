@@ -485,15 +485,6 @@ model Subscription {
   @@index([razorpaySubscriptionId])
 }
 
-/// Admin-managed whitelist of email addresses allowed to use the internal test plan (test_weekly).
-model TestPlanAccess {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  grantedAt DateTime @default(now())
-  grantedBy String   /// admin userId who granted access
-
-  @@index([email])
-}
 
 model Installment {
   id                String            @id @default(cuid())
