@@ -33,8 +33,22 @@ describe('ParentAccessCard', () => {
     (global as any).fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        linkedParents: [],
+        linkedParents: [
+          {
+            name: 'Parent (Email)',
+            email: 'p***t@example.com',
+            whatsapp: null,
+            source: 'contact_email',
+            emailStatus: 'verified',
+            whatsappStatus: null,
+          },
+        ],
         pendingInvites: [],
+        verification: {
+          accountVerified: true,
+          email: { configured: true, verified: true, masked: 'p***t@example.com' },
+          whatsapp: { configured: false, verified: false, masked: null },
+        },
         parentCanSee: {
           attentionFlags: [],
           readiness: [],

@@ -1,47 +1,40 @@
 /**
  * FILE OBJECTIVE:
- * - Confirm OTP for parent account verification and mark `parentVerifiedAt` on success.
+ * - Confirm channel-specific parent OTP and persist verification state when either channel is verified.
  *
  * LINKED UNIT TEST:
- * - tests/unit/api/verify-parent-confirm-otp.spec.ts
+ * - tests/unit/api/student/verify-parent/confirm-otp.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
- * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
  * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | send welcome notifications upon successful verification
+ * - 2026-05-11T00:00:00Z | copilot | support separate email/whatsapp OTP verification and return channel verification status
  */
 
 import { NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { getServerSessionForHandlers } from '@/lib/session'
-import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { parentWelcomeHtml } from '@/lib/email/templates'
+import {
+  channelOtpKeyByType,
+  getParentChannelVerificationStatus,
+  resolveParentChannels,
+} from '@/lib/parent/contactLinking'
+import { formatErrorForResponse } from '@/lib/errorResponse'
 
 export const dynamic = 'force-dynamic'
 
-const MAX_ATTEMPTS = 5
-const LOCKOUT_TTL = 3600
-
-function otpKey(studentId: string): string {
-  return `otp:parent:${studentId}`
-}
-function attemptsKey(studentId: string): string {
-  return `otp:parent:attempts:${studentId}`
-}
-function lockKey(studentId: string): string {
-  return `otp:parent:locked:${studentId}`
-}
-
-function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let out = 0
-  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return out === 0
+function hashOtp(otp: string): string {
+  const secret = process.env.OTP_SECRET ?? 'fallback-secret'
+  return crypto.createHash('sha256').update(`${otp}${secret}`).digest('hex')
 }
 
 export async function POST(req: Request) {
@@ -57,95 +50,101 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}))
     const otp = typeof body.otp === 'string' ? body.otp.replace(/\s/g, '') : ''
+    const channel = body.channel === 'email' || body.channel === 'whatsapp' ? body.channel : null
+
     if (!/^\d{6}$/.test(otp)) {
       const res = NextResponse.json({ error: 'Invalid OTP format' }, { status: 400 })
       logger.logAPI(req, res, { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST' }, start)
       return res
     }
 
-    const redis = getRedis()
-    const locked = await redis.get(lockKey(userId))
-    if (locked !== null) {
-      const res = NextResponse.json(
-        { verified: false, error: 'Too many attempts. Try again in an hour.' },
-        { status: 423 },
-      )
+    const student = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { parentEmail: true, parentPhone: true, whatsappPhone: true, name: true },
+    })
+
+    if (!student) {
+      const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       logger.logAPI(req, res, { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST' }, start)
       return res
     }
 
-    const stored = await redis.get(otpKey(userId))
-    if (!stored) {
-      const res = NextResponse.json(
-        { verified: false, error: 'OTP expired or not sent' },
-        { status: 400 },
-      )
+    const channels = resolveParentChannels(student.parentEmail, student.whatsappPhone, student.parentPhone)
+
+    const otpKeys = channel
+      ? [channelOtpKeyByType(channel, channels.normalizedEmail, channels.resolvedWhatsappDigits)]
+      : [
+          channelOtpKeyByType('email', channels.normalizedEmail, channels.resolvedWhatsappDigits),
+          channelOtpKeyByType('whatsapp', channels.normalizedEmail, channels.resolvedWhatsappDigits),
+          channels.resolvedWhatsappDigits,
+        ]
+
+    const otpRecord = await prisma.phoneOtp.findFirst({
+      where: {
+        userId,
+        consumed: false,
+        expiresAt: { gte: new Date() },
+        codeHash: hashOtp(otp),
+        phone: { in: otpKeys.filter(Boolean) },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (!otpRecord) {
+      const res = NextResponse.json({ verified: false, error: 'Invalid or expired code' }, { status: 400 })
       logger.logAPI(req, res, { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST' }, start)
       return res
     }
 
-    if (constantTimeCompare(otp, stored)) {
-      await redis.del(otpKey(userId))
-      await redis.del(attemptsKey(userId))
-      await prisma.user.update({
+    await prisma.$transaction([
+      prisma.phoneOtp.update({ where: { id: otpRecord.id }, data: { consumed: true } }),
+      prisma.user.update({
         where: { id: userId },
-        data: { parentVerifiedAt: new Date() },
-      })
+        data: {
+          parentVerifiedAt: new Date(),
+          parentPhoneVerifiedAt: new Date(),
+          accountStatus: 'active',
+        },
+      }),
+    ])
 
-      // Send a welcome/confirmation notification to the parent (best-effort)
-      try {
-        // student record stores parent contact fields
-        const student = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { parentEmail: true, parentPhone: true, name: true },
+    try {
+      const studentName = student.name ?? 'your child'
+      const parentEmail = student.parentEmail?.trim() || null
+      const parentPhone = student.whatsappPhone?.trim() || student.parentPhone?.trim() || null
+
+      if (parentEmail) {
+        await sendMailSafe({
+          to: parentEmail,
+          subject: `Parent access confirmed for ${studentName}`,
+          html: parentWelcomeHtml(null, studentName),
         })
-        const studentName = student?.name ?? 'your child'
-        const parentEmail = student?.parentEmail?.trim() || null
-        const parentPhone = student?.parentPhone?.trim() || null
-
-        if (parentEmail) {
-          await sendMailSafe({
-            to: parentEmail,
-            subject: `Parent access confirmed for ${studentName}`,
-            html: parentWelcomeHtml(null, studentName),
-          })
-        }
-        if (parentPhone) {
-          // Keep SMS short and point to email for details
-          await sendSms(
-            parentPhone,
-            `Your Spinzy parent account for ${studentName} is verified. You can view progress and weekly reports. See your email for privacy details.`,
-          )
-        }
-      } catch (err) {
-        logger.error('[verify-parent] welcome notification suppressed', { error: String(err) })
       }
 
-      const res = NextResponse.json({ verified: true })
-      logger.logAPI(req, res, { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST' }, start)
-      return res
+      if (parentPhone) {
+        await sendSms(
+          parentPhone,
+          `Your Spinzy parent account for ${studentName} is verified. You can view progress and weekly reports. See your email for privacy details.`,
+        )
+      }
+    } catch (err) {
+      logger.error('[verify-parent] welcome notification suppressed', { error: String(err) })
     }
 
-    const attemptKey = attemptsKey(userId)
-    const attempts = await redis.incr(attemptKey)
-    if (attempts === 1) await redis.expire(attemptKey, LOCKOUT_TTL)
-    if (attempts >= MAX_ATTEMPTS) {
-      await redis.setex(lockKey(userId), LOCKOUT_TTL, '1')
-    }
-
-    const attemptsRemaining = Math.max(0, MAX_ATTEMPTS - attempts)
-    const res = NextResponse.json({
-      verified: false,
-      attemptsRemaining: attempts >= MAX_ATTEMPTS ? 0 : attemptsRemaining,
+    const verification = await getParentChannelVerificationStatus({
+      prisma,
+      studentId: userId,
+      parentEmail: student.parentEmail,
+      whatsappPhone: student.whatsappPhone,
+      parentPhone: student.parentPhone,
     })
+
+    const res = NextResponse.json({ verified: true, verification })
     logger.logAPI(req, res, { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST' }, start)
     return res
   } catch (err) {
     logger.error('VerifyParentConfirmOtpAPI failed', { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST', error: String(err) })
-    const res = NextResponse.json(
-      { error: 'Service unavailable' },
-      { status: 503 },
-    )
+    const res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 })
     logger.logAPI(req, res, { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST' }, start)
     return res
   }

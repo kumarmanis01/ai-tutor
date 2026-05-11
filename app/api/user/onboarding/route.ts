@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Persist student onboarding profile fields and trigger onboarding side-effects such as diagnostics bootstrap and parent auto-linking by contact.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/onboarding.grade-immutability.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | auto-link matching parent accounts using onboarding parent email/whatsapp contacts
+ */
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 // Consolidated onboarding handler (merged onboarding-phone -> onboarding)
@@ -12,6 +27,7 @@ import { sendMailSafe } from '@/lib/mailer';
 import { welcomeEmailHtml } from '@/lib/email/templates';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
 import { LanguageCode } from '@prisma/client';
+import { ensureAutoLinkedParentsForStudent } from '@/lib/parent/contactLinking';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -185,6 +201,13 @@ export async function POST(req: NextRequest) {
       }
 
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
+      await ensureAutoLinkedParentsForStudent({
+        prisma,
+        studentId: updatedUser.id,
+        parentEmail: updatedUser.parentEmail,
+        whatsappPhone: updatedUser.whatsappPhone,
+        parentPhone: updatedUser.parentPhone,
+      });
       // If the user's board changed, regenerate existing learning plans to match the new board's curriculum.
       try {
         let prevBoard: string | null = null;

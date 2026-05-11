@@ -1,29 +1,50 @@
+/**
+ * FILE OBJECTIVE:
+ * - Send separate parent verification OTP codes for email and WhatsApp channels and report per-channel verification status.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/student/verify-parent/send-otp.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | switch to separate channel OTP delivery and expose channel verification status
+ */
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
-import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { sendMail } from '@/lib/mailer'
+import { sendMailSafe } from '@/lib/mailer'
+import { sendWhatsAppSafe } from '@/lib/whatsapp/sender'
 import { parentOtpHtml } from '@/lib/email/templates'
+import crypto from 'crypto'
+import {
+  channelOtpKeyByType,
+  getParentChannelVerificationStatus,
+  resolveParentChannels,
+} from '@/lib/parent/contactLinking'
+import { MAIL_SUBJECTS } from '@/lib/constants/mail'
 
 export const dynamic = 'force-dynamic'
 
-const OTP_TTL = 600
-const SEND_RATE_WINDOW = 600
-const MAX_SENDS = 3
+const OTP_EXPIRY_SECONDS = Number(process.env.OTP_EXPIRY_SECONDS ?? 300)
+const MAX_SENDS_IN_WINDOW = 5
+const SEND_WINDOW_MS = 15 * 60 * 1000
 
-function otpKey(studentId: string): string {
-  return `otp:parent:${studentId}`
-}
-function sendCountKey(studentId: string): string {
-  return `otp:parent:sendcount:${studentId}`
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
-function maskEmail(email: string): string {
-  if (!email || !email.includes('@')) return '***'
-  const [local, domain] = email.split('@')
-  const masked = local.length <= 2 ? '***' : local[0] + '***' + local[local.length - 1]
-  return `${masked}@${domain}`
+function hashOtp(otp: string): string {
+  const secret = process.env.OTP_SECRET ?? 'fallback-secret'
+  return crypto.createHash('sha256').update(`${otp}${secret}`).digest('hex')
+}
+
+function bestEffortIp(req: Request): string {
+  return req.headers.get('x-forwarded-for') || 'unknown'
 }
 
 export async function POST(req: Request) {
@@ -39,20 +60,23 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { parentEmail: true, name: true },
+      select: { parentEmail: true, parentPhone: true, whatsappPhone: true, name: true },
     })
-    const parentEmail = user?.parentEmail?.trim()
-    if (!parentEmail) {
-      const res = NextResponse.json({ error: 'Parent email not set' }, { status: 400 })
+
+    const channels = resolveParentChannels(user?.parentEmail, user?.whatsappPhone, user?.parentPhone)
+    if (!channels.hasEmail && !channels.hasWhatsapp) {
+      const res = NextResponse.json({ error: 'Add a parent email or WhatsApp number before sending a verification code.' }, { status: 400 })
       logger.logAPI(req, res, { className: 'VerifyParentSendOtpAPI', methodName: 'POST' }, start)
       return res
     }
 
-    const redis = getRedis()
-    const countKey = sendCountKey(userId)
-    const current = await redis.incr(countKey)
-    if (current === 1) await redis.expire(countKey, SEND_RATE_WINDOW)
-    if (current > MAX_SENDS) {
+    const recentCount = await prisma.phoneOtp.count({
+      where: {
+        userId,
+        createdAt: { gte: new Date(Date.now() - SEND_WINDOW_MS) },
+      },
+    })
+    if (recentCount >= MAX_SENDS_IN_WINDOW) {
       const res = NextResponse.json(
         { error: 'Too many OTP requests. Try again later.' },
         { status: 429 },
@@ -61,28 +85,64 @@ export async function POST(req: Request) {
       return res
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000))
-    const key = otpKey(userId)
-    await redis.setex(key, OTP_TTL, otp)
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_SECONDS * 1000)
+    const ip = bestEffortIp(req)
+    const studentName = user.name ?? 'your child'
 
-    if (process.env.NODE_ENV !== 'production') {
-      logger.add(`[verify-parent] OTP for ${userId} (dev): ${otp}`, {
-        className: 'VerifyParentSendOtpAPI',
-        methodName: 'POST',
+    const sentTo: { email?: string; whatsapp?: string } = {}
+
+    if (channels.hasEmail) {
+      const emailOtp = generateOtp()
+      await prisma.phoneOtp.create({
+        data: {
+          userId,
+          phone: channelOtpKeyByType('email', channels.normalizedEmail, channels.resolvedWhatsappDigits),
+          codeHash: hashOtp(emailOtp),
+          expiresAt,
+          ip,
+        },
       })
+
+      await sendMailSafe({
+        to: channels.normalizedEmail,
+        subject: MAIL_SUBJECTS.PARENT_OTP,
+        html: parentOtpHtml(emailOtp, studentName),
+      })
+      sentTo.email = channels.normalizedEmail
     }
 
-    // Send OTP to parent email -- throws on failure so the caller knows it wasn't sent
-    const studentName = user.name ?? 'your child'
-    await sendMail({
-      to: parentEmail,
-      subject: `Verify ${studentName}'s Spinzy Academy account`,
-      html: parentOtpHtml(otp, studentName),
+    if (channels.hasWhatsapp) {
+      const whatsappOtp = generateOtp()
+      await prisma.phoneOtp.create({
+        data: {
+          userId,
+          phone: channelOtpKeyByType('whatsapp', channels.normalizedEmail, channels.resolvedWhatsappDigits),
+          codeHash: hashOtp(whatsappOtp),
+          expiresAt,
+          ip,
+        },
+      })
+
+      const whatsappMessage = `Your Spinzy Academy parent verification code for ${studentName} is: ${whatsappOtp}. Valid for ${Math.round(
+        OTP_EXPIRY_SECONDS / 60,
+      )} minutes.`
+      await sendWhatsAppSafe(channels.resolvedWhatsappDigits, whatsappMessage)
+      sentTo.whatsapp = channels.resolvedWhatsappDigits
+    }
+
+    const verification = await getParentChannelVerificationStatus({
+      prisma,
+      studentId: userId,
+      parentEmail: user?.parentEmail,
+      whatsappPhone: user?.whatsappPhone,
+      parentPhone: user?.parentPhone,
     })
 
     const res = NextResponse.json({
       sent: true,
-      maskedEmail: maskEmail(parentEmail),
+      sentTo,
+      expiresInSeconds: OTP_EXPIRY_SECONDS,
+      verification,
     })
     logger.logAPI(req, res, { className: 'VerifyParentSendOtpAPI', methodName: 'POST' }, start)
     return res

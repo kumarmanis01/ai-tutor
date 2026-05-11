@@ -3,8 +3,17 @@
  * - Lets students see what their linked parents can see (transparency).
  * - Also allows students to generate invite codes for parent linking.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/student/parent-view/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2026-02-04 | claude | created student parent-view transparency API
+ * - 2026-05-11T00:00:00Z | copilot | include auto-linked parent contacts with per-channel verification status
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,6 +24,11 @@ import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
 import { createOrReuseParentInviteForStudent } from '@/lib/parent/inviteService';
+import {
+  ensureAutoLinkedParentsForStudent,
+  getParentChannelVerificationStatus,
+  resolveParentChannels,
+} from '@/lib/parent/contactLinking';
 
 const CLASS_NAME = 'StudentParentViewAPI';
 
@@ -33,13 +47,69 @@ export async function GET(req: NextRequest) {
 
     const studentId = session.user.id;
 
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { parentEmail: true, parentPhone: true, whatsappPhone: true },
+    });
+
+    await ensureAutoLinkedParentsForStudent({
+      prisma,
+      studentId,
+      parentEmail: student?.parentEmail,
+      whatsappPhone: student?.whatsappPhone,
+      parentPhone: student?.parentPhone,
+    });
+
     // Get linked parents
     const links = await prisma.parentStudent.findMany({
       where: { studentId, status: 'active' },
       include: {
-        parent: { select: { name: true, email: true } },
+        parent: { select: { id: true, name: true, email: true, whatsappPhone: true, phone: true } },
       },
     });
+
+    const channelStatus = await getParentChannelVerificationStatus({
+      prisma,
+      studentId,
+      parentEmail: student?.parentEmail,
+      whatsappPhone: student?.whatsappPhone,
+      parentPhone: student?.parentPhone,
+    });
+
+    const channels = resolveParentChannels(student?.parentEmail, student?.whatsappPhone, student?.parentPhone);
+
+    const linkedParents = links.map((l) => ({
+      name: l.parent.name || 'Parent',
+      email: l.parent.email ? maskEmail(l.parent.email) : null,
+      whatsapp: l.parent.whatsappPhone ? maskPhone(l.parent.whatsappPhone) : l.parent.phone ? maskPhone(l.parent.phone) : null,
+      source: 'account_link',
+      emailStatus: l.parent.email ? (channelStatus.email.verified ? 'verified' : 'unverified') : null,
+      whatsappStatus: (l.parent.whatsappPhone || l.parent.phone)
+        ? (channelStatus.whatsapp.verified ? 'verified' : 'unverified')
+        : null,
+    }));
+
+    if (channels.hasEmail && !linkedParents.some((p) => p.email === channelStatus.email.masked)) {
+      linkedParents.push({
+        name: 'Parent (Email)',
+        email: channelStatus.email.masked,
+        whatsapp: null,
+        source: 'contact_email',
+        emailStatus: channelStatus.email.verified ? 'verified' : 'unverified',
+        whatsappStatus: null,
+      });
+    }
+
+    if (channels.hasWhatsapp && !linkedParents.some((p) => p.whatsapp === channelStatus.whatsapp.masked)) {
+      linkedParents.push({
+        name: 'Parent (WhatsApp)',
+        email: null,
+        whatsapp: channelStatus.whatsapp.masked,
+        source: 'contact_whatsapp',
+        emailStatus: null,
+        whatsappStatus: channelStatus.whatsapp.verified ? 'verified' : 'unverified',
+      });
+    }
 
     // Get pending invite codes (not yet claimed)
     const pendingInvites = await prisma.parentInvite.findMany({
@@ -63,15 +133,13 @@ export async function GET(req: NextRequest) {
     });
 
     const response = NextResponse.json({
-      linkedParents: links.map((l) => ({
-        name: l.parent.name || 'Parent',
-        email: l.parent.email ? maskEmail(l.parent.email) : null,
-      })),
+      linkedParents,
       pendingInvites: pendingInvites.map((p) => ({
         code: p.code,
         createdAt: p.createdAt.toISOString(),
         expiresAt: p.expiresAt.toISOString(),
       })),
+      verification: channelStatus,
       parentCanSee: {
         attentionFlags,
         readiness,
@@ -120,4 +188,10 @@ function maskEmail(email: string): string {
   if (!local || !domain) return '***';
   const masked = local.charAt(0) + '***' + (local.length > 1 ? local.charAt(local.length - 1) : '');
   return `${masked}@${domain}`;
+}
+
+function maskPhone(phone: string): string {
+  const digits = String(phone).replace(/\D/g, '');
+  if (!digits) return '***';
+  return `+** *****${digits.slice(-4)}`;
 }

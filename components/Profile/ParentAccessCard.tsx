@@ -20,8 +20,20 @@ import { toast } from '@/lib/toast';
 import { logger } from '@/lib/logger';
 
 type ParentViewResponse = {
-  linkedParents: { name: string; email: string | null }[];
+  linkedParents: {
+    name: string;
+    email: string | null;
+    whatsapp: string | null;
+    source: 'account_link' | 'contact_email' | 'contact_whatsapp';
+    emailStatus: 'verified' | 'unverified' | null;
+    whatsappStatus: 'verified' | 'unverified' | null;
+  }[];
   pendingInvites: { code: string; createdAt: string; expiresAt?: string }[];
+  verification?: {
+    accountVerified: boolean;
+    email: { configured: boolean; verified: boolean; masked: string | null };
+    whatsapp: { configured: boolean; verified: boolean; masked: string | null };
+  };
   parentCanSee: {
     attentionFlags: Array<{ subject: string; chapter: string; masteryLevel: string; accuracy: number; reason: string }>;
     readiness: Array<{ subject: string; readinessScore: number; readinessLabel: string; coveragePercent: number }>;
@@ -50,6 +62,11 @@ function buildParentInviteLink(code: string): string {
 }
 
 export default function ParentAccessCard() {
+    const statusClassNameByState: Record<'verified' | 'unverified', string> = {
+      verified: 'bg-[#EAF3DE] text-[#1D9E75] dark:bg-[#1D9E75]/20 dark:text-[#8EE2C8]',
+      unverified: 'bg-[#FCEBEB] text-[#E24B4A] dark:bg-[#E24B4A]/20 dark:text-[#F6A2A2]',
+    };
+
   const [data, setData] = useState<ParentViewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -178,9 +195,26 @@ export default function ParentAccessCard() {
               {data?.linkedParents?.length ? (
                 <ul className="space-y-1 text-sm">
                   {data.linkedParents.map((p, idx) => (
-                    <li key={idx} className="flex items-center justify-between">
-                      <span className="font-medium">{p.name}</span>
-                      <span className="text-gray-500">{p.email ?? '--'}</span>
+                    <li key={`${p.name}-${p.email ?? p.whatsapp ?? idx}`} className="rounded-md border border-gray-200 dark:border-slate-700 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{p.name}</span>
+                        {p.source !== 'account_link' ? (
+                          <span className="text-[10px] uppercase tracking-wide text-gray-500">Auto-linked</span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 text-gray-500">{p.email ?? p.whatsapp ?? '--'}</div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {p.emailStatus ? (
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusClassNameByState[p.emailStatus]}`}>
+                            Email {p.emailStatus}
+                          </span>
+                        ) : null}
+                        {p.whatsappStatus ? (
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusClassNameByState[p.whatsappStatus]}`}>
+                            WhatsApp {p.whatsappStatus}
+                          </span>
+                        ) : null}
+                      </div>
                     </li>
                   ))}
                 </ul>

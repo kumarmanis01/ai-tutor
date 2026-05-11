@@ -17,18 +17,24 @@ jest.mock('@/lib/prisma', () => ({
     subjectDef: { findMany: jest.fn() },
     classLevel: { findFirst: jest.fn() },
     event: { create: jest.fn() },
+    analyticsEvent: { create: jest.fn() },
   },
+}))
+jest.mock('@/lib/parent/contactLinking', () => ({
+  ensureAutoLinkedParentsForStudent: jest.fn().mockResolvedValue(undefined),
 }))
 
 import { NextRequest } from 'next/server'
 import { POST } from '../../../app/api/user/onboarding/route'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
+import { ensureAutoLinkedParentsForStudent } from '@/lib/parent/contactLinking'
 
 const mockSession = (getServerSessionForHandlers as jest.Mock)
 const mockFindUnique = (prisma.user.findUnique as jest.Mock)
 const mockUpdate = (prisma.user.update as jest.Mock)
 const mockSubjectDef = (prisma.subjectDef.findMany as jest.Mock)
+const mockEnsureAutoLinkedParentsForStudent = ensureAutoLinkedParentsForStudent as jest.Mock
 
 function makeReq(body: Record<string, unknown>): NextRequest {
   return new NextRequest('http://localhost/api/user/onboarding', {
@@ -55,6 +61,7 @@ beforeEach(() => {
   mockSubjectDef.mockResolvedValue([{ name: 'math', slug: 'math' }])
   ;(prisma.classLevel.findFirst as jest.Mock).mockResolvedValue(null)
   ;(prisma.event.create as jest.Mock).mockResolvedValue({})
+  ;(prisma.analyticsEvent.create as jest.Mock).mockResolvedValue({})
 })
 
 describe('POST /api/user/onboarding — grade immutability', () => {
@@ -68,6 +75,7 @@ describe('POST /api/user/onboarding — grade immutability', () => {
 
     const updateCall = mockUpdate.mock.calls[0][0]
     expect(updateCall.data.grade).toBe('10')
+    expect(mockEnsureAutoLinkedParentsForStudent).toHaveBeenCalled()
   })
 
   test('re-onboarding (grade already set) → grade is stripped, DB value unchanged', async () => {

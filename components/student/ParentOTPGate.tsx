@@ -15,6 +15,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
   const [attempts, setAttempts] = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [codeSent, setCodeSent] = useState(false);
+  const [sentTo, setSentTo] = useState<{ email?: string; whatsapp?: string }>({});
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(6).fill(null));
   const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -49,6 +50,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
       if (!res.ok || !json?.sent) {
         throw new Error(typeof json?.error === 'string' ? json.error : 'Could not send code');
       }
+      setSentTo((json as { sentTo?: { email?: string; whatsapp?: string } }).sentTo ?? {});
       setCodeSent(true);
       setAttempts((a) => a + 1);
       startResendCooldown();
@@ -131,9 +133,13 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
           To keep your account safe, a parent or guardian needs to verify your account.
         </p>
         <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">
-          A 6-digit code will be sent to:
+          A separate 6-digit code will be sent to each available channel:
           <br />
-          <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">{maskedEmail}</span>
+          <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+            {sentTo.email || sentTo.whatsapp
+              ? [sentTo.email, sentTo.whatsapp].filter(Boolean).join(' / ')
+              : maskedEmail}
+          </span>
         </p>
 
         {/* Send / Resend button */}

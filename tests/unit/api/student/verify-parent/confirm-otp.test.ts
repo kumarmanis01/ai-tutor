@@ -10,6 +10,7 @@
  *
  * EDIT LOG:
  * - 2026-04-17T00:00:00Z | assistant | add unit tests for confirm-otp route
+ * - 2026-05-11T00:00:00Z | copilot | update tests for channel-specific OTP verification and per-channel status response
  */
 
 describe('POST /api/student/verify-parent/confirm-otp', () => {
@@ -27,29 +28,30 @@ describe('POST /api/student/verify-parent/confirm-otp', () => {
 
   it('verifies OTP, updates user and sends welcome notifications', async () => {
     // Prepare mocks
-    const mockRedis = {
-      get: jest.fn(async (key: string) => {
-        // Return lock status only for lock key; OTP for otp key
-        if (key === 'otp:parent:locked:stu-1') return null
-        if (key === 'otp:parent:stu-1') return '123456'
-        return null
-      }),
-      del: jest.fn(async (key: string) => 1),
-      incr: jest.fn(async () => 1),
-      expire: jest.fn(),
-      setex: jest.fn(),
-    }
-
-    const mockUpdate = jest.fn(async (args: any) => ({ id: 'stu-1' }))
-    const mockFindUnique = jest.fn(async (args: any) => ({ parentEmail: 'parent@example.com', parentPhone: '9000000000', name: 'Asha' }))
+    const mockUpdate = jest.fn(async () => ({ id: 'stu-1' }))
+    const mockFindUnique = jest.fn(async () => ({
+      parentEmail: 'parent@example.com',
+      parentPhone: '9000000000',
+      whatsappPhone: '9000000000',
+      name: 'Asha',
+    }))
+    const mockFindFirst = jest.fn(async () => ({ id: 'otp-1' }))
+    const mockOtpUpdate = jest.fn(async () => ({ id: 'otp-1' }))
+    const mockTxn = jest.fn(async (ops: unknown[]) => ops)
+    const mockOtpFindMany = jest.fn(async () => [{ phone: 'email:cGFyZW50QGV4YW1wbGUu' }])
 
     const mockSendMailSafe = jest.fn(async () => undefined)
     const mockSendSms = jest.fn(async () => ({ ok: true }))
 
     // Mock modules before importing the route
     jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { id: 'stu-1' } }) }))
-    jest.doMock('@/lib/redis', () => ({ getRedis: () => mockRedis }))
-    jest.doMock('@/lib/prisma', () => ({ prisma: { user: { update: mockUpdate, findUnique: mockFindUnique } } }))
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: { update: mockUpdate, findUnique: mockFindUnique },
+        phoneOtp: { findFirst: mockFindFirst, update: mockOtpUpdate, findMany: mockOtpFindMany },
+        $transaction: mockTxn,
+      },
+    }))
     jest.doMock('@/lib/mailer', () => ({ sendMailSafe: mockSendMailSafe }))
     jest.doMock('@/lib/sms', () => ({ sendSms: mockSendSms }))
 
@@ -65,11 +67,22 @@ describe('POST /api/student/verify-parent/confirm-otp', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.verified).toBe(true)
+    expect(body.verification).toBeDefined()
 
-    expect(mockRedis.get).toHaveBeenCalledWith('otp:parent:stu-1')
-    expect(mockRedis.del).toHaveBeenCalledWith('otp:parent:stu-1')
-    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'stu-1' }, data: { parentVerifiedAt: expect.any(Date) } })
-    expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: 'stu-1' }, select: { parentEmail: true, parentPhone: true, name: true } })
+    expect(mockFindFirst).toHaveBeenCalled()
+    expect(mockOtpUpdate).toHaveBeenCalledWith({ where: { id: 'otp-1' }, data: { consumed: true } })
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: 'stu-1' },
+      data: {
+        parentVerifiedAt: expect.any(Date),
+        parentPhoneVerifiedAt: expect.any(Date),
+        accountStatus: 'active',
+      },
+    })
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { id: 'stu-1' },
+      select: { parentEmail: true, parentPhone: true, whatsappPhone: true, name: true },
+    })
     expect(mockSendMailSafe).toHaveBeenCalled()
     expect(mockSendSms).toHaveBeenCalled()
   })
