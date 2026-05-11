@@ -11,12 +11,11 @@
  * - 2026-04-15T00:00:00Z | staff-engineer  | added test_weekly; durationDays override for sub-monthly plans
  * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named variable
  * - 2026-04-16T03:30:00Z | copilot | add resolvePlanByShortId helper to map short plan ids to PLANS entries
- * - 2026-05-04T00:00:00Z | copilot | mark quarterly as featured plan for selector badge logic
+ * - 2026-05-11T00:00:00Z | staff-engineer | restore standard_monthly as featured; restore annual to 3990/2-months-free; remove quarterly
  */
 
 export type PlanId =
   | 'standard_monthly'
-  | 'standard_quarterly'
   | 'standard_annual'
   | 'family_monthly'
   | 'family_annual'
@@ -88,14 +87,12 @@ function mkPlan(
 }
 
 export const PLANS: Record<PlanId, SubscriptionPlan> = {
-  standard_monthly:   mkPlan('standard_monthly', 399, 1, 'Monthly', '₹399/month'),
-  // AC-01 (F-STU-041): Quarterly plan -- 3 months at 10% discount (399*3*0.9 = 1077.30, rounded to 1,077)
-  standard_quarterly: mkPlan('standard_quarterly', 1077, 3, 'Quarterly', '₹359/month', { featured: true, billedDisplay: 'billed ₹1,077', saveLabel: '10% off' }),
-  standard_annual:    mkPlan('standard_annual', 3590, 12, 'Annual', '₹299.17/month', { billedDisplay: 'billed ₹3,590', saveLabel: '25% off' }),
+  standard_monthly: mkPlan('standard_monthly', 399, 1, 'Standard', '₹399/month', { featured: true }),
+  standard_annual:  mkPlan('standard_annual', 3990, 12, 'Annual (Standard)', '₹332.50/month', { billedDisplay: 'billed ₹3,990', saveLabel: '2 months free' }),
   family_monthly:   mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
   family_annual:    mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', { billedDisplay: 'billed ₹5,990', saveLabel: '2 months free', childSlots: 2 }),
   lite_monthly:     mkPlan('lite_monthly', 249, 1, 'Lite', '₹249/month'),
-  // Internal test plan: ₹1/week, visible only to whitelisted accounts.
+  // Internal test plan: ₹1/week, accessible in NODE_ENV=development only.
   test_weekly:      mkPlan('test_weekly', 1, 0, 'Test (Weekly)', '₹1/week', { durationDays: 7, internal: true }),
 }
 

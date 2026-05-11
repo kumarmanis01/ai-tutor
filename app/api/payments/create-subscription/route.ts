@@ -2,7 +2,7 @@
  * FILE OBJECTIVE:
  * - Create a Razorpay recurring subscription for an authenticated user.
  * - Replaces /api/billing/checkout as the canonical subscription creation endpoint.
- * - Validates planId, gates the internal test_weekly plan behind a DB whitelist,
+ * - Validates planId, gates the internal test_weekly plan to NODE_ENV=development only,
  *   then delegates to the Razorpay Subscriptions API.
  *
  * LINKED UNIT TEST:
@@ -10,12 +10,12 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | staff-engineer | created for Sprint A C1
+ * - 2026-05-11T00:00:00Z | staff-engineer | replace DB whitelist gate with NODE_ENV=development check for test_weekly
  */
 
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getServerSessionForHandlers } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { getRazorpay } from '@/lib/payments'
 import { PLANS } from '@/lib/billing/plans'
@@ -50,19 +50,17 @@ export async function POST(req: Request) {
   const planId = planIdRaw as PlanId
   const plan = PLANS[planId]
 
-  // 3. Test plan gate: test_weekly requires whitelist entry
+  // 3. Test plan gate: test_weekly is only available in development mode
   if (planId === 'test_weekly') {
-    const allowed = await prisma.testPlanAccess.findUnique({ where: { email: userEmail } })
-    if (!allowed) {
+    if (process.env.NODE_ENV !== 'development') {
       const res = NextResponse.json({ code: 'TEST_PLAN_ACCESS_DENIED', message: 'Not authorised for test plan' }, { status: 403 })
-      logger.warn('create-subscription: test plan access denied', { userId, email: userEmail })
+      logger.warn('create-subscription: test plan access denied (not development)', { userId })
       logger.logAPI(req, res, { className: 'CreateSubscriptionAPI', methodName: 'POST' }, start)
       return res
     }
   }
 
-  // 4. Never allow internal plans to be created if the plan is internal and the caller is not
-  //    using test_weekly (future-proofing: all internal plans go through the same gate above)
+  // 4. Block any other internal plan that isn't test_weekly
   if (plan.internal && planId !== 'test_weekly') {
     const res = NextResponse.json({ code: 'PLAN_UNAVAILABLE', message: 'Plan not available' }, { status: 403 })
     logger.logAPI(req, res, { className: 'CreateSubscriptionAPI', methodName: 'POST' }, start)
