@@ -43,11 +43,14 @@ import {
   UPCOMING_PHASES_ORDER,
 } from '@/lib/session/sessionEngine';
 import { resolveTargetDifficulty } from '@/lib/ai/adaptiveDifficulty';
+import { buildQuestionContentKey } from '@/lib/session/questionContentKey';
 
 // ─── Session Meta Keys ────────────────────────────────────────────────────────
 
 const META_PRACTICE_IDS = 'servedPracticeIds';
 const META_TEST_IDS = 'servedTestIds';
+/** Content keys for every question served in this session (all phases combined). */
+const META_SERVED_CONTENT_KEYS = 'servedContentKeys';
 
 const PRACTICE_QUESTION_TARGET_COUNT = 5;
 
@@ -128,38 +131,12 @@ export type PhaseContentData =
 
 type PracticeQuestionRow = PracticeContent['questions'][number];
 
-function normalizeTextForQuestionKey(input?: string | null): string {
-  return (input ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-}
-
-function stableValueForQuestionKey(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableValueForQuestionKey(item)).join(',')}]`;
-  }
-
-  if (value && typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-    return `{${Object.keys(obj)
-      .sort()
-      .map((key) => `${key}:${stableValueForQuestionKey(obj[key])}`)
-      .join(',')}}`;
-  }
-
-  if (typeof value === 'string') {
-    return normalizeTextForQuestionKey(value);
-  }
-
-  return String(value ?? '');
-}
-
 function getPracticeQuestionKey(question: PracticeQuestionRow): string {
-  const promptKey = normalizeTextForQuestionKey(question.prompt);
-  const choicesKey = stableValueForQuestionKey(question.choices);
-  const answerKey = normalizeTextForQuestionKey(question.correctAnswer);
-  return `${promptKey}::${choicesKey}::${answerKey}`;
+  return buildQuestionContentKey({
+    prompt: question.prompt,
+    choices: question.choices,
+    correctAnswer: question.correctAnswer,
+  });
 }
 
 function dedupePracticeQuestions(questions: PracticeQuestionRow[]): PracticeQuestionRow[] {
@@ -607,11 +584,17 @@ async function resolvePractice(topicId: string, studentMastery: number | null, s
     return { type: 'pending', message: 'Practice questions are being generated for this topic.' };
   }
 
-  // Save selected IDs to session meta so TEST and HOMEWORK can exclude them (cross-phase dedup).
+  // Save selected IDs and content keys to session meta so TEST and HOMEWORK can exclude them.
+  // Content keys catch same-content questions that appear with different IDs in other sources.
   // Idempotent: only writes when savedPracticeIds was null/empty (checked above).
   const selectedIds = questions.map((q) => q.id);
+  const selectedContentKeys = questions.map((q) => getPracticeQuestionKey(q));
   try {
-    const updatedMeta = { ...existingMeta, [META_PRACTICE_IDS]: selectedIds };
+    const updatedMeta = {
+      ...existingMeta,
+      [META_PRACTICE_IDS]: selectedIds,
+      [META_SERVED_CONTENT_KEYS]: selectedContentKeys,
+    };
     await prisma.structuredSession.update({
       where: { id: sessionId },
       data: { meta: updatedMeta },
@@ -647,7 +630,7 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
     select: { id: true, type: true, question: true, options: true, explanation: true },
   };
 
-  // Load session meta once to get practice question IDs for cross-phase dedup.
+  // Load session meta once to get practice question IDs and content keys for cross-phase dedup.
   const sessionMeta = await prisma.structuredSession.findUnique({
     where: { id: sessionId },
     select: { meta: true },
@@ -660,25 +643,45 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
       ? (existingMeta[META_PRACTICE_IDS] as string[])
       : [],
   );
+  // Content keys from practice catch same-content questions with different IDs.
+  const servedContentKeys = new Set<string>(
+    Array.isArray(existingMeta[META_SERVED_CONTENT_KEYS])
+      ? (existingMeta[META_SERVED_CONTENT_KEYS] as string[])
+      : [],
+  );
+
+  type TestQuestion = { id: string; type: string; question: string; options: unknown; explanation: string | null };
 
   /**
-   * Filter a test question list by practiceIds; falls back to the full list
-   * if filtering would remove every question (prevents an empty test).
-   * Inlined per call-site so TypeScript preserves the Prisma-inferred element type.
+   * Filter test questions against already-served practice questions by BOTH id and
+   * content key. Does NOT fall back to the full list when all are excluded -- the
+   * caller cascades to the next candidate instead.
+   *
+   * "Never repeat" takes precedence over "never show 0 questions".
+   * If this test candidate has no unique questions, the caller tries the next one.
    */
-  function dedupeTestQuestions(
-    qs: { id: string; type: string; question: string; options: unknown; explanation: string | null }[],
-  ): typeof qs {
-    if (practiceIds.size === 0) return qs;
-    const filtered = qs.filter((q) => !practiceIds.has(q.id));
-    return filtered.length > 0 ? filtered : qs;
+  function dedupeTestQuestions(qs: TestQuestion[]): TestQuestion[] {
+    return qs.filter((q) => {
+      if (practiceIds.has(q.id)) return false;
+      if (servedContentKeys.size > 0) {
+        const key = buildQuestionContentKey({ question: q.question, options: q.options });
+        if (servedContentKeys.has(key)) return false;
+      }
+      return true;
+    });
   }
 
-  async function saveTestIds(ids: string[]): Promise<void> {
+  async function saveTestMeta(questions: TestQuestion[]): Promise<void> {
+    const ids = questions.map((q) => q.id);
+    const newKeys = questions.map((q) =>
+      buildQuestionContentKey({ question: q.question, options: q.options }),
+    );
+    // Merge with existing content keys (practice keys already in meta).
+    const mergedKeys = Array.from(new Set([...Array.from(servedContentKeys), ...newKeys]));
     try {
       await prisma.structuredSession.update({
         where: { id: sessionId },
-        data: { meta: { ...existingMeta, [META_TEST_IDS]: ids } },
+        data: { meta: { ...existingMeta, [META_TEST_IDS]: ids, [META_SERVED_CONTENT_KEYS]: mergedKeys } },
       });
     } catch (err) {
       logger.warn('[TEST_RESOLVE] Failed to save servedTestIds to session meta', {
@@ -698,8 +701,13 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
 
   if (approvedAtBand && approvedAtBand.questions.length > 0) {
     const questions = dedupeTestQuestions(approvedAtBand.questions);
-    await saveTestIds(questions.map((q) => q.id));
-    return { type: 'test', testId: approvedAtBand.id, title: approvedAtBand.title, difficulty: approvedAtBand.difficulty, questions };
+    if (questions.length > 0) {
+      await saveTestMeta(questions);
+      return { type: 'test', testId: approvedAtBand.id, title: approvedAtBand.title, difficulty: approvedAtBand.difficulty, questions };
+    }
+    logger.info('[TEST_RESOLVE] All questions in approved-at-band test already served in practice; trying next candidate', {
+      sessionId, topicId, testId: approvedAtBand.id,
+    });
   }
 
   // Fallback: any approved test (ignores difficulty band).
@@ -711,8 +719,13 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
 
   if (approvedAny && approvedAny.questions.length > 0) {
     const questions = dedupeTestQuestions(approvedAny.questions);
-    await saveTestIds(questions.map((q) => q.id));
-    return { type: 'test', testId: approvedAny.id, title: approvedAny.title, difficulty: approvedAny.difficulty, questions };
+    if (questions.length > 0) {
+      await saveTestMeta(questions);
+      return { type: 'test', testId: approvedAny.id, title: approvedAny.title, difficulty: approvedAny.difficulty, questions };
+    }
+    logger.info('[TEST_RESOLVE] All questions in approved-any test already served in practice; trying draft', {
+      sessionId, topicId, testId: approvedAny.id,
+    });
   }
 
   // Final fallback: draft (content review in progress).
@@ -724,8 +737,13 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
 
   if (draft && draft.questions.length > 0) {
     const questions = dedupeTestQuestions(draft.questions);
-    await saveTestIds(questions.map((q) => q.id));
-    return { type: 'test', testId: draft.id, title: draft.title, difficulty: draft.difficulty, questions };
+    if (questions.length > 0) {
+      await saveTestMeta(questions);
+      return { type: 'test', testId: draft.id, title: draft.title, difficulty: draft.difficulty, questions };
+    }
+    logger.warn('[TEST_RESOLVE] All questions exhausted after cross-phase dedup across all candidates', {
+      sessionId, topicId,
+    });
   }
 
   logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'TEST', topicId, targetDifficulty });
