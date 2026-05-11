@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | add Google error banner and retry UI for ?error= callback failures
  * - 2026-05-11T00:00:00Z | copilot | add safe callbackUrl handling and parent-intent redirect support for invite onboarding
  */
 'use client'

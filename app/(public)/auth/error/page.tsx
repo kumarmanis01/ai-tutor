@@ -1,8 +1,33 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render a branded auth error page for NextAuth callback failures, with human-readable
+ *   messages per error code and a safe "Try again" / "Go back" retry flow.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/app/public/auth/error/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | create branded auth error page with per-code messages and open-redirect guard
+ */
 'use client'
 
 import { Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Logo from '@/components/Logo'
+
+const FALLBACK_RETURN = '/auth/signup'
+
+function sanitizeReturnTo(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) {
+    return FALLBACK_RETURN
+  }
+  return raw
+}
 
 const ERROR_MESSAGES: Record<string, string> = {
   Callback: "Google sign-in could not be completed. This sometimes happens when the sign-in window is left open too long or cookies are blocked.",
@@ -18,7 +43,7 @@ function ErrorContent() {
   const router = useRouter()
   const errorCode = searchParams.get('error') ?? 'Default'
   const message = ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES['Default']
-  const returnTo = searchParams.get('callbackUrl') ?? '/auth/signup'
+  const returnTo = sanitizeReturnTo(searchParams.get('callbackUrl'))
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
@@ -48,7 +73,7 @@ function ErrorContent() {
             Try again
           </button>
           <button
-            onClick={() => router.push(returnTo.startsWith('/') ? returnTo : '/auth/signup')}
+            onClick={() => router.push(returnTo)}
             className="w-full py-3 rounded-xl border border-gray-300 dark:border-gray-600
                        text-gray-600 dark:text-gray-300 font-medium text-sm
                        hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors

@@ -11,6 +11,9 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | harden Google sign-in: derive isProd from NEXTAUTH_URL, add PKCE cookie override,
+ *     fix isEmailVerified to handle absent profile and string "true", fix linkAccount to return account,
+ *     add pages.error routing, retry UI on signup/signin pages
  * - 2026-05-08T00:00:00Z | copilot | enforce Google account chooser globally via authorization prompt select_account
  * - 2026-05-07T00:00:00Z | copilot | enforce Google sub/email_verified linking and restore jwt/session id propagation for onboarding auth
  * - 2026-05-07T00:00:00Z | copilot | fix jwt subjects parsing type guard to avoid never narrowing on Prisma String[]
@@ -387,10 +390,22 @@ async function maybeSendWelcomeEmail(email: string, name?: string) {
 //     },
 //   },
 // };
-// Use NEXTAUTH_URL to determine secure-cookie mode rather than NODE_ENV.
-// This prevents cookie loss when running a production build on HTTP (e.g. localhost npm start).
-const _nextauthUrl = process.env.NEXTAUTH_URL ?? '';
-const isProd = _nextauthUrl.startsWith('https://');
+// Derive isProd from NEXTAUTH_URL rather than NODE_ENV so that running a production
+// build on HTTP (e.g. localhost npm start) does not accidentally enable secure cookies,
+// which the browser silently drops on non-HTTPS connections.
+// Fallback to NODE_ENV when NEXTAUTH_URL is unset so misconfigured environments stay safe.
+const nextauthUrl = process.env.NEXTAUTH_URL ?? '';
+const urlIsHttps = nextauthUrl.startsWith('https://');
+const nodeEnvIsProd = process.env.NODE_ENV === 'production';
+const isProd = nextauthUrl ? urlIsHttps : nodeEnvIsProd;
+
+if (nodeEnvIsProd && nextauthUrl && !urlIsHttps) {
+  // Log at startup so the misconfiguration is immediately visible in PM2 logs.
+  logger.warn('NEXTAUTH_URL is not HTTPS in NODE_ENV=production; useSecureCookies will be false', {
+    className: 'auth',
+    methodName: 'module_init',
+  });
+}
 
 function normalizeGoogleEmail(input: unknown): string | null {
   if (typeof input !== 'string') return null;
@@ -478,7 +493,7 @@ const customAdapter = {
         id_token: account.id_token,
         session_state: account.session_state,
       },
-    }) as any;
+    });
   },
 };
 

@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-05-11T00:00:00Z | copilot | add callbackUrl and parent-intent sign-in route coverage
+ * - 2026-05-11T00:00:00Z | copilot | add coverage for Google error banner retry-label and safe callbackUrl/parent-intent routing
  */
 
 import React from 'react'
@@ -76,5 +76,16 @@ describe('AuthPage callback handling', () => {
     expect(signInMock).toHaveBeenCalledWith('google', {
       callbackUrl: '/parent/onboarding?inviteCode=ABCD1234',
     })
+  })
+
+  it('should show error banner and Retry label when ?error=Callback is present', () => {
+    getParamMock.mockImplementation((key: string) =>
+      key === 'error' ? 'Callback' : null
+    )
+
+    render(<AuthPage />)
+
+    expect(screen.getByText(/google sign-in did not complete/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /retry with google/i })).toBeTruthy()
   })
 })

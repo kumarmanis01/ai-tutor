@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render the sign-up / sign-in entry page with Google OAuth and email magic-link options.
+ *   Authenticated users are redirected to onboarding immediately.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/app/public/auth/signup/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | add Google error banner and retry UI for ?error= callback failures
+ */
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
