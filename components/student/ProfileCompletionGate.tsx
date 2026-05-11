@@ -353,543 +353,544 @@ export default function ProfileCompletionGate({
   }
 
   const formCard = (
-    <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    // <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
-        {/* Purple header with Vidya avatar */}
-        <div className="bg-[#534AB7] px-6 py-5 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <AppImage
-              src="/logos/vidya/vidya-avatar-64.png"
-              alt="Vidya"
-              width={40}
-              height={40}
-              className="w-10 h-10 rounded-full bg-white/20 object-cover"
-            />
-            <div>
-              <h2 className="text-white font-semibold text-lg leading-tight">
-                Complete your profile
-              </h2>
-              <p className="text-indigo-200 text-sm leading-tight">
-                {mainDoneCount} of {MAIN_STEPS.length} complete
-              </p>
-            </div>
-          </div>
-        </div>
+    //     {/* Purple header with Vidya avatar */}
+    //     <div className="bg-[#534AB7] px-6 py-5 flex-shrink-0">
+    //       <div className="flex items-center gap-3">
+    //         <AppImage
+    //           src="/logos/vidya/vidya-avatar-64.png"
+    //           alt="Vidya"
+    //           width={40}
+    //           height={40}
+    //           className="w-10 h-10 rounded-full bg-white/20 object-cover"
+    //         />
+    //         <div>
+    //           <h2 className="text-white font-semibold text-lg leading-tight">
+    //             Complete your profile
+    //           </h2>
+    //           <p className="text-indigo-200 text-sm leading-tight">
+    //             {mainDoneCount} of {MAIN_STEPS.length} complete
+    //           </p>
+    //         </div>
+    //       </div>
+    //     </div>
 
-        {/* Scrollable form body */}
-        <div className="overflow-y-auto flex-1 px-6 py-5">
+    //     {/* Scrollable form body */}
+    //     <div className="overflow-y-auto flex-1 px-6 py-5">
 
-          {/* Checklist -- all 4 main items always visible */}
-          <div className="mb-5 space-y-2">
-            {MAIN_STEPS.map((sk) => {
-              const done = isStepDone(sk);
-              const active = isStepActive(sk);
-              const stepIdx = steps.indexOf(sk);
-              const clickable = done && !active && stepIdx !== -1;
-              return (
-                <button
-                  key={sk}
-                  type="button"
-                  disabled={saving || (!done && !active)}
-                  onClick={() => {
-                    if (clickable) setStep(stepIdx);
-                  }}
-                  className={[
-                    'flex items-center gap-3 w-full min-h-[44px] rounded-xl px-3 py-2 text-left transition-colors',
-                    active
-                      ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/15 border-2 border-[#534AB7]'
-                      : done
-                      ? 'bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer'
-                      : 'bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 opacity-50 cursor-default',
-                  ].join(' ')}
-                >
-                  {/* Status indicator */}
-                  {done ? (
-                    <span className="w-5 h-5 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
-                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
-                        <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                      </svg>
-                    </span>
-                  ) : active ? (
-                    <span className="w-5 h-5 rounded-full bg-[#534AB7] flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-[10px] font-bold">→</span>
-                    </span>
-                  ) : (
-                    <span className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-slate-500 flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${active ? 'text-[#534AB7] dark:text-indigo-300' : done ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'}`}>
-                      {stepLabels[sk].label}
-                    </p>
-                    {done && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {stepLabels[sk].value}
-                      </p>
-                    )}
-                  </div>
-                  {done && !active && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">Edit</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+    //       {/* Checklist -- all 4 main items always visible */}
+    //       <div className="mb-5 space-y-2">
+    //         {MAIN_STEPS.map((sk) => {
+    //           const done = isStepDone(sk);
+    //           const active = isStepActive(sk);
+    //           const stepIdx = steps.indexOf(sk);
+    //           const clickable = done && !active && stepIdx !== -1;
+    //           return (
+    //             <button
+    //               key={sk}
+    //               type="button"
+    //               disabled={saving || (!done && !active)}
+    //               onClick={() => {
+    //                 if (clickable) setStep(stepIdx);
+    //               }}
+    //               className={[
+    //                 'flex items-center gap-3 w-full min-h-[44px] rounded-xl px-3 py-2 text-left transition-colors',
+    //                 active
+    //                   ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/15 border-2 border-[#534AB7]'
+    //                   : done
+    //                   ? 'bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer'
+    //                   : 'bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 opacity-50 cursor-default',
+    //               ].join(' ')}
+    //             >
+    //               {/* Status indicator */}
+    //               {done ? (
+    //                 <span className="w-5 h-5 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
+    //                   <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
+    //                     <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    //                   </svg>
+    //                 </span>
+    //               ) : active ? (
+    //                 <span className="w-5 h-5 rounded-full bg-[#534AB7] flex items-center justify-center flex-shrink-0">
+    //                   <span className="text-white text-[10px] font-bold">→</span>
+    //                 </span>
+    //               ) : (
+    //                 <span className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-slate-500 flex-shrink-0" />
+    //               )}
+    //               <div className="flex-1 min-w-0">
+    //                 <p className={`text-sm font-medium ${active ? 'text-[#534AB7] dark:text-indigo-300' : done ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'}`}>
+    //                   {stepLabels[sk].label}
+    //                 </p>
+    //                 {done && (
+    //                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+    //                     {stepLabels[sk].value}
+    //                   </p>
+    //                 )}
+    //               </div>
+    //               {done && !active && (
+    //                 <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">Edit</span>
+    //               )}
+    //             </button>
+    //           );
+    //         })}
+    //       </div>
 
-          {/* Divider */}
-          <div className="h-px bg-gray-100 dark:bg-slate-800 mb-5" />
+    //       {/* Divider */}
+    //       <div className="h-px bg-gray-100 dark:bg-slate-800 mb-5" />
 
-          {/* ── Language ──────────────────────────────────────────────── */}
-          {currentStepKey === 'language' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                Which language do you prefer?
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {LANGUAGE_OPTIONS.map((lang) => (
-                  <button
-                    key={lang.code}
-                    type="button"
-                    onClick={() => setLanguage(lang.code)}
-                    className={[
-                      'flex flex-col items-center justify-center gap-1 rounded-2xl border-2 min-h-[88px] px-4 py-5 transition-all',
-                      language === lang.code
-                        ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
-                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 hover:border-[#534AB7]/40',
-                    ].join(' ')}
-                  >
-                    <span className="text-2xl font-bold">{lang.label}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{lang.sublabel}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+    //       {/* ── Language ──────────────────────────────────────────────── */}
+    //       {currentStepKey === 'language' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+    //             Which language do you prefer?
+    //           </h3>
+    //           <div className="grid grid-cols-2 gap-3">
+    //             {LANGUAGE_OPTIONS.map((lang) => (
+    //               <button
+    //                 key={lang.code}
+    //                 type="button"
+    //                 onClick={() => setLanguage(lang.code)}
+    //                 className={[
+    //                   'flex flex-col items-center justify-center gap-1 rounded-2xl border-2 min-h-[88px] px-4 py-5 transition-all',
+    //                   language === lang.code
+    //                     ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
+    //                     : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 hover:border-[#534AB7]/40',
+    //                 ].join(' ')}
+    //               >
+    //                 <span className="text-2xl font-bold">{lang.label}</span>
+    //                 <span className="text-xs text-gray-500 dark:text-gray-400">{lang.sublabel}</span>
+    //               </button>
+    //             ))}
+    //           </div>
+    //         </section>
+    //       )}
 
-          {/* ── Board ─────────────────────────────────────────────────── */}
-          {currentStepKey === 'board' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                Which board do you study under?
-              </h3>
-              <div className="grid grid-cols-1 gap-3">
-                {BOARD_OPTIONS.map((b) => (
-                  <button
-                    key={b.slug}
-                    type="button"
-                    onClick={() => { setBoard(b.slug); setSubjects([]); }}
-                    className={[
-                      'flex items-start gap-4 rounded-xl border-2 px-4 py-4 min-h-[44px] text-left transition-all',
-                      board === b.slug
-                        ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
-                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 hover:border-[#534AB7]/40',
-                    ].join(' ')}
-                  >
-                    <div
-                      className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                        board === b.slug
-                          ? 'border-[#534AB7] bg-[#534AB7]'
-                          : 'border-gray-300 dark:border-slate-500'
-                      }`}
-                    >
-                      {board === b.slug && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{b.label}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{b.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+    //       {/* ── Board ─────────────────────────────────────────────────── */}
+    //       {currentStepKey === 'board' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+    //             Which board do you study under?
+    //           </h3>
+    //           <div className="grid grid-cols-1 gap-3">
+    //             {BOARD_OPTIONS.map((b) => (
+    //               <button
+    //                 key={b.slug}
+    //                 type="button"
+    //                 onClick={() => { setBoard(b.slug); setSubjects([]); }}
+    //                 className={[
+    //                   'flex items-start gap-4 rounded-xl border-2 px-4 py-4 min-h-[44px] text-left transition-all',
+    //                   board === b.slug
+    //                     ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
+    //                     : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 hover:border-[#534AB7]/40',
+    //                 ].join(' ')}
+    //               >
+    //                 <div
+    //                   className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+    //                     board === b.slug
+    //                       ? 'border-[#534AB7] bg-[#534AB7]'
+    //                       : 'border-gray-300 dark:border-slate-500'
+    //                   }`}
+    //                 >
+    //                   {board === b.slug && (
+    //                     <div className="w-1.5 h-1.5 rounded-full bg-white" />
+    //                   )}
+    //                 </div>
+    //                 <div>
+    //                   <p className="font-semibold text-sm">{b.label}</p>
+    //                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{b.desc}</p>
+    //                 </div>
+    //               </button>
+    //             ))}
+    //           </div>
+    //         </section>
+    //       )}
 
-          {/* ── Grade ─────────────────────────────────────────────────── */}
-          {currentStepKey === 'grade' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                Which class are you in?
-              </h3>
-              {board && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  {BOARD_OPTIONS.find((b) => b.slug === board)?.label}
-                </p>
-              )}
-              <div className="grid grid-cols-4 gap-2">
-                {GRADES.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => { setGrade(g); setSubjects([]); }}
-                    className={[
-                      'min-h-[52px] rounded-xl border-2 text-sm font-bold transition-all',
-                      grade === g
-                        ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
-                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:border-[#534AB7]/40',
-                    ].join(' ')}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+    //       {/* ── Grade ─────────────────────────────────────────────────── */}
+    //       {currentStepKey === 'grade' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //             Which class are you in?
+    //           </h3>
+    //           {board && (
+    //             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    //               {BOARD_OPTIONS.find((b) => b.slug === board)?.label}
+    //             </p>
+    //           )}
+    //           <div className="grid grid-cols-4 gap-2">
+    //             {GRADES.map((g) => (
+    //               <button
+    //                 key={g}
+    //                 type="button"
+    //                 onClick={() => { setGrade(g); setSubjects([]); }}
+    //                 className={[
+    //                   'min-h-[52px] rounded-xl border-2 text-sm font-bold transition-all',
+    //                   grade === g
+    //                     ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
+    //                     : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:border-[#534AB7]/40',
+    //                 ].join(' ')}
+    //               >
+    //                 {g}
+    //               </button>
+    //             ))}
+    //           </div>
+    //         </section>
+    //       )}
 
-          {/* ── Age ──────────────────────────────────────────────────── */}
-          {currentStepKey === 'age' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                How old are you?
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Helps Vidya personalise your learning pace and check parental consent requirements.
-              </p>
-              <div>
-                <label
-                  htmlFor="gate-age"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
-                  Your age <span className="text-[#E24B4A]">*</span>
-                </label>
-                <input
-                  id="gate-age"
-                  type="number"
-                  min={5}
-                  max={25}
-                  value={ageInput ?? ''}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    setAgeInput(Number.isFinite(val) ? val : null);
-                  }}
-                  placeholder="e.g. 14"
-                  className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
-                />
-                {ageInput !== null && (ageInput < 5 || ageInput > 25) && (
-                  <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">
-                    Please enter an age between 5 and 25.
-                  </p>
-                )}
-              </div>
-            </section>
-          )}
+    //       {/* ── Age ──────────────────────────────────────────────────── */}
+    //       {currentStepKey === 'age' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //             How old are you?
+    //           </h3>
+    //           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    //             Helps Vidya personalise your learning pace and check parental consent requirements.
+    //           </p>
+    //           <div>
+    //             <label
+    //               htmlFor="gate-age"
+    //               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+    //             >
+    //               Your age <span className="text-[#E24B4A]">*</span>
+    //             </label>
+    //             <input
+    //               id="gate-age"
+    //               type="number"
+    //               min={5}
+    //               max={25}
+    //               value={ageInput ?? ''}
+    //               onChange={(e) => {
+    //                 const val = parseInt(e.target.value, 10);
+    //                 setAgeInput(Number.isFinite(val) ? val : null);
+    //               }}
+    //               placeholder="e.g. 14"
+    //               className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+    //             />
+    //             {ageInput !== null && (ageInput < 5 || ageInput > 25) && (
+    //               <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">
+    //                 Please enter an age between 5 and 25.
+    //               </p>
+    //             )}
+    //           </div>
+    //         </section>
+    //       )}
 
-          {/* ── Subjects ──────────────────────────────────────────────── */}
-          {currentStepKey === 'subjects' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                Which subjects?
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Select up to 6. Tap a subject to add or remove it.
-              </p>
+    //       {/* ── Subjects ──────────────────────────────────────────────── */}
+    //       {currentStepKey === 'subjects' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //             Which subjects?
+    //           </h3>
+    //           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+    //             Select up to 6. Tap a subject to add or remove it.
+    //           </p>
 
-              {mandatoryNote && (
-                <div className="mb-3 rounded-lg bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-3 py-2">
-                  <p className="text-xs text-[#534AB7] dark:text-indigo-300 font-medium">
-                    {mandatoryNote}
-                  </p>
-                </div>
-              )}
+    //           {mandatoryNote && (
+    //             <div className="mb-3 rounded-lg bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-3 py-2">
+    //               <p className="text-xs text-[#534AB7] dark:text-indigo-300 font-medium">
+    //                 {mandatoryNote}
+    //               </p>
+    //             </div>
+    //           )}
 
-              {hierarchyLoading ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-11 rounded-xl bg-gray-100 dark:bg-slate-700 animate-pulse" />
-                  ))}
-                </div>
-              ) : availableSubjects.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No subjects found for {board} Class {grade}. You can add subjects later.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {availableSubjects.map((subj) => {
-                    const isMandatory = mandatory.some(
-                      (m) =>
-                        m === subj.slug.toLowerCase() ||
-                        subj.slug.toLowerCase().startsWith(m),
-                    );
-                    const selected = subjects.includes(subj.slug);
-                    return (
-                      <button
-                        key={subj.id}
-                        type="button"
-                        onClick={() => toggleSubject(subj.slug, isMandatory)}
-                        aria-pressed={selected ? 'true' : 'false'}
-                        title={isMandatory ? 'Mandatory -- cannot be removed' : undefined}
-                        className={[
-                          'flex items-center gap-2 min-h-[44px] rounded-xl border-2 px-3 text-sm font-medium text-left transition-all',
-                          selected
-                            ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
-                            : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:border-[#534AB7]/40',
-                          isMandatory ? 'opacity-80' : '',
-                        ].join(' ')}
-                      >
-                        <span
-                          className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center text-[10px] font-bold ${
-                            selected
-                              ? 'bg-[#534AB7] border-[#534AB7] text-white'
-                              : 'border-gray-300 dark:border-slate-500'
-                          }`}
-                        >
-                          {selected && '✓'}
-                        </span>
-                        <span className="truncate">{subj.name}</span>
-                        {isMandatory && (
-                          <span className="ml-auto text-[9px] text-gray-400 dark:text-gray-500 flex-shrink-0">
-                            Required
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          )}
+    //           {hierarchyLoading ? (
+    //             <div className="grid grid-cols-2 gap-2">
+    //               {Array.from({ length: 6 }).map((_, i) => (
+    //                 <div key={i} className="h-11 rounded-xl bg-gray-100 dark:bg-slate-700 animate-pulse" />
+    //               ))}
+    //             </div>
+    //           ) : availableSubjects.length === 0 ? (
+    //             <p className="text-sm text-gray-500 dark:text-gray-400">
+    //               No subjects found for {board} Class {grade}. You can add subjects later.
+    //             </p>
+    //           ) : (
+    //             <div className="grid grid-cols-2 gap-2">
+    //               {availableSubjects.map((subj) => {
+    //                 const isMandatory = mandatory.some(
+    //                   (m) =>
+    //                     m === subj.slug.toLowerCase() ||
+    //                     subj.slug.toLowerCase().startsWith(m),
+    //                 );
+    //                 const selected = subjects.includes(subj.slug);
+    //                 return (
+    //                   <button
+    //                     key={subj.id}
+    //                     type="button"
+    //                     onClick={() => toggleSubject(subj.slug, isMandatory)}
+    //                     aria-pressed={selected ? 'true' : 'false'}
+    //                     title={isMandatory ? 'Mandatory -- cannot be removed' : undefined}
+    //                     className={[
+    //                       'flex items-center gap-2 min-h-[44px] rounded-xl border-2 px-3 text-sm font-medium text-left transition-all',
+    //                       selected
+    //                         ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300'
+    //                         : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:border-[#534AB7]/40',
+    //                       isMandatory ? 'opacity-80' : '',
+    //                     ].join(' ')}
+    //                   >
+    //                     <span
+    //                       className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center text-[10px] font-bold ${
+    //                         selected
+    //                           ? 'bg-[#534AB7] border-[#534AB7] text-white'
+    //                           : 'border-gray-300 dark:border-slate-500'
+    //                       }`}
+    //                     >
+    //                       {selected && '✓'}
+    //                     </span>
+    //                     <span className="truncate">{subj.name}</span>
+    //                     {isMandatory && (
+    //                       <span className="ml-auto text-[9px] text-gray-400 dark:text-gray-500 flex-shrink-0">
+    //                         Required
+    //                       </span>
+    //                     )}
+    //                   </button>
+    //                 );
+    //               })}
+    //             </div>
+    //           )}
+    //         </section>
+    //       )}
 
-          {/* ── School Name ───────────────────────────────────────────── */}
-          {currentStepKey === 'schoolName' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                Which school do you go to?
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Optional -- helps Vidya personalise your experience.
-              </p>
-              <div>
-                <label
-                  htmlFor="gate-school-name"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
-                  School name
-                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
-                </label>
-                <input
-                  id="gate-school-name"
-                  type="text"
-                  value={schoolName}
-                  onChange={(e) => setSchoolName(e.target.value)}
-                  placeholder="e.g. Delhi Public School, Sector 45"
-                  maxLength={120}
-                  className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
-                />
-              </div>
-            </section>
-          )}
+    //       {/* ── School Name ───────────────────────────────────────────── */}
+    //       {currentStepKey === 'schoolName' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //             Which school do you go to?
+    //           </h3>
+    //           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    //             Optional -- helps Vidya personalise your experience.
+    //           </p>
+    //           <div>
+    //             <label
+    //               htmlFor="gate-school-name"
+    //               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+    //             >
+    //               School name
+    //               <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
+    //             </label>
+    //             <input
+    //               id="gate-school-name"
+    //               type="text"
+    //               value={schoolName}
+    //               onChange={(e) => setSchoolName(e.target.value)}
+    //               placeholder="e.g. Delhi Public School, Sector 45"
+    //               maxLength={120}
+    //               className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+    //             />
+    //           </div>
+    //         </section>
+    //       )}
 
-          {/* ── WhatsApp Number ───────────────────────────────────────── */}
-          {currentStepKey === 'whatsappPhone' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                WhatsApp number for updates
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Optional -- we send progress nudges and weekly reports over WhatsApp.
-                This cannot be changed after saving.
-              </p>
+    //       {/* ── WhatsApp Number ───────────────────────────────────────── */}
+    //       {currentStepKey === 'whatsappPhone' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //             WhatsApp number for updates
+    //           </h3>
+    //           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    //             Optional -- we send progress nudges and weekly reports over WhatsApp.
+    //             This cannot be changed after saving.
+    //           </p>
 
-              {whatsappPhoneLocked ? (
-                <div className="flex items-center gap-3 rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-4 py-3">
-                  <span className="text-xl">💬</span>
-                  <div>
-                    <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400">WhatsApp number saved</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{whatsappPhone}</p>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label
-                    htmlFor="gate-whatsapp-phone"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    WhatsApp number
-                    <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
-                  </label>
-                  <IndiaPhoneInput
-                    id="gate-whatsapp-phone"
-                    value={whatsappPhone}
-                    onChange={(val) => {
-                      setWhatsappPhone(val);
-                      if (whatsappPhoneError) setWhatsappPhoneError('');
-                    }}
-                    error={whatsappPhoneError}
-                  />
-                  <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
-                    Once saved, this cannot be changed.
-                  </p>
-                </div>
-              )}
-            </section>
-          )}
+    //           {whatsappPhoneLocked ? (
+    //             <div className="flex items-center gap-3 rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-4 py-3">
+    //               <span className="text-xl">💬</span>
+    //               <div>
+    //                 <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400">WhatsApp number saved</p>
+    //                 <p className="text-xs text-gray-500 dark:text-gray-400">{whatsappPhone}</p>
+    //               </div>
+    //             </div>
+    //           ) : (
+    //             <div>
+    //               <label
+    //                 htmlFor="gate-whatsapp-phone"
+    //                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+    //               >
+    //                 WhatsApp number
+    //                 <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
+    //               </label>
+    //               <IndiaPhoneInput
+    //                 id="gate-whatsapp-phone"
+    //                 value={whatsappPhone}
+    //                 onChange={(val) => {
+    //                   setWhatsappPhone(val);
+    //                   if (whatsappPhoneError) setWhatsappPhoneError('');
+    //                 }}
+    //                 error={whatsappPhoneError}
+    //               />
+    //               <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+    //                 Once saved, this cannot be changed.
+    //               </p>
+    //             </div>
+    //           )}
+    //         </section>
+    //       )}
 
-          {/* ── Parent Email ───────────────────────────────────────────── */}
-          {currentStepKey === 'parentEmail' && (
-            <section>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                {parentEmailRequired
-                  ? "Parent's email address"
-                  : "Parent's email (optional)"}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                {parentEmailRequired
-                  ? `Required for students under ${DPDP_MINOR_AGE} -- we send weekly progress reports.`
-                  : "Add a parent email to share your progress reports."}
-              </p>
-              <div>
-                <label
-                  htmlFor="gate-parent-email"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
-                  Parent email
-                  {parentEmailRequired ? (
-                    <span className="text-[#E24B4A] ml-1">*</span>
-                  ) : (
-                    <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
-                  )}
-                </label>
-                <input
-                  id="gate-parent-email"
-                  type="email"
-                  value={parentEmail}
-                  onChange={(e) => {
-                    setParentEmail(e.target.value);
-                    if (parentEmailError) setParentEmailError('');
-                  }}
-                  placeholder="parent@example.com"
-                  required={parentEmailRequired}
-                  className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
-                />
-                {parentEmailError && (
-                  <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">
-                    {parentEmailError}
-                  </p>
-                )}
-              </div>
-            </section>
-          )}
+    //       {/* ── Parent Email ───────────────────────────────────────────── */}
+    //       {currentStepKey === 'parentEmail' && (
+    //         <section>
+    //           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //             {parentEmailRequired
+    //               ? "Parent's email address"
+    //               : "Parent's email (optional)"}
+    //           </h3>
+    //           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    //             {parentEmailRequired
+    //               ? `Required for students under ${DPDP_MINOR_AGE} -- we send weekly progress reports.`
+    //               : "Add a parent email to share your progress reports."}
+    //           </p>
+    //           <div>
+    //             <label
+    //               htmlFor="gate-parent-email"
+    //               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+    //             >
+    //               Parent email
+    //               {parentEmailRequired ? (
+    //                 <span className="text-[#E24B4A] ml-1">*</span>
+    //               ) : (
+    //                 <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
+    //               )}
+    //             </label>
+    //             <input
+    //               id="gate-parent-email"
+    //               type="email"
+    //               value={parentEmail}
+    //               onChange={(e) => {
+    //                 setParentEmail(e.target.value);
+    //                 if (parentEmailError) setParentEmailError('');
+    //               }}
+    //               placeholder="parent@example.com"
+    //               required={parentEmailRequired}
+    //               className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+    //             />
+    //             {parentEmailError && (
+    //               <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">
+    //                 {parentEmailError}
+    //               </p>
+    //             )}
+    //           </div>
+    //         </section>
+    //       )}
 
-          {/* ── Parent Verification OTP (DPDP minors only) ────────────── */}
-          {currentStepKey === 'parentPhone' && (
-            <section>
-              {otpVerified ? (
-                <>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                    Parent verified
-                  </h3>
-                  <div className="flex items-center gap-3 rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-4 py-3">
-                    <span className="w-8 h-8 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-white" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                        <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                    <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400">
-                      Parent contact confirmed
-                    </p>
-                  </div>
-                </>
-              ) : !otpSent ? (
-                <>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                    Confirm parent contact
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                    {"We'll send a one-time code to your parent's email or WhatsApp to confirm they are aware of your account."}
-                  </p>
-                  <div className="rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-3 mb-6 space-y-1">
-                    {parentEmail && (
-                      <p className="text-sm text-[#534AB7] dark:text-indigo-300">
-                        📧 {parentEmail}
-                      </p>
-                    )}
-                    {(whatsappPhone || parentPhone) && isValidIndiaPhone(whatsappPhone || parentPhone) && (
-                      <p className="text-sm text-[#534AB7] dark:text-indigo-300">
-                        💬 +{(whatsappPhone || parentPhone).replace(/\D/g, '')}
-                      </p>
-                    )}
-                  </div>
-                  {otpError && (
-                    <p role="alert" className="mb-3 text-xs text-[#E24B4A]">{otpError}</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => { void handleSendOtp(); }}
-                    disabled={otpBusy}
-                    className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
-                  >
-                    {otpBusy ? 'Sending...' : 'Send verification code →'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                    Enter the verification code
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    {[
-                      otpSentTo.email ? `📧 ${otpSentTo.email}` : '',
-                      otpSentTo.whatsapp ? `💬 ${otpSentTo.whatsapp}` : '',
-                    ].filter(Boolean).join(' and ')}
-                  </p>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); if (otpError) setOtpError(''); }}
-                    placeholder="123456"
-                    className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors tracking-widest text-center font-mono mb-3"
-                  />
-                  {otpError && (
-                    <p role="alert" className="mb-3 text-xs text-[#E24B4A]">{otpError}</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => { void handleVerifyOtp(); }}
-                    disabled={otpBusy || otpCode.length < 4}
-                    className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
-                  >
-                    {otpBusy ? 'Verifying...' : 'Verify code →'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setOtpSent(false); setOtpCode(''); setOtpError(''); }}
-                    className="w-full min-h-[44px] text-xs text-gray-500 dark:text-gray-400 hover:text-[#534AB7] dark:hover:text-indigo-300 text-center py-2"
-                  >
-                    Resend code
-                  </button>
-                </>
-              )}
-            </section>
-          )}
+    //       {/* ── Parent Verification OTP (DPDP minors only) ────────────── */}
+    //       {currentStepKey === 'parentPhone' && (
+    //         <section>
+    //           {otpVerified ? (
+    //             <>
+    //               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+    //                 Parent verified
+    //               </h3>
+    //               <div className="flex items-center gap-3 rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-4 py-3">
+    //                 <span className="w-8 h-8 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
+    //                   <svg className="w-4 h-4 text-white" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+    //                     <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    //                   </svg>
+    //                 </span>
+    //                 <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400">
+    //                   Parent contact confirmed
+    //                 </p>
+    //               </div>
+    //             </>
+    //           ) : !otpSent ? (
+    //             <>
+    //               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //                 Confirm parent contact
+    //               </h3>
+    //               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+    //                 {"We'll send a one-time code to your parent's email or WhatsApp to confirm they are aware of your account."}
+    //               </p>
+    //               <div className="rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-3 mb-6 space-y-1">
+    //                 {parentEmail && (
+    //                   <p className="text-sm text-[#534AB7] dark:text-indigo-300">
+    //                     📧 {parentEmail}
+    //                   </p>
+    //                 )}
+    //                 {(whatsappPhone || parentPhone) && isValidIndiaPhone(whatsappPhone || parentPhone) && (
+    //                   <p className="text-sm text-[#534AB7] dark:text-indigo-300">
+    //                     💬 +{(whatsappPhone || parentPhone).replace(/\D/g, '')}
+    //                   </p>
+    //                 )}
+    //               </div>
+    //               {otpError && (
+    //                 <p role="alert" className="mb-3 text-xs text-[#E24B4A]">{otpError}</p>
+    //               )}
+    //               <button
+    //                 type="button"
+    //                 onClick={() => { void handleSendOtp(); }}
+    //                 disabled={otpBusy}
+    //                 className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+    //               >
+    //                 {otpBusy ? 'Sending...' : 'Send verification code →'}
+    //               </button>
+    //             </>
+    //           ) : (
+    //             <>
+    //               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+    //                 Enter the verification code
+    //               </h3>
+    //               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+    //                 {[
+    //                   otpSentTo.email ? `📧 ${otpSentTo.email}` : '',
+    //                   otpSentTo.whatsapp ? `💬 ${otpSentTo.whatsapp}` : '',
+    //                 ].filter(Boolean).join(' and ')}
+    //               </p>
+    //               <input
+    //                 type="text"
+    //                 inputMode="numeric"
+    //                 maxLength={6}
+    //                 value={otpCode}
+    //                 onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); if (otpError) setOtpError(''); }}
+    //                 placeholder="123456"
+    //                 className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors tracking-widest text-center font-mono mb-3"
+    //               />
+    //               {otpError && (
+    //                 <p role="alert" className="mb-3 text-xs text-[#E24B4A]">{otpError}</p>
+    //               )}
+    //               <button
+    //                 type="button"
+    //                 onClick={() => { void handleVerifyOtp(); }}
+    //                 disabled={otpBusy || otpCode.length < 4}
+    //                 className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+    //               >
+    //                 {otpBusy ? 'Verifying...' : 'Verify code →'}
+    //               </button>
+    //               <button
+    //                 type="button"
+    //                 onClick={() => { setOtpSent(false); setOtpCode(''); setOtpError(''); }}
+    //                 className="w-full min-h-[44px] text-xs text-gray-500 dark:text-gray-400 hover:text-[#534AB7] dark:hover:text-indigo-300 text-center py-2"
+    //               >
+    //                 Resend code
+    //               </button>
+    //             </>
+    //           )}
+    //         </section>
+    //       )}
 
-          {saveError && (
-            <p role="alert" className="mt-4 text-xs text-[#E24B4A] dark:text-red-400">
-              {saveError}
-            </p>
-          )}
+    //       {saveError && (
+    //         <p role="alert" className="mt-4 text-xs text-[#E24B4A] dark:text-red-400">
+    //           {saveError}
+    //         </p>
+    //       )}
 
-          {/* Main Continue/Save button */}
-          {true ? (
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={handleContinue}
-                disabled={!canAdvance() || saving}
-                className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
-              >
-                {saving
-                  ? 'Saving...'
-                  : isLastStep
-                  ? 'Save'
-                  : 'Continue →'}
-              </button>
-            </div>
-          ) : null}
+    //       {/* Main Continue/Save button */}
+    //       {true ? (
+    //         <div className="mt-6">
+    //           <button
+    //             type="button"
+    //             onClick={handleContinue}
+    //             disabled={!canAdvance() || saving}
+    //             className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+    //           >
+    //             {saving
+    //               ? 'Saving...'
+    //               : isLastStep
+    //               ? 'Save'
+    //               : 'Continue →'}
+    //           </button>
+    //         </div>
+    //       ) : null}
 
-        </div>
-      </div>
+    //     </div>
+    //   </div>
+    <div> Nothing here ProfileCompletionGate.tsx </div>
   );
 
   // Standalone mode: full-page layout, no portal, no backdrop.

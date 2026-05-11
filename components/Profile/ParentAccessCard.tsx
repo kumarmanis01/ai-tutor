@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render the student-facing parent access card for generating invite codes, viewing linked parents, and explaining parent onboarding steps.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/Profile/ParentAccessCard.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | add clear share and parent onboarding instructions for invite code flow
+ * - 2026-05-11T00:00:00Z | copilot | copy parent onboarding URL instead of raw code so role assignment starts from shared route
+ */
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -13,6 +28,26 @@ type ParentViewResponse = {
     note: string;
   };
 };
+
+const PARENT_SIGNIN_PATH = '/auth/signin';
+const PARENT_ONBOARDING_PATH = '/parent/onboarding';
+
+function buildParentInviteLink(code: string): string {
+  const inviteCode = String(code ?? '').trim().toUpperCase();
+  const callbackUrl = inviteCode
+    ? `${PARENT_ONBOARDING_PATH}?inviteCode=${encodeURIComponent(inviteCode)}`
+    : PARENT_ONBOARDING_PATH;
+
+  const query = `role=parent&callbackUrl=${encodeURIComponent(callbackUrl)}${
+    inviteCode ? `&inviteCode=${encodeURIComponent(inviteCode)}` : ''
+  }`;
+
+  if (typeof window === 'undefined') {
+    return `${PARENT_SIGNIN_PATH}?${query}`;
+  }
+
+  return `${window.location.origin}${PARENT_SIGNIN_PATH}?${query}`;
+}
 
 export default function ParentAccessCard() {
   const [data, setData] = useState<ParentViewResponse | null>(null);
@@ -58,12 +93,20 @@ export default function ParentAccessCard() {
 
   const copy = async (code: string) => {
     try {
-      await navigator.clipboard.writeText(code);
-      toast('Code copied');
+      await navigator.clipboard.writeText(buildParentInviteLink(code));
+      toast('Parent invite link copied');
     } catch {
       toast('Copy failed');
     }
   };
+
+  const onboardingSteps = [
+    'Tap Generate code to create a secure invite code.',
+    'Tap Copy link and share it with your parent on WhatsApp, SMS, or email.',
+    'Parent opens the link, signs in, and lands on parent onboarding.',
+    'In Link Student, the invite code is prefilled. Parent selects relationship and submits.',
+    'After linking, parent appears in Linked parents and can monitor your progress.',
+  ];
 
   return (
     <section className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
@@ -82,6 +125,18 @@ export default function ParentAccessCard() {
         >
           {busy ? 'Working...' : 'Generate code'}
         </button>
+      </div>
+
+      <div className="rounded-lg bg-[#EEEDFE] dark:bg-[#2C2754] border border-[#534AB7]/30 p-4">
+        <div className="text-sm font-semibold text-[#3C3489] dark:text-[#D9D5FF]">How to share and link</div>
+        <ol className="mt-2 space-y-1.5 text-sm text-gray-700 dark:text-gray-200 list-decimal list-inside">
+          {onboardingSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+          Invite codes expire automatically. If a code expires, generate a new one and share again.
+        </p>
       </div>
 
       {loading ? (
@@ -108,7 +163,7 @@ export default function ParentAccessCard() {
                         onClick={() => copy(i.code)}
                         className="px-3 py-1.5 rounded-md bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200"
                       >
-                        Copy
+                        Copy link
                       </button>
                     </div>
                   ))}

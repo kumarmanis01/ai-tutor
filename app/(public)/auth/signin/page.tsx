@@ -1,13 +1,63 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render the shared sign-in page and support role-aware callback routing for onboarding flows.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/app/public/auth/signin/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | add safe callbackUrl handling and parent-intent redirect support for invite onboarding
+ */
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Logo from '@/components/Logo'
 import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier'
 
+const DEFAULT_CALLBACK_URL = '/dashboard'
+const PARENT_ROLE_QUERY_VALUE = 'parent'
+const PARENT_ONBOARDING_PATH = '/parent/onboarding'
+
+function sanitizeCallbackUrl(rawValue: string | null): string {
+  if (!rawValue || !rawValue.startsWith('/')) {
+    return DEFAULT_CALLBACK_URL
+  }
+
+  if (rawValue.startsWith('//')) {
+    return DEFAULT_CALLBACK_URL
+  }
+
+  return rawValue
+}
+
+function buildParentOnboardingCallback(inviteCode: string): string {
+  if (!inviteCode) {
+    return PARENT_ONBOARDING_PATH
+  }
+
+  return `${PARENT_ONBOARDING_PATH}?inviteCode=${encodeURIComponent(inviteCode)}`
+}
+
 function AuthContent() {
   const searchParams = useSearchParams()
+  const roleIntent = searchParams.get('role')
+  const inviteCodeFromQuery = String(searchParams.get('inviteCode') ?? '').trim().toUpperCase().slice(0, 16)
+  const callbackUrlFromQuery = sanitizeCallbackUrl(searchParams.get('callbackUrl'))
+  const callbackUrl = useMemo(() => {
+    if (roleIntent === PARENT_ROLE_QUERY_VALUE) {
+      return buildParentOnboardingCallback(inviteCodeFromQuery)
+    }
+
+    return callbackUrlFromQuery
+  }, [roleIntent, inviteCodeFromQuery, callbackUrlFromQuery])
+
   const [email, setEmail] = useState(
     searchParams.get('email') ||
     (typeof window !== 'undefined' ? sessionStorage.getItem('spinzy_signup_email') || '' : '')
@@ -26,7 +76,7 @@ function AuthContent() {
     try {
       const result = await signIn('email', {
         email,
-        callbackUrl: '/dashboard',
+        callbackUrl,
         redirect: false,
       })
       if (result?.error) {
@@ -80,7 +130,7 @@ function AuthContent() {
 
         {/* Google Sign In */}
         <button
-          onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+          onClick={() => signIn('google', { callbackUrl })}
           className="w-full flex items-center justify-center gap-3 px-4 py-3
                      border border-gray-300 dark:border-gray-600 rounded-xl
                      bg-white dark:bg-gray-900 hover:bg-gray-50

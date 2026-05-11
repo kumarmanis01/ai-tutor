@@ -3,10 +3,19 @@
  * - Client-side parent dashboard with subject progress drill-down,
  *   weak topic awareness, readiness indicators, and child linking.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/parent/ParentDashboardClient.test.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2025-01-XX | copilot | created parent dashboard client component
  * - 2026-02-04 | claude | enhanced with progress, weak topics, readiness, invite codes
  * - 2026-05-04 | copilot | capture parent-child relationship in link form for F-PAR-001 registration requirements
+ * - 2026-05-11T00:00:00Z | copilot | prefill invite code mode from onboarding URL query params
  */
 
 'use client';
@@ -519,6 +528,24 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
   const [code, setCode] = useState('');
   const [relationship, setRelationship] = useState<'father' | 'mother' | 'guardian'>('guardian');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const queryMode = String(params.get('mode') ?? '').toLowerCase();
+    const queryCode = String(params.get('inviteCode') ?? params.get('code') ?? '').trim().toUpperCase().slice(0, 8);
+
+    if (queryMode === 'code' || queryCode) {
+      setMode('code');
+    }
+
+    if (queryCode) {
+      setCode(queryCode);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

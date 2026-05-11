@@ -15,12 +15,13 @@ interface OnboardingGateShellProps {
 }
 
 export default function OnboardingGateShell({ initialValues }: OnboardingGateShellProps) {
-  const router = useRouter();
+  // const router = useRouter();
   return (
-    <ProfileCompletionGate
-      standalone
-      initialValues={initialValues}
-      afterSave={() => router.push('/student/onboarding/exam-date')}
-    />
+    // <ProfileCompletionGate
+    //   standalone
+    //   initialValues={initialValues}
+    //   afterSave={() => router.push('/student/onboarding/exam-date')}
+    // />
+    <> Nothing here OnboardingGateShell.tsx</>
   );
 }
