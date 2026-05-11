@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-05-11T00:00:00Z | copilot | add parent auto-link and channel verification helper utilities
+ * - 2026-05-11T00:20:00Z | copilot | fix implicit-any typing in consumed phone key mapping
  */
 
 import { UserRole, type PrismaClient } from '@prisma/client'
@@ -197,7 +198,7 @@ export async function getParentChannelVerificationStatus(params: {
     select: { phone: true },
   })
 
-  const consumedKeySet = new Set(consumedRecords.map((row) => row.phone))
+  const consumedKeySet = new Set(consumedRecords.map((row: { phone: string }) => row.phone))
   const emailVerified = emailKeys.some((key) => consumedKeySet.has(key))
   const whatsappVerified = whatsappKeys.some((key) => consumedKeySet.has(key))
 
