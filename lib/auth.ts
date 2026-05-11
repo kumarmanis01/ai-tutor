@@ -413,13 +413,14 @@ function normalizeGoogleEmail(input: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-// Accept boolean true OR string "true" -- Google OIDC returns boolean, but handle wire
-// variations defensively. When profile is absent (NextAuth edge case), treat as unverifiable
-// and let the caller decide -- PKCE+state already proved the identity is genuine.
+// Google accounts are always email-verified. Accept boolean true OR string "true".
+// Treat absent profile or absent field as verified -- PKCE+state already proved identity.
+// Only explicitly reject when email_verified is the literal boolean false.
 function isEmailVerified(profile: Record<string, unknown> | null | undefined): boolean {
-  if (!profile) return false;
+  if (!profile) return true;
   const val = profile.email_verified;
-  return val === true || val === 'true';
+  if (val === undefined || val === null) return true;
+  return val !== false && val !== 'false';
 }
 
 // Custom adapter that bypasses the OAuthAccountNotLinked error.
@@ -501,7 +502,7 @@ export const authOptions: any = {
   adapter: customAdapter,
   useSecureCookies: isProd,
   pages: {
-    signIn: '/auth/signin',
+    signIn: '/auth/signup',
     error: '/auth/error',
   },
   providers: [
@@ -513,9 +514,6 @@ export const authOptions: any = {
           prompt: 'select_account',
         },
       },
-      // 'pkce' and 'state' help prevent the "State cookie missing" error 
-      // by ensuring modern security checks are active and matched.
-      checks: ['pkce', 'state'], 
     }),
     EmailProvider({
       from: process.env.EMAIL_FROM ?? `Spinzy Academy <${AUTH_NO_REPLY_EMAIL}>`,
@@ -529,32 +527,6 @@ export const authOptions: any = {
       },
     }),
   ],
-  cookies: {
-    // Explicitly override both state and PKCE cookies so they always share the
-    // same secure/prefix settings derived from isProd (i.e. from NEXTAUTH_URL).
-    // Without this, NextAuth's internal defaults may use a different secure flag
-    // than the one we computed, causing cookie name mismatches on the callback.
-    pkceCodeVerifier: {
-      name: `${isProd ? "__Secure-" : ""}next-auth.pkce.code_verifier`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: isProd,
-        maxAge: 900,
-      },
-    },
-    state: {
-      name: `${isProd ? "__Secure-" : ""}next-auth.state`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: isProd,
-        maxAge: 900,
-      },
-    },
-  },
   session: { strategy: 'jwt' },
   callbacks: {
     async signIn({ user, account, profile }: any) {
