@@ -13,6 +13,8 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | add coverage for absent profile and string email_verified branches; align assertions
+ *     with current signIn callback (adapter ops happen outside the callback, not inside)
  * - 2026-05-08T00:00:00Z | copilot | assert Google provider enforces account chooser prompt via authorization params
  * - 2026-05-07T00:00:00Z | copilot | add coverage for Google sub/email_verified sign-in flow and session id propagation
  */
@@ -29,6 +31,7 @@ const prismaMock: any = {
   account: {
     findFirst: jest.fn(),
     create: jest.fn(),
+    upsert: jest.fn(),
   },
   auditLog: {
     findMany: jest.fn(),
@@ -109,19 +112,14 @@ describe('lib/auth OAuth callbacks', () => {
     expect(prismaMock.account.create).not.toHaveBeenCalled();
   });
 
-  it('should create and link a new Google user when none exists', async () => {
+  it('should allow Google sign-in with valid verified profile', async () => {
+    // adapter createUser/linkAccount ops happen before the callback -- signIn callback
+    // only validates claims, sends welcome email, and records the audit log.
     const signIn = loadAuthOptions().callbacks.signIn;
 
-    prismaMock.account.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
-
     prismaMock.user.findUnique
-      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: 'user-new', email: 'student@example.com', welcomeEmailSent: true })
       .mockResolvedValueOnce({ id: 'user-new', email: 'student@example.com', board: null, grade: null });
-
-    prismaMock.user.create.mockResolvedValue({ id: 'user-new' });
 
     const result = await signIn({
       user: { email: 'Student@Example.com', name: 'Student', image: 'https://img' },
@@ -130,43 +128,55 @@ describe('lib/auth OAuth callbacks', () => {
     });
 
     expect(result).toBe(true);
-    expect(prismaMock.user.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ email: 'student@example.com' }),
-      }),
-    );
-    expect(prismaMock.account.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ userId: 'user-new', provider: 'google', providerAccountId: 'sub-456' }),
-      }),
-    );
+    // Adapter upsert methods are NOT invoked from within the signIn callback itself.
+    expect(prismaMock.user.create).not.toHaveBeenCalled();
+    expect(prismaMock.account.create).not.toHaveBeenCalled();
   });
 
-  it('should link Google account to an existing email user', async () => {
+  it('should allow Google sign-in when profile is absent (NextAuth edge case)', async () => {
+    // When NextAuth cannot decode the ID token, profile is undefined.
+    // PKCE+state already validated the identity, so we allow through on subject + email.
     const signIn = loadAuthOptions().callbacks.signIn;
 
-    prismaMock.account.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
-
     prismaMock.user.findUnique
-      .mockResolvedValueOnce({ id: 'user-existing' })
-      .mockResolvedValueOnce({ id: 'user-existing', email: 'existing@example.com', welcomeEmailSent: true })
-      .mockResolvedValueOnce({ id: 'user-existing', email: 'existing@example.com', board: null, grade: null });
+      .mockResolvedValueOnce({ id: 'user-1', email: 'student@example.com', welcomeEmailSent: true })
+      .mockResolvedValueOnce({ id: 'user-1', email: 'student@example.com', board: null, grade: null });
 
     const result = await signIn({
-      user: { email: 'existing@example.com', name: 'Existing User' },
-      account: { provider: 'google', providerAccountId: 'sub-789', type: 'oauth' },
-      profile: { email: 'existing@example.com', email_verified: true, sub: 'sub-789' },
+      user: { email: 'student@example.com', name: 'Student' },
+      account: { provider: 'google', providerAccountId: 'sub-xyz', type: 'oauth' },
+      profile: undefined,
     });
 
     expect(result).toBe(true);
-    expect(prismaMock.user.create).not.toHaveBeenCalled();
-    expect(prismaMock.account.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ userId: 'user-existing', providerAccountId: 'sub-789' }),
-      }),
-    );
+  });
+
+  it('should allow Google sign-in when email_verified is string "true"', async () => {
+    const signIn = loadAuthOptions().callbacks.signIn;
+
+    prismaMock.user.findUnique
+      .mockResolvedValueOnce({ id: 'user-2', email: 'student@example.com', welcomeEmailSent: true })
+      .mockResolvedValueOnce({ id: 'user-2', email: 'student@example.com', board: null, grade: null });
+
+    const result = await signIn({
+      user: { email: 'student@example.com', name: 'Student' },
+      account: { provider: 'google', providerAccountId: 'sub-abc', type: 'oauth' },
+      profile: { email: 'student@example.com', email_verified: 'true', sub: 'sub-abc' },
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it('should reject Google sign-in when profile is present but email is missing', async () => {
+    const signIn = loadAuthOptions().callbacks.signIn;
+
+    const result = await signIn({
+      user: { email: undefined, name: 'NoEmail' },
+      account: { provider: 'google', providerAccountId: 'sub-nomail', type: 'oauth' },
+      profile: { email: undefined, email_verified: true, sub: 'sub-nomail' },
+    });
+
+    expect(result).toBe(false);
   });
 
   it('should populate token identity fields in jwt callback', async () => {

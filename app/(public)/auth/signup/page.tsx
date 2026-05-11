@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render the sign-up / sign-in entry page with Google OAuth and email magic-link options.
+ *   Authenticated users are redirected to onboarding immediately.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/app/public/auth/signup/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | add Google error banner and retry UI for ?error= callback failures
+ */
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
@@ -5,6 +21,8 @@ import { signIn, useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Logo from '@/components/Logo'
 import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier'
+
+const GOOGLE_ERROR_CODES = new Set(['Callback', 'OAuthCallback', 'OAuthSignin', 'OAuthAccountNotLinked'])
 
 function AuthContent() {
   const { data: session, status } = useSession()
@@ -18,6 +36,9 @@ function AuthContent() {
       router.replace('/student/onboarding')
     }
   }, [status, session, router])
+
+  const authError = searchParams.get('error') ?? ''
+  const googleFailed = GOOGLE_ERROR_CODES.has(authError)
 
   const [email, setEmail] = useState(
     searchParams.get('email') ||
@@ -89,6 +110,13 @@ function AuthContent() {
           </div>
         </div>
 
+        {/* Google sign-in error banner */}
+        {googleFailed && (
+          <div className="rounded-xl bg-[#FCEBEB] border border-[#E24B4A]/20 px-4 py-3 text-sm text-[#E24B4A]">
+            Google sign-in did not complete. Please try again -- if the problem continues, clear your browser cookies.
+          </div>
+        )}
+
         {/* Google Sign In */}
         <button
           onClick={() => signIn('google', { callbackUrl: '/student/onboarding' })}
@@ -96,7 +124,8 @@ function AuthContent() {
                      border border-gray-300 dark:border-gray-600 rounded-xl
                      bg-white dark:bg-gray-900 hover:bg-gray-50
                      dark:hover:bg-gray-800 transition-colors
-                     text-gray-700 dark:text-gray-200 font-medium text-sm"
+                     text-gray-700 dark:text-gray-200 font-medium text-sm
+                     min-h-[44px]"
         >
           <svg width="18" height="18" viewBox="0 0 18 18">
             <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/>
@@ -104,7 +133,7 @@ function AuthContent() {
             <path fill="#FBBC05" d="M4.51 10.52A4.8 4.8 0 014.26 9c0-.53.09-1.04.25-1.52V5.41H1.83A8 8 0 001 9c0 1.29.31 2.51.83 3.59l2.68-2.07z"/>
             <path fill="#EA4335" d="M8.98 3.58c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.51 7.48C5.14 5.6 6.9 3.58 8.98 3.58z"/>
           </svg>
-          Continue with Google
+          {googleFailed ? 'Retry with Google' : 'Continue with Google'}
         </button>
 
         {/* Divider */}
