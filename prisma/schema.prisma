@@ -2085,6 +2085,19 @@ model FreeTierUsage {
   @@index([studentId, periodStart])
 }
 
+model PracticeMoreUsage {
+  id          String   @id @default(cuid())
+  studentId   String
+  /// UTC date of when "practice more" was last used (date-only).
+  usageDate   DateTime
+  /// Number of times "practice more" was used today.
+  usageCount  Int      @default(1)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId, usageDate])
+  @@index([studentId, usageDate])
+}
+
 model Misconception {
   id                String                 @id @default(cuid())
   subjectId         String

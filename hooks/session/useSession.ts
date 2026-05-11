@@ -10,6 +10,7 @@
  *                         (replaces hooks/useStructuredSession.ts)
  * - 2026-05-08 | copilot | add practice hydration status/trigger methods for pending PRACTICE fallback UI
  * - 2026-05-09T00:00:00Z | copilot | submitTest now accepts testId and forwards it to API for deterministic grading
+ * - 2026-05-11T13:05:00Z | copilot | add practiceMore callback for once-per-day fresh question generation
  */
 
 import { useState, useCallback } from 'react';
@@ -21,10 +22,12 @@ import {
   submitTestAction,
   getPracticeHydrationStatusAction,
   triggerPracticeHydrationAction,
+  practiceMoreAction,
   type SessionActionResult,
   type SubmitActionResult,
   type PracticeHydrationStatusResult,
   type PracticeHydrationTriggerResult,
+  type PracticeMoreActionResult,
 } from '@/lib/session/sessionActions';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
 import type { PhaseContentData } from '@/lib/session/getPhaseContent';
@@ -167,6 +170,32 @@ export function useSession() {
     [state.session?.sessionId],
   );
 
+  const practiceMore = useCallback(
+    async (): Promise<PracticeMoreActionResult | null> => {
+      const sessionId = state.session?.sessionId;
+      if (!sessionId) return null;
+      setState((s) => ({ ...s, submitting: true, error: null }));
+      try {
+        const result = await practiceMoreAction(sessionId);
+        // Update content with fresh questions
+        setState((s) => ({
+          ...s,
+          content: s.content ? { ...s.content, questions: result.questions } : null,
+          submitting: false,
+        }));
+        return result;
+      } catch (err) {
+        setState((s) => ({
+          ...s,
+          submitting: false,
+          error: err instanceof Error ? err.message : 'Failed to fetch fresh questions',
+        }));
+        return null;
+      }
+    },
+    [state.session?.sessionId],
+  );
+
   return {
     ...state,
     startSession,
@@ -176,5 +205,6 @@ export function useSession() {
     submitTest,
     getPracticeHydrationStatus,
     triggerPracticeHydration,
+    practiceMore,
   };
 }

@@ -83,11 +83,14 @@ export function SessionContainer({
     submitTest,
     getPracticeHydrationStatus,
     triggerPracticeHydration,
+    practiceMore,
   } = useSession();
 
   const [phaseReadyToProceed, setPhaseReadyToProceed] = React.useState(false);
   const [testAllAnswered, setTestAllAnswered] = React.useState(false);
   const [testResultSet, setTestResultSet] = React.useState(false);
+  const [practiceMoreLoading, setPracticeMoreLoading] = React.useState(false);
+  const [practiceMoreError, setPracticeMoreError] = React.useState<string | null>(null);
   const [practicePendingStatus, setPracticePendingStatus] = React.useState<{
     isChecking: boolean;
     isGenerating: boolean;
@@ -279,6 +282,27 @@ export function SessionContainer({
     setPracticePollingSeed((v) => v + 1);
   }, [triggerPracticeHydration]);
 
+  const handlePracticeMore = useCallback(async () => {
+    setPracticeMoreLoading(true);
+    setPracticeMoreError(null);
+    try {
+      const result = await practiceMore();
+      if (!result) {
+        setPracticeMoreError('Could not fetch fresh questions. Please try again.');
+        setPracticeMoreLoading(false);
+        return;
+      }
+
+      // Reset phase state for fresh questions
+      setPhaseReadyToProceed(false);
+      setPracticeMoreLoading(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch fresh questions';
+      setPracticeMoreError(msg);
+      setPracticeMoreLoading(false);
+    }
+  }, [practiceMore]);
+
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading || (!session && !error)) {
     return (
@@ -413,7 +437,10 @@ export function SessionContainer({
     submitting,
     onReadyToProceed,
     onTestStateChange,
-    onRegisterTestSubmit
+    onRegisterTestSubmit,
+    handlePracticeMore,
+    practiceMoreLoading,
+    practiceMoreError
   );
 
   const footerLabel =
@@ -457,7 +484,10 @@ function buildPhaseProps(
   submitting: boolean,
   onReadyToProceed: (ready: boolean) => void,
   onTestStateChange: (allAnswered: boolean, resultSet: boolean) => void,
-  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void
+  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void,
+  handlePracticeMore?: (() => Promise<void>) | null,
+  practiceMoreLoading?: boolean,
+  practiceMoreError?: string | null
 ): Record<string, unknown> {
   switch (phase) {
     case 'OVERVIEW':
@@ -482,6 +512,9 @@ function buildPhaseProps(
         onSubmit: submitPractice,
         onReadyToProceed,
         submitting,
+        onPracticeMore: handlePracticeMore,
+        practiceMoreLoading,
+        practiceMoreError,
       };
     case 'TEST':
       return {
