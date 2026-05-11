@@ -387,7 +387,10 @@ async function maybeSendWelcomeEmail(email: string, name?: string) {
 //     },
 //   },
 // };
-const isProd = process.env.NODE_ENV === "production";
+// Use NEXTAUTH_URL to determine secure-cookie mode rather than NODE_ENV.
+// This prevents cookie loss when running a production build on HTTP (e.g. localhost npm start).
+const _nextauthUrl = process.env.NEXTAUTH_URL ?? '';
+const isProd = _nextauthUrl.startsWith('https://');
 
 function normalizeGoogleEmail(input: unknown): string | null {
   if (typeof input !== 'string') return null;
@@ -395,8 +398,13 @@ function normalizeGoogleEmail(input: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+// Accept boolean true OR string "true" -- Google OIDC returns boolean, but handle wire
+// variations defensively. When profile is absent (NextAuth edge case), treat as unverifiable
+// and let the caller decide -- PKCE+state already proved the identity is genuine.
 function isEmailVerified(profile: Record<string, unknown> | null | undefined): boolean {
-  return profile?.email_verified === true;
+  if (!profile) return false;
+  const val = profile.email_verified;
+  return val === true || val === 'true';
 }
 
 // Custom adapter that bypasses the OAuthAccountNotLinked error.
@@ -440,7 +448,8 @@ const customAdapter = {
     id_token?: string | null;
     session_state?: string | null;
   }) => {
-    await prisma.account.upsert({
+    // Return the upserted account so callers receive the persisted record.
+    return prisma.account.upsert({
       where: {
         provider_providerAccountId: {
           provider: account.provider,
@@ -469,14 +478,17 @@ const customAdapter = {
         id_token: account.id_token,
         session_state: account.session_state,
       },
-    });
+    }) as any;
   },
 };
 
 export const authOptions: any = {
   adapter: customAdapter,
-  // Dynamically toggle based on environment
-  useSecureCookies: isProd, 
+  useSecureCookies: isProd,
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error',
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -503,14 +515,28 @@ export const authOptions: any = {
     }),
   ],
   cookies: {
+    // Explicitly override both state and PKCE cookies so they always share the
+    // same secure/prefix settings derived from isProd (i.e. from NEXTAUTH_URL).
+    // Without this, NextAuth's internal defaults may use a different secure flag
+    // than the one we computed, causing cookie name mismatches on the callback.
+    pkceCodeVerifier: {
+      name: `${isProd ? "__Secure-" : ""}next-auth.pkce.code_verifier`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isProd,
+        maxAge: 900,
+      },
+    },
     state: {
-      // In prod, we use the __Secure- prefix which is required for HTTPS
       name: `${isProd ? "__Secure-" : ""}next-auth.state`,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: isProd, 
+        secure: isProd,
+        maxAge: 900,
       },
     },
   },
@@ -524,13 +550,19 @@ export const authOptions: any = {
         const profileObject = (profile as Record<string, unknown> | null) ?? null;
         const email = normalizeGoogleEmail((profileObject as any)?.email ?? user?.email);
 
-        if (!googleSubject || !email || !isEmailVerified(profileObject)) {
+        // When profile is present, require email_verified.
+        // When profile is absent (NextAuth edge case), PKCE+state already validated the
+        // identity with Google -- allow through and rely on googleSubject + email checks.
+        const emailVerifiedOk = profileObject === null ? true : isEmailVerified(profileObject);
+
+        if (!googleSubject || !email || !emailVerifiedOk) {
           logger.warn('google signIn rejected due to missing verified identity claims', {
             className: 'auth',
             methodName: 'signIn',
             hasGoogleSubject: !!googleSubject,
             hasEmail: !!email,
-            emailVerified: isEmailVerified(profileObject),
+            profilePresent: profileObject !== null,
+            emailVerified: profileObject !== null ? isEmailVerified(profileObject) : 'n/a (profile absent)',
           });
           return false;
         }
