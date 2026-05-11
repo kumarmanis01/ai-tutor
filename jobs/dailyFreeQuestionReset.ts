@@ -14,6 +14,7 @@
  * - 2025-01-XX | copilot | created daily free question reset job
  * - 2026-05-07T00:00:00Z | copilot | add minute-level UTC scheduler config for exact reset timing
  * - 2026-05-07T00:00:00Z | copilot | set default scheduler to UTC+5 midnight equivalent
+ * - 2026-05-11T00:00:00Z | copilot | also reset todayStudyMinutes for all users (daily study duration enforcement)
  */
 
 import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock';
@@ -96,6 +97,18 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
       },
       data: {
         todaysFreeQuestionsCount: DAILY_FREE_QUESTION_LIMIT,
+      },
+    });
+
+    // Reset daily study minutes for ALL users (both free and premium).
+    // This is separate from the question reset above because study-time limits
+    // apply to every tier; only the cap differs (30 min free, 60 min premium).
+    await prisma.user.updateMany({
+      where: {
+        todayStudyMinutes: { gt: 0 },
+      },
+      data: {
+        todayStudyMinutes: 0,
       },
     });
 

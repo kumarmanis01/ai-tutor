@@ -13,6 +13,7 @@
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
 /// - 2026-05-04T00:00:00Z | copilot | add ParentStudent.relationship and ConsentScope.COMMUNITY_FEATURES for parent registration/consent completeness
 /// - 2026-05-09T00:00:00Z | staff-engineer | add NotificationAudit, NotificationChannel/Severity/EventType enums, escalationStatus on StudentEngagementStats
+/// - 2026-05-11T00:00:00Z | copilot | add todayStudyMinutes and lastStudySessionDate for daily study duration limits (30min free / 60min paid)
 generator client {
   provider = "prisma-client-js"
 }
@@ -69,6 +70,12 @@ model User {
   todaysFreeQuestionsCount Int                      @default(5)
   subscriptionStatus       String                   @default("free")
   subscriptionExpiry       DateTime?
+  /// Total study minutes accumulated today for daily duration enforcement.
+  /// Resets to 0 nightly via dailyStudyReset job. Free tier cap: 30 min; premium: 60 min.
+  todayStudyMinutes        Int                      @default(0)
+  /// UTC date of the last session that contributed to todayStudyMinutes.
+  /// Used by the session-complete handler to detect a day boundary reset.
+  lastStudySessionDate     DateTime?
   status                   String?
   createdAt                DateTime                 @default(now())
   accounts                 Account[]

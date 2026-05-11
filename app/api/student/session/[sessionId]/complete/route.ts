@@ -18,6 +18,7 @@
  *   via bridge so progress page session history can display session scores
  * - 2026-05-10 | staff-engineer | wire session-complete notifications: student email/
  *   WhatsApp celebration + parent email/WhatsApp; fire-and-forget after response build
+ * - 2026-05-11T00:00:00Z | copilot | record daily study time and return dailyStudyLimit in response
  */
 
 import { NextResponse } from 'next/server'
@@ -31,6 +32,7 @@ import { logger } from '@/lib/logger'
 import { notifyStudentOnSessionComplete } from '@/lib/notifications/studentNotify'
 import { notifyParent, DEFAULT_DASHBOARD_URL } from '@/lib/notifications/parentNotify'
 import { PARENT_NOTIF_EVENTS } from '@/lib/constants/mail'
+import { updateDailyStudyTime, checkDailyStudyLimit } from '@/lib/student/dailyStudyLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -143,7 +145,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     if (totalQuestions >= 5) {
       const streakResult = await updateStreak(userId)
       currentStreak = streakResult?.currentStreak ?? 0
-      // AC-01 (F-STU-031): streak maintenance daily multiplier -- bonus XP when streak advances.
+    // AC-01 (F-STU-031): streak maintenance daily multiplier -- bonus XP when streak advances.
       if (streakResult?.streakIncremented) {
         const streakBonusXP = Math.round(xpEarned * 0.1)
         const streakXpResult = await awardXP({
@@ -162,6 +164,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         }
       }
     }
+
+    // Record session duration toward the user's daily study budget.
+    // Fire-and-forget: never block the response if accounting fails.
+    updateDailyStudyTime(userId, sessionDurationMinutes).catch((err) =>
+      logger.warn('StudentSessionCompleteAPI: daily study time update failed', {
+        event: 'daily_study_time_error',
+        context: { userId, sessionId, sessionDurationMinutes, error: String(err) },
+      }),
+    )
+
+    // Fetch updated daily limit so the client can show remaining study time.
+    const dailyStudyLimitStatus = await checkDailyStudyLimit(userId)
 
     // AC-03 (F-STU-015 MUST): AI-generated personalised closing insight, not a template.
     const aiInsight = await buildSessionInsight({
@@ -271,6 +285,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         sessionDurationMinutes,
         correctAnswers,
         totalQuestions,
+        dailyStudyLimit: {
+          limitMinutes: dailyStudyLimitStatus.limitMinutes,
+          usedMinutes: dailyStudyLimitStatus.usedMinutes,
+          remainingMinutes: dailyStudyLimitStatus.remainingMinutes,
+          resetAt: dailyStudyLimitStatus.resetAt.toISOString(),
+          tier: dailyStudyLimitStatus.tier,
+        },
       },
       { status: 200 },
     )

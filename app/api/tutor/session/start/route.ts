@@ -1,9 +1,26 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST /api/tutor/session/start — create a new AI tutor learning session after
+ *   checking rollout eligibility, diagnostic gate, monthly free-tier cap, and
+ *   daily study duration limit.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/tutor/session/start/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-11T00:00:00Z | copilot | add daily study duration limit gate (30 min free / 60 min premium)
+ */
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { logger } from '@/lib/logger'
 import { formatErrorForResponse } from '@/lib/errorResponse'
 import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
+import { checkDailyStudyLimit } from '@/lib/student/dailyStudyLimit'
 import { isInAITutorRollout } from '@/lib/features/rollout'
 import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard'
 import { prisma } from '@/lib/prisma'
@@ -85,7 +102,7 @@ export async function POST(req: Request) {
       return res
     }
 
-    // Free tier enforcement -- never throws.
+    // Free tier monthly session cap enforcement -- never throws.
     const freeTierUsage = await checkFreeTierCap(userId)
     if (!freeTierUsage.allowed) {
       res = NextResponse.json(
@@ -93,6 +110,28 @@ export async function POST(req: Request) {
           error: 'Free tier session cap reached.',
           code: 'SESSION_CAP_REACHED',
           freeTierUsage,
+        },
+        { status: 402 },
+      )
+      logger.logAPI(req, res, { className: 'TutorSessionStartAPI', methodName: 'POST' }, start)
+      return res
+    }
+
+    // Daily study duration enforcement -- never throws.
+    // Free users: 30 min/day. Premium users: 60 min/day. Resets at UTC midnight.
+    const dailyStudyLimit = await checkDailyStudyLimit(userId)
+    if (!dailyStudyLimit.allowed) {
+      res = NextResponse.json(
+        {
+          error: `You have reached your daily study limit of ${dailyStudyLimit.limitMinutes} minutes. Please come back tomorrow to continue learning.`,
+          code: 'DAILY_STUDY_LIMIT_REACHED',
+          dailyStudyLimit: {
+            limitMinutes: dailyStudyLimit.limitMinutes,
+            usedMinutes: dailyStudyLimit.usedMinutes,
+            remainingMinutes: dailyStudyLimit.remainingMinutes,
+            resetAt: dailyStudyLimit.resetAt.toISOString(),
+            tier: dailyStudyLimit.tier,
+          },
         },
         { status: 402 },
       )
@@ -185,6 +224,13 @@ export async function POST(req: Request) {
       resumeContext,
       prereqs,
       freeTierUsage,
+      dailyStudyLimit: {
+        limitMinutes: dailyStudyLimit.limitMinutes,
+        usedMinutes: dailyStudyLimit.usedMinutes,
+        remainingMinutes: dailyStudyLimit.remainingMinutes,
+        resetAt: dailyStudyLimit.resetAt.toISOString(),
+        tier: dailyStudyLimit.tier,
+      },
     })
 
     // AC-04: session must load within 3 s on 4G -- log a warning when the API
