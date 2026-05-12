@@ -56,6 +56,7 @@ function ResultsScreen({
   practiceMoreError,
   showUpgradeFlow,
   onDismissUpgrade,
+  onShowUpgradeFlow,
 }: {
   result: SubmitActionResult;
   onPracticeMore?: () => Promise<void>;
@@ -63,6 +64,7 @@ function ResultsScreen({
   practiceMoreError?: string | null;
   showUpgradeFlow?: boolean;
   onDismissUpgrade?: () => void;
+  onShowUpgradeFlow?: () => void;
 }) {
   const pct = result.percentage;
   const [isChecking, setIsChecking] = useState(false);
@@ -75,7 +77,7 @@ function ResultsScreen({
       setIsChecking(false);
 
       if (!isPremium) {
-        onDismissUpgrade?.();
+        onShowUpgradeFlow?.();
         return;
       }
 
@@ -84,7 +86,7 @@ function ResultsScreen({
     } catch {
       setIsChecking(false);
     }
-  }, [onPracticeMore, onDismissUpgrade]);
+  }, [onPracticeMore, onShowUpgradeFlow]);
 
   if (showUpgradeFlow) {
     return (
@@ -286,6 +288,7 @@ export function PracticePhase({
         practiceMoreError={practiceMoreError}
         showUpgradeFlow={showUpgradeFlow}
         onDismissUpgrade={() => setShowUpgradeFlow(false)}
+        onShowUpgradeFlow={() => setShowUpgradeFlow(true)}
       />
     );
   }
