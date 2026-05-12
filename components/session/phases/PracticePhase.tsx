@@ -4,6 +4,7 @@
  * - Phase 3: PRACTICE -- Question-by-question MCQ with instant feedback.
  * - Uses usePracticeQuestions hook and normaliseChoices from sessionUtils.
  * - TutorTipPanel shown above questions.
+ * - Results screen includes "Practice more" button for paid users to fetch fresh questions once-per-day.
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/session/SessionPhases.spec.tsx
@@ -19,6 +20,7 @@
  * - 2026-05-09T00:00:00Z | copilot | align local feedback grading with submit API normalization for key/text answers
  * - 2026-05-09T00:00:00Z | copilot | revert UI suppression workaround; rely on API flow to supply correctAnswer
  * - 2026-05-09T00:00:00Z | copilot | replace inline-style score bar with semantic progress element (lint compliance)
+ * - 2026-05-11T13:15:00Z | copilot | add "Practice more" button in results screen for once-per-day fresh questions (paid only)
  */
 
 import React, { useState, useCallback } from 'react';
@@ -36,11 +38,24 @@ interface PracticePhaseProps {
   ) => Promise<SubmitActionResult | null>;
   onReadyToProceed: (ready: boolean) => void;
   submitting?: boolean;
+  onPracticeMore?: () => Promise<void>;
+  practiceMoreLoading?: boolean;
+  practiceMoreError?: string | null;
 }
 
 // ─── Results screen ───────────────────────────────────────────────────────────
 
-function ResultsScreen({ result }: { result: SubmitActionResult }) {
+function ResultsScreen({
+  result,
+  onPracticeMore,
+  practiceMoreLoading,
+  practiceMoreError,
+}: {
+  result: SubmitActionResult;
+  onPracticeMore?: () => Promise<void>;
+  practiceMoreLoading?: boolean;
+  practiceMoreError?: string | null;
+}) {
   const pct = result.percentage;
 
   return (
@@ -89,6 +104,29 @@ function ResultsScreen({ result }: { result: SubmitActionResult }) {
           </div>
         ))}
       </div>
+
+      {/* Practice more section -- premium feature */}
+      {onPracticeMore && (
+        <div className="mt-6 pt-5 border-t border-muted">
+          {practiceMoreError && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/5 border border-red-500/15 text-sm text-red-600">
+              {practiceMoreError}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onPracticeMore}
+            disabled={practiceMoreLoading}
+            aria-label="Get fresh practice questions"
+            className="w-full min-h-[44px] rounded-xl bg-[#534AB7] text-sm font-semibold text-white hover:bg-[#4338a3] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
+          >
+            {practiceMoreLoading ? 'Loading fresh questions...' : 'Practice more'}
+          </button>
+          <p className="mt-2 text-xs text-muted-foreground text-center">
+            Get fresh questions to keep learning. Available once per day.
+          </p>
+        </div>
+      )}
 
       {/* Primary CTA (Continue) is in SessionFooter */}
     </div>
@@ -153,6 +191,9 @@ export function PracticePhase({
   onSubmit,
   onReadyToProceed,
   submitting: _submitting,
+  onPracticeMore,
+  practiceMoreLoading,
+  practiceMoreError,
 }: PracticePhaseProps) {
   const questions = content.questions;
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -192,7 +233,14 @@ export function PracticePhase({
   );
 
   if (result) {
-    return <ResultsScreen result={result} />;
+    return (
+      <ResultsScreen
+        result={result}
+        onPracticeMore={onPracticeMore}
+        practiceMoreLoading={practiceMoreLoading}
+        practiceMoreError={practiceMoreError}
+      />
+    );
   }
 
   if (questions.length === 0) {

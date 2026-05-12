@@ -16,6 +16,7 @@
  * - 2026-05-07T00:30:00Z | copilot | aligned assertions with current phase implementations and interaction flows
  * - 2026-05-09T00:00:00Z | copilot | added regression coverage for practice instant feedback when correctAnswer is stored as option text
  * - 2026-05-09T00:00:00Z | copilot | remove temporary blank-correctAnswer suppression test after API flow fix
+ * - 2026-05-11T13:30:00Z | copilot | add test coverage for "practice more" button in results screen
  */
 
 import React from 'react';
@@ -259,6 +260,73 @@ describe('Session phase components', () => {
       expect(finalCall).toEqual([true, true]);
     });
     expect(screen.getByText('1 of 2 correct')).toBeTruthy();
+  });
+
+  it('shows practice more button in results for paid users', async () => {
+    jest.useFakeTimers();
+
+    const onSubmit = jest
+      .fn<(answers: { questionId: string; answer: string }[]) => Promise<SubmitActionResult | null>>()
+      .mockResolvedValue({
+      score: 0.8,
+      percentage: 80,
+      correctAnswers: 4,
+      totalAnswers: 5,
+      results: [
+        { questionId: 'q1', isCorrect: true, correctAnswer: 'a' },
+        { questionId: 'q2', isCorrect: true, correctAnswer: 'b' },
+      ],
+    });
+    const onPracticeMore = jest.fn();
+
+    render(
+      <PracticePhase
+        topicName="Introduction to Integers"
+        onReadyToProceed={jest.fn()}
+        onSubmit={onSubmit}
+        onPracticeMore={onPracticeMore}
+        practiceMoreLoading={false}
+        practiceMoreError={null}
+        content={{
+          type: 'practice',
+          questions: [
+            {
+              id: 'q1',
+              type: 'mcq',
+              prompt: 'Which is an integer?',
+              choices: ['-3', '1/2'],
+              difficulty: 'easy',
+              correctAnswer: 'a',
+            },
+            {
+              id: 'q2',
+              type: 'mcq',
+              prompt: 'Is 0 an integer?',
+              choices: ['Yes', 'No'],
+              difficulty: 'easy',
+              correctAnswer: 'a',
+            },
+          ],
+        }}
+      />,
+    );
+
+    // Complete the practice
+    fireEvent.click(screen.getByText('-3'));
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    fireEvent.click(screen.getByText('Yes'));
+
+    // Wait for results screen and find practice more button
+    await waitFor(() => expect(screen.getByText('Practice more')).toBeTruthy());
+
+    const practiceMoreButton = screen.getByText('Practice more');
+    expect(practiceMoreButton).not.toHaveAttribute('disabled');
+    expect(screen.getByText(/available once per day/i)).toBeTruthy();
+
+    fireEvent.click(practiceMoreButton);
+    expect(onPracticeMore).toHaveBeenCalled();
   });
 
   it('renders homework assignment details', () => {

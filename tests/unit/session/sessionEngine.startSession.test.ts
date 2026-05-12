@@ -48,9 +48,10 @@ jest.mock('@/lib/session/contentReadinessService', () => ({
   },
 }));
 
+const mockContentHydrationTrigger = jest.fn();
 jest.mock('@/lib/session/contentHydrationTrigger', () => ({
   contentHydrationTrigger: {
-    triggerForTopic: jest.fn(),
+    triggerForTopic: mockContentHydrationTrigger,
   },
 }));
 
