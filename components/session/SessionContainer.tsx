@@ -28,6 +28,7 @@
  * - 2026-05-08 | copilot | replace pending PRACTICE skip CTA with hydrate status + manual generate + polling refresh
  * - 2026-05-09T00:00:00Z | copilot | submit TEST answers with testId to keep backend grading aligned with displayed test version
  * - 2026-05-09T00:00:00Z | copilot | fix TEST footer gating so Continue is enabled after result is available
+ * - 2026-05-11T00:00:00Z | copilot | retry pending PRACTICE hydration checks after transient failures instead of leaving the CTA stuck disabled
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -82,11 +83,14 @@ export function SessionContainer({
     submitTest,
     getPracticeHydrationStatus,
     triggerPracticeHydration,
+    practiceMore,
   } = useSession();
 
   const [phaseReadyToProceed, setPhaseReadyToProceed] = React.useState(false);
   const [testAllAnswered, setTestAllAnswered] = React.useState(false);
   const [testResultSet, setTestResultSet] = React.useState(false);
+  const [practiceMoreLoading, setPracticeMoreLoading] = React.useState(false);
+  const [practiceMoreError, setPracticeMoreError] = React.useState<string | null>(null);
   const [practicePendingStatus, setPracticePendingStatus] = React.useState<{
     isChecking: boolean;
     isGenerating: boolean;
@@ -166,11 +170,17 @@ export function SessionContainer({
       setPracticePendingStatus((prev) => ({ ...prev, isChecking: true, errorMessage: null }));
       const status = await getPracticeHydrationStatus();
       if (!status || isCancelled) {
-        setPracticePendingStatus((prev) => ({
-          ...prev,
-          isChecking: false,
-          errorMessage: 'Unable to check question generation status right now.',
-        }));
+        // Transient failure -- keep the previous running state and schedule retry
+        if (!isCancelled) {
+          pollAttempt += 1;
+          const retryDelayMs = Math.min(15000, 2000 * 2 ** Math.min(pollAttempt, 3));
+          setPracticePendingStatus((prev) => ({
+            ...prev,
+            isChecking: false,
+            errorMessage: 'Checking status... (will retry automatically)',
+          }));
+          schedulePoll(retryDelayMs);
+        }
         return;
       }
 
@@ -271,6 +281,27 @@ export function SessionContainer({
 
     setPracticePollingSeed((v) => v + 1);
   }, [triggerPracticeHydration]);
+
+  const handlePracticeMore = useCallback(async () => {
+    setPracticeMoreLoading(true);
+    setPracticeMoreError(null);
+    try {
+      const result = await practiceMore();
+      if (!result) {
+        setPracticeMoreError('Could not fetch fresh questions. Please try again.');
+        setPracticeMoreLoading(false);
+        return;
+      }
+
+      // Reset phase state for fresh questions
+      setPhaseReadyToProceed(false);
+      setPracticeMoreLoading(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch fresh questions';
+      setPracticeMoreError(msg);
+      setPracticeMoreLoading(false);
+    }
+  }, [practiceMore]);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading || (!session && !error)) {
@@ -406,7 +437,10 @@ export function SessionContainer({
     submitting,
     onReadyToProceed,
     onTestStateChange,
-    onRegisterTestSubmit
+    onRegisterTestSubmit,
+    handlePracticeMore,
+    practiceMoreLoading,
+    practiceMoreError
   );
 
   const footerLabel =
@@ -450,7 +484,10 @@ function buildPhaseProps(
   submitting: boolean,
   onReadyToProceed: (ready: boolean) => void,
   onTestStateChange: (allAnswered: boolean, resultSet: boolean) => void,
-  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void
+  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void,
+  handlePracticeMore?: (() => Promise<void>) | null,
+  practiceMoreLoading?: boolean,
+  practiceMoreError?: string | null
 ): Record<string, unknown> {
   switch (phase) {
     case 'OVERVIEW':
@@ -475,6 +512,9 @@ function buildPhaseProps(
         onSubmit: submitPractice,
         onReadyToProceed,
         submitting,
+        onPracticeMore: handlePracticeMore,
+        practiceMoreLoading,
+        practiceMoreError,
       };
     case 'TEST':
       return {

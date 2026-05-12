@@ -9,6 +9,7 @@
  * - 2026-03-08 | claude | created for Session Architecture refactor
  * - 2026-05-08 | copilot | add practice hydration status/trigger actions for pending PRACTICE fallback
  * - 2026-05-09T00:00:00Z | copilot | submit test payload now carries testId so backend grades against the displayed test version
+ * - 2026-05-11T13:00:00Z | copilot | add practice more action for fresh question generation once-per-day
  */
 
 export interface SessionActionResult {
@@ -124,4 +125,29 @@ export async function triggerPracticeHydrationAction(
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Failed to enqueue practice hydration');
   return data as PracticeHydrationTriggerResult;
+}
+
+export interface PracticeMoreActionResult {
+  success: boolean;
+  message: string;
+  questions: {
+    id: string;
+    type: string;
+    prompt: string;
+    choices: unknown;
+    difficulty: string | null;
+    correctAnswer: string | null;
+  }[];
+  sessionId: string;
+}
+
+export async function practiceMoreAction(sessionId: string): Promise<PracticeMoreActionResult> {
+  const res = await fetch(`/api/session/${sessionId}/practice/more`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed to fetch fresh practice questions');
+  return data as PracticeMoreActionResult;
 }

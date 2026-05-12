@@ -15,6 +15,7 @@
  * - 2026-05-07T00:00:00Z | copilot | add minute-level UTC scheduler config for exact reset timing
  * - 2026-05-07T00:00:00Z | copilot | set default scheduler to UTC+5 midnight equivalent
  * - 2026-05-11T00:00:00Z | copilot | also reset todayStudyMinutes for all users (daily study duration enforcement)
+ * - 2026-05-11T13:10:00Z | copilot | clean up old PracticeMoreUsage records to reset daily "practice more" feature usage
  */
 
 import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock';
@@ -109,6 +110,16 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
       },
       data: {
         todayStudyMinutes: 0,
+      },
+    });
+
+    // Clean up old PracticeMoreUsage records (keep only today's record for fresh usage counting).
+    // This ensures the "practice more" feature resets daily for all paid users.
+    const today = new Date();
+    const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    await prisma.practiceMoreUsage.deleteMany({
+      where: {
+        usageDate: { lt: todayDate },
       },
     });
 

@@ -682,7 +682,7 @@ export default function StudentOnboardingPage() {
               <p className="mt-0.5 text-xs text-warning/80">
                 {isMinor
                   ? `Students under ${DPDP_MINOR_AGE} need a parent to approve the account. We will send a one-time code to verify.`
-                  : 'You can add a parent email or WhatsApp number now so it is ready if you ever need it later.'}
+                  : 'Adding a parent email or WhatsApp number will keep them updated on the sessions.'}
               </p>
             </div>
 
