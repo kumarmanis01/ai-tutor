@@ -1,14 +1,16 @@
 /**
- * Unit tests for isProfileComplete in lib/student/profileGuard.ts
+ * FILE OBJECTIVE:
+ * - Unit tests for isProfileComplete, enforcing the new parent channel pattern (parentEmail or parentWhatsappPhone).
  *
- * Covers:
- *  - All four academic fields present -> true
- *  - Postgres wire-format string subjects ("{english,mathematics}") -> true
- *  - null subjects (pre-migration row) -> false
- *  - empty array subjects -> false
- *  - empty Postgres string ("{}") -> false
- *  - missing board / grade / language -> false
- *  - extra fields (e.g. age, parentEmail) are ignored -- only 4 academic fields matter
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/profileGuard.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | align parent contact tests to parentWhatsappPhone pattern with legacy fallback coverage
  */
 
 import { isProfileComplete } from '@/lib/student/profileGuard'
@@ -18,12 +20,15 @@ const BASE = {
   grade: '10',
   language: 'en',
   subjects: ['mathematics', 'science', 'english'],
+  age: 14,
+  parentEmail: 'parent@example.com',
+  parentWhatsappPhone: null,
 }
 
 describe('isProfileComplete', () => {
   // ── Happy paths ──────────────────────────────────────────────────────────────
 
-  it('should return true when all four fields are filled (string[] subjects)', () => {
+  it('should return true when all required fields are present (email contact)', () => {
     expect(isProfileComplete(BASE)).toBe(true)
   })
 
@@ -43,9 +48,16 @@ describe('isProfileComplete', () => {
     expect(isProfileComplete({ ...BASE, grade: '6' })).toBe(true)
   })
 
-  it('should return true when extra fields (age, parentEmail) are present', () => {
-    // parentEmail/age are not checked by isProfileComplete
-    expect(isProfileComplete({ ...BASE, subjects: ['english'], age: 14, parentEmail: null } as any)).toBe(true)
+  it('should return true when parent contact is phone instead of email', () => {
+    expect(isProfileComplete({ ...BASE, parentEmail: null, parentWhatsappPhone: '+919876543210' })).toBe(true)
+  })
+
+  it('should return true when both parent email and phone are present', () => {
+    expect(isProfileComplete({ ...BASE, parentEmail: 'parent@example.com', parentWhatsappPhone: '+919876543210' })).toBe(true)
+  })
+
+  it('should return true with legacy whatsappPhone field when parentWhatsappPhone is absent', () => {
+    expect(isProfileComplete({ ...BASE, parentEmail: null, whatsappPhone: '+919876543210' })).toBe(true)
   })
 
   // ── Missing / empty subjects ─────────────────────────────────────────────────
@@ -110,6 +122,50 @@ describe('isProfileComplete', () => {
 
   it('should return false when language is empty string', () => {
     expect(isProfileComplete({ ...BASE, language: '' })).toBe(false)
+  })
+
+  // ── Missing or invalid age (DPDP compliance) ─────────────────────────────────
+
+  it('should return false when age is null', () => {
+    expect(isProfileComplete({ ...BASE, age: null })).toBe(false)
+  })
+
+  it('should return false when age is undefined', () => {
+    expect(isProfileComplete({ ...BASE, age: undefined })).toBe(false)
+  })
+
+  it('should return false when age is 0', () => {
+    expect(isProfileComplete({ ...BASE, age: 0 })).toBe(false)
+  })
+
+  it('should return false when age is negative', () => {
+    expect(isProfileComplete({ ...BASE, age: -1 })).toBe(false)
+  })
+
+  it('should return false when age is > 120', () => {
+    expect(isProfileComplete({ ...BASE, age: 121 })).toBe(false)
+  })
+
+  it('should return false when age is NaN', () => {
+    expect(isProfileComplete({ ...BASE, age: NaN })).toBe(false)
+  })
+
+  // ── Missing parent contact (email OR phone required) ───────────────────────────
+
+  it('should return false when both parentEmail and parentWhatsappPhone are null', () => {
+    expect(isProfileComplete({ ...BASE, parentEmail: null, parentWhatsappPhone: null })).toBe(false)
+  })
+
+  it('should return false when parentEmail is invalid (no @)', () => {
+    expect(isProfileComplete({ ...BASE, parentEmail: 'invalid-email', parentWhatsappPhone: null })).toBe(false)
+  })
+
+  it('should return false when parentWhatsappPhone is too short (< 10 digits)', () => {
+    expect(isProfileComplete({ ...BASE, parentEmail: null, parentWhatsappPhone: '9876' })).toBe(false)
+  })
+
+  it('should return false when parentEmail is whitespace-only', () => {
+    expect(isProfileComplete({ ...BASE, parentEmail: '   ', parentWhatsappPhone: null })).toBe(false)
   })
 
   // ── Nullish user object ──────────────────────────────────────────────────────

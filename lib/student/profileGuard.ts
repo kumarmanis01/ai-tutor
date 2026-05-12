@@ -75,6 +75,7 @@ export function isProfileComplete(user: {
   subjects: unknown
   age?: number | null | undefined
   parentEmail?: string | null | undefined
+  parentWhatsappPhone?: string | null | undefined
   whatsappPhone?: string | null | undefined
 }): boolean {
   if (!user) return false
@@ -105,7 +106,8 @@ export function isProfileComplete(user: {
 
   // At least one parent contact channel required (email OR WhatsApp)
   const hasParentEmail = !!(user.parentEmail && String(user.parentEmail).trim().includes('@'))
-  const hasParentPhone = !!(user.whatsappPhone && String(user.whatsappPhone).replace(/\D/g, '').length >= 10)
+  const resolvedParentWhatsapp = user.parentWhatsappPhone ?? user.whatsappPhone
+  const hasParentPhone = !!(resolvedParentWhatsapp && String(resolvedParentWhatsapp).replace(/\D/g, '').length >= 10)
 
   return hasParentEmail || hasParentPhone
 }
