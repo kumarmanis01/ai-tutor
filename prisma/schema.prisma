@@ -24,6 +24,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AccountStatus {
+  pending_onboarding
+  active
+  pending_parent_verification
+  suspended
+  deletion_pending
+}
+
 model User {
   id                         String        @id @default(cuid())
   name                       String?
@@ -2294,13 +2302,6 @@ enum UserStatus {
   suspended
 }
 
-enum AccountStatus {
-  pending_onboarding
-  active
-  pending_parent_verification
-  suspended
-  deletion_pending
-}
 
 enum UserRole {
   user
