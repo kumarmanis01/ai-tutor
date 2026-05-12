@@ -17,11 +17,17 @@ describe('Analytics job integration — suggestions + audit idempotency', () => 
     // In-memory mock DB implementation used by the job via global.__TEST_PRISMA__
     const createdSuggestions: any[] = []
     const mockDb: any = {
-      analyticsSignal: {
+      analyticsEvent: {
         findMany: jest.fn().mockImplementation(async () => {
           // Always return a single new signal to be processed
           return [
-            { id: 'sig-1', type: 'LOW_COMPLETION', courseId: 'course-1', targetId: 'lesson-1', metadata: {}, createdAt: new Date().toISOString() }
+            {
+              id: 'sig-1',
+              eventType: 'signal.low_completion_rate',
+              courseId: 'course-1',
+              metadata: { type: 'LOW_COMPLETION', targetId: 'lesson-1' },
+              createdAt: new Date().toISOString(),
+            }
           ]
         })
       },

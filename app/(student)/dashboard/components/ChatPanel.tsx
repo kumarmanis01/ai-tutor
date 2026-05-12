@@ -14,7 +14,8 @@
 import { logger } from '@/lib/logger';
 import React, { useState, useEffect, useRef } from "react";
 import { Speech } from '@/lib/speech';
-import analyticsClient from '@/lib/analyticsClient';
+import analyticsClient from '@/lib/analytics/client';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 interface ChatMessage {
   id: string;
@@ -41,7 +42,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
     try {
       messages.forEach((m) => {
         if (m.from === 'ai' && m.suggestions?.length) {
-          try { analyticsClient.trackEvent('suggestion.shown', { messageId: m.id, count: m.suggestions.length }); } catch {}
+          try {
+            analyticsClient.trackEvent({
+              eventType: ANALYTICS_EVENTS.STUDENT.SUGGESTION_SHOWN,
+              metadata: { messageId: m.id, count: m.suggestions.length },
+            });
+          } catch {}
         }
       });
     } catch {}
@@ -115,7 +121,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
                       <button
                         key={i}
                         onClick={() => {
-                          try { analyticsClient.trackEvent('suggestion.clicked', { suggestion: s }); } catch {}
+                          try {
+                            analyticsClient.trackEvent({
+                              eventType: ANALYTICS_EVENTS.STUDENT.SUGGESTION_CLICKED,
+                              metadata: { suggestion: s },
+                            });
+                          } catch {}
                           try { window.dispatchEvent(new CustomEvent('chatSuggestionPicked', { detail: { suggestion: s } })); } catch {}
                         }}
                         className="px-2.5 py-1 lg:px-3 lg:py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs lg:text-sm active:scale-95 transition-all"

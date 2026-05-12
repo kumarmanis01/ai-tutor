@@ -35,33 +35,48 @@ describe('Phase 11 — Job-style suggestion processing idempotency', () => {
     // Clean slate
     await prisma.contentSuggestion.deleteMany().catch(() => {})
     await prisma.auditLog.deleteMany().catch(() => {})
-    await prisma.analyticsSignal.deleteMany().catch(() => {})
+    await prisma.analyticsEvent.deleteMany({ where: { eventType: { startsWith: 'signal.' } } }).catch(() => {})
   })
 
   afterAll(async () => {
     if (SKIP) return
     await prisma.contentSuggestion.deleteMany().catch(() => {})
     await prisma.auditLog.deleteMany().catch(() => {})
-    await prisma.analyticsSignal.deleteMany().catch(() => {})
+    await prisma.analyticsEvent.deleteMany({ where: { eventType: { startsWith: 'signal.' } } }).catch(() => {})
     await prisma.$disconnect()
   })
 
   it('processes all analytics signals into suggestions exactly once and audits creation', async () => {
     if (SKIP) return
 
-    // 1) Seed N analytics signals (use DB enum values)
-    await prisma.analyticsSignal.create({ data: { courseId: 'c1', type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', metadata: { completionRate: 0.1 }, createdAt: new Date() } })
-    await prisma.analyticsSignal.create({ data: { courseId: 'c2', type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', metadata: { completionRate: 0.05 }, createdAt: new Date() } })
+    // 1) Seed N analytics signal events
+    await prisma.analyticsEvent.create({
+      data: {
+        courseId: 'c1',
+        eventType: 'signal.low_completion_rate',
+        metadata: { type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', completionRate: 0.1 },
+        createdAt: new Date(),
+      },
+    })
+    await prisma.analyticsEvent.create({
+      data: {
+        courseId: 'c2',
+        eventType: 'signal.low_completion_rate',
+        metadata: { type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', completionRate: 0.05 },
+        createdAt: new Date(),
+      },
+    })
 
     // Helper: run signal -> suggestion processing over all signals in DB
     async function generateSuggestionsForAllSignals() {
-      const signals = await prisma.analyticsSignal.findMany()
+      const signals = await prisma.analyticsEvent.findMany({ where: { eventType: { startsWith: 'signal.' } } })
       for (const sig of signals) {
         // Translate DB enum signal types to Insight Engine expected types where needed
         // mapping used here: LOW_COMPLETION_RATE -> LOW_COMPLETION
+        const signalType = (sig.metadata as any)?.type
         const engineSignal: any = {
           id: sig.id,
-          type: sig.type === 'LOW_COMPLETION_RATE' ? 'LOW_COMPLETION' : (sig.type as any),
+          type: signalType === 'LOW_COMPLETION_RATE' ? 'LOW_COMPLETION' : (signalType as any),
           courseId: sig.courseId,
           targetId: (sig.metadata && (sig.metadata as any).lessonId) || `lesson-${sig.id}`,
           metadata: sig.metadata ?? {},

@@ -1,12 +1,34 @@
+/**
+ * FILE OBJECTIVE:
+ * - Client-side analytics emitter for student-facing events.
+ * - Buffers events and posts batches to /api/analytics/event.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/analytics/client.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | migrate to canonical analytics registry and batch event endpoint
+ */
+
+import {
+  ANALYTICS_EVENTS,
+  STUDENT_ANALYTICS_EVENT_SET,
+  type StudentAnalyticsEvent,
+} from '@/lib/analytics/events'
+
 type AnalyticsEvent = {
-  eventType: 'lesson_viewed' | 'lesson_completed' | 'quiz_attempted' | 'quiz_passed'
+  eventType: StudentAnalyticsEvent
   userId?: string | null
   courseId?: string | null
   lessonIdx?: number | null
-  metadata?: any
+  metadata?: Record<string, unknown>
 }
 
-const ALLOWED = new Set(['lesson_viewed', 'lesson_completed', 'quiz_attempted', 'quiz_passed'])
+const ALLOWED = STUDENT_ANALYTICS_EVENT_SET
 
 let queue: AnalyticsEvent[] = []
 let timer: ReturnType<typeof setTimeout> | null = null
@@ -83,25 +105,67 @@ export function trackEvent(event: AnalyticsEvent) {
   }
 }
 
-export function trackLessonViewed(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: any }) {
-  trackEvent({ eventType: 'lesson_viewed', userId: opts.userId ?? null, courseId: opts.courseId ?? null, lessonIdx: opts.lessonIdx ?? null, metadata: opts.metadata })
+export function trackSessionStart(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: Record<string, unknown> }) {
+  trackEvent({
+    eventType: ANALYTICS_EVENTS.STUDENT.SESSION_START,
+    userId: opts.userId ?? null,
+    courseId: opts.courseId ?? null,
+    lessonIdx: opts.lessonIdx ?? null,
+    metadata: opts.metadata,
+  })
 }
 
-export function trackLessonCompleted(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: any }) {
-  trackEvent({ eventType: 'lesson_completed', userId: opts.userId ?? null, courseId: opts.courseId ?? null, lessonIdx: opts.lessonIdx ?? null, metadata: opts.metadata })
+export function trackLessonViewed(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: Record<string, unknown> }) {
+  trackEvent({
+    eventType: ANALYTICS_EVENTS.STUDENT.LESSON_VIEWED,
+    userId: opts.userId ?? null,
+    courseId: opts.courseId ?? null,
+    lessonIdx: opts.lessonIdx ?? null,
+    metadata: opts.metadata,
+  })
 }
 
-export function trackQuizAttempted(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: any }) {
-  trackEvent({ eventType: 'quiz_attempted', userId: opts.userId ?? null, courseId: opts.courseId ?? null, lessonIdx: opts.lessonIdx ?? null, metadata: opts.metadata })
+export function trackLessonCompleted(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: Record<string, unknown> }) {
+  trackEvent({
+    eventType: ANALYTICS_EVENTS.STUDENT.LESSON_COMPLETED,
+    userId: opts.userId ?? null,
+    courseId: opts.courseId ?? null,
+    lessonIdx: opts.lessonIdx ?? null,
+    metadata: opts.metadata,
+  })
 }
 
-export function trackQuizPassed(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: any }) {
-  trackEvent({ eventType: 'quiz_passed', userId: opts.userId ?? null, courseId: opts.courseId ?? null, lessonIdx: opts.lessonIdx ?? null, metadata: opts.metadata })
+export function trackQuizAttempted(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: Record<string, unknown> }) {
+  trackEvent({
+    eventType: ANALYTICS_EVENTS.STUDENT.QUIZ_ATTEMPTED,
+    userId: opts.userId ?? null,
+    courseId: opts.courseId ?? null,
+    lessonIdx: opts.lessonIdx ?? null,
+    metadata: opts.metadata,
+  })
+}
+
+export function trackQuizPassed(opts: { userId?: string; courseId?: string; lessonIdx?: number; metadata?: Record<string, unknown> }) {
+  trackEvent({
+    eventType: ANALYTICS_EVENTS.STUDENT.QUIZ_PASSED,
+    userId: opts.userId ?? null,
+    courseId: opts.courseId ?? null,
+    lessonIdx: opts.lessonIdx ?? null,
+    metadata: opts.metadata,
+  })
 }
 
 // For tests
 export function _getQueueLength() { return queue.length }
 export function _resetForTests() { queue = []; if (timer) { clearTimeout(timer); timer = null } }
 
-const analyticsClient = { trackLessonViewed, trackLessonCompleted, trackQuizAttempted, trackQuizPassed, flushEvents }
+const analyticsClient = {
+  trackEvent,
+  trackSessionStart,
+  trackLessonViewed,
+  trackLessonCompleted,
+  trackQuizAttempted,
+  trackQuizPassed,
+  flushEvents,
+}
 export default analyticsClient

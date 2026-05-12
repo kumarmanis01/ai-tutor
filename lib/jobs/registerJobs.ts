@@ -16,6 +16,7 @@
  */
 
 import { registerJob } from '@/lib/jobs/registry'
+import { ANALYTICS_SIGNAL_EVENT_PREFIX } from '@/lib/analytics/events'
 
 // Analytics job wrapper
 registerJob({
@@ -62,10 +63,24 @@ registerJob({
     const store = (await import('@/insights/store')) as any
     // look back last hour by default
     const since = new Date(Date.now() - 1000 * 60 * 60)
-    const signals = await (db as any).analyticsSignal.findMany({ where: { createdAt: { gte: since } } })
+    const signals = await (db as any).analyticsEvent.findMany({
+      where: {
+        createdAt: { gte: since },
+        eventType: { startsWith: ANALYTICS_SIGNAL_EVENT_PREFIX },
+      },
+    })
     for (const s of signals) {
       try {
-        const suggestions = engine.generateSuggestionsForSignal(s as any)
+        const metadata = (s as any).metadata ?? {}
+        const mappedSignal = {
+          id: s.id,
+          type: metadata.type ?? s.eventType,
+          courseId: s.courseId,
+          targetId: metadata.targetId ?? `course-${s.courseId ?? 'unknown'}`,
+          metadata,
+          createdAt: s.createdAt,
+        }
+        const suggestions = engine.generateSuggestionsForSignal(mappedSignal as any)
         const enriched = suggestions.map((x: any) => ({ ...x, sourceSignalId: s.id }))
         await store.saveSuggestions(db, enriched as any)
       } catch {

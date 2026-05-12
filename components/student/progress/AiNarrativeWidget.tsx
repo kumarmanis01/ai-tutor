@@ -16,6 +16,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/lib/toast';
 import { logger } from '@/lib/logger';
+import analyticsClient from '@/lib/analytics/client';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 type State = 'loading' | 'error' | 'populated';
 
@@ -101,22 +103,19 @@ export default function AiNarrativeWidget() {
                 const cooldownMs = 30_000
                 setExportDisabledUntil(Date.now() + cooldownMs)
                 toast('Too many exports. Please try again in 30 seconds.')
-                // report analytics event (best-effort)
-                void fetch('/api/analytics/track', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ event: 'export_progress_pdf', data: { success: false, reason: 'rate_limited' } }),
-                }).catch((err) => logger.debug('analytics track failed', { error: String(err) }))
+                analyticsClient.trackEvent({
+                  eventType: ANALYTICS_EVENTS.STUDENT.EXPORT_PROGRESS_PDF,
+                  metadata: { success: false, reason: 'rate_limited' },
+                })
                 return
               }
 
               if (!res.ok) {
                 toast('Could not generate PDF. Please try again later.')
-                void fetch('/api/analytics/track', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ event: 'export_progress_pdf', data: { success: false, reason: `status_${res.status}` } }),
-                }).catch(() => {})
+                analyticsClient.trackEvent({
+                  eventType: ANALYTICS_EVENTS.STUDENT.EXPORT_PROGRESS_PDF,
+                  metadata: { success: false, reason: `status_${res.status}` },
+                })
                 return
               }
 
@@ -130,20 +129,17 @@ export default function AiNarrativeWidget() {
               a.remove()
               URL.revokeObjectURL(url)
 
-              // report analytics event (best-effort)
-              void fetch('/api/analytics/track', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ event: 'export_progress_pdf', data: { success: true, fileSize: (blob && (blob as any).size) ?? null } }),
-              }).catch(() => {})
+              analyticsClient.trackEvent({
+                eventType: ANALYTICS_EVENTS.STUDENT.EXPORT_PROGRESS_PDF,
+                metadata: { success: true, fileSize: blob.size ?? null },
+              })
             } catch (err) {
               logger.error('Could not generate PDF (client)', { error: String(err) })
               toast('Could not generate PDF. Please try again later.')
-              void fetch('/api/analytics/track', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ event: 'export_progress_pdf', data: { success: false, reason: 'network_error' } }),
-              }).catch((err2) => logger.debug('analytics track failed', { error: String(err2) }))
+              analyticsClient.trackEvent({
+                eventType: ANALYTICS_EVENTS.STUDENT.EXPORT_PROGRESS_PDF,
+                metadata: { success: false, reason: 'network_error' },
+              })
             } finally {
               setExporting(false)
             }

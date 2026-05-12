@@ -7,6 +7,7 @@
 import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock'
 import logAuditEvent from '@/lib/audit/log'
 import { prisma } from '@/lib/prisma'
+import { ANALYTICS_SIGNAL_EVENT_PREFIX } from '@/lib/analytics/events'
 
 export async function runAnalyticsJobs(): Promise<{ success: boolean; durationMs: number; error?: string; skipped?: boolean; reason?: string }> {
   const started = Date.now()
@@ -63,10 +64,24 @@ export async function runAnalyticsJobs(): Promise<{ success: boolean; durationMs
         const engine = await import('@/insights/engine')
         const store = await import('@/insights/store')
         // Fetch signals created since the job started to avoid reprocessing older signals
-        const newSignals = await (db as any).analyticsSignal.findMany({ where: { createdAt: { gte: new Date(started) } } })
+        const newSignals = await (db as any).analyticsEvent.findMany({
+          where: {
+            createdAt: { gte: new Date(started) },
+            eventType: { startsWith: ANALYTICS_SIGNAL_EVENT_PREFIX },
+          },
+        })
         for (const sig of newSignals) {
           try {
-            const suggestions = engine.generateSuggestionsForSignal(sig as any)
+            const metadata = (sig as any).metadata ?? {}
+            const mappedSignal = {
+              id: sig.id,
+              type: metadata.type ?? sig.eventType,
+              courseId: sig.courseId,
+              targetId: metadata.targetId ?? `course-${sig.courseId ?? 'unknown'}`,
+              metadata,
+              createdAt: sig.createdAt,
+            }
+            const suggestions = engine.generateSuggestionsForSignal(mappedSignal as any)
             // attach sourceSignalId to enable idempotency
             const enriched = suggestions.map((s: any) => ({ ...s, sourceSignalId: sig.id }))
             await store.saveSuggestions(db, enriched as any)

@@ -1,4 +1,8 @@
 import { prisma as _prisma } from '@/lib/prisma.js'
+import {
+  ANALYTICS_COMPLETION_EVENT_SET,
+  ANALYTICS_VIEW_EVENT_SET,
+} from '@/lib/analytics/events'
 
 const getDb = () => (global as any).__TEST_PRISMA__ ?? _prisma
 
@@ -31,8 +35,8 @@ export async function aggregateDay(date: Date) {
     let agg = byCourse.get(courseId)
     if (!agg) { agg = { views: 0, completions: 0, timeSum: 0, timeCount: 0, users: new Set() }; byCourse.set(courseId, agg) }
 
-    if (ev.eventType === 'lesson_viewed') agg.views++
-    if (ev.eventType === 'lesson_completed') agg.completions++
+    if (ANALYTICS_VIEW_EVENT_SET.has(ev.eventType)) agg.views++
+    if (ANALYTICS_COMPLETION_EVENT_SET.has(ev.eventType)) agg.completions++
     if (ev.metadata && typeof ev.metadata === 'object') {
       const t = (ev.metadata as any).timeSpent
       if (typeof t === 'number' && !Number.isNaN(t)) { agg.timeSum += t; agg.timeCount += 1 }

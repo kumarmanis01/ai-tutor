@@ -1,9 +1,15 @@
 describe('Admin analytics signals API', () => {
   it('returns signals for admin', async () => {
     const mockPrisma: any = {
-      analyticsSignal: {
+      analyticsEvent: {
         findMany: jest.fn().mockResolvedValue([
-          { id: 's1', courseId: 'c1', type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', metadata: { completionRate: 0.1 }, createdAt: new Date('2025-12-21'), resolvedAt: null }
+          {
+            id: 's1',
+            courseId: 'c1',
+            eventType: 'signal.low_completion_rate',
+            metadata: { type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', completionRate: 0.1 },
+            createdAt: new Date('2025-12-21'),
+          }
         ])
       }
     }

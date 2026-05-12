@@ -23,23 +23,11 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue'
+import { STUDENT_ANALYTICS_EVENT_SET } from '@/lib/analytics/events'
 
 /** Canonical list of valid client-emitted event types. */
 export const VALID_EVENT_TYPES = new Set([
-  'lesson_viewed',
-  'lesson_completed',
-  'session_started',
-  'session_completed',
-  'quiz_submitted',
-  'doubt_asked',
-  'streak_updated',
-  'xp_earned',
-  'badge_unlocked',
-  'hint_requested',
-  'diagnostic_started',
-  'diagnostic_completed',
-  'page_view',
-  'subject_selected',
+  ...STUDENT_ANALYTICS_EVENT_SET,
 ])
 
 const EventSchema = z.object({

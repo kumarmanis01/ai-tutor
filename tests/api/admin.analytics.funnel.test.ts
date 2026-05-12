@@ -2,10 +2,11 @@ describe('Admin analytics - funnel', () => {
   it('computes funnel totals for last 30 days', async () => {
     const now = new Date()
     const mockPrisma: any = {
-      analyticsDailyAggregate: {
+      analyticsEvent: {
         findMany: jest.fn().mockResolvedValue([
-          { day: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), totalViews: 20, totalCompletions: 10 },
-          { day: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000), totalViews: 5, totalCompletions: 1 },
+          { createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), eventType: 'lesson_viewed' },
+          { createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), eventType: 'lesson_completed' },
+          { createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000), eventType: 'lesson_viewed' },
         ])
       }
     }
@@ -18,8 +19,8 @@ describe('Admin analytics - funnel', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.courseId).toBe('c2')
-    expect(body.totalViews).toBe(25)
-    expect(body.totalCompletions).toBe(11)
+    expect(body.totalViews).toBe(2)
+    expect(body.totalCompletions).toBe(1)
     expect(typeof body.completionRate).toBe('number')
   })
 

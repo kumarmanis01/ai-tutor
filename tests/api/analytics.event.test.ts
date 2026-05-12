@@ -74,7 +74,7 @@ describe('Analytics event ingestion', () => {
     expect(res.status).toBe(400)
   })
 
-  it('accepts subject_selected event and returns 202', async () => {
+  it('accepts student.auth.signin event and returns 202', async () => {
     const createManyMock = jest.fn().mockResolvedValue({ count: 1 })
     const mockPrisma: any = {
       analyticsEvent: { createMany: createManyMock },
@@ -85,7 +85,7 @@ describe('Analytics event ingestion', () => {
     }))
 
     const route = await import('../../app/api/analytics/event/route')
-    const payload = [{ eventType: 'subject_selected', userId: 'u1', metadata: { subjects: ['mathematics'], previous_subjects: [] } }]
+    const payload = [{ eventType: 'student.auth.signin', userId: 'u1', metadata: { source: 'web' } }]
     const res = await route.POST(
       new Request('http://localhost', { method: 'POST', body: JSON.stringify(payload) }) as any,
     )
