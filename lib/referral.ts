@@ -77,7 +77,7 @@ export async function redeemReferral(tx: Prisma.TransactionClient, code: string,
 
         // Determine amount (one month of their plan; fallback to standard monthly)
         const planKey = sub?.billingCycle ?? undefined
-        let plan = planKey ? resolvePlanByShortId(String(planKey), false) : undefined
+        let plan = planKey ? resolvePlanByShortId(String(planKey)) : undefined
         if (!plan) plan = PLANS.standard_monthly
         const rewardAmount = rupeesToPaise(plan.billedRupees)
 
