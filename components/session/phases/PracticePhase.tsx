@@ -5,6 +5,7 @@
  * - Uses usePracticeQuestions hook and normaliseChoices from sessionUtils.
  * - TutorTipPanel shown above questions.
  * - Results screen includes "Practice more" button for paid users to fetch fresh questions once-per-day.
+ * - Premium check happens client-side before API call; if not premium, shows UpgradeFlow.
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/session/SessionPhases.spec.tsx
@@ -21,6 +22,7 @@
  * - 2026-05-09T00:00:00Z | copilot | revert UI suppression workaround; rely on API flow to supply correctAnswer
  * - 2026-05-09T00:00:00Z | copilot | replace inline-style score bar with semantic progress element (lint compliance)
  * - 2026-05-11T13:15:00Z | copilot | add "Practice more" button in results screen for once-per-day fresh questions (paid only)
+ * - 2026-05-12T00:00:00Z | copilot | check isPremiumUser client-side before practice more API call; show UpgradeFlow if not premium
  */
 
 import React, { useState, useCallback } from 'react';
@@ -29,6 +31,8 @@ import type { SubmitActionResult } from '@/lib/session/sessionActions';
 import { normaliseChoices } from '@/lib/session/sessionUtils';
 import { scoreBgColour } from '@/lib/session/sessionUtils';
 import { TutorTipPanel } from '@/components/session/TutorTipPanel';
+import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
+import { isPremiumUser } from '@/lib/subscription';
 
 interface PracticePhaseProps {
   content: PracticeContent;
@@ -50,13 +54,53 @@ function ResultsScreen({
   onPracticeMore,
   practiceMoreLoading,
   practiceMoreError,
+  showUpgradeFlow,
+  onDismissUpgrade,
 }: {
   result: SubmitActionResult;
   onPracticeMore?: () => Promise<void>;
   practiceMoreLoading?: boolean;
   practiceMoreError?: string | null;
+  showUpgradeFlow?: boolean;
+  onDismissUpgrade?: () => void;
 }) {
   const pct = result.percentage;
+  const [isChecking, setIsChecking] = useState(false);
+
+  const handlePracticeMoreClick = useCallback(async () => {
+    if (!onPracticeMore) return;
+    setIsChecking(true);
+    try {
+      const isPremium = await isPremiumUser();
+      setIsChecking(false);
+
+      if (!isPremium) {
+        onDismissUpgrade?.();
+        return;
+      }
+
+      // User is premium, proceed with API call
+      await onPracticeMore();
+    } catch {
+      setIsChecking(false);
+    }
+  }, [onPracticeMore, onDismissUpgrade]);
+
+  if (showUpgradeFlow) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-background rounded-xl max-w-md w-full max-h-[90vh] overflow-auto">
+          <UpgradeFlow />
+          <button
+            onClick={onDismissUpgrade}
+            className="p-4 text-center text-sm text-muted-foreground hover:text-foreground"
+          >
+            Continue learning
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
@@ -115,12 +159,12 @@ function ResultsScreen({
           )}
           <button
             type="button"
-            onClick={onPracticeMore}
-            disabled={practiceMoreLoading}
+            onClick={handlePracticeMoreClick}
+            disabled={practiceMoreLoading || isChecking}
             aria-label="Get fresh practice questions"
             className="w-full min-h-[44px] rounded-xl bg-[#534AB7] text-sm font-semibold text-white hover:bg-[#4338a3] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
           >
-            {practiceMoreLoading ? 'Loading fresh questions...' : 'Practice more'}
+            {isChecking || practiceMoreLoading ? 'Loading fresh questions...' : 'Practice more'}
           </button>
           <p className="mt-2 text-xs text-muted-foreground text-center">
             Get fresh questions to keep learning. Available once per day.
@@ -200,6 +244,7 @@ export function PracticePhase({
   const [answers, setAnswers] = useState<{ questionId: string; answer: string }[]>([]);
   const [result, setResult] = useState<SubmitActionResult | null>(null);
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
+  const [showUpgradeFlow, setShowUpgradeFlow] = useState(false);
 
   React.useEffect(() => {
     onReadyToProceed(!!result);
@@ -239,6 +284,8 @@ export function PracticePhase({
         onPracticeMore={onPracticeMore}
         practiceMoreLoading={practiceMoreLoading}
         practiceMoreError={practiceMoreError}
+        showUpgradeFlow={showUpgradeFlow}
+        onDismissUpgrade={() => setShowUpgradeFlow(false)}
       />
     );
   }
