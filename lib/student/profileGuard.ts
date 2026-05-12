@@ -1,7 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Provide onboarding profile completeness helpers used for form validation and parent-channel readiness checks.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/profileGuard.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | remove legacy parentPhone checks and use parent email/whatsapp channel verification fields
+ */
+
 import { prisma } from '@/lib/prisma'
 import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 
-export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'language' | 'name' | 'age' | 'parent_email' | 'parent_phone'
+export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'language' | 'name' | 'age' | 'parent_email' | 'parent_channel'
 
 export interface StudentProfileData {
   board: string | null
@@ -11,8 +26,8 @@ export interface StudentProfileData {
   subjects: string[]
   age: number | null
   parentEmail: string | null
-  parentPhone: string | null
-  parentPhoneVerified: boolean
+  parentWhatsappPhone: string | null
+  parentChannelVerified: boolean
   // WhatsApp number for notifications. Immutable after first save.
   whatsappPhone: string | null
 }
@@ -25,8 +40,8 @@ export const EMPTY_PROFILE_DATA: StudentProfileData = {
   subjects: [],
   age: null,
   parentEmail: null,
-  parentPhone: null,
-  parentPhoneVerified: false,
+  parentWhatsappPhone: null,
+  parentChannelVerified: false,
   whatsappPhone: null,
 }
 
@@ -37,7 +52,12 @@ export interface ProfileCompletenessResult {
 }
 
 /**
- * Pure function: returns true only when all four academic profile fields are filled.
+ * Pure function: returns true only when all required profile fields are filled.
+ *
+ * Academic fields (board, grade, language, subjects) are always required.
+ * Age is also required (so we can enforce DPDP/privacy policies correctly).
+ * At least one parent contact channel (email OR WhatsApp) is required
+ * so we can reach parents with notifications.
  *
  * Accepts a broad input type so it is safe to call with raw DB rows, session objects,
  * or typed StudentProfileData -- no casting required at call sites.
@@ -53,6 +73,9 @@ export function isProfileComplete(user: {
   grade: number | string | null | undefined
   language: string | null | undefined
   subjects: unknown
+  age?: number | null | undefined
+  parentEmail?: string | null | undefined
+  whatsappPhone?: string | null | undefined
 }): boolean {
   if (!user) return false
   if (!user.board || String(user.board).trim() === '') return false
@@ -74,14 +97,24 @@ export function isProfileComplete(user: {
       : 0
   }
 
-  return subjectCount > 0
+  if (subjectCount === 0) return false
+
+  // Age is required (DPDP compliance: we must know age to enforce parent verification)
+  const age = user.age != null ? Number(user.age) : NaN
+  if (!Number.isFinite(age) || age < 1 || age > 120) return false
+
+  // At least one parent contact channel required (email OR WhatsApp)
+  const hasParentEmail = !!(user.parentEmail && String(user.parentEmail).trim().includes('@'))
+  const hasParentPhone = !!(user.whatsappPhone && String(user.whatsappPhone).replace(/\D/g, '').length >= 10)
+
+  return hasParentEmail || hasParentPhone
 }
 
 /**
  * Checks minimum required fields for a student (onboarding complete).
  * Base: name, grade (1-12), board, at least 1 subject, age.
  * When age is under 18: parent email is required (for parent verification step).
- * When age is under 13: parent phone is required (for OTP verification in onboarding).
+ * When age is under 13: one verified parent channel is required for activation.
  * Parent verification modal runs only after this returns complete (so we have contact info).
  * Returns complete: false on any DB error -- never throws.
  */
@@ -100,8 +133,9 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         language: true,
         age: true,
         parentEmail: true,
-        parentPhone: true,
-        parentPhoneVerifiedAt: true,
+        parentWhatsappPhone: true,
+        parentEmailVerifiedAt: true,
+        parentWhatsappVerifiedAt: true,
         whatsappPhone: true,
       },
     })
@@ -153,22 +187,18 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       missingFields.push('age')
     }
 
-    // All students: at least one parent contact channel required (email OR whatsappPhone/parentPhone).
+    // All students: at least one parent contact channel required (email OR parent WhatsApp).
     // This ensures notifications (session updates, nudges) can always reach the parent.
     const hasParentEmail = !!(user.parentEmail && String(user.parentEmail).trim().includes('@'))
-    const hasParentPhone = !!(
-      (user.whatsappPhone && user.whatsappPhone.replace(/\D/g, '').length >= 10) ||
-      (user.parentPhone && user.parentPhone.replace(/\D/g, '').length >= 10)
-    )
+    const hasParentPhone = !!(user.parentWhatsappPhone && user.parentWhatsappPhone.replace(/\D/g, '').length >= 10)
     if (!hasParentEmail && !hasParentPhone) {
       missingFields.push('parent_email')
     }
 
-    // Under DPDP_MINOR_AGE (13): OTP confirmation via parent channel is required (DPDP Act 2023).
-    // parentPhoneVerifiedAt is used as the "parent channel verified" flag regardless of channel used.
+    // Under DPDP_MINOR_AGE (13): OTP confirmation via any parent channel is required.
     if (Number.isFinite(ageNum) && ageNum >= 1 && ageNum < DPDP_MINOR_AGE) {
-      if (!user.parentPhoneVerifiedAt) {
-        missingFields.push('parent_phone')
+      if (!user.parentEmailVerifiedAt && !user.parentWhatsappVerifiedAt) {
+        missingFields.push('parent_channel')
       }
     }
 
@@ -183,8 +213,8 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         subjects: resolvedSubjects,
         age: user.age ?? null,
         parentEmail: user.parentEmail ?? null,
-        parentPhone: user.parentPhone ?? null,
-        parentPhoneVerified: user.parentPhoneVerifiedAt !== null,
+        parentWhatsappPhone: user.parentWhatsappPhone ?? null,
+        parentChannelVerified: !!(user.parentEmailVerifiedAt || user.parentWhatsappVerifiedAt),
         whatsappPhone: user.whatsappPhone ?? null,
       },
     }

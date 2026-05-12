@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render the manual parent verification form using canonical parent OTP API endpoints.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/app/student/onboarding/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | switch to /api/auth/parent send/verify OTP endpoints
+ */
+
 'use client';
 
 import { useState } from 'react';
@@ -20,8 +35,10 @@ export default function VerifyParentForm({
     setError(null);
     setSending(true);
     try {
-      const res = await fetch('/api/student/verify-parent/send-otp', {
+      const res = await fetch('/api/auth/parent/send-otp', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'email' }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -43,10 +60,10 @@ export default function VerifyParentForm({
     }
     setConfirming(true);
     try {
-      const res = await fetch('/api/student/verify-parent/confirm-otp', {
+      const res = await fetch('/api/auth/parent/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otp: otp.trim() }),
+        body: JSON.stringify({ code: otp.trim(), channel: 'email' }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.verified) {

@@ -2,9 +2,18 @@
  * FILE OBJECTIVE:
  * - POST /api/auth/parent/verify-otp
  * - Verifies a 6-digit OTP sent to parent channels (email or WhatsApp).
- * - Body: { code: string }  (no phone required -- key derived server-side)
- * - On success: sets parentPhoneVerifiedAt (used as "parent verified" flag) and
- *   transitions accountStatus to 'active'.
+ * - Body: { code: string, channel: 'email' | 'whatsapp' }.
+ * - On success: marks the channel-specific verified timestamp and transitions accountStatus to 'active'.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/auth/parent/verify-otp.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | add channel-aware verification and per-channel verified timestamps
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,20 +22,14 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { channelOtpKeyByType, getParentChannelVerificationStatus, resolveParentChannels } from '@/lib/parent/contactLinking';
 
 function hashOtp(otp: string) {
   const secret = process.env.OTP_SECRET ?? 'fallback-secret';
   return crypto.createHash('sha256').update(`${otp}${secret}`).digest('hex');
 }
 
-/** Must match the key derivation in send-otp/route.ts exactly. */
-function deriveOtpKey(whatsappPhone: string, parentPhone: string, parentEmail: string): string {
-  const wa = whatsappPhone.replace(/\D/g, '');
-  if (wa.length >= 10) return wa;
-  const ph = parentPhone.replace(/\D/g, '');
-  if (ph.length >= 10) return ph;
-  return `email:${Buffer.from(parentEmail).toString('base64').slice(0, 20)}`;
-}
+type OtpChannel = 'email' | 'whatsapp';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -36,7 +39,14 @@ export async function POST(req: NextRequest) {
     if (!studentId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const code = String(body.code || '').trim();
+    const code = String(body.code || body.otp || '').trim();
+    const channel = body.channel === 'email' || body.channel === 'whatsapp'
+      ? (body.channel as OtpChannel)
+      : null;
+
+    if (!channel) {
+      return NextResponse.json({ error: 'Verification channel is required' }, { status: 400 });
+    }
 
     if (!/^\d{4,6}$/.test(code)) {
       return NextResponse.json({ error: 'Enter the 6-digit code' }, { status: 400 });
@@ -44,21 +54,42 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: studentId },
-      select: { parentEmail: true, parentPhone: true, whatsappPhone: true, parentPhoneVerifiedAt: true },
+      select: {
+        parentEmail: true,
+        parentWhatsappPhone: true,
+        parentEmailVerifiedAt: true,
+        parentWhatsappVerifiedAt: true,
+        parentVerifiedAt: true,
+      },
     });
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (user.parentPhoneVerifiedAt) {
-      const res = NextResponse.json({ ok: true, alreadyVerified: true });
+    const alreadyVerified = channel === 'email' ? !!user.parentEmailVerifiedAt : !!user.parentWhatsappVerifiedAt;
+    if (alreadyVerified) {
+      const verification = await getParentChannelVerificationStatus({
+        prisma,
+        studentId,
+        parentEmail: user.parentEmail,
+        whatsappPhone: user.parentWhatsappPhone,
+      });
+      const res = NextResponse.json({ ok: true, alreadyVerified: true, channel, verification });
       logger.logAPI(req, res, { className: 'api.auth.parent.verify-otp', methodName: 'POST' }, start);
       return res;
     }
 
     const parentEmail = user.parentEmail?.trim() ?? '';
-    const whatsappPhone = user.whatsappPhone?.trim() ?? '';
-    const parentPhone = user.parentPhone?.trim() ?? '';
-    const otpKey = deriveOtpKey(whatsappPhone, parentPhone, parentEmail);
+    const parentWhatsappPhone = user.parentWhatsappPhone?.trim() ?? '';
+    const channels = resolveParentChannels(parentEmail, parentWhatsappPhone, null);
+
+    if (channel === 'email' && !channels.hasEmail) {
+      return NextResponse.json({ error: 'Parent email is not configured' }, { status: 400 });
+    }
+    if (channel === 'whatsapp' && !channels.hasWhatsapp) {
+      return NextResponse.json({ error: 'Parent WhatsApp is not configured' }, { status: 400 });
+    }
+
+    const otpKey = channelOtpKeyByType(channel, channels.normalizedEmail, channels.resolvedWhatsappDigits);
     const codeHash = hashOtp(code);
 
     const record = await prisma.phoneOtp.findFirst({
@@ -80,11 +111,22 @@ export async function POST(req: NextRequest) {
       prisma.phoneOtp.update({ where: { id: record.id }, data: { consumed: true } }),
       prisma.user.update({
         where: { id: studentId },
-        data: { parentPhoneVerifiedAt: new Date(), accountStatus: 'active' },
+        data: {
+          ...(channel === 'email' ? { parentEmailVerifiedAt: new Date() } : { parentWhatsappVerifiedAt: new Date() }),
+          ...(user.parentVerifiedAt ? {} : { parentVerifiedAt: new Date() }),
+          accountStatus: 'active',
+        },
       }),
     ]);
 
-    const res = NextResponse.json({ ok: true });
+    const verification = await getParentChannelVerificationStatus({
+      prisma,
+      studentId,
+      parentEmail: user.parentEmail,
+      whatsappPhone: user.parentWhatsappPhone,
+    });
+
+    const res = NextResponse.json({ ok: true, verified: true, channel, verification });
     logger.logAPI(req, res, { className: 'api.auth.parent.verify-otp', methodName: 'POST' }, start);
     return res;
   } catch (err) {

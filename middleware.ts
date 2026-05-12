@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | enforce active-account guard for /student and /parent routes with onboarding allowlist
  * - 2026-05-07T00:00:00Z | copilot | remove stale JWT-based onboarding redirects for /session routes
  * - 2026-05-08T00:00:00Z | copilot | enforce auth guard for /student/* paths and redirect unauthenticated requests to /
  */
@@ -82,6 +83,17 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url));
         }
         return NextResponse.redirect(new URL('/', request.url));
+      }
+
+      const isStudentOrParentUi = pathname.startsWith('/student') || pathname.startsWith('/parent');
+      const accountStatus = (token as { accountStatus?: string }).accountStatus;
+      if (isStudentOrParentUi && accountStatus !== 'active') {
+        if (pathname.startsWith('/student/onboarding') || pathname.startsWith('/student/verify-parent')) {
+          const allowed = NextResponse.next();
+          allowed.headers.set('x-pathname', pathname);
+          return allowed;
+        }
+        return NextResponse.redirect(new URL('/student/onboarding', request.url));
       }
 
       const res = NextResponse.next();

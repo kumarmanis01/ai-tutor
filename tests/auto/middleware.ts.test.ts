@@ -10,6 +10,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | update coverage for active-account middleware guard on student routes
  * - 2026-05-07T00:00:00Z | copilot | add regression coverage for stale-token session-route redirects
  * - 2026-05-08T00:00:00Z | copilot | add /student auth guard coverage (redirect unauthenticated to /)
  */
@@ -73,12 +74,22 @@ describe('exists middleware.ts', () => {
   });
 
   it('allows authenticated student routes', async () => {
-    mockedGetToken.mockResolvedValue({ role: 'student' });
+    mockedGetToken.mockResolvedValue({ role: 'student', accountStatus: 'active' });
 
     const request = new NextRequest('https://example.com/student/onboarding');
     const response = await middleware(request);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('x-pathname')).toBe('/student/onboarding');
+  });
+
+  it('redirects authenticated but inactive student routes to onboarding', async () => {
+    mockedGetToken.mockResolvedValue({ role: 'student', accountStatus: 'pending_parent_verification' });
+
+    const request = new NextRequest('https://example.com/student/dashboard');
+    const response = await middleware(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe('https://example.com/student/onboarding');
   });
 });

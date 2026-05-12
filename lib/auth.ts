@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | derive onboardingComplete strictly from accountStatus and require active account in requireActiveSession
  * - 2026-05-11T00:00:00Z | claude | fix Google sign-in: remove redundant explicit PKCE checks and cookie overrides
  *     (useSecureCookies:isProd drives security; overrides caused OAuthCallback errors in production),
  *     tighten isEmailVerified to normalize strings case-insensitively and reject unknown types,
@@ -66,8 +67,11 @@ export async function requireActiveSession() {
   }
 
   try {
-    const dbUser = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!dbUser) return null;
+    const dbUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { accountStatus: true },
+    });
+    if (!dbUser || dbUser.accountStatus !== 'active') return null;
     return session;
   } catch (err) {
     logger.warn('requireActiveSession failed to verify DB user', { className: 'auth', methodName: 'requireActiveSession', error: String(err) });
@@ -630,17 +634,7 @@ export const authOptions: any = {
             token.id = token.id ?? dbUser.id;
             token.role = dbUser.role;
             token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
-
-            let subjectCount = 0;
-            const rawSubjects: unknown = dbUser.subjects;
-            if (Array.isArray(rawSubjects)) {
-              subjectCount = (rawSubjects as string[]).filter(Boolean).length;
-            } else if (typeof rawSubjects === 'string' && rawSubjects.length > 0) {
-              subjectCount = rawSubjects
-                .replace(/^\{/, '').replace(/\}$/, '').split(',')
-                .filter((s: string) => s.trim().length > 0).length;
-            }
-            token.onboardingComplete = !!(dbUser.grade && dbUser.board && dbUser.language && subjectCount > 0);
+            token.onboardingComplete = token.accountStatus === 'active';
           }
         } catch (err) {
           logger.warn('jwt callback DB fetch failed, using defaults', { className: 'auth', methodName: 'jwt', error: String(err) });

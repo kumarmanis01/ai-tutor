@@ -13,6 +13,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | assert onboardingComplete derives from accountStatus active state
  * - 2026-05-11T00:00:00Z | claude | add tests for email_verified absent/null (new allowed cases) and
  *     unrecognized string (new rejected case) to lock in tightened isEmailVerified logic
  * - 2026-05-11T00:00:00Z | copilot | add coverage for absent profile and string email_verified branches; align assertions
@@ -244,6 +245,25 @@ describe('lib/auth OAuth callbacks', () => {
     expect(token.role).toBe('student');
     expect(token.onboardingComplete).toBe(true);
     expect(token.accountStatus).toBe('active');
+  });
+
+  it('should set onboardingComplete false when accountStatus is not active', async () => {
+    const jwt = loadAuthOptions().callbacks.jwt;
+
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'db-user-2',
+      role: 'student',
+      grade: '10',
+      board: 'cbse',
+      language: 'en',
+      subjects: ['math'],
+      accountStatus: 'pending_parent_verification',
+    });
+
+    const token = await jwt({ token: { email: 'student@example.com' }, user: undefined });
+
+    expect(token.accountStatus).toBe('pending_parent_verification');
+    expect(token.onboardingComplete).toBe(false);
   });
 
   it('should expose session.user.id from token fields', async () => {

@@ -10,6 +10,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | remove profile completeness route gate and rely on middleware active-account enforcement
  * - 2026-04-15T00:00:00Z | staff-engineer | add file header and top padding to avoid Topbar overlap
  * - 2026-05-09T00:00:00Z | copilot | increase content top offset for redesigned two-line mobile and taller desktop topbar
  */
@@ -28,11 +29,9 @@ import BottomNav from '@/components/student/layout/BottomNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA } from '@/lib/student/profileGuard';
 import { checkParentGate } from '@/lib/student/parentGate';
 import { requiresParentOTPGate } from '@/lib/student/accountStatus';
 import StudentLayoutShell from '@/components/student/StudentLayoutShell';
-import { prisma } from '@/lib/prisma';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
 import '@/styles/index.css';
 
@@ -104,31 +103,10 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const skipOnboarding = pathname.startsWith('/student/onboarding');
   const skipEnroll = pathname.startsWith('/enroll');
 
-  // Onboarding first, then parent verification: only run parent gate after profile is complete.
-  const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const, data: EMPTY_PROFILE_DATA };
-  const onboardingComplete = profile.complete;
-
-  // Always read fresh from DB for the profile gate check.
-  // session.user is stale after onboarding and does not reflect updated subjects.
-  // isProfileComplete handles all Prisma return shapes including Postgres wire-format strings.
-  const freshProfile = userId
-    ? await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          board: true,
-          grade: true,
-          language: true,
-          subjects: true,
-          age: true,
-          parentEmail: true,
-        },
-      })
-    : null;
-
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 
-  if (!skipApi && !skipVerifyParent && !skipOnboarding && !skipEnroll && userId && onboardingComplete) {
+  if (!skipApi && !skipVerifyParent && !skipOnboarding && !skipEnroll && userId) {
     const [needsOtpGate, gate] = await Promise.all([
       requiresParentOTPGate(userId),
       checkParentGate(userId),
@@ -150,37 +128,6 @@ export default async function StudentLayout({ children }: { children: React.Reac
       }
     }
   }
-
-  // Parse subjects from any Prisma return shape into string[] for the gate's initialValues.
-  function parseSubjectsForGate(raw: unknown): string[] {
-    if (Array.isArray(raw)) return (raw as string[]).filter(Boolean)
-    if (typeof raw === 'string' && raw.length > 0) {
-      return raw.replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean)
-    }
-    return []
-  }
-
-  // Profile completion gate: shown as overlay when board/grade/language/subjects are missing.
-  // Uses freshProfile (direct DB read) so the gate check is never stale after onboarding.
-  // Skipped on API routes, /student/onboarding, /student/verify-parent, and /enroll.
-  const showProfileGate =
-    !skipApi &&
-    !skipVerifyParent &&
-    !skipOnboarding &&
-    !skipEnroll &&
-    !isProfileComplete(freshProfile ?? profile.data);
-
-  // Build initialProfileData from fresh DB row, falling back to checkProfileCompleteness result.
-  const initialProfileData = freshProfile
-    ? {
-        board: freshProfile.board ?? null,
-        grade: freshProfile.grade ?? null,
-        language: freshProfile.language ?? null,
-        subjects: parseSubjectsForGate(freshProfile.subjects),
-        age: freshProfile.age ?? null,
-        parentEmail: freshProfile.parentEmail ?? null,
-      }
-    : profile.data;
 
   // Parent verification is shown as modal (ParentOTPGate); do not redirect to
   // /student/verify-parent -- that page redirects to /dashboard and causes a loop.
@@ -209,8 +156,6 @@ export default async function StudentLayout({ children }: { children: React.Reac
             <StudentLayoutShell
               showParentGate={showParentGate}
               maskedParentEmail={maskedParentEmail}
-              showProfileGate={showProfileGate}
-              initialProfileData={initialProfileData}
             >
               <div id="student-main" className="pt-[104px] pb-16 lg:pt-[68px] md:pb-0">
                 {children}

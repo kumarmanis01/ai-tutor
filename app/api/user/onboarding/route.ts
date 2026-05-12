@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | persist parent_whatsapp to parentWhatsappPhone and set accountStatus lifecycle with requiresOtp response
  * - 2026-05-11T00:00:00Z | copilot | auto-link matching parent accounts using onboarding parent email/whatsapp contacts
  */
 import { logger } from '@/lib/logger';
@@ -76,6 +77,8 @@ export async function POST(req: NextRequest) {
     const phone = rawPhone ? rawPhone.replace(/[^0-9+]/g, '') : undefined;
     const rawWhatsappPhone = typeof body.whatsapp_phone === 'string' ? body.whatsapp_phone.trim() : undefined;
     const whatsappPhone = rawWhatsappPhone ? rawWhatsappPhone.replace(/[^0-9+]/g, '') : undefined;
+    const rawParentWhatsapp = typeof body.parent_whatsapp === 'string' ? body.parent_whatsapp.trim() : (typeof body.parentWhatsapp === 'string' ? body.parentWhatsapp.trim() : undefined);
+    const parentWhatsappPhone = rawParentWhatsapp ? rawParentWhatsapp.replace(/[^0-9+]/g, '') : undefined;
     const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
     const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
     const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
@@ -191,7 +194,7 @@ export async function POST(req: NextRequest) {
       }
 
       // grade/board immutable after first save -- strip from all PATCH handlers
-      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true, whatsappPhone: true } }).catch(() => null);
+      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true, whatsappPhone: true, parentWhatsappPhone: true } }).catch(() => null);
       if (gradeRow?.grade != null) {
         delete updates.grade
       }
@@ -199,14 +202,17 @@ export async function POST(req: NextRequest) {
       if (whatsappPhone && !(gradeRow as any)?.whatsappPhone) {
         updates.whatsappPhone = whatsappPhone;
       }
+      // parentWhatsappPhone is support-managed after initial save -- only write when not already set
+      if (parentWhatsappPhone && !(gradeRow as any)?.parentWhatsappPhone) {
+        updates.parentWhatsappPhone = parentWhatsappPhone;
+      }
 
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
       await ensureAutoLinkedParentsForStudent({
         prisma,
         studentId: updatedUser.id,
         parentEmail: updatedUser.parentEmail,
-        whatsappPhone: updatedUser.whatsappPhone,
-        parentPhone: updatedUser.parentPhone,
+        whatsappPhone: updatedUser.parentWhatsappPhone,
       });
       // If the user's board changed, regenerate existing learning plans to match the new board's curriculum.
       try {
@@ -333,24 +339,23 @@ export async function POST(req: NextRequest) {
       throw updErr;
     }
 
-    // Under-DPDP_MINOR_AGE: set pending_parent_verification so the ParentOTPGate
-    // overlay handles it after onboarding. Do NOT block here -- return 200 and let
-    // the client navigate forward; the gate overlay intercepts the next page load.
-    if (age != null && age < DPDP_MINOR_AGE) {
-      const fresh = await prisma.user.findUnique({
-        where: { id: updatedUser.id },
-        select: { parentPhoneVerifiedAt: true, accountStatus: true },
-      });
-      if (!fresh?.parentPhoneVerifiedAt) {
-        await prisma.user.update({
-          where: { id: updatedUser.id },
-          data: { accountStatus: 'pending_parent_verification' },
-        }).catch(() => {});
-        logger.info('/api/user/onboarding: under-DPDP age -- accountStatus set to pending_parent_verification', {
-          className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id,
-        });
-      }
-    }
+    const effectiveAge = updatedUser.age ?? age ?? null;
+    const isMinor = typeof effectiveAge === 'number' && effectiveAge < DPDP_MINOR_AGE;
+    const nextAccountStatus = isMinor ? 'pending_parent_verification' : 'active';
+    await prisma.user.update({
+      where: { id: updatedUser.id },
+      data: { accountStatus: nextAccountStatus },
+    });
+
+    const verificationState = await prisma.user.findUnique({
+      where: { id: updatedUser.id },
+      select: { parentEmailVerifiedAt: true, parentWhatsappVerifiedAt: true },
+    });
+    const requiresOtp = Boolean(
+      isMinor &&
+      !verificationState?.parentEmailVerifiedAt &&
+      !verificationState?.parentWhatsappVerifiedAt,
+    );
 
     try {
       if (token) {
@@ -532,7 +537,7 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+    res = NextResponse.json({ ok: true, requiresOtp, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
     logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {

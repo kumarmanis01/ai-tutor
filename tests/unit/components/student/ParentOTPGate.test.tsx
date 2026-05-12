@@ -82,10 +82,10 @@ describe('ParentOTPGate', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenNthCalledWith(
         2,
-        '/api/student/verify-parent/confirm-otp',
+        '/api/auth/parent/verify-otp',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ otp: '123456', channel: 'whatsapp' }),
+          body: JSON.stringify({ code: '123456', channel: 'whatsapp' }),
         }),
       )
     })
@@ -141,10 +141,10 @@ describe('ParentOTPGate', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenNthCalledWith(
         2,
-        '/api/student/verify-parent/confirm-otp',
+        '/api/auth/parent/verify-otp',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ otp: '654321', channel: 'whatsapp' }),
+          body: JSON.stringify({ code: '654321', channel: 'whatsapp' }),
         }),
       )
     })

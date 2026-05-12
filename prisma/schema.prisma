@@ -14,6 +14,7 @@
 /// - 2026-05-04T00:00:00Z | copilot | add ParentStudent.relationship and ConsentScope.COMMUNITY_FEATURES for parent registration/consent completeness
 /// - 2026-05-09T00:00:00Z | staff-engineer | add NotificationAudit, NotificationChannel/Severity/EventType enums, escalationStatus on StudentEngagementStats
 /// - 2026-05-11T00:00:00Z | copilot | add todayStudyMinutes and lastStudySessionDate for daily study duration limits (30min free / 60min paid)
+/// - 2026-05-12T00:00:00Z | copilot | add parentWhatsappPhone and channel-specific parent verification timestamps; add pending_onboarding account status default
 generator client {
   provider = "prisma-client-js"
 }
@@ -31,10 +32,16 @@ model User {
   emailVerified              DateTime?
   image                      String?
   parentEmail                String?
-  // Parent phone used for under-13 verification (not unique; families can share).
+  // Deprecated legacy parent phone (SMS out of scope).
   parentPhone                String?
-  // Parent phone OTP verified at (under-18 gate).
+  // Deprecated legacy parent phone OTP timestamp (superseded by parentWhatsappVerifiedAt).
   parentPhoneVerifiedAt      DateTime?
+  // Parent WhatsApp contact for independent parent verification channel.
+  parentWhatsappPhone        String?
+  // Parent email OTP verified timestamp.
+  parentEmailVerifiedAt      DateTime?
+  // Parent WhatsApp OTP verified timestamp.
+  parentWhatsappVerifiedAt   DateTime?
   // WhatsApp contact number for notification delivery. Collected at onboarding; immutable after first save.
   whatsappPhone              String?
   /// When true, student must complete parent verification regardless of age.
@@ -46,7 +53,7 @@ model User {
   /// Parent account verified at (explicit parent user verification).
   parentVerifiedAt           DateTime?
   /// High-level account status used for gating and admin actions.
-  accountStatus              AccountStatus @default(active)
+  accountStatus              AccountStatus @default(pending_onboarding)
 
   role                     UserRole                 @default(user)
   country                  String?
@@ -2275,6 +2282,7 @@ enum UserStatus {
 }
 
 enum AccountStatus {
+  pending_onboarding
   active
   pending_parent_verification
   suspended

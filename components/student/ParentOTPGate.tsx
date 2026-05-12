@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | switch OTP calls to canonical /api/auth/parent endpoints
  * - 2026-05-11T00:00:00Z | copilot | add channel selector and per-channel verified/unverified state display
  */
 'use client';
@@ -73,7 +74,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
     setSending(true);
     setError(null);
     try {
-      const res = await fetch('/api/student/verify-parent/send-otp', {
+      const res = await fetch('/api/auth/parent/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -109,10 +110,10 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
     setVerifying(true);
     setError(null);
     try {
-      const res = await fetch('/api/student/verify-parent/confirm-otp', {
+      const res = await fetch('/api/auth/parent/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otp, channel: verifyChannel }),
+        body: JSON.stringify({ code: otp, channel: verifyChannel }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.verified) {
