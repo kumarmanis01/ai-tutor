@@ -55,7 +55,7 @@ interface UpgradeFlowProps {
   } | null;
 }
 
-export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: UpgradeFlowProps) {
+export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
   const [step, setStep] = useState<Step>('gate');
   const [planId, setPlanId] = useState<PlanId>('standard_monthly');
   const [method, setMethod] = useState<PaymentMethod>('upi');
@@ -185,7 +185,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EEEDFE] text-[#534AB7] dark:bg-[#534AB7]/15"
                 aria-hidden
               >
-                ✓
+                +
               </span>
               <span>{benefit}</span>
             </div>

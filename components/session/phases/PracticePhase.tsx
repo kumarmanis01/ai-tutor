@@ -23,6 +23,7 @@
  * - 2026-05-09T00:00:00Z | copilot | replace inline-style score bar with semantic progress element (lint compliance)
  * - 2026-05-11T13:15:00Z | copilot | add "Practice more" button in results screen for once-per-day fresh questions (paid only)
  * - 2026-05-12T00:00:00Z | copilot | check isPremiumUser client-side before practice more API call; show UpgradeFlow if not premium
+ * - 2026-05-12T15:45:00Z | copilot | fix: call /api/subscription/status endpoint instead of isPremiumUser to check premium status from client
  */
 
 import React, { useState, useCallback } from 'react';
@@ -32,7 +33,6 @@ import { normaliseChoices } from '@/lib/session/sessionUtils';
 import { scoreBgColour } from '@/lib/session/sessionUtils';
 import { TutorTipPanel } from '@/components/session/TutorTipPanel';
 import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
-import { isPremiumUser } from '@/lib/subscription';
 
 interface PracticePhaseProps {
   content: PracticeContent;
@@ -73,10 +73,12 @@ function ResultsScreen({
     if (!onPracticeMore) return;
     setIsChecking(true);
     try {
-      const isPremium = await isPremiumUser();
+      // Check premium status via API endpoint
+      const response = await fetch('/api/subscription/status');
+      const data = (await response.json()) as { isPremium?: boolean };
       setIsChecking(false);
 
-      if (!isPremium) {
+      if (!data.isPremium) {
         onShowUpgradeFlow?.();
         return;
       }

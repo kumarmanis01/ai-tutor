@@ -10,6 +10,7 @@
  * - 2026-04-15T00:00:00Z | copilot-planner | created billing plan constants for Standard/Family/Lite
  * - 2026-04-15T00:00:00Z | staff-engineer  | added durationDays override for sub-monthly plans
  * - 2026-05-12T00:00:00Z | copilot | removed internal weekly plan from selective payment pick
+ * - 2026-05-12T15:45:00Z | copilot | add resolvePlanByShortId function to convert short plan IDs to full SubscriptionPlan objects
  */
 
 export type PlanId =
@@ -109,4 +110,30 @@ export function renewalDateStr(plan: SubscriptionPlan): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
+/**
+ * Resolve a short plan ID (e.g. 'monthly', 'annual') to a full SubscriptionPlan.
+ * Returns undefined if the plan is not found.
+ */
+export function resolvePlanByShortId(shortId: string): SubscriptionPlan | undefined {
+  const normalized = String(shortId).toLowerCase().trim()
+  
+  // Check direct match first
+  if (normalized in PLANS) {
+    return PLANS[normalized as PlanId]
+  }
+  
+  // Map short IDs to full plan IDs
+  const shortIdMap: Record<string, PlanId> = {
+    'monthly': 'standard_monthly',
+    'annual': 'standard_annual',
+    'quarterly': 'family_monthly',
+    'family': 'family_monthly',
+    'lite': 'lite_monthly',
+    'standard': 'standard_monthly',
+  }
+  
+  const fullId = shortIdMap[normalized]
+  return fullId ? PLANS[fullId] : undefined
+}
+
+export default { PLANS, rupeesToPaise, planEndDate, renewalDateStr, resolvePlanByShortId }
