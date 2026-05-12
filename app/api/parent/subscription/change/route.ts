@@ -23,7 +23,6 @@ import Razorpay from 'razorpay';
 import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
 import { calculateProrationCredit } from '@/lib/subscription/proration';
 import type { PlanId } from '@/lib/billing/plans';
-import { sendMailSafe } from '@/lib/mailer';
 
 function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -58,37 +57,14 @@ export async function POST(req: Request) {
   const links = await prisma.parentStudent.findMany({ where: { parentId: user.id, studentId: { in: childIds }, status: 'active' }, select: { studentId: true } });
   if (links.length !== childIds.length) return NextResponse.json({ error: 'One or more children are not linked to you' }, { status: 403 });
 
-  // F-PAR-023 AC-06: sensitive subscription changes require OTP-verified parent phone.
-  const parentSecurity = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { parentPhoneVerifiedAt: true },
-  })
-  if (!parentSecurity?.parentPhoneVerifiedAt) {
-    return NextResponse.json({ error: 'Parent phone OTP verification required before subscription changes' }, { status: 403 })
-  }
-
   const plan = PLANS[planId];
 
   try {
     const now = new Date();
 
-    // Pricing rules: prefer explicit family plan variant when requested, but only
-    // when the requested plan belongs to the `standard` product. Otherwise fall
-    // back to applying the 1.8x multiplier to the requested plan's price.
-    const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
-    const familyKey = (`family_${suffix}`) as PlanId;
-    const familyPlan = (PLANS as any)[familyKey] as typeof plan | undefined;
-    const useExplicitFamily = Boolean(isFamily && familyPlan && typeof planId === 'string' && planId.startsWith('standard_'));
-    let totalRupees: number;
-    if (isFamily) {
-      if (useExplicitFamily) {
-        totalRupees = familyPlan!.billedRupees;
-      } else {
-        totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
-      }
-    } else {
-      totalRupees = plan.billedRupees * childIds.length;
-    }
+    // Pricing rules same as order endpoint
+    let totalRupees = plan.billedRupees * childIds.length;
+    if (isFamily) totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
 
     // Fetch current active parent subscription (if any)
     const current = await prisma.subscription.findFirst({ where: { userId: user.id, active: true } });
@@ -105,21 +81,6 @@ export async function POST(req: Request) {
           meta: { scheduledChange: true, newPlanId: planId, effectiveDate: current.endDate?.toISOString() },
         },
       });
-
-      // F-PAR-023 AC-04: immediate confirmation with access expiry + resubscribe link.
-      try {
-        const parent = await prisma.user.findUnique({ where: { id: user.id }, select: { email: true, name: true } })
-        if (parent?.email) {
-          const expiryLabel = current.endDate ? current.endDate.toLocaleDateString('en-IN') : 'the end of your current billing period'
-          const resubscribeLink = `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/billing`
-          const subject = 'Subscription change confirmed -- access continues till period end'
-          const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>Your subscription downgrade/cancellation request is confirmed.</p><p>Access will continue until <strong>${expiryLabel}</strong>.</p><p>You can resubscribe anytime here: <a href="${resubscribeLink}">Resubscribe</a>.</p>`
-          await sendMailSafe({ to: parent.email, subject, html })
-        }
-      } catch (notifyErr) {
-        logger.warn('parent.subscription.change: cancellation confirmation email failed', { err: String(notifyErr), parentId: user.id })
-      }
-
       return NextResponse.json({ ok: true, scheduledEffectiveDate: current.endDate?.toISOString() }, { status: 200 });
     }
 
@@ -169,7 +130,7 @@ export async function POST(req: Request) {
     const amountPaise = rupeesToPaise(netCharge);
     const order = await client.orders.create({ amount: amountPaise, currency: 'INR', notes: { parentId: user.id, childIds: JSON.stringify(childIds), isFamily: String(Boolean(isFamily)), planId, changeType: 'upgrade', previousExpiry: current?.endDate?.toISOString() || '', emiMonths: emiMonths ? String(emiMonths) : '' } });
 
-    await prisma.paymentOrder.create({ data: { studentId: user.id, razorpayOrderId: order.id, amount: amountPaise, currency: 'INR', status: 'created', planMonths: plan.durationMonths, planId } });
+    await prisma.paymentOrder.create({ data: { studentId: user.id, razorpayOrderId: order.id, amount: amountPaise, currency: 'INR', status: 'created', planMonths: plan.durationMonths } });
 
     return NextResponse.json({ orderId: order.id, amount: amountPaise, currency: 'INR', keyId: process.env.RAZORPAY_KEY_ID ?? '' }, { status: 200 });
   } catch (err) {

@@ -27,14 +27,14 @@ import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 
-const VALID_PLAN_IDS: PlanId[] = Object.keys(PLANS) as PlanId[];
-
 function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) return null;
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
+
+const VALID_PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual'];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -63,9 +63,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid childIds (must select 1-3 children)' }, { status: 400 });
   }
 
-  // Family pricing allowed for up to 3 children
-  if (isFamily && childIds.length > 3) {
-    return NextResponse.json({ error: 'Family pricing allows up to 3 children' }, { status: 400 });
+  // If family pricing requested, enforce exactly 3 children (MVP rule)
+  if (isFamily && childIds.length !== 3) {
+    return NextResponse.json({ error: 'Family pricing requires exactly 3 children' }, { status: 400 });
   }
 
   // Verify parent-child links

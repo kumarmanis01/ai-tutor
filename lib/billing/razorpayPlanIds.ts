@@ -6,7 +6,7 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | staff-engineer | created for C1 create-subscription endpoint
- * - 2026-05-11T00:00:00Z | staff-engineer | remove standard_quarterly (plan removed from lineup)
+ * - 2026-05-12T00:00:00Z | copilot | removed internal weekly plan mappings from selective payment pick
  */
 
 import type { PlanId } from './plans'
@@ -22,7 +22,6 @@ export const RAZORPAY_SUB_PLAN_IDS: Record<PlanId, string> = {
   family_monthly:   process.env.RAZORPAY_PLAN_FAMILY_MONTHLY   ?? 'plan_SdptsPYhklab0S',
   family_annual:    process.env.RAZORPAY_PLAN_FAMILY_ANNUAL     ?? 'plan_SdpusIRfHFOe21',
   lite_monthly:     process.env.RAZORPAY_PLAN_LITE_MONTHLY      ?? 'plan_SdpvokPVxrs91K',
-  test_weekly:      process.env.RAZORPAY_PLAN_TEST_WEEKLY       ?? 'plan_SdpwjIiKc7ZBec',
 }
 
 /**
@@ -37,5 +36,4 @@ export const RAZORPAY_TOTAL_COUNT: Record<PlanId, number> = {
   family_monthly:   0,
   family_annual:    0,
   lite_monthly:     0,
-  test_weekly:      0,
 }

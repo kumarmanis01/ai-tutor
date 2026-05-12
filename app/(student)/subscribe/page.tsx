@@ -41,7 +41,7 @@ export default async function SubscribePage() {
   const currentPeriodStart = new Date()
   currentPeriodStart.setDate(1)
   currentPeriodStart.setHours(0, 0, 0, 0)
-
+  
   const [user, freeTierUsage] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },

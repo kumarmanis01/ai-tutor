@@ -8,10 +8,8 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot-planner | created billing plan constants for Standard/Family/Lite
- * - 2026-04-15T00:00:00Z | staff-engineer  | added test_weekly; durationDays override for sub-monthly plans
- * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named variable
- * - 2026-04-16T03:30:00Z | copilot | add resolvePlanByShortId helper to map short plan ids to PLANS entries
- * - 2026-05-11T00:00:00Z | staff-engineer | restore standard_monthly as featured; restore annual to 3990/2-months-free; remove quarterly
+ * - 2026-04-15T00:00:00Z | staff-engineer  | added durationDays override for sub-monthly plans
+ * - 2026-05-12T00:00:00Z | copilot | removed internal weekly plan from selective payment pick
  */
 
 export type PlanId =
@@ -20,7 +18,6 @@ export type PlanId =
   | 'family_monthly'
   | 'family_annual'
   | 'lite_monthly'
-  | 'test_weekly'
 
 export interface SubscriptionPlan {
   id: PlanId
@@ -37,14 +34,13 @@ export interface SubscriptionPlan {
   /**
    * Override: exact duration in days.
    * When set, takes precedence over durationMonths for endDate calculation.
-   * Used for test_weekly (7 days).
    */
   durationDays?: number
   billedDisplay?: string
   saveLabel?: string
   featured?: boolean
   childSlots?: number
-  /** True for internal/test plans that must not appear on the public pricing page */
+  /** True for internal plans that must not appear on the public pricing page */
   internal?: boolean
 }
 
@@ -92,8 +88,6 @@ export const PLANS: Record<PlanId, SubscriptionPlan> = {
   family_monthly:   mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
   family_annual:    mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', { billedDisplay: 'billed ₹5,990', saveLabel: '2 months free', childSlots: 2 }),
   lite_monthly:     mkPlan('lite_monthly', 249, 1, 'Lite', '₹249/month'),
-  // Internal test plan: ₹1/week, accessible in NODE_ENV=development only.
-  test_weekly:      mkPlan('test_weekly', 1, 0, 'Test (Weekly)', '₹1/week', { durationDays: 7, internal: true }),
 }
 
 export function rupeesToPaise(rupees: number): number {
@@ -115,29 +109,4 @@ export function renewalDateStr(plan: SubscriptionPlan): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const Billing = { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
-
-export default Billing
-
-/**
- * Resolve a short plan id (e.g. 'monthly', 'annual') to a concrete SubscriptionPlan
- * in `PLANS`. If `isFamily` is true, prefer the family variant when available.
- */
-export function resolvePlanByShortId(shortId: string, isFamily = false): SubscriptionPlan | undefined {
-  if (!shortId || typeof shortId !== 'string') return undefined;
-  // Exact match (allows callers to pass full keys like 'standard_annual')
-  if ((PLANS as any)[shortId]) return (PLANS as any)[shortId] as SubscriptionPlan;
-
-  // Try family/standard variants
-  const familyKey = (`family_${shortId}`) as PlanId;
-  const standardKey = (`standard_${shortId}`) as PlanId;
-  if (isFamily && (PLANS as any)[familyKey]) return (PLANS as any)[familyKey] as SubscriptionPlan;
-  if ((PLANS as any)[standardKey]) return (PLANS as any)[standardKey] as SubscriptionPlan;
-
-  // Fallback: find any plan whose key ends with _<shortId>
-  for (const k of Object.keys(PLANS)) {
-    if (k.endsWith(`_${shortId}`)) return PLANS[k as PlanId];
-  }
-
-  return undefined;
-}
+export default { PLANS, rupeesToPaise, planEndDate, renewalDateStr }

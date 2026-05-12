@@ -22,7 +22,8 @@ import { UPGRADE_FLOW_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 import PlanSelector from './PlanSelector';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
-// Saved payment methods are no longer shown. Razorpay handles payment storage.
+import AddCard from './AddCard';
+import SavedPaymentMethods from './SavedPaymentMethods';
 import type { PlanId } from '@/lib/billing/plans';
 import type { PaymentMethod } from './PaymentMethodSelector';
 
@@ -242,7 +243,10 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         {/* When user chooses card, surface saved methods and AddCard flow */}
         {method === 'card' && (
           <div className="pt-3">
-            <p className="text-sm text-muted-foreground">Card payments are temporarily unavailable. Please choose another payment method.</p>
+            <SavedPaymentMethods />
+            <div className="mt-3">
+              <AddCard email={studentEmail ?? undefined} />
+            </div>
           </div>
         )}
         <button
@@ -321,7 +325,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         {failureMsg || 'Something went wrong. Please try again.'}
       </p>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-        If you were charged, please contact us at {UPGRADE_FLOW_SUPPORT_EMAIL}
+        If you were charged, please contact us at support@spinzy.in
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         {retryCount < MAX_RETRIES && (

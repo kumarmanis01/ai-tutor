@@ -33,7 +33,8 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS, resolvePlanByShortId } from '@/lib/billing/plans';
+import { PLANS } from '@/lib/billing/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 
@@ -84,10 +85,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Accept both full plan IDs (e.g. 'standard_annual') and short IDs (e.g. 'annual').
-  // resolvePlanByShortId handles both forms so the client can use either.
-  const resolvedPlan = (PLANS as any)[planId] ?? resolvePlanByShortId(planId, false);
-  if (!resolvedPlan) {
+  if (!['monthly', 'quarterly', 'annual'].includes(planId)) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
@@ -106,7 +104,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
 
-  const plan = resolvedPlan;
+  const plan = PLANS[planId as PlanId];
   const now = new Date();
   const expiry = new Date(now);
   expiry.setMonth(expiry.getMonth() + plan.durationMonths);
@@ -144,37 +142,13 @@ export async function POST(req: Request) {
           data: { subscriptionStatus: 'active', subscriptionExpiry: expiry },
         });
 
-        const currentPeriodStart = new Date(now)
-        currentPeriodStart.setDate(1)
-        currentPeriodStart.setHours(0, 0, 0, 0)
         await tx.freeTierUsage
-          .findFirst({
-            where: {
-              studentId: userId,
-              subjectScope: '__ALL__',
-              periodStart: currentPeriodStart,
-            },
-            select: { id: true },
+          .upsert({
+            where: { studentId: userId },
+            update: { periodStart: now, sessionsUsed: 0 },
+            create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
           })
-          .then(async (existing) => {
-            if (existing?.id) {
-              await tx.freeTierUsage.update({
-                where: { id: existing.id },
-                data: { sessionsUsed: 0, chapterTestsUsed: 0 },
-              })
-              return
-            }
-            await tx.freeTierUsage.create({
-              data: {
-                studentId: userId,
-                subjectScope: '__ALL__',
-                periodStart: currentPeriodStart,
-                sessionsUsed: 0,
-                chapterTestsUsed: 0,
-              },
-            })
-          })
-          .catch((err) => { logger.warn('freeTierUsage.reset failed', { event: 'subscription.verify.reset', context: { userId }, error: String(err) }) });
+          .catch((err) => { logger.warn('freeTierUsage.upsert failed', { event: 'subscription.verify.upsert', context: { userId }, error: String(err) }) });
 
         // Create a Payment record to persist transaction metadata
         const payment = await tx.payment.create({
@@ -198,11 +172,7 @@ export async function POST(req: Request) {
         // Deactivate any existing active subscription for this student
         await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } }).catch(() => {});
 
-        // Check for pending referral rewards for this user and include in creditBalance
-        const pendingRewards = await tx.referralReward.findMany({ where: { userId, status: 'PENDING' } });
-        const pendingSum = pendingRewards.reduce((s, r) => s + (r.amount || 0), 0);
-
-        // Create subscription record for the student. Apply pending referral rewards as creditBalance.
+        // Create subscription record for the student
         const createdSub = await tx.subscription.create({
           data: {
             userId,
@@ -214,15 +184,9 @@ export async function POST(req: Request) {
             childSlots: 1,
             paymentId: payment.id,
             meta: {},
-            creditBalance: pendingSum,
+            creditBalance: 0,
           },
         });
-
-        // Mark pending referral rewards as applied (best-effort within the transaction)
-        if (pendingRewards.length > 0) {
-          const ids = pendingRewards.map((r) => r.id);
-          await tx.referralReward.updateMany({ where: { id: { in: ids } }, data: { status: 'APPLIED', appliedAt: new Date() } }).catch(() => {});
-        }
 
         // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
         try {
@@ -291,7 +255,6 @@ export async function POST(req: Request) {
   const renewalDate = expiry.toLocaleDateString('en-IN', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
-  let receiptSmsSent = false
 
   // Send receipt email -- non-blocking, never throws to caller
   if (user?.email) {
@@ -305,18 +268,17 @@ export async function POST(req: Request) {
         planLabel: plan.label,
         billingCycle: plan.perMonthDisplay,
       });
-      const invoiceLink = invoiceResult.fileUrl ? `<p><a href="${invoiceResult.fileUrl}">Download invoice</a></p>` : ''
 
       await sendEmail({
         to: user.email,
         subject: 'Payment confirmed -- Spinzy Academy',
-        html: `${paymentReceiptHtml({
+        html: paymentReceiptHtml({
           studentName: user.name ?? 'Student',
           plan: plan.label,
           amountRupees: plan.billedRupees,
           billingCycle: plan.perMonthDisplay,
           renewalDate,
-        })}${invoiceLink}`,
+        }),
         ...(invoiceResult.pdfBuffer ? {
           attachments: [
             {
@@ -329,14 +291,6 @@ export async function POST(req: Request) {
       } as any).catch((err: unknown) => {
         logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
       });
-      if (user?.phone) {
-        const amountInr = ((order.amount ?? 0) / 100).toFixed(2)
-        const smsText = `Payment success: INR ${amountInr}, plan ${plan.label}. Next renewal ${renewalDate}. Invoice: ${invoiceResult.fileUrl ?? `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/billing`}`
-        sendSms(user.phone, smsText).catch((err: unknown) => {
-          logger.error('Receipt SMS failed', { event: 'subscription.verify.sms_error', context: { userId }, err });
-        });
-        receiptSmsSent = true
-      }
       } catch (err: unknown) {
       logger.error('Invoice generation/email failed', { event: 'subscription.verify.invoice_error', context: { userId, orderId }, err });
       // Fallback: send receipt without attachment
@@ -356,10 +310,9 @@ export async function POST(req: Request) {
     }
   }
 
-  // Send fallback receipt SMS -- non-blocking.
-  if (user?.phone && !receiptSmsSent) {
-    const amountInr = ((order.amount ?? 0) / 100).toFixed(2)
-    const smsText = `Payment success: INR ${amountInr}, plan ${plan.label}. Next renewal ${renewalDate}. Invoice: ${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/billing`;
+  // Send receipt SMS -- non-blocking
+  if (user?.phone) {
+    const smsText = `Hi ${user.name ?? ''}! Your Spinzy ${plan.label} plan is active. Happy learning! - Team Spinzy`;
     sendSms(user.phone, smsText).catch((err: unknown) => {
       logger.error('Receipt SMS failed', { event: 'subscription.verify.sms_error', context: { userId }, err });
     });

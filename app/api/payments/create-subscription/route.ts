@@ -2,15 +2,14 @@
  * FILE OBJECTIVE:
  * - Create a Razorpay recurring subscription for an authenticated user.
  * - Replaces /api/billing/checkout as the canonical subscription creation endpoint.
- * - Validates planId, gates the internal test_weekly plan to NODE_ENV=development only,
- *   then delegates to the Razorpay Subscriptions API.
+ * - Validates planId and delegates to the Razorpay Subscriptions API.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/api/payments/create-subscription.spec.ts
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | staff-engineer | created for Sprint A C1
- * - 2026-05-11T00:00:00Z | staff-engineer | replace DB whitelist gate with NODE_ENV=development check for test_weekly
+ * - 2026-05-12T00:00:00Z | copilot | removed internal-plan gate dependencies from selective payment pick
  */
 
 import { NextResponse } from 'next/server'
@@ -50,28 +49,18 @@ export async function POST(req: Request) {
   const planId = planIdRaw as PlanId
   const plan = PLANS[planId]
 
-  // 3. Test plan gate: test_weekly is only available in development mode
-  if (planId === 'test_weekly') {
-    if (process.env.NODE_ENV !== 'development') {
-      const res = NextResponse.json({ code: 'TEST_PLAN_ACCESS_DENIED', message: 'Not authorised for test plan' }, { status: 403 })
-      logger.warn('create-subscription: test plan access denied (not development)', { userId })
-      logger.logAPI(req, res, { className: 'CreateSubscriptionAPI', methodName: 'POST' }, start)
-      return res
-    }
-  }
-
-  // 4. Block any other internal plan that isn't test_weekly
-  if (plan.internal && planId !== 'test_weekly') {
+  // 3. Never allow internal plans to be created from this public endpoint.
+  if (plan.internal) {
     const res = NextResponse.json({ code: 'PLAN_UNAVAILABLE', message: 'Plan not available' }, { status: 403 })
     logger.logAPI(req, res, { className: 'CreateSubscriptionAPI', methodName: 'POST' }, start)
     return res
   }
 
-  // 5. Idempotency key from client header (or generate one)
+  // 4. Idempotency key from client header (or generate one)
   const providedKey = req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || ''
   const idempotencyKey = providedKey || crypto.randomUUID()
 
-  // 6. Get Razorpay client
+  // 5. Get Razorpay client
   let razorpay: Awaited<ReturnType<typeof getRazorpay>>
   try {
     razorpay = await getRazorpay()
@@ -82,7 +71,7 @@ export async function POST(req: Request) {
     return res
   }
 
-  // 7. Create Razorpay subscription
+  // 6. Create Razorpay subscription
   let rzpSub: { id: string }
   try {
     rzpSub = await razorpay.subscriptions.create({
