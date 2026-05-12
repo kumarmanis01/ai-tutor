@@ -1,16 +1,23 @@
 /**
- * Diagnostic test page -- full-screen, no navbar.
+ * FILE OBJECTIVE:
+ * - Render the subject diagnostic page with readiness gating, cooldown checks, and question bootstrapping.
  *
- * Fetches questions via generateSubjectDiagnosticTest (board + grade + subject slug),
- * resumes partial state from Redis, then renders DiagnosticFlow.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/diagnostic/page.test.tsx
  *
- * Route: /diagnostic/[subjectId]   (subjectId = SubjectDef CUID)
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | enforce full profile completion check and align parent channel field selection
  */
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { isProfileComplete } from '@/lib/student/profileGuard';
 import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
 import { featureFlags } from '@/lib/config';
 import { getPartialDiagnostic } from '@/lib/redis/diagnosticPartial';
@@ -40,12 +47,20 @@ export default async function DiagnosticPage({
   const afterResultsPath = fromEnrollment ? '/enroll/diagnostic-queue' : '/dashboard';
 
   // Fetch student profile and completed diagnostics in parallel.
-  // board/grade/language are needed for question generation; completedSubjectIds is
-  // used to identify pending diagnostic subjects for the post-submit nudge toast.
+  // Full profile needed to validate enrollment; board/grade/language for question generation;
+  // completedSubjectIds for post-submit nudge toast.
   const [student, completedDiagnostics] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { board: true, grade: true, language: true, subjects: true },
+      select: {
+        board: true,
+        grade: true,
+        language: true,
+        subjects: true,
+        age: true,
+        parentEmail: true,
+        parentWhatsappPhone: true,
+      },
     }),
     prisma.diagnosticSession.findMany({
       where: { studentId: userId, status: 'COMPLETED' },
@@ -53,7 +68,9 @@ export default async function DiagnosticPage({
     }),
   ]);
 
-  if (!student?.board || !student?.grade) redirect('/student/onboarding');
+  // AC: Enforce full profile completion, not just board/grade.
+  // This aligns with the layout's profile gate and prevents incomplete students from entering.
+  if (!student || !isProfileComplete(student)) redirect('/student/onboarding');
 
   // AC-08: enforce 30-day retake cooldown at the page level so the student sees a
   // clear "come back later" screen rather than loading the quiz UI and failing.

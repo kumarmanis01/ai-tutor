@@ -22,6 +22,7 @@
  * - 2026-05-09T15:45:00Z | copilot | add Focus Area section from weakest readiness chapter
  *                          and wire CTA to subject progress view
  * - 2026-05-11T18:00:00Z | copilot | remove unused FreemiumCounter, ReferralShareCard imports (V1 pre-rollout)
+ * - 2026-05-12T00:00:00Z | copilot | prevent incomplete-profile fallback subject exposure when enrollment data is missing
  */
  
 import type { Metadata } from 'next'
@@ -171,7 +172,9 @@ export default async function StudentHomeDashboardPage() {
     }
   }
 
-  if (enrolledSubjects && enrolledSubjects.length > 0) {
+  // AC: Incomplete profiles must never see dashboard subjects. This check is defensive
+  // since the layout should already block incomplete users, but belt+suspenders matters here.
+  if (enrolledSubjects && enrolledSubjects.length > 0 && user?.grade && user?.board) {
     // Parse user.grade to an integer because SubjectDef.class.grade is an Int in
     // the Prisma schema while `user.grade` is stored as a string on the User row.
     // Only apply class scoping when the parsed grade is a valid integer to avoid
@@ -212,11 +215,9 @@ export default async function StudentHomeDashboardPage() {
         select: { id: true, name: true },
       })
     } else {
-      subjects = await prisma.subjectDef.findMany({
-        where: { lifecycle: 'active' },
-        select: { id: true, name: true },
-        take: 5,
-      })
+      // AC: Never show generic subjects to incomplete students. Only show subjects from
+      // learning plans (which only exist after onboarding) or fall through to empty array.
+      subjects = []
     }
   }
 

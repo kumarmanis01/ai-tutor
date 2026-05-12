@@ -1,17 +1,16 @@
 /**
- * POST /api/student/diagnostic/submit
+ * FILE OBJECTIVE:
+ * - Submit diagnostic answers, persist evaluation events, finalize diagnostic status, and emit analytics.
  *
- * Receives diagnostic answers, persists AnswerEvent rows, enqueues
- * diagnosticBootstrapWorker to seed StudentConceptState + generate LearningPlan,
- * and clears the Redis partial state.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/student/diagnostic/submit/analytics.test.ts
  *
- * Body: {
- *   subjectId: string,
- *   answers: Array<{ questionId: string, selectedOption: string, timeSpentMs: number }>
- * }
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
  *
- * Returns: { success: true, subjectId }
- * Auth: session required -- 401 if missing.
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | mark DiagnosticSession as COMPLETED on submit to keep pending diagnostics accurate
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -230,7 +229,7 @@ export async function POST(req: NextRequest) {
     await clearPartialDiagnostic(userId, subjectId);
     await cancelDiagnosticAutoSubmit(userId, subjectId);
 
-    // Transition diagnostic status to completed so the mandatory gate unlocks.
+    // Transition diagnostic status to completed in StudentLearningProfile.
     // Persist gamingFlagged so the admin layer can surface flagged sessions
     // without re-scanning AnswerEvent rows.
     await upsertSubjectDiagnosticStatus(userId, subjectId, {
@@ -238,6 +237,24 @@ export async function POST(req: NextRequest) {
       completedAt: new Date().toISOString(),
       runId: diagnosticSessionId,
       gamingFlagged: gamingFlag || undefined,
+    });
+
+    // AC: Also mark the DiagnosticSession row as COMPLETED so the diagnostic page
+    // can correctly identify pending diagnostics. Uses upsert so it works whether or not
+    // a session row already exists (defensive against missing create in page load).
+    const now = new Date();
+    await prisma.diagnosticSession.upsert({
+      where: { studentId_subjectId: { studentId, subjectId } },
+      update: {
+        status: 'COMPLETED',
+        completedAt: now,
+      },
+      create: {
+        studentId,
+        subjectId,
+        status: 'COMPLETED',
+        completedAt: now,
+      },
     });
 
     // Compute grade-level placement (AC-05) from adaptive session theta when available.
