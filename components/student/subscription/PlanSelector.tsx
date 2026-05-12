@@ -18,7 +18,7 @@ interface PlanSelectorProps {
 }
 
 // Show Standard (monthly), Family (monthly) and Annual (Standard) by default
-const PLAN_ORDER: PlanId[] = ['standard_monthly', 'family_monthly', 'standard_annual'];
+const PLAN_ORDER: PlanId[] = ['standard_monthly', 'family_monthly', 'standard_annual', 'family_annual'];
 
 function PlanRow({
   plan,

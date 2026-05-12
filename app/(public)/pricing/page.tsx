@@ -208,7 +208,7 @@ export default function PricingPage() {
             features={[
               '10 questions/day',
               'AI text answers',
-              'CBSE/ICSE Grades 6-12',
+              'CBSE/ICSE Grades 1-12',
               '1 child account',
             ]}
             billing={billingCycle}
@@ -234,8 +234,9 @@ export default function PricingPage() {
           priceAnnual={PLANS.standard_annual.billedRupees}
           features={[
             'Unlimited questions',
+            'Unlimited practice sets',
             'Detailed AI explanations',
-            'CBSE/ICSE Grades 6-12',
+            'CBSE/ICSE Grades 1-12',
             'Progress tracking',
             'Priority processing',
           ]}
@@ -268,7 +269,7 @@ export default function PricingPage() {
             'Everything in Standard',
             '2 child accounts',
             'Family progress dashboard',
-            'CBSE/ICSE Grades 6-12',
+            'CBSE/ICSE Grades 1-12',
             'Priority processing',
           ]}
           billing={billingCycle}

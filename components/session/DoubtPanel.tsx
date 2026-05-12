@@ -24,12 +24,15 @@
  * - 2026-05-08T00:00:00Z | copilot | open subscription paywall for free-limit doubts responses instead of showing a connection error
  * - 2026-05-11T00:00:00Z | claude | add timestamp to Message state (stable per-message); align ConversationMessage
  *   interface with schemas.ts contract; add data.response fallback to GENERIC_CONNECTION_ERROR
+ * - 2026-05-12T00:00:00Z | copilot | add voice dictation input and read-aloud controls for Vidya answers
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import ContentModal from '@/components/UI/ContentModal';
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
+import { logger } from '@/lib/logger';
+import { Speech, createSpeechController } from '@/lib/speech';
 
 const DOUBTS_API_PATH = '/api/doubts';
 const FREE_LIMIT_REACHED_ERROR = 'free_limit_reached';
@@ -58,6 +61,14 @@ interface DoubtPanelProps {
 }
 
 export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: DoubtPanelProps) {
+  const [messages, setMessages] = React.useState<Message[]>([]);
+  const [input, setInput] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [questionId, setQuestionId] = React.useState<string | null>(null);
+  const [isPaywallOpen, setIsPaywallOpen] = React.useState(false);
+  const [isListening, setIsListening] = React.useState(false);
+  const [playingMessageKey, setPlayingMessageKey] = React.useState<string | null>(null);
+
   function normalizeFollowUpQuestions(value: unknown): string[] {
     if (!Array.isArray(value)) {
       return [];
@@ -66,13 +77,84 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
     return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
   }
 
-  const [messages, setMessages] = React.useState<Message[]>([]);
-  const [input, setInput] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  const [questionId, setQuestionId] = React.useState<string | null>(null);
-  const [isPaywallOpen, setIsPaywallOpen] = React.useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const speechControllerRef = useRef<ReturnType<typeof createSpeechController> | null>(null);
+
+  function stopVoiceInput() {
+    try {
+      speechControllerRef.current?.stop();
+    } catch {
+      // ignore recognition shutdown errors
+    }
+
+    speechControllerRef.current = null;
+    setIsListening(false);
+  }
+
+  function getSpeechLanguage(text: string) {
+    return /[\u0900-\u097F]/.test(text) ? 'hi-IN' : 'en-US';
+  }
+
+  function handlePlayMessage(message: Message, messageKey: string) {
+    try {
+      Speech.stop();
+      Speech.speak(message.text, { lang: getSpeechLanguage(message.text) });
+      setPlayingMessageKey(messageKey);
+    } catch (err) {
+      logger.error('Doubt panel TTS error', { error: String(err) });
+      setPlayingMessageKey(null);
+    }
+  }
+
+  function handleStopMessagePlayback() {
+    try {
+      Speech.stop();
+    } catch {
+      // ignore speech synthesis shutdown errors
+    }
+
+    setPlayingMessageKey(null);
+  }
+
+  function startVoiceInput() {
+    if (loading || isListening) {
+      return;
+    }
+
+    setInput('');
+
+    try {
+      const controller = createSpeechController({
+        lang: 'en-US',
+        onInterim: (text) => {
+          setInput(text);
+        },
+        onFinal: (text) => {
+          setInput(text);
+          setIsListening(false);
+          speechControllerRef.current = null;
+        },
+        onError: (message) => {
+          logger.error('Doubt panel voice input error', { error: message });
+          setIsListening(false);
+          speechControllerRef.current = null;
+        },
+      });
+
+      if (!controller) {
+        logger.error('Doubt panel voice input unavailable', { error: 'Speech recognition not supported' });
+        return;
+      }
+
+      speechControllerRef.current = controller;
+      setIsListening(true);
+      controller.start();
+    } catch (err) {
+      logger.error('Doubt panel voice input error', { error: String(err) });
+      stopVoiceInput();
+    }
+  }
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -80,6 +162,11 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => () => {
+    stopVoiceInput();
+    handleStopMessagePlayback();
+  }, []);
 
   // Focus input and seed greeting when panel opens
   useEffect(() => {
@@ -107,6 +194,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
   }
 
   async function submitDoubt(nextQuestion?: string) {
+    stopVoiceInput();
     const q = (nextQuestion ?? input).trim();
     if (!q || loading) return;
 
@@ -242,52 +330,80 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-2.5 ${msg.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}
-            >
-              {msg.role === 'vidya' && (
-                <Image
-                  src="/logos/vidya/vidya-avatar-64.png"
-                  alt="Vidya"
-                  width={28}
-                  height={28}
-                  className="rounded-full flex-shrink-0 mt-0.5 object-cover"
-                />
-              )}
+          {messages.map((msg, i) => {
+            const messageKey = `${msg.timestamp}-${i}`;
+            const isPlaying = playingMessageKey === messageKey;
+
+            return (
               <div
-                className={`max-w-[80%] space-y-1.5 ${msg.role === 'student' ? 'items-end' : 'items-start'} flex flex-col`}
+                key={messageKey}
+                className={`flex items-start gap-2.5 ${msg.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}
               >
+                {msg.role === 'vidya' && (
+                  <Image
+                    src="/logos/vidya/vidya-avatar-64.png"
+                    alt="Vidya"
+                    width={28}
+                    height={28}
+                    className="rounded-full flex-shrink-0 mt-0.5 object-cover"
+                  />
+                )}
                 <div
-                  className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === 'student'
-                      ? 'bg-[#534AB7] text-white rounded-tr-sm'
-                      : 'bg-[#EEEDFE] dark:bg-[#534AB7]/15 text-foreground rounded-tl-sm'
-                  }`}
+                  className={`max-w-[80%] space-y-1.5 ${msg.role === 'student' ? 'items-end' : 'items-start'} flex flex-col`}
                 >
-                  {msg.text}
-                </div>
-                {msg.role === 'vidya' && Array.isArray(msg.followUps) && msg.followUps.length > 0 && (
-                  <div className="flex flex-wrap gap-2 px-1">
-                    {msg.followUps.map((followUpQuestion, followUpIndex) => (
+                  <div
+                    className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                      msg.role === 'student'
+                        ? 'bg-[#534AB7] text-white rounded-tr-sm'
+                        : 'bg-[#EEEDFE] dark:bg-[#534AB7]/15 text-foreground rounded-tl-sm'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                  {msg.role === 'vidya' && (
+                    <div className="flex items-center gap-2 px-1">
                       <button
-                        key={`${i}-follow-up-${followUpIndex}`}
                         type="button"
                         onClick={() => {
-                          void submitDoubt(followUpQuestion);
+                          if (isPlaying) {
+                            handleStopMessagePlayback();
+                            return;
+                          }
+
+                          handlePlayMessage(msg, messageKey);
                         }}
-                        disabled={loading}
-                        className="min-h-[44px] rounded-full bg-[#EEEDFE] px-3 py-2 text-left text-xs font-medium text-[#534AB7] transition-colors hover:bg-[#dcd9fd] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#534AB7]/15 dark:text-indigo-300 dark:hover:bg-[#534AB7]/25"
+                        aria-label={isPlaying ? 'Stop reading answer aloud' : 'Read answer aloud'}
+                        className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-border/50 bg-background text-sm transition-colors ${
+                          isPlaying
+                            ? 'text-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/15'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
                       >
-                        {followUpQuestion}
+                        {isPlaying ? '⏹' : '🔊'}
                       </button>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  )}
+                  {msg.role === 'vidya' && Array.isArray(msg.followUps) && msg.followUps.length > 0 && (
+                    <div className="flex flex-wrap gap-2 px-1">
+                      {msg.followUps.map((followUpQuestion, followUpIndex) => (
+                        <button
+                          key={`${i}-follow-up-${followUpIndex}`}
+                          type="button"
+                          onClick={() => {
+                            void submitDoubt(followUpQuestion);
+                          }}
+                          disabled={loading}
+                          className="min-h-[44px] rounded-full bg-[#EEEDFE] px-3 py-2 text-left text-xs font-medium text-[#534AB7] transition-colors hover:bg-[#dcd9fd] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#534AB7]/15 dark:text-indigo-300 dark:hover:bg-[#534AB7]/25"
+                        >
+                          {followUpQuestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {loading && (
             <div className="flex items-start gap-2.5">
@@ -318,12 +434,32 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         {/* Input area */}
         <div className="flex-shrink-0 px-4 py-3 border-t border-border/50">
           <div className="flex items-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (isListening) {
+                  stopVoiceInput();
+                  return;
+                }
+
+                startVoiceInput();
+              }}
+              disabled={loading}
+              aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+              className={`flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-border transition-colors ${
+                isListening
+                  ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-[#534AB7]/15'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+              } disabled:opacity-40`}
+            >
+              {isListening ? '⏹' : '🎤'}
+            </button>
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Type your doubt here..."
+              placeholder={isListening ? 'Listening...' : 'Type or speak your doubt here...'}
               rows={1}
               disabled={loading}
               className="flex-1 resize-none rounded-xl border border-border bg-muted/50 px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#534AB7]/40 disabled:opacity-50 min-h-[44px] max-h-[120px]"
@@ -352,6 +488,11 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
               </svg>
             </button>
           </div>
+          {isListening && (
+            <p className="text-[11px] text-[#534AB7] mt-1.5 text-center">
+              Listening for your doubt. Tap send when the transcription looks right.
+            </p>
+          )}
           <p className="text-[11px] text-muted-foreground mt-1.5 text-center">
             Press Enter to send -- Shift+Enter for a new line
           </p>

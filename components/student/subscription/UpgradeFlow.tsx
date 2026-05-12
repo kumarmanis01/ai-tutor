@@ -1,19 +1,18 @@
 'use client';
 
 /**
- * UpgradeFlow -- FreemiumUpgradeGate → PlanSelector → PaymentMethodSelector
- *               → PaymentConfirmation → Razorpay → Success | Failure
+ * FILE OBJECTIVE:
+ * - Guide students from the freemium gate into plan selection, payment, and subscription completion.
  *
- * Steps:
- *   'gate'     -- headline + "See plans" + "Remind me later"
- *   'plan'     -- PlanSelector
- *   'method'   -- PaymentMethodSelector
- *   'confirm'  -- PaymentConfirmation (locked until terms scrolled)
- *   'success'  -- thank-you + redirect to /dashboard
- *   'failure'  -- error + retry (max 3x) + support contact
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/subscription/UpgradeFlow.spec.tsx
  *
- * Never mentions referral programme.
- * Razorpay SDK loaded globally via app/providers.tsx -- no re-load here.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | replace free-tier usage counter with upgrade benefits on the gate step
  */
 
 import React, { useState, useCallback } from 'react';
@@ -30,6 +29,14 @@ import type { PaymentMethod } from './PaymentMethodSelector';
 type Step = 'gate' | 'plan' | 'method' | 'confirm' | 'success' | 'failure';
 
 const MAX_RETRIES = 3;
+const UPGRADE_BENEFITS = [
+  'Unlimited questions',
+  'Unlimited practice sets',
+  'Detailed AI explanations',
+  'CBSE/ICSE Grades 1-12',
+  'Progress tracking',
+  'Priority processing',
+] as const;
 
 declare global {
   interface Window {
@@ -162,36 +169,29 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
           id="upgrade-gate-heading"
           className="mb-2 text-lg font-bold text-gray-900 dark:text-gray-100"
         >
-          You&apos;ve used all your free sessions
+          Please upgrade to continue learning
         </h2>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
           Keep learning with Teacher Vidya -- unlimited AI tutor sessions, personalised to you.
         </p>
 
-        {/* Usage counter grid */}
-        {freeTierUsage && (() => {
-          const resetDate = new Date(freeTierUsage.periodStart);
-          resetDate.setMonth(resetDate.getMonth() + 1);
-          const resetLabel = resetDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-          return (
-            <div className="mb-4 grid grid-cols-3 divide-x divide-[#534AB7]/15 rounded-xl bg-white dark:bg-slate-800/50 border border-[#534AB7]/20 overflow-hidden">
-              <div className="py-3 text-center">
-                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{freeTierUsage.sessionsUsed}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">used</p>
-              </div>
-              <div className="py-3 text-center">
-                <p className="text-xl font-bold text-[#E24B4A]">{freeTierUsage.sessionsRemaining}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">left</p>
-              </div>
-              <div className="py-3 text-center">
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{resetLabel}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">resets</p>
-              </div>
+        <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {UPGRADE_BENEFITS.map((benefit) => (
+            <div
+              key={benefit}
+              className="flex items-center gap-3 rounded-xl border border-[#534AB7]/15 bg-white/90 px-3 py-3 text-sm font-medium text-gray-700 shadow-sm dark:border-[#534AB7]/20 dark:bg-slate-900/40 dark:text-gray-200"
+            >
+              <span
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EEEDFE] text-[#534AB7] dark:bg-[#534AB7]/15"
+                aria-hidden
+              >
+                ✓
+              </span>
+              <span>{benefit}</span>
             </div>
-          );
-        })()}
+          ))}
+        </div>
 
-        <p className="mb-5 text-xl font-bold text-[#534AB7]">₹99/month</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
