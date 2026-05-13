@@ -5,8 +5,16 @@
  * - Uses useTestQuestions hook for answers state management.
  * - TutorTipPanel shown with test-specific tips.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/session/SessionPhases.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2026-03-08 | claude | moved to components/session/phases/ + uses useTestQuestions hook
+ * - 2026-05-13T00:00:00Z | copilot | render test questions through the shared question interaction shell and consume Question-bank shaped content
  */
 
 import React, { useState } from 'react';
@@ -15,6 +23,7 @@ import type { SubmitActionResult } from '@/lib/session/sessionActions';
 import { normaliseChoices, scoreBgColour } from '@/lib/session/sessionUtils';
 import { useTestQuestions } from '@/hooks/session/useTestQuestions';
 import { TutorTipPanel } from '@/components/session/TutorTipPanel';
+import { QuestionInteractionShell } from '@/components/questions/QuestionInteractionShell';
 
 interface TestPhaseProps {
   content: TestContent;
@@ -46,12 +55,12 @@ function TestResults({ result }: { result: SubmitActionResult }) {
         <p className="text-sm text-muted-foreground">
           {result.correctAnswers} of {result.totalAnswers} correct
         </p>
-        <div className="mt-3 w-full bg-muted rounded-full h-2.5">
-          <div
-            className={`h-2.5 rounded-full transition-all ${scoreBgColour(pct)}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <progress
+          className={`mt-3 h-2.5 w-full overflow-hidden rounded-full ${scoreBgColour(pct)}`}
+          value={pct}
+          max={100}
+          aria-label="Test score progress"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -173,45 +182,20 @@ export function TestPhase({
 
         <div className="space-y-6">
           {questions.map((question, i) => {
-            const choices = normaliseChoices(question.options);
+            const choices = normaliseChoices(question.choices);
             const selected = answers[question.id];
 
             return (
               <div key={question.id} className="bg-card rounded-xl border p-4">
-                <p className="text-sm font-medium text-muted-foreground mb-2">
-                  Question {i + 1} of {questions.length}
-                </p>
-                <p className="text-sm font-medium text-foreground mb-4 leading-relaxed">
-                  {question.question}
-                </p>
-                {choices.length > 0 ? (
-                  <div className="space-y-2">
-                    {choices.map((choice) => (
-                      <button
-                        key={choice.key}
-                        onClick={() => setAnswer(question.id, choice.key)}
-                        className={`w-full text-left px-4 py-2.5 rounded-lg border transition-all text-sm ${
-                          selected === choice.key
-                            ? 'border-primary bg-primary/10 text-primary font-medium'
-                            : 'border-border hover:border-primary/30 hover:bg-primary/5'
-                        }`}
-                      >
-                        <span className="font-mono text-xs mr-2 uppercase text-muted-foreground">
-                          {choice.key})
-                        </span>
-                        {choice.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="Type your answer..."
-                    value={answers[question.id] ?? ''}
-                    onChange={(e) => setAnswer(question.id, e.target.value)}
-                    className="w-full px-4 py-2.5 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                )}
+                <QuestionInteractionShell
+                  prompt={question.prompt}
+                  questionNumber={i + 1}
+                  totalQuestions={questions.length}
+                  difficulty={question.difficulty}
+                  choices={choices}
+                  value={selected ?? ''}
+                  onChange={(nextValue) => setAnswer(question.id, nextValue)}
+                />
               </div>
             );
           })}

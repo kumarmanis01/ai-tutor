@@ -76,19 +76,44 @@ export async function GET(
 
   const isGraded = assignment.status === 'GRADED' || assignment.status === 'SUBMITTED';
   const rawQuestions = Array.isArray(assignment.questions) ? assignment.questions as Record<string, unknown>[] : [];
+  const questionIds = rawQuestions
+    .map((question) => String(question.id ?? ''))
+    .filter((questionId) => questionId.length > 0);
+  const bankQuestions = questionIds.length > 0
+    ? await prisma.question.findMany({
+        where: { id: { in: questionIds } },
+        select: {
+          id: true,
+          type: true,
+          prompt: true,
+          choices: true,
+          difficulty: true,
+          correctAnswer: true,
+        },
+      })
+    : [];
+  const bankQuestionMap = new Map(bankQuestions.map((question) => [question.id, question]));
 
   // Strip correctAnswer + explanation from ungraded assignments
-  const questions = rawQuestions.map((q) => ({
-    id: q.id,
-    type: q.type,
-    prompt: q.prompt,
-    choices: q.choices ?? null,
-    difficulty: q.difficulty ?? null,
+  const questions = rawQuestions.map((q) => {
+    const questionId = String(q.id ?? '');
+    const bankQuestion = bankQuestionMap.get(questionId);
+
+    return {
+      id: questionId,
+      type: bankQuestion?.type ?? q.type,
+      prompt: bankQuestion?.prompt ?? q.prompt,
+      choices: bankQuestion?.choices ?? q.choices ?? null,
+      difficulty: bankQuestion?.difficulty ?? q.difficulty ?? null,
     // Only expose answer/explanation once graded
-    ...(isGraded
-      ? { correctAnswer: q.correctAnswer ?? null, explanation: q.explanation ?? null }
-      : {}),
-  }));
+      ...(isGraded
+        ? {
+            correctAnswer: bankQuestion?.correctAnswer ?? q.correctAnswer ?? null,
+            explanation: q.explanation ?? null,
+          }
+        : {}),
+    };
+  });
 
   // Build answer lookup for results display
   const answerMap: Record<string, { studentAnswer: string; isCorrect: boolean }> = {};

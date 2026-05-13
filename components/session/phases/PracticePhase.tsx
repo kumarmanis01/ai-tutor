@@ -24,6 +24,7 @@
  * - 2026-05-11T13:15:00Z | copilot | add "Practice more" button in results screen for once-per-day fresh questions (paid only)
  * - 2026-05-12T00:00:00Z | copilot | check isPremiumUser client-side before practice more API call; show UpgradeFlow if not premium
  * - 2026-05-12T15:45:00Z | copilot | fix: call /api/subscription/status endpoint instead of isPremiumUser to check premium status from client
+ * - 2026-05-13T00:00:00Z | copilot | render practice questions through the shared question interaction shell
  */
 
 import React, { useState, useCallback } from 'react';
@@ -33,6 +34,7 @@ import { normaliseChoices } from '@/lib/session/sessionUtils';
 import { scoreBgColour } from '@/lib/session/sessionUtils';
 import { TutorTipPanel } from '@/components/session/TutorTipPanel';
 import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
+import { QuestionInteractionShell } from '@/components/questions/QuestionInteractionShell';
 
 interface PracticePhaseProps {
   content: PracticeContent;
@@ -305,8 +307,6 @@ export function PracticePhase({
 
   const question = questions[currentIndex];
   const choices = normaliseChoices(question.choices);
-  const selected = null; // selection state lives in handleAnswer flow
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1fr,minmax(240px,280px)] gap-6 lg:gap-8 max-w-5xl mx-auto px-4 pb-6">
       <main className="min-w-0">
@@ -337,36 +337,23 @@ export function PracticePhase({
           ))}
         </div>
 
-        <p className="text-base font-medium text-foreground mb-5 leading-relaxed">
-          {question.prompt}
-        </p>
-
-        {choices.length > 0 ? (
-          <div className="space-y-2.5">
-            {choices.map((choice) => (
-              <button
-                key={choice.key}
-                onClick={() => handleAnswer(question.id, choice.key)}
-                disabled={selected !== null}
-                className="w-full text-left px-4 py-3 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 active:scale-[0.99] transition-all text-sm"
-              >
-                <span className="font-mono text-xs mr-2 uppercase text-muted-foreground">
-                  {choice.key})
-                </span>
-                {choice.label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <input
-            type="text"
-            placeholder="Type your answer..."
-            onBlur={(e) => {
-              if (e.target.value.trim()) handleAnswer(question.id, e.target.value.trim());
-            }}
-            className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        )}
+        <QuestionInteractionShell
+          prompt={question.prompt}
+          questionNumber={currentIndex + 1}
+          totalQuestions={questions.length}
+          difficulty={question.difficulty}
+          choices={choices}
+          value=""
+          onChange={(nextValue) => {
+            if (choices.length > 0) {
+              void handleAnswer(question.id, nextValue);
+            }
+          }}
+          onTextCommit={(nextValue) => {
+            void handleAnswer(question.id, nextValue);
+          }}
+          disabled={feedback !== null}
+        />
 
         {feedback !== null && (
           <p

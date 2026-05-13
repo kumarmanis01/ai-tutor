@@ -224,15 +224,19 @@ describe('Session phase components', () => {
             {
               id: 'tq1',
               type: 'mcq',
-              question: 'Choose an integer',
-              options: ['5', '2.5'],
+              prompt: 'Choose an integer',
+              choices: ['5', '2.5'],
+              difficulty: 'medium',
+              correctAnswer: 'a',
               explanation: null,
             },
             {
               id: 'tq2',
               type: 'mcq',
-              question: 'Choose a non-integer',
-              options: ['-4', '1.2'],
+              prompt: 'Choose a non-integer',
+              choices: ['-4', '1.2'],
+              difficulty: 'medium',
+              correctAnswer: 'b',
               explanation: null,
             },
           ],
@@ -264,6 +268,10 @@ describe('Session phase components', () => {
 
   it('shows practice more button in results for paid users', async () => {
     jest.useFakeTimers();
+    const fetchMock = jest.fn().mockResolvedValue({
+      json: async () => ({ isPremium: true }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
 
     const onSubmit = jest
       .fn<(answers: { questionId: string; answer: string }[]) => Promise<SubmitActionResult | null>>()
@@ -322,10 +330,11 @@ describe('Session phase components', () => {
     await waitFor(() => expect(screen.getByText('Practice more')).toBeTruthy());
 
     const practiceMoreButton = screen.getByText('Practice more');
-    expect(practiceMoreButton).not.toHaveAttribute('disabled');
+    expect(practiceMoreButton.getAttribute('disabled')).toBeNull();
     expect(screen.getByText(/available once per day/i)).toBeTruthy();
 
     fireEvent.click(practiceMoreButton);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/subscription/status'));
     expect(onPracticeMore).toHaveBeenCalled();
   });
 
