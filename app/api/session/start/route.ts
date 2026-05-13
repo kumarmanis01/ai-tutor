@@ -12,11 +12,13 @@
  *
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | emit canonical student session start analytics on structured session entry
+ * - 2026-05-13T00:00:00Z | copilot | emit first-session analytics for students who have not emitted first-session yet
  */
 
 import { NextResponse } from 'next/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import {
   startSession,
@@ -103,6 +105,29 @@ export async function POST(req: Request) {
       },
       'session.start',
     );
+
+    const firstSessionAlreadyEmitted = await prisma.analyticsEvent.findFirst({
+      where: {
+        userId: user.id,
+        eventType: ANALYTICS_EVENTS.STUDENT.FIRST_SESSION,
+      },
+      select: { id: true },
+    });
+
+    if (!firstSessionAlreadyEmitted) {
+      await emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.FIRST_SESSION,
+          userId: user.id,
+          courseId: view.topicId,
+          metadata: {
+            sessionId: view.sessionId,
+            topicId: view.topicId,
+          },
+        },
+        'session.start.first',
+      );
+    }
 
     res = NextResponse.json({ session: view, phase, content });
   } catch (err) {

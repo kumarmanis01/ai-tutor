@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | emit canonical lesson viewed/completed analytics from session phase transitions
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical session phases analytics on each structured phase transition
  */
 
 import '@/lib/events/sessionEventListeners'; // COUPLING-01: register SESSION_COMPLETED → TopicRanker invalidation
@@ -90,6 +91,20 @@ export async function POST(req: Request) {
         topicId: view.topicId,
       },
     });
+
+    await emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.SESSION_PHASES,
+        userId: user.id,
+        courseId: view.topicId,
+        metadata: {
+          sessionId: view.sessionId,
+          topicId: view.topicId,
+          currentPhase: view.currentPhase,
+        },
+      },
+      'session.next.phase',
+    );
 
     // ABSTRACTION-02: Mark explanation viewed when student advances to EXPLANATION and receives content.
     if (view.currentPhase === 'EXPLANATION') {

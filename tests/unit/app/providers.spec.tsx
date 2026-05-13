@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | add app open and app close analytics coverage for root providers
+ * - 2026-05-13T00:00:00Z | copilot | add role-scoped app lifecycle analytics coverage for student, parent, and admin routes
  */
 
 import React from 'react'
@@ -54,6 +55,7 @@ describe('app/providers', () => {
   beforeEach(() => {
     trackEventMock.mockReset()
     flushEventsMock.mockReset()
+    window.history.pushState({}, '', '/')
   })
 
   test('tracks app open on mount and app close on pagehide', async () => {
@@ -71,5 +73,37 @@ describe('app/providers', () => {
 
     expect(trackEventMock).toHaveBeenCalledWith({ eventType: 'student.app.close' })
     expect(flushEventsMock).toHaveBeenCalled()
+  })
+
+  test('tracks parent app lifecycle on parent route', async () => {
+    const Providers = (await import('@/app/providers')).default
+    window.history.pushState({}, '', '/parent/dashboard')
+
+    render(
+      <Providers>
+        <div>Child</div>
+      </Providers>,
+    )
+
+    expect(trackEventMock).toHaveBeenCalledWith({ eventType: 'parent.app.open' })
+
+    fireEvent(window, new Event('pagehide'))
+    expect(trackEventMock).toHaveBeenCalledWith({ eventType: 'parent.app.close' })
+  })
+
+  test('tracks admin app lifecycle on admin route', async () => {
+    const Providers = (await import('@/app/providers')).default
+    window.history.pushState({}, '', '/admin/analytics/events')
+
+    render(
+      <Providers>
+        <div>Child</div>
+      </Providers>,
+    )
+
+    expect(trackEventMock).toHaveBeenCalledWith({ eventType: 'admin.app.open' })
+
+    fireEvent(window, new Event('pagehide'))
+    expect(trackEventMock).toHaveBeenCalledWith({ eventType: 'admin.app.close' })
   })
 })

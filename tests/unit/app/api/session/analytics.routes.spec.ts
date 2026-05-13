@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | add focused coverage for canonical session analytics emission routes
+ * - 2026-05-13T00:00:00Z | copilot | add coverage for first-session and session-phase analytics emissions
  */
 
 import { jest } from '@jest/globals'
@@ -36,6 +37,13 @@ describe('session analytics routes', () => {
     jest.doMock('@/lib/session/getPhaseContent', () => ({
       resolvePhaseContent: jest.fn().mockResolvedValue({ ok: true }),
     }))
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        analyticsEvent: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      },
+    }))
     jest.doMock('@/lib/session/sessionEvents', () => ({ recordSessionEvent: jest.fn() }))
     jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: emitMock }))
     jest.doMock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), error: jest.fn() } }))
@@ -52,6 +60,10 @@ describe('session analytics routes', () => {
     expect(emitMock).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'student.session.start', courseId: 'topic-1' }),
       'session.start',
+    )
+    expect(emitMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'student.first_session', courseId: 'topic-1' }),
+      'session.start.first',
     )
   })
 
@@ -70,7 +82,9 @@ describe('session analytics routes', () => {
     jest.doMock('@/lib/session/getPhaseContent', () => ({
       resolvePhaseContent: jest.fn().mockResolvedValue({ ok: true }),
     }))
-    jest.doMock('@/lib/session/phaseCompletionValidator', () => ({ markExplanationViewed: jest.fn() }))
+    jest.doMock('@/lib/session/phaseCompletionValidator', () => ({
+      markExplanationViewed: jest.fn().mockResolvedValue(undefined),
+    }))
     jest.doMock('@/lib/session/sessionEvents', () => ({ recordSessionEvent: jest.fn() }))
     jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: emitMock }))
     jest.doMock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), error: jest.fn() } }))
@@ -85,6 +99,10 @@ describe('session analytics routes', () => {
     }) as any)
 
     expect(res.status).toBe(200)
+    expect(emitMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'student.session.phases', courseId: 'topic-1' }),
+      'session.next.phase',
+    )
     expect(emitMock).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'lesson_viewed', courseId: 'topic-1' }),
       'session.next.explanation',

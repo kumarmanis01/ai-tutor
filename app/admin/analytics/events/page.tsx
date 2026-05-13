@@ -18,7 +18,7 @@
  */
 
 import React from 'react'
-import { ANALYTICS_EVENTS, ANALYTICS_SIGNAL_EVENT_PREFIX } from '@/lib/analytics/events'
+import { ANALYTICS_EVENTS, ANALYTICS_SIGNAL_EVENT_PREFIX, ALL_ANALYTICS_EVENT_SET } from '@/lib/analytics/events'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { AdminTopbar } from '../../../../components/admin/AdminTopbar'
@@ -308,6 +308,13 @@ async function fetchEventAnalytics() {
       count: countByEvent[definition.eventType] ?? 0,
       lastSeen: lastSeenByEvent[definition.eventType],
     })),
+    // Include a full registry view so admins can see defined events even if they
+    // have not been emitted yet. Each entry shows 30d count and last seen.
+    allDefinedEvents: Array.from(ALL_ANALYTICS_EVENT_SET).map((eventType) => ({
+      eventType,
+      count: countByEvent[eventType] ?? 0,
+      lastSeen: lastSeenByEvent[eventType] ?? null,
+    })),
     funnel: {
       sessionStarts,
       sessionCompletes,
@@ -592,6 +599,37 @@ export default async function EventAnalyticsPage() {
             </p>
           </div>
           <EventCoverageTable rows={analytics.coreEvents} />
+        </div>
+
+        {/* All defined events (registry) */}
+        <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 mt-6">
+          <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">All defined events (registry)</h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Every event defined in <code>lib/analytics/events.ts</code> with 30d counts.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Event</th>
+                  <th className="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">30d count</th>
+                  <th className="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Last seen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {data.allDefinedEvents.map((row) => (
+                  <tr key={row.eventType}>
+                    <td className="px-4 py-3 align-top">
+                      <p className="font-medium text-gray-800 dark:text-gray-200">{row.eventType}</p>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">{row.count}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{row.lastSeen ? row.lastSeen.toLocaleString() : 'Never'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
         </div>
 
         {/* Daily trend */}
