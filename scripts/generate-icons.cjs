@@ -17,7 +17,7 @@ async function main() {
   for (const size of [192, 384, 512]) {
     const padding = Math.floor(size * 0.06)
     const inner = size - padding * 2
-    await sharp('public/icons/spinzy-marketing-source.png')
+    await sharp('public/icons/spinzy-logo-owl.png')
       .resize(inner, inner, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
       .extend({ top: padding, bottom: padding, left: padding, right: padding,
                 background: { r: 255, g: 255, b: 255, alpha: 1 } })

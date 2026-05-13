@@ -39,7 +39,7 @@ async function generateIcon(size) {
   // Purple circle background SVG
   const circle = Buffer.from(
     `<svg width="${size}" height="${size}">` +
-    `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#534AB7"/>` +
+    `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#FFFFFF"/>` +
     `</svg>`
   );
 
