@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
       adjustedSubjects.push(plan.subjectId);
 
-      await emitServerAnalyticsEvent(
+      void emitServerAnalyticsEvent(
         {
           eventType: ANALYTICS_EVENTS.STUDENT.LEARNING_PATH_ALTERED,
           userId,

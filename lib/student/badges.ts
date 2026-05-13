@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-11T00:00:00Z | copilot | wired parent milestone notifications; added tests
+ * - 2026-05-13T00:00:00Z | copilot | emit badge-awarded analytics (`STUDENT.BADGE_NEW_BADGE`) for newly awarded badges (best-effort)
  */
 
 import { prisma } from '@/lib/prisma'

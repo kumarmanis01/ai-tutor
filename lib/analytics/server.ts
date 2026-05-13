@@ -14,7 +14,7 @@
  * - 2026-05-13T00:00:00Z | copilot | create shared best-effort server analytics emitter for API routes
  */
 
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { type AnalyticsEventName } from '@/lib/analytics/events';
 import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';

@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-05-08T00:00:00Z | copilot | open paywall modal on free_limit_reached; fix inline style lint violations
+ * - 2026-05-13T00:00:00Z | copilot | add client-side analytics tracking for subject selection and paywall events
  */
 'use client';
 

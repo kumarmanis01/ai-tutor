@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | staff-engineer | add EMAIL_FROM, all MAIL_SUBJECTS for 30+ notification templates, NOTIFICATION_EVENT_TYPES
+ * - 2026-05-13T00:00:00Z | copilot | update subject lines to use "Spinzy Academy" branding
  */
 
 import {

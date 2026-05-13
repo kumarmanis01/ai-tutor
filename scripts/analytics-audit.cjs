@@ -1,4 +1,20 @@
 #!/usr/bin/env node
+/**
+ * FILE OBJECTIVE:
+ * - Audit analytics event coverage by counting 30-day occurrences for each event in the canonical registry.
+ * - Generate a markdown report at analytics-audit.md for quick review.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/scripts/analytics-audit.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | convert script from .js to .cjs for CommonJS compatibility and add required file header
+ */
+
 const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');

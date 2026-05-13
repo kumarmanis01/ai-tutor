@@ -16,6 +16,7 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | staff-engineer | created centralized mail module per 09_notification_architecture.md AC-01
+ * - 2026-05-13T00:00:00Z | copilot | update email footer copy to reference "Spinzy Academy" and add unsubscribe link
  */
 
 import { sendMailSafe } from '@/lib/mailer';

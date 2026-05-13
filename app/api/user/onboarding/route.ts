@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | persist parent_whatsapp to parentWhatsappPhone and set accountStatus lifecycle with requiresOtp response
  * - 2026-05-11T00:00:00Z | copilot | auto-link matching parent accounts using onboarding parent email/whatsapp contacts
+ * - 2026-05-13T00:00:00Z | copilot | emit `STUDENT.SUBJECT_SELECTED` analytics when subjects are updated during onboarding (best-effort)
  */
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';

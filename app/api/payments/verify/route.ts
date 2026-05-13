@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Verify a client-side payment (Razorpay) using a signature and activate subscription on success.
+ * - Records verification audit events and emits best-effort analytics for success/failure.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/payments/verify/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | add file header and emit payment success/failure analytics in verify flow
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'

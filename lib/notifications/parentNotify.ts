@@ -16,6 +16,7 @@
  *
  * EDIT LOG:
  * - 2026-05-05T00:00:00Z | copilot | remove unsupported 'from' property from sendMailSafe call (TS2353 fix)
+ * - 2026-05-13T00:00:00Z | copilot | update parent email footer copy and record in EDIT LOG
  */
 
 import { prisma } from '@/lib/prisma';

@@ -21,6 +21,7 @@
  * EDIT LOG:
  * - 2026-04-07 | claude | created to fix missing module error in app/admin/layout.tsx
  * - 2026-04-15 | copilot | add required file header and EDIT LOG entry for repo compliance
+ * - 2026-05-13T00:00:00Z | copilot | add Event Analytics nav item to admin sidebar
  */
 
 import Link from 'next/link';

@@ -7,9 +7,6 @@ async function main() {
   const third = Math.floor(W / 3)
   console.log(`Source: ${W}x${H}, each third: ${third}px`)
 
-  const padX = Math.floor(third * 0.08)
-  const padY = Math.floor(H * 0.12)
-
 //   // LEFT THIRD -- favicon owl face icon
 //   await sharp(source)
 //     .extract({ left: padX, top: padY, width: third - (padX * 2), height: H - (padY * 2) })

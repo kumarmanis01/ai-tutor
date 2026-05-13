@@ -190,7 +190,7 @@ async function fetchEventAnalytics() {
     activeStudents30d,
     activeCourses30d,
     groupedEvents30d,
-    recentCoreEvents,
+    recentAllEvents,
     topCourses30d,
     trendEvents,
     recentSignals,
@@ -216,11 +216,10 @@ async function fetchEventAnalytics() {
     prisma.analyticsEvent.findMany({
       where: {
         createdAt: { gte: since30d },
-        eventType: { in: CORE_EVENT_DEFINITIONS.map((definition) => definition.eventType) },
       },
       orderBy: { createdAt: 'desc' },
       select: { eventType: true, createdAt: true },
-      take: 1000,
+      take: 5000,
     }),
     prisma.analyticsEvent.groupBy({
       by: ['courseId'],
@@ -264,10 +263,10 @@ async function fetchEventAnalytics() {
   }
 
   const lastSeenByEvent: LastSeenByEvent = Object.fromEntries(
-    CORE_EVENT_DEFINITIONS.map((definition) => [definition.eventType, null]),
+    Array.from(ALL_ANALYTICS_EVENT_SET).map((eventType) => [eventType, null]),
   )
-  for (const row of recentCoreEvents) {
-    if (lastSeenByEvent[row.eventType] === null) {
+  for (const row of recentAllEvents) {
+    if (Object.prototype.hasOwnProperty.call(lastSeenByEvent, row.eventType) && lastSeenByEvent[row.eventType] === null) {
       lastSeenByEvent[row.eventType] = row.createdAt
     }
   }

@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-05-05T00:00:00Z | copilot | add file header and explicit link callback typing for strict TypeScript compliance
+ * - 2026-05-13T00:00:00Z | copilot | emit XP analytics (`STUDENT.XP_CHANGED`) after awarding XP (best-effort)
  */
 
 import { prisma } from '@/lib/prisma'
