@@ -1,29 +1,23 @@
 /**
- * POST /api/session/[sessionId]/practice/more
+ * FILE OBJECTIVE:
+ * - Serve fresh premium practice questions for a structured session after the initial practice set is completed.
+ * - Emits a canonical practice-more analytics event when a student successfully requests more practice.
  *
- * Fetch fresh (non-repeating) practice questions for a completed PRACTICE phase.
- * Premium-only feature, once per calendar day.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/session/[sessionId]/practice/more/route.spec.ts
  *
- * Flow:
- *   1. Verify session ownership and PRACTICE phase with completed submission
- *   2. Check if user is premium and can use feature today
- *   3. Check question pool availability; trigger hydration if needed
- *   4. Sample fresh questions not yet shown in this session
- *   5. Reset session state: clear practiceResult, set new questions
- *   6. Record usage for daily cap
- *
- * Design decisions:
- *   - Premium-only enforced at API level (not just UI)
- *   - Hydration trigger is automatic (on-demand) -- no manual gate
- *   - Non-repeating: questions already served in this session are excluded
- *   - Session state reset: practiceResult is cleared so UI can re-render
- *   - Idempotent within a session: multiple calls same session return same questions
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- *   2026-05-11T12:55:00Z | copilot | created for "practice more" once-per-day feature
+ * - 2026-05-11T12:55:00Z | copilot | created for "practice more" once-per-day feature
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical practice more analytics on successful premium refresh
  */
 
 import { NextResponse } from 'next/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
@@ -305,6 +299,20 @@ export async function POST(
     topicId: session.topicId,
     freshQuestionsCount: freshQuestions.length,
   });
+
+  await emitServerAnalyticsEvent(
+    {
+      eventType: ANALYTICS_EVENTS.STUDENT.PRACTICE_MORE,
+      userId: user.id,
+      courseId: session.topicId,
+      metadata: {
+        sessionId,
+        topicId: session.topicId,
+        freshQuestionsCount: freshQuestions.length,
+      },
+    },
+    'session.practice.more',
+  );
 
   // ── Return fresh questions ────────────────────────────────────────────────
 

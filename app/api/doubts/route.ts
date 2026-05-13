@@ -16,8 +16,11 @@
  * - 2026-05-08T00:00:00Z | copilot | restore direct synchronous doubts LLM path and remove queued/check-back response
  * - 2026-05-08T00:00:00Z | copilot | enforce daily free-question quota in doubts route with consume/refund and retry-safe behavior
  * - 2026-05-08T00:00:00Z | copilot | return and persist doubts follow-up questions as an array for clickable UI bubbles
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical doubts asked analytics for successful and fallback doubt responses
  */
 import { NextResponse } from 'next/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
@@ -300,6 +303,22 @@ export async function POST(req: Request) {
       },
     });
 
+    await emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.DOUBTS_ASKED,
+        userId: user.id,
+        metadata: {
+          questionId: sq.id,
+          subject: studentSubject,
+          chapter: studentChapter,
+          topic: studentTopic,
+          confidenceLevel: aiResponse.confidenceLevel,
+          fallback: false,
+        },
+      },
+      'doubts.post.success',
+    );
+
     res = NextResponse.json({
       questionId: sq.id,
       response: aiResponse.response,
@@ -348,6 +367,22 @@ export async function POST(req: Request) {
         contentJson: aiResponse,
       },
     });
+
+    await emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.DOUBTS_ASKED,
+        userId: user.id,
+        metadata: {
+          questionId: sq.id,
+          subject: studentSubject,
+          chapter: studentChapter,
+          topic: studentTopic,
+          confidenceLevel: aiResponse.confidenceLevel,
+          fallback: true,
+        },
+      },
+      'doubts.post.fallback',
+    );
 
     res = NextResponse.json({
       questionId: sq.id,

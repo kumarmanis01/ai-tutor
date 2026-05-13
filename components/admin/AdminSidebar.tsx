@@ -276,6 +276,12 @@ export function AdminSidebar({
           isActive={isActive('/admin/learning-analytics')}
         />
         <NavItem
+          href="/admin/analytics/events"
+          icon={<IconChart />}
+          label="Event Analytics"
+          isActive={isActive('/admin/analytics/events')}
+        />
+        <NavItem
           href="/admin/costs"
           icon={<IconCoin />}
           label="Costs & Usage"

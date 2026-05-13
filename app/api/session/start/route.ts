@@ -1,4 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Start or resume a structured learning session and return the current phase payload.
+ * - Emits session-start analytics and session event records for admin visibility and downstream workflows.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/session/analytics.routes.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical student session start analytics on structured session entry
+ */
+
 import { NextResponse } from 'next/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import {
   startSession,
@@ -70,6 +88,21 @@ export async function POST(req: Request) {
         currentPhase: view.currentPhase,
       },
     });
+
+    await emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.SESSION_START,
+        userId: user.id,
+        courseId: view.topicId,
+        metadata: {
+          sessionId: view.sessionId,
+          topicId: view.topicId,
+          currentPhase: view.currentPhase,
+          resumed: view.currentPhase !== 'OVERVIEW',
+        },
+      },
+      'session.start',
+    );
 
     res = NextResponse.json({ session: view, phase, content });
   } catch (err) {
