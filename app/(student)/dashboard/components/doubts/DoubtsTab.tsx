@@ -117,7 +117,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
 
       if (!res.ok) {
         if (data?.error === FREE_LIMIT_REACHED_ERROR) {
-          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { logger.warn('Failed to track paywall shown event', { className: 'DoubtsTab', methodName: 'handleSubmit', err }) }
+          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (_err) { logger.warn('Failed to track paywall shown event', { className: 'DoubtsTab', methodName: 'handleSubmit', err: _err }) }
           trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
             reason: 'free_limit_reached',
             subject: selectedSubject || null,
@@ -212,7 +212,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
 
       if (!res.ok) {
         if (data?.error === FREE_LIMIT_REACHED_ERROR) {
-          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { logger.warn('Failed to track paywall shown event', { className: 'DoubtsTab', methodName: 'handleFollowUpClick', err }) }
+          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (_err) { logger.warn('Failed to track paywall shown event', { className: 'DoubtsTab', methodName: 'handleFollowUpClick', err: _err }) }
           trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
             reason: 'free_limit_reached',
             subject: selectedSubject || null,

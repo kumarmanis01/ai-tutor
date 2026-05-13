@@ -23,8 +23,6 @@
  *   2026-03-15 | claude | T39 -- full D7 §7.10 multi-child contract
  */
 
-export const dynamic = 'force-dynamic'
-
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
@@ -34,6 +32,8 @@ import { computeReadinessScore } from '@/lib/student/examReadiness'
 import type { AppSession } from '@/lib/types/auth'
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
+
+export const dynamic = 'force-dynamic'
 
 const CLASS_NAME = 'ParentProgressAPI'
 

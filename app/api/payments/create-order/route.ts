@@ -70,9 +70,9 @@ export async function POST(req: Request) {
         amount: order.amount,
         payload: { planId, durationMonths: plan.durationMonths },
       })
-    } catch (err) {
+    } catch (_err) {
       // Non-fatal: don't fail order creation if audit write fails
-      logger.warn('recordPaymentEvent failed', { err })
+      logger.warn('recordPaymentEvent failed', { err: _err })
     }
 
     const res = NextResponse.json(
@@ -96,17 +96,17 @@ export async function POST(req: Request) {
         },
         'payments.create-order',
       )
-    } catch (err) {
+    } catch (_err) {
       logger.warn('Failed to emit payment initiated analytics', {
         className: 'PaymentsCreateOrderAPI',
         methodName: 'POST',
-        err,
+        err: _err,
       })
     }
     return res
-  } catch (err) {
+  } catch (_err) {
     const res = NextResponse.json({ error: 'Internal error' }, { status: 500 })
-    logger.logAPI(req, res, { className: 'PaymentsCreateOrderAPI', methodName: 'POST', err }, start)
+    logger.logAPI(req, res, { className: 'PaymentsCreateOrderAPI', methodName: 'POST', err: _err }, start)
     return res
   }
 }
