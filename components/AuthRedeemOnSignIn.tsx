@@ -1,4 +1,18 @@
 'use client';
+/**
+ * FILE OBJECTIVE:
+ * - Client-only component that handles referral redemption on sign-in and emits referral analytics events.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/AuthRedeemOnSignIn.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate analytics to canonical client constants; move userId to trackEvent top-level field; add FILE OBJECTIVE header
+ */
 import { useEffect, useRef, type ReactElement } from 'react';
 import { logger } from '@/lib/logger';
 import { useSession } from 'next-auth/react';
@@ -55,9 +69,10 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         if (track) {
           try {
             const s = session as unknown as AppSession | null
-            void track(ANALYTICS_EVENTS.STUDENT.REFERRAL_REDEEM_ATTEMPT, {
-              code: referralCode,
+            void analyticsClient.trackEvent({
+              eventType: ANALYTICS_EVENTS.STUDENT.REFERRAL_REDEEM_ATTEMPT,
               userId: s?.user?.id ?? null,
+              metadata: { code: referralCode },
             });
           } catch (err) {
             logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_attempt', error: String(err) });

@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for the admin analytics signals route.
+ * - Validates signal event retrieval and sanitized response shape.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.signals.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate mock from analyticsSignal to analyticsEvent; add FILE OBJECTIVE header
+ */
+
 describe('Admin analytics signals API', () => {
   it('returns signals for admin', async () => {
     const mockPrisma: any = {

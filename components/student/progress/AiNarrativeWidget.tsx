@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page
+ * - 2026-05-13T00:00:00Z | copilot | migrate analytics emission to canonical analyticsClient + ANALYTICS_EVENTS constants
  */
 
 import { useEffect, useState, useCallback } from 'react';

@@ -1,8 +1,18 @@
 /**
- * Server-side job runner for analytics aggregation and signals.
- * - Calls analytics aggregator first, then signal generator
- * - Measures duration, logs errors, and returns structured result
- * - Does not import Prisma directly
+ * FILE OBJECTIVE:
+ * - Server-side job runner for analytics aggregation and signal-to-suggestion processing.
+ * - Calls the analytics aggregator, then the signal generator, then maps new signal events
+ *   to content suggestions via the insights engine.
+ *
+ * LINKED UNIT TEST:
+ * - tests/integration/analytics_job_suggestions.integration.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | replace analyticsSignal.findMany with analyticsEvent prefix filter; add FILE OBJECTIVE header
  */
 import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock'
 import logAuditEvent from '@/lib/audit/log'

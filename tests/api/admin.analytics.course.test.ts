@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for the admin analytics course route.
+ * - Validates daily aggregate computation from raw analyticsEvent rows.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.course.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate mock from analyticsDailyAggregate to analyticsEvent rows; add FILE OBJECTIVE header
+ */
+
 describe('Admin analytics - course', () => {
   it('returns aggregated metrics for admin', async () => {
     const mockPrisma: any = {

@@ -6,6 +6,7 @@
  *
  * EDIT LOG:
  * - 2026-04-21 | staff-engineer | Task F: allowlist lock test
+ * - 2026-05-13T00:00:00Z | copilot | source EXPECTED_TYPES from STUDENT_ANALYTICS_EVENT_SET canonical registry
  */
 
 // Mock dependencies so we can import the route without a DB or Redis connection

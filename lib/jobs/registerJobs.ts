@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-18T00:00:00Z | copilot | fix: cast dynamic imports to any to satisfy TypeScript
+ * - 2026-05-13T00:00:00Z | copilot | filter signal-to-suggestions job via analyticsEvent eventType prefix using ANALYTICS_SIGNAL_EVENT_PREFIX
  */
 
 import { registerJob } from '@/lib/jobs/registry'

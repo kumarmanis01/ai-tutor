@@ -15,6 +15,7 @@
  * - 2026-04-15T00:00:00Z | copilot-planner | added analytics batch endpoint
  * - 2026-04-16T00:00:00Z | copilot | return 202 on success; 400 when all events invalid; add eventType allowlist
  * - 2026-04-21T00:00:00Z | staff-engineer | Task D: enqueue to BullMQ for non-blocking ingestion; DB fallback when Redis absent
+ * - 2026-05-13T00:00:00Z | copilot | source VALID_EVENT_TYPES from STUDENT_ANALYTICS_EVENT_SET canonical registry
  */
 
 import { NextResponse } from 'next/server'

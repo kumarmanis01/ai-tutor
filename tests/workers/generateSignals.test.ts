@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for the generateSignals worker service.
+ * - Validates signal event creation for low completion rate and low quiz pass rate conditions.
+ *
+ * LINKED UNIT TEST:
+ * - tests/workers/generateSignals.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate mock from analyticsSignal to analyticsEvent.create; add FILE OBJECTIVE header
+ */
+
 import { generateSignalsForCourse } from '../../worker/services/generateSignals'
 
 describe('generateSignals worker', () => {

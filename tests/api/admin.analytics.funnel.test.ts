@@ -1,13 +1,26 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for the admin analytics funnel route.
+ * - Validates DB-side COUNT-based funnel totals for views and completions.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.funnel.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | update mock from findMany to count to match DB-side COUNT refactor; add FILE OBJECTIVE header
+ */
+
 describe('Admin analytics - funnel', () => {
   it('computes funnel totals for last 30 days', async () => {
     const now = new Date()
     const mockPrisma: any = {
       analyticsEvent: {
-        findMany: jest.fn().mockResolvedValue([
-          { createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), eventType: 'lesson_viewed' },
-          { createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), eventType: 'lesson_completed' },
-          { createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000), eventType: 'lesson_viewed' },
-        ])
+        // first count call = totalViews (2), second = totalCompletions (1)
+        count: jest.fn().mockResolvedValueOnce(2).mockResolvedValueOnce(1),
       }
     }
 

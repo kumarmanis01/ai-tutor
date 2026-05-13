@@ -1,6 +1,23 @@
+/**
+ * FILE OBJECTIVE:
+ * - Integration test for Phase 11 job-style suggestion processing and idempotency.
+ * - Requires a live DB connection; skips automatically when DATABASE_URL is absent.
+ *
+ * LINKED UNIT TEST:
+ * - tests/phase11/job.integration.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate seed/cleanup from analyticsSignal to analyticsEvent; add FILE OBJECTIVE header
+ */
+
 import { prisma } from '@/lib/prisma'
 import net from 'net'
 import { generateSuggestionsForSignal } from '@/insights/engine'
+import { saveSuggestions } from '@/insights/store'
 import { saveSuggestions } from '@/insights/store'
 
 describe('Phase 11 — Job-style suggestion processing idempotency', () => {

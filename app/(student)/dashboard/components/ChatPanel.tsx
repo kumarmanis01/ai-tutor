@@ -10,6 +10,7 @@
  * EDIT LOG:
  * - 2025-01-23 | copilot | made responsive - larger chat area on desktop
  * - 2025-01-22 | copilot | simplified for mobile-first with cleaner message bubbles
+ * - 2026-05-13T00:00:00Z | copilot | migrate analytics import and event emission to canonical analyticsClient + ANALYTICS_EVENTS constants
  */
 import { logger } from '@/lib/logger';
 import React, { useState, useEffect, useRef } from "react";

@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Integration test validating that the analytics job creates content suggestions from signal events exactly once and writes an audit log.
+ *
+ * LINKED UNIT TEST:
+ * - tests/integration/analytics_job_suggestions.integration.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate mock DB from analyticsSignal to analyticsEvent; add FILE OBJECTIVE header
+ */
+
 import runAnalyticsJobs from '@/jobs/analyticsJobs'
 
 jest.mock('@/src/jobs/jobLock', () => ({

@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin API route that returns analytics signal events (eventType starting with 'signal.').
+ * - Reads from AnalyticsEvent table and returns a sanitized view for admin consumption.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.signals.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate from analyticsSignal to analyticsEvent with prefix filter; add FILE OBJECTIVE header
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { ANALYTICS_SIGNAL_EVENT_PREFIX } from '@/lib/analytics/events'

@@ -1,4 +1,24 @@
+/**
+ * FILE OBJECTIVE:
+ * - Integration test for Phase 11 ContentSuggestion idempotency.
+ * - Requires a live DB connection; skips automatically when DATABASE_URL is absent.
+ *
+ * LINKED UNIT TEST:
+ * - tests/phase11/contentSuggestion.idempotency.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate seed/cleanup from analyticsSignal to analyticsEvent; add FILE OBJECTIVE header
+ */
+
 import logger from '../../lib/logger';
+import { prisma } from '@/lib/prisma'
+import net from 'net'
+import { generateSuggestionsForSignal } from '@/insights/engine'
+import { saveSuggestions } from '@/insights/store'
 import { prisma } from '@/lib/prisma'
 import net from 'net'
 import { generateSuggestionsForSignal } from '@/insights/engine'

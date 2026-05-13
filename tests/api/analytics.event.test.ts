@@ -13,6 +13,8 @@
  * - 2026-04-16T00:00:00Z | copilot | fix prisma mocking (use jest.doMock) to prevent timeout
  * - 2026-04-21T00:00:00Z | staff-engineer | Task D: mock analytics queue; add allowlist tests
  * - 2026-04-21T00:00:00Z | staff-engineer | review fix: remove jest.mock() from beforeEach (unreliable after resetModules)
+ * - 2026-05-13T00:00:00Z | copilot | update accepted eventType example to canonical student.auth.signin registry event
+ */
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

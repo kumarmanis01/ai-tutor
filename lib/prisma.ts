@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-01-24T12:00:00Z | copilot | replace ESM createRequire logic with universal PrismaClient singleton to support Jest/CJS
  * - 2026-04-18T00:00:00Z | copilot | remove speculative eager-connect for test env; root fix is in prismaEnsureColumns.ts
+ * - 2026-05-13T00:00:00Z | copilot | remove analyticsSignal compatibility proxy now that all callers use analyticsEvent directly
  */
 
 import { PrismaClient } from '@prisma/client';

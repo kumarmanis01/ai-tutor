@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Worker service that aggregates daily analytics events into AnalyticsDailyAggregate rows.
+ * - Counts views and completions using canonical event sets from the registry.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/analyticsAggregator.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | replace hardcoded event strings with canonical ANALYTICS_VIEW/COMPLETION_EVENT_SET; add FILE OBJECTIVE header
+ */
+
 import { prisma as _prisma } from '@/lib/prisma.js'
 import {
   ANALYTICS_COMPLETION_EVENT_SET,

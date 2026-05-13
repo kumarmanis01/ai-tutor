@@ -1,4 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Worker service that generates analytics signal events for a given course.
+ * - Checks daily aggregates and recent quiz/purchase metrics to emit structured
+ *   "signal.*" AnalyticsEvent rows consumed by the suggestions job.
+ *
+ * LINKED UNIT TEST:
+ * - tests/workers/generateSignals.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | replace analyticsSignal writes with analyticsEvent; add FILE OBJECTIVE header; serialize Date fields in metadata; use ANALYTICS_EVENTS registry constants for quiz event types
+ */
+
 import { prisma } from '@/lib/prisma.js'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 const SIGNAL_EVENT_TYPES = {
   LOW_COMPLETION_RATE: 'signal.low_completion_rate',
@@ -35,14 +53,14 @@ export async function generateSignalsForCourse(courseId: string) {
       courseId,
       type: 'LOW_COMPLETION_RATE',
       severity: 'CRITICAL',
-      metadata: { completionRate: latest.completionRate, day: latest.day },
+      metadata: { completionRate: latest.completionRate, day: (latest.day instanceof Date ? latest.day.toISOString() : latest.day) },
     })
   }
 
   // 2) Low quiz pass rate: use events from last 30 days
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  const attempted = await db.analyticsEvent.count({ where: { courseId, eventType: 'quiz_attempted', createdAt: { gte: since } } })
-  const passed = await db.analyticsEvent.count({ where: { courseId, eventType: 'quiz_passed', createdAt: { gte: since } } })
+  const attempted = await db.analyticsEvent.count({ where: { courseId, eventType: ANALYTICS_EVENTS.STUDENT.QUIZ_ATTEMPTED, createdAt: { gte: since } } })
+  const passed = await db.analyticsEvent.count({ where: { courseId, eventType: ANALYTICS_EVENTS.STUDENT.QUIZ_PASSED, createdAt: { gte: since } } })
   if (attempted >= 10) {
     const passRate = attempted > 0 ? passed / attempted : 0
     if (passRate < 0.5) {
@@ -50,7 +68,7 @@ export async function generateSignalsForCourse(courseId: string) {
         courseId,
         type: 'LOW_QUIZ_PASS_RATE',
         severity: 'WARNING',
-        metadata: { attempted, passed, passRate, periodStart: since },
+        metadata: { attempted, passed, passRate, periodStart: since.toISOString() },
       })
     }
   }
@@ -65,7 +83,7 @@ export async function generateSignalsForCourse(courseId: string) {
         courseId,
         type: 'HIGH_REFUND_RATE',
         severity: 'WARNING',
-        metadata: { purchases, enrollments, enrollRatio, periodStart: since },
+        metadata: { purchases, enrollments, enrollRatio, periodStart: since.toISOString() },
       })
     }
   }

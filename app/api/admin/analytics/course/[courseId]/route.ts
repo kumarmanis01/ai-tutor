@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin API route that returns daily analytics aggregates for a course.
+ * - Reads raw AnalyticsEvent rows for the past 365 days and aggregates by day in memory.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.course.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate from analyticsDailyAggregate to analyticsEvent; add date filter to bound query window; add FILE OBJECTIVE header
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import {
@@ -18,8 +34,10 @@ export async function GET(_req: Request, ctx: any) {
 
   if (!courseId) return NextResponse.json({ error: 'Missing courseId' }, { status: 400 })
 
+  const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+
   const events = await db.analyticsEvent.findMany({
-    where: { courseId: String(courseId) },
+    where: { courseId: String(courseId), createdAt: { gte: since } },
     orderBy: { createdAt: 'desc' },
     take: 5000,
     select: {
