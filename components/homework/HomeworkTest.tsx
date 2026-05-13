@@ -390,12 +390,12 @@ export function HomeworkTest({
             >
               Back to Dashboard
             </Link>
-            <Link
+            {/*<Link
               href="/learn/learning-path"
               className="w-full min-h-[48px] rounded-2xl border border-[#534AB7] text-[#534AB7] dark:text-indigo-300 font-semibold text-sm flex items-center justify-center hover:bg-[#EEEDFE] transition-colors"
             >
               Continue Learning
-            </Link>
+            </Link>*/}
           </div>
         )}
       </div>

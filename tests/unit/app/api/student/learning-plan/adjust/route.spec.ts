@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-05-04T00:00:00Z | copilot | add route tests for auth, mid-week behind detection, and regeneration enqueue
+ * - 2026-05-13T00:00:00Z | copilot | add analytics assertion for learning path altered emissions on queued adjustments
  */
 
 describe('POST /api/student/learning-plan/adjust', () => {
@@ -97,6 +98,7 @@ describe('POST /api/student/learning-plan/adjust', () => {
     jest.setSystemTime(new Date('2026-05-06T10:00:00.000Z')) // Wednesday
 
     const enqueueMock = jest.fn(async () => true)
+    const emitMock = jest.fn(async () => undefined)
 
     jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: jest.fn(async () => ({ user: { id: 'u1' } })) }))
     jest.doMock('@/lib/prisma', () => ({
@@ -117,6 +119,7 @@ describe('POST /api/student/learning-plan/adjust', () => {
       },
     }))
     jest.doMock('@/lib/ai/learningPlanRegeneration', () => ({ enqueueLearningPlanRegeneration: enqueueMock }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: emitMock }))
     jest.doMock('@/lib/logger', () => ({
       logger: { logAPI: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
     }))
@@ -131,6 +134,10 @@ describe('POST /api/student/learning-plan/adjust', () => {
     expect(body.subjectsQueued).toBe(1)
     expect(enqueueMock).toHaveBeenCalledWith(
       expect.objectContaining({ studentId: 'u1', subjectId: 'math', weeklyGoal: 6 }),
+    )
+    expect(emitMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'student.learning_path.altered', userId: 'u1', courseId: 'math' }),
+      'student.learning-plan.adjust',
     )
   })
 })

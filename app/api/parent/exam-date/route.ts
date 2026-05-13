@@ -18,6 +18,8 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { generateLearningPlan } from '@/lib/ai/learningPlan'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +60,15 @@ export async function POST(req: Request) {
     }
 
     await prisma.user.update({ where: { id: studentId }, data: { examDate } })
+
+    void emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.PARENT.LEARNING_PATH_CHANGED,
+        userId: parentId,
+        metadata: { studentId, examDate: examDate.toISOString() },
+      },
+      'api.parent.exam-date',
+    )
 
     // Non-blocking: regenerate existing learning plans for the student to respect the new exam date.
     // Runs in a .then() to avoid delaying the API response (consistent with onboarding patterns).

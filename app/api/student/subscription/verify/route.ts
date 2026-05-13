@@ -37,6 +37,8 @@ import { PLANS } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 function getRazorpayClient() {
   // Avoid creating a real Razorpay client while running automated tests.
@@ -317,6 +319,15 @@ export async function POST(req: Request) {
       logger.error('Receipt SMS failed', { event: 'subscription.verify.sms_error', context: { userId }, err });
     });
   }
+
+  void emitServerAnalyticsEvent(
+    {
+      eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_METHOD,
+      userId,
+      metadata: { provider: 'razorpay', planId },
+    },
+    'api.student.subscription.verify',
+  );
 
   return NextResponse.json(
     { success: true, subscriptionExpiry: expiry.toISOString() },

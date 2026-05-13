@@ -21,6 +21,8 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { submitJob } from '@/lib/execution-pipeline/submitJob';
 import { LanguageCode, DifficultyLevel } from '@prisma/client';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 interface HydrateAllRequest {
   boardId: string;
@@ -126,6 +128,26 @@ export async function POST(req: Request) {
       maxAttempts: 3,
     });
 
+    try {
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_START_GENERATION_JOB,
+        userId: session.user.id ?? null,
+        metadata: { boardId, classId, subjectId, language, difficulties, jobId: syllabusResult.jobId },
+      }, 'admin.content.hydrate-all')
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_GENERATION_SUCCESS,
+        userId: session.user.id ?? null,
+        metadata: { boardId, classId, subjectId, language, difficulties, jobId: syllabusResult.jobId, existing: syllabusResult.existing },
+      }, 'admin.content.hydrate-all')
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_SUCCESS_FAILURE,
+        userId: session.user.id ?? null,
+        metadata: { status: 'success', boardId, classId, subjectId, language, difficulties, jobId: syllabusResult.jobId },
+      }, 'admin.content.hydrate-all')
+    } catch {
+      /* best-effort */
+    }
+
     // Resolve the canonical DB user id for auditing. If the session identity
     // doesn't map to a DB user, write a NULL userId to avoid foreign-key errors.
     let auditUserId: string | null = null;
@@ -193,6 +215,20 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
+    try {
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_GENERATION_FAILURE,
+        userId: session.user?.id ?? null,
+        metadata: { error: error instanceof Error ? error.message : 'Failed to initiate hydration' },
+      }, 'admin.content.hydrate-all')
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_SUCCESS_FAILURE,
+        userId: session.user?.id ?? null,
+        metadata: { status: 'failure', error: error instanceof Error ? error.message : 'Failed to initiate hydration' },
+      }, 'admin.content.hydrate-all')
+    } catch {
+      /* best-effort */
+    }
     logger.error('[hydrate-all] Failed to initiate hydration', { error });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to initiate hydration' },

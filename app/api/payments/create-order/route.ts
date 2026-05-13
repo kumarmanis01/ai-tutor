@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Create a Razorpay order for a student subscription purchase and persist PaymentOrder.
+ * - Ensures provider idempotency key and writes an audit event for order creation.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/payments/create-order/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | add file header and emit analytics `STUDENT.PAYMENT_INITIATED` on order creation (best-effort)
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
@@ -6,6 +22,8 @@ import { createRazorpayOrder } from '@/lib/payments/razorpay'
 import { recordPaymentEvent } from '@/lib/payments/audit'
 import { randomUUID } from 'crypto'
 import { PLANS } from '@/lib/billing/plans'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 import type { PlanId } from '@/lib/billing/plans'
 
 export async function POST(req: Request) {
@@ -68,9 +86,9 @@ export async function POST(req: Request) {
         amount: order.amount,
         payload: { planId, durationMonths: plan.durationMonths },
       })
-    } catch (err) {
+    } catch (_err) {
       // Non-fatal: don't fail order creation if audit write fails
-      logger.warn('recordPaymentEvent failed', { err })
+      logger.warn('recordPaymentEvent failed', { err: _err })
     }
 
     const res = NextResponse.json(
@@ -84,10 +102,27 @@ export async function POST(req: Request) {
       { status: 200 },
     )
     logger.logAPI(req, res, { className: 'PaymentsCreateOrderAPI', methodName: 'POST' }, start)
+    // Analytics: record that a payment flow was initiated for this student (best-effort)
+    try {
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_INITIATED,
+          userId,
+          metadata: { planId, orderId: order.orderId, amount: order.amount },
+        },
+        'payments.create-order',
+      )
+    } catch (_err) {
+      logger.warn('Failed to emit payment initiated analytics', {
+        className: 'PaymentsCreateOrderAPI',
+        methodName: 'POST',
+        err: _err,
+      })
+    }
     return res
-  } catch (err) {
+  } catch (_err) {
     const res = NextResponse.json({ error: 'Internal error' }, { status: 500 })
-    logger.logAPI(req, res, { className: 'PaymentsCreateOrderAPI', methodName: 'POST', err }, start)
+    logger.logAPI(req, res, { className: 'PaymentsCreateOrderAPI', methodName: 'POST', err: _err }, start)
     return res
   }
 }

@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { assertNoStringFilters } from '@/lib/guards/noStringFilters';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 export async function GET(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -88,6 +90,18 @@ export async function GET(req: Request) {
         attemptId: a.id,
       }));
 
+    const me = top.find((item) => item.userId === session.user.id);
+    if (me) {
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.LEADERBOARD_POSITION_CHANGE,
+          userId: session.user.id,
+          metadata: { rank: me.rank, by: 'tests', period },
+        },
+        'api.leaderboard',
+      );
+    }
+
     logApiUsage('/api/leaderboard?by=tests', 'GET');
     return NextResponse.json({ period, grade: gradeStr, board: boardSlug, subject: subjName, top });
   }
@@ -98,6 +112,17 @@ export async function GET(req: Request) {
     take: 20,
     select: { id: true, name: true, image: true, points: true },
   });
+  const me = top.find((item) => item.id === session.user.id);
+  if (me) {
+    void emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.LEADERBOARD_POSITION_CHANGE,
+        userId: session.user.id,
+        metadata: { rank: top.indexOf(me) + 1, by: 'points' },
+      },
+      'api.leaderboard',
+    );
+  }
   logApiUsage('/api/leaderboard', 'GET');
   return NextResponse.json({ top });
 }

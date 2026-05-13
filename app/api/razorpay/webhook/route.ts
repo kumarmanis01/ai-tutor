@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | added Razorpay webhook handler
+ * - 2026-05-13T00:00:00Z | copilot | fix payment.captured analytics emission (remove invalid failure payload and duplicate success emit)
  */
 
 import { NextResponse } from 'next/server';
@@ -27,6 +28,8 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { redeemReferral } from '@/lib/referral';
 import { redeemCoupon } from '@/lib/coupon';
 import { RAZORPAY_WEBHOOK_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 function getWebhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET ?? process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -211,6 +214,17 @@ export async function POST(req: Request) {
           }
         }
       });
+
+      // Analytics: payment succeeded (best-effort)
+      try {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_SUCCESS,
+          userId: orderRow.studentId,
+          metadata: { orderId, paymentId, amount: payment?.amount },
+        }, 'razorpay.webhook.payment.captured')
+      } catch (err) {
+        logger.warn('Failed to emit payment success analytics from webhook', { err, orderId, paymentId })
+      }
 
       return NextResponse.json({ ok: true }, { status: 200 });
     } catch (err) {

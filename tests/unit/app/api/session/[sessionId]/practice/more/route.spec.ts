@@ -16,6 +16,7 @@
 
 import { POST } from '@/app/api/session/[sessionId]/practice/more/route';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { isPremiumUser } from '@/lib/subscription';
 import { checkPracticeMoreCap, recordPracticeMoreUsage } from '@/lib/practice/practiceMoreCap';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
@@ -23,6 +24,7 @@ import { prisma } from '@/lib/prisma';
 
 // Mock dependencies
 jest.mock('@/lib/session');
+jest.mock('@/lib/analytics/server');
 jest.mock('@/lib/subscription');
 jest.mock('@/lib/practice/practiceMoreCap');
 jest.mock('@/lib/session/sessionEngine');
@@ -73,6 +75,7 @@ describe('POST /api/session/[sessionId]/practice/more', () => {
     (getServerSessionForHandlers as jest.Mock).mockResolvedValue({
       user: { id: 'student-123' },
     });
+    (emitServerAnalyticsEvent as jest.Mock).mockResolvedValue(undefined);
     (isSessionEngineEnabled as jest.Mock).mockReturnValue(true);
   });
 
@@ -182,6 +185,38 @@ describe('POST /api/session/[sessionId]/practice/more', () => {
         difficulty: 'easy',
         correctAnswer: 'a',
       },
+      {
+        id: 'q7',
+        type: 'mcq',
+        prompt: 'What is 3+3?',
+        choices: [{ key: 'a', label: '6' }],
+        difficulty: 'easy',
+        correctAnswer: 'a',
+      },
+      {
+        id: 'q8',
+        type: 'mcq',
+        prompt: 'What is 4+4?',
+        choices: [{ key: 'a', label: '8' }],
+        difficulty: 'easy',
+        correctAnswer: 'a',
+      },
+      {
+        id: 'q9',
+        type: 'mcq',
+        prompt: 'What is 5+5?',
+        choices: [{ key: 'a', label: '10' }],
+        difficulty: 'easy',
+        correctAnswer: 'a',
+      },
+      {
+        id: 'q10',
+        type: 'mcq',
+        prompt: 'What is 6+6?',
+        choices: [{ key: 'a', label: '12' }],
+        difficulty: 'easy',
+        correctAnswer: 'a',
+      },
     ];
 
     (isPremiumUser as jest.Mock).mockResolvedValue(true);
@@ -211,5 +246,9 @@ describe('POST /api/session/[sessionId]/practice/more', () => {
     expect(json.questions).toHaveLength(1);
     expect(json.questions[0].id).toBe('q6');
     expect(recordPracticeMoreUsage).toHaveBeenCalledWith('student-123');
+    expect(emitServerAnalyticsEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'student.practice_more', courseId: 'topic-123' }),
+      'session.practice.more',
+    );
   });
 });

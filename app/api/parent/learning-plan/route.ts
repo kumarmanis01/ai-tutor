@@ -14,6 +14,8 @@ import { cacheGet, cacheSet } from '@/lib/cache'
 import { getNextConcept } from '@/lib/student/learningPlan'
 import { formatErrorForResponse } from '@/lib/errorResponse'
 import type { AppSession } from '@/lib/types/auth'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 const CACHE_TTL_S = 120
 const cacheKey = (studentId: string) => `lplan:v1:parent:${studentId}`
@@ -104,6 +106,19 @@ export async function GET(req: NextRequest) {
       progressPercent,
       nextConcept: nextConceptPayload,
       recentlyCompleted,
+    }
+
+    try {
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.PARENT.LEARNING_PATH_OBSERVED,
+          userId: session.user.id,
+          metadata: { studentId, hasPlan: true, totalConcepts, completedConcepts: completedCount },
+        },
+        'api.parent.learning-plan',
+      )
+    } catch {
+      /* best-effort */
     }
 
     await cacheSet(cacheKey(studentId), payload, CACHE_TTL_S)

@@ -23,6 +23,8 @@ import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { channelOtpKeyByType, getParentChannelVerificationStatus, resolveParentChannels } from '@/lib/parent/contactLinking';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 function hashOtp(otp: string) {
   const secret = process.env.OTP_SECRET ?? 'fallback-secret';
@@ -127,6 +129,18 @@ export async function POST(req: NextRequest) {
     });
 
     const res = NextResponse.json({ ok: true, verified: true, channel, verification });
+    try {
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.PARENT.CHANNEL_VERIFIED_CHANNEL,
+          userId: studentId,
+          metadata: { channel },
+        },
+        'api.auth.parent.verify-otp',
+      );
+    } catch {
+      /* best-effort */
+    }
     logger.logAPI(req, res, { className: 'api.auth.parent.verify-otp', methodName: 'POST' }, start);
     return res;
   } catch (err) {

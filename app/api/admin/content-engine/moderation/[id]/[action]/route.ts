@@ -17,6 +17,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 interface RouteParams {
   params: {
@@ -63,6 +65,38 @@ export async function POST(req: Request, { params }: RouteParams) {
         },
       });
 
+      try {
+        void emitServerAnalyticsEvent(
+          {
+            eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_MODERATION,
+            userId: session.user.id,
+            metadata: { id, action, kind: 'note' },
+          },
+          'api.admin.content-engine.moderation',
+        );
+        void emitServerAnalyticsEvent(
+          {
+            eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_REVIEW,
+            userId: session.user.id,
+            metadata: { id, action, kind: 'note' },
+          },
+          'api.admin.content-engine.moderation',
+        );
+        void emitServerAnalyticsEvent(
+          {
+            eventType:
+              action === 'approve'
+                ? ANALYTICS_EVENTS.ADMIN.CONTENT_APPROVE
+                : ANALYTICS_EVENTS.ADMIN.CONTENT_REJECT,
+            userId: session.user.id,
+            metadata: { id, action, kind: 'note' },
+          },
+          'api.admin.content-engine.moderation',
+        );
+      } catch {
+        /* best-effort */
+      }
+
       logger.info(`[moderation] Note ${action}d`, { noteId: id, adminId: session.user.id });
       return NextResponse.json({ success: true, type: 'note', status: newStatus });
     }
@@ -85,6 +119,38 @@ export async function POST(req: Request, { params }: RouteParams) {
           newValue: { status: newStatus },
         },
       });
+
+      try {
+        void emitServerAnalyticsEvent(
+          {
+            eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_MODERATION,
+            userId: session.user.id,
+            metadata: { id, action, kind: 'test' },
+          },
+          'api.admin.content-engine.moderation',
+        );
+        void emitServerAnalyticsEvent(
+          {
+            eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_REVIEW,
+            userId: session.user.id,
+            metadata: { id, action, kind: 'test' },
+          },
+          'api.admin.content-engine.moderation',
+        );
+        void emitServerAnalyticsEvent(
+          {
+            eventType:
+              action === 'approve'
+                ? ANALYTICS_EVENTS.ADMIN.CONTENT_APPROVE
+                : ANALYTICS_EVENTS.ADMIN.CONTENT_REJECT,
+            userId: session.user.id,
+            metadata: { id, action, kind: 'test' },
+          },
+          'api.admin.content-engine.moderation',
+        );
+      } catch {
+        /* best-effort */
+      }
 
       logger.info(`[moderation] Test ${action}d`, { testId: id, adminId: session.user.id });
       return NextResponse.json({ success: true, type: 'test', status: newStatus });

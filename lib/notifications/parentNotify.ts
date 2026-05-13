@@ -16,6 +16,7 @@
  *
  * EDIT LOG:
  * - 2026-05-05T00:00:00Z | copilot | remove unsupported 'from' property from sendMailSafe call (TS2353 fix)
+ * - 2026-05-13T00:00:00Z | copilot | update parent email footer copy and record in EDIT LOG
  */
 
 import { prisma } from '@/lib/prisma';
@@ -220,7 +221,7 @@ function buildSessionMissedHtml(studentName: string, dashboardUrl: string): stri
       <a href="${dashboardUrl}" style="${btn}">View progress</a>
       <p style="color:#888;font-size:12px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
         Spinzy Academy -- AI Home Tutor<br>
-        You are receiving this because you have a Spinzy account.
+        You are receiving this because you have a Spinzy Academy account.
       </p>
     </div>
   `;

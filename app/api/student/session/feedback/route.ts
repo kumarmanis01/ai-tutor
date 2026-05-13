@@ -1,4 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Accept session feedback ratings from authenticated students and log the rating safely.
+ * - Emits canonical content feedback analytics for positive and negative ratings.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/student/session/feedback/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical content thumbs up/down analytics from student session feedback ratings
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 
@@ -32,6 +50,24 @@ export async function POST(req: NextRequest) {
     event: 'session_feedback_submitted',
     context: { userId, sessionId: safeSessionId, rating, phase: safePhase },
   });
+
+  if (rating >= 4 || rating <= 2) {
+    await emitServerAnalyticsEvent(
+      {
+        eventType:
+          rating >= 4
+            ? ANALYTICS_EVENTS.STUDENT.CONTENT_THUMBSUP
+            : ANALYTICS_EVENTS.STUDENT.CONTENT_THUMBSDOWN,
+        userId,
+        metadata: {
+          sessionId: safeSessionId,
+          phase: safePhase,
+          rating,
+        },
+      },
+      'student.session.feedback',
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

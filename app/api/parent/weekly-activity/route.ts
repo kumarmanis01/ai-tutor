@@ -28,6 +28,8 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 const CLASS_NAME = 'ParentWeeklyActivityAPI';
 
@@ -169,6 +171,19 @@ export async function GET(req: NextRequest) {
 
     const studyMinutes = Math.round(rawMinutes);
     const topicsStudied = topicIdsSeen.size;
+
+    try {
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.PARENT.DAILY_SESSION,
+          userId: session.user.id,
+          metadata: { studentId, studyMinutes, sessionsCompleted, topicsStudied },
+        },
+        'api.parent.weekly-activity',
+      );
+    } catch {
+      /* best-effort */
+    }
 
     // ── 7. Respond ────────────────────────────────────────────────────────────
     const body = { studyMinutes, sessionsCompleted, topicsStudied };

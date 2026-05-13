@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-11T00:00:00Z | copilot | wired parent milestone notifications; added tests
+ * - 2026-05-13T00:00:00Z | copilot | emit badge-awarded analytics (`STUDENT.BADGE_NEW_BADGE`) for newly awarded badges (best-effort)
  */
 
 import { prisma } from '@/lib/prisma'
@@ -19,6 +20,8 @@ import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 import { buildMilestoneTemplate } from '@/lib/whatsapp/templates'
 import { milestoneEmailHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 export interface BadgeDefinition {
   key: string
@@ -208,6 +211,19 @@ export async function checkSessionBadges(params: {
       }
     } catch (err) {
       logger.warn('badges: parent notification failed', { studentId, error: String(err) })
+    }
+
+    // Analytics: emit events for newly awarded badges (best-effort)
+    try {
+      for (const b of toAward) {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.BADGE_NEW_BADGE,
+          userId: studentId,
+          metadata: { badgeKey: b.key, badgeName: b.name, sessionId },
+        }, 'badges.award')
+      }
+    } catch (err) {
+      logger.warn('badges: analytics emit failed', { studentId, error: String(err) })
     }
 
     return toAward

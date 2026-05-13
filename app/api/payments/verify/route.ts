@@ -1,9 +1,27 @@
+/**
+ * FILE OBJECTIVE:
+ * - Verify a client-side payment (Razorpay) using a signature and activate subscription on success.
+ * - Records verification audit events and emits best-effort analytics for success/failure.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/payments/verify/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | add file header and emit payment success/failure analytics in verify flow
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { activateSubscription, verifyPaymentSignature } from '@/lib/payments/razorpay'
 import { PLANS } from '@/lib/billing/plans'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 import type { PlanId } from '@/lib/billing/plans'
 
 export async function POST(req: Request) {
@@ -31,6 +49,16 @@ export async function POST(req: Request) {
     const valid = await verifyPaymentSignature({ orderId, paymentId, signature })
     if (!valid) {
       const res = NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+      // Analytics: record payment failure due to invalid signature (best-effort)
+      try {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_FAILURE,
+          userId,
+          metadata: { orderId, paymentId, reason: 'invalid_signature' },
+        }, 'payments.verify')
+      } catch {
+        /* non-fatal */
+      }
       logger.logAPI(req, res, { className: 'PaymentsVerifyAPI', methodName: 'POST' }, start)
       return res
     }
@@ -54,6 +82,16 @@ export async function POST(req: Request) {
     const ok = await activateSubscription(userId, orderId, planId)
     if (!ok) {
       const res = NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 })
+      // Analytics: record activation failure (best-effort)
+      try {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_FAILURE,
+          userId,
+          metadata: { orderId, paymentId, planId, reason: 'activation_failed' },
+        }, 'payments.verify')
+      } catch {
+        /* non-fatal */
+      }
       logger.logAPI(req, res, { className: 'PaymentsVerifyAPI', methodName: 'POST' }, start)
       return res
     }
@@ -70,6 +108,16 @@ export async function POST(req: Request) {
       },
       { status: 200 },
     )
+    // Analytics: successful payment verified and subscription activated
+    try {
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_SUCCESS,
+        userId,
+        metadata: { orderId, paymentId, planId, amount: order?.amount ?? null },
+      }, 'payments.verify')
+    } catch {
+      /* non-fatal */
+    }
     logger.logAPI(req, res, { className: 'PaymentsVerifyAPI', methodName: 'POST' }, start)
     return res
   } catch (err) {

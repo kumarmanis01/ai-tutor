@@ -33,11 +33,13 @@
  *   2026-05-10 | copilot      | switch PRACTICE selection from recency ordering to random sampling
  *                               so sessions do not always serve the latest rows.
  *   2026-05-13T00:00:00Z | copilot | unify TEST runtime delivery on the Question bank and normalize test question payloads
+ *   2026-05-13T00:00:00Z | copilot | fix TEST/PRACTICE row type compatibility for choices JsonValue and explanation-free test query rows
  */
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
+import type { Prisma } from '@prisma/client';
 import {
   type SessionPhase,
   PHASE_METADATA,
@@ -84,7 +86,7 @@ export interface PracticeContent {
     id: string;
     type: string;
     prompt: string;
-    choices: unknown;
+    choices: Prisma.JsonValue;
     difficulty: string | null;
     correctAnswer: string | null;
   }[];
@@ -99,7 +101,7 @@ export interface TestContent {
     id: string;
     type: string;
     prompt: string;
-    choices: unknown;
+    choices: Prisma.JsonValue;
     difficulty: string | null;
     correctAnswer: string | null;
     explanation: string | null;
@@ -134,7 +136,7 @@ export type PhaseContentData =
   | PendingContent;
 
 type PracticeQuestionRow = PracticeContent['questions'][number];
-type TestQuestionRow = TestContent['questions'][number];
+type TestQuestionRow = Omit<TestContent['questions'][number], 'explanation'>;
 
 function getPracticeQuestionKey(question: PracticeQuestionRow): string {
   return buildQuestionContentKey({
@@ -144,9 +146,9 @@ function getPracticeQuestionKey(question: PracticeQuestionRow): string {
   });
 }
 
-function dedupePracticeQuestions(questions: PracticeQuestionRow[]): PracticeQuestionRow[] {
+function dedupePracticeQuestions<T extends PracticeQuestionRow>(questions: T[]): T[] {
   const seen = new Set<string>();
-  const deduped: PracticeQuestionRow[] = [];
+  const deduped: T[] = [];
   const skipped: { id: string; key: string }[] = [];
 
   for (const question of questions) {
@@ -521,7 +523,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null, s
             id: gq.id,
             type: gq.type || 'mcq',
             prompt: gq.question,
-            choices: gq.options ?? undefined,
+            choices: gq.options ?? null,
             difficulty: gq.test.difficulty ?? null,
             correctAnswer,
           });
@@ -729,9 +731,9 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
   });
 
   questions = pickRandomQuestions(
-    dedupePracticeQuestions(dedupeTestQuestions(questions) as PracticeQuestionRow[]),
+    dedupePracticeQuestions(dedupeTestQuestions(questions)),
     TEST_QUESTION_TARGET_COUNT,
-  ) as TestQuestionRow[];
+  );
 
   if (questions.length < TEST_QUESTION_TARGET_COUNT) {
     const fallbackQuestions = await prisma.question.findMany({
@@ -740,11 +742,9 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
     });
 
     questions = pickRandomQuestions(
-      dedupePracticeQuestions(
-        dedupeTestQuestions([...questions, ...fallbackQuestions]) as PracticeQuestionRow[],
-      ),
+      dedupePracticeQuestions(dedupeTestQuestions([...questions, ...fallbackQuestions])),
       TEST_QUESTION_TARGET_COUNT,
-    ) as TestQuestionRow[];
+    );
   }
 
   if (questions.length > 0) {

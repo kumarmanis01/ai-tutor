@@ -12,10 +12,13 @@
  *
  * EDIT LOG:
  * - 2026-05-10T00:00:00Z | copilot | add responsive wrap-safe layout and accessibility sizing to prevent profile badge share UI bleed
+ * - 2026-05-13T00:00:00Z | copilot | emit badge share and share-platform analytics for share actions
  */
 
 import { useState } from 'react';
 import { logger } from '@/lib/logger';
+import analyticsClient from '@/lib/analytics/client';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 type ShareResponse = {
   ok?: boolean;
@@ -34,6 +37,21 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
   const [loading, setLoading] = useState(false);
 
   const shareTextBase = `${title}${description ? ` -- ${description}` : ''}`;
+
+  const trackShare = (platform: string) => {
+    try {
+      analyticsClient.trackEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.BADGE_SHARE_BADGE,
+        metadata: { badgeId, badgeTitle: title, platform },
+      });
+      analyticsClient.trackEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.BADGE_SHARE_PLATFORM,
+        metadata: { badgeId, platform },
+      });
+    } catch (err) {
+      logger.warn('share analytics emit failed', { component: 'ShareBadge', badgeId, platform, error: String(err) });
+    }
+  };
 
   const recordAndGetShareUrl = async (): Promise<string> => {
     setLoading(true);
@@ -64,6 +82,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
     ) {
       try {
         await navigator.share({ title: 'Spinzy Achievement', text, url: shareUrl });
+        trackShare('web_share');
         return;
       } catch (e) {
         logger.warn('navigator.share failed', { component: 'ShareBadge', error: e });
@@ -71,6 +90,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
       }
     }
     const twitter = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    trackShare('twitter');
     window.open(twitter, '_blank', 'noopener,noreferrer');
   };
 
@@ -95,6 +115,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         href={waLink(url ?? window.location.href)}
         target="_blank"
         rel="noreferrer"
+        onClick={() => trackShare('whatsapp')}
         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-3 py-2 rounded bg-green-500 text-white"
       >
         WhatsApp
@@ -104,6 +125,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         href={twitterLink(url ?? window.location.href)}
         target="_blank"
         rel="noreferrer"
+        onClick={() => trackShare('twitter')}
         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-3 py-2 rounded bg-sky-500 text-white"
       >
         Twitter
@@ -113,6 +135,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         href={fbLink(url ?? window.location.href)}
         target="_blank"
         rel="noreferrer"
+        onClick={() => trackShare('facebook')}
         className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-3 py-2 rounded bg-blue-800 text-white"
       >
         Facebook

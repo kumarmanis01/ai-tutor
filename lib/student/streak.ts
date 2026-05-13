@@ -5,12 +5,30 @@ import { isShieldAvailable, consumeShield } from '@/lib/student/streakShield'
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
 import { sendPushSafe } from '@/lib/push/send'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 const MS_PER_DAY = 86400000
 
 /** Midnight UTC for a given date (time component stripped). */
 function toMidnightUTC(d: Date): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+}
+
+function getGapDays(lastSessionDate: Date | null, today: Date, timezone?: string | null): number | null {
+  if (!lastSessionDate) return null
+
+  try {
+    const lastLocal = getLocalDateString(lastSessionDate, timezone)
+    const todayLocal = getLocalDateString(today, timezone)
+    const lastStartUtc = startOfLocalDayUtc(lastLocal, timezone).getTime()
+    const todayStartUtc = startOfLocalDayUtc(todayLocal, timezone).getTime()
+    return Math.max(0, Math.round((todayStartUtc - lastStartUtc) / MS_PER_DAY))
+  } catch {
+    const lastMidnight = toMidnightUTC(lastSessionDate)
+    const todayMidnight = toMidnightUTC(today)
+    return Math.max(0, Math.round((todayMidnight - lastMidnight) / MS_PER_DAY))
+  }
 }
 
 /**
@@ -80,6 +98,7 @@ export async function updateStreak(studentId: string): Promise<{
 
     const now = new Date()
     const gap = classifyStreakGap(user.lastSessionDate, now, (user as any).timezone)
+    const gapDays = getGapDays(user.lastSessionDate, now, (user as any).timezone)
 
     let currentStreak: number
     let streakIncremented: boolean
@@ -98,6 +117,16 @@ export async function updateStreak(studentId: string): Promise<{
       streakIncremented = true
     } else {
       // Gap ≥ 2 days -- streak would break. Check shield first.
+      if (gapDays !== null && gapDays > 1) {
+        void emitServerAnalyticsEvent(
+          {
+            eventType: ANALYTICS_EVENTS.STUDENT.STUDY_GAP_DAYS,
+            userId: studentId,
+            metadata: { gapDays },
+          },
+          'student.streak.update',
+        )
+      }
       const shieldAvail = await isShieldAvailable(studentId, now)
       if (shieldAvail && user.currentStreak > 0) {
         // Shield protects the streak -- keep current streak, mark shield consumed.
@@ -128,6 +157,20 @@ export async function updateStreak(studentId: string): Promise<{
         longestStreak,
       },
     })
+
+    void emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.STREAK_UPDATED,
+        userId: studentId,
+        metadata: {
+          currentStreak,
+          longestStreak,
+          streakIncremented,
+          shieldActivated,
+        },
+      },
+      'student.streak.update',
+    )
 
     // Clear any parent inactivity suppression keys so alerts reset if the student
     // studies after an inactivity alert was sent. This ensures "If student

@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | enforce max-3 children server-side; send welcome notification
  * - 2026-04-12T12:00:00Z | copilot | use FAMILY_MAX_CHILDREN constant from billing constants
+ * - 2026-05-13T00:00:00Z | copilot | emit parent linked analytics when child invite is consumed
  */
 
 import { NextResponse } from 'next/server'
@@ -23,6 +24,8 @@ import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 export const dynamic = 'force-dynamic'
 
@@ -124,6 +127,19 @@ export async function POST(req: Request) {
       data: { parentId, studentId, status: 'active' },
     })
   }
+
+  void emitServerAnalyticsEvent(
+    {
+      eventType: ANALYTICS_EVENTS.PARENT.LINKED,
+      userId: parentId,
+      metadata: {
+        parentId,
+        studentId,
+        reactivated: existing?.status === 'revoked',
+      },
+    },
+    'parent.link-child',
+  )
 
   // Promote caller to parent role if they're still a regular user
   const parentUser = await prisma.user.findUnique({

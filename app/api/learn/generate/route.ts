@@ -22,6 +22,8 @@ import { callLLM } from '@/lib/callLLM';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 /**
  * Rate limits per user type (requests per day)
@@ -305,6 +307,15 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     logger.error('[generate] LLM call failed', { userId, topic, error: err.message });
+    try {
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.ON_DEMAND_CONTENT_GENERATION_FAILURE,
+        userId,
+        metadata: { topic, reason: err?.message ?? 'llm_call_failed' },
+      }, 'learn.generate')
+    } catch {
+      /* best-effort */
+    }
     return NextResponse.json(
       { error: 'Failed to generate content. Please try again.', retryable: true },
       { status: 500 }
@@ -340,6 +351,17 @@ export async function POST(req: Request) {
       viewCount: 1,
     },
   });
+
+  // Analytics: success (best-effort)
+  try {
+    void emitServerAnalyticsEvent({
+      eventType: ANALYTICS_EVENTS.STUDENT.ON_DEMAND_CONTENT_GENERATION_SUCCESS,
+      userId,
+      metadata: { topic, contentId: storedContent.id, cached: false },
+    }, 'learn.generate')
+  } catch {
+    /* best-effort */
+  }
 
   // Optionally save to student's bookmarks
   let bookmarkId: string | undefined;

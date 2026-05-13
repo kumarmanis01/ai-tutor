@@ -1,39 +1,28 @@
 /**
- * POST /api/session/[sessionId]/test/submit
+ * FILE OBJECTIVE:
+ * - Grade structured-session test submissions and persist test results for phase progression.
+ * - Emits canonical quiz attempt/pass analytics from the served test payload actually graded.
  *
- * Grades a student's test answers for the TEST phase of a structured
- * learning session, updates topic mastery (weight 0.3), and stores the
- * result so the student can advance to the HOMEWORK phase.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/session/analytics.routes.spec.ts
  *
- * Design decisions:
- *
- *   Idempotency
- *   -----------
- *   Test results are stored in StructuredSession.meta.testResult on
- *   first submission. Re-submissions (network retries, double-clicks)
- *   detect this field and return the cached result immediately without
- *   re-grading or re-updating mastery. Mirrors practice submit (GAP-02).
- *
- *   No schema migration
- *   -------------------
- *   StructuredSession.meta is Json? and already used for practiceResult
- *   and phaseTimestamps. Storing testResult there avoids a migration.
- *
- *   Mastery
- *   -------
- *   updateStudentTopicProgress(activityType: TEST) carries weight 0.3.
- *   Fire-and-forget: failures are logged but never propagated.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- *   2026-03-07 | Manish Kumar | created (GAP-02 second half: TEST phase
+ * - 2026-03-07 | Manish Kumar | created (GAP-02 second half: TEST phase
  *                               submission path, enables mastery weight 0.3).
- *   2026-05-09T00:00:00Z | copilot | accept optional testId and grade against
+ * - 2026-05-09T00:00:00Z | copilot | accept optional testId and grade against
  *                               the exact delivered test version to prevent
  *                               question-id mismatches returning 0/0.
- *   2026-05-13T00:00:00Z | copilot | grade structured-session tests against served Question bank rows only
+ * - 2026-05-13T00:00:00Z | copilot | grade structured-session tests against served Question bank rows only
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical quiz attempted and quiz passed analytics from test submission results
  */
 
 import { NextResponse } from 'next/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
@@ -43,6 +32,7 @@ import { normalizeAnswer } from '@/lib/tests';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
+const QUIZ_PASSING_SCORE = 0.7;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -266,6 +256,41 @@ export async function POST(
     correctAnswers: correctCount,
     score,
   });
+
+  await emitServerAnalyticsEvent(
+    {
+      eventType: ANALYTICS_EVENTS.STUDENT.QUIZ_ATTEMPTED,
+      userId: user.id,
+      courseId: session.topicId,
+      metadata: {
+        sessionId,
+        topicId: session.topicId,
+        totalAnswers: totalCount,
+        correctAnswers: correctCount,
+        score,
+      },
+    },
+    'session.test.submit',
+  );
+
+  if (score >= QUIZ_PASSING_SCORE) {
+    await emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.QUIZ_PASSED,
+        userId: user.id,
+        courseId: session.topicId,
+        metadata: {
+          sessionId,
+          topicId: session.topicId,
+          totalAnswers: totalCount,
+          correctAnswers: correctCount,
+          score,
+          passingScore: QUIZ_PASSING_SCORE,
+        },
+      },
+      'session.test.submit.pass',
+    );
+  }
 
   // ── Update topic mastery (weight 0.3) -- fire-and-forget ────────────────────
   if (totalCount > 0) {

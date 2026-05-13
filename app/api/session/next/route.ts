@@ -1,5 +1,24 @@
+/**
+ * FILE OBJECTIVE:
+ * - Advance a structured learning session through the canonical phase state machine.
+ * - Emits lesson-view and lesson-complete analytics when the student crosses those phase boundaries.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/session/analytics.routes.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical lesson viewed/completed analytics from session phase transitions
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical session phases analytics on each structured phase transition
+ */
+
 import '@/lib/events/sessionEventListeners'; // COUPLING-01: register SESSION_COMPLETED → TopicRanker invalidation
 import { NextResponse } from 'next/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import {
   advanceSession,
@@ -73,9 +92,55 @@ export async function POST(req: Request) {
       },
     });
 
+    await emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.SESSION_PHASES,
+        userId: user.id,
+        courseId: view.topicId,
+        metadata: {
+          sessionId: view.sessionId,
+          topicId: view.topicId,
+          currentPhase: view.currentPhase,
+        },
+      },
+      'session.next.phase',
+    );
+
     // ABSTRACTION-02: Mark explanation viewed when student advances to EXPLANATION and receives content.
     if (view.currentPhase === 'EXPLANATION') {
       markExplanationViewed(view.sessionId).catch(() => {});
+    }
+
+    if (view.currentPhase === 'EXPLANATION') {
+      await emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.LESSON_VIEWED,
+          userId: user.id,
+          courseId: view.topicId,
+          metadata: {
+            sessionId: view.sessionId,
+            topicId: view.topicId,
+            currentPhase: view.currentPhase,
+          },
+        },
+        'session.next.explanation',
+      );
+    }
+
+    if (view.currentPhase === 'PRACTICE') {
+      await emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.LESSON_COMPLETED,
+          userId: user.id,
+          courseId: view.topicId,
+          metadata: {
+            sessionId: view.sessionId,
+            topicId: view.topicId,
+            currentPhase: view.currentPhase,
+          },
+        },
+        'session.next.practice',
+      );
     }
 
     res = NextResponse.json({ session: view, phase, content });

@@ -14,6 +14,8 @@ import {
   type TutorTurnError,
   type TutorTurnRequest,
 } from '@/services/tutor/turn'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 export const dynamic = 'force-dynamic'
 
@@ -152,6 +154,14 @@ export async function POST(req: Request) {
     } catch (e: any) {
       const code = String(e?.code ?? '')
       if (code === 'RATE_LIMITED') {
+        void emitServerAnalyticsEvent(
+          {
+            eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_SKIPPED,
+            userId,
+            metadata: { reason: 'freemium_limit' },
+          },
+          'api.tutor.turn',
+        )
         const res = await streamSingleError(403, errorPayload('RATE_LIMITED', 'Free limit reached. Please upgrade to continue.', false))
         logger.logAPI(req, res, { className: 'TutorTurnAPI', methodName: 'POST' }, start)
         return res

@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | create signup route that persists user and fires welcome email
  * - 2026-04-16T03:40:00Z | copilot | log validation/duplicate/success events and use `start` for duration
+ * - 2026-05-13T00:00:00Z | copilot | emit student auth signup analytics on successful account creation
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,6 +22,8 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 import { hash } from 'bcryptjs';
 import { sendMailSafe } from '@/lib/mailer';
 import { welcomeEmailHtml } from '@/lib/email/templates';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 // Lightweight input validation helper
 function isEmail(s: unknown): s is string {
@@ -85,6 +88,15 @@ export async function POST(req: NextRequest) {
         .then(() => prisma.user.update({ where: { id: created.id }, data: { welcomeEmailSent: true } }))
         .catch((e) => logger.warn('/api/auth/signup: welcome email/update flag failed', { className: 'api.auth.signup', methodName: 'POST', error: String(e) }));
     }
+
+    void emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.AUTH_SIGNUP,
+        userId: created.id,
+        metadata: { emailDomain: created.email.split('@')[1] ?? null },
+      },
+      'auth.signup',
+    );
 
     logger.info('/api/auth/signup success', { className: 'api.auth.signup', methodName: 'POST', userId: created.id, durationMs: Date.now() - start });
     return NextResponse.json({ ok: true, user: { id: created.id, email: created.email } });

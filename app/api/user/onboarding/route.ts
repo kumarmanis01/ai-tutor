@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | persist parent_whatsapp to parentWhatsappPhone and set accountStatus lifecycle with requiresOtp response
  * - 2026-05-11T00:00:00Z | copilot | auto-link matching parent accounts using onboarding parent email/whatsapp contacts
+ * - 2026-05-13T00:00:00Z | copilot | emit `STUDENT.SUBJECT_SELECTED` analytics when subjects are updated during onboarding (best-effort)
  */
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
@@ -29,6 +30,8 @@ import { welcomeEmailHtml } from '@/lib/email/templates';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
 import { LanguageCode } from '@prisma/client';
 import { ensureAutoLinkedParentsForStudent } from '@/lib/parent/contactLinking';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -260,17 +263,19 @@ export async function POST(req: NextRequest) {
       // Fire-and-forget: emit subject_selected analytics event when subjects are updated.
       if (subjects && subjects.length > 0) {
         const previousSubjects = Array.isArray(existingById?.subjects) ? existingById.subjects : []
-        prisma.analyticsEvent.create({
-          data: {
-            eventType: 'subject_selected',
+        try {
+          void emitServerAnalyticsEvent({
+            eventType: ANALYTICS_EVENTS.STUDENT.SUBJECT_SELECTED,
             userId: updatedUser.id,
             metadata: {
               subjects,
               previous_subjects: previousSubjects,
               source: 'onboarding',
             },
-          },
-        }).catch(() => {})
+          }, 'onboarding');
+        } catch {
+          // best-effort analytics; swallow errors
+        }
       }
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {

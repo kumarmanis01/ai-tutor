@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | create unified analytics event constants for student/parent/admin
  * - 2026-05-12T00:00:00Z | copilot | add shared analytics classification helpers for rollups/signals and remove redundant default export
+ * - 2026-05-13T00:00:00Z | copilot | add `STUDENT.SUBJECT_SELECTED` event to registry for subject selection analytics
  */
 
 const STUDENT_ANALYTICS_EVENTS = {
@@ -37,6 +38,8 @@ const STUDENT_ANALYTICS_EVENTS = {
 
   LEARNING_PATH_GENERATED: 'student.learning_path.generated',
   LEARNING_PATH_ALTERED: 'student.learning_path.altered',
+
+  SUBJECT_SELECTED: 'subject_selected',
 
   FIRST_SESSION: 'student.first_session',
 

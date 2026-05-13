@@ -21,6 +21,7 @@
  * - 2026-05-08T00:00:00Z | copilot | enforce Google account chooser globally via authorization prompt select_account
  * - 2026-05-07T00:00:00Z | copilot | enforce Google sub/email_verified linking and restore jwt/session id propagation for onboarding auth
  * - 2026-05-07T00:00:00Z | copilot | fix jwt subjects parsing type guard to avoid never narrowing on Prisma String[]
+ * - 2026-05-13T00:00:00Z | copilot | emit signin analytics (`STUDENT.AUTH_SIGNIN`) in sign-in callback (best-effort)
  */
 
 // src/lib/auth.ts
@@ -33,6 +34,8 @@ import { sendMail } from '@/lib/mailer';
 import { welcomeEmailHtml, magicLinkHtml } from '@/lib/email/templates';
 import { AUTH_NO_REPLY_EMAIL } from '@/lib/email/functionalityEmails';
 import { logger } from '@/lib/logger';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
 import { DPDP_MINOR_AGE as _DPDP_MINOR_AGE } from '@/lib/constants/age';
@@ -604,6 +607,19 @@ export const authOptions: any = {
         }
       } catch (err) {
         logger.warn('signIn login-audit failed', { className: 'auth', methodName: 'signIn', error: String(err) });
+      }
+      // Emit signin analytics (best-effort)
+      try {
+        if (user?.email) {
+          const dbUser = await prisma.user.findUnique({ where: { email: user.email }, select: { id: true } }).catch(() => null);
+          void emitServerAnalyticsEvent({
+            eventType: ANALYTICS_EVENTS.STUDENT.AUTH_SIGNIN,
+            userId: dbUser?.id ?? null,
+            metadata: { provider: account?.provider ?? 'unknown' },
+          }, 'auth.signIn');
+        }
+      } catch (emitErr) {
+        logger.warn('auth: analytics emit failed', { className: 'auth', methodName: 'signIn', error: String(emitErr) });
       }
       return true;
     },
