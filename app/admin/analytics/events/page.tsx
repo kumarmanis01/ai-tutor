@@ -3,7 +3,7 @@
  * - Admin dashboard for AnalyticsEvent-backed student telemetry.
  *   Surfaces funnel health, event coverage, top event mix, course activity,
  *   daily trend and recent signal events. Runs entirely from the AnalyticsEvent
- *   table — parallel to (and does not replace) the readiness-based
+ *   table -- parallel to (and does not replace) the readiness-based
  *   learning-analytics page.
  *
  * LINKED UNIT TEST:

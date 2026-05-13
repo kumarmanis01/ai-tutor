@@ -66,7 +66,7 @@ async function QuestionsContent() {
       {questions.length === 0 ? (
         <div className="rounded-lg border border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-900 p-4">
           <p className="text-[13px] text-green-700 dark:text-green-300 font-medium">
-            No flagged questions waiting for review — queue is clean! ✓
+            No flagged questions waiting for review -- queue is clean! ✓
           </p>
         </div>
       ) : (
