@@ -1,124 +1,93 @@
-'use client'
-import { useState, useEffect } from 'react'
+/**
+ * FILE OBJECTIVE:
+ * - Admin page for reviewing flagged and quarantined questions with detail modal and approve/reject actions.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/questions/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | default the review page to pending-review questions and surface the latest flag reason details
+ * - 2026-05-13T00:00:00Z | copilot | refactor to use QuestionsReviewTable component with rich detail modal showing all student flags and question content
+ */
 
-type QuestionRow = {
-  id: string
-  prompt: string
-  subject: string | null
-  topic: { name: string } | null
-  sessionFlags: { id: string }[]
-  updatedAt: string
-  status: string
+import { Suspense } from 'react'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import { QuestionsReviewTable } from './QuestionsReviewTable'
+import { QuestionStatus } from '@prisma/client'
+
+async function QuestionsContent() {
+  const session = await getServerSessionForHandlers()
+  if (!session?.user?.id || session.user.role !== 'admin') {
+    redirect('/dashboard')
+  }
+
+  const questions = await prisma.question.findMany({
+    where: { status: { in: [QuestionStatus.PENDING_REVIEW, QuestionStatus.QUARANTINED] } },
+    include: {
+      sessionFlags: {
+        select: {
+          id: true,
+          reason: true,
+          details: true,
+          createdAt: true,
+          student: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+      topic: { select: { name: true } },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 100,
+  })
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+          Flagged Question Review Queue
+        </h1>
+        <p className="text-[12px] text-gray-500">
+          Review student-flagged questions and approve or reject them from the queue.
+        </p>
+      </div>
+
+      {questions.length === 0 ? (
+        <div className="rounded-lg border border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-900 p-4">
+          <p className="text-[13px] text-green-700 dark:text-green-300 font-medium">
+            No flagged questions waiting for review — queue is clean! ✓
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden bg-white dark:bg-gray-900">
+          <QuestionsReviewTable questions={questions} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function QuestionsPage() {
-  const [questions, setQuestions] = useState<QuestionRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [acting, setActing] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
-
-  async function _loadQuestions() {
-    const res = await fetch('/api/admin/content-quality/pending')
-    // Fallback: use direct question query via API
-    if (!res.ok) {
-      setError(`API error: ${res.status}`)
-      return
-    }
-    // If that endpoint doesn't return quarantined questions, try a custom fetch
-    const data = await res.json()
-    setQuestions(data.questions ?? data ?? [])
-  }
-
-  useEffect(() => {
-    fetch('/api/admin/questions?status=QUARANTINED')
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d) => setQuestions(d.questions ?? []))
-      .catch(() => {
-        // Fallback: inline fetch via prisma-aware route doesn't exist yet
-        setQuestions([])
-      })
-      .finally(() => setLoading(false))
-  }, [])
-
-  async function updateStatus(id: string, status: 'ACTIVE' | 'REJECTED') {
-    setActing(id)
-    try {
-      const res = await fetch(`/api/admin/questions/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      })
-      if (res.ok) {
-        setQuestions((prev) => prev.filter((q) => q.id !== id))
-        setToast(`Question ${status === 'ACTIVE' ? 'approved' : 'rejected'}: ${id.slice(0, 8)}...`)
-        setTimeout(() => setToast(null), 3000)
-      }
-    } finally {
-      setActing(null)
-    }
-  }
-
-  if (loading) return <p className="p-6 text-gray-500">Loading quarantined questions...</p>
-  if (error) return <p className="p-6 text-red-600">Error: {error}</p>
-
   return (
-    <div>
-      {toast && (
-        <div className="fixed top-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow z-50 text-sm">
-          {toast}
+    <Suspense
+      fallback={
+        <div className="p-6">
+          <p className="text-gray-500">Loading questions...</p>
         </div>
-      )}
-      <h1 className="text-2xl font-bold mb-6">Quarantined Questions</h1>
-      {!questions.length ? (
-        <p className="text-green-600">No quarantined questions -- queue is clean ✓</p>
-      ) : (
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="text-left border-b-2 border-gray-200 text-gray-500 text-xs uppercase">
-              <th className="pb-2 pr-4 font-medium">Concept</th>
-              <th className="pb-2 pr-4 font-medium">Question</th>
-              <th className="pb-2 pr-4 font-medium">Flags</th>
-              <th className="pb-2 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {questions.map((q) => (
-              <tr key={q.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-2 pr-4 text-gray-600">{q.topic?.name ?? q.subject ?? '--'}</td>
-                <td className="py-2 pr-4 text-gray-900 max-w-sm">
-                  <span title={q.prompt}>{q.prompt.slice(0, 80)}{q.prompt.length > 80 ? '...' : ''}</span>
-                </td>
-                <td className="py-2 pr-4 text-center">
-                  <span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                    {q.sessionFlags?.length ?? 0}
-                  </span>
-                </td>
-                <td className="py-2">
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={acting === q.id}
-                      onClick={() => updateStatus(q.id, 'ACTIVE')}
-                      className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      disabled={acting === q.id}
-                      onClick={() => updateStatus(q.id, 'REJECTED')}
-                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+      }
+    >
+      <QuestionsContent />
+    </Suspense>
   )
 }

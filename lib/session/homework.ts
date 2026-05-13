@@ -2,14 +2,8 @@
  * Homework Generation
  *
  * Generates a HomeworkAssignment by selecting 5-10 questions from
- * the existing question bank for the topic. Falls back through three
- * strategies before creating a stub (zero-question) assignment.
- *
- * Fallback order:
- *   Strategy 1 -- promoted Question bank (topicId FK)
- *   Strategy 2 -- GeneratedQuestion via GeneratedTest (same topic)
- *   Strategy 3 -- GeneratedQuestion from sibling topics in same chapter
- *   Stub       -- HomeworkAssignment with questions: [] (never throws)
+ * the Question bank for the topic. Generated content may still backfill
+ * the bank upstream, but student-facing homework always reads from Question.
  *
  * Design decisions:
  *   - generateHomework() NEVER throws for content unavailability.
@@ -29,12 +23,13 @@
  *                               Fixes RISK-01: permanent dead-end in HOMEWORK phase.
  *   2026-04-23T00:00:00Z | copilot | fix(strict): add local types for generated tests/questions to avoid implicit-any callbacks
  *   2026-04-23T05:30:00Z | copilot | fix(strict): coalesce `explanation` to null and annotate sibling topic mapping to remove implicit-any
+ *   2026-05-13T00:00:00Z | copilot | unify homework runtime selection on the shared Question bank selector
  */
 
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { buildQuestionContentKey } from '@/lib/session/questionContentKey';
+import { selectQuestions } from '@/lib/tests';
 
 const MIN_QUESTIONS = 5;
 const MAX_QUESTIONS = 10;
@@ -133,7 +128,7 @@ export async function generateHomework(
       studentId,
       topicId,
       sessionId,
-      reason: 'no_questions_available_after_all_strategies',
+      reason: 'no_questions_available_after_question_bank_selection',
       note: 'Empty assignment created to unblock session completion.',
     });
   }
@@ -169,8 +164,8 @@ export async function generateHomework(
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
 
 /**
- * Attempt to gather questions for the topic via three strategies.
- * Returns an empty array when all strategies fail -- never throws.
+ * Gather homework questions from the Question bank only.
+ * Returns an empty array when the bank has no usable rows after exclusions.
  *
  * @param excludeIds         - Question IDs already served in PRACTICE or TEST phases.
  * @param excludeContentKeys - Content keys for questions already served.
@@ -181,216 +176,30 @@ async function gatherQuestions(
   excludeIds: Set<string>,
   excludeContentKeys: Set<string>,
 ): Promise<HomeworkQuestion[]> {
-  // ── Strategy 1: promoted Question bank (topicId FK) ─────────────────────
-  type BankQuestion = {
-    id: string;
-    type: string;
-    prompt: string;
-    choices: unknown;
-    correctAnswer: string | null;
-    difficulty: string | null;
-  };
+  const selectedQuestions = await selectQuestions(
+    { topicId },
+    MAX_QUESTIONS,
+    excludeIds,
+    excludeContentKeys,
+  );
 
-  const allBankQuestions: BankQuestion[] = await prisma.question.findMany({
-    // quarantined questions excluded -- do not remove this filter
-    where: { topicId, status: 'ACTIVE' },
-    take: MAX_QUESTIONS * 2,
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      type: true,
-      prompt: true,
-      choices: true,
-      correctAnswer: true,
-      difficulty: true,
-    },
-  });
-  // Cross-phase dedup: exclude by ID and content key.
-  const bankQuestions = allBankQuestions.filter((q) => {
-    if (excludeIds.has(q.id)) return false;
-    if (excludeContentKeys.size > 0) {
-      const key = buildQuestionContentKey({ prompt: q.prompt, choices: q.choices, correctAnswer: q.correctAnswer });
-      if (excludeContentKeys.has(key)) return false;
-    }
-    return true;
-  });
-
-  if (bankQuestions.length >= MIN_QUESTIONS) {
-    return shuffle(bankQuestions)
-      .slice(0, MAX_QUESTIONS)
-      .map((q): HomeworkQuestion => ({
-        id: q.id,
-        type: q.type,
-        prompt: q.prompt,
-        choices: q.choices,
-        correctAnswer: q.correctAnswer,
-        explanation: null,
-        difficulty: q.difficulty,
-      }));
-  }
-
-  // ── Strategy 2: GeneratedQuestion via GeneratedTest (same topic) ─────────
-  // Define local shapes for the generated test rows so callbacks are typed.
-  type GenQuestionRow = {
-    id: string
-    type?: string | null
-    question: string
-    options?: unknown
-    answer?: unknown
-    explanation?: string | null
-  }
-  type GenTestRow = { questions: GenQuestionRow[] }
-
-  const genTests = (await prisma.generatedTest.findMany({
-    where: { topicId, lifecycle: 'active' },
-    include: {
-      questions: {
-        select: {
-          id: true,
-          type: true,
-          question: true,
-          options: true,
-          answer: true,
-          explanation: true,
-        },
-      },
-    },
-    take: 3,
-  })) as GenTestRow[];
-
-  // Cross-phase dedup: exclude by ID and content key.
-  const genQuestions = genTests
-    .flatMap((t: GenTestRow) => t.questions)
-    .filter((gq: GenQuestionRow) => {
-      if (excludeIds.has(gq.id)) return false;
-      if (excludeContentKeys.size > 0) {
-        const key = buildQuestionContentKey({ question: gq.question, options: gq.options, answer: gq.answer });
-        if (excludeContentKeys.has(key)) return false;
-      }
-      return true;
+  if (selectedQuestions.length < MIN_QUESTIONS) {
+    logger.warn('[HOMEWORK_QUESTION_BANK_SHORTFALL]', {
+      topicId,
+      selectedCount: selectedQuestions.length,
+      minimumRequired: MIN_QUESTIONS,
     });
-
-  const combined: HomeworkQuestion[] = [
-    ...bankQuestions.map((q) => ({
-      id: q.id,
-      type: q.type,
-      prompt: q.prompt,
-      choices: q.choices,
-      correctAnswer: q.correctAnswer,
-      explanation: null as string | null,
-      difficulty: q.difficulty,
-    })),
-    ...genQuestions.map((gq: GenQuestionRow) => ({
-      id: gq.id,
-      type: gq.type || 'mcq',
-      prompt: gq.question,
-      choices: gq.options,
-      correctAnswer:
-        typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer),
-      explanation: gq.explanation ?? null,
-      difficulty: null as string | null,
-    })),
-  ];
-
-  // Deduplicate by id across both sources.
-  const seen = new Set<string>();
-  const uniqueTopicQuestions = combined.filter((q) => {
-    if (seen.has(q.id)) return false;
-    seen.add(q.id);
-    return true;
-  });
-
-  if (uniqueTopicQuestions.length >= MIN_QUESTIONS) {
-    return shuffle(uniqueTopicQuestions).slice(0, MAX_QUESTIONS);
   }
 
-  // ── Strategy 3: chapter-level fallback -- sibling topic questions ─────────
-  // When the topic itself has insufficient questions, pull from GeneratedTests
-  // for other active topics in the same chapter. This mirrors the "PRACTICE
-  // questions" pool from getPhaseContent.ts -- the same source the PRACTICE
-  // and TEST phases draw from.
-  const topicDef = await prisma.topicDef.findUnique({
-    where: { id: topicId },
-    select: { chapterId: true },
-  });
-
-  if (topicDef?.chapterId) {
-    const siblingTopics = (await prisma.topicDef.findMany({
-      where: {
-        chapterId: topicDef.chapterId,
-        lifecycle: 'active',
-        id: { not: topicId },
-      },
-      select: { id: true },
-    })) as { id: string }[];
-
-    const siblingIds = siblingTopics.map((t: { id: string }) => t.id);
-
-    if (siblingIds.length > 0) {
-      const siblingTests = (await prisma.generatedTest.findMany({
-        where: { topicId: { in: siblingIds }, lifecycle: 'active' },
-        include: {
-          questions: {
-            select: {
-              id: true,
-              type: true,
-              question: true,
-              options: true,
-              answer: true,
-              explanation: true,
-            },
-          },
-        },
-        take: 3,
-      })) as GenTestRow[];
-
-      // Deduplicate against topic-level questions already in `seen`,
-      // and cross-phase dedup against excludeIds and content keys.
-      const siblingQuestions: HomeworkQuestion[] = siblingTests
-        .flatMap((t: GenTestRow) => t.questions)
-        .filter((gq: GenQuestionRow) => {
-          if (seen.has(gq.id) || excludeIds.has(gq.id)) return false;
-          if (excludeContentKeys.size > 0) {
-            const key = buildQuestionContentKey({ question: gq.question, options: gq.options, answer: gq.answer });
-            if (excludeContentKeys.has(key)) return false;
-          }
-          return true;
-        })
-        .map((gq: GenQuestionRow) => ({
-          id: gq.id,
-          type: gq.type || 'mcq',
-          prompt: gq.question,
-          choices: gq.options,
-          correctAnswer:
-            typeof gq.answer === 'string'
-              ? gq.answer
-              : JSON.stringify(gq.answer),
-          explanation: gq.explanation ?? null,
-          difficulty: null as string | null,
-        }));
-
-      if (siblingQuestions.length > 0) {
-        logger.info('[HOMEWORK_CHAPTER_FALLBACK]', {
-          topicId,
-          chapterId: topicDef.chapterId,
-          siblingQuestionCount: siblingQuestions.length,
-        });
-
-        const allAvailable = [...uniqueTopicQuestions, ...siblingQuestions];
-        return shuffle(allAvailable).slice(0, MAX_QUESTIONS);
-      }
-    }
-  }
-
-  // All three strategies exhausted.
-  logger.warn('[HOMEWORK_QUESTIONS_EXHAUSTED]', {
-    topicId,
-    strategiesAttempted: 3,
-    note: 'Caller will create a stub assignment.',
-  });
-
-  // Return whatever partial set we have (may be []).
-  return shuffle(uniqueTopicQuestions).slice(0, MAX_QUESTIONS);
+  return shuffle(selectedQuestions).slice(0, MAX_QUESTIONS).map((question): HomeworkQuestion => ({
+    id: question.id,
+    type: question.type,
+    prompt: question.prompt,
+    choices: question.choices,
+    correctAnswer: question.correctAnswer,
+    explanation: null,
+    difficulty: question.difficulty,
+  }));
 }
 
 function shuffle<T>(arr: T[]): T[] {

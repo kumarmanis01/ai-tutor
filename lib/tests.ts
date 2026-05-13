@@ -172,6 +172,7 @@ export async function selectQuestions(
   filters: QuestionFilters,
   count: number,
   excludeIds?: Set<string>,
+  excludeContentKeys?: Set<string>,
 ): Promise<Question[]> {
   const excludeClause =
     excludeIds && excludeIds.size > 0 ? { id: { notIn: Array.from(excludeIds) } } : {};
@@ -237,18 +238,34 @@ export async function selectQuestions(
     }
   }
 
+  const filteredByContent =
+    excludeContentKeys && excludeContentKeys.size > 0
+      ? deduped.filter((question) => {
+          const contentKey = buildQuestionSyncKey({
+            prompt: question.prompt,
+            choices: question.choices,
+            correctAnswer: question.correctAnswer,
+          });
+          return !excludeContentKeys.has(contentKey);
+        })
+      : deduped;
+
   try {
-    logger.debug('selectQuestions.deduped', { filters, dedupedCount: deduped.length });
+    logger.debug('selectQuestions.deduped', {
+      filters,
+      dedupedCount: deduped.length,
+      filteredCount: filteredByContent.length,
+    });
   } catch {}
 
   // Simple sampling without replacement
   const selected: Question[] = [];
   const indices = new Set<number>();
-  while (selected.length < Math.min(count, deduped.length)) {
-    const idx = Math.floor(Math.random() * deduped.length);
+  while (selected.length < Math.min(count, filteredByContent.length)) {
+    const idx = Math.floor(Math.random() * filteredByContent.length);
     if (!indices.has(idx)) {
       indices.add(idx);
-      selected.push(deduped[idx]);
+      selected.push(filteredByContent[idx]);
     }
   }
 

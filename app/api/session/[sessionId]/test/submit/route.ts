@@ -30,6 +30,7 @@
  *   2026-05-09T00:00:00Z | copilot | accept optional testId and grade against
  *                               the exact delivered test version to prevent
  *                               question-id mismatches returning 0/0.
+ *   2026-05-13T00:00:00Z | copilot | grade structured-session tests against served Question bank rows only
  */
 
 import { NextResponse } from 'next/server';
@@ -57,12 +58,12 @@ interface GradedAnswer {
   correctAnswer: string | null;
 }
 
-/** Subset of GeneratedQuestion fields needed for grading. */
+/** Subset of Question fields needed for grading. */
 interface TestQuestionForGrading {
   id: string;
   type: string;
-  options: unknown;
-  answer: unknown;
+  choices: unknown;
+  correctAnswer: string | null;
 }
 
 /** Shape stored in StructuredSession.meta.testResult. */
@@ -176,47 +177,28 @@ export async function POST(
     return res;
   }
 
-  // ── Load test questions (same source as resolveTest, include answer) ─────
-  const questionSelect = {
-    select: { id: true, type: true, options: true, answer: true },
-  };
+  // ── Load served test questions from the Question bank ───────────────────
+  const servedTestIds = Array.isArray(sessionMeta.servedTestIds)
+    ? (sessionMeta.servedTestIds as string[])
+    : [];
+  const answerIds = body.answers.map((answer) => answer.questionId);
+  const requestedIds = servedTestIds.length > 0 ? servedTestIds : answerIds;
 
-  const requestedTestId =
-    typeof body.testId === 'string' && body.testId.trim().length > 0 ? body.testId.trim() : null;
-
-  let test = requestedTestId
-    ? await prisma.generatedTest.findFirst({
-      where: { id: requestedTestId, topicId: session.topicId, lifecycle: 'active' },
-      include: { questions: questionSelect },
-    })
-    : null;
-
-  if (requestedTestId && (!test || test.questions.length === 0)) {
-    logger.warn('[TEST_SUBMIT_REQUESTED_TEST_NOT_FOUND]', {
-      sessionId,
-      studentId: user.id,
+  const testQuestions = await prisma.question.findMany({
+    where: {
+      id: { in: requestedIds },
       topicId: session.topicId,
-      requestedTestId,
-    });
-  }
+      status: 'ACTIVE',
+    },
+    select: {
+      id: true,
+      type: true,
+      choices: true,
+      correctAnswer: true,
+    },
+  });
 
-  if (!test || test.questions.length === 0) {
-    test = await prisma.generatedTest.findFirst({
-      where: { topicId: session.topicId, lifecycle: 'active', status: 'approved' },
-      orderBy: [{ version: 'desc' }],
-      include: { questions: questionSelect },
-    });
-  }
-
-  if (!test || test.questions.length === 0) {
-    test = await prisma.generatedTest.findFirst({
-      where: { topicId: session.topicId, lifecycle: 'active' },
-      orderBy: [{ version: 'desc' }],
-      include: { questions: questionSelect },
-    });
-  }
-
-  if (!test || test.questions.length === 0) {
+  if (testQuestions.length === 0) {
     res = NextResponse.json(
       { error: 'No test questions available for this topic' },
       { status: 404 },
@@ -226,7 +208,7 @@ export async function POST(
   }
 
   const questionMap = new Map<string, TestQuestionForGrading>(
-    test.questions.map((q) => [q.id, q]),
+    testQuestions.map((q) => [q.id, q]),
   );
 
   // ── Grade answers ─────────────────────────────────────────────────────────
@@ -240,7 +222,7 @@ export async function POST(
     if (!question) continue;
 
     totalCount++;
-    const correctAnswerStr = extractCorrectAnswer(question.answer);
+    const correctAnswerStr = question.correctAnswer;
     const isCorrect = gradeTestQuestion(question, ans.answer, correctAnswerStr);
     if (isCorrect) correctCount++;
 
@@ -338,17 +320,6 @@ export async function POST(
 
 // ─── Grading Helpers ────────────────────────────────────────────────────────
 
-function extractCorrectAnswer(answer: unknown): string | null {
-  if (answer == null) return null;
-  if (typeof answer === 'string') return answer;
-  if (typeof answer === 'number') return String(answer);
-  if (Array.isArray(answer) && answer.length > 0) {
-    const first = answer[0];
-    return typeof first === 'string' ? first : JSON.stringify(first);
-  }
-  return JSON.stringify(answer);
-}
-
 function gradeTestQuestion(
   question: TestQuestionForGrading,
   studentAnswer: string,
@@ -357,7 +328,7 @@ function gradeTestQuestion(
   if (!correctAnswerStr) return false;
 
   const type = (question.type || '').toLowerCase();
-  const options = normalizeOptions(question.options);
+  const options = normalizeOptions(question.choices);
 
   if (type === 'mcq' || type === 'multiple_choice') {
     return gradeMCQ(options, correctAnswerStr, studentAnswer);

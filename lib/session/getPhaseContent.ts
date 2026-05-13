@@ -6,7 +6,7 @@
  *   OVERVIEW     → Topic metadata + objectives extracted from the TopicNote (or a lightweight fallback).
  *   EXPLANATION  → Full TopicNote (approved, latest version; draft fallback).
  *   PRACTICE     → 5 questions from the Question bank (topicId FK).
- *   TEST         → GeneratedTest with questions (approved; draft fallback).
+ *   TEST         → 5 questions from the Question bank (topicId FK).
  *   HOMEWORK     → HomeworkAssignment for this session.
  *   COMPLETE     → No content -- terminal state.
  *
@@ -32,6 +32,7 @@
  *                               to prevent repeated questions within a single session.
  *   2026-05-10 | copilot      | switch PRACTICE selection from recency ordering to random sampling
  *                               so sessions do not always serve the latest rows.
+ *   2026-05-13T00:00:00Z | copilot | unify TEST runtime delivery on the Question bank and normalize test question payloads
  */
 
 import { prisma } from '@/lib/prisma';
@@ -53,6 +54,7 @@ const META_TEST_IDS = 'servedTestIds';
 const META_SERVED_CONTENT_KEYS = 'servedContentKeys';
 
 const PRACTICE_QUESTION_TARGET_COUNT = 5;
+const TEST_QUESTION_TARGET_COUNT = 5;
 
 // ─── Return Types ─────────────────────────────────────────────────────────────
 
@@ -96,8 +98,10 @@ export interface TestContent {
   questions: {
     id: string;
     type: string;
-    question: string;
-    options: unknown;
+    prompt: string;
+    choices: unknown;
+    difficulty: string | null;
+    correctAnswer: string | null;
     explanation: string | null;
   }[];
 }
@@ -130,6 +134,7 @@ export type PhaseContentData =
   | PendingContent;
 
 type PracticeQuestionRow = PracticeContent['questions'][number];
+type TestQuestionRow = TestContent['questions'][number];
 
 function getPracticeQuestionKey(question: PracticeQuestionRow): string {
   return buildQuestionContentKey({
@@ -166,10 +171,7 @@ function dedupePracticeQuestions(questions: PracticeQuestionRow[]): PracticeQues
   return deduped;
 }
 
-function pickRandomQuestions(
-  questions: PracticeQuestionRow[],
-  count: number,
-): PracticeQuestionRow[] {
+function pickRandomQuestions<T>(questions: T[], count: number): T[] {
   if (questions.length <= count) {
     return questions;
   }
@@ -612,23 +614,22 @@ async function resolvePractice(topicId: string, studentMastery: number | null, s
 }
 
 /**
- * TEST -- approved GeneratedTest with questions; difficulty-aware with fallback.
+ * TEST -- Question-bank questions with difficulty-aware fallback.
  *
  * Cross-phase dedup: loads servedPracticeIds from session meta and filters those IDs
- * from the test question list. If filtering removes all questions from a test, falls
- * through to the next test candidate (best-effort -- never leaves the student with 0 questions).
- * Saves the final served test question IDs to meta.servedTestIds for HOMEWORK to exclude.
- *
- * Lookup order:
- *   1. Approved test at student's target difficulty band.
- *   2. Any approved test for the topic (difficulty fallback).
- *   3. Draft test at any difficulty (content-in-progress fallback).
+ * from the test question list. Served test IDs are persisted so reloads and homework
+ * exclusions stay deterministic.
  */
 async function resolveTest(topicId: string, studentMastery: number | null, sessionId: string): Promise<PhaseContentData> {
   const targetDifficulty = resolveTargetDifficulty(studentMastery);
   const questionSelect = {
-    select: { id: true, type: true, question: true, options: true, explanation: true },
-  };
+    id: true,
+    type: true,
+    prompt: true,
+    choices: true,
+    difficulty: true,
+    correctAnswer: true,
+  } as const;
 
   // Load session meta once to get practice question IDs and content keys for cross-phase dedup.
   const sessionMeta = await prisma.structuredSession.findUnique({
@@ -650,7 +651,29 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
       : [],
   );
 
-  type TestQuestion = { id: string; type: string; question: string; options: unknown; explanation: string | null };
+  const savedTestIds = Array.isArray(existingMeta[META_TEST_IDS])
+    ? (existingMeta[META_TEST_IDS] as string[])
+    : [];
+
+  if (savedTestIds.length > 0) {
+    const lockedQuestions = await prisma.question.findMany({
+      where: { id: { in: savedTestIds }, topicId, status: 'ACTIVE' },
+      select: questionSelect,
+    });
+
+    if (lockedQuestions.length > 0) {
+      return {
+        type: 'test',
+        testId: `bank:${sessionId}`,
+        title: 'Quick Test',
+        difficulty: targetDifficulty,
+        questions: lockedQuestions.map((question: typeof lockedQuestions[number]) => ({
+          ...question,
+          explanation: null,
+        })),
+      };
+    }
+  }
 
   /**
    * Filter test questions against already-served practice questions by BOTH id and
@@ -660,21 +683,29 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
    * "Never repeat" takes precedence over "never show 0 questions".
    * If this test candidate has no unique questions, the caller tries the next one.
    */
-  function dedupeTestQuestions(qs: TestQuestion[]): TestQuestion[] {
+  function dedupeTestQuestions(qs: TestQuestionRow[]): TestQuestionRow[] {
     return qs.filter((q) => {
       if (practiceIds.has(q.id)) return false;
       if (servedContentKeys.size > 0) {
-        const key = buildQuestionContentKey({ question: q.question, options: q.options });
+        const key = buildQuestionContentKey({
+          prompt: q.prompt,
+          choices: q.choices,
+          correctAnswer: q.correctAnswer,
+        });
         if (servedContentKeys.has(key)) return false;
       }
       return true;
     });
   }
 
-  async function saveTestMeta(questions: TestQuestion[]): Promise<void> {
+  async function saveTestMeta(questions: TestQuestionRow[]): Promise<void> {
     const ids = questions.map((q) => q.id);
     const newKeys = questions.map((q) =>
-      buildQuestionContentKey({ question: q.question, options: q.options }),
+      buildQuestionContentKey({
+        prompt: q.prompt,
+        choices: q.choices,
+        correctAnswer: q.correctAnswer,
+      }),
     );
     // Merge with existing content keys (practice keys already in meta).
     const mergedKeys = Array.from(new Set([...Array.from(servedContentKeys), ...newKeys]));
@@ -692,58 +723,39 @@ async function resolveTest(topicId: string, studentMastery: number | null, sessi
     }
   }
 
-  // Primary: approved test at the student's target difficulty.
-  const approvedAtBand = await prisma.generatedTest.findFirst({
-    where: { topicId, lifecycle: 'active', status: 'approved', difficulty: targetDifficulty },
-    orderBy: [{ version: 'desc' }],
-    include: { questions: questionSelect },
+  let questions = await prisma.question.findMany({
+    where: { topicId, difficulty: targetDifficulty, status: 'ACTIVE' },
+    select: questionSelect,
   });
 
-  if (approvedAtBand && approvedAtBand.questions.length > 0) {
-    const questions = dedupeTestQuestions(approvedAtBand.questions);
-    if (questions.length > 0) {
-      await saveTestMeta(questions);
-      return { type: 'test', testId: approvedAtBand.id, title: approvedAtBand.title, difficulty: approvedAtBand.difficulty, questions };
-    }
-    logger.info('[TEST_RESOLVE] All questions in approved-at-band test already served in practice; trying next candidate', {
-      sessionId, topicId, testId: approvedAtBand.id,
+  questions = pickRandomQuestions(
+    dedupePracticeQuestions(dedupeTestQuestions(questions) as PracticeQuestionRow[]),
+    TEST_QUESTION_TARGET_COUNT,
+  ) as TestQuestionRow[];
+
+  if (questions.length < TEST_QUESTION_TARGET_COUNT) {
+    const fallbackQuestions = await prisma.question.findMany({
+      where: { topicId, status: 'ACTIVE' },
+      select: questionSelect,
     });
+
+    questions = pickRandomQuestions(
+      dedupePracticeQuestions(
+        dedupeTestQuestions([...questions, ...fallbackQuestions]) as PracticeQuestionRow[],
+      ),
+      TEST_QUESTION_TARGET_COUNT,
+    ) as TestQuestionRow[];
   }
 
-  // Fallback: any approved test (ignores difficulty band).
-  const approvedAny = await prisma.generatedTest.findFirst({
-    where: { topicId, lifecycle: 'active', status: 'approved' },
-    orderBy: [{ version: 'desc' }],
-    include: { questions: questionSelect },
-  });
-
-  if (approvedAny && approvedAny.questions.length > 0) {
-    const questions = dedupeTestQuestions(approvedAny.questions);
-    if (questions.length > 0) {
-      await saveTestMeta(questions);
-      return { type: 'test', testId: approvedAny.id, title: approvedAny.title, difficulty: approvedAny.difficulty, questions };
-    }
-    logger.info('[TEST_RESOLVE] All questions in approved-any test already served in practice; trying draft', {
-      sessionId, topicId, testId: approvedAny.id,
-    });
-  }
-
-  // Final fallback: draft (content review in progress).
-  const draft = await prisma.generatedTest.findFirst({
-    where: { topicId, lifecycle: 'active' },
-    orderBy: [{ version: 'desc' }],
-    include: { questions: questionSelect },
-  });
-
-  if (draft && draft.questions.length > 0) {
-    const questions = dedupeTestQuestions(draft.questions);
-    if (questions.length > 0) {
-      await saveTestMeta(questions);
-      return { type: 'test', testId: draft.id, title: draft.title, difficulty: draft.difficulty, questions };
-    }
-    logger.warn('[TEST_RESOLVE] All questions exhausted after cross-phase dedup across all candidates', {
-      sessionId, topicId,
-    });
+  if (questions.length > 0) {
+    await saveTestMeta(questions);
+    return {
+      type: 'test',
+      testId: `bank:${sessionId}`,
+      title: 'Quick Test',
+      difficulty: targetDifficulty,
+      questions: questions.map((question: TestQuestionRow) => ({ ...question, explanation: null })),
+    };
   }
 
   logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'TEST', topicId, targetDifficulty });

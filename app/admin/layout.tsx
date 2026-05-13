@@ -44,7 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   // Badge counts -- all run in parallel; individual failures fall back to 0
-  const [pendingReview, activeJobs, failedJobs, safetyAlerts] = await Promise.all([
+  const [pendingReview, activeJobs, failedJobs, safetyAlerts, flaggedQuestions] = await Promise.all([
     // Content pending review: sum all draft content types
     Promise.all([
       prisma.chapterDef.count({ where: { status: 'draft', lifecycle: 'active' } }),
@@ -67,6 +67,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     prisma.safetyEvent
       .count({ where: { resolvedAt: null } })
       .catch(() => 0),
+
+    // Flagged/quarantined questions pending review
+    prisma.question
+      .count({ where: { status: { in: ['PENDING_REVIEW', 'QUARANTINED'] } } })
+      .catch(() => 0),
   ]);
 
   return (
@@ -86,6 +91,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 runningJobs={activeJobs}
                 failedJobs={failedJobs}
                 safetyAlerts={safetyAlerts}
+                flaggedQuestions={flaggedQuestions}
               />
               <main className="flex-1 overflow-y-auto text-gray-900 dark:text-gray-100">
                 {children}

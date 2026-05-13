@@ -381,17 +381,13 @@ describe('resolvePhaseContent', () => {
       meta: { servedPracticeIds: ['shared-q1', 'shared-q2'] },
     });
 
-    // Test contains 3 questions: 2 overlap with practice, 1 is new.
-    prisma.generatedTest.findFirst.mockResolvedValue({
-      id: 'test-1',
-      title: 'Topic Test',
-      difficulty: 'medium',
-      questions: [
-        { id: 'shared-q1', type: 'mcq', question: 'Shared Q1', options: ['A'], explanation: null },
-        { id: 'shared-q2', type: 'mcq', question: 'Shared Q2', options: ['B'], explanation: null },
-        { id: 'new-q3', type: 'mcq', question: 'New Q3', options: ['C'], explanation: null },
-      ],
-    });
+    // Test contains 3 bank questions: 2 overlap with practice, 1 is new.
+    prisma.question.findMany
+      .mockResolvedValueOnce([
+        { id: 'shared-q1', type: 'mcq', prompt: 'Shared Q1', choices: ['A'], difficulty: 'medium', correctAnswer: 'a' },
+        { id: 'shared-q2', type: 'mcq', prompt: 'Shared Q2', choices: ['B'], difficulty: 'medium', correctAnswer: 'a' },
+        { id: 'new-q3', type: 'mcq', prompt: 'New Q3', choices: ['C'], difficulty: 'medium', correctAnswer: 'a' },
+      ]);
 
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
@@ -405,30 +401,26 @@ describe('resolvePhaseContent', () => {
     }
   });
 
-  it('falls back to unfiltered test questions when all would be excluded by practice dedup', async () => {
+  it('returns pending when all test-bank questions are excluded by practice dedup', async () => {
     const prisma = require('@/lib/prisma').prisma;
 
-    // All test question IDs match practice IDs -- should not return empty test.
+    // All available test-bank rows are already served in practice.
     prisma.structuredSession.findUnique.mockResolvedValue({
       meta: { servedPracticeIds: ['q1', 'q2'] },
     });
-    prisma.generatedTest.findFirst.mockResolvedValue({
-      id: 'test-only',
-      title: 'Mini Test',
-      difficulty: 'medium',
-      questions: [
-        { id: 'q1', type: 'mcq', question: 'Q1', options: ['A'], explanation: null },
-        { id: 'q2', type: 'mcq', question: 'Q2', options: ['B'], explanation: null },
-      ],
-    });
+    prisma.question.findMany
+      .mockResolvedValueOnce([
+        { id: 'q1', type: 'mcq', prompt: 'Q1', choices: ['A'], difficulty: 'medium', correctAnswer: 'a' },
+        { id: 'q2', type: 'mcq', prompt: 'Q2', choices: ['B'], difficulty: 'medium', correctAnswer: 'a' },
+      ])
+      .mockResolvedValueOnce([
+        { id: 'q1', type: 'mcq', prompt: 'Q1', choices: ['A'], difficulty: 'medium', correctAnswer: 'a' },
+        { id: 'q2', type: 'mcq', prompt: 'Q2', choices: ['B'], difficulty: 'medium', correctAnswer: 'a' },
+      ]);
 
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
 
-    // All filtered out -- should fall back to all test questions rather than pending.
-    expect(result.type).toBe('test');
-    if (result.type === 'test') {
-      expect(result.questions).toHaveLength(2);
-    }
+    expect(result.type).toBe('pending');
   });
 });

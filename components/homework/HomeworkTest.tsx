@@ -5,13 +5,23 @@
  *   shows graded results with explanations.
  * - Integrates DoubtPanel so student can ask Vidya mid-homework.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/questions/QuestionInteractionShell.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2026-04-07 | claude | created -- closes homework test-taking gap
+ * - 2026-05-13T00:00:00Z | copilot | render homework questions through the shared question interaction shell
+ * - 2026-05-13T00:00:00Z | copilot | pass bank question IDs into the shared shell so homework inherits question flagging
  */
 
 import React, { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { DoubtPanel } from '@/components/session/DoubtPanel';
+import { QuestionInteractionShell, type QuestionShellChoice } from '@/components/questions/QuestionInteractionShell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +69,16 @@ function parseChoices(raw: unknown): string[] | null {
   return null;
 }
 
+function toShellChoices(raw: unknown): QuestionShellChoice[] {
+  const choices = parseChoices(raw);
+  if (!choices) return [];
+
+  return choices.map((choice, index) => ({
+    key: String.fromCharCode(97 + index),
+    label: choice,
+  }));
+}
+
 function difficultyLabel(d: string | null) {
   if (d === 'easy') return { label: 'Easy', cls: 'bg-[#EAF3DE] text-[#1D9E75]' };
   if (d === 'hard') return { label: 'Hard', cls: 'bg-[#FCEBEB] text-[#E24B4A]' };
@@ -84,121 +104,42 @@ function QuestionCard({
   gradedAnswer?: GradedAnswer;
   showResult: boolean;
 }) {
-  const choices = parseChoices(question.choices);
-  const isMCQ = choices !== null && choices.length > 0;
   const diff = difficultyLabel(question.difficulty);
-
-  const resultBorder = !showResult
-    ? 'border-border'
-    : gradedAnswer?.isCorrect
-      ? 'border-[#1D9E75]'
-      : 'border-[#E24B4A]';
+  const choices = toShellChoices(question.choices);
+  const submittedAnswerLabel =
+    gradedAnswer?.studentAnswer && choices.length > 0
+      ? choices.find(
+          (choice) =>
+            choice.key.toLowerCase() === gradedAnswer.studentAnswer.toLowerCase() ||
+            choice.label === gradedAnswer.studentAnswer,
+        )?.label ?? gradedAnswer.studentAnswer
+      : gradedAnswer?.studentAnswer;
+  const correctAnswerLabel =
+    question.correctAnswer && choices.length > 0
+      ? choices.find(
+          (choice) =>
+            choice.key.toLowerCase() === question.correctAnswer?.toLowerCase() ||
+            choice.label === question.correctAnswer,
+        )?.label ?? question.correctAnswer
+      : question.correctAnswer;
 
   return (
-    <div className={`rounded-2xl border-2 ${resultBorder} bg-card p-5 space-y-4 transition-colors`}>
-      {/* Question header */}
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-xs font-semibold text-muted-foreground">
-          Q{index + 1} / {total}
-        </span>
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${diff.cls}`}>
-          {diff.label}
-        </span>
-      </div>
-
-      <p className="text-sm font-medium text-foreground leading-relaxed">{question.prompt}</p>
-
-      {/* Answer input */}
-      {isMCQ ? (
-        <div className="space-y-2">
-          {choices.map((choice, ci) => {
-            const optKey = String.fromCharCode(65 + ci); // A, B, C, D
-            const isSelected = answer === optKey || answer === choice;
-            const isCorrectChoice =
-              showResult &&
-              question.correctAnswer &&
-              (question.correctAnswer === optKey || question.correctAnswer === choice);
-            const isWrongSelection = showResult && isSelected && !gradedAnswer?.isCorrect;
-
-            return (
-              <label
-                key={ci}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors min-h-[44px] ${
-                  isCorrectChoice
-                    ? 'bg-[#EAF3DE] border-[#1D9E75]'
-                    : isWrongSelection
-                      ? 'bg-[#FCEBEB] border-[#E24B4A]'
-                      : isSelected
-                        ? 'bg-[#EEEDFE] border-[#534AB7]'
-                        : 'border-border hover:bg-muted/50'
-                } ${showResult ? 'cursor-default' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name={`q-${question.id}`}
-                  value={optKey}
-                  checked={isSelected}
-                  onChange={() => !showResult && onAnswer(question.id, optKey)}
-                  disabled={showResult}
-                  className="sr-only"
-                />
-                <span
-                  className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
-                    isCorrectChoice
-                      ? 'bg-[#1D9E75] border-[#1D9E75] text-white'
-                      : isWrongSelection
-                        ? 'bg-[#E24B4A] border-[#E24B4A] text-white'
-                        : isSelected
-                          ? 'bg-[#534AB7] border-[#534AB7] text-white'
-                          : 'border-border text-muted-foreground'
-                  }`}
-                >
-                  {optKey}
-                </span>
-                <span className="text-sm text-foreground">{choice}</span>
-                {isCorrectChoice && (
-                  <svg className="ml-auto w-4 h-4 text-[#1D9E75] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </label>
-            );
-          })}
-        </div>
-      ) : (
-        <textarea
-          rows={2}
-          value={answer}
-          onChange={(e) => !showResult && onAnswer(question.id, e.target.value)}
-          disabled={showResult}
-          placeholder="Type your answer here..."
-          className={`w-full resize-none rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/40 disabled:bg-muted/30 ${
-            showResult && gradedAnswer?.isCorrect
-              ? 'border-[#1D9E75] bg-[#EAF3DE]'
-              : showResult && !gradedAnswer?.isCorrect
-                ? 'border-[#E24B4A] bg-[#FCEBEB]'
-                : 'border-border'
-          }`}
-        />
-      )}
-
-      {/* Result feedback */}
-      {showResult && gradedAnswer && (
-        <div className={`rounded-xl p-3 text-sm ${gradedAnswer.isCorrect ? 'bg-[#EAF3DE]' : 'bg-[#FCEBEB]'}`}>
-          <p className={`font-semibold mb-1 ${gradedAnswer.isCorrect ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}`}>
-            {gradedAnswer.isCorrect ? 'Correct!' : `Incorrect -- you answered: ${gradedAnswer.studentAnswer}`}
-          </p>
-          {!gradedAnswer.isCorrect && question.correctAnswer && (
-            <p className="text-foreground/80 text-xs">
-              Correct answer: <span className="font-semibold">{question.correctAnswer}</span>
-            </p>
-          )}
-          {question.explanation && (
-            <p className="text-foreground/70 text-xs mt-1 leading-relaxed">{question.explanation}</p>
-          )}
-        </div>
-      )}
-    </div>
+    <QuestionInteractionShell
+      questionId={question.id}
+      prompt={question.prompt}
+      questionNumber={index + 1}
+      totalQuestions={total}
+      difficulty={diff.label.toLowerCase()}
+      choices={choices}
+      value={answer}
+      onChange={(nextValue) => !showResult && onAnswer(question.id, nextValue)}
+      disabled={showResult}
+      showResult={showResult && !!gradedAnswer}
+      isCorrect={gradedAnswer?.isCorrect}
+      submittedAnswerLabel={submittedAnswerLabel}
+      correctAnswerLabel={correctAnswerLabel}
+      explanation={question.explanation}
+    />
   );
 }
 
@@ -344,12 +285,12 @@ export function HomeworkTest({
             )}
           </div>
           {!showResult && (
-            <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full bg-[#534AB7] rounded-full transition-all duration-300"
-                style={{ width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` }}
-              />
-            </div>
+            <progress
+              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted text-[#534AB7]"
+              value={questions.length ? (answeredCount / questions.length) * 100 : 0}
+              max={100}
+              aria-label="Homework answer progress"
+            />
           )}
         </div>
       </div>
