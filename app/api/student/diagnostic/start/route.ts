@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | created
  * - 2026-04-22T09:20:00Z | staff-engineer | emit `diagnostic_started` analytics event on session start
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical diagnostics start analytics alongside ingestion payload
  */
 
 import { NextResponse } from 'next/server';
@@ -24,6 +25,8 @@ import { createSession } from '@/lib/diagnostics/sessionStore';
 import { upsertSubjectDiagnosticStatus, getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 import { enqueueDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,6 +114,23 @@ export async function POST(req: Request) {
 
     // Analytics: emit `diagnostic_started` for ingestion (best-effort, non-blocking).
     try {
+      await emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.DIAGNOSTICS_START,
+          userId: user.id,
+          courseId: test.subjectId,
+          metadata: {
+            subjectId: test.subjectId,
+            subjectName: test.subjectName ?? null,
+            boardSlug: boardSlug ?? null,
+            grade: Number(grade),
+            sessionId,
+            totalQuestions: candidateQuestionIds.length,
+          },
+        },
+        'diagnostic.start',
+      );
+
       const analyticsQueue = getAnalyticsQueue();
       const metadata = {
         subjectId: test.subjectId,

@@ -32,6 +32,8 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { computeReadinessScore } from '@/lib/student/examReadiness'
 import type { AppSession } from '@/lib/types/auth'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 const CLASS_NAME = 'ParentProgressAPI'
 
@@ -49,6 +51,18 @@ interface RecentAlert {
   type: AlertType
   message: string
   occurredAt: string // ISO timestamp
+}
+
+interface ParentProgressChild {
+  studentId: string
+  name: string
+  grade: string
+  board: string
+  streakDays: number
+  sessionsThisWeek: number
+  studyTimeThisWeekMinutes: number
+  subjects: SubjectResult[]
+  recentAlerts: RecentAlert[]
 }
 
 function weekStart(): Date {
@@ -88,7 +102,8 @@ export async function GET(req: Request) {
   })
 
   // Compute children sequentially to avoid overloading DB connections
-  const children: Array<ReturnType<typeof Promise.resolve> | null> = []
+  const children: ParentProgressChild[] = []
+
   for (const { studentId } of links) {
     // ── Core data in parallel (small set of parallel queries per student)
     const [student, streak, sessionsThisWeek, learningPlans] = await Promise.all([
@@ -111,7 +126,6 @@ export async function GET(req: Request) {
     ])
 
     if (!student) {
-      children.push(null)
       continue
     }
 
@@ -228,9 +242,20 @@ export async function GET(req: Request) {
     })
   }
 
-  const validChildren = children.filter(
-    (c): c is NonNullable<typeof c> => c !== null,
-  )
+  const validChildren = children
+
+  try {
+    void emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.PARENT.DAILY_SESSION,
+        userId: session.user.id,
+        metadata: { childCount: validChildren.length },
+      },
+      'api.parent.progress',
+    )
+  } catch {
+    /* best-effort */
+  }
 
   const res = NextResponse.json({ children: validChildren }, { status: 200 })
   logger.logAPI(req, res, { className: CLASS_NAME, methodName: 'GET' }, start)

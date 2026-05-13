@@ -1,5 +1,7 @@
 import { jest } from '@jest/globals'
 
+const mockEmitServerAnalyticsEvent = jest.fn().mockResolvedValue(undefined)
+
 describe('Diagnostic submit analytics emission', () => {
   beforeEach(() => {
     jest.resetModules()
@@ -9,6 +11,7 @@ describe('Diagnostic submit analytics emission', () => {
   test('enqueues diagnostic_completed when analytics queue available', async () => {
     const addMock = jest.fn().mockResolvedValue(undefined)
     jest.doMock('@/lib/queues/analyticsQueue', () => ({ getAnalyticsQueue: () => ({ add: addMock }) }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
 
     // Prisma mocks
     const questionMock = [
@@ -22,6 +25,7 @@ describe('Diagnostic submit analytics emission', () => {
       subjectDef: { findUnique: jest.fn().mockResolvedValue({ class: { id: 'grade-9' } }) },
       user: { findUnique: jest.fn().mockResolvedValue({ board: 'cbse' }) },
       answerEvent: { createMany: jest.fn().mockResolvedValue(undefined) },
+      diagnosticSession: { upsert: jest.fn().mockResolvedValue(undefined) },
     }
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
@@ -58,11 +62,19 @@ describe('Diagnostic submit analytics emission', () => {
     const jobData = call?.data ?? call
     expect(jobData.eventType).toBe('diagnostic_completed')
     expect(jobData.metadata).toMatchObject({ totalQuestions: 2, answeredCount: 2, correctCount: 2 })
+    expect(mockEmitServerAnalyticsEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'student.diagnostics.end',
+        userId: 'u1',
+      }),
+      expect.any(String),
+    )
     expect(res.status).toBe(200)
   })
 
   test('falls back to DB when analytics queue unavailable on submit', async () => {
     jest.doMock('@/lib/queues/analyticsQueue', () => ({ getAnalyticsQueue: () => null }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
 
     const prismaMock = {
       question: { findMany: jest.fn().mockResolvedValue([{ id: 'q1', correctAnswer: 'A', choices: ['A'], topicId: 't1' }]) },
@@ -72,6 +84,7 @@ describe('Diagnostic submit analytics emission', () => {
       user: { findUnique: jest.fn().mockResolvedValue({ board: 'cbse' }) },
       answerEvent: { createMany: jest.fn().mockResolvedValue(undefined) },
       analyticsEvent: { create: jest.fn().mockResolvedValue(undefined) },
+      diagnosticSession: { upsert: jest.fn().mockResolvedValue(undefined) },
     }
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
@@ -80,6 +93,9 @@ describe('Diagnostic submit analytics emission', () => {
     jest.doMock('@/lib/redis/diagnosticPartial', () => ({ clearPartialDiagnostic: jest.fn().mockResolvedValue(undefined) }))
     jest.doMock('@/jobs/diagnosticAutoSubmit', () => ({ cancelDiagnosticAutoSubmit: jest.fn().mockResolvedValue(undefined) }))
     jest.doMock('@/lib/diagnostics/stateStore', () => ({ upsertSubjectDiagnosticStatus: jest.fn().mockResolvedValue(undefined) }))
+    jest.doMock('@/lib/diagnostics/sessionStore', () => ({ getSession: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/diagnostics/selector', () => ({ computeSessionTheta: jest.fn().mockResolvedValue({ theta: 0 }) }))
+    jest.doMock('@/lib/irt/irt', () => ({ thetaToPlacement: jest.fn().mockReturnValue('at') }))
 
     const { POST } = await import('app/api/student/diagnostic/submit/route')
 
@@ -106,6 +122,7 @@ describe('Diagnostic submit analytics emission', () => {
   test('falls back to DB when analytics enqueue throws on submit', async () => {
     const addMock = jest.fn().mockRejectedValue(new Error('enqueue-error'))
     jest.doMock('@/lib/queues/analyticsQueue', () => ({ getAnalyticsQueue: () => ({ add: addMock }) }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
 
     const prismaMock = {
       question: { findMany: jest.fn().mockResolvedValue([{ id: 'q1', correctAnswer: 'A', choices: ['A'], topicId: 't1' }]) },
@@ -115,6 +132,7 @@ describe('Diagnostic submit analytics emission', () => {
       user: { findUnique: jest.fn().mockResolvedValue({ board: 'cbse' }) },
       answerEvent: { createMany: jest.fn().mockResolvedValue(undefined) },
       analyticsEvent: { create: jest.fn().mockResolvedValue(undefined) },
+      diagnosticSession: { upsert: jest.fn().mockResolvedValue(undefined) },
     }
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
@@ -123,6 +141,9 @@ describe('Diagnostic submit analytics emission', () => {
     jest.doMock('@/lib/redis/diagnosticPartial', () => ({ clearPartialDiagnostic: jest.fn().mockResolvedValue(undefined) }))
     jest.doMock('@/jobs/diagnosticAutoSubmit', () => ({ cancelDiagnosticAutoSubmit: jest.fn().mockResolvedValue(undefined) }))
     jest.doMock('@/lib/diagnostics/stateStore', () => ({ upsertSubjectDiagnosticStatus: jest.fn().mockResolvedValue(undefined) }))
+    jest.doMock('@/lib/diagnostics/sessionStore', () => ({ getSession: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/diagnostics/selector', () => ({ computeSessionTheta: jest.fn().mockResolvedValue({ theta: 0 }) }))
+    jest.doMock('@/lib/irt/irt', () => ({ thetaToPlacement: jest.fn().mockReturnValue('at') }))
 
     const { POST } = await import('app/api/student/diagnostic/submit/route')
 

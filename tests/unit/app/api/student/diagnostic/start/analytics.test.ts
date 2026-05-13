@@ -1,5 +1,7 @@
 import { jest } from '@jest/globals'
 
+const mockEmitServerAnalyticsEvent = jest.fn().mockResolvedValue(undefined)
+
 describe('Diagnostic start analytics emission', () => {
   beforeEach(() => {
     jest.resetModules()
@@ -12,6 +14,7 @@ describe('Diagnostic start analytics emission', () => {
     jest.doMock('@/lib/queues/analyticsQueue', () => ({
       getAnalyticsQueue: () => ({ add: addMock }),
     }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
 
     // minimal mocks for route dependencies
     jest.doMock('@/lib/session', () => ({
@@ -57,6 +60,13 @@ describe('Diagnostic start analytics emission', () => {
     expect(jobData.eventType).toBe('diagnostic_started')
     expect(jobData.metadata).toMatchObject({ subjectId: 's1', totalQuestions: 2 })
     expect(typeof jobData.metadata.sessionId).toBe('string')
+    expect(mockEmitServerAnalyticsEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'student.diagnostics.start',
+        userId: 'u1',
+      }),
+      expect.any(String),
+    )
     expect(res.status).toBe(200)
   })
 
@@ -64,6 +74,7 @@ describe('Diagnostic start analytics emission', () => {
     jest.doMock('@/lib/queues/analyticsQueue', () => ({
       getAnalyticsQueue: () => null,
     }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
 
     const prismaCreateMock = jest.fn().mockResolvedValue({})
     jest.doMock('@/lib/prisma', () => ({ prisma: { analyticsEvent: { create: prismaCreateMock } } }))
@@ -109,6 +120,13 @@ describe('Diagnostic start analytics emission', () => {
     expect(created.data.eventType).toBe('diagnostic_started')
     expect(created.data.metadata).toMatchObject({ subjectId: 's1', totalQuestions: 1 })
     expect(typeof created.data.metadata.sessionId).toBe('string')
+    expect(mockEmitServerAnalyticsEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'student.diagnostics.start',
+        userId: 'u1',
+      }),
+      expect.any(String),
+    )
     expect(res.status).toBe(200)
   })
 
@@ -117,6 +135,7 @@ describe('Diagnostic start analytics emission', () => {
     jest.doMock('@/lib/queues/analyticsQueue', () => ({
       getAnalyticsQueue: () => ({ add: addMock }),
     }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
 
     const prismaCreateMock = jest.fn().mockResolvedValue({})
     jest.doMock('@/lib/prisma', () => ({ prisma: { analyticsEvent: { create: prismaCreateMock } } }))
@@ -162,6 +181,13 @@ describe('Diagnostic start analytics emission', () => {
     expect(created.data.eventType).toBe('diagnostic_started')
     expect(created.data.metadata).toMatchObject({ subjectId: 's1', totalQuestions: 1 })
     expect(typeof created.data.metadata.sessionId).toBe('string')
+    expect(mockEmitServerAnalyticsEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'student.diagnostics.start',
+        userId: 'u1',
+      }),
+      expect.any(String),
+    )
     expect(res.status).toBe(200)
   })
 })

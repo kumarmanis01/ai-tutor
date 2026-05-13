@@ -18,6 +18,8 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { getServerSessionForHandlers } from "@/lib/session";
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 const SUPPORTED_TYPES = ['syllabus', 'chapter', 'topic', 'note', 'test'] as const;
 type ContentType = typeof SUPPORTED_TYPES[number];
@@ -115,6 +117,38 @@ export async function POST(req: Request) {
         reason: reason || null,
       },
     });
+
+    try {
+      void emitServerAnalyticsEvent(
+        {
+          eventType:
+            action === 'approve'
+              ? ANALYTICS_EVENTS.ADMIN.CONTENT_APPROVE
+              : ANALYTICS_EVENTS.ADMIN.CONTENT_REJECT,
+          userId: session.user.id,
+          metadata: { type, id, action, status: newStatus },
+        },
+        'api.admin.content.approve',
+      );
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_MODERATION,
+          userId: session.user.id,
+          metadata: { type, id, action, status: newStatus },
+        },
+        'api.admin.content.approve',
+      );
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_REVIEW,
+          userId: session.user.id,
+          metadata: { type, id, action, status: newStatus },
+        },
+        'api.admin.content.approve',
+      );
+    } catch {
+      /* best-effort */
+    }
 
     logger.info(`Content ${action}d`, { type, id, adminId: session.user.id, newStatus });
 

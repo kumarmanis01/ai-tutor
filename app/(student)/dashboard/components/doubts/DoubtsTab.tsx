@@ -21,6 +21,7 @@ import ContentModal from '@/components/UI/ContentModal';
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
 import analyticsClient from '@/lib/analytics/client'
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
+import { logger } from '@/lib/logger'
 
 interface DoubtsMessage {
   id: string;
@@ -62,6 +63,14 @@ const getFollowUpQuestions = (data: Record<string, unknown>): string[] => {
 
   return followUpQuestions.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
 };
+
+const trackBestEffort = (eventType: string, metadata: Record<string, unknown>) => {
+  try {
+    void analyticsClient.trackEvent({ eventType: eventType as never, metadata })
+  } catch {
+    /* best-effort */
+  }
+}
 
 /**
  * DoubtsTab - Ask AI questions via /api/doubts with inline chat display.
@@ -108,10 +117,18 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
 
       if (!res.ok) {
         if (data?.error === FREE_LIMIT_REACHED_ERROR) {
-          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { /* best-effort */ }
+          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { logger.warn('Failed to track paywall shown event', { className: 'DoubtsTab', methodName: 'handleSubmit', err }) }
+          trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
+            reason: 'free_limit_reached',
+            subject: selectedSubject || null,
+          })
           setIsPaywallOpen(true);
           return;
         }
+        trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
+          reason: 'request_failed',
+          subject: selectedSubject || null,
+        })
         setMessages((prev) => [
           ...prev,
           {
@@ -133,7 +150,19 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
         followUps: getFollowUpQuestions(data),
       };
       setMessages((prev) => [...prev, aiMsg]);
+
+      if (data.questionId) {
+        trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSUP, {
+          questionId: data.questionId,
+          subject: selectedSubject || null,
+          source: 'doubts_tab_response',
+        })
+      }
     } catch {
+      trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
+        reason: 'network_error',
+        subject: selectedSubject || null,
+      })
       setMessages((prev) => [
         ...prev,
         {
@@ -183,10 +212,18 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
 
       if (!res.ok) {
         if (data?.error === FREE_LIMIT_REACHED_ERROR) {
-          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { /* best-effort */ }
+          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { logger.warn('Failed to track paywall shown event', { className: 'DoubtsTab', methodName: 'handleFollowUpClick', err }) }
+          trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
+            reason: 'free_limit_reached',
+            subject: selectedSubject || null,
+          })
           setIsPaywallOpen(true);
           return;
         }
+        trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
+          reason: 'request_failed',
+          subject: selectedSubject || null,
+        })
         setMessages((prev) => [
           ...prev,
           {
@@ -207,7 +244,19 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
         followUps: getFollowUpQuestions(data),
       };
       setMessages((prev) => [...prev, aiMsg]);
+
+      if (data.questionId) {
+        trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSUP, {
+          questionId: data.questionId,
+          subject: selectedSubject || null,
+          source: 'doubts_tab_followup',
+        })
+      }
     } catch {
+      trackBestEffort(ANALYTICS_EVENTS.STUDENT.DOUBTS_THUMBSDOWN, {
+        reason: 'network_error',
+        subject: selectedSubject || null,
+      })
       setMessages((prev) => [
         ...prev,
         {

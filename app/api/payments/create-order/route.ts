@@ -97,7 +97,11 @@ export async function POST(req: Request) {
         'payments.create-order',
       )
     } catch (err) {
-      // non-fatal
+      logger.warn('Failed to emit payment initiated analytics', {
+        className: 'PaymentsCreateOrderAPI',
+        methodName: 'POST',
+        err,
+      })
     }
     return res
   } catch (err) {

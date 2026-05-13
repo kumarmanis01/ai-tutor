@@ -222,7 +222,7 @@ export async function POST(req: Request) {
           metadata: { orderId, paymentId, reason, amount: payment?.amount ?? orderRow.planMonths ?? null },
         }, 'razorpay.webhook.payment.failed')
       } catch (err) {
-        // non-fatal
+        logger.warn('Failed to emit payment failure analytics from webhook', { err, orderId, paymentId })
       }
       // Analytics: payment succeeded (best-effort)
       try {
@@ -232,7 +232,7 @@ export async function POST(req: Request) {
           metadata: { orderId, paymentId, amount: payment?.amount },
         }, 'razorpay.webhook.payment.captured')
       } catch (err) {
-        // non-fatal
+        logger.warn('Failed to emit payment success analytics from webhook', { err, orderId, paymentId })
       }
       // Analytics: payment succeeded (best-effort)
       try {
@@ -242,7 +242,7 @@ export async function POST(req: Request) {
           metadata: { orderId, paymentId, amount: payment?.amount },
         }, 'razorpay.webhook.payment.captured')
       } catch (err) {
-        // non-fatal
+        logger.warn('Failed to emit payment success analytics from webhook', { err, orderId, paymentId })
       }
 
       return NextResponse.json({ ok: true }, { status: 200 });

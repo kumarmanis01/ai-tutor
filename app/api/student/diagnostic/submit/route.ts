@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | mark DiagnosticSession as COMPLETED on submit to keep pending diagnostics accurate
+ * - 2026-05-13T00:00:00Z | copilot | emit canonical diagnostics completion analytics on submit
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,6 +28,8 @@ import { thetaToPlacement } from '@/lib/irt/irt';
 import { cancelDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
 import { diagnosticConfig } from '@/lib/config';
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 interface AnswerInput {
   questionId: string;
@@ -244,13 +247,13 @@ export async function POST(req: NextRequest) {
     // a session row already exists (defensive against missing create in page load).
     const now = new Date();
     await prisma.diagnosticSession.upsert({
-      where: { studentId_subjectId: { studentId, subjectId } },
+      where: { studentId_subjectId: { studentId: userId, subjectId } },
       update: {
         status: 'COMPLETED',
         completedAt: now,
       },
       create: {
-        studentId,
+        studentId: userId,
         subjectId,
         status: 'COMPLETED',
         completedAt: now,
@@ -271,6 +274,24 @@ export async function POST(req: NextRequest) {
     } catch {
       // non-fatal: placement defaults to 'at'
     }
+
+    // Emit canonical DIAGNOSTICS_END analytics event (best-effort, fire-and-forget)
+    void emitServerAnalyticsEvent(
+      {
+        eventType: ANALYTICS_EVENTS.STUDENT.DIAGNOSTICS_END,
+        userId,
+        courseId: subjectId,
+        metadata: {
+          subjectId,
+          sessionId: diagnosticSessionId,
+          answeredCount: answerEventData.length,
+          correctCount: answerEventData.filter((a) => !!a.isCorrect).length,
+          gamingFlag: !!gamingFlag,
+          placement,
+        },
+      },
+      'diagnostic.submit',
+    );
 
     // Analytics: emit `diagnostic_completed` (best-effort)
     try {

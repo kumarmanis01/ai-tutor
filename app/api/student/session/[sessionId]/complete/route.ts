@@ -210,6 +210,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         userId,
         metadata: { xpEarned, totalXp, sessionId },
       }, 'student.session.complete')
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.DAILY_SESSION_DURATION,
+        userId,
+        metadata: { sessionId, sessionDurationMinutes },
+      }, 'student.session.complete')
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.DAILY_SESSION_LESSONS_COMPLETED,
+        userId,
+        metadata: { sessionId, lessonsCompleted: totalQuestions > 0 ? 1 : 0 },
+      }, 'student.session.complete')
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.DAILY_SESSION_PENDING,
+        userId,
+        metadata: { sessionId, pendingMinutes: dailyStudyLimitStatus.remainingMinutes },
+      }, 'student.session.complete')
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.DAILY_SESSION_TODAYS_TASK_COMPLETION,
+        userId,
+        metadata: {
+          sessionId,
+          usedMinutes: dailyStudyLimitStatus.usedMinutes,
+          limitMinutes: dailyStudyLimitStatus.limitMinutes,
+          completionRatio:
+            dailyStudyLimitStatus.limitMinutes > 0
+              ? Math.min(1, dailyStudyLimitStatus.usedMinutes / dailyStudyLimitStatus.limitMinutes)
+              : 0,
+        },
+      }, 'student.session.complete')
     } catch (err) {
       logger.warn('session.complete.analytics.failed', { userId, sessionId, error: String(err) })
     }
