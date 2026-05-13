@@ -18,6 +18,7 @@
  * - 2026-05-10T00:00:00Z | copilot | add regression test for PRACTICE deduplication when question bank contains repeated rows
  * - 2026-05-10T00:00:00Z | copilot | relax ordering assertions for PRACTICE result because selection is now randomized
  * - 2026-05-10T00:00:00Z | copilot | cover promotion-time dedupe safeguards for GeneratedQuestion fallback path
+ * - 2026-05-13T00:00:00Z | copilot | add TEST regression for served-content-key dedupe when IDs differ but content matches
  */
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
@@ -416,6 +417,46 @@ describe('resolvePhaseContent', () => {
       .mockResolvedValueOnce([
         { id: 'q1', type: 'mcq', prompt: 'Q1', choices: ['A'], difficulty: 'medium', correctAnswer: 'a' },
         { id: 'q2', type: 'mcq', prompt: 'Q2', choices: ['B'], difficulty: 'medium', correctAnswer: 'a' },
+      ]);
+
+    const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
+    const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
+
+    expect(result.type).toBe('pending');
+  });
+
+  it('excludes TEST questions when content key already exists in session meta', async () => {
+    const prisma = require('@/lib/prisma').prisma;
+
+    prisma.structuredSession.findUnique.mockResolvedValue({
+      meta: {
+        servedPracticeIds: [],
+        servedContentKeys: [
+          'what is 2 + 2?::[3,4]::4',
+        ],
+      },
+    });
+
+    prisma.question.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'q-content-dup',
+          type: 'mcq',
+          prompt: 'What is 2 + 2?',
+          choices: ['3', '4'],
+          difficulty: 'medium',
+          correctAnswer: '4',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'q-content-dup',
+          type: 'mcq',
+          prompt: 'What is 2 + 2?',
+          choices: ['3', '4'],
+          difficulty: 'medium',
+          correctAnswer: '4',
+        },
       ]);
 
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
