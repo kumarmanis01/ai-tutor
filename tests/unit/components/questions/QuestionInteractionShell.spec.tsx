@@ -11,12 +11,24 @@
  *
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | create unit coverage for the shared question interaction shell
+ * - 2026-05-13T00:00:00Z | copilot | add coverage for shared question flag dialog submission flow
  */
 
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, jest } from '@jest/globals';
 import { QuestionInteractionShell } from '../../../../components/questions/QuestionInteractionShell';
+
+const fetchMock = jest.fn();
+
+Object.defineProperty(globalThis, 'fetch', {
+  configurable: true,
+  value: fetchMock,
+});
+
+beforeEach(() => {
+  fetchMock.mockReset();
+});
 
 describe('QuestionInteractionShell', () => {
   it('renders MCQ choices and emits the selected key', () => {
@@ -84,5 +96,39 @@ describe('QuestionInteractionShell', () => {
     expect(screen.getByText('You answered: 3')).toBeTruthy();
     expect(screen.getByText('Correct answer: 4')).toBeTruthy();
     expect(screen.getByText('Addition combines two quantities.')).toBeTruthy();
+  });
+
+  it('submits a flag through the shared dialog when a question ID is provided', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: jest.fn() });
+
+    render(
+      <QuestionInteractionShell
+        questionId="question-123"
+        prompt="What is 2 + 2?"
+        questionNumber={1}
+        totalQuestions={1}
+        value=""
+        onChange={jest.fn()}
+        choices={[{ key: 'a', label: '3' }, { key: 'b', label: '4' }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('Flag question'));
+    fireEvent.click(screen.getByLabelText('Duplicate within session'));
+    fireEvent.change(screen.getByLabelText('Optional details'), {
+      target: { value: 'This question repeated twice in the same session.' },
+    });
+    fireEvent.click(screen.getByText('Send for review'));
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/student/question/question-123/flag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reason: 'DUPLICATE_IN_SESSION',
+        details: 'This question repeated twice in the same session.',
+      }),
+    });
+
+    expect(await screen.findByText('This question has been sent for review.')).toBeTruthy();
   });
 });

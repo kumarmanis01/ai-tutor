@@ -15,6 +15,7 @@
  * EDIT LOG:
  * - 2026-04-07 | claude | created -- closes homework test-taking gap
  * - 2026-05-13T00:00:00Z | copilot | render homework questions through the shared question interaction shell
+ * - 2026-05-13T00:00:00Z | copilot | pass bank question IDs into the shared shell so homework inherits question flagging
  */
 
 import React, { useCallback, useState } from 'react';
@@ -124,6 +125,7 @@ function QuestionCard({
 
   return (
     <QuestionInteractionShell
+      questionId={question.id}
       prompt={question.prompt}
       questionNumber={index + 1}
       totalQuestions={total}

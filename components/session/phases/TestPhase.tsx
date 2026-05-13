@@ -15,6 +15,7 @@
  * EDIT LOG:
  * - 2026-03-08 | claude | moved to components/session/phases/ + uses useTestQuestions hook
  * - 2026-05-13T00:00:00Z | copilot | render test questions through the shared question interaction shell and consume Question-bank shaped content
+ * - 2026-05-13T00:00:00Z | copilot | pass bank question IDs into the shared shell so test inherits question flagging
  */
 
 import React, { useState } from 'react';
@@ -188,6 +189,7 @@ export function TestPhase({
             return (
               <div key={question.id} className="bg-card rounded-xl border p-4">
                 <QuestionInteractionShell
+                  questionId={question.id}
                   prompt={question.prompt}
                   questionNumber={i + 1}
                   totalQuestions={questions.length}

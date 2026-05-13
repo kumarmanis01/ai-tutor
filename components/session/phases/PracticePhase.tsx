@@ -25,6 +25,7 @@
  * - 2026-05-12T00:00:00Z | copilot | check isPremiumUser client-side before practice more API call; show UpgradeFlow if not premium
  * - 2026-05-12T15:45:00Z | copilot | fix: call /api/subscription/status endpoint instead of isPremiumUser to check premium status from client
  * - 2026-05-13T00:00:00Z | copilot | render practice questions through the shared question interaction shell
+ * - 2026-05-13T00:00:00Z | copilot | pass bank question IDs into the shared shell so practice inherits question flagging
  */
 
 import React, { useState, useCallback } from 'react';
@@ -338,6 +339,7 @@ export function PracticePhase({
         </div>
 
         <QuestionInteractionShell
+          questionId={question.id}
           prompt={question.prompt}
           questionNumber={currentIndex + 1}
           totalQuestions={questions.length}
