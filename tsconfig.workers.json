@@ -41,7 +41,6 @@
     "lib/aiContext.ts",
     "lib/alerts.ts",
     "lib/analytics/client.ts",
-    "lib/analyticsClient.ts",
     "lib/inputHandlers.ts",
     "lib/onboarding.ts",
     "lib/resizeImage.ts",

@@ -1,4 +1,24 @@
+/**
+ * FILE OBJECTIVE:
+ * - Worker service that aggregates daily analytics events into AnalyticsDailyAggregate rows.
+ * - Counts views and completions using canonical event sets from the registry.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/analyticsAggregator.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | replace hardcoded event strings with canonical ANALYTICS_VIEW/COMPLETION_EVENT_SET; add FILE OBJECTIVE header
+ */
+
 import { prisma as _prisma } from '@/lib/prisma.js'
+import {
+  ANALYTICS_COMPLETION_EVENT_SET,
+  ANALYTICS_VIEW_EVENT_SET,
+} from '@/lib/analytics/events'
 
 const getDb = () => (global as any).__TEST_PRISMA__ ?? _prisma
 
@@ -31,8 +51,8 @@ export async function aggregateDay(date: Date) {
     let agg = byCourse.get(courseId)
     if (!agg) { agg = { views: 0, completions: 0, timeSum: 0, timeCount: 0, users: new Set() }; byCourse.set(courseId, agg) }
 
-    if (ev.eventType === 'lesson_viewed') agg.views++
-    if (ev.eventType === 'lesson_completed') agg.completions++
+    if (ANALYTICS_VIEW_EVENT_SET.has(ev.eventType)) agg.views++
+    if (ANALYTICS_COMPLETION_EVENT_SET.has(ev.eventType)) agg.completions++
     if (ev.metadata && typeof ev.metadata === 'object') {
       const t = (ev.metadata as any).timeSpent
       if (typeof t === 'number' && !Number.isNaN(t)) { agg.timeSum += t; agg.timeCount += 1 }

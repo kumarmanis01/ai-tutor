@@ -1,4 +1,24 @@
+/**
+ * FILE OBJECTIVE:
+ * - Integration test for Phase 11 ContentSuggestion idempotency.
+ * - Requires a live DB connection; skips automatically when DATABASE_URL is absent.
+ *
+ * LINKED UNIT TEST:
+ * - tests/phase11/contentSuggestion.idempotency.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate seed/cleanup from analyticsSignal to analyticsEvent; add FILE OBJECTIVE header
+ */
+
 import logger from '../../lib/logger';
+import { prisma } from '@/lib/prisma'
+import net from 'net'
+import { generateSuggestionsForSignal } from '@/insights/engine'
+import { saveSuggestions } from '@/insights/store'
 import { prisma } from '@/lib/prisma'
 import net from 'net'
 import { generateSuggestionsForSignal } from '@/insights/engine'
@@ -50,14 +70,14 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
     // ensure clean slate
     await prisma.contentSuggestion.deleteMany().catch(() => {})
     await prisma.auditLog.deleteMany().catch(() => {})
-    await prisma.analyticsSignal.deleteMany().catch(() => {})
+    await prisma.analyticsEvent.deleteMany({ where: { eventType: { startsWith: 'signal.' } } }).catch(() => {})
   })
 
   afterAll(async () => {
     if (SKIP_TEST) return
     await prisma.contentSuggestion.deleteMany().catch(() => {})
     await prisma.auditLog.deleteMany().catch(() => {})
-    await prisma.analyticsSignal.deleteMany().catch(() => {})
+    await prisma.analyticsEvent.deleteMany({ where: { eventType: { startsWith: 'signal.' } } }).catch(() => {})
     await prisma.$disconnect()
   })
 
@@ -68,13 +88,12 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
       return
     }
 
-    // 1) Seed one AnalyticsSignal (use a valid DB enum value)
-    const dbSignal = await prisma.analyticsSignal.create({
+    // 1) Seed one signal analytics event
+    const dbSignal = await prisma.analyticsEvent.create({
       data: {
         courseId: 'course_test_1',
-        type: 'LOW_COMPLETION_RATE',
-        severity: 'INFO',
-        metadata: { completionRate: 0.1 },
+        eventType: 'signal.low_completion_rate',
+        metadata: { type: 'LOW_COMPLETION_RATE', severity: 'INFO', completionRate: 0.1 },
       },
     })
 

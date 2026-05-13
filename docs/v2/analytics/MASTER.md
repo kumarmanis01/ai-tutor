@@ -12,6 +12,7 @@ COPILOT INSTRUCTIONS FOLLOWED:
 EDIT LOG:
 - 2026-04-21T10:50:00Z | copilot | created MASTER index for analytics docs
  - 2026-04-22T09:00:00Z | staff-engineer | appended analytics audit findings and instrumentation guide
+ - 2026-05-12T00:00:00Z | copilot | remove legacy analytics path references and align add-event guidance with canonical registry
 -->
 
 # Analytics Docs — Master Index
@@ -71,9 +72,9 @@ Notes
 - **Overview:** Events flow from client instrumentation into the batch endpoint, are enqueued to BullMQ, consumed by a worker and written into the `AnalyticsEvent` table. Server/business audit events use the separate `Event` table via `logEvent()`.
 
 - **Canonical callsites & modules:**
-  - **Client helpers:** [/lib/analyticsClient.ts](/lib/analyticsClient.ts#L1-L120) and [/lib/analytics/client.ts](/lib/analytics/client.ts#L1-L120).
+  - **Client helpers:** [/lib/analytics/client.ts](/lib/analytics/client.ts#L1-L120).
   - **Batch ingestion endpoint:** [/app/api/analytics/event/route.ts](/app/api/analytics/event/route.ts#L1-L124).
-  - **Single-event endpoint (quick verification):** [/app/api/analytics/track/route.ts](/app/api/analytics/track/route.ts#L1-L34).
+  - **Canonical event registry:** [/lib/analytics/events.ts](/lib/analytics/events.ts#L1-L200) with guidance in [/lib/analytics/README.md](/lib/analytics/README.md#L1-L120).
   - **Queue & worker:** [/lib/queues/analyticsQueue.ts](/lib/queues/analyticsQueue.ts#L1-L80), queue name in [/lib/queues/constants.ts](/lib/queues/constants.ts#L1-L20), and worker at [/worker/services/analyticsIngestWorker.ts](/worker/services/analyticsIngestWorker.ts#L1-L120).
   - **DB model:** `AnalyticsEvent` in [/prisma/schema.prisma](/prisma/schema.prisma#L350-L368).
   - **Audit/business events:** `logEvent()` → `Event` model via [/utils/logEvent.ts](/utils/logEvent.ts#L1-L49).
@@ -87,9 +88,10 @@ Notes
 1. Decide scope: **server-only** vs **client-emitted**. Server-only events must NEVER be added to the client allowlist.
 
 2. If client-emitted:
-  - Add the event name to `VALID_EVENT_TYPES` in [app/api/analytics/event/route.ts](app/api/analytics/event/route.ts#L1-L124).
-  - Update `tests/unit/api/analytics.allowlist.test.ts` expected set.
-  - Add instrumentation in the client helper ([/lib/analytics/client.ts](/lib/analytics/client.ts#L1-L120)) by adding to the ALLOWED set and (optionally) a convenience function.
+  - Add the event name to the student registry in [lib/analytics/events.ts](lib/analytics/events.ts#L1-L200).
+  - `VALID_EVENT_TYPES` in [app/api/analytics/event/route.ts](app/api/analytics/event/route.ts#L1-L124) is sourced from `STUDENT_ANALYTICS_EVENT_SET`.
+  - Update `tests/unit/api/analytics.allowlist.test.ts` and `tests/unit/lib/analytics/events.test.ts`.
+  - Add instrumentation in the client helper ([/lib/analytics/client.ts](/lib/analytics/client.ts#L1-L120)); use convenience helpers when appropriate.
   - Call the helper from the UI or client code where the interaction occurs.
 
 3. If server-emitted:

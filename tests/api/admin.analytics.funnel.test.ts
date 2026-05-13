@@ -1,12 +1,26 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for the admin analytics funnel route.
+ * - Validates DB-side COUNT-based funnel totals for views and completions.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.funnel.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | update mock from findMany to count to match DB-side COUNT refactor; add FILE OBJECTIVE header
+ */
+
 describe('Admin analytics - funnel', () => {
   it('computes funnel totals for last 30 days', async () => {
     const now = new Date()
     const mockPrisma: any = {
-      analyticsDailyAggregate: {
-        findMany: jest.fn().mockResolvedValue([
-          { day: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), totalViews: 20, totalCompletions: 10 },
-          { day: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000), totalViews: 5, totalCompletions: 1 },
-        ])
+      analyticsEvent: {
+        // first count call = totalViews (2), second = totalCompletions (1)
+        count: jest.fn().mockResolvedValueOnce(2).mockResolvedValueOnce(1),
       }
     }
 
@@ -18,8 +32,8 @@ describe('Admin analytics - funnel', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.courseId).toBe('c2')
-    expect(body.totalViews).toBe(25)
-    expect(body.totalCompletions).toBe(11)
+    expect(body.totalViews).toBe(2)
+    expect(body.totalCompletions).toBe(1)
     expect(typeof body.completionRate).toBe('number')
   })
 

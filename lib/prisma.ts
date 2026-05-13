@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-01-24T12:00:00Z | copilot | replace ESM createRequire logic with universal PrismaClient singleton to support Jest/CJS
  * - 2026-04-18T00:00:00Z | copilot | remove speculative eager-connect for test env; root fix is in prismaEnsureColumns.ts
+ * - 2026-05-13T00:00:00Z | copilot | remove analyticsSignal compatibility proxy now that all callers use analyticsEvent directly
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -33,79 +34,8 @@ const client = g.prisma ?? new PrismaClient({
 });
 
 if (process.env.NODE_ENV !== 'production') g.prisma = client;
-// Provide a compatibility proxy so older code/tests that reference legacy model
-// names (e.g. `analyticsSignal`) continue to work even if the schema renamed
-// the model to `analyticsEvent`.
 const prismaProxy = new Proxy(client, {
   get(target, prop, receiver) {
-    // Legacy compatibility for `analyticsSignal` which was renamed to `analyticsEvent`.
-    if (prop === 'analyticsSignal' && (target as any).analyticsEvent) {
-      const eventModel = (target as any).analyticsEvent
-      // Return a wrapper that translates the legacy API shape to the new model.
-      return new Proxy(eventModel, {
-        get(emTarget, name) {
-          // Map create: translate `{ type, severity, metadata, courseId, createdAt }`
-          // into `{ eventType: type, metadata, courseId, createdAt }` for analyticsEvent.
-          if (name === 'create') {
-            return async (args: any) => {
-              const data = (args && args.data) ? { ...args.data } : {}
-              // Translate legacy 'type' -> 'eventType'
-              if (data.type && !data.eventType) {
-                data.eventType = data.type
-                delete data.type
-              }
-              // Preserve legacy 'severity' by moving into metadata if present
-              if (data.severity != null) {
-                data.metadata = data.metadata ?? {}
-                data.metadata.severity = data.severity
-                delete data.severity
-              }
-              // Ensure metadata is present (analyticsEvent.metadata is required in schema)
-              if (data.metadata == null) data.metadata = {}
-              return eventModel.create({ data })
-            }
-          }
-
-          if (name === 'findMany' || name === 'findFirst' || name === 'findUnique') {
-            return async (args: any) => {
-              const where = args && args.where ? { ...args.where } : undefined
-              // Translate filters on `type` -> `eventType`
-              if (where && where.type) {
-                where.eventType = where.type
-                delete where.type
-              }
-              const newArgs = args ? { ...args, where } : args
-              const rows = await (eventModel as any)[name](newArgs)
-              // Normalize returned shape back to legacy `analyticsSignal` fields
-              const normalize = (r: any) => {
-                if (!r) return r
-                const out: any = { ...r }
-                if (r.eventType && !out.type) out.type = r.eventType
-                if (r.metadata && r.metadata.severity && !out.severity) out.severity = r.metadata.severity
-                return out
-              }
-              if (Array.isArray(rows)) return rows.map(normalize)
-              return normalize(rows)
-            }
-          }
-
-          if (name === 'deleteMany') {
-            return async (args: any) => {
-              const where = args && args.where ? { ...args.where } : undefined
-              if (where && where.type) {
-                where.eventType = where.type
-                delete where.type
-              }
-              return (eventModel as any).deleteMany({ where })
-            }
-          }
-
-          // default passthrough for other methods
-          return (eventModel as any)[name]
-        },
-      })
-    }
-
       // Compatibility: make reads against `auditLog` resilient when the DB enum
       // `AdminActionType` is missing labels that code/tests may reference.
       // Many tests query `prisma.auditLog.findMany({ where: { action: 'SOME_ACTION' } })`.

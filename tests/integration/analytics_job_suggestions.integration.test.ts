@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Integration test validating that the analytics job creates content suggestions from signal events exactly once and writes an audit log.
+ *
+ * LINKED UNIT TEST:
+ * - tests/integration/analytics_job_suggestions.integration.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate mock DB from analyticsSignal to analyticsEvent; add FILE OBJECTIVE header
+ */
+
 import runAnalyticsJobs from '@/jobs/analyticsJobs'
 
 jest.mock('@/src/jobs/jobLock', () => ({
@@ -17,11 +32,17 @@ describe('Analytics job integration — suggestions + audit idempotency', () => 
     // In-memory mock DB implementation used by the job via global.__TEST_PRISMA__
     const createdSuggestions: any[] = []
     const mockDb: any = {
-      analyticsSignal: {
+      analyticsEvent: {
         findMany: jest.fn().mockImplementation(async () => {
           // Always return a single new signal to be processed
           return [
-            { id: 'sig-1', type: 'LOW_COMPLETION', courseId: 'course-1', targetId: 'lesson-1', metadata: {}, createdAt: new Date().toISOString() }
+            {
+              id: 'sig-1',
+              eventType: 'signal.low_completion_rate',
+              courseId: 'course-1',
+              metadata: { type: 'LOW_COMPLETION', targetId: 'lesson-1' },
+              createdAt: new Date().toISOString(),
+            }
           ]
         })
       },

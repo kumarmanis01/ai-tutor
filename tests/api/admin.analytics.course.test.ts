@@ -1,10 +1,27 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for the admin analytics course route.
+ * - Validates daily aggregate computation from raw analyticsEvent rows.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.course.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate mock from analyticsDailyAggregate to analyticsEvent rows; add FILE OBJECTIVE header
+ */
+
 describe('Admin analytics - course', () => {
   it('returns aggregated metrics for admin', async () => {
     const mockPrisma: any = {
-      analyticsDailyAggregate: {
+      analyticsEvent: {
         findMany: jest.fn().mockResolvedValue([
-          { day: new Date('2025-12-20'), totalViews: 10, totalCompletions: 5, avgTimePerLesson: 120, completionRate: 0.5 },
-          { day: new Date('2025-12-19'), totalViews: 8, totalCompletions: 4, avgTimePerLesson: 100, completionRate: 0.5 },
+          { createdAt: new Date('2025-12-20T08:00:00Z'), eventType: 'lesson_viewed', metadata: { timeSpent: 100 } },
+          { createdAt: new Date('2025-12-20T09:00:00Z'), eventType: 'lesson_completed', metadata: {} },
+          { createdAt: new Date('2025-12-19T09:00:00Z'), eventType: 'lesson_viewed', metadata: { timeSpent: 120 } },
         ])
       }
     }
@@ -18,7 +35,8 @@ describe('Admin analytics - course', () => {
     const body = await res.json()
     expect(body.courseId).toBe('c1')
     expect(Array.isArray(body.aggregates)).toBe(true)
-    expect(body.aggregates[0].totalViews).toBe(10)
+    expect(body.aggregates[0].totalViews).toBe(1)
+    expect(body.aggregates[0].totalCompletions).toBe(1)
   })
 
   it('forbids non-admins', async () => {

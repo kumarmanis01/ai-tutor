@@ -1,10 +1,26 @@
 'use client';
+/**
+ * FILE OBJECTIVE:
+ * - Client-only component that handles referral redemption on sign-in and emits referral analytics events.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/AuthRedeemOnSignIn.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate analytics to canonical client constants; move userId to trackEvent top-level field; add FILE OBJECTIVE header
+ */
 import { useEffect, useRef, type ReactElement } from 'react';
 import { logger } from '@/lib/logger';
 import { useSession } from 'next-auth/react';
 import type { AppSession } from '@/lib/types/auth';
+import analyticsClient from '@/lib/analytics/client';
+import { ANALYTICS_EVENTS, type StudentAnalyticsEvent } from '@/lib/analytics/events';
 
-type TrackFn = (event: string, props?: Record<string, unknown>) => void | Promise<void>;
+type TrackFn = (eventType: StudentAnalyticsEvent, metadata?: Record<string, unknown>) => void | Promise<void>;
 
 /**
  * AuthRedeemOnSignIn
@@ -13,13 +29,12 @@ type TrackFn = (event: string, props?: Record<string, unknown>) => void | Promis
  * - Waits for the user session to become "authenticated".
  * - Attempts a one-time referral redemption (reads ?ref or cookie "referral").
  * - Uses AbortController with timeout to avoid hanging requests.
- * - Attempts to record analytics via a dynamically imported, client-safe analytics module.
+ * - Records referral analytics via canonical analytics client constants.
  * - Ensures single execution with a ref to avoid duplicate network calls.
  *
  * Notes:
  * - This file intentionally avoids importing any server-only modules at top-level.
- * - The analytics module is loaded dynamically; runtime checks ensure we only call a real function.
- * - No use of `any` -- runtime-checked against Record<string, unknown>.
+ * - No use of `any`; event types are constrained via StudentAnalyticsEvent.
  */
 export default function AuthRedeemOnSignIn(): ReactElement | null {
   const { status, data: session } = useSession();
@@ -45,37 +60,19 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
     const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     (async () => {
-      // Dynamically import analytics client. Use unknown & runtime guards (no `any`).
-      let track: TrackFn | undefined = undefined;
-      try {
-        const mod = (await import('@/lib/analyticsClient').catch(() => undefined)) as unknown;
-        if (mod && typeof (mod as Record<string, unknown>).trackEvent === 'function') {
-          track = (mod as Record<string, unknown>).trackEvent as TrackFn;
-        } else if (mod && typeof (mod as Record<string, unknown>).default === 'function') {
-          track = (mod as Record<string, unknown>).default as unknown as TrackFn;
-        } else if (
-          mod &&
-          typeof (mod as Record<string, unknown>).default === 'object' &&
-          (mod as Record<string, unknown>).default !== null &&
-          typeof ((mod as Record<string, unknown>).default as Record<string, unknown>)
-            .trackEvent === 'function'
-        ) {
-          track = ((mod as Record<string, unknown>).default as Record<string, unknown>)
-            .trackEvent as TrackFn;
-        }
-      } catch (err) {
-        logger.warn('analytics client import failed', { component: 'AuthRedeemOnSignIn', methodName: 'init', error: String(err) });
-        track = undefined; // best-effort analytics only
-      }
+      const track: TrackFn = (eventType, metadata) => {
+        analyticsClient.trackEvent({ eventType, metadata });
+      };
 
       try {
         // Analytics: attempt to record redemption start (non-blocking)
         if (track) {
           try {
             const s = session as unknown as AppSession | null
-            void track('referral_redeem_attempt', {
-              code: referralCode,
+            void analyticsClient.trackEvent({
+              eventType: ANALYTICS_EVENTS.STUDENT.REFERRAL_REDEEM_ATTEMPT,
               userId: s?.user?.id ?? null,
+              metadata: { code: referralCode },
             });
           } catch (err) {
             logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_attempt', error: String(err) });
@@ -93,7 +90,7 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         // Analytics: record result (best-effort)
         if (track) {
           try {
-            void track('referral_redeem_result', { code: referralCode, status: res.status });
+            void track(ANALYTICS_EVENTS.STUDENT.REFERRAL_REDEEM_RESULT, { code: referralCode, status: res.status });
           } catch (err) {
             logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_result', error: String(err) });
           }
@@ -103,7 +100,7 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         const isAbort = (err as Error & { name?: string }).name === 'AbortError';
         if (track) {
           try {
-            void track('referral_redeem_result', {
+            void track(ANALYTICS_EVENTS.STUDENT.REFERRAL_REDEEM_RESULT, {
               code: referralCode,
               status: isAbort ? 'timeout' : 'error',
               detail: String(err),

@@ -13,6 +13,8 @@
  * - 2026-04-16T00:00:00Z | copilot | fix prisma mocking (use jest.doMock) to prevent timeout
  * - 2026-04-21T00:00:00Z | staff-engineer | Task D: mock analytics queue; add allowlist tests
  * - 2026-04-21T00:00:00Z | staff-engineer | review fix: remove jest.mock() from beforeEach (unreliable after resetModules)
+ * - 2026-05-13T00:00:00Z | copilot | update accepted eventType example to canonical student.auth.signin registry event
+ */
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -74,7 +76,7 @@ describe('Analytics event ingestion', () => {
     expect(res.status).toBe(400)
   })
 
-  it('accepts subject_selected event and returns 202', async () => {
+  it('accepts student.auth.signin event and returns 202', async () => {
     const createManyMock = jest.fn().mockResolvedValue({ count: 1 })
     const mockPrisma: any = {
       analyticsEvent: { createMany: createManyMock },
@@ -85,7 +87,7 @@ describe('Analytics event ingestion', () => {
     }))
 
     const route = await import('../../app/api/analytics/event/route')
-    const payload = [{ eventType: 'subject_selected', userId: 'u1', metadata: { subjects: ['mathematics'], previous_subjects: [] } }]
+    const payload = [{ eventType: 'student.auth.signin', userId: 'u1', metadata: { source: 'web' } }]
     const res = await route.POST(
       new Request('http://localhost', { method: 'POST', body: JSON.stringify(payload) }) as any,
     )

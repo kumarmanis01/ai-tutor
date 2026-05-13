@@ -1,9 +1,31 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for the admin analytics signals route.
+ * - Validates signal event retrieval and sanitized response shape.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin.analytics.signals.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-13T00:00:00Z | copilot | migrate mock from analyticsSignal to analyticsEvent; add FILE OBJECTIVE header
+ */
+
 describe('Admin analytics signals API', () => {
   it('returns signals for admin', async () => {
     const mockPrisma: any = {
-      analyticsSignal: {
+      analyticsEvent: {
         findMany: jest.fn().mockResolvedValue([
-          { id: 's1', courseId: 'c1', type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', metadata: { completionRate: 0.1 }, createdAt: new Date('2025-12-21'), resolvedAt: null }
+          {
+            id: 's1',
+            courseId: 'c1',
+            eventType: 'signal.low_completion_rate',
+            metadata: { type: 'LOW_COMPLETION_RATE', severity: 'CRITICAL', completionRate: 0.1 },
+            createdAt: new Date('2025-12-21'),
+          }
         ])
       }
     }

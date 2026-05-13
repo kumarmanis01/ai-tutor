@@ -6,6 +6,7 @@
  *
  * EDIT LOG:
  * - 2026-04-21 | staff-engineer | Task F: allowlist lock test
+ * - 2026-05-13T00:00:00Z | copilot | source EXPECTED_TYPES from STUDENT_ANALYTICS_EVENT_SET canonical registry
  */
 
 // Mock dependencies so we can import the route without a DB or Redis connection
@@ -14,26 +15,11 @@ jest.mock('@/lib/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn(), 
 jest.mock('@/lib/queues/analyticsQueue', () => ({ getAnalyticsQueue: jest.fn().mockReturnValue(null) }))
 
 import { VALID_EVENT_TYPES } from '../../../app/api/analytics/event/route'
+import { STUDENT_ANALYTICS_EVENT_SET } from '@/lib/analytics/events'
 
 describe('VALID_EVENT_TYPES allowlist', () => {
-  // These are the exact client-facing event types permitted.
-  // To add a type: add it here AND in the route; to remove: remove from both.
-  const EXPECTED_TYPES = new Set([
-    'lesson_viewed',
-    'lesson_completed',
-    'session_started',
-    'session_completed',
-    'quiz_submitted',
-    'doubt_asked',
-    'streak_updated',
-    'xp_earned',
-    'badge_unlocked',
-    'hint_requested',
-    'diagnostic_started',
-    'diagnostic_completed',
-    'page_view',
-    'subject_selected',
-  ])
+  // Client allowlist is sourced from canonical student analytics registry.
+  const EXPECTED_TYPES = STUDENT_ANALYTICS_EVENT_SET
 
   it('should contain exactly the expected event types', () => {
     expect(VALID_EVENT_TYPES).toEqual(EXPECTED_TYPES)

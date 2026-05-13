@@ -69,7 +69,7 @@ export async function checkPracticeMoreCap(studentId: string): Promise<PracticeM
     tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
 
     // Find or create usage record for today
-    let usage = await prisma.practiceMoreUsage.findUnique({
+    const usage = await prisma.practiceMoreUsage.findUnique({
       where: {
         studentId_usageDate: {
           studentId,

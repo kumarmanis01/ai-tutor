@@ -15,6 +15,7 @@
  * - 2026-04-15T00:00:00Z | copilot-planner | added analytics batch endpoint
  * - 2026-04-16T00:00:00Z | copilot | return 202 on success; 400 when all events invalid; add eventType allowlist
  * - 2026-04-21T00:00:00Z | staff-engineer | Task D: enqueue to BullMQ for non-blocking ingestion; DB fallback when Redis absent
+ * - 2026-05-13T00:00:00Z | copilot | source VALID_EVENT_TYPES from STUDENT_ANALYTICS_EVENT_SET canonical registry
  */
 
 import { NextResponse } from 'next/server'
@@ -23,23 +24,11 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue'
+import { STUDENT_ANALYTICS_EVENT_SET } from '@/lib/analytics/events'
 
 /** Canonical list of valid client-emitted event types. */
 export const VALID_EVENT_TYPES = new Set([
-  'lesson_viewed',
-  'lesson_completed',
-  'session_started',
-  'session_completed',
-  'quiz_submitted',
-  'doubt_asked',
-  'streak_updated',
-  'xp_earned',
-  'badge_unlocked',
-  'hint_requested',
-  'diagnostic_started',
-  'diagnostic_completed',
-  'page_view',
-  'subject_selected',
+  ...STUDENT_ANALYTICS_EVENT_SET,
 ])
 
 const EventSchema = z.object({
