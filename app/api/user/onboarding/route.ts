@@ -29,6 +29,8 @@ import { welcomeEmailHtml } from '@/lib/email/templates';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
 import { LanguageCode } from '@prisma/client';
 import { ensureAutoLinkedParentsForStudent } from '@/lib/parent/contactLinking';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -260,17 +262,19 @@ export async function POST(req: NextRequest) {
       // Fire-and-forget: emit subject_selected analytics event when subjects are updated.
       if (subjects && subjects.length > 0) {
         const previousSubjects = Array.isArray(existingById?.subjects) ? existingById.subjects : []
-        prisma.analyticsEvent.create({
-          data: {
-            eventType: 'subject_selected',
+        try {
+          void emitServerAnalyticsEvent({
+            eventType: ANALYTICS_EVENTS.STUDENT.SUBJECT_SELECTED,
             userId: updatedUser.id,
             metadata: {
               subjects,
               previous_subjects: previousSubjects,
               source: 'onboarding',
             },
-          },
-        }).catch(() => {})
+          }, 'onboarding');
+        } catch {
+          // best-effort analytics; swallow errors
+        }
       }
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {

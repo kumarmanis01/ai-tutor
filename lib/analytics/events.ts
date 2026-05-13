@@ -38,6 +38,8 @@ const STUDENT_ANALYTICS_EVENTS = {
   LEARNING_PATH_GENERATED: 'student.learning_path.generated',
   LEARNING_PATH_ALTERED: 'student.learning_path.altered',
 
+  SUBJECT_SELECTED: 'subject_selected',
+
   FIRST_SESSION: 'student.first_session',
 
   SESSION_START: 'student.session.start',
