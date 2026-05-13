@@ -36,6 +36,7 @@ export interface AdminSidebarProps {
   runningJobs: number;
   failedJobs: number;
   safetyAlerts: number;
+  flaggedQuestions: number;
 }
 
 interface NavItemDef {
@@ -182,6 +183,7 @@ export function AdminSidebar({
   runningJobs,
   failedJobs,
   safetyAlerts,
+  flaggedQuestions,
 }: AdminSidebarProps) {
   const pathname = usePathname();
 
@@ -233,6 +235,13 @@ export function AdminSidebar({
           label="Content Review"
           badge={pendingReview}
           isActive={isActive('/admin/content-approval')}
+        />
+        <NavItem
+          href="/admin/questions"
+          icon={<IconDoc />}
+          label="Flagged Questions"
+          badge={flaggedQuestions}
+          isActive={isActive('/admin/questions')}
         />
         <NavItem
           href="/admin/jobs"

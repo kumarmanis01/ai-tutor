@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | default the admin question queue to pending review and include latest flag details for moderation
+ * - 2026-05-13T00:00:00Z | copilot | add student details (name, email) and all flags to sessionFlags response for admin review UI
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -51,9 +52,15 @@ export async function GET(req: NextRequest) {
           reason: true,
           details: true,
           createdAt: true,
+          student: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
-        take: 3,
       },
       topic: { select: { name: true } },
     },

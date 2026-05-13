@@ -16,6 +16,7 @@
  * - 2026-05-04T20:00:00Z | claude | added validated:true force-validate path for F-ADM-003 AC-05
  * - 2026-05-04T21:00:00Z | claude | fix: guard force-validate to source='manual' only; add file header
  * - 2026-05-13T00:00:00Z | copilot | include previous review status in admin approve/reject audit records
+ * - 2026-05-13T00:00:00Z | copilot | add GET handler to return full question details with all student flags for admin review modal
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -23,6 +24,49 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { QuestionStatus, AdminActionType } from '@prisma/client'
 
 const MANUAL_SOURCE = 'manual'
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSessionForHandlers()
+  if (!session?.user?.id || session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { id } = await params
+
+  const question = await prisma.question.findUnique({
+    where: { id },
+    include: {
+      sessionFlags: {
+        select: {
+          id: true,
+          reason: true,
+          details: true,
+          createdAt: true,
+          student: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+      topic: { select: { name: true } },
+    },
+  })
+
+  if (!question) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  // Normalize field names for API response: choices -> options, correctAnswer -> answer
+  return NextResponse.json({
+    ...question,
+    options: question.choices,
+    answer: question.correctAnswer,
+  })
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers()
