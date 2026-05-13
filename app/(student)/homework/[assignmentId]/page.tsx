@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | resolve homework question content from the Question bank before rendering
+ * - 2026-05-13T00:00:00Z | copilot | await async dynamic route params before reading assignmentId
  */
 
 import { redirect } from 'next/navigation';
@@ -22,7 +23,7 @@ import type { Metadata } from 'next';
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
-  params: { assignmentId: string };
+  params: Promise<{ assignmentId: string }>;
 }
 
 export async function generateMetadata(_params: PageProps): Promise<Metadata> {
@@ -33,7 +34,7 @@ export default async function HomeworkPage({ params }: PageProps) {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id) redirect('/login');
 
-  const { assignmentId } = params;
+  const { assignmentId } = await params;
 
   const assignment = await prisma.homeworkAssignment.findFirst({
     where: { id: assignmentId, studentId: session.user.id },
