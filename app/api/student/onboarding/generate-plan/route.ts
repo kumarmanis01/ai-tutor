@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | AC-02: add belowMinimumHours warning to response
+ * - 2026-05-13T00:00:00Z | copilot | emit learning path generated analytics after onboarding plan generation
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,6 +21,8 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -178,6 +181,22 @@ export async function POST(req: NextRequest) {
           error: String(planErr),
         });
       }
+    }
+
+    if (firstSubjectId) {
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.LEARNING_PATH_GENERATED,
+          userId,
+          courseId: firstSubjectId,
+          metadata: {
+            subjectCount: subjectDefs.length,
+            studyDaysPerWeek,
+            belowMinimumHours,
+          },
+        },
+        'student.onboarding.generate-plan',
+      );
     }
 
     // 4. Check whether the first subject already has diagnostic questions available.

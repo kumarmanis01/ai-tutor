@@ -16,6 +16,7 @@
  * EDIT LOG:
  * - 2026-05-04T00:00:00Z | staff-engineer | created -- F-STU-003 AC-05 weekly auto-adjust
  * - 2026-05-04T00:00:00Z | copilot | add mid-week behind check and guarded regeneration dedup
+ * - 2026-05-13T00:00:00Z | copilot | emit learning path altered analytics when auto-adjust queues regenerations
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -23,6 +24,8 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { enqueueLearningPlanRegeneration } from '@/lib/ai/learningPlanRegeneration';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +118,20 @@ export async function POST(req: NextRequest) {
       }
 
       adjustedSubjects.push(plan.subjectId);
+
+      await emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.LEARNING_PATH_ALTERED,
+          userId,
+          courseId: plan.subjectId,
+          metadata: {
+            subjectId: plan.subjectId,
+            reason,
+            currentWeek,
+          },
+        },
+        'student.learning-plan.adjust',
+      );
     }
 
     const res = NextResponse.json({

@@ -630,8 +630,7 @@ export default async function EventAnalyticsPage() {
             </table>
           </div>
         </div>
-        </div>
-
+        
         {/* Daily trend */}
         <SimpleTable
           title="Daily learning trend (14 days)"
@@ -714,7 +713,7 @@ export default async function EventAnalyticsPage() {
             )
           })}
         />
-      </div>
+        </div>
     </>
   )
 }
