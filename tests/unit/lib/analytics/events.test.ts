@@ -36,6 +36,7 @@ describe('analytics event registry', () => {
     expect(STUDENT_ANALYTICS_EVENT_SET.has(ANALYTICS_EVENTS.STUDENT.AUTH_SIGNIN)).toBe(true)
     expect(STUDENT_ANALYTICS_EVENT_SET.has(ANALYTICS_EVENTS.STUDENT.SESSION_START)).toBe(true)
     expect(STUDENT_ANALYTICS_EVENT_SET.has(ANALYTICS_EVENTS.STUDENT.APP_OPEN)).toBe(true)
+    expect(STUDENT_ANALYTICS_EVENT_SET.has(ANALYTICS_EVENTS.STUDENT.SUBJECT_SELECTED)).toBe(true)
   })
 
   it('should include required representative parent events', () => {

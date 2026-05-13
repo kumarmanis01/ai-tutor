@@ -19,6 +19,8 @@
 import React, { useState, useCallback } from 'react';
 import ContentModal from '@/components/UI/ContentModal';
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
+import analyticsClient from '@/lib/analytics/client'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 interface DoubtsMessage {
   id: string;
@@ -106,6 +108,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
 
       if (!res.ok) {
         if (data?.error === FREE_LIMIT_REACHED_ERROR) {
+          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { /* best-effort */ }
           setIsPaywallOpen(true);
           return;
         }
@@ -180,6 +183,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
 
       if (!res.ok) {
         if (data?.error === FREE_LIMIT_REACHED_ERROR) {
+          try { void analyticsClient.trackEvent({ eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_PAYWALL_SHOWN, metadata: { reason: 'free_limit_reached' } }) } catch (err) { /* best-effort */ }
           setIsPaywallOpen(true);
           return;
         }
@@ -253,9 +257,18 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
             <button
               key={subject.id}
               type="button"
-              onClick={() => setSelectedSubject(
-                selectedSubject === subject.id ? null : subject.id
-              )}
+              onClick={() => {
+                const next = selectedSubject === subject.id ? null : subject.id
+                setSelectedSubject(next)
+                try {
+                  void analyticsClient.trackEvent({
+                    eventType: ANALYTICS_EVENTS.STUDENT.SUBJECT_SELECTED,
+                    metadata: { subject: subject.id, selected: !!next },
+                  })
+                } catch {
+                  /* best-effort */
+                }
+              }}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 selectedSubject === subject.id
                   ? `${subject.color} ring-2 ring-primary ring-offset-2`

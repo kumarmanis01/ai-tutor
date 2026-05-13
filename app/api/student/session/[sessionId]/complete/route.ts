@@ -33,6 +33,8 @@ import { notifyStudentOnSessionComplete } from '@/lib/notifications/studentNotif
 import { notifyParent, DEFAULT_DASHBOARD_URL } from '@/lib/notifications/parentNotify'
 import { PARENT_NOTIF_EVENTS } from '@/lib/constants/mail'
 import { updateDailyStudyTime, checkDailyStudyLimit } from '@/lib/student/dailyStudyLimit'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 export const dynamic = 'force-dynamic'
 
@@ -200,6 +202,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       accuracy,
       avgTimeSeconds,
     })
+
+    // Analytics: daily session XP change (best-effort)
+    try {
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.STUDENT.DAILY_SESSION_XP_CHANGE,
+        userId,
+        metadata: { xpEarned, totalXp, sessionId },
+      }, 'student.session.complete')
+    } catch (err) {
+      logger.warn('session.complete.analytics.failed', { userId, sessionId, error: String(err) })
+    }
 
     // Gap 3 fix: write score (0-100 integer) to StructuredSession.meta so the
     // /student/progress session history table can display it.

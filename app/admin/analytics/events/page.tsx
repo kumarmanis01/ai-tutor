@@ -79,6 +79,56 @@ const CORE_EVENT_DEFINITIONS = [
     eventType: ANALYTICS_EVENTS.STUDENT.CONTENT_THUMBSDOWN,
     description: 'Student rated generated content negatively.',
   },
+  {
+    label: 'Subject selected',
+    eventType: ANALYTICS_EVENTS.STUDENT.SUBJECT_SELECTED,
+    description: 'Student selected a subject in UI flows.',
+  },
+  {
+    label: 'On-demand generation success',
+    eventType: ANALYTICS_EVENTS.STUDENT.ON_DEMAND_CONTENT_GENERATION_SUCCESS,
+    description: 'Student successfully generated on-demand study content.',
+  },
+  {
+    label: 'On-demand generation failure',
+    eventType: ANALYTICS_EVENTS.STUDENT.ON_DEMAND_CONTENT_GENERATION_FAILURE,
+    description: 'On-demand generation failed (LLM or parse error).',
+  },
+  {
+    label: 'Payment initiated',
+    eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_INITIATED,
+    description: 'Student started a payment flow (order created).',
+  },
+  {
+    label: 'Payment success',
+    eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_SUCCESS,
+    description: 'Payment completed successfully (webhook / verify).',
+  },
+  {
+    label: 'Payment failure',
+    eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_FAILURE,
+    description: 'A payment failed or was reconciled as failed.',
+  },
+  {
+    label: 'Badge awarded',
+    eventType: ANALYTICS_EVENTS.STUDENT.BADGE_NEW_BADGE,
+    description: 'Student was awarded a new badge.',
+  },
+  {
+    label: 'XP changed',
+    eventType: ANALYTICS_EVENTS.STUDENT.XP_CHANGED,
+    description: 'Student XP changed (award/penalty).',
+  },
+  {
+    label: 'App open',
+    eventType: ANALYTICS_EVENTS.STUDENT.APP_OPEN,
+    description: 'App opened (client-side open event).',
+  },
+  {
+    label: 'Auth sign-in',
+    eventType: ANALYTICS_EVENTS.STUDENT.AUTH_SIGNIN,
+    description: 'Student signed in via auth flow.',
+  },
 ] as const
 
 type CountByEvent = Record<string, number>

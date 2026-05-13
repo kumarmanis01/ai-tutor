@@ -22,6 +22,8 @@ import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 import { milestoneEmailHtml } from '@/lib/email/templates'
 import { buildMilestoneTemplate } from '@/lib/whatsapp/templates'
 import { logger } from '@/lib/logger'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 import {
   getLevelFromXP,
   getXPToNextLevel,
@@ -119,6 +121,19 @@ export async function awardXP(params: {
       }
     })
     // Fire level-up push notification (best-effort, outside transaction)
+    // Analytics: XP changed event (best-effort)
+    try {
+      if (result) {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.XP_CHANGED,
+          userId: params.studentId,
+          metadata: { xpAwarded: result.xpAwarded, totalXp: result.totalXp, source: params.source, sessionId: params.sessionId ?? null, leveledUp: result.leveledUp, newLevel: result.newLevel },
+        }, 'xp.award')
+      }
+    } catch (err) {
+      logger.warn('xp.analytics.emit.failed', { studentId: params.studentId, error: String(err) })
+    }
+
     if (result?.leveledUp && result.newLevel !== null) {
       void sendPushSafe(params.studentId, PUSH_NOTIFICATIONS.level_up(result.newLevel))
 

@@ -6,6 +6,8 @@ import { createRazorpayOrder } from '@/lib/payments/razorpay'
 import { recordPaymentEvent } from '@/lib/payments/audit'
 import { randomUUID } from 'crypto'
 import { PLANS } from '@/lib/billing/plans'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 import type { PlanId } from '@/lib/billing/plans'
 
 export async function POST(req: Request) {
@@ -84,6 +86,19 @@ export async function POST(req: Request) {
       { status: 200 },
     )
     logger.logAPI(req, res, { className: 'PaymentsCreateOrderAPI', methodName: 'POST' }, start)
+    // Analytics: record that a payment flow was initiated for this student (best-effort)
+    try {
+      void emitServerAnalyticsEvent(
+        {
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_INITIATED,
+          userId,
+          metadata: { planId, orderId: order.orderId, amount: order.amount },
+        },
+        'payments.create-order',
+      )
+    } catch (err) {
+      // non-fatal
+    }
     return res
   } catch (err) {
     const res = NextResponse.json({ error: 'Internal error' }, { status: 500 })

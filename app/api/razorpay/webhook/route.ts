@@ -27,6 +27,8 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { redeemReferral } from '@/lib/referral';
 import { redeemCoupon } from '@/lib/coupon';
 import { RAZORPAY_WEBHOOK_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 function getWebhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET ?? process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -211,6 +213,37 @@ export async function POST(req: Request) {
           }
         }
       });
+
+      // Analytics: payment failed (best-effort)
+      try {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_FAILURE,
+          userId: orderRow.studentId,
+          metadata: { orderId, paymentId, reason, amount: payment?.amount ?? orderRow.planMonths ?? null },
+        }, 'razorpay.webhook.payment.failed')
+      } catch (err) {
+        // non-fatal
+      }
+      // Analytics: payment succeeded (best-effort)
+      try {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_SUCCESS,
+          userId: orderRow.studentId,
+          metadata: { orderId, paymentId, amount: payment?.amount },
+        }, 'razorpay.webhook.payment.captured')
+      } catch (err) {
+        // non-fatal
+      }
+      // Analytics: payment succeeded (best-effort)
+      try {
+        void emitServerAnalyticsEvent({
+          eventType: ANALYTICS_EVENTS.STUDENT.PAYMENT_SUCCESS,
+          userId: orderRow.studentId,
+          metadata: { orderId, paymentId, amount: payment?.amount },
+        }, 'razorpay.webhook.payment.captured')
+      } catch (err) {
+        // non-fatal
+      }
 
       return NextResponse.json({ ok: true }, { status: 200 });
     } catch (err) {

@@ -21,6 +21,8 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { submitJob } from '@/lib/execution-pipeline/submitJob';
 import { LanguageCode, DifficultyLevel } from '@prisma/client';
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
+import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 interface HydrateAllRequest {
   boardId: string;
@@ -110,6 +112,16 @@ export async function POST(req: Request) {
       language,
       difficulties,
     });
+
+    try {
+      void emitServerAnalyticsEvent({
+        eventType: ANALYTICS_EVENTS.ADMIN.CONTENT_START_GENERATION_JOB,
+        userId: session.user.id ?? null,
+        metadata: { boardId, classId, subjectId, language, difficulties, jobId: syllabusResult.jobId },
+      }, 'admin.content.hydrate-all')
+    } catch {
+      /* best-effort */
+    }
 
     // Step 1: Submit the syllabus job
     // The syllabus worker will create chapters/topics and automatically queue
