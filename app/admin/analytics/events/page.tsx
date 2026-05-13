@@ -617,7 +617,7 @@ export default async function EventAnalyticsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {data.allDefinedEvents.map((row) => (
+                {analytics.allDefinedEvents.map((row) => (
                   <tr key={row.eventType}>
                     <td className="px-4 py-3 align-top">
                       <p className="font-medium text-gray-800 dark:text-gray-200">{row.eventType}</p>
