@@ -36,7 +36,7 @@ const FOOTER: string = `
   <p style="color:#888;font-size:12px;margin-top:32px;
              border-top:1px solid #eee;padding-top:16px;">
     Spinzy Academy -- AI Home Tutor<br>
-    You are receiving this because you have a Spinzy account.
+    You are receiving this because you have a Spinzy Academy account.
   </p>
 `;
 

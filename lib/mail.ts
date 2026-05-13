@@ -107,7 +107,7 @@ const BTN_STYLE = [
 const FOOTER_HTML = `
   <p style="color:#888;font-size:12px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
     Spinzy Academy -- AI Home Tutor<br>
-    You are receiving this because you have a Spinzy account.
+    You are receiving this because you have a Spinzy Academy account.
     <a href="https://spinzyacademy.com/unsubscribe" style="color:#888;">Unsubscribe</a>
   </p>
 `;
@@ -579,7 +579,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     from: EMAIL_FROM.NOREPLY,
     subject: (_ctx) => MAIL_SUBJECTS.PARENT_SECURITY_ALERT,
     htmlBody: (ctx) => buildHtml(`
-      <h2 style="color:#E24B4A;">Security notice for your Spinzy account</h2>
+      <h2 style="color:#E24B4A;">Security notice for your Spinzy Academy account</h2>
       <p>Hi ${ctx.parentName ?? 'there'},</p>
       <p>We noticed multiple unsuccessful sign-in attempts on the Spinzy Academy account linked to <strong>${ctx.studentName ?? 'your child'}</strong>. The account is still secure.</p>
       <p>If this was unexpected, please contact our support team.</p>
@@ -594,7 +594,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     from: EMAIL_FROM.NOREPLY,
     subject: (_ctx) => MAIL_SUBJECTS.STUDENT_NEW_DEVICE,
     htmlBody: (ctx) => buildHtml(`
-      <h2 style="color:#534AB7;">New sign-in to your Spinzy account</h2>
+      <h2 style="color:#534AB7;">New sign-in to your Spinzy Academy account</h2>
       <p>Hi ${ctx.studentName ?? 'there'},</p>
       <p>Your Spinzy Academy account was signed into from a new device${ctx.deviceInfo ? ` (${ctx.deviceInfo})` : ''}.</p>
       <p>If this was you, no action is needed. If not, please contact us immediately.</p>
@@ -608,7 +608,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     from: EMAIL_FROM.NOREPLY,
     subject: (_ctx) => MAIL_SUBJECTS.PARENT_NEW_DEVICE,
     htmlBody: (ctx) => buildHtml(`
-      <h2 style="color:#534AB7;">New sign-in to your Spinzy account</h2>
+      <h2 style="color:#534AB7;">New sign-in to your Spinzy Academy account</h2>
       <p>Hi ${ctx.parentName ?? 'there'},</p>
       <p>Your Spinzy Academy account was signed into from a new device${ctx.deviceInfo ? ` (${ctx.deviceInfo})` : ''}. This is just a heads-up.</p>
       <p>If this was you, no action is needed.</p>

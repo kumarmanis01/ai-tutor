@@ -225,7 +225,7 @@ So that I don't dismiss it as spam and can approve or deny in seconds.
 - [ ] Reply "YES" parses via webhook and auto-approves
 - [ ] Triggered by child registration (Student Journey S0.1, Step 5a)
 - [ ] WhatsApp Cloud API message send
-- [ ] Check if parent phone matches existing User. If yes: Message includes "You have a Spinzy account. Sign in to manage."
+- [ ] Check if parent phone matches existing User. If yes: Message includes "You have a Spinzy Academy account. Sign in to manage."
 - [ ] ConsentRequest record: channel: WHATSAPP, status: SENT
 
 ### Dev Tasks
@@ -338,7 +338,7 @@ So that I can approve in under 5 seconds during a busy day.
 - [ ] On match: Consent auto-approved. StudentProfile.status = ACTIVE, consent_method = WHATSAPP_REPLY
 - [ ] WebSocket push to student
 - [ ] Reply to parent: "✅ Approved! Aarav can now use Spinzy Academy. Set screen time limits & track progress here: [Dashboard Link]"
-- [ ] If parent has no Spinzy account: Dashboard link redirects to account creation (P1.5-R)
+- [ ] If parent has no Spinzy Academy account: Dashboard link redirects to account creation (P1.5-R)
 - [ ] If no matching consent request found: Reply: "We couldn't find a pending approval request for this number. Ask your child to send a new request from the Spinzy app."
 - [ ] If consent already approved/denied: Reply: "This request has already been processed. Check the Spinzy parent dashboard or contact support."
 - [ ] Backend: WhatsApp webhook: Parse incoming message body
@@ -365,7 +365,7 @@ So that I can approve in under 5 seconds during a busy day.
 **Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
-As a parent who just approved my child via WhatsApp reply or OTP, and who does NOT have a Spinzy account,
+As a parent who just approved my child via WhatsApp reply or OTP, and who does NOT have a Spinzy Academy account,
 I want to be prompted to create a parent account or skip and do it later,
 So that I can access the Parent Dashboard when I'm ready.
 
@@ -425,12 +425,12 @@ So that my child's data is not processed and I'm not contacted again.
 **Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
-As a parent who already has a Spinzy account with one child,
+As a parent who already has a Spinzy Academy account with one child,
 I want to receive and manage a consent request when my second child independently signs up,
 So that both children are linked under my existing account without duplication.
 
 ### Acceptance Criteria
-- [ ] When consent request is sent to phone/email matching existing parent: WhatsApp/Email content includes "You already have a Spinzy account. Aarav's access request is linked to your account."
+- [ ] When consent request is sent to phone/email matching existing parent: WhatsApp/Email content includes "You already have a Spinzy Academy account. Aarav's access request is linked to your account."
 - [ ] Approval link leads to existing Parent Dashboard (not new account creation)
 - [ ] On approval: Second child added to existing account automatically
 - [ ] Parent Dashboard shows both children

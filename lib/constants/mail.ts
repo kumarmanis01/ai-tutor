@@ -84,7 +84,7 @@ export const MAIL_SUBJECTS = {
   STUDENT_EXAM_RISK:         'Focus area detected for your exam - Spinzy Academy',
   STUDENT_MOCK_FEEDBACK:     'Your mock test results are in - Spinzy Academy',
   STUDENT_SECURITY_ALERT:    'Security notice - Spinzy Academy',
-  STUDENT_NEW_DEVICE:        'New sign-in to your Spinzy account',
+  STUDENT_NEW_DEVICE:        'New sign-in to your Spinzy Academy account',
 
   PARENT_PLAN_GENERATED:     "{name}'s learning plan is ready - Spinzy Academy",
   PARENT_MISSED_THREE_DAYS:  'Give {name} a nudge - Spinzy Academy',
@@ -100,7 +100,7 @@ export const MAIL_SUBJECTS = {
   PARENT_TRIAL_ENDED:        "Don't pause {name}'s progress - Spinzy Academy",
   PARENT_PAYMENT_SUCCESS:    'Payment confirmed - Spinzy Academy',
   PARENT_PAYMENT_FAILED:     'Action needed: payment issue - Spinzy Academy',
-  PARENT_SECURITY_ALERT:     'Security notice for your Spinzy account',
+  PARENT_SECURITY_ALERT:     'Security notice for your Spinzy Academy account',
   PARENT_NEW_DEVICE:         'New sign-in detected - Spinzy Academy',
   PARENT_DAILY_DIGEST:       "{name}'s learning update for today",
 } as const;

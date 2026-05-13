@@ -175,7 +175,7 @@ export async function POST(req: Request) {
           to: parent.email,
           subject: `${child.name}'s learning account is ready on Spinzy`,
           html: `<p>Hi ${parentName},</p>
-<p>We've created a learning account for <strong>${child.name}</strong>${childGrade ? ` (${childGrade})` : ''} and linked it to your Spinzy account.</p>
+<p>We've created a learning account for <strong>${child.name}</strong>${childGrade ? ` (${childGrade})` : ''} and linked it to your Spinzy Academy account.</p>
 <h3>What you can see as a parent:</h3>
 <ul>
   <li>Weekly study activity and sessions completed</li>
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
         })
       }
       if (parent?.phone) {
-        await sendSms(parent.phone, `Hi ${parentName}! ${child.name}'s Spinzy account is ready. Log in to track their progress. - Team Spinzy`)
+        await sendSms(parent.phone, `Hi ${parentName}! ${child.name}'s Spinzy Academy account is ready. Log in to track their progress. - Team Spinzy`)
       }
     } catch (err) {
       logger.error('[parent:create-child] notification suppressed', { error: String(err) })
