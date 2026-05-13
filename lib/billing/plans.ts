@@ -136,4 +136,5 @@ export function resolvePlanByShortId(shortId: string): SubscriptionPlan | undefi
   return fullId ? PLANS[fullId] : undefined
 }
 
-export default { PLANS, rupeesToPaise, planEndDate, renewalDateStr, resolvePlanByShortId }
+const PlansModule = { PLANS, rupeesToPaise, planEndDate, renewalDateStr, resolvePlanByShortId }
+export default PlansModule
