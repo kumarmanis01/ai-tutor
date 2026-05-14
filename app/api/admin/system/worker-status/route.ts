@@ -7,15 +7,16 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const session = await getServerSessionForHandlers()
   if (!session || session.user.role !== 'admin') {
-    return NextResponse.json({ alive: false })
+    return NextResponse.json({ worker: { alive: false }, scheduler: { alive: false } })
   }
+  // Determine liveness for both content worker(s) and the scheduler.
+  const now = Date.now();
+  const workerCutoff = new Date(now - 60_000); // 60s freshness for workers
+  const schedulerCutoff = new Date(now - 120_000); // 2m freshness for scheduler
 
-  // Task worker registers with type='content-hydration' (the BullMQ queue name).
-  // Detect liveness by heartbeat freshness (< 60s), not by type string.
-  const cutoff = new Date(Date.now() - 60_000)
-  const worker = await prisma.workerLifecycle.findFirst({
+  const workerRow = await prisma.workerLifecycle.findFirst({
     where: {
-      lastHeartbeatAt: { gte: cutoff },
+      lastHeartbeatAt: { gte: workerCutoff },
       NOT: [
         { type: { contains: 'web' } },
         { type: { contains: 'scheduler' } },
@@ -25,9 +26,25 @@ export async function GET() {
     select: { type: true, lastHeartbeatAt: true },
   }).catch(() => null)
 
+  const schedulerRow = await prisma.workerLifecycle.findFirst({
+    where: {
+      type: { contains: 'scheduler' },
+      lastHeartbeatAt: { gte: schedulerCutoff },
+    },
+    orderBy: { lastHeartbeatAt: 'desc' },
+    select: { type: true, lastHeartbeatAt: true },
+  }).catch(() => null)
+
   return NextResponse.json({
-    alive: worker !== null,
-    type: worker?.type ?? null,
-    lastHeartbeatAt: worker?.lastHeartbeatAt?.toISOString() ?? null,
+    worker: {
+      alive: workerRow !== null,
+      type: workerRow?.type ?? null,
+      lastHeartbeatAt: workerRow?.lastHeartbeatAt?.toISOString() ?? null,
+    },
+    scheduler: {
+      alive: schedulerRow !== null,
+      type: schedulerRow?.type ?? null,
+      lastHeartbeatAt: schedulerRow?.lastHeartbeatAt?.toISOString() ?? null,
+    },
   })
 }
