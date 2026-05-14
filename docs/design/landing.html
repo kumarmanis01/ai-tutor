@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vidya — A home tutor your child actually opens.</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/system.css" />
+<style>
+  body { background: var(--color-bg-page); padding: 56px 32px 96px; }
+  .pg-head { max-width: 1200px; margin: 0 auto 24px; }
+  .ds-back { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--color-text-tertiary); text-decoration: none; margin-bottom: 24px; }
+  .pg-head .eyebrow { font-size: var(--t-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-tertiary); font-weight: 500; }
+  .pg-head h1 { font-size: 44px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.0; margin: 12px 0 14px; }
+  .pg-head .lede { font-size: var(--t-lg); color: var(--color-text-secondary); max-width: 640px; line-height: 1.5; }
+
+  .frame-wrap { display: flex; justify-content: center; padding: 24px 0 24px; }
+  .scr { width: 390px; background: var(--color-bg-page); position: relative; border-radius: 36px; overflow: hidden; }
+  .bezel { background: #1a1918; border-radius: 44px; padding: 8px; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -20px rgba(0,0,0,0.25); position: relative; }
+  .bezel .notch { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); width: 110px; height: 28px; background: #1a1918; border-radius: 18px; z-index: 50; }
+  .sb { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 4px; font-size: 14px; font-weight: 600; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+  .sb .right { display: flex; gap: 5px; align-items: center; }
+
+  .nav { padding: 8px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 0.5px solid var(--color-border-subtle); position: sticky; top: 0; background: var(--color-bg-page); z-index: 10; }
+  .nav .mk { width: 28px; height: 28px; background: var(--color-brand-bg); border-radius: 7px; color: #fff; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; letter-spacing: -0.03em; }
+  .nav .nm { font-size: 14px; font-weight: 500; }
+
+  .hero { padding: 32px 20px 28px; }
+  .hero .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--color-brand-bg-subtle); border: 0.5px solid var(--color-brand-border); border-radius: 999px; font-size: 11px; color: var(--color-brand-text); font-weight: 500; }
+  .hero h1 { font-size: 42px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.0; margin: 16px 0 14px; text-wrap: balance; }
+  .hero h1 em { font-style: normal; color: var(--color-brand-bg); }
+  .hero p { font-size: 15px; color: var(--color-text-secondary); margin: 0; line-height: 1.5; max-width: 320px;}
+  .hero .ctas { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+
+  .trust { display: flex; gap: 16px; padding: 14px 20px 24px; border-bottom: 0.5px solid var(--color-border-subtle); }
+  .trust .t-cell { flex: 1; }
+  .trust .t-cell .v { font-family: var(--font-mono); font-size: 18px; font-weight: 500; letter-spacing: -0.01em; }
+  .trust .t-cell .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); margin-top: 2px; }
+
+  .section { padding: 36px 20px; border-bottom: 0.5px solid var(--color-border-subtle); }
+  .section .eyb { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-brand-text-strong); font-weight: 500; }
+  .section h2 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 8px 0 14px; }
+  .section p.lede { font-size: 14px; color: var(--color-text-secondary); margin: 0 0 24px; line-height: 1.55; }
+
+  .demo-card {
+    background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle);
+    border-radius: 14px; padding: 16px; box-shadow: 0 12px 32px -16px rgba(20,20,20,0.12);
+    transform: rotate(-1deg);
+  }
+  .demo-card.alt { transform: rotate(0.8deg); margin-top: -12px; margin-left: 24px; }
+
+  .pricing-card {
+    background: var(--color-bg-surface); border: 0.5px solid var(--color-border-default);
+    border-radius: 14px; padding: 20px;
+  }
+  .pricing-card.featured { border: 1.5px solid var(--color-brand-border); background: linear-gradient(180deg, var(--color-brand-bg-subtle), var(--color-bg-surface)); }
+  .pricing-card .name { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); font-weight: 500;}
+  .pricing-card .price { display: flex; align-items: baseline; gap: 4px; margin-top: 8px;}
+  .pricing-card .price .v { font-family: var(--font-mono); font-size: 28px; font-weight: 500; letter-spacing: -0.02em;}
+  .pricing-card .price .u { font-size: 12px; color: var(--color-text-tertiary);}
+  .pricing-card ul { list-style: none; padding: 0; margin: 14px 0 16px; display: flex; flex-direction: column; gap: 8px; font-size: 13px;}
+  .pricing-card ul li { display: flex; gap: 8px; align-items: flex-start; line-height: 1.4;}
+  .pricing-card ul li svg { flex-shrink: 0; margin-top: 2px; color: var(--color-success-text);}
+
+  .testimonial { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 14px; padding: 18px; }
+  .testimonial p { font-size: 14px; line-height: 1.55; margin: 0 0 14px; color: var(--color-text-primary); text-wrap: pretty;}
+
+  .faq-item { border-bottom: 0.5px solid var(--color-border-subtle); padding: 14px 0; }
+  .faq-item summary { font-size: 14px; font-weight: 500; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after { content: "+"; font-family: var(--font-mono); color: var(--color-text-tertiary); font-weight: 400; font-size: 18px; }
+  .faq-item[open] summary::after { content: "−"; }
+  .faq-item p { font-size: 13px; color: var(--color-text-secondary); margin: 8px 0 0; line-height: 1.55; }
+
+  .footer { padding: 28px 20px; background: #1a1918; color: #B8B6AE; }
+  .footer .mk { width: 28px; height: 28px; background: var(--color-bg-page); color: #1a1918; border-radius: 7px; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; letter-spacing: -0.03em;}
+  .footer .links { display: flex; gap: 18px; font-size: 12px; margin-top: 16px; }
+  .footer a { color: #B8B6AE; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="pg-head">
+  <a class="ds-back" href="index.html">← Vidya hub</a>
+  <div class="eyebrow">Marketing · Mobile (390px)</div>
+  <h1>Landing page.</h1>
+  <p class="lede">A single mobile-first site for parents. Decision-shaped: what is it, does it work, what does my child get, what does it cost, what do other parents say.</p>
+</div>
+
+<div class="frame-wrap">
+<div class="bezel"><div class="notch"></div>
+<div class="scr">
+  <div class="sb"><span>9:41</span><div class="right">
+    <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="4" y="4" width="3" height="7" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+    <svg width="20" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="10" rx="3" ry="3"/><rect x="22" y="10" width="2" height="4"/></svg>
+  </div></div>
+
+  <!-- Nav -->
+  <div class="nav">
+    <div class="mk">V</div>
+    <div class="nm">Vidya</div>
+    <div style="margin-left: auto; display: flex; gap: 6px;">
+      <button class="v-btn v-btn-ghost v-btn-sm">Sign in</button>
+      <button class="v-btn v-btn-primary v-btn-sm">Try free</button>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <span class="pill"><span class="v-dot v-dot-success"></span> Now serving Class 1–12 · CBSE, ICSE, State boards</span>
+    <h1>A home tutor your child <em>actually opens.</em></h1>
+    <p>Vidya plans every study day, teaches the next concept, answers doubts in your language, and tells you exactly where your child stands — every Sunday at 8 PM.</p>
+    <div class="ctas">
+      <button class="v-btn v-btn-primary v-btn-block" style="height: 44px;">Start free 14-day trial</button>
+      <button class="v-btn v-btn-ghost v-btn-block" style="height: 44px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg>
+        Watch 90-second demo
+      </button>
+    </div>
+  </div>
+
+  <div class="trust">
+    <div class="t-cell"><div class="v">38,400+</div><div class="l">FAMILIES</div></div>
+    <div class="t-cell"><div class="v">4.7 ★</div><div class="l">PLAY STORE</div></div>
+    <div class="t-cell"><div class="v">+18 pt</div><div class="l">AVG BOARD GAIN</div></div>
+  </div>
+
+  <!-- Three things it does -->
+  <div class="section">
+    <div class="eyb">WHAT IT DOES</div>
+    <h2>Three things, every day.</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="v-card">
+        <div class="v-flex-c" style="gap: 10px; margin-bottom: 8px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--color-brand-bg-subtle); color: var(--color-brand-text); display: flex; align-items: center; justify-content: center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+          </div>
+          <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">PLAN</div>
+        </div>
+        <div style="font-size: 16px; font-weight: 500; letter-spacing: -0.005em; margin-bottom: 4px;">A new study plan every morning.</div>
+        <div style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.55;">Built around your child's syllabus, weak chapters, and exam date. Adjusts when life happens.</div>
+      </div>
+
+      <div class="v-card">
+        <div class="v-flex-c" style="gap: 10px; margin-bottom: 8px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--subject-physics-bg); color: var(--subject-physics-tx); display: flex; align-items: center; justify-content: center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>
+          </div>
+          <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">TEACH</div>
+        </div>
+        <div style="font-size: 16px; font-weight: 500; letter-spacing: -0.005em; margin-bottom: 4px;">Teaches like a patient tutor.</div>
+        <div style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.55;">Concept &gt; example &gt; practice. In Hindi or English. Answers doubts on photos of textbook problems.</div>
+      </div>
+
+      <div class="v-card">
+        <div class="v-flex-c" style="gap: 10px; margin-bottom: 8px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--subject-chemistry-bg); color: var(--subject-chemistry-tx); display: flex; align-items: center; justify-content: center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+          </div>
+          <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em;">REPORT</div>
+        </div>
+        <div style="font-size: 16px; font-weight: 500; letter-spacing: -0.005em; margin-bottom: 4px;">Sunday digest, no surprises.</div>
+        <div style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.55;">Predicted board score, one win, one worry. WhatsApp + app. Five minutes a week.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo screenshots / product proof -->
+  <div class="section" style="background: #E9E6DC;">
+    <div class="eyb">SEE IT</div>
+    <h2>Two screens you'll use most.</h2>
+
+    <div class="demo-card">
+      <div style="font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">CHILD APP</div>
+      <div style="font-size: 14px; font-weight: 500; margin-bottom: 12px;">Today's plan</div>
+      <div class="v-topic active" style="padding: 10px;">
+        <div class="num" style="width: 24px; height: 24px; font-size: 11px;">1</div>
+        <div class="v-grow">
+          <div style="font-size: 12px; font-weight: 500; color: var(--color-brand-text);">Introduction to integers</div>
+          <div class="v-flex-c" style="gap: 4px; margin-top: 3px;"><span class="v-chip v-chip-mathematics v-chip-sm">Maths</span><span style="font-size: 10px; color: var(--color-brand-text-strong);">~30m · 46% done</span></div>
+        </div>
+      </div>
+      <div class="v-topic" style="padding: 10px; margin-top: 6px;">
+        <div class="num" style="width: 24px; height: 24px; font-size: 11px;">2</div>
+        <div class="v-grow">
+          <div style="font-size: 12px; font-weight: 500;">Newton's laws</div>
+          <div class="v-flex-c" style="gap: 4px; margin-top: 3px;"><span class="v-chip v-chip-physics v-chip-sm">Phys</span><span class="v-chip v-chip-critical v-chip-sm">Critical</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-card alt">
+      <div style="font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">PARENT APP</div>
+      <div style="font-size: 14px; font-weight: 500; margin-bottom: 12px;">Predicted board score</div>
+      <div class="v-flex-b" style="align-items: baseline; margin-bottom: 12px;">
+        <span class="v-metric v-metric-3xl v-score weak">61</span>
+        <span class="v-chip v-chip-success v-chip-sm">+4 wk</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div>
+          <div class="v-flex-b" style="margin-bottom: 4px; font-size: 11px;"><span style="color: var(--color-text-secondary);">Maths</span><span class="mono" style="color: var(--color-critical-text);">12%</span></div>
+          <div class="v-prog"><div class="fill fill-critical" style="width: 12%;"></div></div>
+        </div>
+        <div>
+          <div class="v-flex-b" style="margin-bottom: 4px; font-size: 11px;"><span style="color: var(--color-text-secondary);">Physics</span><span class="mono" style="color: var(--color-weak-text);">34%</span></div>
+          <div class="v-prog"><div class="fill fill-weak" style="width: 34%;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="section">
+    <div class="eyb">HOW IT WORKS</div>
+    <h2>From signup to first lesson in 4 minutes.</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="v-row" style="border: none; padding: 8px 0; align-items: flex-start;">
+        <div class="v-avatar v-avatar-sm" style="background: var(--color-brand-bg); color: #fff;">1</div>
+        <div class="grow"><div class="ttl">Tell us your child's class &amp; board</div><div class="meta">Class 7–12 · CBSE, ICSE, Maharashtra, Karnataka, Tamil Nadu, more</div></div>
+      </div>
+      <div class="v-row" style="border: none; padding: 8px 0; align-items: flex-start;">
+        <div class="v-avatar v-avatar-sm" style="background: var(--color-brand-bg); color: #fff;">2</div>
+        <div class="grow"><div class="ttl">3-minute placement quiz</div><div class="meta">Finds chapters they're behind on without making them feel bad</div></div>
+      </div>
+      <div class="v-row" style="border: none; padding: 8px 0; align-items: flex-start;">
+        <div class="v-avatar v-avatar-sm" style="background: var(--color-brand-bg); color: #fff;">3</div>
+        <div class="grow"><div class="ttl">First plan ready</div><div class="meta">Topics, time, today's session — start in one tap</div></div>
+      </div>
+      <div class="v-row" style="border: none; padding: 8px 0; align-items: flex-start;">
+        <div class="v-avatar v-avatar-sm" style="background: var(--color-brand-bg); color: #fff;">4</div>
+        <div class="grow"><div class="ttl">You get the parent app</div><div class="meta">Sunday digest starts the following week</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Testimonials -->
+  <div class="section" style="background: var(--color-brand-bg-subtle);">
+    <div class="eyb">PARENTS</div>
+    <h2>What changed for them.</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="testimonial">
+        <p>“My son's Maths went from 42% to 71% in two months. The Sunday digest is the only one of these apps where I actually understand what's happening.”</p>
+        <div class="v-row" style="border: none; padding: 0;">
+          <div class="v-avatar v-avatar-sm">SN</div>
+          <div class="grow"><div class="ttl">Sneha N.</div><div class="meta">Mother of Aarav · Class 10 · Pune</div></div>
+        </div>
+      </div>
+      <div class="testimonial">
+        <p>“Better than the home tutor we paid ₹8,000/month for. And my daughter actually wants to study at 7 PM now.”</p>
+        <div class="v-row" style="border: none; padding: 0;">
+          <div class="v-avatar v-avatar-sm" style="background: var(--subject-chemistry-bg); color: var(--subject-chemistry-tx);">VK</div>
+          <div class="grow"><div class="ttl">Vikram K.</div><div class="meta">Father of Anika · Class 9 · Bengaluru</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing -->
+  <div class="section">
+    <div class="eyb">PRICING</div>
+    <h2>One plan covers all subjects.</h2>
+    <p class="lede">Start free for 14 days. Cancel anytime. No credit card to start.</p>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="pricing-card">
+        <div class="name">Foundation</div>
+        <div class="price"><span class="v">₹6,999</span><span class="u">/ year</span></div>
+        <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 4px;">Class 1–9 · all subjects</div>
+        <ul>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Daily plan, doubt chat, parent reports</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Hindi + English narration</li>
+        </ul>
+        <button class="v-btn v-btn-ghost v-btn-block">Start free trial</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="v-flex-b">
+          <div class="name" style="color: var(--color-brand-text);">Boards · most popular</div>
+          <span class="v-chip v-chip-brand v-chip-sm">Save 20%</span>
+        </div>
+        <div class="price"><span class="v">₹14,999</span><span class="u">/ year</span></div>
+        <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 4px;">Class 10 &amp; 12 · with board projection</div>
+        <ul>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Everything in Foundation</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Weekly mocks · live tutor sessions on Saturdays</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Predicted board score with confidence interval</li>
+        </ul>
+        <button class="v-btn v-btn-primary v-btn-block">Start free trial</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section">
+    <div class="eyb">QUESTIONS</div>
+    <h2>What parents ask.</h2>
+
+    <details class="faq-item" open>
+      <summary>Will my child's syllabus be covered?</summary>
+      <p>Vidya covers CBSE, ICSE, and the major state boards (Maharashtra, Karnataka, Tamil Nadu, AP, Telangana, West Bengal, UP). The plan is generated from the exact textbooks your child uses.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What if my child doesn't speak English well?</summary>
+      <p>Lessons narrate in Hindi or English. Doubt chat replies in whichever language your child types. More languages rolling out through 2026.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How is this different from BYJU's, Vedantu, etc.?</summary>
+      <p>Smaller. We only do home-tutoring well. No live classes you have to schedule. Predicted board score is built from your child's actual practice — not a generic course completion percentage.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Can I see what my child is doing?</summary>
+      <p>Yes. The parent app shows the week, the predicted score, and the Sunday digest. You can adjust their plan with one tap.</p>
+    </details>
+  </div>
+
+  <!-- Final CTA -->
+  <div class="section" style="text-align: center; padding: 48px 20px; border: none;">
+    <h2 style="font-size: 32px; letter-spacing: -0.025em;">Try it for 14 days.</h2>
+    <p class="lede" style="margin: 0 auto 22px; max-width: 280px;">No card. No call. If you don't see your child engaging in the first week, you walk away.</p>
+    <button class="v-btn v-btn-primary v-btn-block" style="height: 48px; max-width: 320px; margin: 0 auto;">Start free trial</button>
+    <div style="font-size: 11px; color: var(--color-text-tertiary); margin-top: 14px;">Then ₹6,999–₹14,999 / year · cancel anytime</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="v-flex-c" style="gap: 10px;">
+      <div class="mk">V</div>
+      <div style="font-size: 14px; font-weight: 500; color: #fff;">Vidya</div>
+    </div>
+    <div class="links">
+      <a href="#">About</a>
+      <a href="#">Pricing</a>
+      <a href="#">Privacy</a>
+      <a href="#">Help</a>
+    </div>
+    <div style="font-size: 11px; color: #6F6E69; margin-top: 18px;">© 2026 Vidya Learning Pvt Ltd · Bengaluru, India</div>
+  </div>
+
+</div>
+</div>
+</div>
+
+</body>
+</html>
