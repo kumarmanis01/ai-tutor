@@ -61,19 +61,28 @@ function RedisStatusChip() {
 // ---------------------------------------------------------------------------
 
 function WorkerStatusChip() {
-  const [alive, setAlive] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<{ worker?: { alive: boolean }, scheduler?: { alive: boolean } } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/admin/system/worker-status')
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled) setAlive(d.alive ?? false); })
-      .catch(() => { if (!cancelled) setAlive(false); });
+      .then((r) => {
+        if (!r.ok) throw new Error('bad response');
+        return r.json();
+      })
+      .then((d) => { if (!cancelled) setStatus(d); })
+      .catch(() => { if (!cancelled) setStatus({ worker: { alive: false }, scheduler: { alive: false } }); });
     return () => { cancelled = true; };
   }, []);
 
-  if (alive === null) return null;
-  return <Chip label={alive ? 'Worker running' : 'Worker down'} variant={alive ? 'ok' : 'err'} />;
+  if (!status) return null;
+
+  return (
+    <>
+      <Chip label={status.worker?.alive ? 'Worker running' : 'Worker down'} variant={status.worker?.alive ? 'ok' : 'err'} />
+      <Chip label={status.scheduler?.alive ? 'Scheduler running' : 'Scheduler down'} variant={status.scheduler?.alive ? 'ok' : 'err'} />
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------

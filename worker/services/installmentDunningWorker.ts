@@ -16,6 +16,7 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
+import { paymentReceiptHtml, graceStartedHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { createRazorpayTokenCharge } from '@/lib/payments'
 import { createInvoiceForPayment } from '@/lib/invoices'
@@ -120,7 +121,13 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
       try {
         await createInvoiceForPayment({ userId: subscription.userId, paymentId: undefined, studentId: undefined, amountPaise: inst.amount, planLabel: '', billingCycle: '' })
         const subject = `Payment received -- Spinzy installment paid`
-        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully received payment for installment #${inst.number} of your subscription.</p>`
+        const html = paymentReceiptHtml({
+          studentName: parent.name ?? 'Parent',
+          plan: subscription.plan ?? '',
+          amountRupees: Math.round((inst.amount ?? 0) / 100),
+          billingCycle: subscription.billingCycle ?? '',
+          renewalDate: new Date().toLocaleDateString('en-IN'),
+        })
         await sendMailSafe({ to: parent.email ?? '', subject, html })
       } catch (err) {
         logger.warn('installmentDunning: invoice/email after installment charge failed', { installmentId: inst.id, err: String(err) })
@@ -140,7 +147,8 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
       await prisma.subscription.update({ where: { id: subscription.id }, data: { graceUntil } })
       try {
         const subject = `Payment failed -- grace period started`
-        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've been unable to collect the installment #${inst.number} for your Spinzy subscription after multiple attempts. We've started a 3-day grace period until ${graceUntil.toLocaleString('en-IN')}. Your children will keep access during this time. Please update payment to avoid service interruption: <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing">Update payment</a>.</p>`
+        const billingUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+        const html = graceStartedHtml({ name: parent.name ?? undefined, untilLabel: graceUntil.toLocaleString('en-IN'), billingUrl })
         await sendMailSafe({ to: parent.email ?? '', subject, html })
         if (parent.phone) await sendSms(parent.phone, `Spinzy: grace period started until ${graceUntil.toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
       } catch (err) {

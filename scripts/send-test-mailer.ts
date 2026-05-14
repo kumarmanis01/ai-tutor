@@ -11,11 +11,12 @@
  */
 
 import { sendMailSafe } from '@/lib/mailer'
+import { qaTestHtml } from '@/lib/email/templates'
 
 async function main() {
   const qa = process.env.QA_EMAIL ?? 'spinzy.healthians@gmail.com'
   const subject = `QA: weekly digest send (mailer-only) -- ${new Date().toISOString()}`
-  const html = `<!doctype html><html><body><h2>QA Digest Render Test</h2><p>This is a mailer-only test -- no DB or worker paths were exercised.</p></body></html>`
+  const html = qaTestHtml('This is a mailer-only test -- no DB or worker paths were exercised.')
 
   console.log('Invoking sendMailSafe to', qa)
   await sendMailSafe({ to: qa, subject, html, text: 'QA: weekly digest send (mailer-only)' })

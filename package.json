@@ -68,6 +68,7 @@
     "clear-auth": "cross-env CONFIRM=true tsx scripts/clear-auth-tables.ts",
     "pretest": "node scripts/prisma-generate-with-retry.cjs",
     "test": "node scripts/run-focused-tests.cjs",
+    "check:email-templates": "node scripts/check-email-templates.cjs",
     "test:focused:proactive": "node scripts/run-focused-tests.cjs --suite proactive -- --runInBand --watchAll=false",
     "test:focused:proactive:pwsh": "powershell -File scripts\\run-focused-tests.ps1 -Suite proactive",
     "test:ci": "npm run lint:orig && npm run type-check:orig && npm run test:unit",

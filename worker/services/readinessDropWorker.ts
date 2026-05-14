@@ -19,6 +19,7 @@ import { getRedis } from '@/lib/redis'
 import { callLLM } from '@/lib/callLLM'
 import { buildParentRemediationPrompt, parseParentRemediation } from '@/lib/ai/prompts/parentRemediation'
 import { sendMailSafe } from '@/lib/mailer'
+import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { sendPushSafe } from '@/lib/push/send'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
@@ -213,7 +214,8 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
         const remediationHtml = remediationHtmlParts.join('')
         const remediationPlain = remediationTextParts.join(' | ')
 
-        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationHtml}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>-- Team Spinzy</p></body></html>`
+        const bodyHtml = `<p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationHtml}`
+        const html = adminBroadcastEmailHtml({ title: subject, body: bodyHtml, ctaUrl: dashboardLink })
 
         // Send email and SMS, but only mark rate-limit if at least one channel succeeded
         let emailSent = false

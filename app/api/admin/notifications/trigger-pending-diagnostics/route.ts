@@ -1,15 +1,26 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin endpoint to send broadcast reminders to students who have not completed diagnostics.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/admin/notifications/trigger-pending-diagnostics.route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-14T00:00:00Z | copilot | add standard file header for template migration
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { sendPushSafe } from '@/lib/push/send'
 import { sendMailSafe } from '@/lib/mailer'
+import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
-
-/**
- * Trigger: send reminder to students who have not completed any diagnostic.
- * This is intended as a manual override for the scheduled Tuesday job.
- */
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   const session = await getServerSessionForHandlers()
   if (!session) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'admin') return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 })
@@ -28,7 +39,7 @@ export async function POST(req: NextRequest) {
     for (const t of targets) {
       try {
         void sendPushSafe(t.id, { title, body })
-        if (t.email) void sendMailSafe({ to: t.email, subject: title, html: `<p>${body}</p>` })
+        if (t.email) void sendMailSafe({ to: t.email, subject: title, html: adminBroadcastEmailHtml({ title, body, ctaUrl: 'https://spinzyacademy.com/diagnostic' }) })
       } catch (e) {
         logger.warn('[notifications/trigger-pending-diagnostics] send failed for user', { userId: t.id, error: String(e) })
       }

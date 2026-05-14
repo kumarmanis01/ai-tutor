@@ -10,6 +10,7 @@
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { sendMailSafe } from '@/lib/mailer.js'
+import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { getYesterdayIstBounds } from '../services/costReportingWorker.js'
 
 const LATENCY_ALERT_THRESHOLD_MS = 10_000
@@ -64,21 +65,13 @@ export async function runDailyLatencyReport(): Promise<LatencyReportResult> {
     const oncallEmail = process.env.ONCALL_EMAIL
     if (oncallEmail) {
       try {
+        const title = `Daily AI tutor latency report -- ${dateLabel}`
+        const body = `p95 latency: ${p95LatencyMs}ms (threshold: ${LATENCY_ALERT_THRESHOLD_MS}ms)\nTotal turns: ${totalTurns}\n\nCheck OpenAI API latency, RAG retrieval times, and DB query performance.`
         await sendMailSafe({
           to: oncallEmail,
           subject: `⚠️ Spinzy latency alert: p95 ${p95LatencyMs}ms on ${dateLabel}`,
-          text: [
-            `Daily AI tutor latency report -- ${dateLabel}`,
-            ``,
-            `p95 latency: ${p95LatencyMs}ms (threshold: ${LATENCY_ALERT_THRESHOLD_MS}ms)`,
-            `Total turns: ${totalTurns}`,
-            ``,
-            `Check OpenAI API latency, RAG retrieval times, and DB query performance.`,
-          ].join('\n'),
-          html: `<p><strong>Daily AI tutor latency report -- ${dateLabel}</strong></p>
-<p>p95 latency: <strong style="color:#DC2626">${p95LatencyMs}ms</strong> (threshold: ${LATENCY_ALERT_THRESHOLD_MS}ms)</p>
-<p>Total turns: ${totalTurns}</p>
-<p>Check OpenAI API latency, RAG retrieval times, and DB query performance.</p>`,
+          text: [title, '', `p95 latency: ${p95LatencyMs}ms (threshold: ${LATENCY_ALERT_THRESHOLD_MS}ms)`, `Total turns: ${totalTurns}`, '', `Check OpenAI API latency, RAG retrieval times, and DB query performance.`].join('\n'),
+          html: adminBroadcastEmailHtml({ title, body }),
         })
         alertSent = true
         logger.warn('dailyLatencyReport.alertSent', {

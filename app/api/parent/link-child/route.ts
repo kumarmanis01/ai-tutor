@@ -23,6 +23,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
+import { parentWelcomeHtml } from '@/lib/email/templates'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
@@ -183,7 +184,7 @@ export async function POST(req: Request) {
       await sendMailSafe({
         to: parentEmail,
         subject: `Welcome -- linked to ${studentName}`,
-        html: `<p>Hi ${parentName},</p><p>You are now linked to ${studentName} on Spinzy.</p><p>If this wasn't you, contact support.</p>`,
+        html: parentWelcomeHtml(parentName, studentName),
       })
     }
     if (parentPhone) {

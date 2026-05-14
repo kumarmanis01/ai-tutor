@@ -14,6 +14,7 @@
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | added Razorpay webhook handler
  * - 2026-05-13T00:00:00Z | copilot | fix payment.captured analytics emission (remove invalid failure payload and duplicate success emit)
+ * - 2026-05-14T00:00:00Z | copilot | update payment-failed emails to use centralized templates and support constant
  */
 
 import { NextResponse } from 'next/server';
@@ -21,6 +22,7 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { sendMailSafe } from '@/lib/mailer';
+import { parentPaymentFailedHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
 import Razorpay from 'razorpay';
@@ -311,7 +313,8 @@ export async function POST(req: Request) {
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
         const subject = `Payment failed -- action required`;
-        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We couldn't complete your recent payment. Please update your payment method and retry here: <a href="${retryLink}">Update payment</a>. If you need help, contact ${process.env.SUPPORT_EMAIL ?? RAZORPAY_WEBHOOK_SUPPORT_EMAIL}.</p>`;
+        const { MAIL_SUPPORT } = await import('@/lib/constants/mail').catch(() => ({ MAIL_SUPPORT: RAZORPAY_WEBHOOK_SUPPORT_EMAIL }));
+        const html = parentPaymentFailedHtml({ name: parent.name ?? undefined, retryUrl: retryLink, supportEmail: process.env.SUPPORT_EMAIL ?? MAIL_SUPPORT });
         await sendMailSafe({ to: parent.email, subject, html });
       }
       if (parent?.phone) {
