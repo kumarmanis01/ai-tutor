@@ -3,12 +3,176 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Accessible color variables - easy to swap for themes */
+/* Canonical design tokens (merged from docs/design/assets/tokens.css) */
+/* Fonts are loaded via Next.js font loader in layout.tsx (localFont / next/font).
+  Remove runtime Google Fonts @import to avoid blocking the critical rendering path. */
+
 :root {
-  --user-bg: #0b5cff; /* high-contrast blue for user */
-  --user-text: #ffffff;
-  --ai-bg: #e6e6e6; /* neutral for assistant */
-  --ai-text: #0f172a;
+  /* ── Type ─────────────────────────────────────── */
+    /* Prefer font variables injected by Next.js font utilities. Fallbacks keep
+      existing font-family order if variables are not present. */
+    --font-sans: var(--font-inter, var(--font-nunito, system-ui, -apple-system, 'Segoe UI', sans-serif));
+    --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* ── Surfaces ─────────────────────────────────── */
+  --color-bg-page:           #F1EFE8;
+  --color-bg-surface:        #FFFFFF;
+  --color-bg-surface-raised: #FFFFFF;
+  --color-bg-subtle:         #F1EFE8;
+  --color-bg-overlay:        rgba(28,27,24,0.45);
+
+  /* ── Text ─────────────────────────────────────── */
+  --color-text-primary:   #2C2C2A;
+  --color-text-secondary: #5F5E5A;
+  --color-text-tertiary:  #888780;
+  --color-text-disabled:  #B4B2A9;
+  --color-text-on-brand:  #FFFFFF;
+  --color-text-link:      #534AB7;
+
+  /* ── Borders ──────────────────────────────────── */
+  --color-border-subtle:  #D3D1C7;
+  --color-border-default: #B4B2A9;
+  --color-border-strong:  #888780;
+  --color-border-brand:   #534AB7;
+
+  /* ── Brand purple ─────────────────────────────── */
+  --color-brand-bg:        #534AB7;
+  --color-brand-bg-hover:  #3C3489;
+  --color-brand-bg-subtle: #EEEDFE;
+  --color-brand-border:    #AFA9EC;
+  --color-brand-text:      #3C3489;
+  --color-brand-text-strong:#534AB7;
+
+  /* ── Status: critical / weak / success ────────── */
+  --color-critical-bg:     #FCEBEB;
+  --color-critical-border: #F09595;
+  --color-critical-text:   #A32D2D;
+  --color-critical-fill:   #E24B4A;
+
+  --color-weak-bg:         #FAEEDA;
+  --color-weak-border:     #EF9F27;
+  --color-weak-text:       #633806;
+  --color-weak-fill:       #EF9F27;
+
+  --color-success-bg:      #EAF3DE;
+  --color-success-border:  #97C459;
+  --color-success-text:    #27500A;
+  --color-success-fill:    #639922;
+
+  /* ── Subject identity (NEVER reuse for status) ── */
+  --subject-mathematics:   #534AB7;
+  --subject-mathematics-bg:#EEEDFE;
+  --subject-mathematics-bd:#AFA9EC;
+  --subject-mathematics-tx:#3C3489;
+
+  --subject-physics:       #185FA5;
+  --subject-physics-bg:    #E6F1FB;
+  --subject-physics-bd:    #85B7EB;
+  --subject-physics-tx:    #0C447C;
+
+  --subject-chemistry:     #BA7517;
+  --subject-chemistry-bg:  #FAEEDA;
+  --subject-chemistry-bd:  #EF9F27;
+  --subject-chemistry-tx:  #633806;
+
+  --subject-biology:       #3B6D11;
+  --subject-biology-bg:    #EAF3DE;
+  --subject-biology-bd:    #97C459;
+  --subject-biology-tx:    #27500A;
+
+  --subject-english:       #D4537E;
+  --subject-english-bg:    #FBEAF0;
+  --subject-english-bd:    #ED93B1;
+  --subject-english-tx:    #72243E;
+
+  --subject-social:        #1D9E75;
+  --subject-social-bg:     #E1F5EE;
+  --subject-social-bd:     #5DCAA5;
+  --subject-social-tx:     #085041;
+
+  /* ── Spacing (4px base) ───────────────────────── */
+  --sp-0: 0;     --sp-px: 1px; --sp-0-5: 2px;
+  --sp-1: 4px;   --sp-1-5: 6px;
+  --sp-2: 8px;   --sp-2-5: 10px;
+  --sp-3: 12px;  --sp-3-5: 14px;
+  --sp-4: 16px;  --sp-5: 20px;
+  --sp-6: 24px;  --sp-7: 28px;
+  --sp-8: 32px;  --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* ── Radius ───────────────────────────────────── */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 10px;
+  --r-2xl: 12px;
+  --r-3xl: 16px;
+  --r-full: 9999px;
+
+  /* ── Border widths ────────────────────────────── */
+  --bw-hair: 0.5px;
+  --bw-thin: 1px;
+  --bw-mid: 1.5px;
+  --bw-thick: 2px;
+
+  /* ── Shadow (only for focus/elevation) ────────── */
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 2px 6px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
+  --shadow-focus: 0 0 0 3px rgba(83,74,183,0.35);
+
+  /* ── Motion ───────────────────────────────────── */
+  --d-fast: 100ms;
+  --d-base: 150ms;
+  --d-mod:  200ms;
+  --d-slow: 300ms;
+  --d-xslow:500ms;
+  --e-standard: cubic-bezier(0.2, 0, 0, 1);
+  --e-decel:    cubic-bezier(0, 0, 0.2, 1);
+  --e-accel:    cubic-bezier(0.4, 0, 1, 1);
+  --e-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Type scale ───────────────────────────────── */
+  --t-2xs: 10px; --t-xs: 11px; --t-sm: 12px;
+  --t-base: 13px; --t-md: 14px; --t-lg: 15px;
+  --t-xl: 16px; --t-2xl: 18px; --t-3xl: 20px;
+  --t-4xl: 24px; --t-5xl: 28px; --t-6xl: 34px;
+}
+
+.dark, [data-theme="dark"] {
+  --color-bg-page:           #1A1918;
+  --color-bg-surface:        #26241F;
+  --color-bg-surface-raised: #2E2C27;
+  --color-bg-subtle:         #201F1B;
+  --color-bg-overlay:        rgba(0,0,0,0.60);
+
+  --color-text-primary:   #E8E6DF;
+  --color-text-secondary: #A8A69F;
+  --color-text-tertiary:  #6E6C67;
+  --color-text-disabled:  #4A4844;
+  --color-text-link:      #AFA9EC;
+
+  --color-border-subtle:  #3A3830;
+  --color-border-default: #4A4840;
+  --color-border-strong:  #6E6C60;
+  --color-border-brand:   #7F77DD;
+
+  --color-brand-bg-subtle: #26215C;
+  --color-brand-border:    #3C3489;
+  --color-brand-text:      #AFA9EC;
+
+  --color-critical-bg:     #3D1515;
+  --color-critical-border: #791F1F;
+  --color-critical-text:   #F09595;
+
+  --color-weak-bg:         #3A2005;
+  --color-weak-border:     #633806;
+  --color-weak-text:       #EF9F27;
+
+  --color-success-bg:      #0D2208;
+  --color-success-border:  #27500A;
+  --color-success-text:    #C0DD97;
 }
 
 html,
@@ -41,26 +205,9 @@ body,
   border-radius: 8px;
 }
 
-/* Discrete width utility classes for progress bars (multiples of 5%)
-   Used to avoid inline style width attributes and satisfy lint rules. */
-.w-pct-0 { width: 0%; }
-.w-pct-5 { width: 5%; }
-.w-pct-10 { width: 10%; }
-.w-pct-15 { width: 15%; }
-.w-pct-20 { width: 20%; }
-.w-pct-25 { width: 25%; }
-.w-pct-30 { width: 30%; }
-.w-pct-35 { width: 35%; }
-.w-pct-40 { width: 40%; }
-.w-pct-45 { width: 45%; }
-.w-pct-50 { width: 50%; }
-.w-pct-55 { width: 55%; }
-.w-pct-60 { width: 60%; }
-.w-pct-65 { width: 65%; }
-.w-pct-70 { width: 70%; }
-.w-pct-75 { width: 75%; }
-.w-pct-80 { width: 80%; }
-.w-pct-85 { width: 85%; }
+/* Backwards compatibility: restore percent-width utilities used for dynamic
+  progress bars. Migrate call sites to Tailwind arbitrary values or inline
+  styles in a follow-up PR, then remove these. */
 .w-pct-90 { width: 90%; }
 .w-pct-95 { width: 95%; }
 .w-pct-100 { width: 100%; }

@@ -30,8 +30,9 @@ const config = {
   theme: {
     extend: {
       fontFamily: {
-        sans:  ['var(--font-inter)', 'sans-serif'],
-        brand: ['var(--font-nunito)', 'sans-serif'],
+        // Consolidated font tokens: Inter for UI, JetBrains Mono for numerics
+        sans:  ['var(--font-sans)', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        mono:  ['var(--font-mono)', 'SF Mono', 'Consolas', 'monospace'],
       },
       colors: {
         // ── CSS-variable-based semantic colours ──────────────────────────────
@@ -84,6 +85,28 @@ const config = {
           'danger-bg':    '#FCEBEB',
         },
 
+        // Subject identity tokens (consume CSS variables)
+        'subject-mathematics': 'var(--subject-mathematics)',
+        'subject-mathematics-bg': 'var(--subject-mathematics-bg)',
+        'subject-physics': 'var(--subject-physics)',
+        'subject-physics-bg': 'var(--subject-physics-bg)',
+        'subject-chemistry': 'var(--subject-chemistry)',
+        'subject-chemistry-bg': 'var(--subject-chemistry-bg)',
+        'subject-biology': 'var(--subject-biology)',
+        'subject-biology-bg': 'var(--subject-biology-bg)',
+        'subject-english': 'var(--subject-english)',
+        'subject-english-bg': 'var(--subject-english-bg)',
+        'subject-social': 'var(--subject-social)',
+        'subject-social-bg': 'var(--subject-social-bg)',
+
+        // Status tokens (text and fill variants)
+        'status-critical-text': 'var(--color-critical-text)',
+        'status-critical-fill': 'var(--color-critical-fill)',
+        'status-weak-text': 'var(--color-weak-text)',
+        'status-weak-fill': 'var(--color-weak-fill)',
+        'status-success-text': 'var(--color-success-text)',
+        'status-success-fill': 'var(--color-success-fill)',
+
         // ── Chat bubble colours ────────────────────────────────────────────
         userBubble: '#DCF8C6',
         aiBubble:   '#F1F0F0',
@@ -94,6 +117,10 @@ const config = {
         md: 'var(--radius-md)',
         lg: 'var(--radius-lg)',
         xl: 'var(--radius-xl)',
+      },
+      boxShadow: {
+        // Only allow the focus shadow via Tailwind utilities
+        focus: 'var(--shadow-focus)',
       },
     },
   },
