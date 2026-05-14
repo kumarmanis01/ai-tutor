@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vidya — Design System</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/system.css" />
+<style>
+  body { padding: 56px 32px 96px; max-width: 1080px; margin: 0 auto; }
+  .ds-back { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--color-text-tertiary); text-decoration: none; margin-bottom: 24px; }
+  .ds-eyebrow { font-size: var(--t-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-tertiary); font-weight: 500; }
+  h1 { font-size: 48px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.0; margin: 12px 0 14px; }
+  .lede { font-size: var(--t-lg); color: var(--color-text-secondary); max-width: 640px; line-height: 1.55; }
+  .ds-toc { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 28px; padding-top: 24px; border-top: 0.5px solid var(--color-border-subtle); font-size: var(--t-xs); color: var(--color-text-secondary); }
+  .ds-toc a { color: var(--color-text-secondary); text-decoration: none; }
+  .ds-toc a:hover { color: var(--color-brand-text); }
+  .ds-toc .num { font-family: var(--font-mono); color: var(--color-text-tertiary); margin-right: 4px; }
+
+  section { margin-top: 72px; padding-top: 32px; border-top: 0.5px solid var(--color-border-subtle); }
+  section > h2 { font-size: var(--t-3xl); font-weight: 500; letter-spacing: -0.01em; margin: 0 0 6px; }
+  section > h2 .num { font-family: var(--font-mono); font-size: var(--t-base); color: var(--color-text-tertiary); margin-right: 12px; font-weight: 400; }
+  section > .desc { font-size: var(--t-md); color: var(--color-text-secondary); max-width: 620px; margin-bottom: 32px; line-height: 1.55; }
+
+  .ds-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .ds-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .ds-grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+
+  /* swatch */
+  .sw { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px; overflow: hidden; }
+  .sw .top { height: 76px; }
+  .sw .meta { padding: 10px 12px 12px; font-size: var(--t-xs); }
+  .sw .meta .nm { font-weight: 500; color: var(--color-text-primary); margin-bottom: 2px; }
+  .sw .meta .vl { font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: var(--t-2xs); letter-spacing: 0.02em; }
+
+  /* type spec */
+  .ty-row { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 0.5px solid var(--color-border-subtle); }
+  .ty-row:last-child { border-bottom: none; }
+  .ty-row .label { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--color-text-tertiary); letter-spacing: 0.02em; }
+  .ty-row .label b { color: var(--color-text-secondary); font-weight: 500; }
+
+  /* spacer */
+  .sp-cell { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .sp-cell .bar { background: var(--color-brand-bg); height: 8px; border-radius: 999px; }
+  .sp-cell .nm { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--color-text-tertiary); }
+
+  /* radius */
+  .rad-cell { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); padding: 14px; display: flex; align-items: center; gap: 12px; }
+  .rad-cell .box { width: 48px; height: 48px; background: var(--color-brand-bg-subtle); border: 0.5px solid var(--color-brand-border); }
+  .rad-cell .nm { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--color-text-tertiary); }
+  .rad-cell .nm b { color: var(--color-text-secondary); font-weight: 500; }
+
+  /* component sample shell */
+  .comp { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px; padding: 24px; }
+  .comp .label { font-family: var(--font-mono); font-size: var(--t-2xs); color: var(--color-text-tertiary); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 16px; }
+  .comp .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .comp + .comp { margin-top: 12px; }
+
+  .principles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .principle { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px; padding: 24px; }
+  .principle .n { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--color-text-tertiary); }
+  .principle h4 { font-size: var(--t-xl); font-weight: 500; margin: 8px 0 6px; letter-spacing: -0.01em; }
+  .principle p { font-size: var(--t-base); color: var(--color-text-secondary); line-height: 1.55; margin: 0;}
+  .principle .do { color: var(--color-success-text); font-family: var(--font-mono); font-size: var(--t-xs); margin-top: 14px; }
+  .principle .dont { color: var(--color-critical-text); font-family: var(--font-mono); font-size: var(--t-xs); margin-top: 4px; }
+
+  .voice-tbl { width: 100%; border-collapse: collapse; }
+  .voice-tbl th, .voice-tbl td { text-align: left; padding: 14px 12px; border-bottom: 0.5px solid var(--color-border-subtle); font-size: var(--t-base); vertical-align: top; }
+  .voice-tbl th { font-weight: 500; color: var(--color-text-tertiary); font-size: var(--t-xs); text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 8px; }
+  .voice-tbl td.no { color: var(--color-critical-text); text-decoration: line-through; text-decoration-color: var(--color-critical-border); }
+  .voice-tbl td.yes { color: var(--color-text-primary); }
+
+  .icons-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .icons-grid .cell { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .icons-grid .cell svg { width: 22px; height: 22px; stroke: var(--color-text-primary); stroke-width: 1.75; fill: none; }
+  .icons-grid .cell .nm { font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); }
+
+  .breakpoints { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .bp { padding: 18px; background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px;}
+  .bp .nm { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--color-text-tertiary); margin-bottom: 8px; }
+  .bp .v { font-size: var(--t-2xl); font-weight: 500; letter-spacing: -0.01em;}
+  .bp .meta { font-size: var(--t-xs); color: var(--color-text-secondary); margin-top: 6px;}
+</style>
+</head>
+<body>
+  <a class="ds-back" href="index.html">← Vidya hub</a>
+  <div class="ds-eyebrow">Foundation · v0.1 · canonical</div>
+  <h1>The Vidya design system.</h1>
+  <p class="lede">A small, opinionated set of primitives. Six colour roles. One type pair. Four border radii. Hand this to engineering and they should be able to build any new screen without inventing a single value.</p>
+
+  <nav class="ds-toc">
+    <a href="#principles"><span class="num">01</span>Principles</a>
+    <a href="#colour"><span class="num">02</span>Colour</a>
+    <a href="#type"><span class="num">03</span>Type</a>
+    <a href="#space"><span class="num">04</span>Space &amp; radius</a>
+    <a href="#components"><span class="num">05</span>Components</a>
+    <a href="#patterns"><span class="num">06</span>Patterns</a>
+    <a href="#motion"><span class="num">07</span>Motion</a>
+    <a href="#icons"><span class="num">08</span>Icons</a>
+    <a href="#voice"><span class="num">09</span>Voice</a>
+    <a href="#breakpoints"><span class="num">10</span>Breakpoints</a>
+  </nav>
+
+  <!-- ═════════ PRINCIPLES ═════════ -->
+  <section id="principles">
+    <h2><span class="num">01</span>Principles</h2>
+    <p class="desc">Five rules that override everything below. If a design choice fights one of these, the choice is wrong.</p>
+    <div class="principles">
+      <div class="principle"><div class="n">01</div><h4>Earned ink</h4><p>Every element earns its place. Whitespace is content. Avoid filler stats, decorative icons, gradients-for-show.</p>
+        <div class="do">DO · Cut three rows that say nothing.</div><div class="dont">DON'T · Add a fourth chart to "balance" the page.</div></div>
+      <div class="principle"><div class="n">02</div><h4>Colour means something</h4><p>Subject hues identify subjects. Status hues identify state. Never reuse them across roles.</p>
+        <div class="do">DO · Chemistry uses amber-400 (#BA7517). Weak status uses amber-600 (#854F0B).</div><div class="dont">DON'T · Decorate a card with a random subject hue.</div></div>
+      <div class="principle"><div class="n">03</div><h4>Numbers are first-class</h4><p>Scores, XP, days, percentages — set in JetBrains Mono, tabular, slightly tighter tracking. They scan as data, not prose.</p>
+        <div class="do">DO · 78% in mono with -0.02em letter-spacing.</div><div class="dont">DON'T · 78% in Inter regular among prose.</div></div>
+      <div class="principle"><div class="n">04</div><h4>Hairlines, not shadows</h4><p>Surfaces separate via 0.5px borders, never elevation. Shadows are reserved for focus rings.</p>
+        <div class="do">DO · 0.5px solid var(--color-border-subtle).</div><div class="dont">DON'T · Drop-shadow a card to "lift" it.</div></div>
+      <div class="principle"><div class="n">05</div><h4>Motion confirms, never decorates</h4><p>150ms colour for hover/focus. 500ms spring only on progress fills. No mount-in animations.</p>
+        <div class="do">DO · Confirm a tap with 100ms scale(0.98).</div><div class="dont">DON'T · Slide cards in on page load.</div></div>
+      <div class="principle"><div class="n">06</div><h4>India-mobile-first</h4><p>Designed for 390px, 4G, one-handed reach, mid-range Android. Hit targets ≥ 44px. Type ≥ 13px in body.</p>
+        <div class="do">DO · 44px tap targets, generous spacing on bottom nav.</div><div class="dont">DON'T · Cram 6-tab nav with 11px labels.</div></div>
+    </div>
+  </section>
+
+  <!-- ═════════ COLOUR ═════════ -->
+  <section id="colour">
+    <h2><span class="num">02</span>Colour</h2>
+    <p class="desc">Two roles: <b>identity</b> (subjects, brand) and <b>state</b> (critical / weak / success). They never overlap. The page sits on a warm neutral so subjects pop without screaming.</p>
+
+    <h3 style="font-size:var(--t-md); font-weight:500; margin: 32px 0 12px; color: var(--color-text-secondary);">Brand</h3>
+    <div class="ds-grid-4">
+      <div class="sw"><div class="top" style="background:#EEEDFE"></div><div class="meta"><div class="nm">purple-50</div><div class="vl">#EEEDFE · subtle</div></div></div>
+      <div class="sw"><div class="top" style="background:#AFA9EC"></div><div class="meta"><div class="nm">purple-200</div><div class="vl">#AFA9EC · border</div></div></div>
+      <div class="sw"><div class="top" style="background:#534AB7"></div><div class="meta"><div class="nm">purple-600 · primary</div><div class="vl">#534AB7</div></div></div>
+      <div class="sw"><div class="top" style="background:#3C3489"></div><div class="meta"><div class="nm">purple-800</div><div class="vl">#3C3489 · text on subtle</div></div></div>
+    </div>
+
+    <h3 style="font-size:var(--t-md); font-weight:500; margin: 32px 0 12px; color: var(--color-text-secondary);">Subject identity</h3>
+    <div class="ds-grid-6">
+      <div class="sw"><div class="top" style="background:#534AB7"></div><div class="meta"><div class="nm">Mathematics</div><div class="vl">#534AB7</div></div></div>
+      <div class="sw"><div class="top" style="background:#185FA5"></div><div class="meta"><div class="nm">Physics</div><div class="vl">#185FA5</div></div></div>
+      <div class="sw"><div class="top" style="background:#BA7517"></div><div class="meta"><div class="nm">Chemistry</div><div class="vl">#BA7517</div></div></div>
+      <div class="sw"><div class="top" style="background:#3B6D11"></div><div class="meta"><div class="nm">Biology</div><div class="vl">#3B6D11</div></div></div>
+      <div class="sw"><div class="top" style="background:#D4537E"></div><div class="meta"><div class="nm">English</div><div class="vl">#D4537E</div></div></div>
+      <div class="sw"><div class="top" style="background:#1D9E75"></div><div class="meta"><div class="nm">Social</div><div class="vl">#1D9E75</div></div></div>
+    </div>
+
+    <h3 style="font-size:var(--t-md); font-weight:500; margin: 32px 0 12px; color: var(--color-text-secondary);">Status</h3>
+    <div class="ds-grid-3">
+      <div class="sw"><div class="top" style="background:#FCEBEB; display:flex; align-items:center; justify-content:center;"><span class="v-chip v-chip-critical">Critical</span></div><div class="meta"><div class="nm">Critical · &lt; 30%</div><div class="vl">#A32D2D · #E24B4A · #FCEBEB</div></div></div>
+      <div class="sw"><div class="top" style="background:#FAEEDA; display:flex; align-items:center; justify-content:center;"><span class="v-chip v-chip-weak">Weak</span></div><div class="meta"><div class="nm">Weak · 30–64%</div><div class="vl">#633806 · #EF9F27 · #FAEEDA</div></div></div>
+      <div class="sw"><div class="top" style="background:#EAF3DE; display:flex; align-items:center; justify-content:center;"><span class="v-chip v-chip-success">On track</span></div><div class="meta"><div class="nm">Good · ≥ 65%</div><div class="vl">#27500A · #639922 · #EAF3DE</div></div></div>
+    </div>
+
+    <h3 style="font-size:var(--t-md); font-weight:500; margin: 32px 0 12px; color: var(--color-text-secondary);">Neutrals</h3>
+    <div class="ds-grid-6">
+      <div class="sw"><div class="top" style="background:#FFFFFF"></div><div class="meta"><div class="nm">surface</div><div class="vl">#FFFFFF</div></div></div>
+      <div class="sw"><div class="top" style="background:#F1EFE8"></div><div class="meta"><div class="nm">page</div><div class="vl">#F1EFE8</div></div></div>
+      <div class="sw"><div class="top" style="background:#D3D1C7"></div><div class="meta"><div class="nm">border</div><div class="vl">#D3D1C7</div></div></div>
+      <div class="sw"><div class="top" style="background:#888780"></div><div class="meta"><div class="nm">tertiary</div><div class="vl">#888780</div></div></div>
+      <div class="sw"><div class="top" style="background:#5F5E5A"></div><div class="meta"><div class="nm">secondary</div><div class="vl">#5F5E5A</div></div></div>
+      <div class="sw"><div class="top" style="background:#2C2C2A"></div><div class="meta"><div class="nm">primary</div><div class="vl">#2C2C2A</div></div></div>
+    </div>
+  </section>
+
+  <!-- ═════════ TYPE ═════════ -->
+  <section id="type">
+    <h2><span class="num">03</span>Type</h2>
+    <p class="desc"><b>Inter</b> for everything UI. <b>JetBrains Mono</b> only for numbers and codes. Three weights: 400, 500, 600. Don't introduce a third typeface.</p>
+
+    <div class="ty-row"><div class="label">display · 600 · -0.025em<br/><b>56 / 60</b></div><div style="font-size: 56px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.0;">Learn what's next.</div></div>
+    <div class="ty-row"><div class="label">h1 · 600 · -0.02em<br/><b>34 / 40</b></div><div style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15;">Today's study plan</div></div>
+    <div class="ty-row"><div class="label">h2 · 500 · -0.01em<br/><b>20 / 28</b></div><div style="font-size: 20px; font-weight: 500; letter-spacing: -0.01em;">Subject readiness</div></div>
+    <div class="ty-row"><div class="label">section · 500<br/><b>14 / 22</b></div><div style="font-size: 14px; font-weight: 500;">Mathematics · 12% ready</div></div>
+    <div class="ty-row"><div class="label">body · 400<br/><b>13 / 20</b></div><div style="font-size: 13px;">Practical Geometry · 8 chapters needed in 28 days. Best to study in the morning when you're freshest.</div></div>
+    <div class="ty-row"><div class="label">caption · 400<br/><b>11 / 16</b></div><div style="font-size: 11px; color: var(--color-text-tertiary);">UPDATED 2 HOURS AGO · BOARD EXAM IN 28 DAYS</div></div>
+    <div class="ty-row"><div class="label">metric · mono · 500 · -0.02em<br/><b>34 / 38</b></div><div style="font-family: var(--font-mono); font-size: 34px; font-weight: 500; letter-spacing: -0.02em;">2,340 XP</div></div>
+    <div class="ty-row"><div class="label">data row · mono · 400<br/><b>12 / 16</b></div><div style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.02em; color: var(--color-text-secondary);">28% · 4 / 12 chapters · 28d to exam</div></div>
+  </section>
+
+  <!-- ═════════ SPACE & RADIUS ═════════ -->
+  <section id="space">
+    <h2><span class="num">04</span>Space &amp; radius</h2>
+    <p class="desc">Spacing scale is multiples of 4. Border radius has six steps. Cards always use 12px outer, 10px inner — every other size is reserved for buttons, chips, dots.</p>
+
+    <h3 style="font-size:var(--t-md); font-weight:500; margin: 16px 0 12px; color: var(--color-text-secondary);">Spacing scale (4 base)</h3>
+    <div class="ds-grid-6" style="grid-template-columns: repeat(8, 1fr);">
+      <div class="sp-cell"><div class="bar" style="width:4px"></div><div class="nm">1 · 4px</div></div>
+      <div class="sp-cell"><div class="bar" style="width:8px"></div><div class="nm">2 · 8px</div></div>
+      <div class="sp-cell"><div class="bar" style="width:12px"></div><div class="nm">3 · 12px</div></div>
+      <div class="sp-cell"><div class="bar" style="width:16px"></div><div class="nm">4 · 16px</div></div>
+      <div class="sp-cell"><div class="bar" style="width:24px"></div><div class="nm">6 · 24px</div></div>
+      <div class="sp-cell"><div class="bar" style="width:32px"></div><div class="nm">8 · 32px</div></div>
+      <div class="sp-cell"><div class="bar" style="width:48px"></div><div class="nm">12 · 48px</div></div>
+      <div class="sp-cell"><div class="bar" style="width:64px"></div><div class="nm">16 · 64px</div></div>
+    </div>
+
+    <h3 style="font-size:var(--t-md); font-weight:500; margin: 32px 0 12px; color: var(--color-text-secondary);">Radius</h3>
+    <div class="ds-grid-3">
+      <div class="rad-cell"><div class="box" style="border-radius:4px"></div><div class="nm"><b>sm · 4px</b><br/>chips, badges</div></div>
+      <div class="rad-cell"><div class="box" style="border-radius:8px"></div><div class="nm"><b>lg · 8px</b><br/>buttons, inputs</div></div>
+      <div class="rad-cell"><div class="box" style="border-radius:10px"></div><div class="nm"><b>xl · 10px</b><br/>inner cards, topic rows</div></div>
+      <div class="rad-cell"><div class="box" style="border-radius:12px"></div><div class="nm"><b>2xl · 12px</b><br/>main cards, panels</div></div>
+      <div class="rad-cell"><div class="box" style="border-radius:16px"></div><div class="nm"><b>3xl · 16px</b><br/>hero / banner</div></div>
+      <div class="rad-cell"><div class="box" style="border-radius:9999px"></div><div class="nm"><b>full · 9999px</b><br/>pills, dots, avatars</div></div>
+    </div>
+  </section>
+
+  <!-- ═════════ COMPONENTS ═════════ -->
+  <section id="components">
+    <h2><span class="num">05</span>Components</h2>
+    <p class="desc">A small kit. Every screen across student, parent, and admin journeys is built from this set. New patterns must compose existing components first.</p>
+
+    <div class="comp">
+      <div class="label">Button</div>
+      <div class="row">
+        <button class="v-btn v-btn-primary"><svg class="v-ic v-ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="6 4 20 12 6 20"/></svg>Continue</button>
+        <button class="v-btn v-btn-ghost"><svg class="v-ic v-ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Customise</button>
+        <button class="v-btn v-btn-primary v-btn-sm">Start</button>
+        <button class="v-btn v-btn-ghost v-btn-sm">Skip</button>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="label">Chip</div>
+      <div class="row">
+        <span class="v-chip v-chip-critical">Critical</span>
+        <span class="v-chip v-chip-weak">Weak</span>
+        <span class="v-chip v-chip-success">On track</span>
+        <span class="v-chip v-chip-brand">AI-ranked</span>
+        <span class="v-chip v-chip-mathematics">Mathematics</span>
+        <span class="v-chip v-chip-physics">Physics</span>
+        <span class="v-chip v-chip-chemistry">Chemistry</span>
+        <span class="v-chip v-chip-biology">Biology</span>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="label">Progress</div>
+      <div style="display:flex; flex-direction: column; gap: 14px; max-width: 420px;">
+        <div><div style="display:flex; justify-content:space-between; font-size:var(--t-xs); margin-bottom: 4px;"><span style="color:var(--color-text-secondary)">Mathematics</span><span class="mono" style="color:var(--color-critical-text); font-weight:500;">12%</span></div>
+          <div class="v-prog"><div class="fill fill-critical" style="width:12%"></div></div></div>
+        <div><div style="display:flex; justify-content:space-between; font-size:var(--t-xs); margin-bottom: 4px;"><span style="color:var(--color-text-secondary)">Physics</span><span class="mono" style="color:var(--color-weak-text); font-weight:500;">34%</span></div>
+          <div class="v-prog"><div class="fill fill-weak" style="width:34%"></div></div></div>
+        <div><div style="display:flex; justify-content:space-between; font-size:var(--t-xs); margin-bottom: 4px;"><span style="color:var(--color-text-secondary)">Biology</span><span class="mono" style="color:var(--color-success-text); font-weight:500;">78%</span></div>
+          <div class="v-prog"><div class="fill fill-success" style="width:78%"></div></div></div>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="label">Stat tile · row</div>
+      <div class="row" style="gap: 6px; max-width: 360px; width: 100%;">
+        <div class="v-stat"><div class="v">12</div><div class="l">DAY STREAK</div></div>
+        <div class="v-stat"><div class="v">4/5</div><div class="l">SESSIONS</div></div>
+        <div class="v-stat"><div class="v">~85m</div><div class="l">TODAY</div></div>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="label">Topic row · active &amp; not started</div>
+      <div style="display:flex; flex-direction: column; gap: 8px; max-width: 480px;">
+        <div class="v-topic active">
+          <div class="num">1</div>
+          <div class="v-grow">
+            <div style="font-size:var(--t-base); font-weight:500; color: var(--color-brand-text);">Introduction to integers</div>
+            <div style="display:flex; gap: 6px; align-items:center; margin-top: 4px;"><span class="v-chip v-chip-mathematics">Mathematics</span><span style="font-size:var(--t-xs); color: var(--color-brand-text-strong);">~30 min</span></div>
+          </div>
+          <button class="v-btn v-btn-primary v-btn-sm"><svg class="v-ic v-ic-sm" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg>Continue</button>
+        </div>
+        <div class="v-topic">
+          <div class="num">2</div>
+          <div class="v-grow">
+            <div style="font-size:var(--t-base); font-weight:500;">Newton's laws of motion</div>
+            <div style="display:flex; gap: 6px; align-items:center; margin-top: 4px;"><span class="v-chip v-chip-physics">Physics</span><span class="v-chip v-chip-critical">Critical</span></div>
+          </div>
+          <button class="v-btn v-btn-ghost v-btn-sm">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="label">Day-dot row</div>
+      <div style="max-width: 320px;" class="v-day-row">
+        <div class="v-day done"><div class="circ"><svg class="v-ic-sm" style="stroke: currentColor; fill:none;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="lbl">M</div></div>
+        <div class="v-day done"><div class="circ"><svg class="v-ic-sm" style="stroke: currentColor; fill:none;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="lbl">T</div></div>
+        <div class="v-day today"><div class="circ">W</div><div class="lbl">W</div></div>
+        <div class="v-day"><div class="circ">T</div><div class="lbl">T</div></div>
+        <div class="v-day"><div class="circ">F</div><div class="lbl">F</div></div>
+        <div class="v-day"><div class="circ">S</div><div class="lbl">S</div></div>
+        <div class="v-day"><div class="circ">S</div><div class="lbl">S</div></div>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="label">Avatar &amp; row</div>
+      <div class="row" style="gap: 12px; flex-direction: column; align-items: stretch; max-width: 400px;">
+        <div class="v-row"><div class="v-avatar">AS</div><div class="grow"><div class="ttl">Arjun Sharma</div><div class="meta">Class 10 · ICSE · 3 subjects</div></div><svg class="v-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color:var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></div>
+        <div class="v-row"><div class="v-avatar" style="background:var(--subject-physics-bg); color: var(--subject-physics-tx);">PR</div><div class="grow"><div class="ttl">Priya Rao</div><div class="meta">Class 8 · CBSE · 4 subjects</div></div><svg class="v-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color:var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+    </div>
+
+    <div class="comp">
+      <div class="label">Callout</div>
+      <div style="display:flex; flex-direction:column; gap:8px; max-width: 460px;">
+        <div class="v-callout v-callout-brand"><svg class="v-ic-sm" style="stroke:currentColor; fill:none;" viewBox="0 0 24 24" stroke-width="1.75"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z"/></svg><div><b style="font-weight:500">AI suggestion · </b>Move 15 min from Maths to Physics today — Physics has a chapter test on Friday.</div></div>
+        <div class="v-callout v-callout-warn"><svg class="v-ic-sm" style="stroke:currentColor; fill:none;" viewBox="0 0 24 24" stroke-width="1.75"><path d="M10.29 3.86 1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div><b style="font-weight:500">Streak at risk · </b>You haven't started today's plan. 6 hours left.</div></div>
+        <div class="v-callout v-callout-success"><svg class="v-ic-sm" style="stroke:currentColor; fill:none;" viewBox="0 0 24 24" stroke-width="1.75"><polyline points="20 6 9 17 4 12"/></svg><div><b style="font-weight:500">Saved · </b>Plan customisation saved for today.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════ PATTERNS ═════════ -->
+  <section id="patterns">
+    <h2><span class="num">06</span>Patterns</h2>
+    <p class="desc">Compositions that repeat across journeys. Use these instead of inventing new layouts.</p>
+
+    <div class="ds-grid-3" style="grid-template-columns: repeat(3, 1fr); gap: 16px;">
+      <div class="comp" style="padding: 14px;">
+        <div class="label">Section header</div>
+        <div class="v-sechd"><div><div class="ttl">Today's study plan</div><div class="sub">3 topics · ~85 min</div></div><button class="v-btn-link">Customise →</button></div>
+      </div>
+      <div class="comp" style="padding: 14px;">
+        <div class="label">Score block</div>
+        <div style="padding: 12px; background:var(--color-bg-subtle); border-radius:10px;">
+          <div style="font-size:var(--t-xs); color:var(--color-text-secondary); margin-bottom:4px;">Predicted board score</div>
+          <div class="v-metric v-metric-2xl v-score weak">28<span style="opacity:.5">–</span>42<span style="font-size:var(--t-xs); margin-left:6px; color:var(--color-text-tertiary)">/ 100</span></div>
+        </div>
+      </div>
+      <div class="comp" style="padding: 14px;">
+        <div class="label">XP block</div>
+        <div style="padding: 12px; background:var(--color-bg-subtle); border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:var(--t-xs); color:var(--color-text-secondary);"><span>2,340 / 3,000 to L5</span><span class="mono" style="color:var(--color-brand-text-strong); font-weight:500;">78%</span></div>
+          <div class="v-prog"><div class="fill fill-brand" style="width:78%"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════ MOTION ═════════ -->
+  <section id="motion">
+    <h2><span class="num">07</span>Motion</h2>
+    <p class="desc">Five durations, four eases. Most things should be instant or 150ms. The spring is reserved for one place: progress fills.</p>
+
+    <table class="voice-tbl">
+      <thead><tr><th>Token</th><th>Duration</th><th>Ease</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mono">--d-fast</span></td><td><span class="mono">100ms</span></td><td><span class="mono">standard</span></td><td>Tap confirmation, scale(0.98)</td></tr>
+        <tr><td><span class="mono">--d-base</span></td><td><span class="mono">150ms</span></td><td><span class="mono">standard</span></td><td>Hover, focus, colour shifts</td></tr>
+        <tr><td><span class="mono">--d-mod</span></td><td><span class="mono">200ms</span></td><td><span class="mono">decel</span></td><td>Drawer open, expand</td></tr>
+        <tr><td><span class="mono">--d-slow</span></td><td><span class="mono">300ms</span></td><td><span class="mono">decel</span></td><td>Page transitions</td></tr>
+        <tr><td><span class="mono">--d-xslow</span></td><td><span class="mono">500ms</span></td><td><span class="mono">spring</span></td><td>Progress bar fill — only here</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═════════ ICONS ═════════ -->
+  <section id="icons">
+    <h2><span class="num">08</span>Icons</h2>
+    <p class="desc">Lucide, stroke 1.75 (UI) or 2 (in-button). 18px default, 22px in tab-bar, 14px inside chips and small buttons. Never coloured. Never emoji.</p>
+
+    <div class="icons-grid">
+      <div class="cell"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20"/></svg><span class="nm">play</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span class="nm">check</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z"/></svg><span class="nm">sparkles</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg><span class="nm">menu</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span class="nm">chevron</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="nm">clock</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="nm">message</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="nm">search</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg><span class="nm">study</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/></svg><span class="nm">user</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="nm">plus</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><path d="M9 11H5a2 2 0 00-2 2v7h6"/><path d="M15 11h4a2 2 0 012 2v7h-6"/><path d="M9 11V5a3 3 0 016 0v6"/></svg><span class="nm">trophy</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nm">calendar</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg><span class="nm">trend</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="nm">settings</span></div>
+      <div class="cell"><svg viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg><span class="nm">gift</span></div>
+    </div>
+  </section>
+
+  <!-- ═════════ VOICE ═════════ -->
+  <section id="voice">
+    <h2><span class="num">09</span>Voice</h2>
+    <p class="desc">Calm, specific, action-oriented. Like a tutor who knows the syllabus and respects your time. Never patronising, never hype.</p>
+
+    <table class="voice-tbl">
+      <thead><tr><th style="width:50%">Don't</th><th>Do</th></tr></thead>
+      <tbody>
+        <tr><td class="no">Awesome job! 🎉 You're crushing it!</td><td class="yes">Streak: 12 days. Two of three subjects on track.</td></tr>
+        <tr><td class="no">Oops, looks like you missed a session.</td><td class="yes">Sunday's session is unfinished. 18 min left in Physics.</td></tr>
+        <tr><td class="no">Get smarter every day with our AI-powered tutor!</td><td class="yes">Daily plan, ranked by what your boards will actually ask.</td></tr>
+        <tr><td class="no">Click here to view your progress!</td><td class="yes">Full report →</td></tr>
+        <tr><td class="no">Time to study, champ!</td><td class="yes">Today: 85 min across 3 topics. Start with Maths — exam is in 28 days.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═════════ BREAKPOINTS ═════════ -->
+  <section id="breakpoints">
+    <h2><span class="num">10</span>Breakpoints</h2>
+    <p class="desc">Student and parent journeys are designed mobile-first at <b>390px</b>, then scaled up. Admin is desktop-first at <b>1280px</b>. Tablet is graceful degradation only.</p>
+
+    <div class="breakpoints">
+      <div class="bp"><div class="nm">SM · mobile</div><div class="v">≤ 768</div><div class="meta">Student &amp; parent base layout. Single column, bottom nav, sticky CTA.</div></div>
+      <div class="bp"><div class="nm">MD · tablet</div><div class="v">769 – 1023</div><div class="meta">Two-column where useful, side nav optional, no admin redesign.</div></div>
+      <div class="bp"><div class="nm">LG · desktop</div><div class="v">≥ 1024</div><div class="meta">Admin base layout. 12-col grid, persistent left rail, dense tables.</div></div>
+    </div>
+  </section>
+
+</body>
+</html>

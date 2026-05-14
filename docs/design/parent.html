@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vidya — Parent journey</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/system.css" />
+<style>
+  body { background: #E9E6DC; padding: 56px 32px 96px; }
+  .pg-head { max-width: 1200px; margin: 0 auto 24px; }
+  .ds-back { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--color-text-tertiary); text-decoration: none; margin-bottom: 24px; }
+  .pg-head .eyebrow { font-size: var(--t-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-tertiary); font-weight: 500; }
+  .pg-head h1 { font-size: 44px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.0; margin: 12px 0 14px; }
+  .pg-head .lede { font-size: var(--t-lg); color: var(--color-text-secondary); max-width: 640px; line-height: 1.5; }
+
+  .scroll-x { display: flex; gap: 32px; overflow-x: auto; padding: 24px 0 56px; margin: 0 -32px; padding-left: 32px; padding-right: 32px; }
+  .frame { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .frame .label { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--color-text-tertiary); letter-spacing: 0.04em; text-transform: uppercase; }
+  .frame .num { color: var(--color-brand-text-strong); margin-right: 6px; }
+  .frame .caption { font-size: var(--t-base); color: var(--color-text-secondary); max-width: 380px; line-height: 1.45; text-align: center; }
+
+  .sb { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 4px; font-size: 14px; font-weight: 600; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+  .sb .right { display: flex; gap: 5px; align-items: center; }
+
+  .scr { width: 390px; height: 844px; background: var(--color-bg-page); position: relative; border-radius: 36px; overflow: hidden; }
+  .bezel { background: #1a1918; border-radius: 44px; padding: 8px; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -20px rgba(0,0,0,0.25); }
+  .bezel .notch { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); width: 110px; height: 28px; background: #1a1918; border-radius: 18px; z-index: 50; }
+
+  .stickb { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 28px; background: linear-gradient(180deg, transparent, var(--color-bg-page) 30%); }
+
+  /* parent compare bars */
+  .cmp-bar { display: grid; grid-template-columns: 90px 1fr 60px; gap: 10px; align-items: center; padding: 8px 0; }
+  .cmp-bar .nm { font-size: 12px; color: var(--color-text-secondary); }
+  .cmp-bar .v { font-family: var(--font-mono); font-size: 12px; font-weight: 500; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="pg-head">
+  <a class="ds-back" href="index.html">← Vidya hub</a>
+  <div class="eyebrow">Parent · Mobile (390 × 844)</div>
+  <h1>The parent journey.</h1>
+  <p class="lede">Six screens. Calm summary, comparison to peers, plan visibility, weekly digest, payments. Built for the WhatsApp-and-glance attention pattern, not for power users.</p>
+</div>
+
+<div class="scroll-x">
+
+  <!-- ═════════ 01 PARENT HOME ═════════ -->
+  <div class="frame">
+    <div class="bezel" style="position:relative;"><div class="notch"></div>
+    <div class="scr">
+      <div class="sb"><span>9:41</span><div class="right">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="4" y="4" width="3" height="7" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="20" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="10" rx="3" ry="3"/><rect x="22" y="10" width="2" height="4"/></svg>
+      </div></div>
+
+      <div style="padding: 12px 16px 8px;">
+        <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 500;">PARENT VIEW</div>
+        <div style="font-size: 22px; font-weight: 600; letter-spacing: -0.015em; margin-top: 2px;">Hello, Mrs. Sharma</div>
+      </div>
+
+      <div style="padding: 0 16px 100px; overflow-y: auto; height: calc(100% - 130px);">
+
+        <!-- Children switcher -->
+        <div class="v-card-tight v-mt-2" style="padding: 4px 8px;">
+          <div class="v-row" style="border: none; padding: 10px 8px;">
+            <div class="v-avatar">AS</div>
+            <div class="grow"><div class="ttl">Arjun · Class 10</div><div class="meta">Active 2h ago · ICSE boards in 28 days</div></div>
+            <span class="v-chip v-chip-brand v-chip-sm">●</span>
+          </div>
+          <hr class="v-hr" style="margin: 0;"/>
+          <div class="v-row" style="border: none; padding: 10px 8px; opacity: 0.7;">
+            <div class="v-avatar v-avatar-sm" style="background: var(--subject-physics-bg); color: var(--subject-physics-tx);">PS</div>
+            <div class="grow"><div class="ttl" style="font-size: 13px;">Priya · Class 8</div><div class="meta">Active yesterday · CBSE</div></div>
+          </div>
+        </div>
+
+        <!-- This week summary card -->
+        <div class="v-card v-mt-3">
+          <div class="v-flex-b">
+            <div>
+              <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500;">ARJUN · THIS WEEK</div>
+              <div class="v-metric v-metric-3xl v-mt-1">3h 42m</div>
+              <div class="v-flex-c v-mt-1" style="gap: 6px;"><span class="v-chip v-chip-success v-chip-sm">+18% week</span><span style="font-size: 11px; color: var(--color-text-tertiary);">Goal · 5h / wk</span></div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500;">PREDICTED BOARD</div>
+              <div class="v-metric v-metric-2xl v-score weak v-mt-1">61<span style="font-size: 14px; color: var(--color-text-tertiary);">/100</span></div>
+              <div style="font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px;">±6 over 3 mocks</div>
+            </div>
+          </div>
+          <div class="v-bars v-mt-3">
+            <span style="height:30%"></span><span style="height:45%"></span><span class="lit" style="height:62%"></span>
+            <span class="lit" style="height:38%"></span><span class="lit" style="height:90%"></span>
+            <span style="height:0%; min-height: 2px;"></span><span style="height:0%; min-height: 2px;"></span>
+          </div>
+          <div class="v-flex-b v-mt-2" style="font-size: 10px; color: var(--color-text-tertiary); letter-spacing: 0.04em;"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        </div>
+
+        <!-- AI insight -->
+        <div class="v-callout v-callout-brand v-mt-3">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z"/></svg>
+          <div><b style="font-weight: 500;">This week · </b>Arjun's Maths is the bottleneck. 12% ready, 28 days to boards. We've added 20 min of extra practice on weekdays.</div>
+        </div>
+
+        <!-- Subject summary -->
+        <div class="v-mt-4">
+          <div class="v-sechd"><div class="ttl">Subjects</div><button class="v-btn-link">Detail →</button></div>
+          <div class="v-card-tight">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div>
+                <div class="v-flex-b" style="margin-bottom: 6px;">
+                  <div class="v-flex-c" style="gap: 8px;"><span class="v-dot v-dot-mathematics"></span><span style="font-size: 13px; font-weight: 500;">Mathematics</span></div>
+                  <div class="v-flex-c" style="gap: 8px;"><span class="v-score crit" style="font-size: 16px; font-weight: 500;">12%</span><span class="v-chip v-chip-critical v-chip-sm">Critical</span></div>
+                </div>
+                <div class="v-prog"><div class="fill fill-critical" style="width: 12%"></div></div>
+              </div>
+              <div>
+                <div class="v-flex-b" style="margin-bottom: 6px;">
+                  <div class="v-flex-c" style="gap: 8px;"><span class="v-dot v-dot-physics"></span><span style="font-size: 13px; font-weight: 500;">Physics</span></div>
+                  <div class="v-flex-c" style="gap: 8px;"><span class="v-score weak" style="font-size: 16px; font-weight: 500;">34%</span><span class="v-chip v-chip-weak v-chip-sm">Weak</span></div>
+                </div>
+                <div class="v-prog"><div class="fill fill-weak" style="width: 34%"></div></div>
+              </div>
+              <div>
+                <div class="v-flex-b" style="margin-bottom: 6px;">
+                  <div class="v-flex-c" style="gap: 8px;"><span class="v-dot v-dot-chemistry"></span><span style="font-size: 13px; font-weight: 500;">Chemistry</span></div>
+                  <div class="v-flex-c" style="gap: 8px;"><span class="v-score weak" style="font-size: 16px; font-weight: 500;">42%</span><span class="v-chip v-chip-weak v-chip-sm">Weak</span></div>
+                </div>
+                <div class="v-prog"><div class="fill fill-weak" style="width: 42%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action row -->
+        <div class="v-mt-4 v-flex" style="gap: 8px;">
+          <button class="v-btn v-btn-ghost" style="flex: 1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Message tutor
+          </button>
+          <button class="v-btn v-btn-primary" style="flex: 1;">Open report →</button>
+        </div>
+
+        <div style="height: 32px;"></div>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="v-tabbar">
+        <button class="v-tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-6 9 6"/><path d="M5 9v11h14V9"/></svg>Home</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Reports</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Tutor</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>Me</button>
+      </div>
+    </div></div>
+    <div class="label"><span class="num">01</span>HOME · PARENT</div>
+    <div class="caption">Calm summary in one card. The week, predicted board, what's needed.</div>
+  </div>
+
+  <!-- ═════════ 02 REPORTS · DETAIL ═════════ -->
+  <div class="frame">
+    <div class="bezel" style="position:relative;"><div class="notch"></div>
+    <div class="scr">
+      <div class="sb"><span>9:43</span><div class="right">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="4" y="4" width="3" height="7" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="20" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="10" rx="3" ry="3"/><rect x="22" y="10" width="2" height="4"/></svg>
+      </div></div>
+
+      <div style="padding: 12px 16px 0;">
+        <div style="font-size: 22px; font-weight: 600; letter-spacing: -0.015em;">Reports</div>
+        <div class="v-flex-c v-mt-2" style="gap: 4px; padding: 3px; background: var(--color-bg-subtle); border-radius: 9px;">
+          <button class="v-btn v-btn-ghost v-btn-sm" style="flex:1; background: var(--color-bg-surface); border-color: var(--color-border-default);">Week</button>
+          <button class="v-btn v-btn-ghost v-btn-sm" style="flex:1; border:none; color: var(--color-text-tertiary);">Month</button>
+          <button class="v-btn v-btn-ghost v-btn-sm" style="flex:1; border:none; color: var(--color-text-tertiary);">All</button>
+        </div>
+      </div>
+
+      <div style="padding: 16px; height: calc(100% - 120px); overflow-y: auto;">
+        <!-- Predicted score -->
+        <div class="v-card-tight">
+          <div class="v-flex-b">
+            <div style="font-size: 13px; font-weight: 500;">Predicted board score</div>
+            <span class="v-chip v-chip-success v-chip-sm">+4 wk</span>
+          </div>
+          <div class="v-flex-b v-mt-2" style="align-items: baseline;">
+            <span class="v-metric v-metric-3xl v-score weak">61</span>
+            <span style="font-size: 13px; color: var(--color-text-tertiary);">range <b class="mono" style="color: var(--color-text-secondary); font-weight: 500;">52–68</b> · CI 90%</span>
+          </div>
+
+          <!-- Sparkline-ish bars -->
+          <div class="v-bars v-mt-3" style="height: 48px;">
+            <span style="height:35%"></span><span style="height:42%"></span><span style="height:38%"></span>
+            <span style="height:48%"></span><span style="height:55%"></span><span style="height:58%"></span>
+            <span class="lit" style="height:61%"></span>
+          </div>
+          <div class="v-flex-b v-mt-2" style="font-size: 10px; color: var(--color-text-tertiary); letter-spacing: 0.04em;"><span>W-6</span><span>W-5</span><span>W-4</span><span>W-3</span><span>W-2</span><span>W-1</span><span>NOW</span></div>
+        </div>
+
+        <!-- Subject breakdown -->
+        <div class="v-mt-4">
+          <div class="v-sechd"><div class="ttl">Subject readiness</div></div>
+          <div class="v-card-tight">
+            <div class="cmp-bar">
+              <div class="nm v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-mathematics"></span>Maths</div>
+              <div class="v-prog"><div class="fill fill-critical" style="width: 12%"></div></div>
+              <div class="v" style="color: var(--color-critical-text);">12%</div>
+            </div>
+            <div class="cmp-bar">
+              <div class="nm v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-physics"></span>Physics</div>
+              <div class="v-prog"><div class="fill fill-weak" style="width: 34%"></div></div>
+              <div class="v" style="color: var(--color-weak-text);">34%</div>
+            </div>
+            <div class="cmp-bar">
+              <div class="nm v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-chemistry"></span>Chem</div>
+              <div class="v-prog"><div class="fill fill-weak" style="width: 42%"></div></div>
+              <div class="v" style="color: var(--color-weak-text);">42%</div>
+            </div>
+            <div class="cmp-bar">
+              <div class="nm v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-biology"></span>Biology</div>
+              <div class="v-prog"><div class="fill fill-success" style="width: 78%"></div></div>
+              <div class="v" style="color: var(--color-success-text);">78%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparison -->
+        <div class="v-mt-4">
+          <div class="v-sechd"><div class="ttl">Vs. ICSE Class 10 peers</div></div>
+          <div class="v-card-tight">
+            <div class="v-flex-b">
+              <div class="v-flex-c" style="gap: 8px;"><span class="v-dot v-dot-brand"></span><span style="font-size: 13px;">Arjun</span></div>
+              <div class="mono" style="font-size: 13px; font-weight: 500;">3h 42m / wk</div>
+            </div>
+            <div class="v-flex-b v-mt-2">
+              <div class="v-flex-c" style="gap: 8px;"><span class="v-dot" style="background: var(--color-text-tertiary);"></span><span style="font-size: 13px; color: var(--color-text-secondary);">Top 25% peers</span></div>
+              <div class="mono" style="font-size: 13px; color: var(--color-text-secondary);">5h 28m / wk</div>
+            </div>
+            <div class="v-flex-b v-mt-2">
+              <div class="v-flex-c" style="gap: 8px;"><span class="v-dot" style="background: var(--color-border-default);"></span><span style="font-size: 13px; color: var(--color-text-secondary);">Median peer</span></div>
+              <div class="mono" style="font-size: 13px; color: var(--color-text-secondary);">2h 50m / wk</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="v-btn v-btn-ghost v-btn-block v-mt-3">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PDF report
+        </button>
+      </div>
+
+      <div class="v-tabbar">
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-6 9 6"/><path d="M5 9v11h14V9"/></svg>Home</button>
+        <button class="v-tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Reports</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Tutor</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>Me</button>
+      </div>
+    </div></div>
+    <div class="label"><span class="num">02</span>REPORTS · BOARD PROJECTION</div>
+    <div class="caption">Predicted score with confidence interval, peer benchmark, downloadable PDF.</div>
+  </div>
+
+  <!-- ═════════ 03 PLAN APPROVAL ═════════ -->
+  <div class="frame">
+    <div class="bezel" style="position:relative;"><div class="notch"></div>
+    <div class="scr">
+      <div class="sb"><span>9:46</span><div class="right">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="4" y="4" width="3" height="7" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="20" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="10" rx="3" ry="3"/><rect x="22" y="10" width="2" height="4"/></svg>
+      </div></div>
+
+      <div style="padding: 12px 16px 0;">
+        <div style="font-size: 22px; font-weight: 600; letter-spacing: -0.015em;">Next week's plan</div>
+        <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px;">12 May – 18 May · Drafted by Vidya AI</div>
+      </div>
+
+      <div style="padding: 16px; height: calc(100% - 200px); overflow-y: auto;">
+        <div class="v-callout v-callout-warn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M10.29 3.86 1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div><b style="font-weight: 500;">Heads up · </b>Arjun's plan adds <b>40 min/day</b> next week to close the Maths gap. You can lower it if needed.</div>
+        </div>
+
+        <div class="v-mt-3">
+          <div class="v-sechd"><div class="ttl">Daily commitment</div></div>
+          <div class="v-card-tight">
+            <div class="v-flex-b" style="margin-bottom: 8px;">
+              <span style="font-size: 12px; color: var(--color-text-secondary);">Mon–Fri</span>
+              <span class="mono v-metric-xl">90 min</span>
+            </div>
+            <div class="v-flex-b" style="margin-bottom: 8px;">
+              <span style="font-size: 12px; color: var(--color-text-secondary);">Saturday</span>
+              <span class="mono v-metric-xl">60 min · mock</span>
+            </div>
+            <div class="v-flex-b">
+              <span style="font-size: 12px; color: var(--color-text-secondary);">Sunday</span>
+              <span class="mono" style="font-size: 14px; color: var(--color-text-tertiary);">Rest</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="v-mt-3">
+          <div class="v-sechd"><div class="ttl">Subject mix</div></div>
+          <div class="v-card-tight">
+            <div style="display: flex; gap: 3px; height: 12px; border-radius: 6px; overflow: hidden;">
+              <div style="flex: 45; background: var(--subject-mathematics);"></div>
+              <div style="flex: 25; background: var(--subject-physics);"></div>
+              <div style="flex: 20; background: var(--subject-chemistry);"></div>
+              <div style="flex: 10; background: var(--subject-biology);"></div>
+            </div>
+            <div class="v-flex" style="gap: 12px; margin-top: 10px; font-size: 12px; color: var(--color-text-secondary); flex-wrap: wrap;">
+              <span class="v-flex-c" style="gap: 4px;"><span class="v-dot v-dot-mathematics"></span>Maths 45%</span>
+              <span class="v-flex-c" style="gap: 4px;"><span class="v-dot v-dot-physics"></span>Phys 25%</span>
+              <span class="v-flex-c" style="gap: 4px;"><span class="v-dot v-dot-chemistry"></span>Chem 20%</span>
+              <span class="v-flex-c" style="gap: 4px;"><span class="v-dot v-dot-biology"></span>Bio 10%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="v-mt-3">
+          <div class="v-sechd"><div class="ttl">Assessments</div></div>
+          <div class="v-card-tight">
+            <div class="v-row" style="border: none; padding: 8px 0;">
+              <div style="width: 36px; height: 36px; border-radius: 8px; background: var(--color-bg-subtle); display: flex; align-items: center; justify-content: center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+              </div>
+              <div class="grow"><div class="ttl">Maths chapter test</div><div class="meta">Wed · 25 min · Practical Geometry</div></div>
+            </div>
+            <hr class="v-hr"/>
+            <div class="v-row" style="border: none; padding: 8px 0;">
+              <div style="width: 36px; height: 36px; border-radius: 8px; background: var(--color-bg-subtle); display: flex; align-items: center; justify-content: center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+              </div>
+              <div class="grow"><div class="ttl">Full mock · all subjects</div><div class="meta">Sat · 60 min · proctored</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stickb" style="padding-bottom: 92px;">
+        <div class="v-flex" style="gap: 8px;">
+          <button class="v-btn v-btn-ghost" style="flex: 1;">Adjust</button>
+          <button class="v-btn v-btn-primary" style="flex: 1.5;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Approve plan
+          </button>
+        </div>
+      </div>
+
+      <div class="v-tabbar">
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-6 9 6"/><path d="M5 9v11h14V9"/></svg>Home</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Reports</button>
+        <button class="v-tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Tutor</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>Me</button>
+      </div>
+    </div></div>
+    <div class="label"><span class="num">03</span>PLAN · WEEKLY APPROVAL</div>
+    <div class="caption">AI drafts, parent approves. Adjust slider hidden until needed — most parents tap approve.</div>
+  </div>
+
+  <!-- ═════════ 04 TUTOR / ALERTS ═════════ -->
+  <div class="frame">
+    <div class="bezel" style="position:relative;"><div class="notch"></div>
+    <div class="scr">
+      <div class="sb"><span>10:02</span><div class="right">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="4" y="4" width="3" height="7" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="20" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="10" rx="3" ry="3"/><rect x="22" y="10" width="2" height="4"/></svg>
+      </div></div>
+
+      <div style="padding: 12px 16px 12px;">
+        <div style="font-size: 22px; font-weight: 600; letter-spacing: -0.015em;">Tutor &amp; alerts</div>
+      </div>
+
+      <div style="padding: 0 16px 100px; overflow-y: auto; height: calc(100% - 130px);">
+        <!-- Pinned -->
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); margin: 4px 0 8px; font-weight: 500;">PINNED</div>
+        <div class="v-card-tight" style="border-color: var(--color-brand-border); background: var(--color-brand-bg-subtle);">
+          <div class="v-flex" style="gap: 10px; align-items: flex-start;">
+            <div class="v-avatar v-avatar-sm" style="background: var(--color-brand-bg); color: #fff;">V</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; font-weight: 500; color: var(--color-brand-text);">Live tutor session — Sat 5 PM</div>
+              <div style="font-size: 12px; color: var(--color-brand-text-strong); margin-top: 4px;">Mrs. Iyer · Maths · Practical Geometry. Free for the Boards plan.</div>
+              <div class="v-flex v-mt-2" style="gap: 6px;">
+                <button class="v-btn v-btn-primary v-btn-sm">Confirm</button>
+                <button class="v-btn v-btn-ghost v-btn-sm" style="background: transparent;">Reschedule</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- This week -->
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); margin: 20px 0 8px; font-weight: 500;">THIS WEEK</div>
+        <div class="v-card-tight">
+          <div class="v-row" style="padding: 10px 8px; border-bottom: 0.5px solid var(--color-border-subtle);">
+            <div style="width: 36px; height: 36px; border-radius: 999px; background: var(--color-success-bg); color: var(--color-success-text); display: flex; align-items: center; justify-content: center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="grow">
+              <div class="ttl">Mock test result · 80%</div>
+              <div class="meta">Wed · Maths Practical Geometry · +12 from last</div>
+            </div>
+          </div>
+          <div class="v-row" style="padding: 10px 8px; border-bottom: 0.5px solid var(--color-border-subtle);">
+            <div style="width: 36px; height: 36px; border-radius: 999px; background: var(--color-weak-bg); color: var(--color-weak-text); display: flex; align-items: center; justify-content: center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="grow">
+              <div class="ttl">Streak at risk</div>
+              <div class="meta">Tue · Arjun didn't start his plan until 9 PM</div>
+            </div>
+          </div>
+          <div class="v-row" style="padding: 10px 8px;">
+            <div style="width: 36px; height: 36px; border-radius: 999px; background: var(--color-brand-bg-subtle); color: var(--color-brand-text); display: flex; align-items: center; justify-content: center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z"/></svg>
+            </div>
+            <div class="grow">
+              <div class="ttl">10-day streak unlocked</div>
+              <div class="meta">Mon · 8:42 PM</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Direct chat -->
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); margin: 20px 0 8px; font-weight: 500;">DIRECT</div>
+        <div class="v-card-tight" style="padding: 4px 8px;">
+          <div class="v-row">
+            <div class="v-avatar v-avatar-sm" style="background: var(--subject-mathematics-bg); color: var(--subject-mathematics-tx);">RI</div>
+            <div class="grow"><div class="ttl">Mrs. Iyer · Maths tutor</div><div class="meta">Reply on weekdays · within 4 hours</div></div>
+            <span class="v-chip v-chip-success v-chip-sm">●</span>
+          </div>
+          <div class="v-row" style="border: none;">
+            <div class="v-avatar v-avatar-sm" style="background: var(--color-brand-bg); color: #fff;">V</div>
+            <div class="grow"><div class="ttl">Vidya support</div><div class="meta">Anything billing or technical</div></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+
+        <div style="height: 32px;"></div>
+      </div>
+
+      <div class="v-tabbar">
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-6 9 6"/><path d="M5 9v11h14V9"/></svg>Home</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Reports</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan</button>
+        <button class="v-tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Tutor</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>Me</button>
+      </div>
+    </div></div>
+    <div class="label"><span class="num">04</span>TUTOR &amp; ALERTS</div>
+    <div class="caption">Pinned upcoming session, week of alerts (status-coloured), direct contacts.</div>
+  </div>
+
+  <!-- ═════════ 05 BILLING ═════════ -->
+  <div class="frame">
+    <div class="bezel" style="position:relative;"><div class="notch"></div>
+    <div class="scr">
+      <div class="sb"><span>10:18</span><div class="right">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="4" y="4" width="3" height="7" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="20" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="10" rx="3" ry="3"/><rect x="22" y="10" width="2" height="4"/></svg>
+      </div></div>
+
+      <div style="padding: 12px 16px 0;">
+        <button class="v-btn v-btn-ghost v-btn-sm" style="padding: 6px 10px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Me</button>
+        <div style="font-size: 22px; font-weight: 600; letter-spacing: -0.015em; margin-top: 8px;">Plan &amp; billing</div>
+      </div>
+
+      <div style="padding: 16px; height: calc(100% - 130px); overflow-y: auto;">
+        <div class="v-card" style="border-color: var(--color-brand-border); background: linear-gradient(180deg, var(--color-brand-bg-subtle), var(--color-bg-surface));">
+          <div class="v-flex-b">
+            <div>
+              <div style="font-size: 11px; color: var(--color-brand-text-strong); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500;">CURRENT PLAN</div>
+              <div style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-top: 4px;">Boards · annual</div>
+            </div>
+            <span class="v-chip v-chip-brand v-chip-sm">Active</span>
+          </div>
+          <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 10px;">All subjects · live tutor sessions · weekly mocks · parent reports.</div>
+          <hr class="v-hr"/>
+          <div class="v-flex-b">
+            <span style="font-size: 12px; color: var(--color-text-tertiary);">Renews · 15 Mar 2027</span>
+            <span class="mono" style="font-size: 14px; font-weight: 500;">₹14,999 / year</span>
+          </div>
+        </div>
+
+        <div class="v-mt-3">
+          <div class="v-sechd"><div class="ttl">Add-ons</div></div>
+          <div class="v-card-tight" style="padding: 4px 14px;">
+            <div class="v-row">
+              <div class="grow"><div class="ttl">Extra weekly mock</div><div class="meta">+1 mock test on Sundays</div></div>
+              <span class="mono" style="font-size: 13px; color: var(--color-text-tertiary); margin-right: 6px;">₹999/mo</span>
+              <button class="v-btn v-btn-ghost v-btn-sm">Add</button>
+            </div>
+            <div class="v-row" style="border: none;">
+              <div class="grow"><div class="ttl">1-on-1 mentor</div><div class="meta">2 calls/month with a senior tutor</div></div>
+              <span class="mono" style="font-size: 13px; color: var(--color-text-tertiary); margin-right: 6px;">₹1,499/mo</span>
+              <button class="v-btn v-btn-ghost v-btn-sm">Add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="v-mt-4">
+          <div class="v-sechd"><div class="ttl">Recent invoices</div><button class="v-btn-link">All →</button></div>
+          <div class="v-card-tight" style="padding: 4px 14px;">
+            <div class="v-row">
+              <div class="grow"><div class="ttl">15 Mar 2026 · Boards annual</div><div class="meta">UPI · GPay · paid</div></div>
+              <span class="mono" style="font-size: 13px;">₹14,999</span>
+            </div>
+            <div class="v-row" style="border: none;">
+              <div class="grow"><div class="ttl">15 Mar 2025 · Foundation annual</div><div class="meta">UPI · paid</div></div>
+              <span class="mono" style="font-size: 13px; color: var(--color-text-tertiary);">₹9,999</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="v-btn v-btn-ghost v-btn-block v-mt-4" style="color: var(--color-critical-text); border-color: var(--color-critical-border);">Cancel renewal</button>
+      </div>
+
+      <div class="v-tabbar">
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-6 9 6"/><path d="M5 9v11h14V9"/></svg>Home</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Reports</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Plan</button>
+        <button class="v-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Tutor</button>
+        <button class="v-tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>Me</button>
+      </div>
+    </div></div>
+    <div class="label"><span class="num">05</span>BILLING · PLAN</div>
+    <div class="caption">Current subscription, optional add-ons priced clearly, downloadable invoices.</div>
+  </div>
+
+  <!-- ═════════ 06 WEEKLY DIGEST (NOTIFICATION / WHATSAPP-style) ═════════ -->
+  <div class="frame">
+    <div class="bezel" style="position:relative;"><div class="notch"></div>
+    <div class="scr">
+      <div class="sb"><span>20:12</span><div class="right">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="1"/><rect x="4" y="4" width="3" height="7" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="20" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="18" height="10" rx="3" ry="3"/><rect x="22" y="10" width="2" height="4"/></svg>
+      </div></div>
+
+      <div style="padding: 16px;">
+        <div class="v-flex-c" style="gap: 6px; margin-bottom: 12px;">
+          <span style="font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500;">SUNDAY DIGEST · 8:00 PM</span>
+        </div>
+        <h1 style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0 0 10px;">Arjun's week,<br/>in one card.</h1>
+        <p style="font-size: 14px; color: var(--color-text-secondary); margin: 0;">Tap any line to open detail.</p>
+      </div>
+
+      <div style="padding: 0 16px 100px; height: calc(100% - 200px); overflow-y: auto;">
+        <div class="v-card">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); font-weight: 500;">MAY 5 — MAY 11</div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+            <div style="padding: 12px; background: var(--color-bg-subtle); border-radius: 10px;">
+              <div style="font-size: 11px; color: var(--color-text-tertiary);">Time studied</div>
+              <div class="v-metric v-metric-2xl v-mt-1">3h 42m</div>
+              <div style="font-size: 11px; color: var(--color-success-text); margin-top: 2px;">+18% wk</div>
+            </div>
+            <div style="padding: 12px; background: var(--color-bg-subtle); border-radius: 10px;">
+              <div style="font-size: 11px; color: var(--color-text-tertiary);">Predicted score</div>
+              <div class="v-metric v-metric-2xl v-score weak v-mt-1">61</div>
+              <div style="font-size: 11px; color: var(--color-success-text); margin-top: 2px;">+4 wk</div>
+            </div>
+            <div style="padding: 12px; background: var(--color-bg-subtle); border-radius: 10px;">
+              <div style="font-size: 11px; color: var(--color-text-tertiary);">Streak</div>
+              <div class="v-metric v-metric-2xl v-mt-1">12 <span style="font-size: 12px; color: var(--color-text-tertiary);">days</span></div>
+            </div>
+            <div style="padding: 12px; background: var(--color-bg-subtle); border-radius: 10px;">
+              <div style="font-size: 11px; color: var(--color-text-tertiary);">Doubts asked</div>
+              <div class="v-metric v-metric-2xl v-mt-1">14</div>
+            </div>
+          </div>
+
+          <hr class="v-hr"/>
+
+          <div style="font-size: 12px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 500; margin-bottom: 8px;">ONE WIN · ONE WORRY</div>
+          <div style="display: flex; gap: 10px; align-items: flex-start; padding: 8px 0;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: var(--color-success-bg); color: var(--color-success-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;"><b style="font-weight: 500;">Win · </b>Mock test 80% in Maths Practical Geometry, up from 68% last week.</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start; padding: 8px 0;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: var(--color-critical-bg); color: var(--color-critical-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>
+            </div>
+            <div style="font-size: 13px; line-height: 1.5;"><b style="font-weight: 500;">Worry · </b>Maths Algebra still 12% — same as last week. Plan adds 20 min/day from Monday.</div>
+          </div>
+        </div>
+
+        <button class="v-btn v-btn-primary v-btn-block v-mt-3">Open full report</button>
+      </div>
+    </div></div>
+    <div class="label"><span class="num">06</span>WEEKLY DIGEST</div>
+    <div class="caption">The whole week on one screen. Sent every Sunday 8 PM via app + WhatsApp.</div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vidya — Admin console</title>
+<link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/system.css" />
+<style>
+  body { background: #E9E6DC; padding: 56px 32px 96px; }
+  .pg-head { max-width: 1400px; margin: 0 auto 24px; }
+  .ds-back { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--color-text-tertiary); text-decoration: none; margin-bottom: 24px; }
+  .pg-head .eyebrow { font-size: var(--t-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-tertiary); font-weight: 500; }
+  .pg-head h1 { font-size: 44px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.0; margin: 12px 0 14px; }
+  .pg-head .lede { font-size: var(--t-lg); color: var(--color-text-secondary); max-width: 700px; line-height: 1.5; }
+
+  .scroll-x { display: flex; gap: 32px; overflow-x: auto; padding: 24px 0 56px; margin: 0 -32px 0; padding-left: 32px; padding-right: 32px; }
+  .frame { flex: 0 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .frame .label { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--color-text-tertiary); letter-spacing: 0.04em; text-transform: uppercase; }
+  .frame .num { color: var(--color-brand-text-strong); margin-right: 6px; }
+  .frame .caption { font-size: var(--t-base); color: var(--color-text-secondary); max-width: 1280px; line-height: 1.45; }
+
+  /* desktop frame */
+  .desktop {
+    width: 1280px; height: 800px;
+    background: #1a1918;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.25);
+    overflow: hidden;
+  }
+  .traffic { display: flex; gap: 6px; padding: 4px 8px 8px;}
+  .traffic span { width: 11px; height: 11px; border-radius: 999px; background: #4a4945; }
+  .traffic span:nth-child(1){ background: #ED6A5E; }
+  .traffic span:nth-child(2){ background: #F5BF4F; }
+  .traffic span:nth-child(3){ background: #61C554; }
+
+  .scr { width: 100%; height: 760px; background: var(--color-bg-page); border-radius: 6px; overflow: hidden; display: grid; grid-template-columns: 220px 1fr; }
+
+  /* sidebar */
+  .side { background: var(--color-bg-surface); border-right: 0.5px solid var(--color-border-subtle); padding: 20px 12px; display: flex; flex-direction: column; }
+  .side .brand { display: flex; align-items: center; gap: 8px; padding: 0 8px 16px; border-bottom: 0.5px solid var(--color-border-subtle); }
+  .side .brand .mk { width: 28px; height: 28px; background: var(--color-brand-bg); border-radius: 7px; color: #fff; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; letter-spacing: -0.03em; }
+  .side .brand .nm { font-size: 14px; font-weight: 500; }
+  .side .brand .role { font-size: 10px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
+  .side .grp { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); padding: 16px 8px 8px; font-weight: 500;}
+  .side a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; font-size: 13px; color: var(--color-text-secondary); text-decoration: none; border-radius: 8px; line-height: 1.2;}
+  .side a:hover { background: var(--color-bg-subtle); }
+  .side a.active { background: var(--color-brand-bg-subtle); color: var(--color-brand-text); font-weight: 500; }
+  .side a svg { flex-shrink: 0; }
+  .side a .badge { margin-left: auto; font-family: var(--font-mono); font-size: 10px; background: var(--color-bg-subtle); border: 0.5px solid var(--color-border-subtle); padding: 1px 6px; border-radius: 999px; color: var(--color-text-tertiary); }
+  .side .org { margin-top: auto; padding: 8px; border-top: 0.5px solid var(--color-border-subtle); display: flex; align-items: center; gap: 8px;}
+
+  /* main area */
+  .main { background: var(--color-bg-page); overflow: auto; }
+  .top { padding: 16px 28px; display: flex; align-items: center; gap: 14px; border-bottom: 0.5px solid var(--color-border-subtle); background: var(--color-bg-page); position: sticky; top: 0; z-index: 5; }
+  .top .crumbs { font-size: 12px; color: var(--color-text-tertiary); }
+  .top .crumbs b { color: var(--color-text-primary); font-weight: 500; }
+  .top .search { flex: 1; max-width: 360px; display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--color-bg-surface); border: 0.5px solid var(--color-border-default); border-radius: 8px; color: var(--color-text-tertiary); font-size: 12px; }
+
+  .body { padding: 28px; }
+  .body h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.015em; margin: 0;}
+  .body h2 { font-size: 14px; font-weight: 500; letter-spacing: 0.02em; margin: 0 0 12px; color: var(--color-text-secondary);}
+
+  /* KPI grid */
+  .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+  .kpi .cell { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px; padding: 18px; }
+  .kpi .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); font-weight: 500; }
+  .kpi .v { font-family: var(--font-mono); font-size: 32px; font-weight: 500; letter-spacing: -0.02em; margin-top: 6px; }
+  .kpi .delta { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; margin-top: 4px; font-weight: 500; }
+  .kpi .delta.up { color: var(--color-success-text); }
+  .kpi .delta.dn { color: var(--color-critical-text); }
+  .kpi .meta { font-size: 11px; color: var(--color-text-tertiary); margin-top: 8px; }
+
+  /* table */
+  table.adm { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.adm th { text-align: left; font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); padding: 10px 12px; border-bottom: 0.5px solid var(--color-border-default); background: var(--color-bg-subtle);}
+  table.adm td { padding: 12px; border-bottom: 0.5px solid var(--color-border-subtle); vertical-align: middle; }
+  table.adm tr:hover td { background: var(--color-bg-subtle); }
+  table.adm .student { display: flex; align-items: center; gap: 10px; }
+  table.adm .student .nm { font-weight: 500; font-size: 13px; }
+  table.adm .student .meta { font-size: 11px; color: var(--color-text-tertiary); }
+
+  .mini-bar { width: 80px; height: 6px; background: var(--color-bg-subtle); border-radius: 3px; overflow: hidden; }
+  .mini-bar .fill { height: 100%; border-radius: 3px; }
+
+  /* analytics chart */
+  .chart-card { background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px; padding: 20px; }
+  .legend { display: flex; gap: 18px; font-size: 12px; color: var(--color-text-secondary); }
+  .legend-dot { display: inline-flex; gap: 6px; align-items: center; }
+  .legend-dot span { width: 8px; height: 8px; border-radius: 999px; }
+
+</style>
+</head>
+<body>
+
+<div class="pg-head">
+  <a class="ds-back" href="index.html">← Vidya hub</a>
+  <div class="eyebrow">Admin · Desktop (1280 × 800)</div>
+  <h1>The admin console.</h1>
+  <p class="lede">For ops, content, and academic staff. Three screens covering the operational truth: who's actively learning, content health, and outcome analytics. Dense by design — admins want answers fast.</p>
+</div>
+
+<div class="scroll-x">
+
+  <!-- ═════════ 01 OVERVIEW ═════════ -->
+  <div class="frame">
+    <div class="desktop">
+      <div class="traffic"><span></span><span></span><span></span></div>
+      <div class="scr">
+        <div class="side">
+          <div class="brand"><div class="mk">V</div><div><div class="nm">Vidya admin</div><div class="role">CASCADE EDU · BENGALURU</div></div></div>
+          <div class="grp">OPERATIONS</div>
+          <a href="#" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Overview</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Students<span class="badge">1,284</span></a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg>Plans &amp; billing</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>Tutor escalations<span class="badge" style="background: var(--color-critical-bg); color: var(--color-critical-text); border-color: var(--color-critical-border);">7</span></a>
+          <div class="grp">ACADEMIC</div>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>Content</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Assessments</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Analytics</a>
+          <div class="grp">SETTINGS</div>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82M4.6 9a1.65 1.65 0 00-.33-1.82"/></svg>Settings</a>
+          <div class="org">
+            <div class="v-avatar v-avatar-sm" style="width: 28px; height: 28px;">RM</div>
+            <div style="flex: 1; min-width: 0;"><div style="font-size: 12px; font-weight: 500;">Ravi Menon</div><div style="font-size: 10px; color: var(--color-text-tertiary);">Academic head</div></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="top">
+            <div class="crumbs">Cascade Edu · <b>Overview</b></div>
+            <div class="search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search students, content, sessions…<span class="mono" style="margin-left: auto; font-size: 10px; color: var(--color-text-tertiary);">⌘K</span></div>
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+              <button class="v-btn v-btn-ghost v-btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Last 30 days</button>
+              <button class="v-btn v-btn-primary v-btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</button>
+            </div>
+          </div>
+
+          <div class="body">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <div>
+                <h1>Tuesday, 7 May 2026</h1>
+                <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">1,284 active students · 47 tutors · last sync 2 min ago</div>
+              </div>
+              <div class="v-flex-c" style="gap: 6px;">
+                <span class="v-chip v-chip-success v-chip-sm">All systems normal</span>
+              </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi">
+              <div class="cell">
+                <div class="lbl">DAILY ACTIVE STUDENTS</div>
+                <div class="v">1,047</div>
+                <div class="delta up">▲ 4.2% wk</div>
+                <div class="meta">81% of 1,284 enrolled</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">AVG SESSION TIME</div>
+                <div class="v">38<span style="font-size: 16px; color: var(--color-text-tertiary);">min</span></div>
+                <div class="delta up">▲ 12% wk</div>
+                <div class="meta">Target: 45 min</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">BOARD READINESS · CL 10</div>
+                <div class="v">58<span style="font-size: 16px; color: var(--color-text-tertiary);">%</span></div>
+                <div class="delta up">▲ 3 pt mo</div>
+                <div class="meta">324 students · 28d to exam</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">CHURN · 30-DAY</div>
+                <div class="v" style="color: var(--color-critical-text);">2.1<span style="font-size: 16px;">%</span></div>
+                <div class="delta dn">▼ 0.4 pt mo</div>
+                <div class="meta">27 students lapsed</div>
+              </div>
+            </div>
+
+            <!-- Two-col content -->
+            <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-top: 24px;">
+
+              <div class="chart-card">
+                <div class="v-flex-b" style="margin-bottom: 16px;">
+                  <div>
+                    <h2 style="margin: 0;">Daily active by class</h2>
+                    <div style="font-size: 11px; color: var(--color-text-tertiary);">Last 14 days</div>
+                  </div>
+                  <div class="legend">
+                    <div class="legend-dot"><span style="background: var(--color-brand-bg);"></span>Class 10</div>
+                    <div class="legend-dot"><span style="background: var(--subject-physics);"></span>Class 9</div>
+                    <div class="legend-dot"><span style="background: var(--subject-chemistry);"></span>Class 8</div>
+                  </div>
+                </div>
+
+                <!-- bars -->
+                <div style="display: grid; grid-template-columns: repeat(14, 1fr); gap: 8px; height: 180px; align-items: end;">
+                  <div style="display:flex; flex-direction: column; gap: 2px;">
+                    <div style="background: var(--color-brand-bg); height: 60%; border-radius: 2px 2px 0 0;"></div>
+                    <div style="background: var(--subject-physics); height: 30%;"></div>
+                    <div style="background: var(--subject-chemistry); height: 18%; border-radius: 0 0 2px 2px;"></div>
+                  </div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 64%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 32%;"></div><div style="background: var(--subject-chemistry); height: 20%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 70%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 35%;"></div><div style="background: var(--subject-chemistry); height: 22%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 68%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 36%;"></div><div style="background: var(--subject-chemistry); height: 22%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 72%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 38%;"></div><div style="background: var(--subject-chemistry); height: 25%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 35%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 18%;"></div><div style="background: var(--subject-chemistry); height: 10%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 30%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 16%;"></div><div style="background: var(--subject-chemistry); height: 8%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 78%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 40%;"></div><div style="background: var(--subject-chemistry); height: 28%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 80%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 42%;"></div><div style="background: var(--subject-chemistry); height: 30%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 84%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 44%;"></div><div style="background: var(--subject-chemistry); height: 32%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 88%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 46%;"></div><div style="background: var(--subject-chemistry); height: 34%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 85%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 48%;"></div><div style="background: var(--subject-chemistry); height: 36%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 40%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 22%;"></div><div style="background: var(--subject-chemistry); height: 12%; border-radius: 0 0 2px 2px;"></div></div>
+                  <div style="display:flex; flex-direction: column; gap: 2px;"><div style="background: var(--color-brand-bg); height: 92%; border-radius: 2px 2px 0 0;"></div><div style="background: var(--subject-physics); height: 50%;"></div><div style="background: var(--subject-chemistry); height: 38%; border-radius: 0 0 2px 2px;"></div></div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(14, 1fr); gap: 8px; margin-top: 6px;">
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">23</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">24</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">25</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">26</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">27</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">28</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">29</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">30</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">1</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">2</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">3</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">4</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">5</div>
+                  <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-brand-text-strong); text-align: center; font-weight: 500;">7</div>
+                </div>
+              </div>
+
+              <div class="chart-card">
+                <h2>Needs attention</h2>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: var(--color-critical-bg); border: 0.5px solid var(--color-critical-border); border-radius: 8px;">
+                    <span style="width: 6px; height: 6px; border-radius: 999px; background: var(--color-critical-fill); margin-top: 6px; flex-shrink: 0;"></span>
+                    <div style="font-size: 12px; line-height: 1.5; color: var(--color-critical-text);"><b style="font-weight: 500;">7 escalations</b> from tutor chat unresolved &gt; 24h. <a href="#" style="color: inherit; text-decoration: underline;">Triage</a></div>
+                  </div>
+                  <div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: var(--color-weak-bg); border: 0.5px solid var(--color-weak-border); border-radius: 8px;">
+                    <span style="width: 6px; height: 6px; border-radius: 999px; background: var(--color-weak-fill); margin-top: 6px; flex-shrink: 0;"></span>
+                    <div style="font-size: 12px; line-height: 1.5; color: var(--color-weak-text);"><b style="font-weight: 500;">22 students</b> haven't logged in for 7 days. Auto-nudge ready. <a href="#" style="color: inherit; text-decoration: underline;">Send</a></div>
+                  </div>
+                  <div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: var(--color-weak-bg); border: 0.5px solid var(--color-weak-border); border-radius: 8px;">
+                    <span style="width: 6px; height: 6px; border-radius: 999px; background: var(--color-weak-fill); margin-top: 6px; flex-shrink: 0;"></span>
+                    <div style="font-size: 12px; line-height: 1.5; color: var(--color-weak-text);"><b style="font-weight: 500;">3 chapters</b> in Class 10 Maths flagged as confusing — &gt;40% wrong on first try. <a href="#" style="color: inherit; text-decoration: underline;">Review</a></div>
+                  </div>
+                  <div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; background: var(--color-bg-subtle); border: 0.5px solid var(--color-border-subtle); border-radius: 8px;">
+                    <span style="width: 6px; height: 6px; border-radius: 999px; background: var(--color-text-tertiary); margin-top: 6px; flex-shrink: 0;"></span>
+                    <div style="font-size: 12px; line-height: 1.5; color: var(--color-text-secondary);">Renewal window opens in <b class="mono" style="color: var(--color-text-primary); font-weight: 500;">38 days</b> · 286 students up</div>
+                  </div>
+                </div>
+
+                <h2 style="margin-top: 24px;">Top tutors · this week</h2>
+                <div style="display: flex; flex-direction: column;">
+                  <div class="v-row" style="padding: 10px 0; border-bottom: 0.5px solid var(--color-border-subtle);">
+                    <div class="v-avatar v-avatar-sm" style="background: var(--subject-mathematics-bg); color: var(--subject-mathematics-tx);">RI</div>
+                    <div class="grow"><div class="ttl">Mrs. Iyer</div><div class="meta">Maths · 84 sessions · 4.9 ★</div></div>
+                    <div class="mono" style="font-size: 13px; color: var(--color-success-text);">+12%</div>
+                  </div>
+                  <div class="v-row" style="padding: 10px 0; border-bottom: 0.5px solid var(--color-border-subtle);">
+                    <div class="v-avatar v-avatar-sm" style="background: var(--subject-physics-bg); color: var(--subject-physics-tx);">VK</div>
+                    <div class="grow"><div class="ttl">Mr. Kumar</div><div class="meta">Physics · 68 sessions · 4.8 ★</div></div>
+                    <div class="mono" style="font-size: 13px; color: var(--color-success-text);">+8%</div>
+                  </div>
+                  <div class="v-row" style="padding: 10px 0;">
+                    <div class="v-avatar v-avatar-sm" style="background: var(--subject-chemistry-bg); color: var(--subject-chemistry-tx);">SD</div>
+                    <div class="grow"><div class="ttl">Ms. Desai</div><div class="meta">Chemistry · 52 sessions · 4.7 ★</div></div>
+                    <div class="mono" style="font-size: 13px; color: var(--color-text-tertiary);">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="label"><span class="num">01</span>OVERVIEW · OPERATIONAL TRUTH</div>
+    <div class="caption">Daily landing for staff. Four KPIs, 14-day stack, action queue, top tutors. Everything else is one click away.</div>
+  </div>
+
+  <!-- ═════════ 02 STUDENTS TABLE ═════════ -->
+  <div class="frame">
+    <div class="desktop">
+      <div class="traffic"><span></span><span></span><span></span></div>
+      <div class="scr">
+        <div class="side">
+          <div class="brand"><div class="mk">V</div><div><div class="nm">Vidya admin</div><div class="role">CASCADE EDU · BENGALURU</div></div></div>
+          <div class="grp">OPERATIONS</div>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Overview</a>
+          <a href="#" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Students<span class="badge">1,284</span></a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg>Plans &amp; billing</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>Tutor escalations<span class="badge" style="background: var(--color-critical-bg); color: var(--color-critical-text); border-color: var(--color-critical-border);">7</span></a>
+          <div class="grp">ACADEMIC</div>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M22 10L12 5 2 10l10 5 10-5z"/></svg>Content</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Assessments</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Analytics</a>
+          <div class="org">
+            <div class="v-avatar v-avatar-sm" style="width: 28px; height: 28px;">RM</div>
+            <div style="flex: 1; min-width: 0;"><div style="font-size: 12px; font-weight: 500;">Ravi Menon</div><div style="font-size: 10px; color: var(--color-text-tertiary);">Academic head</div></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="top">
+            <div class="crumbs">Cascade Edu · Operations · <b>Students</b></div>
+            <div class="search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search by name, phone, school…</div>
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+              <button class="v-btn v-btn-ghost v-btn-sm">Filter</button>
+              <button class="v-btn v-btn-primary v-btn-sm">+ Invite student</button>
+            </div>
+          </div>
+
+          <div class="body" style="padding: 24px 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <div>
+                <h1 style="font-size: 24px;">Students</h1>
+                <div style="font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px;">1,284 enrolled · 1,047 active this week</div>
+              </div>
+              <div class="v-flex-c" style="gap: 4px; padding: 3px; background: var(--color-bg-subtle); border-radius: 9px;">
+                <button class="v-btn v-btn-ghost v-btn-sm" style="background: var(--color-bg-surface); border-color: var(--color-border-default);">All · 1,284</button>
+                <button class="v-btn v-btn-ghost v-btn-sm" style="border:none; color: var(--color-text-tertiary);">At risk · 47</button>
+                <button class="v-btn v-btn-ghost v-btn-sm" style="border:none; color: var(--color-text-tertiary);">Lapsed · 22</button>
+                <button class="v-btn v-btn-ghost v-btn-sm" style="border:none; color: var(--color-text-tertiary);">Boards 26 · 324</button>
+              </div>
+            </div>
+
+            <div style="margin-top: 20px; background: var(--color-bg-surface); border: 0.5px solid var(--color-border-subtle); border-radius: 12px; overflow: hidden;">
+              <table class="adm">
+                <thead>
+                  <tr>
+                    <th style="width: 26px;"><input type="checkbox"/></th>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Plan</th>
+                    <th>Readiness</th>
+                    <th>Streak</th>
+                    <th>Last active</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm">AS</div><div><div class="nm">Arjun Sharma</div><div class="meta">+91 98765 43210</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">10 ICSE</span></td>
+                    <td>Boards · annual</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-weak" style="width: 36%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-weak-text);">36%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">12d</span></td>
+                    <td style="color: var(--color-text-secondary);">2h ago</td>
+                    <td><span class="v-chip v-chip-success v-chip-sm">Active</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm" style="background: var(--subject-physics-bg); color: var(--subject-physics-tx);">PR</div><div><div class="nm">Priya Rao</div><div class="meta">+91 98765 11122</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">8 CBSE</span></td>
+                    <td>Foundation</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-success" style="width: 78%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-success-text);">78%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">8d</span></td>
+                    <td style="color: var(--color-text-secondary);">Yesterday</td>
+                    <td><span class="v-chip v-chip-success v-chip-sm">Active</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm" style="background: var(--subject-chemistry-bg); color: var(--subject-chemistry-tx);">RK</div><div><div class="nm">Rohan Krishnan</div><div class="meta">+91 99887 76655</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">10 CBSE</span></td>
+                    <td>Boards · annual</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-critical" style="width: 18%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-critical-text);">18%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">0d</span></td>
+                    <td style="color: var(--color-critical-text);">9 days ago</td>
+                    <td><span class="v-chip v-chip-critical v-chip-sm">At risk</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm" style="background: var(--subject-biology-bg); color: var(--subject-biology-tx);">MN</div><div><div class="nm">Meera Nair</div><div class="meta">+91 88990 12345</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">12 CBSE</span></td>
+                    <td>Boards + mentor</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-success" style="width: 84%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-success-text);">84%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">28d</span></td>
+                    <td style="color: var(--color-text-secondary);">42 min ago</td>
+                    <td><span class="v-chip v-chip-success v-chip-sm">Active</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm" style="background: var(--subject-english-bg); color: var(--subject-english-tx);">KS</div><div><div class="nm">Kavya Subramaniam</div><div class="meta">+91 91234 56789</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">9 ICSE</span></td>
+                    <td>Foundation</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-weak" style="width: 52%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-weak-text);">52%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">4d</span></td>
+                    <td style="color: var(--color-text-secondary);">Today</td>
+                    <td><span class="v-chip v-chip-success v-chip-sm">Active</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm">VG</div><div><div class="nm">Vihaan Gupta</div><div class="meta">+91 90011 22334</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">11 CBSE</span></td>
+                    <td>JEE Foundation</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-weak" style="width: 44%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-weak-text);">44%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">15d</span></td>
+                    <td style="color: var(--color-text-secondary);">3h ago</td>
+                    <td><span class="v-chip v-chip-success v-chip-sm">Active</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm" style="background: var(--subject-social-bg); color: var(--subject-social-tx);">AP</div><div><div class="nm">Aanya Pillai</div><div class="meta">+91 70011 22233</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">7 CBSE</span></td>
+                    <td>Foundation</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-success" style="width: 68%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-success-text);">68%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">22d</span></td>
+                    <td style="color: var(--color-text-secondary);">1h ago</td>
+                    <td><span class="v-chip v-chip-success v-chip-sm">Active</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox"/></td>
+                    <td><div class="student"><div class="v-avatar v-avatar-sm">DJ</div><div><div class="nm">Dev Joshi</div><div class="meta">+91 99776 11111</div></div></div></td>
+                    <td><span class="mono" style="font-size: 12px;">10 ICSE</span></td>
+                    <td>Boards · annual</td>
+                    <td><div class="v-flex-c" style="gap: 8px;"><div class="mini-bar"><div class="fill fill-critical" style="width: 24%"></div></div><span class="mono" style="font-size: 11px; color: var(--color-critical-text);">24%</span></div></td>
+                    <td><span class="mono" style="font-size: 12px;">2d</span></td>
+                    <td style="color: var(--color-weak-text);">3 days ago</td>
+                    <td><span class="v-chip v-chip-critical v-chip-sm">At risk</span></td>
+                    <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color: var(--color-text-tertiary)"><polyline points="9 18 15 12 9 6"/></svg></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--color-bg-subtle); border-top: 0.5px solid var(--color-border-subtle); font-size: 11px; color: var(--color-text-tertiary);">
+                <span>Showing 1–8 of 1,284</span>
+                <div class="v-flex-c" style="gap: 4px;">
+                  <button class="v-btn v-btn-ghost v-btn-sm" style="padding: 4px 8px;">Prev</button>
+                  <span class="mono" style="padding: 0 8px;">1 / 161</span>
+                  <button class="v-btn v-btn-ghost v-btn-sm" style="padding: 4px 8px;">Next</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="label"><span class="num">02</span>STUDENTS · ROSTER</div>
+    <div class="caption">Filterable, sortable. Readiness bars colour-coded. Inline status chips. Bulk actions via checkboxes.</div>
+  </div>
+
+  <!-- ═════════ 03 ANALYTICS ═════════ -->
+  <div class="frame">
+    <div class="desktop">
+      <div class="traffic"><span></span><span></span><span></span></div>
+      <div class="scr">
+        <div class="side">
+          <div class="brand"><div class="mk">V</div><div><div class="nm">Vidya admin</div><div class="role">CASCADE EDU · BENGALURU</div></div></div>
+          <div class="grp">OPERATIONS</div>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Overview</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="9" cy="7" r="4"/><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/></svg>Students<span class="badge">1,284</span></a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 12h6m-6 4h6"/></svg>Plans &amp; billing</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7"/></svg>Tutor escalations<span class="badge" style="background: var(--color-critical-bg); color: var(--color-critical-text); border-color: var(--color-critical-border);">7</span></a>
+          <div class="grp">ACADEMIC</div>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M22 10L12 5 2 10l10 5 10-5z"/></svg>Content</a>
+          <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 11l3 3L22 4"/></svg>Assessments</a>
+          <a href="#" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>Analytics</a>
+          <div class="org">
+            <div class="v-avatar v-avatar-sm" style="width: 28px; height: 28px;">RM</div>
+            <div style="flex: 1; min-width: 0;"><div style="font-size: 12px; font-weight: 500;">Ravi Menon</div><div style="font-size: 10px; color: var(--color-text-tertiary);">Academic head</div></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="top">
+            <div class="crumbs">Cascade Edu · Academic · <b>Outcomes</b></div>
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+              <button class="v-btn v-btn-ghost v-btn-sm">Class 10 ICSE ▾</button>
+              <button class="v-btn v-btn-ghost v-btn-sm">Last 90 days ▾</button>
+              <button class="v-btn v-btn-primary v-btn-sm">Share</button>
+            </div>
+          </div>
+
+          <div class="body">
+            <h1 style="font-size: 24px;">Outcomes — board readiness</h1>
+            <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 4px;">324 students · ICSE · Class 10 · projection model v3.2 (last refit 12 Apr)</div>
+
+            <!-- Distribution -->
+            <div class="chart-card" style="margin-top: 20px;">
+              <div class="v-flex-b" style="margin-bottom: 16px;">
+                <div>
+                  <h2 style="margin: 0;">Predicted board score · distribution</h2>
+                  <div style="font-size: 11px; color: var(--color-text-tertiary);">Histogram, 5-point buckets</div>
+                </div>
+                <div class="legend">
+                  <div class="legend-dot"><span style="background: var(--color-critical-fill);"></span>&lt; 50</div>
+                  <div class="legend-dot"><span style="background: var(--color-weak-fill);"></span>50–69</div>
+                  <div class="legend-dot"><span style="background: var(--color-success-fill);"></span>≥ 70</div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; height: 140px; align-items: end;">
+                <div style="background: var(--color-critical-fill); height: 8%; border-radius: 2px 2px 0 0; opacity: 0.7;"></div>
+                <div style="background: var(--color-critical-fill); height: 12%; border-radius: 2px 2px 0 0; opacity: 0.7;"></div>
+                <div style="background: var(--color-critical-fill); height: 18%; border-radius: 2px 2px 0 0; opacity: 0.8;"></div>
+                <div style="background: var(--color-critical-fill); height: 28%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-critical-fill); height: 38%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-critical-fill); height: 48%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-weak-fill); height: 62%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-weak-fill); height: 78%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-weak-fill); height: 92%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-weak-fill); height: 100%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-weak-fill); height: 96%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-weak-fill); height: 84%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-weak-fill); height: 70%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-success-fill); height: 60%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-success-fill); height: 52%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-success-fill); height: 42%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-success-fill); height: 32%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-success-fill); height: 22%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-success-fill); height: 12%; border-radius: 2px 2px 0 0;"></div>
+                <div style="background: var(--color-success-fill); height: 6%; border-radius: 2px 2px 0 0; opacity: 0.7;"></div>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; margin-top: 8px;">
+                <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">5</div><div></div><div></div><div></div>
+                <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">25</div><div></div><div></div><div></div>
+                <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">45</div><div></div><div></div><div></div>
+                <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">65</div><div></div><div></div><div></div>
+                <div style="font-family: var(--font-mono); font-size: 9px; color: var(--color-text-tertiary); text-align: center;">85</div><div></div><div></div><div></div>
+              </div>
+            </div>
+
+            <!-- Three column metrics -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
+              <div class="chart-card" style="padding: 16px;">
+                <h2 style="margin: 0; font-size: 12px;">Median score · trend</h2>
+                <div class="v-flex-b" style="align-items: baseline; margin-top: 6px;">
+                  <span class="v-metric v-metric-2xl mono">61</span>
+                  <span class="v-chip v-chip-success v-chip-sm">+7 mo</span>
+                </div>
+                <svg viewBox="0 0 200 60" style="margin-top: 14px; width: 100%; height: 60px;">
+                  <polyline points="0,40 25,38 50,36 75,32 100,28 125,24 150,20 175,18 200,15" fill="none" stroke="var(--color-brand-bg)" stroke-width="1.5"/>
+                  <circle cx="200" cy="15" r="3" fill="var(--color-brand-bg)"/>
+                </svg>
+              </div>
+              <div class="chart-card" style="padding: 16px;">
+                <h2 style="margin: 0; font-size: 12px;">Pass rate · projected</h2>
+                <div class="v-flex-b" style="align-items: baseline; margin-top: 6px;">
+                  <span class="v-metric v-metric-2xl mono">94<span style="font-size: 13px; color: var(--color-text-tertiary)">%</span></span>
+                  <span class="v-chip v-chip-success v-chip-sm">+2 pt mo</span>
+                </div>
+                <div style="display: flex; gap: 1px; margin-top: 18px; height: 12px; border-radius: 6px; overflow: hidden;">
+                  <div style="flex: 94; background: var(--color-success-fill);"></div>
+                  <div style="flex: 6; background: var(--color-critical-fill);"></div>
+                </div>
+                <div class="v-flex-b" style="margin-top: 6px; font-size: 11px; color: var(--color-text-tertiary);"><span>305 pass</span><span>19 at risk</span></div>
+              </div>
+              <div class="chart-card" style="padding: 16px;">
+                <h2 style="margin: 0; font-size: 12px;">Engagement · cohort</h2>
+                <div class="v-flex-b" style="align-items: baseline; margin-top: 6px;">
+                  <span class="v-metric v-metric-2xl mono">81<span style="font-size: 13px; color: var(--color-text-tertiary)">%</span></span>
+                  <span class="v-chip v-chip-weak v-chip-sm">−1 pt mo</span>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--color-text-tertiary); line-height: 1.5;">
+                  WAU/MAU · 263 of 324 students opened the app in last 7 days.
+                </div>
+              </div>
+            </div>
+
+            <!-- Subject heatmap -->
+            <div class="chart-card" style="margin-top: 16px;">
+              <h2>Chapter readiness · heatmap</h2>
+              <div style="display: grid; grid-template-columns: 100px repeat(8, 1fr); gap: 4px; font-size: 11px;">
+                <div></div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 1</div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 2</div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 3</div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 4</div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 5</div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 6</div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 7</div>
+                <div style="text-align: center; font-family: var(--font-mono); color: var(--color-text-tertiary); font-size: 10px;">Ch 8</div>
+
+                <div class="v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-mathematics"></span>Maths</div>
+                <div style="height: 28px; background: oklch(0.55 0.16 25 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.62 0.14 35 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.16 25 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.7 0.13 70 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.7 0.13 70 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.65 0.14 105 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.62 0.16 130 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+
+                <div class="v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-physics"></span>Physics</div>
+                <div style="height: 28px; background: oklch(0.7 0.13 70 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.65 0.14 105 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.62 0.16 130 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.7 0.13 70 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.62 0.16 130 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+
+                <div class="v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-chemistry"></span>Chem</div>
+                <div style="height: 28px; background: oklch(0.7 0.13 70 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.65 0.14 105 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.16 25 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.62 0.14 35 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.65 0.14 105 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.62 0.16 130 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+
+                <div class="v-flex-c" style="gap: 6px;"><span class="v-dot v-dot-biology"></span>Biology</div>
+                <div style="height: 28px; background: oklch(0.62 0.16 130 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.62 0.16 130 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.65 0.14 105 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+                <div style="height: 28px; background: oklch(0.55 0.18 140 / 0.85); border-radius: 3px;"></div>
+              </div>
+
+              <div class="v-flex-c" style="gap: 14px; margin-top: 16px; font-size: 11px; color: var(--color-text-tertiary);">
+                <span>Cohort avg readiness · </span>
+                <div class="v-flex-c" style="gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 3px; background: oklch(0.55 0.16 25 / 0.85);"></span>&lt; 30%</div>
+                <div class="v-flex-c" style="gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 3px; background: oklch(0.7 0.13 70 / 0.85);"></span>30–60%</div>
+                <div class="v-flex-c" style="gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 3px; background: oklch(0.55 0.18 140 / 0.85);"></span>≥ 60%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="label"><span class="num">03</span>ANALYTICS · OUTCOMES</div>
+    <div class="caption">Predicted score distribution + chapter heatmap. Where to invest tutor time, where the curriculum is failing students.</div>
+  </div>
+
+</div>
+
+</body>
+</html>
