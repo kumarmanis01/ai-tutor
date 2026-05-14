@@ -8,6 +8,7 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
+import { paymentRetryReminderHtml, graceStartedHtml, subscriptionExpiredHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { getRedis } from '@/lib/redis'
 import { createRazorpayTokenCharge } from '@/lib/payments'
@@ -178,7 +179,7 @@ export async function processPaymentDunning(): Promise<void> {
         // fallback: send reminder and bump attempts
         const subject = `Payment retry reminder -- Spinzy subscription`
         const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
-        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We attempted to renew your Spinzy subscription again but couldn't complete the payment. Please retry here: <a href="${retryLink}">Update payment & retry</a></p><p>If you need help, contact support at ${process.env.SUPPORT_EMAIL ?? 'support@spinzyacademy.com'}.</p>`
+        const html = paymentRetryReminderHtml({ name: parent.name ?? undefined, retryUrl: retryLink })
 
         await sendMailSafe({ to: parent.email ?? '', subject, html })
         if (parent.phone) await sendSms(parent.phone, `Subscription retry: please update payment at ${retryLink}`)
@@ -199,7 +200,8 @@ export async function processPaymentDunning(): Promise<void> {
         const parent = await prisma.user.findUnique({ where: { id: s.userId }, select: { id: true, email: true, phone: true, name: true } })
         if (!parent) continue
         const subject = `Payment failed -- grace period started`
-        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've been unable to charge your Spinzy subscription after multiple attempts. We've started a 3-day grace period until ${graceUntil.toLocaleString('en-IN')}. Your children will keep access during this time. Please update payment to avoid service interruption: <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing">Update payment</a>.</p>`
+        const billingUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+        const html = graceStartedHtml({ name: parent.name ?? undefined, untilLabel: graceUntil.toLocaleString('en-IN'), billingUrl })
         await sendMailSafe({ to: parent.email ?? '', subject, html })
         if (parent.phone) await sendSms(parent.phone, `Spinzy: grace period started until ${graceUntil.toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
       } catch (err) {
@@ -247,7 +249,8 @@ export async function processPaymentDunning(): Promise<void> {
         const parent = await prisma.user.findUnique({ where: { id: s.userId }, select: { email: true, phone: true, name: true } })
         if (parent?.email) {
           const subject = `Subscription expired -- action required`
-          const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>Your Spinzy subscription has expired because payment could not be completed. You can renew here: <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing">Renew subscription</a>.</p>`
+          const renewUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+          const html = subscriptionExpiredHtml({ name: parent.name ?? undefined, renewUrl })
           await sendMailSafe({ to: parent.email, subject, html })
         }
       } catch (err) {

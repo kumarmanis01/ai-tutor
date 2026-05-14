@@ -21,6 +21,7 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { sendMailSafe } from '@/lib/mailer';
+import { parentPaymentFailedHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
 import Razorpay from 'razorpay';
@@ -311,7 +312,7 @@ export async function POST(req: Request) {
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
         const subject = `Payment failed -- action required`;
-        const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We couldn't complete your recent payment. Please update your payment method and retry here: <a href="${retryLink}">Update payment</a>. If you need help, contact ${process.env.SUPPORT_EMAIL ?? RAZORPAY_WEBHOOK_SUPPORT_EMAIL}.</p>`;
+        const html = parentPaymentFailedHtml({ name: parent.name ?? undefined, retryUrl: retryLink, supportEmail: process.env.SUPPORT_EMAIL ?? RAZORPAY_WEBHOOK_SUPPORT_EMAIL });
         await sendMailSafe({ to: parent.email, subject, html });
       }
       if (parent?.phone) {

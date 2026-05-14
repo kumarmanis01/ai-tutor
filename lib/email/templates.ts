@@ -512,6 +512,77 @@ export function adminBroadcastEmailHtml(data: {
   `;
 }
 
+// -----------------------------------------------------------------------------
+// Additional templates added to cover ad-hoc cases discovered in the audit.
+// These are intentionally simple and reuse the shared primitives (LOGO, BTN, FOOTER).
+// -----------------------------------------------------------------------------
+
+export function referralVoidedHtml(data: { name?: string; code: string }): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Referral attempt voided</h2>
+      <p>Hi ${data.name ?? 'there'},</p>
+      <p>Your referral attempt using code <strong>${data.code}</strong> was marked void due to suspected abuse (same device or network). No reward will be issued for this referral.</p>
+      <p>If you believe this is a mistake, reply to this email or contact support for help.</p>
+      ${FOOTER}
+    </div>
+  `;
+}
+
+export function parentPaymentFailedHtml(data: { name?: string; retryUrl: string; supportEmail?: string }): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#E24B4A;">Payment couldn't be completed</h2>
+      <p>Hi ${data.name ?? 'Parent'},</p>
+      <p>We attempted to process your recent payment but it failed. Please update your payment method and retry using the button below.</p>
+      <a href="${data.retryUrl}" style="${BTN}">Update payment & retry</a>
+      <p style="color:#888;font-size:13px;margin-top:12px;">If you need help, contact ${data.supportEmail ?? 'support@spinzyacademy.com'}.</p>
+      ${FOOTER}
+    </div>
+  `;
+}
+
+export function paymentRetryReminderHtml(data: { name?: string; retryUrl: string }): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#BA7517;">Payment retry reminder</h2>
+      <p>Hi ${data.name ?? 'Parent'},</p>
+      <p>We attempted to renew your Spinzy subscription but couldn't complete the payment. Please update your payment method and retry to avoid interruption.</p>
+      <a href="${data.retryUrl}" style="${BTN}">Update payment</a>
+      ${FOOTER}
+    </div>
+  `;
+}
+
+export function graceStartedHtml(data: { name?: string; untilLabel: string; billingUrl: string }): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#BA7517;">Grace period started</h2>
+      <p>Hi ${data.name ?? 'Parent'},</p>
+      <p>We've started a 3-day grace period until <strong>${data.untilLabel}</strong>. Your children will keep access during this window. Please update payment to avoid service interruption.</p>
+      <a href="${data.billingUrl}" style="${BTN}">Update payment</a>
+      ${FOOTER}
+    </div>
+  `;
+}
+
+export function subscriptionExpiredHtml(data: { name?: string; renewUrl: string }): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#E24B4A;">Subscription expired</h2>
+      <p>Hi ${data.name ?? 'Parent'},</p>
+      <p>Your Spinzy subscription has expired because payment could not be completed. You can renew using the button below.</p>
+      <a href="${data.renewUrl}" style="${BTN}">Renew subscription</a>
+      ${FOOTER}
+    </div>
+  `;
+}
+
 /**
  * Trial ending reminder to student/parent.
  */

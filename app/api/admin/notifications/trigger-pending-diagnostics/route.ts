@@ -3,6 +3,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { sendPushSafe } from '@/lib/push/send'
 import { sendMailSafe } from '@/lib/mailer'
+import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
 
 /**
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     for (const t of targets) {
       try {
         void sendPushSafe(t.id, { title, body })
-        if (t.email) void sendMailSafe({ to: t.email, subject: title, html: `<p>${body}</p>` })
+        if (t.email) void sendMailSafe({ to: t.email, subject: title, html: adminBroadcastEmailHtml({ title, body, ctaUrl: 'https://spinzyacademy.com/diagnostic' }) })
       } catch (e) {
         logger.warn('[notifications/trigger-pending-diagnostics] send failed for user', { userId: t.id, error: String(e) })
       }
