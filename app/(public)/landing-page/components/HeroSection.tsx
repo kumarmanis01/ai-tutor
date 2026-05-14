@@ -156,6 +156,7 @@ const HeroSection = () => {
                   src="/images/landing_page_bg.jpg"
                   alt="Student learning at desk"
                   className="w-full h-auto"
+                  loading="eager"
                 />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-secondary/25 via-transparent to-transparent" />

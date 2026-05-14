@@ -57,6 +57,8 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ queued: number } | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [overrideBusy, setOverrideBusy] = useState(false)
+  const [overrideResult, setOverrideResult] = useState<{ sentTo: number } | null>(null)
 
   const recipientCount = counts[audience]
 
@@ -109,6 +111,39 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
             </option>
           ))}
         </select>
+      </div>
+      {/* Manual schedule override */}
+      <div className="pt-2">
+        <p className="text-[11px] text-gray-500 mb-2">Manual schedule actions</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              setOverrideBusy(true)
+              setOverrideResult(null)
+              setErr(null)
+              try {
+                const r = await fetch('/api/admin/notifications/trigger-pending-diagnostics', { method: 'POST' })
+                const data = await r.json().catch(() => ({}))
+                if (r.ok) {
+                  setOverrideResult({ sentTo: data.sentTo ?? 0 })
+                } else {
+                  setErr(data.message ?? 'Failed to trigger schedule')
+                }
+              } catch (e) {
+                setErr('Network error')
+              } finally {
+                setOverrideBusy(false)
+              }
+            }}
+            disabled={overrideBusy}
+            className="px-3 py-2 rounded-xl bg-[#1D9E75] text-white text-[12px] hover:bg-[#16875f] disabled:opacity-50 min-h-[36px]"
+          >
+            {overrideBusy ? 'Running...' : 'Run pending diagnostics now'}
+          </button>
+          {overrideResult && (
+            <p className="text-[12px] text-[#1D9E75] self-center">Sent to {overrideResult.sentTo} students</p>
+          )}
+        </div>
       </div>
 
       {/* Channel */}

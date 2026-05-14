@@ -12,6 +12,7 @@ import { NotificationComposer, type AudienceCounts } from './NotificationCompose
 const SCHEDULED = [
   { label: 'Weekly digest', schedule: 'Every Sunday 18:00 IST', status: 'Active' },
   { label: 'Inactive student nudge', schedule: 'Every Monday 09:00 IST', status: 'Active' },
+  { label: 'Pending diagnostics reminder', schedule: 'Every Tuesday 10:00 IST', status: 'Active' },
 ]
 
 function statusBadge(status: string, failedCount: number) {
