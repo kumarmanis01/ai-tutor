@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin endpoint to send broadcast reminders to students who have not completed diagnostics.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/admin/notifications/trigger-pending-diagnostics.route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-14T00:00:00Z | copilot | add standard file header for template migration
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
@@ -5,11 +20,6 @@ import { sendPushSafe } from '@/lib/push/send'
 import { sendMailSafe } from '@/lib/mailer'
 import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
-
-/**
- * Trigger: send reminder to students who have not completed any diagnostic.
- * This is intended as a manual override for the scheduled Tuesday job.
- */
 export async function POST(req: NextRequest) {
   const session = await getServerSessionForHandlers()
   if (!session) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 })

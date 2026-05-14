@@ -29,6 +29,7 @@ import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopic
 import { ApprovalStatus, JobStatus } from '@/lib/ai-engine/types';
 import { sendMailSafe } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
+import { adminBroadcastEmailHtml } from '@/lib/email/templates';
 import { PRACTICE_HYDRATION_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
 
 export const dynamic = 'force-dynamic';
@@ -331,16 +332,10 @@ export async function POST(
       `Has active questions: ${hydrationState.hasActiveQuestions}`,
       `Running job ID: ${hydrationState.runningJobId ?? 'none'}`,
     ].join('\n'),
-    html: `
-      <p>A practice hydration request was submitted.</p>
-      <ul>
-        <li><strong>Session ID:</strong> ${sessionId}</li>
-        <li><strong>Student ID:</strong> ${studentId}</li>
-        <li><strong>Topic ID:</strong> ${session.topicId}</li>
-        <li><strong>Has active questions:</strong> ${hydrationState.hasActiveQuestions}</li>
-        <li><strong>Running job ID:</strong> ${hydrationState.runningJobId ?? 'none'}</li>
-      </ul>
-    `,
+    html: adminBroadcastEmailHtml({
+      title: `Practice hydration requested for topic ${session.topicId}`,
+      body: `A practice hydration request was submitted.\n\nSession ID: ${sessionId}\nStudent ID: ${studentId}\nTopic ID: ${session.topicId}\nHas active questions: ${hydrationState.hasActiveQuestions}\nRunning job ID: ${hydrationState.runningJobId ?? 'none'}`,
+    }),
   });
 
   if (hydrationState.hasActiveQuestions) {

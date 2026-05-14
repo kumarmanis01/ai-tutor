@@ -17,44 +17,10 @@ import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { sendMail } from '@/lib/mailer.js'
+import { distressNotificationParentHtml } from '@/lib/email/templates'
 import type { DistressNotificationJobData } from '../../jobs/distressNotification.js'
 
-function buildParentEmailHtml(params: {
-  childName: string
-  severity: string
-}): string {
-  const { childName } = params
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1F2937;">
-  <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:20px;margin-bottom:20px;">
-    <h2 style="margin:0 0 4px;color:#1D4ED8;font-size:18px;">A note about ${childName}</h2>
-    <p style="margin:0;color:#1E40AF;font-size:13px;">We noticed something during a recent study session.</p>
-  </div>
-
-  <p>Hi,</p>
-
-  <p>During a recent learning session, ${childName} expressed feelings that suggest they may be going through a difficult time. We wanted to let you know so you can check in with them.</p>
-
-  <p>You know your child best. A gentle conversation -- even just asking how they're feeling today -- can make a big difference.</p>
-
-  <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:16px;margin:20px 0;">
-    <p style="margin:0 0 8px;font-weight:600;color:#166534;">Support resources (India):</p>
-    <p style="margin:4px 0;color:#15803D;">📞 iCall: <strong>9152987821</strong></p>
-    <p style="margin:4px 0;color:#15803D;">📞 Vandrevala Foundation: <strong>1860-2662-345</strong> (24x7)</p>
-    <p style="margin:4px 0;font-size:12px;color:#6B7280;">Both are free, confidential, and available in multiple Indian languages.</p>
-  </div>
-
-  <p>If you have any concerns or would like to speak with our team, please reply to this email.</p>
-
-  <p style="color:#6B7280;font-size:11px;margin-top:24px;">
-    This message was sent by Spinzy's automated wellbeing monitoring system.
-    Student messages are not shared verbatim to protect privacy.
-  </p>
-</body>
-</html>`
-}
+// Uses templates.distressNotificationParentHtml
 
 export async function processDistressNotification(
   job: Job<DistressNotificationJobData>,
@@ -113,7 +79,7 @@ export async function processDistressNotification(
     await sendMail({
       to: parentEmail,
       subject: `Important: ${childName} may need support`,
-      html: buildParentEmailHtml({ childName, severity }),
+      html: distressNotificationParentHtml({ childName, severity }),
       text: [
         `Hi,`,
         ``,

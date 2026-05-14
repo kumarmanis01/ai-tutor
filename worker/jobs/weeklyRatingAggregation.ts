@@ -11,6 +11,7 @@
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { sendMailSafe } from '@/lib/mailer.js'
+import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 
 const RATING_ALERT_THRESHOLD = 3
 const LOOKBACK_DAYS = 7
@@ -73,22 +74,13 @@ export async function runWeeklyRatingAggregation(): Promise<RatingAggregationRes
       })
 
       try {
+        const title = `Weekly session rating report (last ${LOOKBACK_DAYS} days)`
+        const body = `The following activity types have average ratings below ${RATING_ALERT_THRESHOLD}/5:\n\n${lowRatingRows.map((r) => `- ${r.activityType} / ${r.activityRef ?? '(no ref)'}: avg ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)`).join('\n')}\n\nTotal activity types checked: ${rows.length}`
         await sendMailSafe({
           to: oncallEmail,
           subject: `⚠️ Spinzy session rating alert: ${lowRatingRows.length} activity type(s) below ${RATING_ALERT_THRESHOLD}/5`,
-          text: [
-            `Weekly session rating report (last ${LOOKBACK_DAYS} days)`,
-            ``,
-            `The following activity types have average ratings below ${RATING_ALERT_THRESHOLD}/5:`,
-            ...lines,
-            ``,
-            `Total activity types checked: ${rows.length}`,
-            `Period: ${since.toISOString()} to now`,
-          ].join('\n'),
-          html: `<p>Weekly session rating report (last ${LOOKBACK_DAYS} days)</p>
-<p>The following activity types have average ratings below <strong>${RATING_ALERT_THRESHOLD}/5</strong>:</p>
-<ul>${lowRatingRows.map((r) => `<li><strong>${r.activityType} / ${r.activityRef ?? '(no ref)'}</strong>: avg ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)</li>`).join('')}</ul>
-<p>Total activity types checked: ${rows.length}</p>`,
+          text: [title, '', ...lowRatingRows.map((r) => `- ${r.activityType} / ${r.activityRef ?? '(no ref)'}: avg ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)`), '', `Total activity types checked: ${rows.length}`].join('\n'),
+          html: adminBroadcastEmailHtml({ title, body }),
         })
         alerted = lowRatingRows.length
         logger.warn('weeklyRatingAggregation.alertSent', {

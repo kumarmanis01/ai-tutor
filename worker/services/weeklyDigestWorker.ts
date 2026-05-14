@@ -43,6 +43,7 @@ import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 import { callLLM } from '@/lib/callLLM'
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
 import { sendSms } from '@/lib/sms'
+import { weeklyDigestParentHtml } from '@/lib/email/templates'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -77,116 +78,7 @@ Return only the 2 sentences, no JSON, no preamble.`
   }
 }
 
-function buildEmailHtml(params: {
-  parentName: string
-  childName: string
-  sessionsThisWeek: number
-  streak: number
-  readinessDelta: number | null
-  narrative: string
-  dashboardUrl: string
-}): string {
-  const { parentName, childName, sessionsThisWeek, streak, readinessDelta, narrative, dashboardUrl } = params
-
-  const deltaLine =
-    readinessDelta !== null && readinessDelta > 0.05
-      ? `<p style="color:#16A34A;margin:4px 0;">📈 Mastery improving this week</p>`
-      : readinessDelta !== null && readinessDelta < -0.05
-      ? `<p style="color:#DC2626;margin:4px 0;">📉 A few concepts need more practice</p>`
-      : ''
-
-  // Mobile-first, image-fallback-friendly, and dark-mode-aware template.
-  // Use CSS variables and a small responsive layout so the email is readable
-  // without images and remains legible in dark-mode supporting clients.
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    /* Base variables (light mode) */
-    :root {
-      --bg: #ffffff;
-      --text: #111827;
-      --muted: #6b7280;
-      --primary: #4f46e5;
-      --success: #16a34a;
-      --warning: #d97706;
-      --card-bg: #f9fafb;
-      --card-border: rgba(0,0,0,0.06);
-    }
-    /* Dark mode overrides for clients that respect prefers-color-scheme */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0b1220;
-        --text: #e6eef8;
-        --muted: #94a3b8;
-        --primary: #8b77ff;
-        --success: #34d399;
-        --warning: #f59e0b;
-        --card-bg: #071026;
-        --card-border: rgba(255,255,255,0.06);
-      }
-    }
-    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin:0; padding:24px; }
-    .container { max-width:560px; margin:0 auto; }
-    .header { text-align:center; margin-bottom:18px; }
-    .logo { display:block; margin:0 auto 8px; }
-    .brand-fallback { font-weight:700; color:var(--primary); font-size:18px; }
-    .card { border:1px solid var(--card-border); background:var(--card-bg); border-radius:12px; padding:14px; margin:12px 0; }
-    .row { width:100%; display:flex; gap:8px; }
-    .stat { flex:1; text-align:center; padding:8px; border-radius:8px; }
-    .stat .num { font-size:20px; font-weight:700; }
-    .muted { color:var(--muted); font-size:12px; }
-    .narrative { margin-top:12px; padding:12px; border-radius:8px; background:transparent; }
-    .cta { text-align:center; margin-top:14px; }
-    .btn { display:inline-block; padding:12px 22px; background:var(--primary); color:#fff; text-decoration:none; border-radius:8px; font-weight:600; }
-    .footer { color:var(--muted); font-size:11px; text-align:center; margin-top:18px; }
-    /* Stack stats on narrow screens */
-    @media (max-width:480px) {
-      .row { flex-direction:column; }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <img class="logo" src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;" />
-      <!-- Visible fallback in case images are blocked -->
-      <div class="brand-fallback">Spinzy Academy</div>
-      <div class="muted" style="margin-top:6px;font-size:13px;">Weekly learning update</div>
-    </div>
-
-    <p>Hi ${parentName},</p>
-
-    <div class="card">
-      <h2 style="margin:0 0 10px;font-size:16px;color:var(--text);">${childName}</h2>
-
-      <div class="row" role="group" aria-label="weekly-stats">
-        <div class="stat" style="background:rgba(79,70,229,0.06);">
-          <div class="num" style="color:var(--primary);">${sessionsThisWeek}</div>
-          <div class="muted">Sessions this week</div>
-        </div>
-        <div class="stat" style="background:rgba(217,119,6,0.06);">
-          <div class="num" style="color:var(--warning);">${streak}</div>
-          <div class="muted">Day streak</div>
-        </div>
-      </div>
-
-      ${deltaLine}
-
-      ${narrative ? `<div class="narrative" style="border-left:3px solid ${readinessDelta !== null && readinessDelta > 0.05 ? '#16A34A' : '#D1FAE5'}; background:transparent;"><p style="margin:0;color:var(--text);">${narrative}</p></div>` : ''}
-    </div>
-
-    <div class="cta">
-      <a class="btn" href="${dashboardUrl}">View full progress →</a>
-    </div>
-
-    <div class="footer">You're receiving this because you have linked student accounts on Spinzy.</div>
-  </div>
-</body>
-</html>`
-}
+// Uses centralized weeklyDigestParentHtml in lib/email/templates
 
 // ── Main processor ────────────────────────────────────────────────────────────
 
@@ -387,7 +279,7 @@ export async function processParentDigest(parentId: string, weekStartIso: string
 
     const subject = `Teacher Vidya's weekly report for ${child.name}`
     const appUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
-    const html = buildEmailHtml({ parentName: parent.name, childName: child.name, sessionsThisWeek: sessions.length, streak: streak?.current ?? 0, readinessDelta, narrative, dashboardUrl: `${appUrl}/parent/dashboard` })
+    const html = weeklyDigestParentHtml({ parentName: parent.name, childName: child.name, sessionsThisWeek: sessions.length, streak: streak?.current ?? 0, readinessDelta, narrative, dashboardUrl: `${appUrl}/parent/dashboard` })
 
     await sendParentMilestoneNotification(parentId, { email: parent.email, subject, html, text: subject, meta: { type: 'digest', channel: 'email' } })
     if (parent.phone) {

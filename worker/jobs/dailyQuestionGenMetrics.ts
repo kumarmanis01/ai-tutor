@@ -13,6 +13,7 @@
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { sendMailSafe } from '@/lib/mailer.js'
+import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { getYesterdayIstBounds } from '../services/costReportingWorker.js'
 
 const FAILURE_RATE_THRESHOLD = 0.05 // 5%
@@ -75,22 +76,13 @@ export async function runDailyQuestionGenMetrics(): Promise<QuestionGenMetricsRe
       const pct = (failureRate! * 100).toFixed(1)
       const threshold = (FAILURE_RATE_THRESHOLD * 100).toFixed(0)
       try {
+        const title = `Daily question generation metrics -- ${dateLabel}`
+        const body = `Failure rate: ${pct}% (threshold: ${threshold}%)\nTotal calls: ${totalCalls} | Failed calls: ${failedCalls}\n\nCheck the OpenAI API key limits, model availability, and question generation prompts.`
         await sendMailSafe({
           to: oncallEmail,
           subject: `⚠️ Spinzy question-gen failure rate: ${pct}% on ${dateLabel}`,
-          text: [
-            `Daily question generation metrics -- ${dateLabel}`,
-            ``,
-            `Failure rate: ${pct}% (threshold: ${threshold}%)`,
-            `Total calls: ${totalCalls}`,
-            `Failed calls: ${failedCalls}`,
-            ``,
-            `Check the OpenAI API key limits, model availability, and question generation prompts.`,
-          ].join('\n'),
-          html: `<p><strong>Daily question generation metrics -- ${dateLabel}</strong></p>
-<p>Failure rate: <strong style="color:#DC2626">${pct}%</strong> (threshold: ${threshold}%)</p>
-<p>Total calls: ${totalCalls} | Failed calls: ${failedCalls}</p>
-<p>Check the OpenAI API key limits, model availability, and question generation prompts.</p>`,
+          text: [title, '', `Failure rate: ${pct}% (threshold: ${threshold}%)`, `Total calls: ${totalCalls}`, `Failed calls: ${failedCalls}`, '', `Check the OpenAI API key limits, model availability, and question generation prompts.`].join('\n'),
+          html: adminBroadcastEmailHtml({ title, body }),
         })
         alertSent = true
         logger.warn('dailyQuestionGenMetrics.alertSent', {

@@ -1,12 +1,17 @@
 /**
- * lib/email/templates.ts
- * All email HTML templates in one place.
+ * FILE OBJECTIVE:
+ * - Centralised HTML email templates used across workers, API routes and UI
+ *   to ensure consistent branding, footer and support address usage.
  *
- * Rules:
- *  - Inline CSS only -- no external fonts, no external stylesheets
- *  - Plain table layout -- works in Gmail, Outlook, Apple Mail
- *  - Brand colours: #534AB7 (primary), #1D9E75 (success), #E24B4A (danger)
- *  - Copy rules: no "failed", "missed", "broke"; forward-looking tone
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/email/templates.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-14T00:00:00Z | copilot | add standard file header and document support-email centralisation
  */
 
 import { TEMPLATES_LEGACY_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
@@ -279,7 +284,17 @@ export function costAnomalyHtml(data: {
   totalCostUsd: number;
   costPerSession: number;
   multiplier?: number;
+  trendingDoubts?: Array<{ conceptName: string; studentCount: number }>;
 }): string {
+  const trendingSection = data.trendingDoubts && data.trendingDoubts.length
+    ? `
+      <h3 style="color:#534AB7;margin-top:16px;">Trending doubts (last 7 days)</h3>
+      <ul style="color:#374151;line-height:1.6;margin-top:6px;">
+        ${data.trendingDoubts.map(d => `<li>${d.conceptName}: ${d.studentCount} escalations</li>`).join('')}
+      </ul>
+    `
+    : '';
+
   return `
     <div style="${BASE}">
       <div style="background:#FEF3C7;border:1px solid #F59E0B;
@@ -292,6 +307,7 @@ export function costAnomalyHtml(data: {
       <p><strong>Sessions:</strong> ${data.sessions}</p>
       <p><strong>Total cost:</strong> $${data.totalCostUsd.toFixed(4)}</p>
       <p><strong>Cost per session:</strong> $${data.costPerSession.toFixed(5)}</p>
+      ${trendingSection}
       <a href="https://spinzyacademy.com/admin/costs" style="${BTN}">
         View costs
       </a>
@@ -386,6 +402,160 @@ export function diagnosticReadyEmailHtml(data: {
       ${FOOTER}
     </div>
   `;
+}
+
+/**
+ * Parent-facing distress notification HTML (moved from inline worker templates)
+ */
+export function distressNotificationParentHtml(params: { childName: string; severity: string }): string {
+  const { childName, severity } = params
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">A note about ${childName}</h2>
+      <p>Hi,</p>
+
+      <p>During a recent learning session, ${childName} expressed feelings that suggest they may be going through a difficult time. We wanted to let you know so you can check in with them.</p>
+
+      <p>You know your child best. A gentle conversation -- even just asking how they're feeling today -- can make a big difference.</p>
+
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:0 0 8px;font-weight:600;color:#166534;">Support resources (India):</p>
+        <p style="margin:4px 0;color:#15803D;">📞 iCall: <strong>9152987821</strong></p>
+        <p style="margin:4px 0;color:#15803D;">📞 Vandrevala Foundation: <strong>1860-2662-345</strong> (24x7)</p>
+        <p style="margin:4px 0;font-size:12px;color:#6B7280;">Both are free, confidential, and available in multiple Indian languages.</p>
+      </div>
+
+      <p>If you have any concerns or would like to speak with our team, please reply to this email.</p>
+
+      <p style="color:#6B7280;font-size:11px;margin-top:24px;">This message was sent by Spinzy's automated wellbeing monitoring system. Student messages are not shared verbatim to protect privacy.</p>
+      ${FOOTER}
+    </div>`
+}
+
+/**
+ * Weekly digest wrapper used by the weekly digest worker (parent-facing).
+ * Accepts the same compact params used in the original worker-local builder.
+ */
+export function weeklyDigestParentHtml(params: {
+  parentName: string
+  childName: string
+  sessionsThisWeek: number
+  streak: number
+  readinessDelta: number | null
+  narrative: string
+  dashboardUrl: string
+}): string {
+  const { parentName, childName, sessionsThisWeek, streak, readinessDelta, narrative, dashboardUrl } = params
+  const deltaLine =
+    readinessDelta !== null && readinessDelta > 0.05
+      ? `<p style="color:#16A34A;margin:4px 0;">📈 Mastery improving this week</p>`
+      : readinessDelta !== null && readinessDelta < -0.05
+      ? `<p style="color:#DC2626;margin:4px 0;">📉 A few concepts need more practice</p>`
+      : ''
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root { --bg:#ffffff; --text:#111827; --muted:#6b7280; --primary:#4f46e5; --success:#16a34a; --warning:#d97706; --card-bg:#f9fafb; --card-border:rgba(0,0,0,0.06); }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0b1220; --text:#e6eef8; --muted:#94a3b8; --primary:#8b77ff; } }
+    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; margin:0; padding:24px; }
+    .container { max-width:560px; margin:0 auto; }
+    .header { text-align:center; margin-bottom:18px; }
+    .logo { display:block; margin:0 auto 8px; }
+    .card { border:1px solid var(--card-border); background:var(--card-bg); border-radius:12px; padding:14px; margin:12px 0; }
+    .row { width:100%; display:flex; gap:8px; }
+    .stat { flex:1; text-align:center; padding:8px; border-radius:8px; }
+    .num { font-size:20px; font-weight:700; }
+    .muted { color:var(--muted); font-size:12px; }
+    .narrative { margin-top:12px; padding:12px; border-radius:8px; background:transparent; }
+    .cta { text-align:center; margin-top:14px; }
+    .btn { display:inline-block; padding:12px 22px; background:var(--primary); color:#fff; text-decoration:none; border-radius:8px; font-weight:600; }
+    @media (max-width:480px) { .row { flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img class="logo" src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;" />
+      <div class="muted" style="margin-top:6px;font-size:13px;">Weekly learning update</div>
+    </div>
+
+    <p>Hi ${parentName},</p>
+
+    <div class="card">
+      <h2 style="margin:0 0 10px;font-size:16px;color:var(--text);">${childName}</h2>
+
+      <div class="row" role="group" aria-label="weekly-stats">
+        <div class="stat" style="background:rgba(79,70,229,0.06);">
+          <div class="num" style="color:var(--primary);">${sessionsThisWeek}</div>
+          <div class="muted">Sessions this week</div>
+        </div>
+        <div class="stat" style="background:rgba(217,119,6,0.06);">
+          <div class="num" style="color:var(--warning);">${streak}</div>
+          <div class="muted">Day streak</div>
+        </div>
+      </div>
+
+      ${deltaLine}
+
+      ${narrative ? `<div class="narrative" style="border-left:3px solid ${readinessDelta !== null && readinessDelta > 0.05 ? '#16A34A' : '#D1FAE5'}; background:transparent;"><p style="margin:0;color:var(--text);">${narrative}</p></div>` : ''}
+    </div>
+
+    <div class="cta">
+      <a class="btn" href="${dashboardUrl}">View full progress →</a>
+    </div>
+
+    <div class="footer" style="color:#6B7280;font-size:12px;text-align:center;margin-top:18px;">You're receiving this because you have linked student accounts on Spinzy.</div>
+  </div>
+</body>
+</html>`
+}
+
+/**
+ * Parent digest HTML wrapper used in the parent email digest job.
+ * Accepts prepared child section HTML fragments and composes the full digest.
+ */
+export function parentDigestHtml(parentName: string, childSections: string[]): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+      <style>
+        body { margin:0; padding:20px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+        a { color: #4F46E5; }
+      </style>
+    </head>
+    <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#0f172a;background:#ffffff;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <img src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;margin:0 auto;max-width:100%;height:auto;" />
+        <p style="color:#6B7280;margin:8px 0 0;">Weekly Learning Summary</p>
+      </div>
+
+      <p style="margin:0 0 8px 0;">Hi ${parentName},</p>
+      <p style="margin:0 0 16px 0;">Here's how learning went this week:</p>
+
+      ${childSections.join('')}
+
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid #E5E7EB;text-align:center;">
+        <a href="${process.env.NEXTAUTH_URL || 'https://spinzyacademy.com'}/parent" style="display:inline-block;padding:12px 24px;background:#4F46E5;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">View Full Dashboard</a>
+      </div>
+
+      <p style="color:#6B7280;font-size:12px;text-align:center;margin-top:24px;">
+        You're receiving this because you have linked student accounts on Spinzy Academy.
+      </p>
+    </body>
+    </html>
+  `
+}
+
+export function qaTestHtml(message: string): string {
+  return `<!doctype html><html><body><h2>QA Digest Render Test</h2><p>${message}</p></body></html>`
 }
 
 export function deletionConfirmHtml(): string {
@@ -538,7 +708,7 @@ export function parentPaymentFailedHtml(data: { name?: string; retryUrl: string;
       <p>Hi ${data.name ?? 'Parent'},</p>
       <p>We attempted to process your recent payment but it failed. Please update your payment method and retry using the button below.</p>
       <a href="${data.retryUrl}" style="${BTN}">Update payment & retry</a>
-      <p style="color:#888;font-size:13px;margin-top:12px;">If you need help, contact ${data.supportEmail ?? 'support@spinzyacademy.com'}.</p>
+      <p style="color:#888;font-size:13px;margin-top:12px;">If you need help, contact ${data.supportEmail ?? TEMPLATES_LEGACY_SUPPORT_EMAIL}.</p>
       ${FOOTER}
     </div>
   `;

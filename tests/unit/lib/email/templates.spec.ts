@@ -1,16 +1,32 @@
-import fs from 'fs';
-import path from 'path';
+/**
+ * FILE OBJECTIVE:
+ * - Basic sanity tests for exported email templates ensuring shared
+ *   LOGO and FOOTER content are present in rendered HTML.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/email/templates.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-14T00:00:00Z | copilot | add header and assert rendered templates include logo/footer
+ */
+
+import { welcomeEmailHtml, parentPaymentFailedHtml } from '../../../../lib/email/templates';
 
 describe('email templates file sanity', () => {
-  test('templates file contains header/logo and footer/unsubscribe markers', () => {
-    const p = path.resolve(__dirname, '../../../../lib/email/templates.ts');
-    const src = fs.readFileSync(p, 'utf8').toLowerCase();
+  test('rendered templates include shared LOGO and FOOTER content', () => {
+    const welcome = welcomeEmailHtml('Test Student');
+    const failed = parentPaymentFailedHtml({ name: 'Parent', retryUrl: 'https://example.test', supportEmail: undefined });
 
-    // basic existence checks for expected template pieces
-    expect(src).toEqual(expect.any(String));
-    expect(src.length).toBeGreaterThan(100);
-    // look for logo/image and unsubscribe/support copy
-    expect(src).toMatch(/<img|logo|brand/);
-    expect(src).toMatch(/unsubscribe|support|contact/);
+    // basic sanity
+    expect(welcome).toEqual(expect.any(String));
+    expect(failed).toEqual(expect.any(String));
+
+    // LOGO is an absolute img URL used across templates
+    expect(welcome).toMatch(/https:\/\/spinzyacademy\.com\/icons\/spinzy-navbar-source\.png/);
+    expect(failed).toMatch(/You are receiving this because you have a Spinzy Academy account\.|Spinzy Academy -- AI Home Tutor/);
   });
 });

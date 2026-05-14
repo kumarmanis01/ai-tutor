@@ -21,6 +21,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendPushToUser } from '@/lib/push/send'
 import { sendMailSafe } from '@/lib/mailer'
+import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 import { recordDoubt } from '@/lib/ai/tutor/doubtKb'
@@ -92,7 +93,8 @@ async function processEscalation(esc: any, now: Date): Promise<void> {
 
         if (user?.email) {
           const subject = 'Improved explanation available'
-          const html = `<!doctype html><html><body><p>Hi ${user.name ?? ''},</p><p>We've updated our explanation for a topic you asked about. <a href="${deepLink}">View the improved answer</a>.</p><p>-- Team Spinzy</p></body></html>`
+          const bodyHtml = `<p>Hi ${user.name ?? ''},</p><p>We've updated our explanation for a topic you asked about. View the improved answer below.</p>`
+          const html = adminBroadcastEmailHtml({ title: subject, body: `${bodyHtml}<p><a href="${deepLink}">View the improved answer</a></p>`, ctaUrl: deepLink })
           const text = `We've updated our explanation for a topic you asked about. View: ${deepLink}`
           await sendMailSafe({ to: user.email, subject, html, text })
         }

@@ -33,6 +33,7 @@ import {
   diagnosticCompleteForParentHtml,
   planGeneratedForParentHtml,
   sessionCompleteForParentHtml,
+  inactivityNudgeHtml,
 } from '@/lib/email/templates';
 
 type DiagnosticCompleteData = {
@@ -146,7 +147,7 @@ async function sendEmailForEvent(
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_MISSED) {
       const d = (payload as { event: string; data: SessionMissedData }).data;
       subject = formatSubject(MAIL_SUBJECTS.SESSION_MISSED, studentName);
-      html = buildSessionMissedHtml(studentName, d.dashboardUrl);
+      html = inactivityNudgeHtml({ parentName: 'there', studentName, inactiveDays: 0, lastStudiedLabel: '', dashboardUrl: d.dashboardUrl });
     } else {
       // AUTH / welcome -- no separate parent email for auth event (student gets magic link)
       return;

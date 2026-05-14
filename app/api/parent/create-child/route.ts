@@ -25,6 +25,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
+import { parentWelcomeHtml } from '@/lib/email/templates'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
 import { Prisma } from '@prisma/client'
 
@@ -174,24 +175,7 @@ export async function POST(req: Request) {
         await sendMailSafe({
           to: parent.email,
           subject: `${child.name}'s learning account is ready on Spinzy`,
-          html: `<p>Hi ${parentName},</p>
-<p>We've created a learning account for <strong>${child.name}</strong>${childGrade ? ` (${childGrade})` : ''} and linked it to your Spinzy Academy account.</p>
-<h3>What you can see as a parent:</h3>
-<ul>
-  <li>Weekly study activity and sessions completed</li>
-  <li>Subject mastery progress and chapter-level breakdown</li>
-  <li>Upcoming exam readiness and predicted mark range</li>
-  <li>Streak and milestone achievements</li>
-</ul>
-<h3>What your child can do:</h3>
-<ul>
-  <li>Practice with Vidya, their AI tutor, in guided sessions</li>
-  <li>Take mock tests and revision exercises</li>
-  <li>Build a personalised learning plan for board exams</li>
-</ul>
-<p><strong>Privacy:</strong> Your child's AI tutoring conversations are private to them. You see a summary, not the transcript.</p>
-<p>You can view our full privacy policy at <a href="/privacy">spinzyacademy.com/privacy</a>. It's written in plain language and available in English and Hindi.</p>
-<p>Happy learning!<br/>Team Spinzy</p>`,
+          html: parentWelcomeHtml(parentName, child.name),
         })
       }
       if (parent?.phone) {

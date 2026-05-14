@@ -57,16 +57,17 @@ export async function POST(req: NextRequest) {
           const { sendPushSafe } = await import('@/lib/push/send');
           const { PUSH_NOTIFICATIONS } = await import('@/lib/push/notifications');
           const mailer = await import('@/lib/mailer').then(m => m.sendMailSafe).catch(() => undefined);
+          const templates = await import('@/lib/email/templates').catch(() => undefined);
 
           const subject = 'Referral reward voided';
 
           if (redeemer) {
             void sendPushSafe(redeemer.id, PUSH_NOTIFICATIONS.referral_voided_redeemer(code));
-            if (redeemer.email && mailer) void mailer({ to: redeemer.email!, subject, html: (await import('@/lib/email/templates')).referralVoidedHtml({ name: redeemer.name ?? undefined, code }) }).catch(() => {});
+            if (redeemer.email && mailer && templates) void mailer({ to: redeemer.email!, subject, html: templates.referralVoidedHtml({ name: redeemer.name ?? undefined, code }) }).catch(() => {});
           }
           if (creator) {
             void sendPushSafe(creator.id, PUSH_NOTIFICATIONS.referral_voided_creator(code));
-            if (creator.email && mailer) void mailer({ to: creator.email!, subject, html: (await import('@/lib/email/templates')).referralVoidedHtml({ name: creator.name ?? undefined, code }) }).catch(() => {});
+            if (creator.email && mailer && templates) void mailer({ to: creator.email!, subject, html: templates.referralVoidedHtml({ name: creator.name ?? undefined, code }) }).catch(() => {});
           }
         } catch (e) {
           logger.warn('referral/redeem: post-transaction notifications failed', { err: String(e) });
@@ -89,14 +90,15 @@ export async function POST(req: NextRequest) {
               const { sendPushSafe } = await import('@/lib/push/send');
               const { PUSH_NOTIFICATIONS } = await import('@/lib/push/notifications');
               const mailer = await import('@/lib/mailer').then(m => m.sendMailSafe).catch(() => undefined);
+              const templates = await import('@/lib/email/templates').catch(() => undefined);
               const subject = 'Referral reward voided';
               if (redeemer) {
                 void sendPushSafe(redeemer.id, PUSH_NOTIFICATIONS.referral_voided_redeemer(code));
-                if (redeemer.email && mailer) void mailer({ to: redeemer.email!, subject, html: `<p>Hi ${redeemer.name ?? 'Student'},</p><p>Your referral attempt using code <strong>${code}</strong> was voided due to suspected fraud (same device or network). If you think this is a mistake, contact support.</p>` }).catch(() => {});
+                if (redeemer.email && mailer && templates) void mailer({ to: redeemer.email!, subject, html: templates.referralVoidedHtml({ name: redeemer.name ?? undefined, code }) }).catch(() => {});
               }
               if (creator) {
                 void sendPushSafe(creator.id, PUSH_NOTIFICATIONS.referral_voided_creator(code));
-                if (creator.email && mailer) void mailer({ to: creator.email!, subject, html: `<p>Hi ${creator.name ?? 'Student'},</p><p>Your referral <strong>${code}</strong> was marked void due to suspected fraud and no reward will be issued. If you need help, contact support.</p>` }).catch(() => {});
+                if (creator.email && mailer && templates) void mailer({ to: creator.email!, subject, html: templates.referralVoidedHtml({ name: creator.name ?? undefined, code }) }).catch(() => {});
               }
             } catch (e) {
               logger.warn('referral/redeem: post-transaction notifications failed (retry)', { err: String(e) });

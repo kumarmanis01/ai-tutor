@@ -17,6 +17,7 @@ import { logger } from '@/lib/logger.js'
 import { sendMailSafe } from '@/lib/mailer.js'
 import { sendPushSafe } from '@/lib/push/send.js'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
+import { costAnomalyHtml } from '@/lib/email/templates'
 
 // 1 USD to INR exchange rate (fixed reference -- update quarterly)
 const USD_TO_INR = 84
@@ -120,64 +121,7 @@ async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
   }
 }
 
-function buildAlertHtml(params: {
-  dateLabel: string
-  sessions: number
-  totalCostUsd: number
-  costPerSession: number
-  trendingDoubts: TrendingDoubt[]
-}): string {
-  const { dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts } = params
-  const costInr = (costPerSession * USD_TO_INR).toFixed(2)
-  const totalInr = (totalCostUsd * USD_TO_INR).toFixed(2)
-
-  const trendingSection = trendingDoubts.length > 0
-    ? `<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:16px;margin-top:20px;">
-  <h3 style="margin:0 0 8px;color:#92400E;font-size:15px;">Trending Doubts (last 7 days)</h3>
-  <ul style="margin:0;padding:0 0 0 18px;color:#78350F;">
-    ${trendingDoubts.map((d) => `<li>${d.conceptName} -- ${d.studentCount} escalations this week</li>`).join('\n    ')}
-  </ul>
-</div>`
-    : ''
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1F2937;">
-  <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:12px;padding:20px;margin-bottom:20px;">
-    <h2 style="margin:0 0 4px;color:#DC2626;font-size:18px;">⚠️ Spinzy AI Cost Alert</h2>
-    <p style="margin:0;color:#7F1D1D;font-size:13px;">Cost per session exceeded threshold on ${dateLabel}</p>
-  </div>
-
-  <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-    <tr style="background:#F9FAFB;">
-      <td style="padding:10px 14px;border:1px solid #E5E7EB;font-weight:600;">Date (IST)</td>
-      <td style="padding:10px 14px;border:1px solid #E5E7EB;">${dateLabel}</td>
-    </tr>
-    <tr>
-      <td style="padding:10px 14px;border:1px solid #E5E7EB;font-weight:600;">Sessions</td>
-      <td style="padding:10px 14px;border:1px solid #E5E7EB;">${sessions}</td>
-    </tr>
-    <tr style="background:#F9FAFB;">
-      <td style="padding:10px 14px;border:1px solid #E5E7EB;font-weight:600;">Total cost</td>
-      <td style="padding:10px 14px;border:1px solid #E5E7EB;">$${totalCostUsd.toFixed(4)} (₹${totalInr})</td>
-    </tr>
-    <tr style="background:#FEF2F2;">
-      <td style="padding:10px 14px;border:1px solid #FCA5A5;font-weight:600;color:#DC2626;">Cost per session</td>
-      <td style="padding:10px 14px;border:1px solid #FCA5A5;color:#DC2626;font-weight:700;">
-        $${costPerSession.toFixed(5)} (₹${costInr})
-      </td>
-    </tr>
-  </table>
-
-  ${trendingSection}
-
-  <p style="color:#6B7280;font-size:12px;margin-top:20px;">
-    Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session. Check model usage and caching.
-  </p>
-</body>
-</html>`
-}
+// Use centralized costAnomalyHtml from templates
 
 export async function runDailyCostReport(): Promise<CostReportResult> {
   const { start, end, dateLabel } = getYesterdayIstBounds()
@@ -294,7 +238,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
         await sendMailSafe({
           to: oncallEmail,
           subject: alertSubject,
-          html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
+          html: costAnomalyHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
           text: [
             `Spinzy AI cost alert -- ${dateLabel}`,
             `Sessions: ${sessions}`,

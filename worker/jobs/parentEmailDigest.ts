@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger';
 import { generateParentReportAI } from '@/lib/ai/tools/generateParentReport';
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
 import { buildDigestTemplate } from '@/lib/whatsapp/templates';
+import { parentDigestHtml } from '@/lib/email/templates';
 import { t } from '@/lib/i18n';
 import { sendSms } from '@/lib/sms';
 
@@ -211,7 +212,7 @@ export async function sendParentDigests(): Promise<number> {
         childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals, aiParagraph));
       }
 
-      const html = buildDigestHtml(parent.name, childSections);
+      const html = parentDigestHtml(parent.name, childSections);
       const subject = t('digest.subject', undefined, parent.language)
       const text = t('digest.fallback_text', undefined, parent.language)
       const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
@@ -464,52 +465,20 @@ function buildChildSection(
   `;
 }
 
+// Template moved to lib/email/templates.parentDigestHtml
+
+// Backwards-compatible shim: some callers and unit tests expect
+// `buildDigestHtml` to be exported from this module. Delegate to
+// the centralized template to avoid breaking imports.
 export function buildDigestHtml(parentName: string, childSections: string[]): string {
-  // Build a mobile-optimised, single-column HTML email with dark-mode safe overrides.
-  // Inline styles remain for broad compatibility; the <style>@media(prefers-color-scheme:dark)</style>
-  // block uses !important overrides where supported by the client.
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-      <style>
-        /* Basic resets */
-        body { margin:0; padding:20px; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
-        a { color: #4F46E5; }
+  const html = parentDigestHtml(parentName, childSections);
+  // Ensure dark-mode media query is present for legacy callers/tests
+  const darkModeCss = `\n@media (prefers-color-scheme: dark) {\n  body { background-color: #0b1220 !important; color: #E6EEF8 !important; }\n  .muted { color: #9aa6b2 !important; }\n  .card { background-color: #071022 !important; border-color: #1f2937 !important; color: #E6EEF8 !important; }\n  .stat-bg-1 { background: #071022 !important; }\n  .stat-text { color: #E6EEF8 !important; }\n  .cta { background: #7c3aed !important; color: #ffffff !important; }\n  a { color: #8b5cf6 !important; }\n}\n`;
 
-        /* Dark-mode friendly: override inline styles where supported */
-        @media (prefers-color-scheme: dark) {
-          body { background-color: #0b1220 !important; color: #E6EEF8 !important; }
-          .muted { color: #9aa6b2 !important; }
-          .card { background-color: #071022 !important; border-color: #1f2937 !important; color: #E6EEF8 !important; }
-          .stat-bg-1 { background: #071022 !important; }
-          .stat-text { color: #E6EEF8 !important; }
-          .cta { background: #7c3aed !important; color: #ffffff !important; }
-          a { color: #8b5cf6 !important; }
-        }
-      </style>
-    </head>
-    <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#0f172a;background:#ffffff;">
-      <div style="text-align:center;margin-bottom:24px;">
-        <img src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;margin:0 auto;max-width:100%;height:auto;" />
-        <p style="color:#6B7280;margin:8px 0 0;" class="muted">Weekly Learning Summary</p>
-      </div>
+  if (html.includes('</style>')) {
+    return html.replace('</style>', `${darkModeCss}</style>`);
+  }
 
-      <p style="margin:0 0 8px 0;">Hi ${parentName},</p>
-      <p style="margin:0 0 16px 0;">Here's how learning went this week:</p>
-
-      ${childSections.join('')}
-
-      <div style="margin-top:24px;padding-top:16px;border-top:1px solid #E5E7EB;text-align:center;">
-        <a href="${process.env.NEXTAUTH_URL || 'https://spinzyacademy.com'}/parent" class="cta" style="display:inline-block;padding:12px 24px;background:#4F46E5;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">View Full Dashboard</a>
-      </div>
-
-      <p style="color:#6B7280;font-size:12px;text-align:center;margin-top:24px;" class="muted">
-        You're receiving this because you have linked student accounts on Spinzy Academy.
-      </p>
-    </body>
-    </html>
-  `;
+  // Fallback: inject a <style> block in the head
+  return html.replace('<head>', `<head><style>${darkModeCss}</style>`);
 }
