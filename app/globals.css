@@ -4,12 +4,15 @@
 @tailwind utilities;
 
 /* Canonical design tokens (merged from docs/design/assets/tokens.css) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Fonts are loaded via Next.js font loader in layout.tsx (localFont / next/font).
+  Remove runtime Google Fonts @import to avoid blocking the critical rendering path. */
 
 :root {
   /* ── Type ─────────────────────────────────────── */
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    /* Prefer font variables injected by Next.js font utilities. Fallbacks keep
+      existing font-family order if variables are not present. */
+    --font-sans: var(--font-inter, var(--font-nunito, system-ui, -apple-system, 'Segoe UI', sans-serif));
+    --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
 
   /* ── Surfaces ─────────────────────────────────── */
   --color-bg-page:           #F1EFE8;
@@ -202,7 +205,12 @@ body,
   border-radius: 8px;
 }
 
-/* Note: .w-pct-* utilities removed per Session 1 cleanup. Use percent widths via inline styles or utility classes when necessary. */
+/* Backwards compatibility: restore percent-width utilities used for dynamic
+  progress bars. Migrate call sites to Tailwind arbitrary values or inline
+  styles in a follow-up PR, then remove these. */
+.w-pct-90 { width: 90%; }
+.w-pct-95 { width: 95%; }
+.w-pct-100 { width: 100%; }
 
 /* ── Global Loader keyframes ─────────────────────────── */
 @keyframes loader-dot-bounce {
