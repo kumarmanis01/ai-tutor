@@ -20,7 +20,7 @@ import { sendPushSafe } from '@/lib/push/send'
 import { sendMailSafe } from '@/lib/mailer'
 import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   const session = await getServerSessionForHandlers()
   if (!session) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'admin') return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 })

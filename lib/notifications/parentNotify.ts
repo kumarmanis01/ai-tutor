@@ -203,7 +203,7 @@ async function sendWhatsAppForEvent(
   }
 }
 
-function buildSessionMissedHtml(studentName: string, dashboardUrl: string): string {
+function _buildSessionMissedHtml(studentName: string, dashboardUrl: string): string {
   const base = [
     'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;',
     'max-width:520px;margin:0 auto;color:#1a1a1a;padding:0 8px;',

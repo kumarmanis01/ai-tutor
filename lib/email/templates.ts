@@ -408,7 +408,7 @@ export function diagnosticReadyEmailHtml(data: {
  * Parent-facing distress notification HTML (moved from inline worker templates)
  */
 export function distressNotificationParentHtml(params: { childName: string; severity: string }): string {
-  const { childName, severity } = params
+  const { childName, severity: _severity } = params
   return `
     <div style="${BASE}">
       ${LOGO}

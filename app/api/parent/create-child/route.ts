@@ -170,7 +170,7 @@ export async function POST(req: Request) {
     try {
       const parent = parentUser ?? await prisma.user.findUnique({ where: { id: parentId }, select: { email: true, phone: true, name: true } })
       const parentName = parent?.name ?? 'Parent'
-      const childGrade = grade ? `Class ${grade}` : ''
+      const _childGrade = grade ? `Class ${grade}` : ''
       if (parent?.email) {
         await sendMailSafe({
           to: parent.email,

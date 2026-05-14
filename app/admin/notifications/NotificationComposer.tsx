@@ -129,7 +129,7 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
                 } else {
                   setErr(data.message ?? 'Failed to trigger schedule')
                 }
-              } catch (e) {
+              } catch {
                 setErr('Network error')
               } finally {
                 setOverrideBusy(false)
