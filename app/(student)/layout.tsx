@@ -157,7 +157,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
               showParentGate={showParentGate}
               maskedParentEmail={maskedParentEmail}
             >
-              <div id="student-main" className="pt-[104px] pb-16 lg:pt-[68px] md:pb-0">
+              <div id="student-main" className="pt-[10px] pb-16 lg:pt-[68px] md:pb-0">
                 {children}
               </div>
             </StudentLayoutShell>
