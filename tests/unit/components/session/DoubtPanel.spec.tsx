@@ -51,7 +51,7 @@ describe('DoubtPanel', () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Type your doubt here...'), {
+    fireEvent.change(screen.getByPlaceholderText('Type or speak your doubt here...'), {
       target: { value: 'Can you explain this step?' },
     });
     fireEvent.click(screen.getByLabelText('Send doubt'));
@@ -77,7 +77,7 @@ describe('DoubtPanel', () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Type your doubt here...'), {
+    fireEvent.change(screen.getByPlaceholderText('Type or speak your doubt here...'), {
       target: { value: 'Why are leaves green?' },
     });
     fireEvent.click(screen.getByLabelText('Send doubt'));

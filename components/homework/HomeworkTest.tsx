@@ -21,6 +21,7 @@
 import React, { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { DoubtPanel } from '@/components/session/DoubtPanel';
+import useCurrentUser from '@/hooks/useCurrentUser';
 import { QuestionInteractionShell, type QuestionShellChoice } from '@/components/questions/QuestionInteractionShell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -259,6 +260,8 @@ export function HomeworkTest({
     ? Math.round(score * 100)
     : gradedResults?.percentage ?? null;
 
+  const { data: currentUser } = useCurrentUser();
+
   return (
     <div className="min-h-screen bg-background pb-32">
       {/* Header */}
@@ -401,7 +404,12 @@ export function HomeworkTest({
       </div>
 
       {/* Floating doubt panel -- always present */}
-      <DoubtPanel subject={subject} chapter={chapter} topicName={topicName} />
+      <DoubtPanel
+        subject={subject}
+        chapter={chapter}
+        topicName={topicName}
+        studentName={currentUser?.name ?? undefined}
+      />
     </div>
   );
 }

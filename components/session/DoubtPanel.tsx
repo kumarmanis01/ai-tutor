@@ -56,11 +56,12 @@ interface DoubtPanelProps {
   subject: string;
   chapter: string;
   topicName: string;
+  studentName?: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: DoubtPanelProps) {
+export function DoubtPanel({ subject, chapter, topicName, studentName, isOpen, onClose }: DoubtPanelProps) {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -176,7 +177,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
       setMessages([
         {
           role: 'vidya',
-          text: `Hi! I am Teacher Vidya. What is confusing you about "${topicName}"? Ask me anything -- no question is too small.`,
+          text: `Hi ${studentName ?? 'I am Teacher Vidya'}, what is confusing you about "${topicName}"? Ask me anything -- no question is too small.`,
           timestamp: new Date().toISOString(),
         },
       ]);

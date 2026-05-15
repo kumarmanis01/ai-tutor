@@ -23,6 +23,7 @@ import { SessionHeader } from './SessionHeader';
 import { SessionFooter } from './SessionFooter';
 import { SessionBottomBar } from './SessionBottomBar';
 import { DoubtPanel } from './DoubtPanel';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
 
 export interface SessionLayoutFooterConfig {
@@ -52,6 +53,7 @@ export function SessionLayout({
 }: SessionLayoutProps) {
   const activePhase = session.currentPhase !== 'COMPLETE' && session.currentPhase !== 'EXPIRED';
   const [isDoubtOpen, setIsDoubtOpen] = useState(false);
+  const { data: currentUser } = useCurrentUser();
 
   // Padding-bottom must clear:
   //   active + footer  : SessionFooter (~68px) + SessionBottomBar (64px) + gap = ~148px
@@ -87,6 +89,7 @@ export function SessionLayout({
             subject={session.subject}
             chapter={session.chapter}
             topicName={session.topicName}
+            studentName={currentUser?.name ?? undefined}
             isOpen={isDoubtOpen}
             onClose={() => setIsDoubtOpen(false)}
           />
