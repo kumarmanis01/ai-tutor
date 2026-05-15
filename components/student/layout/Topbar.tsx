@@ -167,7 +167,7 @@ export default function Topbar() {
   const mode: TopbarMode = (topbarData?.focus.mode ?? fallbackMode) as TopbarMode;
 
   const focusConfig = MODE_FOCUS[mode];
-  const resolvedFocus = {
+  const _resolvedFocus = {
     focusLabel: topbarData?.focus.focusLabel ?? focusConfig.focusLabel,
     etaLabel: topbarData?.focus.etaLabel ?? focusConfig.etaLabel,
     askLabel: topbarData?.focus.askLabel ?? focusConfig.askLabel,
@@ -177,7 +177,7 @@ export default function Topbar() {
   };
 
   const searchPlaceholder = topbarData?.focus.searchPlaceholder ?? SEARCH_HINTS[mode];
-  const shouldShowStickyAsk = showStickyAsk && (mode === 'active' || mode === 'weak');
+  const _shouldShowStickyAsk = showStickyAsk && (mode === 'active' || mode === 'weak');
   const isFree = profile !== undefined && !profile?.plan;
 
   const normalizedSearchValue = searchValue.trim();
@@ -373,7 +373,7 @@ export default function Topbar() {
         </div>
       ) : null}
 
-      {/* Sticky Ask strip removed — Ask Vidya is available in bottom nav */}
+      {/* Sticky Ask strip removed -- Ask Vidya is available in bottom nav */}
 
       <AnimatePresence>
         {menuOpen ? (

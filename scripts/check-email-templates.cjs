@@ -19,7 +19,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const IGNORED = new Set(['node_modules', '.git', 'dist', 'coverage', 'public']);
-// Match sendMailSafe({ html: `<...` }) or html: '<...' or html: "<..." — i.e. inline HTML literals/strings
+// Match sendMailSafe({ html: `<...` }) or html: '<...' or html: "<..." -- i.e. inline HTML literals/strings
 const MATCH_REGEX = /sendMailSafe\s*\(\s*\{[\s\S]*?\bhtml\s*:\s*([`'\"])\s*</m;
 
 function walk(dir) {

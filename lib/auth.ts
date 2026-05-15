@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-15T00:00:00Z | copilot | make useVerificationToken idempotent by returning null on Prisma P2025 (already-consumed magic link)
  * - 2026-05-12T00:00:00Z | copilot | derive onboardingComplete strictly from accountStatus and require active account in requireActiveSession
  * - 2026-05-11T00:00:00Z | claude | fix Google sign-in: remove redundant explicit PKCE checks and cookie overrides
  *     (useSecureCookies:isProd drives security; overrides caused OAuthCallback errors in production),
@@ -38,6 +39,7 @@ import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
+import crypto from 'crypto';
 import { DPDP_MINOR_AGE as _DPDP_MINOR_AGE } from '@/lib/constants/age';
 import type { AppSession } from '@/lib/types/auth';
 
@@ -435,6 +437,15 @@ function isEmailVerified(profile: Record<string, unknown> | null | undefined): b
   return false;
 }
 
+function isPrismaRecordNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybePrismaError = error as { code?: string };
+  return maybePrismaError.code === 'P2025';
+}
+
 // Custom adapter that bypasses the OAuthAccountNotLinked error.
 //
 // NextAuth v4 + PrismaAdapter throws OAuthAccountNotLinked when getUserByEmail
@@ -507,6 +518,30 @@ const customAdapter = {
         session_state: account.session_state,
       },
     });
+  },
+  useVerificationToken: async (identifierToken: { identifier: string; token: string }) => {
+    try {
+      const verificationToken = await prisma.verificationToken.delete({
+        where: { identifier_token: identifierToken },
+      });
+
+      if ('id' in verificationToken && verificationToken.id) {
+        delete verificationToken.id;
+      }
+
+      return verificationToken;
+    } catch (error) {
+      if (isPrismaRecordNotFoundError(error)) {
+        try {
+          const idHash = crypto.createHash('sha256').update(String(identifierToken.identifier)).digest('hex').slice(0, 8);
+          logger.info('auth.verificationToken.alreadyConsumed', { identifierHash: idHash });
+        } catch {
+          logger.info('auth.verificationToken.alreadyConsumed', { identifierRedacted: true });
+        }
+        return null;
+      }
+      throw error;
+    }
   },
 };
 

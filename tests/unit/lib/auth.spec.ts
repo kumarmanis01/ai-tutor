@@ -13,6 +13,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-15T00:00:00Z | copilot | add test for idempotent useVerificationToken behavior when Prisma delete returns P2025
  * - 2026-05-12T00:00:00Z | copilot | assert onboardingComplete derives from accountStatus active state
  * - 2026-05-11T00:00:00Z | claude | add tests for email_verified absent/null (new allowed cases) and
  *     unrecognized string (new rejected case) to lock in tightened isEmailVerified logic
@@ -35,6 +36,9 @@ const prismaMock: any = {
     findFirst: jest.fn(),
     create: jest.fn(),
     upsert: jest.fn(),
+  },
+  verificationToken: {
+    delete: jest.fn(),
   },
   auditLog: {
     findMany: jest.fn(),
@@ -276,5 +280,17 @@ describe('lib/auth OAuth callbacks', () => {
 
     expect(session.user.id).toBe('sub-user-1');
     expect(session.user.email).toBe('student@example.com');
+  });
+
+  it('should return null when verification token was already consumed', async () => {
+    const adapter = loadAuthOptions().adapter;
+
+    prismaMock.verificationToken.delete.mockRejectedValueOnce({ code: 'P2025' });
+
+    const logger = require('@/lib/logger').logger;
+
+    await expect(adapter.useVerificationToken({ identifier: 'student@example.com', token: 'token-123' })).resolves.toBeNull();
+
+    expect(logger.info).toHaveBeenCalledWith('auth.verificationToken.alreadyConsumed', expect.any(Object));
   });
 });
