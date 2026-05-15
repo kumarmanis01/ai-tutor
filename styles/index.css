@@ -20,3 +20,6 @@
 	.btn-shimmer { animation: none; }
 }
 
+/* Safe-area helpers */
+.safe-bottom { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+

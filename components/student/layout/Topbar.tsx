@@ -55,8 +55,8 @@ const SEARCH_HINTS = {
 } as const;
 
 const VIDYA_SEARCH_CONTEXT = {
-  title: 'Ask Vidya',
-  subtitle: 'Get a concept explanation, example, or quick recap',
+  title: 'Search',
+  subtitle: 'Search chapters, concepts, or quick recap',
   emptyQueryFallback: 'quick recap',
   searchSource: 'topbar-search',
 } as const;
@@ -75,7 +75,7 @@ const MODE_FOCUS: Record<TopbarMode, FocusConfig> = {
   active: {
     focusLabel: 'Continue: Algebra - Example 3',
     etaLabel: '12 mins left',
-    askLabel: 'Stuck on a step? Ask Vidya',
+    askLabel: 'Ask Vidya',
     momentumLabel: 'You are building a great routine',
     contextTag: 'Active session',
   },
@@ -373,26 +373,7 @@ export default function Topbar() {
         </div>
       ) : null}
 
-      <AnimatePresence>
-        {shouldShowStickyAsk ? (
-          <motion.div
-            key="sticky-ask"
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-            transition={{ duration: 0.18 }}
-            className="border-t border-border bg-background/95 px-3 pb-2 pt-2 backdrop-blur-sm lg:hidden"
-          >
-            <Link
-              href={resolvedFocus.actionHref}
-              className="mx-auto inline-flex min-h-[44px] w-[72%] items-center justify-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary-fg shadow-sm"
-            >
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-              <span>{resolvedFocus.askLabel}</span>
-            </Link>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {/* Sticky Ask strip removed — Ask Vidya is available in bottom nav */}
 
       <AnimatePresence>
         {menuOpen ? (
@@ -444,7 +425,7 @@ export default function Topbar() {
                   onClick={() => setMenuOpen(false)}
                   className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted"
                 >
-                  Ask Vidya
+                  Doubts
                 </Link>
                 <Link
                   href={TOPBAR_ROUTES.profile}
@@ -554,9 +535,9 @@ export default function Topbar() {
             >
               <div className="mb-2 flex items-center justify-between px-1">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{VIDYA_SEARCH_CONTEXT.title}</p>
-                  <p className="text-xs text-muted-foreground">{VIDYA_SEARCH_CONTEXT.subtitle}</p>
-                </div>
+                    <p className="text-sm font-semibold text-foreground">{VIDYA_SEARCH_CONTEXT.title}</p>
+                    <p className="text-xs text-muted-foreground">{VIDYA_SEARCH_CONTEXT.subtitle}</p>
+                  </div>
                 <button
                   type="button"
                   onClick={() => setMobileSearchOpen(false)}
@@ -568,7 +549,7 @@ export default function Topbar() {
               </div>
               <div className="rounded-xl border border-border bg-background px-3 py-2">
                 <label htmlFor="mobile-topbar-search" className="sr-only">
-                  Ask Vidya about chapters, concepts, and formulas
+                  Search chapters, concepts, and formulas
                 </label>
                 <input
                   id="mobile-topbar-search"
@@ -580,7 +561,7 @@ export default function Topbar() {
               </div>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <p className="px-1 text-xs text-muted-foreground">
-                  Tip: Ask examples, formulas, or why a method works.
+                  Tip: Search examples, formulas, or why a method works.
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -595,7 +576,7 @@ export default function Topbar() {
                     onClick={() => setMobileSearchOpen(false)}
                     className="inline-flex min-h-[44px] items-center rounded-full bg-brand-primary px-4 text-sm font-semibold text-brand-primary-fg"
                   >
-                    Ask Vidya
+                    Search
                   </Link>
                 </div>
               </div>

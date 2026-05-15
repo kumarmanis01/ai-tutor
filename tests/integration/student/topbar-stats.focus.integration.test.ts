@@ -38,7 +38,7 @@ describe('GET /api/student/topbar-stats focus mapping (table-driven)', () => {
         mode: 'active',
         focusContains: 'Continue: Linear Equations',
         actionHref: '/session/session-123',
-        askLabel: 'Stuck on a step? Ask Vidya',
+        askLabel: 'Ask Vidya',
       },
     },
     {

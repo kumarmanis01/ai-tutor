@@ -96,7 +96,7 @@ function buildAskLabel(mode: StudentTopbarMode): string {
   if (mode === 'exam') return 'Ask Vidya for quick revision';
   if (mode === 'weak') return 'Ask Vidya to explain step by step';
   if (mode === 'recovery') return 'Need a quick recap? Ask Vidya';
-  return 'Stuck on a step? Ask Vidya';
+  return 'Ask Vidya';
 }
 
 function buildContextTag(mode: StudentTopbarMode): string {

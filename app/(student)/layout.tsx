@@ -25,7 +25,7 @@ import { NavigationProgress } from '@/components/NavigationProgress';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 import Topbar from '@/components/student/layout/Topbar';
-import BottomNav from '@/components/student/layout/BottomNav';
+// import BottomNav from '@/components/student/layout/BottomNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -161,7 +161,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
                 {children}
               </div>
             </StudentLayoutShell>
-            <BottomNav />
+            {/* <BottomNav /> */}
             <ToastHost />
             <InstallPrompt />
           </GlobalLoaderProvider>
