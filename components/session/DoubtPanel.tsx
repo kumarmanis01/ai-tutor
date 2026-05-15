@@ -182,7 +182,7 @@ export function DoubtPanel({ subject, chapter, topicName, studentName, isOpen, o
         },
       ]);
     }
-  }, [isOpen, topicName, messages.length]);
+  }, [isOpen, topicName, messages.length, studentName]);
 
   function buildHistory(): ConversationMessage[] {
     return messages

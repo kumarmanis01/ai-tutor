@@ -40,21 +40,21 @@ function AuthContent() {
   const authError = searchParams.get('error') ?? ''
   const googleFailed = GOOGLE_ERROR_CODES.has(authError)
 
-  const [email, setEmail] = useState(
+  const [email, _setEmail] = useState(
     searchParams.get('email') ||
     (typeof window !== 'undefined' ? sessionStorage.getItem('spinzy_signup_email') || '' : '')
   )
   const [emailSent, setEmailSent] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [_loading, _setLoading] = useState(false)
+  const [_error, _setError] = useState('')
 
-  async function handleEmailSignIn() {
+  async function _handleEmailSignIn() {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Please enter a valid email address')
+      _setError('Please enter a valid email address')
       return
     }
-    setLoading(true)
-    setError('')
+    _setLoading(true)
+    _setError('')
     try {
       const result = await signIn('email', {
         email,
@@ -62,14 +62,14 @@ function AuthContent() {
         redirect: false,
       })
       if (result?.error) {
-        setError('Could not send email. Please try again.')
+        _setError('Could not send email. Please try again.')
       } else {
         setEmailSent(true)
       }
     } catch {
-      setError('Something went wrong. Please try again.')
+      _setError('Something went wrong. Please try again.')
     } finally {
-      setLoading(false)
+      _setLoading(false)
     }
   }
 
@@ -137,14 +137,14 @@ function AuthContent() {
         </button>
 
         {/* Divider */}
-        <div className="flex items-center gap-3">
+        {/* <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"/>
           <span className="text-xs text-gray-400">or</span>
           <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"/>
-        </div>
+        </div> */}
 
         {/* Email magic link */}
-        <div className="space-y-3">
+        {/* <div className="space-y-3">
           <input
             type="email"
             value={email}
@@ -169,7 +169,7 @@ function AuthContent() {
           >
             {loading ? 'Sending...' : 'Send sign-in link →'}
           </button>
-        </div>
+        </div> */}
 
         {/* Trust line */}
         <p className="text-center text-xs text-gray-400">

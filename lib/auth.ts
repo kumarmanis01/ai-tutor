@@ -29,11 +29,12 @@
 // Import necessary libraries and providers for authentication
 import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth to your database
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
-import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
+// EmailProvider is disabled per request -- keep Google-only sign-in flow
+// import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import { sendMail } from '@/lib/mailer';
-import { welcomeEmailHtml, magicLinkHtml } from '@/lib/email/templates';
-import { AUTH_NO_REPLY_EMAIL } from '@/lib/email/functionalityEmails';
+import { welcomeEmailHtml, magicLinkHtml as _magicLinkHtml } from '@/lib/email/templates';
+import { AUTH_NO_REPLY_EMAIL as _AUTH_NO_REPLY_EMAIL } from '@/lib/email/functionalityEmails';
 import { logger } from '@/lib/logger';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
@@ -562,6 +563,10 @@ export const authOptions: any = {
         },
       },
     }),
+    /*
+      Email sign-in (magic link) disabled. To re-enable, uncomment imports
+      at the top of this file and this provider block.
+
     EmailProvider({
       from: process.env.EMAIL_FROM ?? `Spinzy Academy <${AUTH_NO_REPLY_EMAIL}>`,
       sendVerificationRequest: async ({ identifier, url }) => {
@@ -573,6 +578,7 @@ export const authOptions: any = {
         });
       },
     }),
+    */
   ],
   session: { strategy: 'jwt' },
   callbacks: {
