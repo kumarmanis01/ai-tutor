@@ -84,4 +84,26 @@ describe('POST /api/auth/parent/verify-otp', () => {
       }),
     )
   })
+
+  it('rejects whatsapp channel when disabled', async () => {
+    jest.resetModules()
+    jest.clearAllMocks()
+
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { id: 'stu-1' } }) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: {} }))
+
+    const route = await import('@/app/api/auth/parent/verify-otp/route')
+
+    const req = new Request('http://localhost/api/auth/parent/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: '123456', channel: 'whatsapp' }),
+    })
+
+    const res: any = await route.POST(req as any)
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body.error).toBe('WhatsApp verification is currently disabled')
+  })
 })

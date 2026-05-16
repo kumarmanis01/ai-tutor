@@ -31,7 +31,7 @@ function hashOtp(otp: string) {
   return crypto.createHash('sha256').update(`${otp}${secret}`).digest('hex');
 }
 
-type OtpChannel = 'email' | 'whatsapp';
+type OtpChannel = 'email';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -42,13 +42,12 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const code = String(body.code || body.otp || '').trim();
-    const channel = body.channel === 'email' || body.channel === 'whatsapp'
-      ? (body.channel as OtpChannel)
-      : null;
-
-    if (!channel) {
-      return NextResponse.json({ error: 'Verification channel is required' }, { status: 400 });
+    // Only email verification is enabled for now. Reject WhatsApp attempts explicitly.
+    if (body.channel === 'whatsapp') {
+      return NextResponse.json({ error: 'WhatsApp verification is currently disabled' }, { status: 400 });
     }
+    // Default to email when no channel is provided by the client.
+    const channel: OtpChannel = 'email';
 
     if (!/^\d{4,6}$/.test(code)) {
       return NextResponse.json({ error: 'Enter the 6-digit code' }, { status: 400 });
@@ -67,7 +66,8 @@ export async function POST(req: NextRequest) {
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const alreadyVerified = channel === 'email' ? !!user.parentEmailVerifiedAt : !!user.parentWhatsappVerifiedAt;
+    // Only email channel supported: check email-verified flag
+    const alreadyVerified = !!user.parentEmailVerifiedAt;
     if (alreadyVerified) {
       const verification = await getParentChannelVerificationStatus({
         prisma,
@@ -86,9 +86,6 @@ export async function POST(req: NextRequest) {
 
     if (channel === 'email' && !channels.hasEmail) {
       return NextResponse.json({ error: 'Parent email is not configured' }, { status: 400 });
-    }
-    if (channel === 'whatsapp' && !channels.hasWhatsapp) {
-      return NextResponse.json({ error: 'Parent WhatsApp is not configured' }, { status: 400 });
     }
 
     const otpKey = channelOtpKeyByType(channel, channels.normalizedEmail, channels.resolvedWhatsappDigits);
@@ -114,7 +111,7 @@ export async function POST(req: NextRequest) {
       prisma.user.update({
         where: { id: studentId },
         data: {
-          ...(channel === 'email' ? { parentEmailVerifiedAt: new Date() } : { parentWhatsappVerifiedAt: new Date() }),
+          parentEmailVerifiedAt: new Date(),
           ...(user.parentVerifiedAt ? {} : { parentVerifiedAt: new Date() }),
           accountStatus: 'active',
         },

@@ -136,6 +136,19 @@ export default async function StudentHomeDashboardPage() {
 
   if (!user) redirect('/')
 
+  // Debug: log raw user.subjects and learningPlans to trace missing subject cases
+  try {
+    logger.debug('dashboard.user_subjects', { userId, rawSubjects: (user as any).subjects })
+  } catch (err) {
+    logger.warn('dashboard.user_subjects.log_failed', { userId, error: err })
+  }
+
+  try {
+    logger.debug('dashboard.learning_plans', { userId, learningPlansCount: learningPlans.length, learningPlans })
+  } catch (err) {
+    logger.warn('dashboard.learning_plans.log_failed', { userId, error: err })
+  }
+
   const isPremium = user.subscriptionStatus === 'premium'
   const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
   const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_CAP - sessionsUsed)
@@ -189,6 +202,18 @@ export default async function StudentHomeDashboardPage() {
           })()
         : null
 
+    // Debug: log grade/board/enrolledSubjects used for subject resolution
+    try {
+      logger.debug('dashboard.subject_resolution_context', {
+        userId,
+        parsedUserGrade,
+        board: (user as any).board,
+        enrolledSubjects,
+      })
+    } catch (err) {
+      logger.warn('dashboard.subject_resolution_context.log_failed', { userId, error: err })
+    }
+
     // Scope to the student's own board + grade to avoid cross-grade/board duplicates
     // when multiple active SubjectDef rows share the same display name.
     // Only apply class scoping when we have both a board and a parsed numeric grade.
@@ -231,6 +256,13 @@ export default async function StudentHomeDashboardPage() {
       if (!seen.has(key) || planSubjectIdSet.has(s.id)) seen.set(key, s)
     }
     subjects = Array.from(seen.values())
+  }
+
+  // Debug: log resolved subjects for troubleshooting when students report missing cards.
+  try {
+    logger.debug('dashboard.resolved_subjects', { userId, subjectCount: subjects.length, subjects });
+  } catch (err) {
+    logger.warn('dashboard.resolved_subjects.log_failed', { userId, error: err });
   }
 
   // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
@@ -480,6 +512,17 @@ export default async function StudentHomeDashboardPage() {
       }),
     )
   ).filter((t): t is TodaysTopic => t !== null)
+
+  // Debug: log readinessRows to help diagnose cases where cards are missing.
+  try {
+    logger.debug('dashboard.readiness_results', {
+      userId,
+      readinessCount: readinessResults.length,
+      readinessSubjects: readinessResults.map((r) => ({ id: r.subjectId, name: r.subjectName, diagnosticDone: r.diagnosticDone })),
+    })
+  } catch (err) {
+    logger.warn('dashboard.readiness_results.log_failed', { userId, error: err })
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
