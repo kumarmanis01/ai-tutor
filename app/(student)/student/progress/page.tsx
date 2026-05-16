@@ -245,8 +245,10 @@ export default async function ProgressPage({
       conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0]),
     );
 
+    // Normalize chapter id keys to strings so map lookups are consistent
     for (const c of concepts) {
-      const chId = c.topic?.chapterId;
+      const rawChId = c.topic?.chapterId;
+      const chId = rawChId ? String(rawChId) : '';
       if (!chId) continue;
       if (!conceptsByChapter.has(chId)) conceptsByChapter.set(chId, []);
       conceptsByChapter.get(chId)!.push(c.id);
@@ -260,7 +262,8 @@ export default async function ProgressPage({
           (a, b) =>
             (masteryByConceptId.get(a) ?? 0) - (masteryByConceptId.get(b) ?? 0),
         );
-      chapterWeakestConceptMap.set(chapterId, sorted[0]);
+        // store with string key to match readiness.chapterId shape
+        chapterWeakestConceptMap.set(String(chapterId), sorted[0]);
       // compute average memoryStrength for the chapter
       const msVals = conceptIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
       const _avgMs = msVals.length > 0 ? msVals.reduce((a, b) => a + b, 0) / msVals.length : 0;
@@ -278,9 +281,9 @@ export default async function ProgressPage({
         masteryScore: ch.masteryScore,
         boardWeightPct: ch.boardWeightPct,
         weightSource: ch.weightSource,
-        weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
+        weakestConceptId: chapterWeakestConceptMap.get(String(ch.chapterId)) ?? null,
         memoryStrength: (() => {
-          const cIds = (conceptsByChapter.get(ch.chapterId) ?? [] as string[])
+          const cIds = (conceptsByChapter.get(String(ch.chapterId)) ?? [] as string[])
           const vals = cIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0)
           return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
         })(),
