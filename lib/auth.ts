@@ -716,7 +716,7 @@ export const authOptions: any = {
                 parentPhone: true,
               },
             });
-            const dbEnd = Date.now();
+            // const dbEnd = Date.now();
             if (dbUser) {
               token.id = token.id ?? dbUser.id;
               token.role = dbUser.role;
@@ -740,7 +740,7 @@ export const authOptions: any = {
                 }
               }
             }
-            logger.add('jwt.db.fetch', { className: 'auth', methodName: 'jwt', durationMs: Date.now() - dbStart });
+            logger.add('jwt.db.fetch', { className: 'auth', methodName: 'jwt', durationMs: Date.now() - dbStart});
           } catch (err) {
             logger.warn('jwt callback DB fetch failed, using defaults', { className: 'auth', methodName: 'jwt', error: String(err) });
             token.accountStatus = (token.accountStatus as string) ?? 'active';
