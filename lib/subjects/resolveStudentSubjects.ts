@@ -34,8 +34,20 @@ export default async function resolveStudentSubjects(
       const arr = (user.subjects as string[]).filter(Boolean).map((s) => String(s).trim())
       if (arr.length > 0) enrolledSubjects = arr
     } else if (typeof user.subjects === 'string' && user.subjects.length > 0) {
-      const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim()
-      const parts = cleaned.length > 0 ? cleaned.split(',').map((s) => s.trim()).filter(Boolean) : []
+        const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim()
+        const parts =
+          cleaned.length > 0
+            ? cleaned
+                .split(',')
+                .map((s) =>
+                  String(s)
+                    .trim()
+                    // Remove surrounding single or double quotes that appear in Postgres array wire-format
+                    .replace(/^"(.*)"$/, '$1')
+                    .replace(/^'(.*)'$/, '$1'),
+                )
+                .filter(Boolean)
+            : []
       if (parts.length > 0) enrolledSubjects = parts
     }
   }
