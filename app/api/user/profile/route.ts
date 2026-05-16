@@ -23,6 +23,7 @@ import { getRedis } from '@/lib/redis';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
+import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
 
 export async function GET(req: Request) {
   const start = Date.now();
@@ -96,6 +97,11 @@ export async function GET(req: Request) {
   // Find active subscription
   const activeSub = savedUser?.subscriptions?.find((sub: { active: boolean }) => sub.active);
 
+  // Resolve enrolled subjects to canonical SubjectDef rows (best-effort; empty on failure).
+  const resolvedSubjects = savedUser
+    ? await resolveStudentSubjects(savedUser, []).catch(() => [])
+    : [];
+
   res = NextResponse.json({
     id: savedUser?.id ?? '',
     name: savedUser?.name ?? '',
@@ -107,6 +113,7 @@ export async function GET(req: Request) {
     board: savedUser?.board ?? null,
     schoolName: savedUser?.schoolName ?? null,
     subjects: savedUser?.subjects ?? [],
+    resolvedSubjects,
     age: savedUser?.age ?? null,
     parentPhone: savedUser?.parentPhone ?? null,
     parentPhoneVerifiedAt: savedUser?.parentPhoneVerifiedAt ?? null,

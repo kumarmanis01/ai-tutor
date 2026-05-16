@@ -25,6 +25,8 @@ export interface User {
   country?: string | null;
   language?: string | null;
   subjects?: string[];
+  /** Canonical SubjectDef rows resolved from user.subjects via grade+board scoping. */
+  resolvedSubjects?: Array<{ id: string; name: string; slug: string }>;
   plan?: string | null;
   billingCycle?: string | null;
   subscriptionEnd?: string | null;

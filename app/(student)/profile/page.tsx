@@ -206,17 +206,24 @@ export default function ProfilePage() {
               </div>
               <div>
                 <span className="font-semibold">Subjects:</span>{' '}
-                {profile?.subjects && profile.subjects.length > 0 ? (
-                  <span className="inline-flex flex-wrap gap-1 mt-1">
-                    {profile.subjects.map((s: string) => (
-                      <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm">
-                        {s}
-                      </span>
-                    ))}
-                  </span>
-                ) : (
-                  <span className="text-gray-400">Not set</span>
-                )}
+                {(() => {
+                  // Prefer canonical resolved names; fall back to raw stored strings.
+                  const display: string[] =
+                    profile?.resolvedSubjects && profile.resolvedSubjects.length > 0
+                      ? profile.resolvedSubjects.map((s) => s.name)
+                      : (profile?.subjects ?? []);
+                  return display.length > 0 ? (
+                    <span className="inline-flex flex-wrap gap-1 mt-1">
+                      {display.map((name) => (
+                        <span key={name} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm">
+                          {name}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">Not set</span>
+                  );
+                })()}
               </div>
               <div>
                 <span className="font-semibold">Country:</span>{' '}
