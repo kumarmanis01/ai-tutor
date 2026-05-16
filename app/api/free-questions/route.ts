@@ -59,7 +59,7 @@ export async function GET() {
 
     try {
       // Read user's current remaining count; no automatic reset is performed here.
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { todaysFreeQuestionsCount: true } });
       if (!user) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
       return NextResponse.json({

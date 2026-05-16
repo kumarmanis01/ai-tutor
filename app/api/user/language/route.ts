@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import { getRedis } from '@/lib/redis';
 import { normalizeLanguage } from '@/lib/normalize';
 import { SessionUser } from '@/lib/types';
 
@@ -11,7 +12,7 @@ export async function GET() {
     if (!session) return NextResponse.json({ language: null });
     const user = session.user as SessionUser;
     if (!user?.id) return NextResponse.json({ language: null });
-    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { language: true } });
     return NextResponse.json({ language: dbUser?.language ?? null });
   } catch (e) {
     logger.error('GET /api/user/language error', { className: 'api.user.language', methodName: 'GET', error: e });
@@ -34,6 +35,20 @@ export async function POST(req: Request) {
 
     const langEnum = normalizeLanguage(language);
     await prisma.user.update({ where: { id: user.id }, data: { language: langEnum } });
+
+    // Invalidate short-lived session cache so JWT reflects updated language
+    try {
+      const redis = getRedis?.();
+      const email = (session.user as any)?.email as string | undefined;
+      if (redis && email) {
+        const cacheKey = `session:user:${String(email).toLowerCase()}`;
+        await redis.del(cacheKey).catch(() => null);
+        logger.add('session.cache.invalidated', { className: 'UserLanguageAPI', methodName: 'POST', cacheKey });
+      }
+    } catch (err) {
+      logger.warn('UserLanguageAPI: cache invalidation failed', { className: 'UserLanguageAPI', methodName: 'POST', error: String(err) });
+    }
+
     return NextResponse.json({ ok: true, language: langEnum });
   } catch (e) {
     logger.error('POST /api/user/language error', { className: 'api.user.language', methodName: 'POST', error: e });
