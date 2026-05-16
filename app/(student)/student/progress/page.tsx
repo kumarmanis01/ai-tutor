@@ -27,6 +27,7 @@ import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
 import AiNarrativeWidget from '@/components/student/progress/AiNarrativeWidget';
+import { getRedis } from '@/lib/redis';
 import SessionsChart from '@/components/student/progress/SessionsChart';
 import ChapterMasteryBars, {
   type SubjectMasteryData,
@@ -54,17 +55,20 @@ const AVG_SESSION_MINUTES = 20;
 export default async function ProgressPage({
   searchParams,
 }: {
-  searchParams?: { subject?: string; days?: string };
+  searchParams?: { subject?: string; days?: string } | Promise<{ subject?: string; days?: string } | undefined>;
 }) {
   const authSession = await requireActiveSession();
   if (!authSession) redirect('/');
 
   const userId = (authSession.user as { id: string }).id;
 
-  // Parse filter params -- default 30 days, no subject filter.
-  const rawDays = Number(searchParams?.days ?? 30);
+  // Parse filter params -- Next.js 15 provides async searchParams (Promise).
+  // Await it before accessing properties to avoid `sync-dynamic-apis` runtime error.
+  const params = (await (searchParams as any)) ?? {};
+  const parsedDays = Number.parseInt(String(params.days ?? '30'), 10);
+  const rawDays = Number.isFinite(parsedDays) ? parsedDays : 30;
   const days = [7, 30, 90, 0].includes(rawDays) ? rawDays : 30;
-  const activeSubject = searchParams?.subject ?? '';
+  const activeSubject = typeof params.subject === 'string' ? params.subject : '';
 
   const cfg = barConfig(days);
   const sinceDate = cfg.fetchDays > 0
@@ -342,7 +346,16 @@ export default async function ProgressPage({
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
         {/* Left column -- narrative + chart (60%) */}
         <div className="flex flex-col gap-6 md:w-3/5">
-          <AiNarrativeWidget />
+          <AiNarrativeWidget initialNarrative={await (async () => {
+            try {
+              const redis = getRedis();
+              if (!redis) return null;
+              const cached = await redis.get(`narrative:${userId}`);
+              return cached ?? null;
+            } catch {
+              return null;
+            }
+          })()} />
           <SessionsChart
             weeklyCounts={bucketCounts}
             totalSessions={totalSessions}
