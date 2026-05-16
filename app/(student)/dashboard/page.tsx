@@ -43,6 +43,7 @@ import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
 import { FocusAreaCard } from '@/components/student/dashboard/FocusAreaCard'
 import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
+import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
 import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
 
@@ -167,96 +168,9 @@ export default async function StudentHomeDashboardPage() {
     xpBySource[row.source] = row._sum.amount ?? 0
   }
 
-  // ── Subject resolution (depends on Round 1 data -- unavoidable sequential step) ──
-  // Prefer subjects from the student's profile `subjects` (enrolled subjects),
-  // then fall back to subjects referenced by their learning plans, then active subjects.
-  let subjects = [] as { id: string; name: string }[]
-
-  // Resolve enrolled subjects from user.subjects (may be string[] or Postgres wire-format string)
-  let enrolledSubjects: string[] | null = null
-  if (user?.subjects) {
-    if (Array.isArray(user.subjects)) {
-      const arr = (user.subjects as string[]).filter(Boolean)
-      if (arr.length > 0) enrolledSubjects = arr
-    } else if (typeof user.subjects === 'string' && user.subjects.length > 0) {
-      const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim()
-      const parts = cleaned.length > 0 ? cleaned.split(',').map((s) => s.trim()).filter(Boolean) : []
-      if (parts.length > 0) enrolledSubjects = parts
-    }
-  }
-
-  // AC: Incomplete profiles must never see dashboard subjects. This check is defensive
-  // since the layout should already block incomplete users, but belt+suspenders matters here.
-  if (enrolledSubjects && enrolledSubjects.length > 0 && user?.grade && user?.board) {
-    // Parse user.grade to an integer because SubjectDef.class.grade is an Int in
-    // the Prisma schema while `user.grade` is stored as a string on the User row.
-    // Only apply class scoping when the parsed grade is a valid integer to avoid
-    // silently passing an incorrect filter to Prisma.
-    const parsedUserGrade =
-      typeof user?.grade === 'string'
-        ? (() => {
-            const normalizedGrade = user.grade.trim()
-            if (normalizedGrade.length === 0) return null
-            const numericGrade = Number(normalizedGrade)
-            return Number.isInteger(numericGrade) ? numericGrade : null
-          })()
-        : null
-
-    // Debug: log grade/board/enrolledSubjects used for subject resolution
-    try {
-      logger.debug('dashboard.subject_resolution_context', {
-        userId,
-        parsedUserGrade,
-        board: (user as any).board,
-        enrolledSubjects,
-      })
-    } catch (err) {
-      logger.warn('dashboard.subject_resolution_context.log_failed', { userId, error: err })
-    }
-
-    // Scope to the student's own board + grade to avoid cross-grade/board duplicates
-    // when multiple active SubjectDef rows share the same display name.
-    // Only apply class scoping when we have both a board and a parsed numeric grade.
-    subjects = await prisma.subjectDef.findMany({
-      where: {
-        lifecycle: 'active',
-        ...(user.board && parsedUserGrade !== null
-          ? {
-              class: {
-                grade: parsedUserGrade,
-                board: { slug: { equals: user.board, mode: 'insensitive' as const } },
-              },
-            }
-          : {}),
-        OR: [{ name: { in: enrolledSubjects } }, { slug: { in: enrolledSubjects } }],
-      },
-      select: { id: true, name: true },
-    })
-  } else {
-    const planSubjectIds = Array.from(new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId)))
-    if (planSubjectIds.length > 0) {
-      subjects = await prisma.subjectDef.findMany({
-        where: { id: { in: planSubjectIds }, lifecycle: 'active' },
-        select: { id: true, name: true },
-      })
-    } else {
-      // AC: Never show generic subjects to incomplete students. Only show subjects from
-      // learning plans (which only exist after onboarding) or fall through to empty array.
-      subjects = []
-    }
-  }
-
-  // Deduplicate by lowercase name -- prefer the subject that is in a learning plan so
-  // that "Start Diagnostic" always links to the subject the student actually enrolled in.
-  {
-    const planSubjectIdSet = new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId))
-    const seen = new Map<string, { id: string; name: string }>()
-    for (const s of subjects) {
-      const key = s.name.toLowerCase()
-      if (!seen.has(key) || planSubjectIdSet.has(s.id)) seen.set(key, s)
-    }
-    subjects = Array.from(seen.values())
-  }
+  // ── Subject resolution (centralised) ───────────────────────────────────────
+  // Use central resolver to ensure consistent behaviour across routes/pages.
+  let subjects = await resolveStudentSubjects(user as any, learningPlans as any)
 
   // Debug: log resolved subjects for troubleshooting when students report missing cards.
   try {
