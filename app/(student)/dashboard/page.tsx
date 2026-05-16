@@ -562,13 +562,8 @@ export default async function StudentHomeDashboardPage() {
                 </Link>
               </div>
               <div className="flex flex-col gap-3">
-                {readinessResults.map((r) => (
-                  <Link
-                    key={r.subjectId}
-                    href={`/student/progress/${r.subjectId}`}
-                    className="block hover:opacity-90 transition-opacity"
-                    aria-label={`View ${r.subjectName} chapter breakdown`}
-                  >
+                {readinessResults.map((r) => {
+                  const card = (
                     <SubjectReadinessCard
                       subjectId={r.subjectId}
                       subjectName={r.subjectName}
@@ -578,8 +573,27 @@ export default async function StudentHomeDashboardPage() {
                       retakeEligibleAt={r.retakeEligibleAt}
                       chapters={r.chapters}
                     />
-                  </Link>
-                ))}
+                  )
+
+                  return r.diagnosticDone ? (
+                    <Link
+                      key={r.subjectId}
+                      href={`/student/progress/${r.subjectId}`}
+                      className="block hover:opacity-90 transition-opacity"
+                      aria-label={`View ${r.subjectName} chapter breakdown`}
+                    >
+                      {card}
+                    </Link>
+                  ) : (
+                    <div
+                      key={r.subjectId}
+                      className="block hover:opacity-90 transition-opacity"
+                      aria-label={`View ${r.subjectName} chapter breakdown`}
+                    >
+                      {card}
+                    </div>
+                  )
+                })}
               </div>
             </section>
           )}

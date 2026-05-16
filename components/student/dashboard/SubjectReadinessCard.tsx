@@ -14,9 +14,11 @@
  * - 2026-05-09T15:15:00Z | copilot | rewrite readiness card with Tailwind,
  *                          readiness badges, predicted range, retake info,
  *                          and chapter breakdown support
+ * - 2026-05-16T12:00:00Z | copilot | show "Start diagnostic" button when diagnostic pending
  */
 
 import type { ReadinessChapter } from '@/lib/student/examReadiness'
+import Link from 'next/link'
 
 interface PredictedRange {
   low: number
@@ -126,6 +128,16 @@ export function SubjectReadinessCard({
         >
           {diagnosticDone ? 'Diagnostic complete' : 'Diagnostic pending'}
         </span>
+
+        {!diagnosticDone && (
+          <Link
+            href={`/diagnostic/${subjectId}`}
+            className="ml-2 inline-flex items-center rounded-md bg-[#534AB7] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
+            aria-label={`Start diagnostic for ${subjectName}`}
+          >
+            Start diagnostic
+          </Link>
+        )}
 
         {retakeEligibleAt && (
           <span className="inline-flex items-center rounded-full bg-[#EEEDFE] px-2 py-0.5 text-[10px] font-medium text-[#3C3489]">
