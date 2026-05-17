@@ -1,0 +1,108 @@
+/* ============================================================================
+ * Design-system token additions — APPEND to styles/tailwind.css
+ * ============================================================================
+ *
+ * These are the new CSS variables introduced during the dashboard + profile
+ * revamp. They extend (not replace) the existing brand tokens.
+ *
+ * Add the matching entries to lib/theme/brand.ts and tailwind.config.js in the
+ * same commit (see design_handoff_student_app/design-system/TOKENS.md).
+ * ============================================================================ */
+
+:root {
+  /* ── Surface layer ──
+     Pure white is too cold for the warm-brand dashboard. Use surface-warm for
+     hero banners and sidebar warm-cards; surface-sunk for inset placeholders
+     and "focus area" trays. Pure white card surface stays as --color-card. */
+  --color-surface-warm: #FBF8F1;
+  --color-surface-sunk: #F5F1E8;
+
+  /* ── Ink scale (extended) ──
+     The brand already exports --color-foreground (#1A1A1A) and
+     --color-muted-foreground (#666666). Add two mid-tones for body emphasis
+     and faint dividers. */
+  --color-ink-2: #4A4458;   /* body emphasis (between foreground and muted) */
+  --color-ink-4: #A8A2B8;   /* disabled / faint dividers */
+
+  /* ── Press-down shadow colors ──
+     For the "hardware-feel" button + day-dot lift (Duolingo-style). The
+     shadow is the same color as the button, 1–3 shades darker. */
+  --color-primary-shadow: #3A2F8C;
+  --color-warning-shadow: #7E4F0F;
+  --color-success-shadow: #176A4F;
+
+  /* ── Subject identity — Hindi ──
+     Adds the missing subject to the existing palette. */
+  --subject-hindi:    #A33B6E;
+  --subject-hindi-bg: #FBEAF1;
+
+  /* ── Readiness tiers — fair + on-track ──
+     Repo already has critical/weak/success status tokens. Add the missing
+     mid-band tiers for a complete 5-tier scale. */
+  --color-fair-text:     #BA7517;
+  --color-fair-fill:     #E89645;
+  --color-on-track-text: #534AB7;
+  --color-on-track-fill: #7B74D4;
+
+  /* ── Composite shadows (bound to Tailwind utilities) ── */
+  --shadow-press-primary: 0 2px 0 var(--color-primary-shadow);
+  --shadow-press-warning: 0 2px 0 var(--color-warning-shadow);
+  --shadow-press-success: 0 3px 0 var(--color-success-shadow);
+  --shadow-pop:           0 10px 30px -12px rgba(40, 30, 60, 0.18);
+}
+
+.dark {
+  --color-surface-warm: #1A1A2E;
+  --color-surface-sunk: #0F0F1F;
+
+  --color-ink-2: #B8B4C8;
+  --color-ink-4: #6B6680;
+
+  --color-primary-shadow: #1A1845;
+  --color-warning-shadow: #451A03;
+  --color-success-shadow: #14532D;
+
+  --subject-hindi:    #E07AAB;
+  --subject-hindi-bg: #3A1F2A;
+
+  --color-fair-text:     #F59E0B;
+  --color-fair-fill:     #FBBF24;
+  --color-on-track-text: #7B74D4;
+  --color-on-track-fill: #9A95E0;
+
+  --shadow-pop: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================================================
+ * Optional utility classes
+ * ============================================================================
+ *
+ * These are CSS-only utilities that don't map cleanly to a single Tailwind
+ * extension. Keep them small and named — anything bigger should be a React
+ * primitive in components/UI/design-system/.
+ * ============================================================================ */
+
+/* Conic-gradient progress ring (used by <Ring />).
+   Caller sets --ring-percent (0–100) and --ring-color via inline style or class. */
+.ds-ring {
+  position: relative;
+  border-radius: 9999px;
+  background: conic-gradient(
+    var(--ring-color, var(--color-primary)) calc(var(--ring-percent, 0) * 1%),
+    var(--color-border) 0
+  );
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ds-ring::after {
+  content: "";
+  position: absolute;
+  inset: var(--ring-thickness, 6px);
+  background: var(--color-card);
+  border-radius: 9999px;
+}
+.ds-ring > * {
+  position: relative;
+  z-index: 1;
+}
