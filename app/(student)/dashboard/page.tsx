@@ -1,7 +1,7 @@
 /**
  * FILE OBJECTIVE:
- * - Server-render the student dashboard with primary/secondary learning CTAs,
- *   readiness cards, and freemium/subscription widgets.
+ * - Server-render the revamped student dashboard with welcome banner,
+ *   today's missions, pick-next section, stats row, and exam readiness.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/student/dashboard/page.test.ts
@@ -23,29 +23,31 @@
  *                          and wire CTA to subject progress view
  * - 2026-05-11T18:00:00Z | copilot | remove unused FreemiumCounter, ReferralShareCard imports (V1 pre-rollout)
  * - 2026-05-12T00:00:00Z | copilot | prevent incomplete-profile fallback subject exposure when enrollment data is missing
+ * - 2026-05-17T00:00:00Z | copilot | revamp dashboard UI: welcome banner, missions hero/row, pick-next,
+ *                          stats row (week+level+leaderboard), exam readiness with chapter mastery
  */
- 
+
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { requireActiveSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getNextAction } from '@/lib/homeEngine/getNextAction'
 import { computeReadinessScore, type ReadinessChapter } from '@/lib/student/examReadiness'
 import { logger } from '@/lib/logger'
-import TodaysLearningCard, {
-  type TodaysLearningCardProps,
-} from '@/components/student/dashboard/TodaysLearningCard'
-import SecondaryStartOptions from '@/components/student/dashboard/SecondaryStartOptions'
-import { XPWidget } from '@/components/student/dashboard/XPWidget'
-import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip'
-import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
-import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
-import { FocusAreaCard } from '@/components/student/dashboard/FocusAreaCard'
 import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
 import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
+import WelcomeBanner from '@/components/student/dashboard/WelcomeBanner'
+import TodaysMissions from '@/components/student/dashboard/TodaysMissions'
+import PickNextSection from '@/components/student/dashboard/PickNextSection'
+import StatsRow from '@/components/student/dashboard/StatsRow'
+import ExamReadinessSection, {
+  type SubjectReadiness,
+  type ReadinessChapterDisplay,
+  type PredictedRange,
+} from '@/components/student/dashboard/ExamReadinessSection'
+import { type DashboardMission, type MissionKind, type MissionState } from '@/lib/student/dashboardMissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +61,20 @@ function computeCrunchMode(examDate: Date | null | undefined): boolean {
   if (!examDate) return false
   const daysToExam = Math.ceil((examDate.getTime() - Date.now()) / 86400000)
   return daysToExam >= 0 && daysToExam <= 14
+}
+
+/** Normalise 0-1 scores to 0-100. */
+function normalisePct(score: number): number {
+  if (score <= 1) return Math.round(score * 100)
+  return Math.round(score)
+}
+
+/** Map a ReadinessChapter status label to the display tag. */
+function chapterTag(status: ReadinessChapter['status']): SubjectReadiness['tag'] {
+  if (status === 'critical') return 'critical'
+  if (status === 'needs_work') return 'needs_work'
+  if (status === 'on_track') return 'on_track'
+  return 'ready'
 }
 
 const FREE_TIER_SESSION_CAP = 3
@@ -75,7 +91,6 @@ export default async function StudentHomeDashboardPage() {
   currentPeriodStart.setHours(0, 0, 0, 0)
 
   // ── Round 1: all independent queries in a single parallel fetch ──────────────
-  // XP aggregates merged here so there is no second sequential Promise.all below.
   const [
     user,
     nextAction,
@@ -109,7 +124,6 @@ export default async function StudentHomeDashboardPage() {
       where: { studentId: userId, subjectScope: '__ALL__', periodStart: currentPeriodStart },
       select: { sessionsUsed: true, periodStart: true },
     }),
-    // Fetch learning plans for this student (scopes subjects + resolves today's topics)
     prisma.learningPlan.findMany({
       where: { studentId: userId },
       select: { id: true, subjectId: true },
@@ -123,7 +137,6 @@ export default async function StudentHomeDashboardPage() {
       select: { startedAt: true },
       orderBy: { startedAt: 'asc' },
     }),
-    // XP this week (was previously a second sequential Promise.all -- merged here)
     prisma.studentXP.aggregate({
       where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
       _sum: { amount: true },
@@ -137,17 +150,10 @@ export default async function StudentHomeDashboardPage() {
 
   if (!user) redirect('/')
 
-  // Debug: log raw user.subjects and learningPlans to trace missing subject cases
   try {
-    logger.debug('dashboard.user_subjects', { userId, rawSubjects: (user as any).subjects })
+    logger.debug('dashboard.user_subjects', { userId, rawSubjects: (user as { subjects: string[] }).subjects })
   } catch (err) {
     logger.warn('dashboard.user_subjects.log_failed', { userId, error: err })
-  }
-
-  try {
-    logger.debug('dashboard.learning_plans', { userId, learningPlansCount: learningPlans.length, learningPlans })
-  } catch (err) {
-    logger.warn('dashboard.learning_plans.log_failed', { userId, error: err })
   }
 
   const isPremium = user.subscriptionStatus === 'premium'
@@ -156,32 +162,20 @@ export default async function StudentHomeDashboardPage() {
   const periodStart = freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString()
 
   const latestPlan = user.learningPlans[0]
-  // Respect per-user preference: 'on' | 'off' | 'auto'
-  const prefCrunch = (user as any)?.preferences?.crunchMode ?? 'auto'
+  const prefCrunch = ((user as { preferences?: { crunchMode?: string } }).preferences?.crunchMode) ?? 'auto'
   const autoCrunch = computeCrunchMode(latestPlan?.examDate)
   const isCrunchMode = prefCrunch === 'on' ? true : prefCrunch === 'off' ? false : autoCrunch
 
-  // ── XP breakdown ─────────────────────────────────────────────────────────────
+  // ── XP data ──────────────────────────────────────────────────────────────────
   const xpThisWeek = xpThisWeekResult._sum.amount ?? 0
-  const xpBySource: Record<string, number> = {}
-  for (const row of xpBySourceRaw) {
-    xpBySource[row.source] = row._sum.amount ?? 0
-  }
 
-  // ── Subject resolution (centralised) ───────────────────────────────────────
-  // Incomplete profiles must never see dashboard subjects; only resolve once
-  // the academic scope is fully available.
+  // ── Subject resolution ───────────────────────────────────────────────────────
   const hasCompleteAcademicProfile = Boolean(user.grade && user.board)
-  // Use central resolver to ensure consistent behaviour across routes/pages.
   const subjects = hasCompleteAcademicProfile
-    ? await resolveStudentSubjects(user as any, learningPlans as any)
+    ? await resolveStudentSubjects(user as Parameters<typeof resolveStudentSubjects>[0], learningPlans as Parameters<typeof resolveStudentSubjects>[1])
     : []
 
-  // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
-  // User.subjects is an unbounded String[], so we cap at SUBJECT_CAP and process
-  // SUBJECT_CONCURRENCY subjects at a time to avoid a burst of concurrent Neon
-  // connections that would saturate the connection pool and cause tail-latency spikes.
-  // Within each batch, the three per-subject queries run in an inner Promise.all.
+  // ── Round 2: readiness + diagnostic status, subjects batched for pool safety ─
   const SUBJECT_CAP = 5
   const SUBJECT_CONCURRENCY = 3
 
@@ -189,7 +183,7 @@ export default async function StudentHomeDashboardPage() {
     subjectId: string
     subjectName: string
     score: number
-    predictedRange?: any
+    predictedRange?: PredictedRange | null
     chapters: ReadinessChapter[]
     diagnosticDone: boolean
     retakeEligibleAt: string | null
@@ -206,18 +200,16 @@ export default async function StudentHomeDashboardPage() {
           computeReadinessScore(userId, sub.id).catch(() => ({
             score: 0,
             label: 'critical' as const,
-            chapters: [],
+            chapters: [] as ReadinessChapter[],
           })),
           getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
         ])
         return {
           subjectId: sub.id,
           subjectName: sub.name,
-          score: result.score,
-          predictedRange: (result as any).predictedRange ?? undefined,
+          score: normalisePct(result.score),
+          predictedRange: (result as { predictedRange?: PredictedRange }).predictedRange ?? null,
           chapters: result.chapters ?? [],
-          // Diagnostic status lives in StudentLearningProfile.recommendations
-          // (lowercase 'completed'), not in the DiagnosticSession Prisma model.
           diagnosticDone: diagStatus?.status === 'completed',
           retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
         }
@@ -226,45 +218,26 @@ export default async function StudentHomeDashboardPage() {
     readinessResults.push(...batchRows)
   }
 
-  const weakestFocusArea = readinessResults
-    .flatMap((subject) =>
-      subject.chapters.map((chapter) => ({
-        subjectId: subject.subjectId,
-        subjectName: subject.subjectName,
-        chapterId: chapter.chapterId,
-        chapterName: chapter.chapterName,
-        masteryScore: chapter.masteryScore,
-        status: chapter.status,
+  try {
+    logger.debug('dashboard.readiness_results', {
+      userId,
+      readinessCount: readinessResults.length,
+      readinessSubjects: readinessResults.map((r) => ({
+        id: r.subjectId,
+        name: r.subjectName,
+        diagnosticDone: r.diagnosticDone,
       })),
-    )
-    .sort((a, b) => a.masteryScore - b.masteryScore)[0]
-
-  const focusArea = weakestFocusArea
-    ? (() => {
-        const masteryPercent = Math.round(weakestFocusArea.masteryScore * 100)
-        const targetPercent = 75
-        const gapToTarget = Math.max(0, targetPercent - masteryPercent)
-        const sessionsNeeded = Math.max(1, Math.ceil(gapToTarget / 20))
-        return {
-          subjectId: weakestFocusArea.subjectId,
-          subjectName: weakestFocusArea.subjectName,
-          chapterId: weakestFocusArea.chapterId,
-          chapterName: weakestFocusArea.chapterName,
-          masteryPercent,
-          status: weakestFocusArea.status,
-          sessionsNeeded,
-          estimatedMinutes: sessionsNeeded * 15,
-        }
-      })()
-    : null
+    })
+  } catch (err) {
+    logger.warn('dashboard.readiness_results.log_failed', { userId, error: err })
+  }
 
   // ── Weekly study strip data ──────────────────────────────────────────────────
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const now = new Date()
-  const todayDow = now.getUTCDay() // 0=Sun
+  const todayDow = now.getUTCDay()
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-    // Monday-based week: offset from Monday
     const dayOffset = i - (todayDow === 0 ? 6 : todayDow - 1)
     d.setUTCDate(d.getUTCDate() + dayOffset)
     return d.toISOString().split('T')[0]
@@ -272,105 +245,108 @@ export default async function StudentHomeDashboardPage() {
   const activeDateSet = new Set(
     weeklyActivity.map((s: { startedAt: Date }) => s.startedAt.toISOString().split('T')[0])
   )
-  const weeklyStripData = {
+  const weekData = {
     days: weekDays.map((date, i) => ({
       date,
       dayLabel: DAY_LABELS[i],
       hasSession: activeDateSet.has(date),
     })),
     sessionCountThisWeek: weeklyActivity.length,
-    currentStreak: 0,
     weeklyGoal: 5,
   }
 
-  // ── Build TodaysLearningCard props from getNextAction result ─────────────────
-  // diagnosticHref should point to the FIRST subject that still needs a diagnostic
-  // so the "Take diagnostic test" CTA never sends the student to a completed subject.
-  const firstPendingDiagSubject = readinessResults.find((r) => !r.diagnosticDone)
-  const firstDiagSubjectId =
-    firstPendingDiagSubject?.subjectId ?? latestPlan?.subjectId ?? subjects[0]?.id
-  let cardProps: TodaysLearningCardProps = {
-    type: 'empty',
-    diagnosticHref: firstDiagSubjectId ? `/diagnostic/${firstDiagSubjectId}` : '/dashboard',
+  // ── Build nextAction into a hero DashboardMission ────────────────────────────
+  const resolvedAction = nextAction
+    ? (typeof nextAction === 'object' && 'action' in nextAction
+        ? (nextAction as { action: unknown }).action
+        : nextAction)
+    : null
+
+  type ResolvedAction = {
+    ruleId?: string
+    sessionId?: string
+    topicId?: string
+    topicName?: string
+    subject?: string
+    chapter?: string
+    resumePhase?: string
+    assignmentId?: string
   }
 
-  if (nextAction) {
-    // Unwrap dev-mode { action, traceId } wrapper -- production returns NextAction directly.
-    // getNextAction() returns { action, traceId } in non-production environments, but the
-    // dashboard consumed it as if it were a bare NextAction, causing ruleId to be undefined
-    // and every branch to be skipped → cardProps fell back to plan_loading.
-    const resolvedAction =
-      typeof nextAction === 'object' && 'action' in nextAction
-        ? nextAction.action
-        : nextAction
+  const action = resolvedAction as ResolvedAction | null
 
-    if (resolvedAction?.ruleId === 'resume_session' && resolvedAction.sessionId) {
-      cardProps = {
-        type: 'resume',
-        session: {
-          sessionId: resolvedAction.sessionId,
-          topicId: resolvedAction.topicId ?? '',
-          topicName: resolvedAction.topicName ?? 'Continue where you left off',
-          subject: resolvedAction.subject ?? '',
-          chapter: resolvedAction.chapter ?? '',
-          currentPhase: resolvedAction.resumePhase ?? 'OVERVIEW',
-        },
+  let heroMission: DashboardMission | null = null
+
+  if (action?.ruleId === 'resume_session' && action.sessionId) {
+    const subjectEntry = subjects.find((s) => s.name === action.subject)
+    heroMission = {
+      id: action.sessionId,
+      subjectId: subjectEntry?.id ?? action.subject?.toLowerCase().replace(/\s+/g, '_') ?? 'unknown',
+      subjectName: action.subject ?? 'Your subject',
+      kind: 'Lesson' as MissionKind,
+      title: action.topicName ?? 'Continue where you left off',
+      chapter: action.chapter,
+      estimatedMins: 20,
+      xp: 60,
+      state: 'in_progress' as MissionState,
+      priority: true,
+      href: `/session/${action.topicId ?? action.sessionId}`,
+    }
+  } else if (action?.ruleId === 'homework_pending' && action.assignmentId) {
+    const subjectEntry = subjects.find((s) => s.name === action.subject)
+    heroMission = {
+      id: action.assignmentId,
+      subjectId: subjectEntry?.id ?? subjects[0]?.id ?? 'unknown',
+      subjectName: action.subject ?? subjects[0]?.name ?? 'Homework',
+      kind: 'Homework' as MissionKind,
+      title: action.topicName ?? 'Homework',
+      chapter: action.chapter,
+      questionCount: 5,
+      estimatedMins: 15,
+      xp: 120,
+      state: 'not_started' as MissionState,
+      priority: true,
+      due: `Due tomorrow · 10:00`,
+      href: `/homework/${action.assignmentId}`,
+    }
+  } else if (action?.topicId) {
+    const firstConcept = await prisma.concept.findFirst({
+      where: { topicId: action.topicId, isSuspended: false },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    })
+    if (firstConcept?.id) {
+      const subjectEntry = subjects.find((s) => s.name === action.subject)
+      heroMission = {
+        id: firstConcept.id,
+        subjectId: subjectEntry?.id ?? action.subject?.toLowerCase().replace(/\s+/g, '_') ?? 'unknown',
+        subjectName: action.subject ?? subjects[0]?.name ?? 'Your subject',
+        kind: 'Lesson' as MissionKind,
+        title: action.topicName ?? 'Start a session',
+        chapter: action.chapter,
+        estimatedMins: 20,
+        xp: 60,
+        state: 'not_started' as MissionState,
+        priority: true,
+        href: `/session/pre/${encodeURIComponent(firstConcept.id)}`,
       }
-    } else if (resolvedAction?.ruleId === 'homework_pending' && resolvedAction.assignmentId) {
-      cardProps = {
-        type: 'homework',
-        homework: {
-          id: resolvedAction.assignmentId,
-          topicName: resolvedAction.topicName ?? 'Homework',
-          questionCount: 5,
-          dueDate: new Date(Date.now() + 86400000).toISOString(),
-          status: 'PENDING',
-        },
-      }
-    } else if (resolvedAction?.topicId) {
-      // Resolve topicId → first non-suspended Concept.id.
-      // The pre-session page (/session/pre/[conceptId]) performs
-      // prisma.concept.findUnique({ where: { id } }) and redirects
-      // to /dashboard when given a TopicDef.id instead of a Concept.id,
-      // making both "Today's topic" and "Surprise me" appear to do nothing.
-      const firstConcept = await prisma.concept.findFirst({
-        where: { topicId: resolvedAction.topicId, isSuspended: false },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true },
+    } else {
+      logger.warn('dashboard.hero_mission.skipped_missing_concept', {
+        userId,
+        topicId: action.topicId,
+        ruleId: action.ruleId,
       })
-      if (firstConcept?.id) {
-        cardProps = {
-          type: 'start',
-          recommendation: {
-            conceptId: firstConcept.id,
-            topicTitle: resolvedAction.topicName ?? 'Start a session',
-            subject: resolvedAction.subject ?? '',
-            estimatedTimeMin: 20,
-          },
-          ctaLabel: isCrunchMode ? 'Study for exam' : undefined,
-        }
-      } else {
-        logger.warn('dashboard.start_action.skipped_missing_concept', {
-          userId,
-          topicId: resolvedAction.topicId,
-          ruleId: resolvedAction.ruleId,
-        })
-      }
     }
   }
 
-  // When all enrolled subjects have a completed diagnostic but no learning plan
-  // is ready yet, show the plan-loading state instead of the onboarding checklist.
-  // This prevents "Take diagnostic test" from appearing after all tests are done.
+  // ── Diagnostic fallback state ─────────────────────────────────────────────
   const allDiagnosticsComplete =
     readinessResults.length > 0 && readinessResults.every((r) => r.diagnosticDone)
-  if (cardProps.type === 'empty' && allDiagnosticsComplete) {
-    cardProps = { type: 'plan_loading' }
-  }
+  const firstPendingDiagSubject = readinessResults.find((r) => !r.diagnosticDone)
+  const firstDiagSubjectId =
+    firstPendingDiagSubject?.subjectId ?? latestPlan?.subjectId ?? subjects[0]?.id
 
-  // AC-02 (F-STU-010): Secondary "Today's topic" resolves one item per enrolled
-  // subject plan: IN_PROGRESS first, then current-week UPCOMING, then any UPCOMING.
-  // Plans are processed in parallel; item priority within each plan is sequential.
+  // ── Secondary missions from today's learning plan items ──────────────────────
   const firstSession = await prisma.structuredSession.findFirst({
     where: { studentId: userId },
     orderBy: { startedAt: 'asc' },
@@ -381,7 +357,7 @@ export default async function StudentHomeDashboardPage() {
     : 0
   const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
 
-  type TodaysTopic = { subject: string; href: string }
+  type TodaysTopic = { subject: string; href: string; subjectId: string }
   const todaysTopics: TodaysTopic[] = (
     await Promise.all(
       learningPlans.map(async (plan): Promise<TodaysTopic | null> => {
@@ -395,6 +371,7 @@ export default async function StudentHomeDashboardPage() {
         if (inProgressItem?.conceptId) {
           return {
             subject: subjectInfo?.name ?? 'Your subject',
+            subjectId: plan.subjectId,
             href: `/session/pre/${encodeURIComponent(inProgressItem.conceptId)}`,
           }
         }
@@ -407,6 +384,7 @@ export default async function StudentHomeDashboardPage() {
         if (currentWeekItem?.conceptId) {
           return {
             subject: subjectInfo?.name ?? 'Your subject',
+            subjectId: plan.subjectId,
             href: `/session/pre/${encodeURIComponent(currentWeekItem.conceptId)}`,
           }
         }
@@ -419,29 +397,73 @@ export default async function StudentHomeDashboardPage() {
         if (!fallbackItem?.conceptId) return null
         return {
           subject: subjectInfo?.name ?? 'Your subject',
+          subjectId: plan.subjectId,
           href: `/session/pre/${encodeURIComponent(fallbackItem.conceptId)}`,
         }
       }),
     )
   ).filter((t): t is TodaysTopic => t !== null)
 
-  // Debug: log readinessRows to help diagnose cases where cards are missing.
-  try {
-    logger.debug('dashboard.readiness_results', {
-      userId,
-      readinessCount: readinessResults.length,
-      readinessSubjects: readinessResults.map((r) => ({ id: r.subjectId, name: r.subjectName, diagnosticDone: r.diagnosticDone })),
-    })
-  } catch (err) {
-    logger.warn('dashboard.readiness_results.log_failed', { userId, error: err })
-  }
+  // Build secondary missions (exclude the subject already covered by the hero)
+  const heroSubjectId = heroMission?.subjectId
+  const secondaryMissions: DashboardMission[] = todaysTopics
+    .filter((t) => !heroSubjectId || t.subjectId !== heroSubjectId)
+    .map((topic, i) => ({
+      id: `secondary-${i}`,
+      subjectId: topic.subjectId,
+      subjectName: topic.subject,
+      kind: 'Lesson' as MissionKind,
+      title: `${topic.subject} -- continue session`,
+      estimatedMins: 20,
+      xp: 60,
+      state: 'not_started' as MissionState,
+      priority: false,
+      href: topic.href,
+    }))
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Build warm-up cards for PickNext ──────────────────────────────────────────
+  // Use secondary topics that overlap with hero subject too, as optional warm-ups
+  const warmUps = todaysTopics.slice(0, 3).map((topic) => ({
+    subjectId: topic.subjectId,
+    subjectName: topic.subject,
+    title: `${topic.subject} warm-up session`,
+    meta: '~20 min · +60 XP',
+    href: topic.href,
+  }))
+
+  // ── Mission counts for welcome banner ─────────────────────────────────────────
+  const allMissions = heroMission ? [heroMission, ...secondaryMissions] : secondaryMissions
+  const totalMissionCount = allMissions.length
+  const completedCount = allMissions.filter((m) => m.state === 'completed_today').length
+  const missionSubjectCount = new Set(allMissions.map((m) => m.subjectId)).size
+  const totalMissionMins = allMissions.reduce((s, m) => s + m.estimatedMins, 0)
+
+  // ── Build exam readiness subjects for ExamReadinessSection ───────────────────
+  const examSubjects: SubjectReadiness[] = readinessResults.map((r) => ({
+    subjectId: r.subjectId,
+    subjectName: r.subjectName,
+    score: r.score,
+    tag: (r.score < 40 ? 'critical' : r.score < 70 ? 'needs_work' : r.score < 90 ? 'on_track' : 'ready') as SubjectReadiness['tag'],
+    diagnosticDone: r.diagnosticDone,
+    retakeEligibleAt: r.retakeEligibleAt,
+    predictedRange: r.predictedRange ?? null,
+    chapters: r.chapters.map((ch): ReadinessChapterDisplay => ({
+      chapterId: ch.chapterId,
+      chapterName: ch.chapterName,
+      masteryPct: Math.round(ch.masteryScore <= 1 ? ch.masteryScore * 100 : ch.masteryScore),
+      tag: chapterTag(ch.status),
+    })),
+  }))
+
+  // ── Grade label for leaderboard ───────────────────────────────────────────────
+  const gradeLabel = user.grade ? `This week · Grade ${user.grade}` : 'This week'
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <main className="max-w-5xl mx-auto px-4 py-6">
+    <main className="max-w-[1120px] mx-auto px-4 sm:px-8 py-6 pb-16">
       {/* Crunch mode banner (F-STU-032 AC-04) */}
       {isCrunchMode && latestPlan?.examDate && (
-        <div className="mb-4 rounded-xl bg-[#FCEBEB] dark:bg-[#E24B4A]/10 border border-[#E24B4A]/20 px-4 py-3">
+        <div className="mb-5 rounded-xl bg-[#FCEBEB] dark:bg-[#E24B4A]/10 border border-[#E24B4A]/20 px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="text-4xl font-extrabold text-[#E24B4A] leading-none" aria-hidden>
@@ -457,117 +479,82 @@ export default async function StudentHomeDashboardPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-5 md:flex-row md:items-start">
-        {/* ── Left column (60%) ──────────────────────────────────────────── */}
-        <div className="flex flex-col gap-5 md:w-3/5">
-          {/* F-STU-032 AC-03: Primary CTA */}
-
-          <TodaysLearningCard {...cardProps} />
-          {!isCrunchMode && (
-            <SecondaryStartOptions todaysTopics={todaysTopics} />
-          )}
-
-          {/* F-STU-031: XP + Level + source breakdown (hidden in crunch mode) */}
-          {!isCrunchMode && (
-            <XPWidget totalXp={user.totalXp} level={user.level} xpThisWeek={xpThisWeek} xpBySource={xpBySource} />
-          )}
-
-          {/* Weekly activity strip (hidden in crunch mode) */}
-          {!isCrunchMode && <WeeklyStudyStrip data={weeklyStripData} />}
-
-          {/* F-STU-032 AC-02: Active revision cards due today */}
-          <RevisionWidget />
+      {/* Upgrade gate (free tier cap hit) */}
+      {!isPremium && sessionsRemaining === 0 && (
+        <div className="mb-5">
+          <UpgradeFlow
+            studentName={user.name}
+            studentEmail={user.email}
+            freeTierUsage={{ sessionsUsed, sessionsRemaining, periodStart }}
+          />
         </div>
+      )}
 
-        {/* ── Right column (40%) ─────────────────────────────────────────── */}
-        <div className="flex flex-col gap-5 md:w-2/5">
-          {/* F-STU-040 AC-02: Session cap counter (free tier only) */}
-          {/* {!isPremium && sessionsRemaining > 0 && (
-            <FreemiumCounter
-              sessionsUsed={sessionsUsed}
-              sessionsRemaining={sessionsRemaining}
-              periodStart={periodStart}
-            />
-          )} */}
+      <div className="flex flex-col gap-[22px] sm:gap-[30px]">
+        {/* Welcome banner */}
+        <WelcomeBanner
+          name={user.name ?? 'Student'}
+          completedCount={completedCount}
+          totalCount={totalMissionCount}
+          subjectCount={missionSubjectCount}
+          totalMins={totalMissionMins}
+        />
 
-          {/* F-STU-041: Upgrade prompt when cap hit */}
-          {!isPremium && sessionsRemaining === 0 && (
-            <UpgradeFlow
-              studentName={user.name}
-              studentEmail={user.email}
-              freeTierUsage={{ sessionsUsed, sessionsRemaining, periodStart }}
-            />
-          )}
-
-          {/* F-STU-042 AC-01: Referral share card -- copy or WhatsApp share */}
-          {/* <ReferralShareCard /> */}
-
-          {/* F-STU-023 AC-02/03: Exam readiness per subject -- links to chapter breakdown */}
-          {readinessResults.length > 0 && (
-            <section aria-label="Exam readiness">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Exam Readiness
-                </h2>
-                <Link
-                  href="/student/progress"
-                  className="text-xs font-medium text-[#534AB7] dark:text-indigo-400 hover:underline"
+        {/* Today's missions */}
+        {(heroMission || secondaryMissions.length > 0) ? (
+          <TodaysMissions hero={heroMission} rest={secondaryMissions} />
+        ) : (
+          /* Onboarding / plan loading state when no missions */
+          !allDiagnosticsComplete ? (
+            <section className="rounded-2xl border border-dashed border-[#D3D1C7] dark:border-[#4A4840] bg-[#F8F6F1] dark:bg-[#26241F] p-6">
+              <p className="text-base font-semibold text-[#2C2C2A] dark:text-[#E8E6DF] mb-1">
+                Let&apos;s get you started
+              </p>
+              <p className="text-sm text-[#888780] dark:text-[#6E6C67] mb-4">
+                Complete your diagnostic test so Teacher Vidya can build your personalised plan.
+              </p>
+              {firstDiagSubjectId && (
+                <a
+                  href={`/diagnostic/${firstDiagSubjectId}`}
+                  className="inline-flex items-center min-h-[44px] rounded-xl bg-[#534AB7] text-white text-sm font-semibold px-5 hover:bg-[#4239A0] transition-colors shadow-[0_2px_0_#3C3489]"
                 >
-                  Full report &rarr;
-                </Link>
-              </div>
-              <div className="flex flex-col gap-3">
-                {readinessResults.map((r) => {
-                  const card = (
-                    <SubjectReadinessCard
-                      subjectId={r.subjectId}
-                      subjectName={r.subjectName}
-                      score={r.score}
-                      diagnosticDone={r.diagnosticDone}
-                      predictedRange={r.predictedRange}
-                      retakeEligibleAt={r.retakeEligibleAt}
-                      chapters={r.chapters}
-                    />
-                  )
-
-                  return r.diagnosticDone ? (
-                    <Link
-                      key={r.subjectId}
-                      href={`/student/progress/${r.subjectId}`}
-                      className="block hover:opacity-90 transition-opacity"
-                      aria-label={`View ${r.subjectName} chapter breakdown`}
-                    >
-                      {card}
-                    </Link>
-                  ) : (
-                    <div
-                      key={r.subjectId}
-                      className="block hover:opacity-90 transition-opacity"
-                      aria-label={`View ${r.subjectName} chapter breakdown`}
-                    >
-                      {card}
-                    </div>
-                  )
-                })}
-              </div>
+                  Take diagnostic test
+                </a>
+              )}
             </section>
-          )}
+          ) : (
+            <section className="rounded-2xl border border-[#534AB7]/20 dark:border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 p-6">
+              <p className="text-base font-semibold text-[#2C2C2A] dark:text-[#E8E6DF] mb-1">
+                Great work completing your diagnostic!
+              </p>
+              <p className="text-sm text-[#5F5E5A] dark:text-[#A8A69F]">
+                Teacher Vidya is building your personalised learning plan. This page auto-refreshes when it is ready.
+              </p>
+            </section>
+          )
+        )}
 
-          {/* Focus Area: weakest chapter across subjects (hidden in crunch mode) */}
-          {!isCrunchMode && focusArea && (
-            <FocusAreaCard
-              subjectId={focusArea.subjectId}
-              subjectName={focusArea.subjectName}
-              chapterId={focusArea.chapterId}
-              chapterName={focusArea.chapterName}
-              masteryPercent={focusArea.masteryPercent}
-              status={focusArea.status}
-              sessionsNeeded={focusArea.sessionsNeeded}
-              estimatedMinutes={focusArea.estimatedMinutes}
-              href={`/student/progress/${focusArea.subjectId}?focusChapter=${encodeURIComponent(focusArea.chapterId)}`}
-            />
-          )}
-        </div>
+        {/* Pick what's next (hidden in crunch mode) */}
+        {!isCrunchMode && (
+          <PickNextSection warmUps={warmUps} />
+        )}
+
+        {/* Stats row: week + level + leaderboard (hidden in crunch mode) */}
+        {!isCrunchMode && (
+          <StatsRow
+            weekData={weekData}
+            totalXp={user.totalXp}
+            level={user.level}
+            xpThisWeek={xpThisWeek}
+            leaderboardRows={[]}
+            gradeLabel={gradeLabel}
+          />
+        )}
+
+        {/* Exam readiness */}
+        {examSubjects.length > 0 && (
+          <ExamReadinessSection subjects={examSubjects} />
+        )}
       </div>
     </main>
   )
