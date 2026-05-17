@@ -10,7 +10,7 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { invalidateUserSessionCache } from '@/lib/auth.js'
+import { invalidateUserSessionCache } from '@/lib/sessionCacheUtils.js'
 import { AdminActionType } from '@prisma/client'
 
 const PSEUDONYMISE_AFTER_DAYS = 7

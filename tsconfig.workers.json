@@ -34,6 +34,7 @@
     "worker/metrics-server.ts",
     "worker/dev-entry.ts",
     "worker/dev-supervisor.ts",
+    "lib/auth.ts",
     "lib/tests.ts",
     "lib/mock/selectMockQuestions.ts",
     "lib/diagnostics/diagnosticQuestionService.ts",

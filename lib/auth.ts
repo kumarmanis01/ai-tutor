@@ -44,6 +44,7 @@ import { getServerSession } from 'next-auth/next';
 import crypto from 'crypto';
 import { getRedis } from '@/lib/redis';
 import { incJwtCacheHit, incJwtCacheMiss } from '@/lib/metrics';
+export { invalidateUserSessionCache } from '@/lib/sessionCacheUtils';
 import { DPDP_MINOR_AGE as _DPDP_MINOR_AGE } from '@/lib/constants/age';
 import type { AppSession } from '@/lib/types/auth';
 
@@ -450,20 +451,6 @@ function isPrismaRecordNotFoundError(error: unknown): boolean {
   return maybePrismaError.code === 'P2025';
 }
 
-// Helper: remove a user's short-lived JWT session cache entry.
-// Call from any writer that updates user profile fields used in auth gating.
-export async function invalidateUserSessionCache(email?: string | null) {
-  if (!email) return;
-  const redis = getRedis?.();
-  if (!redis) return;
-  const cacheKey = `session:user:${String(email).toLowerCase()}`;
-  try {
-    await redis.del(cacheKey);
-    logger.add('jwt.cache.invalidate', { className: 'auth', methodName: 'invalidateUserSessionCache', cacheKey });
-  } catch (err) {
-    logger.warn('jwt cache invalidate failed', { className: 'auth', methodName: 'invalidateUserSessionCache', error: String(err) });
-  }
-}
 
 // Custom adapter that bypasses the OAuthAccountNotLinked error.
 //

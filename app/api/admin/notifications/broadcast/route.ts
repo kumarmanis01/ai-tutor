@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 const audienceSchema = z.union([
   z.object({ type: z.literal('all') }),
-  z.object({ type: z.literal('grade'), grade: z.number().int().min(6).max(12) }),
+  z.object({ type: z.literal('grade'), grade: z.number().int().min(1).max(12) }),
   z.object({ type: z.literal('inactive'), days: z.number().int().min(1).max(90) }),
 ]);
 

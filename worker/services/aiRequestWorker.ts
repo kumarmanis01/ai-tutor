@@ -133,7 +133,7 @@ export async function processAIRequest(job: Job<AIJobData>) {
         await prisma.aIContentLog.create({ data: {
           model,
           promptType: type.toLowerCase(),
-          language: meta?.language ?? null,
+          language: meta?.language ?? 'en',
           success: false,
           status: 'blocked',
           error: 'intent_block',
@@ -162,7 +162,7 @@ export async function processAIRequest(job: Job<AIJobData>) {
     logger.error('processAIRequest: callLLM failed', { error: String(e), jobId: job.id })
     // Persist an AIContentLog indicating failure
     try {
-      await prisma.aIContentLog.create({ data: { model, promptType: type.toLowerCase(), language: meta?.language ?? null, success: false, status: 'failed', error: String(e), requestBody: { payload }, responseBody: { error: String(e) } } })
+      await prisma.aIContentLog.create({ data: { model, promptType: type.toLowerCase(), language: meta?.language ?? 'en', success: false, status: 'failed', error: String(e), requestBody: { payload }, responseBody: { error: String(e) } } })
     } catch { }
     // Optionally persist a safe fallback chat
     try {
@@ -203,7 +203,7 @@ export async function processAIRequest(job: Job<AIJobData>) {
       await prisma.aIContentLog.create({ data: {
         model,
         promptType: type.toLowerCase(),
-        language: meta?.language ?? null,
+        language: meta?.language ?? 'en',
         success: false,
         status: 'flagged',
         error: 'hallucination_detected',
@@ -231,7 +231,7 @@ export async function processAIRequest(job: Job<AIJobData>) {
     await prisma.aIContentLog.create({ data: {
       model,
       promptType: type.toLowerCase(),
-      language: meta?.language ?? null,
+      language: meta?.language ?? 'en',
       success: true,
       status: 'validated',
       requestBody: { prompt },

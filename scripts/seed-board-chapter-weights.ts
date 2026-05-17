@@ -1,7 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - Seed BoardChapterWeight for ALL active chapters across ALL boards (CBSE + ICSE),
- *   grades 6-12, and subjects, using equal-distribution of 80 theory marks as a default.
+ *   all grades 1-12, using equal-distribution of 80 theory marks as a default.
  * - Support idempotent create-only, force-overwrite, and dry-run execution modes.
  *
  * LINKED UNIT TEST:
@@ -45,14 +45,14 @@ interface SubjectSummary {
 
 async function seedBoardChapterWeights(): Promise<void> {
   console.log(`\nBoardChapterWeight seed -- ${isDryRun ? 'DRY RUN (no writes)' : isForce ? 'FORCE (overwrite existing)' : 'CREATE only (skip existing)'}`)
-  console.log('Fetching chapters from all active boards, grades 6-12...\n')
+  console.log('Fetching chapters from all active boards, all grades...\n')
 
   const boards = await prisma.board.findMany({
     where: { slug: { in: ['cbse', 'icse'] }, lifecycle: 'active' },
     select: {
       slug: true,
       classes: {
-        where: { grade: { gte: 6, lte: 12 } },
+        where: { lifecycle: 'active' },
         select: {
           grade: true,
           subjects: {
