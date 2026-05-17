@@ -20,11 +20,11 @@
 import React from 'react';
 
 const PHASE_ICONS: Record<string, string> = {
-  OVERVIEW: '🗺️',
-  EXPLANATION: '📖',
-  PRACTICE: '✏️',
-  TEST: '📝',
-  HOMEWORK: '📋',
+  OVERVIEW: 'O',
+  EXPLANATION: 'E',
+  PRACTICE: 'P',
+  TEST: 'T',
+  HOMEWORK: 'H',
 };
 
 export interface SessionPhaseStepperProps {

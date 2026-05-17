@@ -80,7 +80,7 @@ export function SessionBottomBar({ onAskVidya, sessionId, currentPhase }: Sessio
             className="flex-1 flex items-center gap-2.5 px-4 min-h-[44px] hover:bg-muted/50 transition-colors text-left"
           >
             <span className="text-2xl flex-shrink-0" aria-hidden>
-              {rating > 0 ? '⭐' : '☆'}
+              {rating > 0 ? '*' : '*'}
             </span>
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground leading-tight">Feedback</p>
@@ -123,7 +123,7 @@ export function SessionBottomBar({ onAskVidya, sessionId, currentPhase }: Sessio
                     className="min-h-[44px] min-w-[44px] flex items-center justify-center text-3xl transition-transform active:scale-90 hover:scale-110"
                     aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
                   >
-                    <span aria-hidden>{star <= rating ? '⭐' : '☆'}</span>
+                    <span aria-hidden>{star <= rating ? '*' : '*'}</span>
                   </button>
                 ))}
               </div>

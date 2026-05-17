@@ -132,7 +132,7 @@ export function EndOfSessionCard({
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
       {/* 1. Completion headline */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-foreground">Session Complete 🎉</h1>
+        <h1 className="text-3xl font-bold text-foreground">Session Complete</h1>
         <p className="text-muted-foreground mt-2">
           You completed <span className="font-semibold text-foreground">{topicName}</span>
         </p>
