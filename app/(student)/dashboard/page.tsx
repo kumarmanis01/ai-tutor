@@ -169,15 +169,13 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // ── Subject resolution (centralised) ───────────────────────────────────────
+  // Incomplete profiles must never see dashboard subjects; only resolve once
+  // the academic scope is fully available.
+  const hasCompleteAcademicProfile = Boolean(user.grade && user.board)
   // Use central resolver to ensure consistent behaviour across routes/pages.
-  const subjects = await resolveStudentSubjects(user as any, learningPlans as any)
-
-  // Debug: log resolved subjects for troubleshooting when students report missing cards.
-  try {
-    logger.debug('dashboard.resolved_subjects', { userId, subjectCount: subjects.length, subjects });
-  } catch (err) {
-    logger.warn('dashboard.resolved_subjects.log_failed', { userId, error: err });
-  }
+  const subjects = hasCompleteAcademicProfile
+    ? await resolveStudentSubjects(user as any, learningPlans as any)
+    : []
 
   // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
   // User.subjects is an unbounded String[], so we cap at SUBJECT_CAP and process

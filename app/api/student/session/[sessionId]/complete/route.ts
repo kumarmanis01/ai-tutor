@@ -298,15 +298,46 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
 
         // For each unique chapter touched, determine if chapter is "completed"
         const chapterIds = Array.from(new Set(topicsTouched.map((t) => t.chapterId).filter(Boolean))) as string[]
-        for (const chId of chapterIds) {
-          // load all concept ids for chapter
-          const chConcepts = (await prisma.concept.findMany({ where: { topic: { chapterId: chId } }, select: { id: true } })) as Array<{ id: string }>
-          const chConceptIds = chConcepts.map((c) => c.id)
-          const total = chConceptIds.length
-          const stateRows = (await prisma.studentConceptState.findMany({ where: { studentId: userId, conceptId: { in: chConceptIds } }, select: { masteryScore: true } })) as Array<{ masteryScore?: number | null }>
-          const mastered = stateRows.filter((s) => (s.masteryScore ?? 0) >= 0.7).length
-          const chapterName = (await prisma.chapterDef.findUnique({ where: { id: chId }, select: { name: true } }))?.name ?? 'Chapter'
-          chaptersCompleted.push({ chapterId: chId, chapterName, completed: total > 0 ? mastered === total : false })
+        if (chapterIds.length > 0) {
+          const chapterConceptRows = (await prisma.concept.findMany({
+            where: { topic: { chapterId: { in: chapterIds } } },
+            select: { id: true, topic: { select: { chapterId: true } } },
+          })) as Array<{ id: string; topic: { chapterId: string | null } | null }>
+
+          const conceptIdsByChapterId = new Map<string, string[]>()
+          for (const row of chapterConceptRows) {
+            const rowChapterId = row.topic?.chapterId
+            if (!rowChapterId) continue
+            const existing = conceptIdsByChapterId.get(rowChapterId) ?? []
+            existing.push(row.id)
+            conceptIdsByChapterId.set(rowChapterId, existing)
+          }
+
+          const allChapterConceptIds = chapterConceptRows.map((row) => row.id)
+          const chapterStateRows = allChapterConceptIds.length
+            ? ((await prisma.studentConceptState.findMany({
+                where: { studentId: userId, conceptId: { in: allChapterConceptIds } },
+                select: { conceptId: true, masteryScore: true },
+              })) as Array<{ conceptId: string; masteryScore?: number | null }>)
+            : []
+
+          const masteredConceptIds = new Set(
+            chapterStateRows.filter((s) => (s.masteryScore ?? 0) >= 0.7).map((s) => s.conceptId)
+          )
+
+          const chapterDefs = await prisma.chapterDef.findMany({
+            where: { id: { in: chapterIds } },
+            select: { id: true, name: true },
+          })
+          const chapterNameById = new Map(chapterDefs.map((ch) => [ch.id, ch.name]))
+
+          for (const chId of chapterIds) {
+            const chConceptIds = conceptIdsByChapterId.get(chId) ?? []
+            const total = chConceptIds.length
+            const mastered = chConceptIds.filter((conceptId) => masteredConceptIds.has(conceptId)).length
+            const chapterName = chapterNameById.get(chId) ?? 'Chapter'
+            chaptersCompleted.push({ chapterId: chId, chapterName, completed: total > 0 ? mastered === total : false })
+          }
         }
       }
     } catch (covErr) {
