@@ -56,11 +56,11 @@ function toE164Candidates(digits: string): string[] {
   return Array.from(candidates)
 }
 
-function toEmailOtpKey(email: string): string {
+export function toEmailOtpKey(email: string): string {
   return `${EMAIL_KEY_PREFIX}${Buffer.from(email).toString('base64').slice(0, 20)}`
 }
 
-function toWhatsappOtpKeys(phoneDigits: string): string[] {
+export function toWhatsappOtpKeys(phoneDigits: string): string[] {
   if (!phoneDigits) return []
   // Support legacy key (plain digits) plus prefixed key for new channel-specific records.
   return [
