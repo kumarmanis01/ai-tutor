@@ -45,6 +45,7 @@ import StatsRow from '@/components/student/dashboard/StatsRow'
 import ExamReadinessSection, {
   type SubjectReadiness,
   type ReadinessChapterDisplay,
+  type PredictedRange,
 } from '@/components/student/dashboard/ExamReadinessSection'
 import { type DashboardMission, type MissionKind, type MissionState } from '@/lib/student/dashboardMissions'
 
@@ -182,7 +183,7 @@ export default async function StudentHomeDashboardPage() {
     subjectId: string
     subjectName: string
     score: number
-    predictedRange?: unknown
+    predictedRange?: PredictedRange | null
     chapters: ReadinessChapter[]
     diagnosticDone: boolean
     retakeEligibleAt: string | null
@@ -207,7 +208,7 @@ export default async function StudentHomeDashboardPage() {
           subjectId: sub.id,
           subjectName: sub.name,
           score: normalisePct(result.score),
-          predictedRange: (result as { predictedRange?: unknown }).predictedRange ?? undefined,
+          predictedRange: (result as { predictedRange?: PredictedRange }).predictedRange ?? null,
           chapters: result.chapters ?? [],
           diagnosticDone: diagStatus?.status === 'completed',
           retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
@@ -445,6 +446,7 @@ export default async function StudentHomeDashboardPage() {
     tag: (r.score < 40 ? 'critical' : r.score < 70 ? 'needs_work' : r.score < 90 ? 'on_track' : 'ready') as SubjectReadiness['tag'],
     diagnosticDone: r.diagnosticDone,
     retakeEligibleAt: r.retakeEligibleAt,
+    predictedRange: r.predictedRange ?? null,
     chapters: r.chapters.map((ch): ReadinessChapterDisplay => ({
       chapterId: ch.chapterId,
       chapterName: ch.chapterName,

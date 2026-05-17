@@ -23,6 +23,12 @@ export interface ReadinessChapterDisplay {
   tag: ReadinessTag
 }
 
+export interface PredictedRange {
+  low: number
+  high: number
+  confidenceLevel: number
+}
+
 export interface SubjectReadiness {
   subjectId: string
   subjectName: string
@@ -30,6 +36,7 @@ export interface SubjectReadiness {
   tag: ReadinessTag
   diagnosticDone: boolean
   retakeEligibleAt?: string | null
+  predictedRange?: PredictedRange | null
   chapters: ReadinessChapterDisplay[]
 }
 
@@ -64,6 +71,12 @@ function normalise(label: string): ReadinessTag {
   // handles both 'needs_work' and 'needs work' patterns
   const key = label.toLowerCase().replace(' ', '_')
   return tagFromLabel(key)
+}
+
+function formatRetakeDate(retakeEligibleAt: string): string {
+  const date = new Date(retakeEligibleAt)
+  if (Number.isNaN(date.getTime())) return 'Retake available soon'
+  return `Retake opens ${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
 }
 
 function ReadinessPill({ tag }: { tag: ReadinessTag }) {
@@ -176,6 +189,50 @@ function SubjectCard({
           style={{ width: `${Math.max(2, subject.score)}%`, backgroundColor: ringColor }}
         />
       </div>
+
+      {/* Diagnostic status row */}
+      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+        <span
+          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
+          style={
+            subject.diagnosticDone
+              ? { backgroundColor: '#EAF3DE', color: '#27500A' }
+              : { backgroundColor: '#FAEEDA', color: '#633806' }
+          }
+        >
+          {subject.diagnosticDone ? 'Diagnostic complete' : 'Diagnostic pending'}
+        </span>
+
+        {!subject.diagnosticDone && (
+          <Link
+            href={`/diagnostic/${subject.subjectId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center rounded-md bg-[#534AB7] px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-[#4239A0] min-h-[28px]"
+            aria-label={`Start diagnostic for ${subject.subjectName}`}
+          >
+            Start diagnostic
+          </Link>
+        )}
+
+        {subject.retakeEligibleAt && (
+          <span className="inline-flex items-center rounded-full bg-[#EEEDFE] px-2 py-0.5 text-[10px] font-medium text-[#3C3489]">
+            {formatRetakeDate(subject.retakeEligibleAt)}
+          </span>
+        )}
+      </div>
+
+      {/* Predicted board score range */}
+      {subject.predictedRange && (
+        <p className="mt-1 text-[11px] text-[#5F5E5A] dark:text-[#A8A69F]">
+          Predicted score:{' '}
+          <span className="font-semibold text-[#2C2C2A] dark:text-[#E8E6DF]">
+            {subject.predictedRange.low}&ndash;{subject.predictedRange.high}
+          </span>{' '}
+          <span className="text-[#888780] dark:text-[#6E6C67]">
+            ({subject.predictedRange.confidenceLevel}% CI)
+          </span>
+        </p>
+      )}
     </button>
   )
 }
