@@ -20,6 +20,7 @@ import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { invalidateUserSessionCache } from '@/lib/auth'
 
 /** GET: return parent digest preferences for the authenticated parent user */
 export async function GET() {
@@ -157,6 +158,11 @@ export async function POST(req: Request) {
         where: { id: userId },
         data: { language: language as any },
       })
+      try {
+        await invalidateUserSessionCache((session.user as any)?.email)
+      } catch (e) {
+        logger.warn('parent.settings: cache invalidation failed', { className: 'ParentSettingsAPI', methodName: 'POST', error: String(e) })
+      }
     }
 
     // Optional: batch update per-child preferences if provided in the request body.

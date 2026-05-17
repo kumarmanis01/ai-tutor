@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { getRedis } from '@/lib/redis';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { normalizeLanguage } from '@/lib/normalize';
 import { SessionUser } from '@/lib/types';
 
@@ -38,13 +39,7 @@ export async function POST(req: Request) {
 
     // Invalidate short-lived session cache so JWT reflects updated language
     try {
-      const redis = getRedis?.();
-      const email = (session.user as any)?.email as string | undefined;
-      if (redis && email) {
-        const cacheKey = `session:user:${String(email).toLowerCase()}`;
-        await redis.del(cacheKey).catch(() => null);
-        logger.add('session.cache.invalidated', { className: 'UserLanguageAPI', methodName: 'POST', cacheKey });
-      }
+      await invalidateUserSessionCache((session.user as any)?.email);
     } catch (err) {
       logger.warn('UserLanguageAPI: cache invalidation failed', { className: 'UserLanguageAPI', methodName: 'POST', error: String(err) });
     }

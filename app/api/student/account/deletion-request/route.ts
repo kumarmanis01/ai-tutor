@@ -4,6 +4,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { sendEmail } from '@/lib/mailer'
 import { deletionConfirmHtml } from '@/lib/email/templates'
 import { AdminActionType } from '@prisma/client'
+import { invalidateUserSessionCache } from '@/lib/auth';
 
 const DAYS_TO_PSEUDONYMISE = 7
 const DAYS_TO_PURGE = 30
@@ -47,6 +48,13 @@ export async function POST() {
       },
     }),
   ])
+
+  // Best-effort: invalidate session cache so JWT reflects deletion_pending status
+  try {
+    await invalidateUserSessionCache((session.user as any)?.email);
+  } catch {
+    // swallow
+  }
 
   // Send confirmation email (non-fatal)
   if (userEmail) {

@@ -23,6 +23,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { prisma } from '@/lib/prisma';
 import { getRedis } from '@/lib/redis';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
 import { enqueueSubjectHydration } from '@/lib/diagnostics/enqueueSubjectHydration';
@@ -520,13 +521,7 @@ export async function POST(req: NextRequest) {
 
     // Best-effort: invalidate session cache for this user so jwt callback reloads fresh profile
     try {
-      const redis = getRedis?.();
-      const email = (session?.user as any)?.email as string | undefined;
-      if (redis && email) {
-        const cacheKey = `session:user:${String(email).toLowerCase()}`;
-        await redis.del(cacheKey).catch(() => null);
-        logger.add('session.cache.invalidated', { className: 'UserOnboardingAPI', methodName: 'POST', cacheKey });
-      }
+      await invalidateUserSessionCache((session?.user as any)?.email);
     } catch (err) {
       logger.warn('UserOnboardingAPI: cache invalidation failed', { className: 'UserOnboardingAPI', methodName: 'POST', error: String(err) });
     }

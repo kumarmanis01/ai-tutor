@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logApiUsage } from '@/utils/logApiUsage';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { AdminActionType } from '@prisma/client';
 
@@ -24,7 +25,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
     const current = await prisma.user.findUniqueOrThrow({
       where: { id },
-      select: { grade: true },
+      select: { grade: true, email: true },
     });
 
     await prisma.$transaction([
@@ -46,6 +47,11 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       prisma.learningPlan.deleteMany({ where: { studentId: id } }),
     ]);
 
+    // Invalidate short-lived session cache for the user (best-effort)
+    try {
+      await invalidateUserSessionCache(current.email);
+    } catch {}
+
     logApiUsage(`/api/admin/users/${id}`, 'PATCH');
     return NextResponse.json({ ok: true });
   }
@@ -54,6 +60,9 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   const { grade: _g, board: _b, reason: _r, ...safeData } = body;
   // grade changes require explicit reason + audit log -- handled above
   const user = await prisma.user.update({ where: { id }, data: safeData });
+  try {
+    await invalidateUserSessionCache((user as any)?.email);
+  } catch {}
   logApiUsage(`/api/admin/users/${id}`, 'PATCH');
   return NextResponse.json(user);
 }

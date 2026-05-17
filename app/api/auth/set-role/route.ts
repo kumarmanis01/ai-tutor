@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { invalidateUserSessionCache } from '@/lib/auth';
 
 const ALLOWED_ROLES = ['student', 'parent'] as const;
 type AllowedRole = (typeof ALLOWED_ROLES)[number];
@@ -57,6 +58,13 @@ export async function POST(req: NextRequest) {
       where: { id: userId },
       data: { role: persistedRole },
     });
+
+    // Invalidate short-lived session cache so JWT reflects updated role
+    try {
+      await invalidateUserSessionCache((session.user as any)?.email);
+    } catch (e) {
+      logger.warn('set-role: cache invalidation failed', { className: 'SetRoleAPI', methodName: 'POST', error: String(e) });
+    }
 
     const redirect = ROLE_REDIRECT[role];
     const res = NextResponse.json({ ok: true, role, redirect });

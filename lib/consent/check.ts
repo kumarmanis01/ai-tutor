@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { invalidateUserSessionCache } from '@/lib/auth'
 import { ConsentScope, AdminActionType } from '@prisma/client'
 
 export { ConsentScope }
@@ -81,6 +82,7 @@ export async function withdrawConsent(
 
     if (!existing) {
       // Create request, deactivate account, and audit in a single transaction
+      const prev = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } }).catch(() => null)
       await prisma.$transaction([
         prisma.deletionRequest.create({ data: { userId } }),
         prisma.user.update({ where: { id: userId }, data: { accountStatus: 'deletion_pending' } }),
@@ -94,9 +96,12 @@ export async function withdrawConsent(
           },
         }),
       ])
+      try { if (prev?.email) await invalidateUserSessionCache(prev.email) } catch {}
     } else {
       // Ensure account is in deletion_pending state and audit the withdrawal
+      const prev = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } }).catch(() => null)
       await prisma.user.update({ where: { id: userId }, data: { accountStatus: 'deletion_pending' } })
+      try { if (prev?.email) await invalidateUserSessionCache(prev.email) } catch {}
       await prisma.auditLog.create({
         data: {
           targetEntity: 'User',

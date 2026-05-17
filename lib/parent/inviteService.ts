@@ -20,6 +20,7 @@
 import { randomBytes } from 'crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants';
 
 export const PARENT_INVITE_TTL_DAYS = 7;
@@ -304,9 +305,14 @@ export async function linkParentToStudentByEmail(params: {
 
 async function ensureParentRole(prisma: Prisma.TransactionClient, parentId: string) {
   try {
-    const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true } });
+    const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true, email: true } });
     if (parent?.role === 'user') {
       await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } });
+      try {
+        if (parent.email) await invalidateUserSessionCache(parent.email);
+      } catch (e) {
+        logger.warn('ensureParentRole: cache invalidation failed', { parentId, error: String(e) });
+      }
     }
   } catch (err) {
     logger.warn('ensureParentRole failed', { parentId, error: String(err) });

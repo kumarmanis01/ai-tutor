@@ -16,6 +16,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { getRedis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export const dynamic = 'force-dynamic';
@@ -113,6 +114,11 @@ export async function POST(req: NextRequest) {
       where: { id: userId },
       data: { parentVerifiedAt: new Date(), parentPhoneVerifiedAt: new Date() },
     });
+    try {
+      await invalidateUserSessionCache((session?.user as any)?.email);
+    } catch (e) {
+      logger.warn('enroll.verify-parent-otp: cache invalidation failed', { className: 'EnrollVerifyParentOtpAPI', methodName: 'POST', error: String(e) });
+    }
 
     logger.info('enroll/verify-parent-otp: consent verified', {
       className: 'EnrollVerifyParentOtpAPI',

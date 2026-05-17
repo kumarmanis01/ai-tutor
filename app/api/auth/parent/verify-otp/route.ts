@@ -22,6 +22,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { channelOtpKeyByType, getParentChannelVerificationStatus, resolveParentChannels } from '@/lib/parent/contactLinking';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
@@ -117,6 +118,13 @@ export async function POST(req: NextRequest) {
         },
       }),
     ]);
+
+    // Best-effort: invalidate short-lived session cache for this student so JWT reflects new accountStatus
+    try {
+      await invalidateUserSessionCache((session?.user as any)?.email);
+    } catch (e) {
+      logger.warn('parent.verify-otp: cache invalidation failed', { className: 'api.auth.parent.verify-otp', methodName: 'POST', error: String(e) });
+    }
 
     const verification = await getParentChannelVerificationStatus({
       prisma,

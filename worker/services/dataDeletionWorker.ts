@@ -10,6 +10,7 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
+import { invalidateUserSessionCache } from '@/lib/auth.js'
 import { AdminActionType } from '@prisma/client'
 
 const PSEUDONYMISE_AFTER_DAYS = 7
@@ -31,6 +32,8 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
 
   for (const req of phase1Requests) {
     try {
+      // Capture current email so we can invalidate the short-lived session cache after pseudonymisation
+      const prevUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { email: true } }).catch(() => null)
       await prisma.$transaction([
         prisma.user.update({
           where: { id: req.userId },
@@ -57,6 +60,11 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
       ])
       pseudonymised++
       logger.info('dataDeletionWorker.pseudonymised', { requestId: req.id })
+      try {
+        if (prevUser?.email) await invalidateUserSessionCache(prevUser.email)
+      } catch (e) {
+        logger.warn('dataDeletionWorker: cache invalidation failed', { requestId: req.id, error: String(e) })
+      }
     } catch (err) {
       logger.error('dataDeletionWorker.pseudonymiseFailed', {
         requestId: req.id,
