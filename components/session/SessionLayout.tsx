@@ -21,7 +21,6 @@
 import React, { useState } from 'react';
 import { SessionHeader } from './SessionHeader';
 import { SessionFooter } from './SessionFooter';
-import { SessionBottomBar } from './SessionBottomBar';
 import { DoubtPanel } from './DoubtPanel';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
@@ -33,6 +32,7 @@ export interface SessionLayoutFooterConfig {
   loading?: boolean;
   showPrevious?: boolean;
   onPrevious?: () => void;
+  contentWidth?: 'wide' | 'narrow';
 }
 
 interface SessionLayoutProps {
