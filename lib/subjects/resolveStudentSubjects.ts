@@ -94,25 +94,29 @@ export default async function resolveStudentSubjects(
         }
       }
 
-      // 2) Unscoped fallback: always run when scoped lookup produced nothing (or was skipped
-      //    due to missing board/grade). Matches slug OR name across all active SubjectDefs.
-      if (subjects.length === 0) {
-        const rows = await prisma.subjectDef.findMany({
-          where: {
-            lifecycle: 'active',
-            OR: [
-              { slug: { in: enrolledSubjects } },
-              { name: { in: enrolledSubjects, mode: 'insensitive' } },
-            ],
-          },
-          select: { id: true, name: true, slug: true },
-        })
+      // 2) Unscoped supplementary lookup: always run so subjects not found in the
+      //    student's scoped class level are still resolved. Common case: a subject
+      //    available under a different board/grade combination, a slug that exists
+      //    globally but not in the student's ClassLevel, or missing board/grade.
+      //    Scoped results pushed first, so deduplication (below) keeps the scoped
+      //    version when both lookups return the same slug.
+      const unscopedRows = await prisma.subjectDef.findMany({
+        where: {
+          lifecycle: 'active',
+          OR: [
+            { slug: { in: enrolledSubjects } },
+            { name: { in: enrolledSubjects, mode: 'insensitive' } },
+          ],
+        },
+        select: { id: true, name: true, slug: true },
+      })
 
-        if (rows.length > 0) {
-          subjects.push(...rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
-        } else {
-          logger.debug('resolveStudentSubjects.no_match', { enrolledSubjects, grade: parsedUserGrade, board: user.board })
-        }
+      if (unscopedRows.length > 0) {
+        subjects.push(...unscopedRows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
+      }
+
+      if (subjects.length === 0) {
+        logger.debug('resolveStudentSubjects.no_match', { enrolledSubjects, grade: parsedUserGrade, board: user.board })
       }
     }
 

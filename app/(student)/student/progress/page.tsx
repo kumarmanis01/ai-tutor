@@ -179,12 +179,16 @@ export default async function ProgressPage({
   ]);
 
   // ── Subject defs (via central resolver) ─────────────────────────────────────
-  // resolveStudentSubjects handles grade+board scoping with automatic unscoped
-  // fallback, deduplication, and learningPlan ID fallback -- no bespoke logic needed.
+  // resolveStudentSubjects handles grade+board scoping, unscoped fallback,
+  // deduplication, and learningPlan ID fallback -- no bespoke logic needed.
   const subjectDefs = await resolveStudentSubjects(studentProfile, []);
 
-  // Canonical names for the filter bar (ProgressFilters expects string[]).
-  const subjectNames = subjectDefs.map((s) => s.name);
+  // Raw enrolled subject tokens for the filter bar. Using the user-stored tokens
+  // (not just resolved names) ensures every enrolled subject appears as a filter
+  // option even if it did not resolve to a SubjectDef (e.g. not yet seeded).
+  const subjectNames = [...new Set(
+    (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
+  )];
 
   // Apply subject filter to the mastery query.
   const filteredSubjectDefs = activeSubject
