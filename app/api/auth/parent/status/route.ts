@@ -23,7 +23,7 @@ export async function GET() {
     // Look for any unconsumed, unexpired OTPs for these keys
     const now = new Date();
     const keysToCheck = [ ...(emailKey ? [emailKey] : []), ...whatsappKeys ];
-    let sentTo: { email?: string; whatsapp?: string } = {};
+    const sentTo: { email?: string; whatsapp?: string } = {};
     if (keysToCheck.length > 0) {
       const records = await prisma.phoneOtp.findMany({
         where: {

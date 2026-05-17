@@ -90,7 +90,9 @@ export default async function resolveStudentSubjects(
         }
 
         if (rows.length > 0) {
-          subjects.push(...rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
+          for (const r of rows) {
+            subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug })
+          }
         }
       }
 
@@ -112,7 +114,9 @@ export default async function resolveStudentSubjects(
       })
 
       if (unscopedRows.length > 0) {
-        subjects.push(...unscopedRows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
+        for (const r of unscopedRows) {
+          subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug })
+        }
       }
 
       if (subjects.length === 0) {
@@ -123,7 +127,9 @@ export default async function resolveStudentSubjects(
     // 3) LearningPlan fallback: use subjectIds from plans when name/slug resolution found nothing
     if (subjects.length === 0 && planSubjectIds.length > 0) {
       const rows = await prisma.subjectDef.findMany({ where: { id: { in: planSubjectIds }, lifecycle: 'active' }, select: { id: true, name: true, slug: true } })
-      subjects.push(...rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
+      for (const r of rows) {
+        subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug })
+      }
     }
   } catch (err) {
     logger.warn('resolveStudentSubjects.failed', { error: String(err), enrolledSubjects })

@@ -26,7 +26,7 @@ import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 import Topbar from '@/components/student/layout/Topbar';
 // import BottomNav from '@/components/student/layout/BottomNav';
-import { requireActiveSession, authOptions } from '@/lib/auth';
+import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';

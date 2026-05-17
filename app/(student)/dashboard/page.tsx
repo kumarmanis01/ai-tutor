@@ -170,7 +170,7 @@ export default async function StudentHomeDashboardPage() {
 
   // ── Subject resolution (centralised) ───────────────────────────────────────
   // Use central resolver to ensure consistent behaviour across routes/pages.
-  let subjects = await resolveStudentSubjects(user as any, learningPlans as any)
+  const subjects = await resolveStudentSubjects(user as any, learningPlans as any)
 
   // Debug: log resolved subjects for troubleshooting when students report missing cards.
   try {
