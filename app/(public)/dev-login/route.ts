@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   if (!email) return NextResponse.json({ error: 'email required (use ?email=you@host or ?user=you@host)' }, { status: 400 })
 
   // Find user by email (do not create users implicitly in this route)
-  const user = await prisma.user.findUnique({ where: { email } })
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, email: true, image: true, role: true } })
   if (!user) return NextResponse.json({ error: 'user not found' }, { status: 404 })
 
   // Build token payload similar to next-auth jwt callback

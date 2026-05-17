@@ -21,6 +21,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { invalidateUserSessionCache } from '@/lib/auth'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { parentWelcomeHtml } from '@/lib/email/templates'
@@ -151,6 +152,12 @@ export async function POST(req: Request) {
   if (parentUser?.role === 'user') {
     await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } })
     promoted = true
+    // Best-effort: invalidate parent session cache so JWT reflects new role
+    try {
+      await invalidateUserSessionCache(parentUser?.email);
+    } catch (e) {
+      logger.warn('link-child: cache invalidation failed', { className: 'LinkChildAPI', methodName: 'POST', error: String(e) })
+    }
   }
 
   if (promoted) {

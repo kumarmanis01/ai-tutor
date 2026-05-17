@@ -703,7 +703,7 @@ export default function StudentOnboardingPage() {
             </div>
 
             {/* Parent WhatsApp */}
-            <div className="space-y-1">
+            <div className="space-y-1" hidden>
               <label htmlFor="parent-whatsapp" className={FIELD_LABEL_CLASS}>
                 Parent WhatsApp number
               </label>

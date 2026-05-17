@@ -52,6 +52,7 @@ export default function FontSizeToggle() {
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ preferences: { fontSize: v } }),
       })
       if (res.ok) {

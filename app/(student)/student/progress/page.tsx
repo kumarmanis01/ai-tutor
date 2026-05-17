@@ -27,6 +27,7 @@ import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
 import AiNarrativeWidget from '@/components/student/progress/AiNarrativeWidget';
+import { getRedis } from '@/lib/redis';
 import SessionsChart from '@/components/student/progress/SessionsChart';
 import ChapterMasteryBars, {
   type SubjectMasteryData,
@@ -40,6 +41,7 @@ import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/
 import StudyTimeHeatmap, { type HeatmapDay } from '@/components/student/progress/StudyTimeHeatmap';
 import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
 import { subjectDefMatchesActiveSubject } from '@/lib/student/progressPage';
+import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,17 +56,20 @@ const AVG_SESSION_MINUTES = 20;
 export default async function ProgressPage({
   searchParams,
 }: {
-  searchParams?: { subject?: string; days?: string };
+  searchParams?: { subject?: string; days?: string } | Promise<{ subject?: string; days?: string } | undefined>;
 }) {
   const authSession = await requireActiveSession();
   if (!authSession) redirect('/');
 
   const userId = (authSession.user as { id: string }).id;
 
-  // Parse filter params -- default 30 days, no subject filter.
-  const rawDays = Number(searchParams?.days ?? 30);
+  // Parse filter params -- Next.js 15 provides async searchParams (Promise).
+  // Await it before accessing properties to avoid `sync-dynamic-apis` runtime error.
+  const params = (await (searchParams as any)) ?? {};
+  const parsedDays = Number.parseInt(String(params.days ?? '30'), 10);
+  const rawDays = Number.isFinite(parsedDays) ? parsedDays : 30;
   const days = [7, 30, 90, 0].includes(rawDays) ? rawDays : 30;
-  const activeSubject = searchParams?.subject ?? '';
+  const activeSubject = typeof params.subject === 'string' ? params.subject : '';
 
   const cfg = barConfig(days);
   const sinceDate = cfg.fetchDays > 0
@@ -173,36 +178,17 @@ export default async function ProgressPage({
     }),
   ]);
 
-  // ── Subject defs ────────────────────────────────────────────────────────────
-  // Gap 7 fix: deduplicate subjects on read to prevent duplicate subject cards.
+  // ── Subject defs (via central resolver) ─────────────────────────────────────
+  // resolveStudentSubjects handles grade+board scoping, unscoped fallback,
+  // deduplication, and learningPlan ID fallback -- no bespoke logic needed.
+  const subjectDefs = await resolveStudentSubjects(studentProfile, []);
+
+  // Raw enrolled subject tokens for the filter bar. Using the user-stored tokens
+  // (not just resolved names) ensures every enrolled subject appears as a filter
+  // option even if it did not resolve to a SubjectDef (e.g. not yet seeded).
   const subjectNames = [...new Set(
     (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
   )];
-
-  // Filter subjectDefs to the student's own grade+board so we don't pull in
-  // chapters from other grade levels (e.g. Grade 7 Mathematics when the student
-  // is in Grade 6). Mirrors the pattern used in getOrderedTopicsForStudent.
-  const gradeNum = studentProfile?.grade ? parseInt(String(studentProfile.grade), 10) : NaN;
-  const boardSlug = studentProfile?.board ?? null;
-  const classFilter = !isNaN(gradeNum) && boardSlug
-    ? {
-        class: {
-          grade: gradeNum,
-          board: { slug: { equals: boardSlug, mode: 'insensitive' as const } },
-        },
-      }
-    : {};
-
-  const subjectDefs = subjectNames.length
-    ? await prisma.subjectDef.findMany({
-        where: {
-          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
-          lifecycle: 'active',
-          ...classFilter,
-        },
-        select: { id: true, name: true, slug: true },
-      })
-    : [];
 
   // Apply subject filter to the mastery query.
   const filteredSubjectDefs = activeSubject
@@ -241,8 +227,10 @@ export default async function ProgressPage({
       conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0]),
     );
 
+    // Normalize chapter id keys to strings so map lookups are consistent
     for (const c of concepts) {
-      const chId = c.topic?.chapterId;
+      const rawChId = c.topic?.chapterId;
+      const chId = rawChId ? String(rawChId) : '';
       if (!chId) continue;
       if (!conceptsByChapter.has(chId)) conceptsByChapter.set(chId, []);
       conceptsByChapter.get(chId)!.push(c.id);
@@ -256,7 +244,8 @@ export default async function ProgressPage({
           (a, b) =>
             (masteryByConceptId.get(a) ?? 0) - (masteryByConceptId.get(b) ?? 0),
         );
-      chapterWeakestConceptMap.set(chapterId, sorted[0]);
+        // store with string key to match readiness.chapterId shape
+        chapterWeakestConceptMap.set(String(chapterId), sorted[0]);
       // compute average memoryStrength for the chapter
       const msVals = conceptIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
       const _avgMs = msVals.length > 0 ? msVals.reduce((a, b) => a + b, 0) / msVals.length : 0;
@@ -274,9 +263,9 @@ export default async function ProgressPage({
         masteryScore: ch.masteryScore,
         boardWeightPct: ch.boardWeightPct,
         weightSource: ch.weightSource,
-        weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
+        weakestConceptId: chapterWeakestConceptMap.get(String(ch.chapterId)) ?? null,
         memoryStrength: (() => {
-          const cIds = (conceptsByChapter.get(ch.chapterId) ?? [] as string[])
+          const cIds = (conceptsByChapter.get(String(ch.chapterId)) ?? [] as string[])
           const vals = cIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0)
           return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
         })(),
@@ -342,7 +331,16 @@ export default async function ProgressPage({
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
         {/* Left column -- narrative + chart (60%) */}
         <div className="flex flex-col gap-6 md:w-3/5">
-          <AiNarrativeWidget />
+          <AiNarrativeWidget initialNarrative={await (async () => {
+            try {
+              const redis = getRedis();
+              if (!redis) return null;
+              const cached = await redis.get(`narrative:${userId}`);
+              return cached ?? null;
+            } catch {
+              return null;
+            }
+          })()} />
           <SessionsChart
             weeklyCounts={bucketCounts}
             totalSessions={totalSessions}

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       return res;
     }
 
-    const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
+    const dbUser = await prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true, name: true, email: true, image: true, role: true } });
     if (!dbUser) {
       res = NextResponse.json({ error: 'not_found' }, { status: 404 });
       logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);

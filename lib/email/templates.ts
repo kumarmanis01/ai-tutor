@@ -12,6 +12,8 @@
  *
  * EDIT LOG:
  * - 2026-05-14T00:00:00Z | copilot | add standard file header and document support-email centralisation
+ * - 2026-05-17T00:00:00Z | reviewer | replace numeric accuracy/mastery values with qualitative labels
+ *   in sessionCompleteForParentHtml to comply with no-numeric-score product rule
  */
 
 import { TEMPLATES_LEGACY_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
@@ -873,7 +875,48 @@ export function sessionCompleteForParentHtml(data: {
   subjectName: string;
   sessionDate: string;
   dashboardUrl: string;
+  xpEarned?: number;
+  totalXp?: number;
+  badges?: string[];
+  accuracy?: number; // percent
+  masteryDelta?: number;
+  masteryAfter?: number;
+  sessionDurationMinutes?: number;
+  aiInsight?: string;
+  topicsTouched?: Array<{
+    topicId: string
+    topicName?: string | null
+    chapterName?: string | null
+    concepts: Array<{ conceptId: string; conceptName?: string | null; masteryAfter?: number | null; masteryDelta?: number | null }>
+  }>
+  chaptersCompleted?: Array<{ chapterId: string; chapterName: string; completed: boolean }>
 }): string {
+  const xpLine = typeof data.xpEarned === 'number' ? `<tr><td style="color:#666;">XP earned</td><td style="text-align:right;font-weight:600;">+${data.xpEarned}</td></tr>` : '';
+  const totalXpLine = typeof data.totalXp === 'number' ? `<tr><td style="color:#666;">Total XP</td><td style="text-align:right;font-weight:600;">${data.totalXp}</td></tr>` : '';
+  // Use qualitative labels for accuracy and mastery -- never raw numeric scores.
+  const accuracyLabel = typeof data.accuracy === 'number'
+    ? (data.accuracy >= 80 ? 'Strong' : data.accuracy >= 55 ? 'Good' : 'Keep going')
+    : null;
+  const accuracyLine = accuracyLabel ? `<tr><td style="color:#666;">Practice performance</td><td style="text-align:right;font-weight:600;">${accuracyLabel}</td></tr>` : '';
+  const masteryLabel = typeof data.masteryAfter === 'number'
+    ? (data.masteryAfter >= 0.7 ? 'Strong' : data.masteryAfter >= 0.45 ? 'Building' : 'Developing')
+    : null;
+  const masteryLine = masteryLabel ? `<tr><td style="color:#666;">Topic understanding</td><td style="text-align:right;font-weight:600;">${masteryLabel}</td></tr>` : '';
+  const durationLine = typeof data.sessionDurationMinutes === 'number' ? `<tr><td style="color:#666;">Duration</td><td style="text-align:right;font-weight:600;">${data.sessionDurationMinutes} min</td></tr>` : '';
+  const badgesHtml = data.badges && data.badges.length ? `<p style="margin:8px 0 0;font-size:13px;color:#555;">Badges: <strong>${data.badges.join(', ')}</strong></p>` : '';
+    const insightText = data.aiInsight ? String(data.aiInsight).trim() : '';
+    const insightShort = insightText ? (insightText.length > 240 ? insightText.slice(0, 237) + '...' : insightText) : '';
+    const insightHtml = insightShort ? `<p style="margin:12px 0 0;color:#374151;font-size:13px;">Teacher Vidya: ${insightShort}</p>` : '';
+
+  // Compact topics list (limit to 6 for email brevity)
+  const topics = (data.topicsTouched ?? [])
+  const topicsPreview = topics.slice(0, 6).map(t => `
+    <li style="margin:4px 0;font-size:13px;color:#374151;">${t.topicName ?? 'Topic'}${t.chapterName ? ` -- ${t.chapterName}` : ''} (${t.concepts.length} concept${t.concepts.length !== 1 ? 's' : ''})</li>`).join('')
+  const topicsMore = topics.length > 6 ? `<p style="color:#666;font-size:12px;margin:6px 0 0;">and ${topics.length - 6} more topics...</p>` : ''
+
+  const chapters = (data.chaptersCompleted ?? []).filter(c => c.completed)
+  const chaptersHtml = chapters.length ? `<p style="margin:8px 0 0;font-size:13px;color:#555;">Chapters completed: <strong>${chapters.map(c => c.chapterName).slice(0,5).join(', ')}${chapters.length > 5 ? `, and ${chapters.length - 5} more` : ''}</strong></p>` : ''
+
   return `
     <div style="${BASE}">
       ${LOGO}
@@ -884,12 +927,18 @@ export function sessionCompleteForParentHtml(data: {
          and they are making steady progress.</p>
 
       <div style="background:#EAF3DE;border-radius:12px;padding:16px 20px;margin:20px 0;">
-        <p style="margin:0;font-size:14px;color:#1D9E75;font-weight:600;">
-          Session completed
-        </p>
-        <p style="margin:8px 0 0;font-size:13px;color:#555;">
-          Consistent daily sessions are the fastest path to exam confidence.
-        </p>
+        <p style="margin:0;font-size:14px;color:#1D9E75;font-weight:600;">Session highlights</p>
+        <table width="100%" cellpadding="6" style="font-size:14px;border-top:1px solid #eee;margin-top:8px;">
+          ${xpLine}
+          ${totalXpLine}
+          ${accuracyLine}
+          ${masteryLine}
+          ${durationLine}
+        </table>
+        ${badgesHtml}
+        ${insightHtml}
+        ${topics.length ? `<div style="margin-top:12px;"><strong style="font-size:13px;color:#374151;">Topics covered</strong><ul style="margin:8px 0 0;padding-left:18px;">${topicsPreview}</ul>${topicsMore}</div>` : ''}
+        ${chaptersHtml}
       </div>
 
       <a href="${data.dashboardUrl}" style="${BTN}">View progress</a>

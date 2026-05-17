@@ -22,10 +22,17 @@ const redisErrors = new client.Counter({ name: 'redis_client_errors_total', help
 const suppressionSetFailures = new client.Counter({ name: 'notification_suppression_set_failures_total', help: 'Failures when setting suppression keys' })
 const suppressionDeleteFailures = new client.Counter({ name: 'notification_suppression_delete_failures_total', help: 'Failures deleting suppression keys' })
 
+// JWT session cache metrics
+const jwtCacheHits = new client.Counter({ name: 'auth_jwt_cache_hits_total', help: 'Total JWT session cache hits' })
+const jwtCacheMisses = new client.Counter({ name: 'auth_jwt_cache_misses_total', help: 'Total JWT session cache misses' })
+
 export function incNotificationSent(type: string) { try { notificationsSent.labels(type).inc() } catch {} }
 export function incNotificationFailed(type: string, reason: string) { try { notificationsFailed.labels(type, reason).inc() } catch {} }
 export function incRedisError() { try { redisErrors.inc() } catch {} }
 export function incSuppressionSetFailure() { try { suppressionSetFailures.inc() } catch {} }
 export function incSuppressionDeleteFailure() { try { suppressionDeleteFailures.inc() } catch {} }
+
+export function incJwtCacheHit() { try { jwtCacheHits.inc() } catch {} }
+export function incJwtCacheMiss() { try { jwtCacheMisses.inc() } catch {} }
 
 export { register }

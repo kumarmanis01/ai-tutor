@@ -43,6 +43,7 @@ import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
 import { FocusAreaCard } from '@/components/student/dashboard/FocusAreaCard'
 import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
+import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
 import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
 
@@ -136,6 +137,19 @@ export default async function StudentHomeDashboardPage() {
 
   if (!user) redirect('/')
 
+  // Debug: log raw user.subjects and learningPlans to trace missing subject cases
+  try {
+    logger.debug('dashboard.user_subjects', { userId, rawSubjects: (user as any).subjects })
+  } catch (err) {
+    logger.warn('dashboard.user_subjects.log_failed', { userId, error: err })
+  }
+
+  try {
+    logger.debug('dashboard.learning_plans', { userId, learningPlansCount: learningPlans.length, learningPlans })
+  } catch (err) {
+    logger.warn('dashboard.learning_plans.log_failed', { userId, error: err })
+  }
+
   const isPremium = user.subscriptionStatus === 'premium'
   const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
   const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_CAP - sessionsUsed)
@@ -154,84 +168,14 @@ export default async function StudentHomeDashboardPage() {
     xpBySource[row.source] = row._sum.amount ?? 0
   }
 
-  // ── Subject resolution (depends on Round 1 data -- unavoidable sequential step) ──
-  // Prefer subjects from the student's profile `subjects` (enrolled subjects),
-  // then fall back to subjects referenced by their learning plans, then active subjects.
-  let subjects = [] as { id: string; name: string }[]
-
-  // Resolve enrolled subjects from user.subjects (may be string[] or Postgres wire-format string)
-  let enrolledSubjects: string[] | null = null
-  if (user?.subjects) {
-    if (Array.isArray(user.subjects)) {
-      const arr = (user.subjects as string[]).filter(Boolean)
-      if (arr.length > 0) enrolledSubjects = arr
-    } else if (typeof user.subjects === 'string' && user.subjects.length > 0) {
-      const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim()
-      const parts = cleaned.length > 0 ? cleaned.split(',').map((s) => s.trim()).filter(Boolean) : []
-      if (parts.length > 0) enrolledSubjects = parts
-    }
-  }
-
-  // AC: Incomplete profiles must never see dashboard subjects. This check is defensive
-  // since the layout should already block incomplete users, but belt+suspenders matters here.
-  if (enrolledSubjects && enrolledSubjects.length > 0 && user?.grade && user?.board) {
-    // Parse user.grade to an integer because SubjectDef.class.grade is an Int in
-    // the Prisma schema while `user.grade` is stored as a string on the User row.
-    // Only apply class scoping when the parsed grade is a valid integer to avoid
-    // silently passing an incorrect filter to Prisma.
-    const parsedUserGrade =
-      typeof user?.grade === 'string'
-        ? (() => {
-            const normalizedGrade = user.grade.trim()
-            if (normalizedGrade.length === 0) return null
-            const numericGrade = Number(normalizedGrade)
-            return Number.isInteger(numericGrade) ? numericGrade : null
-          })()
-        : null
-
-    // Scope to the student's own board + grade to avoid cross-grade/board duplicates
-    // when multiple active SubjectDef rows share the same display name.
-    // Only apply class scoping when we have both a board and a parsed numeric grade.
-    subjects = await prisma.subjectDef.findMany({
-      where: {
-        lifecycle: 'active',
-        ...(user.board && parsedUserGrade !== null
-          ? {
-              class: {
-                grade: parsedUserGrade,
-                board: { slug: { equals: user.board, mode: 'insensitive' as const } },
-              },
-            }
-          : {}),
-        OR: [{ name: { in: enrolledSubjects } }, { slug: { in: enrolledSubjects } }],
-      },
-      select: { id: true, name: true },
-    })
-  } else {
-    const planSubjectIds = Array.from(new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId)))
-    if (planSubjectIds.length > 0) {
-      subjects = await prisma.subjectDef.findMany({
-        where: { id: { in: planSubjectIds }, lifecycle: 'active' },
-        select: { id: true, name: true },
-      })
-    } else {
-      // AC: Never show generic subjects to incomplete students. Only show subjects from
-      // learning plans (which only exist after onboarding) or fall through to empty array.
-      subjects = []
-    }
-  }
-
-  // Deduplicate by lowercase name -- prefer the subject that is in a learning plan so
-  // that "Start Diagnostic" always links to the subject the student actually enrolled in.
-  {
-    const planSubjectIdSet = new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId))
-    const seen = new Map<string, { id: string; name: string }>()
-    for (const s of subjects) {
-      const key = s.name.toLowerCase()
-      if (!seen.has(key) || planSubjectIdSet.has(s.id)) seen.set(key, s)
-    }
-    subjects = Array.from(seen.values())
-  }
+  // ── Subject resolution (centralised) ───────────────────────────────────────
+  // Incomplete profiles must never see dashboard subjects; only resolve once
+  // the academic scope is fully available.
+  const hasCompleteAcademicProfile = Boolean(user.grade && user.board)
+  // Use central resolver to ensure consistent behaviour across routes/pages.
+  const subjects = hasCompleteAcademicProfile
+    ? await resolveStudentSubjects(user as any, learningPlans as any)
+    : []
 
   // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
   // User.subjects is an unbounded String[], so we cap at SUBJECT_CAP and process
@@ -480,6 +424,17 @@ export default async function StudentHomeDashboardPage() {
       }),
     )
   ).filter((t): t is TodaysTopic => t !== null)
+
+  // Debug: log readinessRows to help diagnose cases where cards are missing.
+  try {
+    logger.debug('dashboard.readiness_results', {
+      userId,
+      readinessCount: readinessResults.length,
+      readinessSubjects: readinessResults.map((r) => ({ id: r.subjectId, name: r.subjectName, diagnosticDone: r.diagnosticDone })),
+    })
+  } catch (err) {
+    logger.warn('dashboard.readiness_results.log_failed', { userId, error: err })
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (

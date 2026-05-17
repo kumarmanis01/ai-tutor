@@ -22,13 +22,15 @@ import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
 type State = 'loading' | 'error' | 'populated';
 
-export default function AiNarrativeWidget() {
-  const [state, setState] = useState<State>('loading');
-  const [narrative, setNarrative] = useState('');
+export default function AiNarrativeWidget({ initialNarrative }: { initialNarrative?: string | null }) {
+  const [state, setState] = useState<State>(initialNarrative ? 'populated' : 'loading');
+  const [narrative, setNarrative] = useState(initialNarrative ?? '');
   const [exporting, setExporting] = useState(false);
   const [exportDisabledUntil, setExportDisabledUntil] = useState<number | null>(null);
 
   const fetchNarrative = useCallback(async () => {
+    // If server provided an initial narrative, skip client fetch to avoid duplicate calls
+    if (initialNarrative) return;
     setState('loading');
     try {
       const res = await fetch('/api/student/progress/narrative');
@@ -40,7 +42,7 @@ export default function AiNarrativeWidget() {
     } catch {
       setState('error');
     }
-  }, []);
+  }, [initialNarrative]);
 
   useEffect(() => {
     void fetchNarrative();

@@ -122,4 +122,44 @@ describe('selectQuestions', () => {
 
     expect(prisma.question.upsert).toHaveBeenCalledTimes(1);
   });
+
+  it('honours topicId when falling back to GeneratedQuestion', async () => {
+    prisma.question.findMany.mockResolvedValue([]);
+    prisma.generatedQuestion.findMany.mockResolvedValue([]);
+
+    await selectQuestions({ topicId: 'topic-42' }, 2);
+
+    expect(prisma.generatedQuestion.findMany).toHaveBeenCalled();
+    const callArgs = prisma.generatedQuestion.findMany.mock.calls[0][0];
+    expect(callArgs).toHaveProperty('where');
+    // The generated query should scope `test.topicId` via the testWhere we build
+    // (we set testWhere.topicId when filters.topicId is provided).
+    expect(callArgs.where).toHaveProperty('test');
+    const testWhere = callArgs.where.test as Record<string, unknown>;
+    expect(testWhere).toHaveProperty('topicId', 'topic-42');
+  });
+
+  it('skips promoting generated questions with null topicId', async () => {
+    prisma.question.findMany.mockResolvedValue([]);
+    prisma.generatedQuestion.findMany.mockResolvedValue([
+      {
+        id: 'gq-3',
+        type: 'mcq',
+        question: 'Placeholder?',
+        options: null,
+        answer: 'a',
+        test: {
+          difficulty: 'medium',
+          topicId: null,
+          topic: null,
+        },
+      },
+    ]);
+    prisma.question.upsert.mockResolvedValue({});
+
+    await selectQuestions({ subject: 'science' }, 1);
+
+    // upsert should not be called because topicId is null and we skip promotion
+    expect(prisma.question.upsert).not.toHaveBeenCalled();
+  });
 });

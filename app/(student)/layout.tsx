@@ -26,7 +26,8 @@ import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 import Topbar from '@/components/student/layout/Topbar';
 // import BottomNav from '@/components/student/layout/BottomNav';
-import { requireActiveSession } from '@/lib/auth';
+import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth/next';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { checkParentGate } from '@/lib/student/parentGate';
@@ -91,7 +92,13 @@ export const metadata: Metadata = {
  * - Must NOT render the public Navbar
  */
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireActiveSession();
+  // Use server session directly here so the student shell can render for
+  // non-active accounts (e.g. pending_parent_verification) and show the
+  // onboarding / parent-gate overlays. Pages that require an active account
+  // (dashboard, learning flows) continue to call `requireActiveSession()`
+  // individually. This avoids redirecting pending users to sign-in and
+  // prevents the onboarding/verify-parent re-entry bug.
+  const session = (await getServerSession(authOptions)) as any | null;
   if (!session) redirect('/');
 
   const userId = (session.user as { id?: string })?.id;

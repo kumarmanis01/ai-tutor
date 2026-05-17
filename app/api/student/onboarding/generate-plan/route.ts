@@ -23,6 +23,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -94,72 +95,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Resolve subject IDs filtered by student's exact grade + board.
-    // Without the grade+board filter the query would return SubjectDef rows for
-    // the wrong grade (e.g. Grade 1 English for a Grade 6 student) because the
-    // same slug exists for every grade.
-    // Try slug-match first; fall back to name-match (case-insensitive) in case
-    // the student's stored subject label differs from the SubjectDef.slug.
-    let subjectDefs: { id: string; slug: string; name: string }[] = [];
-
-    if (normalisedSlugs.length > 0 && studentGrade && studentBoard) {
-      const classFilter = {
+    // Resolve subject IDs using centralised resolver.
+    const subjectDefs = await resolveStudentSubjects(user as any, [])
+    if (subjectDefs.length === 0) {
+      logger.warn('[generate-plan] no SubjectDef rows resolved after resolver', {
+        className: 'GeneratePlanAPI',
+        methodName: 'POST',
+        studentId: userId,
+        normalisedSlugs,
         grade: studentGrade,
-        board: { slug: { equals: studentBoard, mode: 'insensitive' as const } },
-      };
-
-      // Primary: slug match + ClassLevel lifecycle active
-      subjectDefs = await prisma.subjectDef.findMany({
-        where: {
-          slug: { in: normalisedSlugs },
-          lifecycle: 'active',
-          class: { ...classFilter, lifecycle: 'active' },
-        },
-        select: { id: true, slug: true, name: true },
+        board: studentBoard,
       });
-
-      // Fallback 1: slug match, relax ClassLevel lifecycle (handles unseeded lifecycle)
-      if (subjectDefs.length === 0) {
-        subjectDefs = await prisma.subjectDef.findMany({
-          where: {
-            slug: { in: normalisedSlugs },
-            lifecycle: 'active',
-            class: classFilter,
-          },
-          select: { id: true, slug: true, name: true },
-        });
-      }
-
-      // Fallback 2: name match (case-insensitive) for subjects stored as display names
-      if (subjectDefs.length === 0) {
-        const rawSubjects = Array.isArray(user?.subjects) ? (user!.subjects as string[]) : [];
-        subjectDefs = await prisma.subjectDef.findMany({
-          where: {
-            name: { in: rawSubjects, mode: 'insensitive' },
-            lifecycle: 'active',
-            class: classFilter,
-          },
-          select: { id: true, slug: true, name: true },
-        });
-      }
-
-      if (subjectDefs.length === 0) {
-        logger.warn('[generate-plan] no SubjectDef rows resolved after all fallbacks', {
-          className: 'GeneratePlanAPI',
-          methodName: 'POST',
-          studentId: userId,
-          normalisedSlugs,
-          grade: studentGrade,
-          board: studentBoard,
-        });
-      } else {
-        logger.info('[generate-plan] resolved subjects', {
-          className: 'GeneratePlanAPI',
-          methodName: 'POST',
-          studentId: userId,
-          subjects: subjectDefs.map((s) => ({ id: s.id, slug: s.slug })),
-        });
-      }
+    } else {
+      logger.info('[generate-plan] resolved subjects', {
+        className: 'GeneratePlanAPI',
+        methodName: 'POST',
+        studentId: userId,
+        subjects: subjectDefs.map((s) => ({ id: s.id, slug: (s as any).slug })),
+      });
     }
 
     // 3. Generate a LearningPlan for each subject (fire sequentially to avoid overload)

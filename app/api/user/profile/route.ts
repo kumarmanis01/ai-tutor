@@ -19,9 +19,12 @@
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import { getRedis } from '@/lib/redis';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
+import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
 
 export async function GET(req: Request) {
   const start = Date.now();
@@ -53,19 +56,52 @@ export async function GET(req: Request) {
 
   const savedUser = await prisma.user.findUnique({
     where: { email: sessionUser.email },
-    include: {
-      subscriptions: true,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      country: true,
+      language: true,
+      grade: true,
+      board: true,
+      schoolName: true,
+      subjects: true,
+      age: true,
+      parentPhone: true,
+      parentPhoneVerifiedAt: true,
+      whatsappPhone: true,
+      accountStatus: true,
+      learningStyle: true,
+      preferences: true,
+      createdAt: true,
+      role: true,
+      parentEmail: true,
+      level: true,
+      totalXp: true,
+      currentStreak: true,
+      longestStreak: true,
+      cosmeticUnlocks: true,
       userBadges: {
-        include: {
+        select: {
+          id: true,
+          studentId: true,
+          badgeKey: true,
+          earnedAt: true,
           badge: { select: { name: true, description: true, icon: true } },
         },
         orderBy: { earnedAt: 'desc' },
       },
+      subscriptions: { select: { id: true, userId: true, plan: true, billingCycle: true, startDate: true, endDate: true, active: true } },
     },
   });
 
   // Find active subscription
   const activeSub = savedUser?.subscriptions?.find((sub: { active: boolean }) => sub.active);
+
+  // Resolve enrolled subjects to canonical SubjectDef rows (best-effort; empty on failure).
+  const resolvedSubjects = savedUser
+    ? await resolveStudentSubjects(savedUser, []).catch(() => [])
+    : [];
 
   res = NextResponse.json({
     id: savedUser?.id ?? '',
@@ -78,6 +114,7 @@ export async function GET(req: Request) {
     board: savedUser?.board ?? null,
     schoolName: savedUser?.schoolName ?? null,
     subjects: savedUser?.subjects ?? [],
+    resolvedSubjects,
     age: savedUser?.age ?? null,
     parentPhone: savedUser?.parentPhone ?? null,
     parentPhoneVerifiedAt: savedUser?.parentPhoneVerifiedAt ?? null,
@@ -229,6 +266,13 @@ export async function PATCH(req: Request) {
 
   res = NextResponse.json({ ok: true, learningStyle: updated.learningStyle ?? null, preferences: updated.preferences ?? null });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+
+  // Invalidate session cache for this user (best-effort)
+  try {
+    await invalidateUserSessionCache((session.user as any)?.email);
+  } catch (err) {
+    logger.warn('UserProfileAPI: cache invalidation failed', { className: 'UserProfileAPI', methodName: 'PATCH', error: String(err) });
+  }
 
   // If examDate was updated, regenerate any existing learning plans for the student (non-blocking).
   if (Object.prototype.hasOwnProperty.call(updates, 'examDate')) {

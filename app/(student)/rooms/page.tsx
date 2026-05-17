@@ -39,7 +39,7 @@ export default function RoomsPage() {
       .then(setRooms);
 
     // Fetch user profile to determine role and userId
-    fetch('/api/user/profile')
+    fetch('/api/user/profile', { credentials: 'include' })
       .then((res) => res.json())
       .then((data) => {
         setUserRole(data.role === 'admin' ? 'admin' : 'member');

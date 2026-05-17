@@ -17,6 +17,7 @@
 
 import { UserRole, type PrismaClient } from '@prisma/client'
 import { logger } from '@/lib/logger'
+import { invalidateUserSessionCache } from '@/lib/auth'
 
 const CLASS_NAME = 'parent.contactLinking'
 const EMAIL_KEY_PREFIX = 'email:'
@@ -135,10 +136,15 @@ export async function ensureAutoLinkedParentsForStudent(params: {
 
   for (const parentId of candidateParentIds) {
     try {
-      const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true } })
-      if (parent && parent.role !== UserRole.parent) {
-        await prisma.user.update({ where: { id: parentId }, data: { role: UserRole.parent } })
-      }
+      const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true, email: true } })
+        if (parent && parent.role !== UserRole.parent) {
+          await prisma.user.update({ where: { id: parentId }, data: { role: UserRole.parent } })
+          try {
+            if (parent.email) await invalidateUserSessionCache(parent.email)
+          } catch (e) {
+            logger.warn('ensureParentRole: cache invalidation failed', { parentId, error: String(e) })
+          }
+        }
 
       const existing = await prisma.parentStudent.findUnique({
         where: { parentId_studentId: { parentId, studentId } },

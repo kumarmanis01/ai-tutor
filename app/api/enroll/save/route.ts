@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { LanguageCode } from '@prisma/client';
@@ -135,6 +136,13 @@ export async function POST(req: NextRequest) {
         parentVerifiedAt: true,
       },
     });
+
+    // Best-effort: invalidate session cache so JWT reflects updated profile fields
+    try {
+      await invalidateUserSessionCache((session?.user as any)?.email);
+    } catch (e) {
+      logger.warn('enroll.save: cache invalidation failed', { className: 'EnrollSaveAPI', methodName: 'POST', error: String(e) });
+    }
 
     // ── Trigger content seeding (non-blocking) ────────────────────────────────
     try {

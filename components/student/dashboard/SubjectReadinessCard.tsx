@@ -91,6 +91,7 @@ function formatRetakeDate(retakeEligibleAt: string): string {
 }
 
 export function SubjectReadinessCard({
+  subjectId,
   subjectName,
   score,
   diagnosticDone,

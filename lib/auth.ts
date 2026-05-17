@@ -23,6 +23,7 @@
  * - 2026-05-07T00:00:00Z | copilot | enforce Google sub/email_verified linking and restore jwt/session id propagation for onboarding auth
  * - 2026-05-07T00:00:00Z | copilot | fix jwt subjects parsing type guard to avoid never narrowing on Prisma String[]
  * - 2026-05-13T00:00:00Z | copilot | emit signin analytics (`STUDENT.AUTH_SIGNIN`) in sign-in callback (best-effort)
+ * - 2026-05-17T00:00:00Z | reviewer | document cache invalidation contract on JWT session cache key
  */
 
 // src/lib/auth.ts
@@ -41,6 +42,8 @@ import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
 import crypto from 'crypto';
+import { getRedis } from '@/lib/redis';
+import { incJwtCacheHit, incJwtCacheMiss } from '@/lib/metrics';
 import { DPDP_MINOR_AGE as _DPDP_MINOR_AGE } from '@/lib/constants/age';
 import type { AppSession } from '@/lib/types/auth';
 
@@ -102,7 +105,7 @@ async function sendWelcomeEmail(to: string, name?: string) {
 // Standalone method to check flag, send welcome email, and update flag
 async function maybeSendWelcomeEmail(email: string, name?: string) {
   // Fetch user from DB
-  const dbUser = await prisma.user.findUnique({ where: { email } });
+  const dbUser = await prisma.user.findUnique({ where: { email }, select: { welcomeEmailSent: true } });
   logger.add(`[maybeSendWelcomeEmail] Database user fetched: ${JSON.stringify(dbUser)}`, { className: 'auth', methodName: 'maybeSendWelcomeEmail' });
   if (dbUser && !dbUser.welcomeEmailSent) {
     // Send welcome email
@@ -447,6 +450,21 @@ function isPrismaRecordNotFoundError(error: unknown): boolean {
   return maybePrismaError.code === 'P2025';
 }
 
+// Helper: remove a user's short-lived JWT session cache entry.
+// Call from any writer that updates user profile fields used in auth gating.
+export async function invalidateUserSessionCache(email?: string | null) {
+  if (!email) return;
+  const redis = getRedis?.();
+  if (!redis) return;
+  const cacheKey = `session:user:${String(email).toLowerCase()}`;
+  try {
+    await redis.del(cacheKey);
+    logger.add('jwt.cache.invalidate', { className: 'auth', methodName: 'invalidateUserSessionCache', cacheKey });
+  } catch (err) {
+    logger.warn('jwt cache invalidate failed', { className: 'auth', methodName: 'invalidateUserSessionCache', error: String(err) });
+  }
+}
+
 // Custom adapter that bypasses the OAuthAccountNotLinked error.
 //
 // NextAuth v4 + PrismaAdapter throws OAuthAccountNotLinked when getUserByEmail
@@ -665,6 +683,7 @@ export const authOptions: any = {
       return true;
     },
     async jwt({ token, user }: any) {
+      const start = Date.now();
       if (user?.id) {
         token.id = user.id;
       }
@@ -673,33 +692,129 @@ export const authOptions: any = {
       }
 
       if (token.email) {
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { email: token.email },
-            select: {
-              id: true,
-              role: true,
-              grade: true,
-              board: true,
-              language: true,
-              subjects: true,
-              accountStatus: true,
-            },
-          });
-
-          if (dbUser) {
-            token.id = token.id ?? dbUser.id;
-            token.role = dbUser.role;
-            token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
-            token.onboardingComplete = token.accountStatus === 'active';
+        // Cache key for JWT session data. Any API route that writes role, accountStatus,
+        // grade, board, language, or subjects MUST call invalidateUserSessionCache(email)
+        // after the DB write to prevent stale auth state within the 30s TTL window.
+        const cacheKey = `session:user:${String(token.email).toLowerCase()}`;
+        let cacheHit = false;
+        const redis = getRedis?.();
+        if (redis) {
+            try {
+              const cached = await redis.get(cacheKey);
+              if (cached) {
+                const cachedObj = JSON.parse(cached);
+                token.id = token.id ?? cachedObj.id;
+                token.role = cachedObj.role;
+                token.accountStatus = cachedObj.accountStatus ?? 'active';
+                // Restore profile pieces used to deterministically compute onboarding
+                token.grade = cachedObj.grade ?? undefined;
+                token.board = cachedObj.board ?? undefined;
+                token.language = cachedObj.language ?? undefined;
+                token.subjects = cachedObj.subjects ?? undefined;
+                // Recompute onboardingComplete the same way as DB path
+                token.onboardingComplete = !!(
+                  token.grade && token.board && token.language &&
+                  (Array.isArray(token.subjects) ? token.subjects.filter(Boolean).length > 0 : (typeof token.subjects === 'string' && token.subjects.length > 0))
+                );
+                cacheHit = true;
+                logger.add('jwt.cache.hit', { className: 'auth', methodName: 'jwt', cacheKey });
+                try { incJwtCacheHit(); } catch {}
+              }
+            } catch (cacheErr) {
+              logger.warn('jwt cache read failed', { className: 'auth', methodName: 'jwt', error: String(cacheErr) });
+            }
           }
-        } catch (err) {
-          logger.warn('jwt callback DB fetch failed, using defaults', { className: 'auth', methodName: 'jwt', error: String(err) });
-          token.accountStatus = (token.accountStatus as string) ?? 'active';
-          token.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
+
+        if (!cacheHit) {
+          try { incJwtCacheMiss() } catch {}
+          try {
+            const dbStart = Date.now();
+            // Select only the fields required to compute auth flags and reduce row width.
+            // Keep grade/board/language/subjects so onboardingComplete can be derived
+            // consistently on cache hit vs DB miss.
+            const dbUser = await prisma.user.findUnique({
+              where: { email: token.email },
+              select: {
+                id: true,
+                role: true,
+                grade: true,
+                board: true,
+                language: true,
+                subjects: true,
+                accountStatus: true,
+              },
+            });
+            // const dbEnd = Date.now();
+            if (dbUser) {
+              token.id = token.id ?? dbUser.id;
+              token.role = dbUser.role;
+              token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
+
+              // Resolve subjects from both array (standard Prisma) and Neon wire-format string "{a,b,c}"
+              let subjectCount = 0;
+              let subjectsVal: string[] | string | undefined = undefined;
+              if (Array.isArray(dbUser.subjects)) {
+                subjectsVal = dbUser.subjects as string[];
+                subjectCount = (dbUser.subjects as string[]).filter(Boolean).length;
+              } else if (typeof dbUser.subjects === 'string' && dbUser.subjects.length > 0) {
+                subjectsVal = dbUser.subjects as string;
+                subjectCount = (dbUser.subjects as string)
+                  .replace(/^\{/, '').replace(/\}$/, '').split(',')
+                  .filter((s) => s.trim().length > 0).length;
+              }
+
+              // onboardingComplete = academic profile only (board/grade/language/subjects).
+              token.onboardingComplete = !!(
+                dbUser.grade && dbUser.board && dbUser.language && subjectCount > 0
+              );
+
+              // Persist profile pieces on token so downstream server consumers can use them
+              token.grade = dbUser.grade ?? undefined;
+              token.board = dbUser.board ?? undefined;
+              token.language = dbUser.language ?? undefined;
+              token.subjects = subjectsVal;
+
+              // Cache a lightweight shape for short TTL to reduce DB load. Include the
+              // same profile pieces used to derive onboardingComplete so cache hits
+              // are consistent with direct DB reads.
+              if (redis) {
+                try {
+                  const toCache = {
+                    id: dbUser.id,
+                    role: dbUser.role,
+                    accountStatus: dbUser.accountStatus ?? 'active',
+                    grade: dbUser.grade ?? null,
+                    board: dbUser.board ?? null,
+                    language: dbUser.language ?? null,
+                    subjects: subjectsVal ?? null,
+                    onboardingComplete: token.onboardingComplete,
+                  };
+                  // short TTL (seconds)
+                  await redis.set(cacheKey, JSON.stringify(toCache), 'EX', 30);
+                  logger.add('jwt.cache.set', { className: 'auth', methodName: 'jwt', cacheKey, ttl: 30 });
+                } catch (setErr) {
+                  logger.warn('jwt cache set failed', { className: 'auth', methodName: 'jwt', error: String(setErr) });
+                }
+              }
+            }
+            logger.add('jwt.db.fetch', { className: 'auth', methodName: 'jwt', durationMs: Date.now() - dbStart});
+          } catch (err) {
+            logger.warn('jwt callback DB fetch failed, using defaults', { className: 'auth', methodName: 'jwt', error: String(err) });
+            token.accountStatus = (token.accountStatus as string) ?? 'active';
+            token.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
+          }
         }
       }
 
+      // Reduce noisy logging: only emit timing when slow or sampled.
+      try {
+        const totalMs = Date.now() - start;
+        if (totalMs > 50 || Math.random() < 0.01) {
+          logger.add('jwt.timing', { className: 'auth', methodName: 'jwt', totalMs });
+        }
+      } catch (e) {
+        // swallow logging errors
+      }
       return token;
     },
     async session({ session, token }: any) {

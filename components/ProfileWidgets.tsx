@@ -51,7 +51,7 @@ export default function ProfileWidgets({
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch('/api/user/profile');
+        const res = await fetch('/api/user/profile', { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;
@@ -101,6 +101,7 @@ export default function ProfileWidgets({
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ preferences: { badgeShowcase: selected } }),
       });
       if (!res.ok) {

@@ -14,6 +14,7 @@
  *
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | add channel-aware verification and per-channel verified timestamps
+ * - 2026-05-17T00:00:00Z | reviewer | add verifyCode rate limiting to prevent OTP brute-force
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,6 +23,8 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { invalidateUserSessionCache } from '@/lib/auth';
+import { checkAuthRateLimit, createRateLimitResponse } from '@/lib/middleware/authRateLimit';
 import { channelOtpKeyByType, getParentChannelVerificationStatus, resolveParentChannels } from '@/lib/parent/contactLinking';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
@@ -31,7 +34,7 @@ function hashOtp(otp: string) {
   return crypto.createHash('sha256').update(`${otp}${secret}`).digest('hex');
 }
 
-type OtpChannel = 'email' | 'whatsapp';
+type OtpChannel = 'email';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -40,15 +43,18 @@ export async function POST(req: NextRequest) {
     const studentId = session?.user?.id ? String(session.user.id) : null;
     if (!studentId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Rate-limit by student to prevent brute-force of short OTP codes.
+    const rateLimitResult = await checkAuthRateLimit(req, 'verifyCode', `parent:${studentId}`);
+    if (!rateLimitResult.allowed) return createRateLimitResponse(rateLimitResult);
+
     const body = await req.json().catch(() => ({}));
     const code = String(body.code || body.otp || '').trim();
-    const channel = body.channel === 'email' || body.channel === 'whatsapp'
-      ? (body.channel as OtpChannel)
-      : null;
-
-    if (!channel) {
-      return NextResponse.json({ error: 'Verification channel is required' }, { status: 400 });
+    // Only email verification is enabled for now. Reject WhatsApp attempts explicitly.
+    if (body.channel === 'whatsapp') {
+      return NextResponse.json({ error: 'WhatsApp verification is currently disabled' }, { status: 400 });
     }
+    // Default to email when no channel is provided by the client.
+    const channel: OtpChannel = 'email';
 
     if (!/^\d{4,6}$/.test(code)) {
       return NextResponse.json({ error: 'Enter the 6-digit code' }, { status: 400 });
@@ -67,7 +73,8 @@ export async function POST(req: NextRequest) {
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const alreadyVerified = channel === 'email' ? !!user.parentEmailVerifiedAt : !!user.parentWhatsappVerifiedAt;
+    // Only email channel supported: check email-verified flag
+    const alreadyVerified = !!user.parentEmailVerifiedAt;
     if (alreadyVerified) {
       const verification = await getParentChannelVerificationStatus({
         prisma,
@@ -86,9 +93,6 @@ export async function POST(req: NextRequest) {
 
     if (channel === 'email' && !channels.hasEmail) {
       return NextResponse.json({ error: 'Parent email is not configured' }, { status: 400 });
-    }
-    if (channel === 'whatsapp' && !channels.hasWhatsapp) {
-      return NextResponse.json({ error: 'Parent WhatsApp is not configured' }, { status: 400 });
     }
 
     const otpKey = channelOtpKeyByType(channel, channels.normalizedEmail, channels.resolvedWhatsappDigits);
@@ -114,12 +118,19 @@ export async function POST(req: NextRequest) {
       prisma.user.update({
         where: { id: studentId },
         data: {
-          ...(channel === 'email' ? { parentEmailVerifiedAt: new Date() } : { parentWhatsappVerifiedAt: new Date() }),
+          parentEmailVerifiedAt: new Date(),
           ...(user.parentVerifiedAt ? {} : { parentVerifiedAt: new Date() }),
           accountStatus: 'active',
         },
       }),
     ]);
+
+    // Best-effort: invalidate short-lived session cache for this student so JWT reflects new accountStatus
+    try {
+      await invalidateUserSessionCache((session?.user as any)?.email);
+    } catch (e) {
+      logger.warn('parent.verify-otp: cache invalidation failed', { className: 'api.auth.parent.verify-otp', methodName: 'POST', error: String(e) });
+    }
 
     const verification = await getParentChannelVerificationStatus({
       prisma,

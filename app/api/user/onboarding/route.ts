@@ -22,6 +22,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { prisma } from '@/lib/prisma';
+import { getRedis } from '@/lib/redis';
+import { invalidateUserSessionCache } from '@/lib/auth';
 import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
 import { enqueueSubjectHydration } from '@/lib/diagnostics/enqueueSubjectHydration';
@@ -172,16 +174,16 @@ export async function POST(req: NextRequest) {
     let updatedUser;
     try {
       // First, ensure the user exists; if not, try to resolve via email or phone (without creating)
-      const existingById = await prisma.user.findUnique({ where: { id: userId } });
+      const existingById = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, board: true, grade: true, whatsappPhone: true, parentWhatsappPhone: true, subjects: true, parentEmail: true, language: true } });
       if (!existingById) {
         const email = typeof (session?.user as any)?.email === 'string' ? (session!.user as any).email : undefined;
         let resolvedUserId: string | undefined = undefined;
         if (email) {
-          const byEmail = await prisma.user.findUnique({ where: { email } }).catch(() => null);
+          const byEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
           if (byEmail) resolvedUserId = byEmail.id;
         }
         if (!resolvedUserId && phone) {
-          const byPhone = await prisma.user.findUnique({ where: { phone } }).catch(() => null);
+          const byPhone = await prisma.user.findUnique({ where: { phone }, select: { id: true } }).catch(() => null);
           if (byPhone) resolvedUserId = byPhone.id;
         }
         if (!resolvedUserId) {
@@ -298,11 +300,11 @@ export async function POST(req: NextRequest) {
           // Do NOT create; try to resolve and update only
           let fallbackUserId: string | undefined = undefined;
           if (phone) {
-            const byPhone = await prisma.user.findUnique({ where: { phone } }).catch(() => null);
+            const byPhone = await prisma.user.findUnique({ where: { phone }, select: { id: true } }).catch(() => null);
             if (byPhone) fallbackUserId = byPhone.id;
           }
           if (!fallbackUserId && email) {
-            const byEmail = await prisma.user.findUnique({ where: { email } }).catch(() => null);
+            const byEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
             if (byEmail) fallbackUserId = byEmail.id;
           }
 
@@ -315,7 +317,7 @@ export async function POST(req: NextRequest) {
             return res;
           }
 
-          updatedUser = await prisma.user.update({ where: { id: fallbackUserId }, data: updates });
+          updatedUser = await prisma.user.update({ where: { id: fallbackUserId }, data: updates, select: { id: true, name: true, phone: true, board: true, grade: true, welcomeEmailSent: true, parentEmail: true, parentWhatsappPhone: true, whatsappPhone: true, language: true } });
           userId = fallbackUserId;
           logger.info('/api/user/onboarding: updated resolved user after P2025', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id });
 
@@ -515,6 +517,13 @@ export async function POST(req: NextRequest) {
           });
         });
       }
+    }
+
+    // Best-effort: invalidate session cache for this user so jwt callback reloads fresh profile
+    try {
+      await invalidateUserSessionCache((session?.user as any)?.email);
+    } catch (err) {
+      logger.warn('UserOnboardingAPI: cache invalidation failed', { className: 'UserOnboardingAPI', methodName: 'POST', error: String(err) });
     }
 
     // Welcome email: send once after the first onboarding profile save.

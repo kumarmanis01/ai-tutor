@@ -2,7 +2,7 @@ import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
 import type { User } from '@/lib/types';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json() as Promise<User>);
+const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then((r) => r.json() as Promise<User>);
 
 export function useCurrentUser() {
   const { data: session } = useSession();

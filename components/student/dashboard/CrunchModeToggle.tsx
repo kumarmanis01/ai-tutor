@@ -42,6 +42,7 @@ export default function CrunchModeToggle() {
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ preferences: { crunchMode: v } }),
       })
       if (res.ok) {

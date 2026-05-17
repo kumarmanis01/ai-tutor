@@ -52,6 +52,21 @@ type SessionCompleteData = {
   subjectName: string;
   sessionDate: string;
   dashboardUrl: string;
+  xpEarned?: number;
+  totalXp?: number;
+  badges?: string[];
+  accuracy?: number; // percent 0-100
+  masteryDelta?: number; // decimal or percent depending on caller
+  masteryAfter?: number;
+  sessionDurationMinutes?: number;
+  aiInsight?: string;
+  topicsTouched?: Array<{
+    topicId: string;
+    topicName?: string | null;
+    chapterName?: string | null;
+    concepts: Array<{ conceptId: string; conceptName?: string | null; masteryAfter?: number | null; masteryDelta?: number | null }>
+  }>;
+  chaptersCompleted?: Array<{ chapterId: string; chapterName: string; completed: boolean }>;
 };
 
 type SessionMissedData = {
@@ -143,6 +158,16 @@ async function sendEmailForEvent(
         subjectName: d.subjectName,
         sessionDate: d.sessionDate,
         dashboardUrl: d.dashboardUrl,
+        xpEarned: d.xpEarned ?? 0,
+        totalXp: d.totalXp ?? undefined,
+        badges: d.badges ?? [],
+        accuracy: d.accuracy ?? undefined,
+        masteryDelta: d.masteryDelta ?? undefined,
+        masteryAfter: d.masteryAfter ?? undefined,
+        sessionDurationMinutes: d.sessionDurationMinutes ?? undefined,
+        aiInsight: d.aiInsight ?? undefined,
+        topicsTouched: d.topicsTouched ?? undefined,
+        chaptersCompleted: d.chaptersCompleted ?? undefined,
       });
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_MISSED) {
       const d = (payload as { event: string; data: SessionMissedData }).data;
@@ -184,7 +209,10 @@ async function sendWhatsAppForEvent(
       text = `${studentName}'s personalised ${d.subjectName} learning plan is ready on Spinzy Academy. See the plan: ${d.dashboardUrl}`;
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_COMPLETE) {
       const d = (payload as { event: string; data: SessionCompleteData }).data;
-      text = `Great news! ${studentName} completed a ${d.subjectName} session on ${d.sessionDate}. Keep up the momentum: ${d.dashboardUrl}`;
+      const xpPart = typeof d.xpEarned === 'number' ? ` +${d.xpEarned} XP` : '';
+      const badgePart = d.badges && d.badges.length ? ` • Badge: ${d.badges[0]}` : '';
+      const firstTopic = d.topicsTouched && d.topicsTouched.length ? ` (${d.topicsTouched[0].topicName ?? ''})` : '';
+      text = `Great news! ${studentName} completed a ${d.subjectName} session on ${d.sessionDate}${firstTopic}.${xpPart}${badgePart} See details: ${d.dashboardUrl}`;
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_MISSED) {
       const d = (payload as { event: string; data: SessionMissedData }).data;
       text = `Give ${studentName} a nudge -- they have not had a session recently on Spinzy Academy. ${d.dashboardUrl}`;
