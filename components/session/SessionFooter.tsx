@@ -2,12 +2,14 @@
 /**
  * FILE OBJECTIVE:
  * - Session footer with Previous / Next Step navigation.
- * - Sits sticky above the fixed SessionBottomBar (bottom-16 = 64px from base).
+ * - Sits sticky at the bottom of the viewport.
  * - Shown in phases where navigation makes sense.
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Architecture refactor
  * - 2026-04-22 | redesign | full-width buttons; sticky bottom-16 to clear SessionBottomBar
+ * - 2026-05-17 | reviewer | add contentWidth prop; replace emoji spinner with SVG;
+ *                           update sticky bottom offset (SessionBottomBar removed)
  */
 
 import React from 'react';
@@ -19,6 +21,7 @@ interface SessionFooterProps {
   nextDisabled?: boolean;
   loading?: boolean;
   showPrevious?: boolean;
+  contentWidth?: 'wide' | 'narrow';
 }
 
 export function SessionFooter({
@@ -28,15 +31,18 @@ export function SessionFooter({
   nextDisabled = false,
   loading = false,
   showPrevious = false,
+  contentWidth = 'narrow',
 }: SessionFooterProps) {
   if (!onPrevious && !onNext) return null;
 
+  const innerClass = contentWidth === 'wide' ? 'max-w-5xl mx-auto flex flex-col gap-2' : 'max-w-2xl mx-auto flex flex-col gap-2';
+
   return (
     <div
-      className="sticky z-30 bg-background/95 backdrop-blur border-t border-border/50 px-4 py-3"
-      style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}
+      className="sticky bottom-0 z-30 bg-background/95 backdrop-blur border-t border-border/50 px-4 py-3"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}
     >
-      <div className="max-w-2xl mx-auto flex flex-col gap-2">
+      <div className={innerClass}>
         {/* Primary CTA -- always full width */}
         {onNext && (
           <button
@@ -45,9 +51,10 @@ export function SessionFooter({
             className="w-full min-h-[48px] flex items-center justify-center gap-2 px-5 bg-[#534AB7] hover:bg-[#3C3489] disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-sm shadow-md shadow-[#534AB7]/20"
           >
             {loading ? (
-              <span className="animate-spin text-base" aria-label="Loading">
-                ⏳
-              </span>
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-label="Loading">
+                <path strokeLinecap="round" strokeOpacity="0.25" d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
+                <path strokeLinecap="round" d="M12 2a10 10 0 0110 10"/>
+              </svg>
             ) : (
               <>
                 <span>{nextLabel}</span>

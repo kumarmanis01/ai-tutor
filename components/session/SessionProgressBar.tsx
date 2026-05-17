@@ -12,6 +12,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
+import { Check } from 'lucide-react';
 import { PHASE_ORDER, PHASE_UI_CONFIG } from '@/lib/session/phaseConfig';
 import type { SessionPhaseClient } from '@/lib/session/phaseConfig';
 
@@ -61,13 +62,15 @@ export function SessionProgressBar({
             ? 'bg-[#EAF3DE] text-[#1D9E75] font-medium'
             : 'bg-transparent text-muted-foreground/50';
 
-        const icon = isCompleted ? '✔' : isCurrent ? '●' : '○';
-
         const inner = (
           <>
-            <span aria-hidden className="text-xs leading-none">
-              {icon}
-            </span>
+            {isCompleted ? (
+              <Check className="w-3 h-3" strokeWidth={2} aria-hidden />
+            ) : (
+              <span aria-hidden className="text-xs leading-none">
+                {isCurrent ? '●' : '○'}
+              </span>
+            )}
             <span>{config.label}</span>
           </>
         );

@@ -44,7 +44,6 @@ function TestResults({ result }: { result: SubmitActionResult }) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
       <div className="text-center">
-        <div className="text-4xl mb-2">{pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪'}</div>
         <h2 className="text-xl font-bold text-foreground">
           {pct >= 80 ? 'Great job!' : pct >= 50 ? 'Good effort!' : 'Nice try!'}
         </h2>

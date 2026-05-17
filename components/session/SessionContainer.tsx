@@ -34,6 +34,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { AlertTriangle, Clock, Settings, Wrench } from 'lucide-react';
 import { useSession } from '@/hooks/session/useSession';
 import { phaseRouter } from '@/lib/session/phaseRouter';
 import { SessionLayout } from './SessionLayout';
@@ -339,7 +340,11 @@ export function SessionContainer({
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="max-w-sm text-center space-y-4">
-          <div className="text-4xl">{isEngineDisabled ? '🔧' : '⚠️'}</div>
+          <div className="flex justify-center">
+            {isEngineDisabled
+              ? <Wrench className="w-10 h-10 text-muted-foreground" strokeWidth={1.5} />
+              : <AlertTriangle className="w-10 h-10 text-muted-foreground" strokeWidth={1.5} />}
+          </div>
           <h2 className="text-lg font-semibold text-foreground">
             {isEngineDisabled ? 'Session engine is off' : isActionableError ? error : 'Something went wrong'}
           </h2>
@@ -396,7 +401,9 @@ export function SessionContainer({
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="max-w-sm text-center space-y-4">
-          <div className="text-4xl">⏰</div>
+          <div className="flex justify-center">
+            <Clock className="w-10 h-10 text-muted-foreground" strokeWidth={1.5} />
+          </div>
           <h2 className="text-lg font-semibold text-foreground">Session expired</h2>
           <p className="text-sm text-muted-foreground">Start a fresh session to continue.</p>
           <button
@@ -416,7 +423,9 @@ export function SessionContainer({
       return (
         <SessionLayout session={session} phase={phase}>
           <div className="max-w-2xl mx-auto px-4 py-10 text-center space-y-4">
-            <div className="text-4xl">⚙️</div>
+            <div className="flex justify-center">
+              <Settings className="w-10 h-10 text-muted-foreground" strokeWidth={1.5} />
+            </div>
             <h2 className="text-lg font-semibold text-foreground">Practice questions are not ready yet</h2>
             <p className="text-sm text-muted-foreground">
               No practice questions are currently available for this topic. Click the button below to generate a fresh practice set.
@@ -451,7 +460,9 @@ export function SessionContainer({
     return (
       <SessionLayout session={session} phase={phase}>
         <div className="max-w-2xl mx-auto px-4 py-10 text-center space-y-4">
-          <div className="text-4xl">⚙️</div>
+          <div className="flex justify-center">
+            <Settings className="w-10 h-10 text-muted-foreground" strokeWidth={1.5} />
+          </div>
           <h2 className="text-lg font-semibold text-foreground">Preparing content...</h2>
           <p className="text-sm text-muted-foreground">{content.message}</p>
         </div>

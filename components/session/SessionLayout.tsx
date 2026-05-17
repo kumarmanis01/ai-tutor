@@ -2,20 +2,21 @@
 /**
  * FILE OBJECTIVE:
  * - Provides the consistent UI frame for every session phase.
- * - SessionHeader (sticky top) + children + optional SessionFooter (sticky above
- *   bottom bar) + SessionBottomBar (fixed at very bottom) + DoubtPanel (slide-up).
+ * - SessionHeader (sticky top) + children + optional SessionFooter (sticky bottom)
+ *   + DoubtPanel (slide-up).
  *
  * Layout:
  *   sticky top   : SessionHeader  (~80px)
  *   scroll        : <main> children
- *   sticky bottom : SessionFooter (optional, ~68px, clears SessionBottomBar)
- *   fixed bottom  : SessionBottomBar (64px + safe area)
+ *   sticky bottom : SessionFooter (optional, ~68px)
  *   z-50 overlay  : DoubtPanel slide-up dialog
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Architecture refactor
  * - 2026-04-22 | redesign | add SessionBottomBar, lift DoubtPanel open state,
  *                           adjust padding-bottom for layered sticky/fixed bottom
+ * - 2026-05-17 | reviewer | remove SessionBottomBar; wire onAskVidya + sessionId
+ *                           to SessionHeader; adjust mainPb; pass contentWidth to footer
  */
 
 import React, { useState } from 'react';
@@ -56,14 +57,23 @@ export function SessionLayout({
   const { data: currentUser } = useCurrentUser();
 
   // Padding-bottom must clear:
-  //   active + footer  : SessionFooter (~68px) + SessionBottomBar (64px) + gap = ~148px
-  //   active, no footer: SessionBottomBar (64px) + gap = ~80px
+  //   active + footer  : SessionFooter (~68px) only = ~80px
+  //   active, no footer: no bottom bars = 24px
   //   complete/expired : no bottom bars = 24px
-  const mainPb = !activePhase ? 'pb-6' : footer ? 'pb-40' : 'pb-24';
+  const mainPb = !activePhase ? 'pb-6' : footer ? 'pb-28' : 'pb-6';
+
+  // Wide phases (reading/content) use max-w-5xl; narrow phases (Q&A) use max-w-2xl.
+  const isWidePhase = ['OVERVIEW', 'EXPLANATION', 'HOMEWORK'].includes(session.currentPhase);
 
   return (
     <div className="min-h-screen bg-background">
-      <SessionHeader session={session} phase={phase} onStepClick={onStepClick} />
+      <SessionHeader
+        session={session}
+        phase={phase}
+        onStepClick={onStepClick}
+        onAskVidya={activePhase ? () => setIsDoubtOpen(true) : undefined}
+        sessionId={session.sessionId}
+      />
 
       <main className={mainPb}>{children}</main>
 
@@ -75,25 +85,19 @@ export function SessionLayout({
           loading={footer.loading}
           showPrevious={footer.showPrevious}
           onPrevious={footer.onPrevious}
+          contentWidth={isWidePhase ? 'wide' : 'narrow'}
         />
       )}
 
       {activePhase && (
-        <>
-          <SessionBottomBar
-            onAskVidya={() => setIsDoubtOpen(true)}
-            sessionId={session.sessionId}
-            currentPhase={session.currentPhase}
-          />
-          <DoubtPanel
-            subject={session.subject}
-            chapter={session.chapter}
-            topicName={session.topicName}
-            studentName={currentUser?.name ?? undefined}
-            isOpen={isDoubtOpen}
-            onClose={() => setIsDoubtOpen(false)}
-          />
-        </>
+        <DoubtPanel
+          subject={session.subject}
+          chapter={session.chapter}
+          topicName={session.topicName}
+          studentName={currentUser?.name ?? undefined}
+          isOpen={isDoubtOpen}
+          onClose={() => setIsDoubtOpen(false)}
+        />
       )}
     </div>
   );
