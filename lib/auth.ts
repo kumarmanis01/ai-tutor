@@ -449,6 +449,21 @@ function isPrismaRecordNotFoundError(error: unknown): boolean {
   return maybePrismaError.code === 'P2025';
 }
 
+// Helper: remove a user's short-lived JWT session cache entry.
+// Call from any writer that updates user profile fields used in auth gating.
+export async function invalidateUserSessionCache(email?: string | null) {
+  if (!email) return;
+  const redis = getRedis?.();
+  if (!redis) return;
+  const cacheKey = `session:user:${String(email).toLowerCase()}`;
+  try {
+    await redis.del(cacheKey);
+    logger.add('jwt.cache.invalidate', { className: 'auth', methodName: 'invalidateUserSessionCache', cacheKey });
+  } catch (err) {
+    logger.warn('jwt cache invalidate failed', { className: 'auth', methodName: 'invalidateUserSessionCache', error: String(err) });
+  }
+}
+
 // Custom adapter that bypasses the OAuthAccountNotLinked error.
 //
 // NextAuth v4 + PrismaAdapter throws OAuthAccountNotLinked when getUserByEmail
@@ -680,27 +695,39 @@ export const authOptions: any = {
         let cacheHit = false;
         const redis = getRedis?.();
         if (redis) {
-          try {
-            const cached = await redis.get(cacheKey);
+            try {
+              const cached = await redis.get(cacheKey);
               if (cached) {
-              const cachedObj = JSON.parse(cached);
-              token.id = token.id ?? cachedObj.id;
-              token.role = cachedObj.role;
-              token.accountStatus = cachedObj.accountStatus ?? 'active';
-              token.onboardingComplete = !!cachedObj.onboardingComplete;
-              cacheHit = true;
-              logger.add('jwt.cache.hit', { className: 'auth', methodName: 'jwt', cacheKey });
-              try { incJwtCacheHit() } catch {}
+                const cachedObj = JSON.parse(cached);
+                token.id = token.id ?? cachedObj.id;
+                token.role = cachedObj.role;
+                token.accountStatus = cachedObj.accountStatus ?? 'active';
+                // Restore profile pieces used to deterministically compute onboarding
+                token.grade = cachedObj.grade ?? undefined;
+                token.board = cachedObj.board ?? undefined;
+                token.language = cachedObj.language ?? undefined;
+                token.subjects = cachedObj.subjects ?? undefined;
+                // Recompute onboardingComplete the same way as DB path
+                token.onboardingComplete = !!(
+                  token.grade && token.board && token.language &&
+                  (Array.isArray(token.subjects) ? token.subjects.filter(Boolean).length > 0 : (typeof token.subjects === 'string' && token.subjects.length > 0))
+                );
+                cacheHit = true;
+                logger.add('jwt.cache.hit', { className: 'auth', methodName: 'jwt', cacheKey });
+                try { incJwtCacheHit(); } catch {}
+              }
+            } catch (cacheErr) {
+              logger.warn('jwt cache read failed', { className: 'auth', methodName: 'jwt', error: String(cacheErr) });
             }
-          } catch (cacheErr) {
-            logger.warn('jwt cache read failed', { className: 'auth', methodName: 'jwt', error: String(cacheErr) });
           }
-        }
 
         if (!cacheHit) {
           try { incJwtCacheMiss() } catch {}
           try {
             const dbStart = Date.now();
+            // Select only the fields required to compute auth flags and reduce row width.
+            // Keep grade/board/language/subjects so onboardingComplete can be derived
+            // consistently on cache hit vs DB miss.
             const dbUser = await prisma.user.findUnique({
               where: { email: token.email },
               select: {
@@ -711,9 +738,6 @@ export const authOptions: any = {
                 language: true,
                 subjects: true,
                 accountStatus: true,
-                age: true,
-                parentEmail: true,
-                parentPhone: true,
               },
             });
             // const dbEnd = Date.now();
@@ -721,15 +745,44 @@ export const authOptions: any = {
               token.id = token.id ?? dbUser.id;
               token.role = dbUser.role;
               token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
-              token.onboardingComplete = token.accountStatus === 'active';
 
-              // Cache a lightweight shape for short TTL to reduce DB load
+              // Resolve subjects from both array (standard Prisma) and Neon wire-format string "{a,b,c}"
+              let subjectCount = 0;
+              let subjectsVal: string[] | string | undefined = undefined;
+              if (Array.isArray(dbUser.subjects)) {
+                subjectsVal = dbUser.subjects as string[];
+                subjectCount = (dbUser.subjects as string[]).filter(Boolean).length;
+              } else if (typeof dbUser.subjects === 'string' && dbUser.subjects.length > 0) {
+                subjectsVal = dbUser.subjects as string;
+                subjectCount = (dbUser.subjects as string)
+                  .replace(/^\{/, '').replace(/\}$/, '').split(',')
+                  .filter((s) => s.trim().length > 0).length;
+              }
+
+              // onboardingComplete = academic profile only (board/grade/language/subjects).
+              token.onboardingComplete = !!(
+                dbUser.grade && dbUser.board && dbUser.language && subjectCount > 0
+              );
+
+              // Persist profile pieces on token so downstream server consumers can use them
+              token.grade = dbUser.grade ?? undefined;
+              token.board = dbUser.board ?? undefined;
+              token.language = dbUser.language ?? undefined;
+              token.subjects = subjectsVal;
+
+              // Cache a lightweight shape for short TTL to reduce DB load. Include the
+              // same profile pieces used to derive onboardingComplete so cache hits
+              // are consistent with direct DB reads.
               if (redis) {
                 try {
                   const toCache = {
                     id: dbUser.id,
                     role: dbUser.role,
                     accountStatus: dbUser.accountStatus ?? 'active',
+                    grade: dbUser.grade ?? null,
+                    board: dbUser.board ?? null,
+                    language: dbUser.language ?? null,
+                    subjects: subjectsVal ?? null,
                     onboardingComplete: token.onboardingComplete,
                   };
                   // short TTL (seconds)
@@ -749,7 +802,15 @@ export const authOptions: any = {
         }
       }
 
-      logger.add('jwt.timing', { className: 'auth', methodName: 'jwt', totalMs: Date.now() - start });
+      // Reduce noisy logging: only emit timing when slow or sampled.
+      try {
+        const totalMs = Date.now() - start;
+        if (totalMs > 50 || Math.random() < 0.01) {
+          logger.add('jwt.timing', { className: 'auth', methodName: 'jwt', totalMs });
+        }
+      } catch (e) {
+        // swallow logging errors
+      }
       return token;
     },
     async session({ session, token }: any) {
