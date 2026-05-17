@@ -13,6 +13,8 @@
  *
  * EDIT LOG:
  * - 2026-05-09T00:00:00Z | copilot | created for Gap 3 fix
+ * - 2026-05-17T00:00:00Z | reviewer | fix endedAt in happy-path helper; add updateMany mock;
+ *   add idempotency tests for already-completed and concurrent race branches
  */
 
 jest.mock('@/lib/session', () => ({
@@ -20,7 +22,7 @@ jest.mock('@/lib/session', () => ({
 }))
 jest.mock('@/lib/prisma', () => ({
   prisma: {
-    learningSession: { findFirst: jest.fn() },
+    learningSession: { findFirst: jest.fn(), updateMany: jest.fn() },
     answerEvent: { count: jest.fn(), findFirst: jest.fn() },
     aITutorTurnLog: { count: jest.fn() },
     studentConceptState: { findUnique: jest.fn() },
@@ -58,10 +60,10 @@ const STRUCTURED_ID = 'ss-001'
 const NOW = new Date('2026-05-09T10:00:00Z')
 const STARTED = new Date('2026-05-09T09:45:00Z') // 15 min earlier
 
-function makeLearningSession(structuredSessionId?: string) {
+function makeLearningSession(structuredSessionId?: string, endedAt: Date | null = null) {
   return {
     startedAt: STARTED,
-    endedAt: NOW,
+    endedAt,
     meta: structuredSessionId ? { structuredSessionId, preSessionMastery: 0.3 } : {},
   }
 }
@@ -97,6 +99,8 @@ function setupMocksForHappyPath(structuredSessionId?: string) {
     meta: { existingKey: 'existingValue' },
   })
   ;(prisma.structuredSession.update as jest.Mock).mockResolvedValue({})
+  // Atomic claim: default to success (one request wins)
+  ;(prisma.learningSession.updateMany as jest.Mock).mockResolvedValue({ count: 1 })
 }
 
 // ─── tests ──────────────────────────────────────────────────────────────────
@@ -232,6 +236,49 @@ describe('POST /api/student/session/[sessionId]/complete', () => {
       const res = await POST(buildRequest(), buildParams())
 
       expect(res.status).toBe(404)
+    })
+
+    it('returns safe already-completed shape when session endedAt is already set', async () => {
+      ;(getServerSessionForHandlers as jest.Mock).mockResolvedValue({ user: { id: STUDENT_ID } })
+      ;(prisma.learningSession.findFirst as jest.Mock).mockResolvedValue(
+        makeLearningSession(undefined, NOW), // endedAt is set
+      )
+
+      const res = await POST(buildRequest(), buildParams())
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.alreadyCompleted).toBe(true)
+      // Client-safe shape: must include fields the UI reads without crashing
+      expect(Array.isArray(body.badgesEarned)).toBe(true)
+      expect(body.xpEarned).toBe(0)
+      expect(body.topicsTouched).toEqual([])
+    })
+
+    it('returns safe already-completed shape when concurrent claim returns count 0', async () => {
+      setupMocksForHappyPath(STRUCTURED_ID)
+      // Simulate another request winning the atomic claim
+      ;(prisma.learningSession.updateMany as jest.Mock).mockResolvedValue({ count: 0 })
+
+      const res = await POST(buildRequest(), buildParams())
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.alreadyCompleted).toBe(true)
+      expect(Array.isArray(body.badgesEarned)).toBe(true)
+    })
+
+    it('writes isCompleted and actualTimeSpent in the atomic claim', async () => {
+      setupMocksForHappyPath(STRUCTURED_ID)
+
+      await POST(buildRequest(), buildParams())
+
+      expect(prisma.learningSession.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ endedAt: null }),
+          data: expect.objectContaining({ isCompleted: true, endedAt: expect.any(Date) }),
+        }),
+      )
     })
 
     it('returns 200 with expected fields in body', async () => {

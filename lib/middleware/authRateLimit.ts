@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2025-01-XX | copilot | created auth rate limiting middleware
+ * - 2026-05-17T00:00:00Z | reviewer | add verifyCode operation for OTP verification brute-force protection
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -41,6 +42,12 @@ export const AUTH_RATE_LIMITS = {
     maxRequests: 5,
     windowSeconds: 60 * 15, // 15 minutes
     blockDurationSeconds: 60 * 60, // 1 hour block
+  },
+  // OTP/code verification - stricter to prevent brute-force of short codes
+  verifyCode: {
+    maxRequests: 10,
+    windowSeconds: 60 * 15, // 15 minutes
+    blockDurationSeconds: 60 * 60, // 1 hour block after exceeded
   },
   // Password reset - prevent enumeration attacks
   passwordReset: {

@@ -19,6 +19,9 @@
  * - 2026-05-10 | staff-engineer | wire session-complete notifications: student email/
  *   WhatsApp celebration + parent email/WhatsApp; fire-and-forget after response build
  * - 2026-05-11T00:00:00Z | copilot | record daily study time and return dailyStudyLimit in response
+ * - 2026-05-17T00:00:00Z | reviewer | idempotency: atomic endedAt+isCompleted claim moved to
+ *   end of processing so failed requests remain retryable; chapter completion uses count
+ *   queries instead of capped findMany to preserve correctness; bounded coverage queries
  */
 
 import { NextResponse } from 'next/server'
@@ -37,6 +40,27 @@ import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
 export const dynamic = 'force-dynamic'
+
+// Safe response shape for sessions that were already completed (retries, concurrent calls).
+// The client (SessionCompletionScreen) reads fields like badgesEarned.length directly,
+// so returning only { alreadyCompleted: true } would crash the UI.
+const ALREADY_COMPLETED_RESPONSE = {
+  alreadyCompleted: true,
+  xpEarned: 0,
+  totalXp: 0,
+  leveledUp: false,
+  newLevel: null as number | null,
+  masteryDelta: 0,
+  masteryAfter: 0,
+  badgesEarned: [] as Array<{ name: string; description: string; icon: string }>,
+  aiInsight: null as unknown,
+  sessionDurationMinutes: 0,
+  correctAnswers: 0,
+  totalQuestions: 0,
+  dailyStudyLimit: null as null,
+  topicsTouched: [] as unknown[],
+  chaptersCompleted: [] as unknown[],
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const start = Date.now()
@@ -62,6 +86,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     })
     if (!learningSession) {
       const res = NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
+      return res
+    }
+
+    // Fast path: session already completed. Return a UI-safe shape so the client
+    // can render gracefully without crashing on missing fields.
+    if (learningSession.endedAt) {
+      const res = NextResponse.json(ALREADY_COMPLETED_RESPONSE, { status: 200 })
       logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
       return res
     }
@@ -256,6 +288,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       const answeredRows = (await prisma.answerEvent.findMany({
         where: { studentId: userId, sessionId, conceptId: { not: null } },
         select: { conceptId: true },
+        take: 500,
       })) as Array<{ conceptId: string | null }>
       const conceptIds = Array.from(new Set(answeredRows.map((r) => r.conceptId).filter(Boolean))) as string[]
 
@@ -267,6 +300,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
             name: true,
             topic: { select: { id: true, name: true, chapterId: true, chapter: { select: { id: true, name: true } } } },
           },
+          take: 200,
         })
 
         const states = (await prisma.studentConceptState.findMany({
@@ -296,47 +330,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
 
         topicsTouched = Array.from(topicsById.values())
 
-        // For each unique chapter touched, determine if chapter is "completed"
+        // For each unique chapter touched, determine if chapter is "completed".
+        // Use count queries per chapter instead of a bounded findMany to ensure
+        // correctness regardless of how many concepts a chapter contains.
         const chapterIds = Array.from(new Set(topicsTouched.map((t) => t.chapterId).filter(Boolean))) as string[]
         if (chapterIds.length > 0) {
-          const chapterConceptRows = (await prisma.concept.findMany({
-            where: { topic: { chapterId: { in: chapterIds } } },
-            select: { id: true, topic: { select: { chapterId: true } } },
-          })) as Array<{ id: string; topic: { chapterId: string | null } | null }>
-
-          const conceptIdsByChapterId = new Map<string, string[]>()
-          for (const row of chapterConceptRows) {
-            const rowChapterId = row.topic?.chapterId
-            if (!rowChapterId) continue
-            const existing = conceptIdsByChapterId.get(rowChapterId) ?? []
-            existing.push(row.id)
-            conceptIdsByChapterId.set(rowChapterId, existing)
-          }
-
-          const allChapterConceptIds = chapterConceptRows.map((row) => row.id)
-          const chapterStateRows = allChapterConceptIds.length
-            ? ((await prisma.studentConceptState.findMany({
-                where: { studentId: userId, conceptId: { in: allChapterConceptIds } },
-                select: { conceptId: true, masteryScore: true },
-              })) as Array<{ conceptId: string; masteryScore?: number | null }>)
-            : []
-
-          const masteredConceptIds = new Set(
-            chapterStateRows.filter((s) => (s.masteryScore ?? 0) >= 0.7).map((s) => s.conceptId)
-          )
-
-          const chapterDefs = await prisma.chapterDef.findMany({
-            where: { id: { in: chapterIds } },
-            select: { id: true, name: true },
-          })
+          const [chapterDefs, chapterCounts] = await Promise.all([
+            prisma.chapterDef.findMany({
+              where: { id: { in: chapterIds } },
+              select: { id: true, name: true },
+            }),
+            Promise.all(
+              chapterIds.map(async (chId) => {
+                const [total, mastered] = await Promise.all([
+                  prisma.concept.count({ where: { topic: { chapterId: chId } } }),
+                  prisma.studentConceptState.count({
+                    where: { studentId: userId, masteryScore: { gte: 0.7 }, concept: { topic: { chapterId: chId } } },
+                  }),
+                ])
+                return { chapterId: chId, total, mastered }
+              })
+            ),
+          ])
           const chapterNameById = new Map(chapterDefs.map((ch) => [ch.id, ch.name]))
-
-          for (const chId of chapterIds) {
-            const chConceptIds = conceptIdsByChapterId.get(chId) ?? []
-            const total = chConceptIds.length
-            const mastered = chConceptIds.filter((conceptId) => masteredConceptIds.has(conceptId)).length
-            const chapterName = chapterNameById.get(chId) ?? 'Chapter'
-            chaptersCompleted.push({ chapterId: chId, chapterName, completed: total > 0 ? mastered === total : false })
+          for (const { chapterId: chId, total, mastered } of chapterCounts) {
+            chaptersCompleted.push({
+              chapterId: chId,
+              chapterName: chapterNameById.get(chId) ?? 'Chapter',
+              completed: total > 0 && mastered === total,
+            })
           }
         }
       }
@@ -378,6 +400,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
 
     const badgeNames = (badgesEarned as any[]).map((b) => b.name)
     const sessionDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+
+    // Atomically claim this session after all side effects succeed. Using endedAt: null
+    // as the predicate ensures concurrent requests cannot both complete processing: only
+    // one wins count=1; the other gets 0 and returns a safe already-completed shape
+    // (skipping duplicate notifications). Placing the claim here means a processing
+    // failure leaves endedAt null so the next retry can re-run cleanly.
+    const now = new Date()
+    const claimed = await prisma.learningSession.updateMany({
+      where: { id: sessionId, studentId: userId, endedAt: null },
+      data: {
+        endedAt: now,
+        isCompleted: true,
+        actualTimeSpent: sessionDurationMinutes,
+        lastAccessed: now,
+      },
+    })
+    if (claimed.count === 0) {
+      const res = NextResponse.json(ALREADY_COMPLETED_RESPONSE, { status: 200 })
+      logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
+      return res
+    }
 
     // Fire-and-forget: send session-complete celebration to student and parent.
     // Errors inside each notifier are caught and logged; never block the response.
