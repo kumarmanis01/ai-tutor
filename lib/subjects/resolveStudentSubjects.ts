@@ -23,7 +23,7 @@ export default async function resolveStudentSubjects(
   user: UserLike | null | undefined,
   learningPlans: Array<{ subjectId: string }> | null | undefined = [],
 ) {
-  const subjects: { id: string; name: string; slug?: string }[] = []
+  const subjects: { id: string; name: string; slug: string }[] = []
 
   if (!user) return subjects
 
@@ -67,42 +67,60 @@ export default async function resolveStudentSubjects(
 
   // Primary resolution: prefer scoped lookup (board+grade) when possible and prefer slug matches
   try {
-    if (enrolledSubjects && enrolledSubjects.length > 0 && user?.board && parsedUserGrade !== null) {
-      const classFilter = {
-        grade: parsedUserGrade,
-        board: { slug: { equals: user.board, mode: 'insensitive' as const } },
+    if (enrolledSubjects && enrolledSubjects.length > 0) {
+      // 1) Scoped lookup: only when both board and grade are available
+      if (user?.board && parsedUserGrade !== null) {
+        const classFilter = {
+          grade: parsedUserGrade,
+          board: { slug: { equals: user.board, mode: 'insensitive' as const } },
+        }
+
+        // 1a) Scoped slug match
+        let rows = await prisma.subjectDef.findMany({
+          where: { lifecycle: 'active', class: { ...classFilter, lifecycle: 'active' }, slug: { in: enrolledSubjects } },
+          select: { id: true, name: true, slug: true },
+        })
+
+        // 1b) Scoped name match (case-insensitive)
+        if (rows.length === 0) {
+          rows = await prisma.subjectDef.findMany({
+            where: { lifecycle: 'active', class: { ...classFilter, lifecycle: 'active' }, name: { in: enrolledSubjects, mode: 'insensitive' } },
+            select: { id: true, name: true, slug: true },
+          })
+        }
+
+        if (rows.length > 0) {
+          subjects.push(...rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
+        }
       }
 
-      // 1) Scoped slug match
-      let rows = await prisma.subjectDef.findMany({
-        where: { lifecycle: 'active', class: { ...classFilter, lifecycle: 'active' }, slug: { in: enrolledSubjects } },
+      // 2) Unscoped supplementary lookup: always run so subjects not found in the
+      //    student's scoped class level are still resolved. Common case: a subject
+      //    available under a different board/grade combination, a slug that exists
+      //    globally but not in the student's ClassLevel, or missing board/grade.
+      //    Scoped results pushed first, so deduplication (below) keeps the scoped
+      //    version when both lookups return the same slug.
+      const unscopedRows = await prisma.subjectDef.findMany({
+        where: {
+          lifecycle: 'active',
+          OR: [
+            { slug: { in: enrolledSubjects } },
+            { name: { in: enrolledSubjects, mode: 'insensitive' } },
+          ],
+        },
         select: { id: true, name: true, slug: true },
       })
 
-      // 2) Scoped name match (case-insensitive)
-      if (rows.length === 0) {
-        rows = await prisma.subjectDef.findMany({
-          where: { lifecycle: 'active', class: { ...classFilter, lifecycle: 'active' }, name: { in: enrolledSubjects, mode: 'insensitive' } },
-          select: { id: true, name: true, slug: true },
-        })
+      if (unscopedRows.length > 0) {
+        subjects.push(...unscopedRows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
       }
 
-      // 3) Fallback: unscoped slug/name match if nothing found scoped
-      if (rows.length === 0) {
-        rows = await prisma.subjectDef.findMany({
-          where: { lifecycle: 'active', OR: [{ slug: { in: enrolledSubjects } }, { name: { in: enrolledSubjects, mode: 'insensitive' } }] },
-          select: { id: true, name: true, slug: true },
-        })
-      }
-
-      if (rows.length > 0) {
-        subjects.push(...rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
-      } else {
-        logger.debug('resolveStudentSubjects.no_scoped_match', { enrolledSubjects, grade: parsedUserGrade, board: user.board })
+      if (subjects.length === 0) {
+        logger.debug('resolveStudentSubjects.no_match', { enrolledSubjects, grade: parsedUserGrade, board: user.board })
       }
     }
 
-    // If we still have no resolved subjects, try learningPlans by id (onboarding fallback)
+    // 3) LearningPlan fallback: use subjectIds from plans when name/slug resolution found nothing
     if (subjects.length === 0 && planSubjectIds.length > 0) {
       const rows = await prisma.subjectDef.findMany({ where: { id: { in: planSubjectIds }, lifecycle: 'active' }, select: { id: true, name: true, slug: true } })
       subjects.push(...rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })))
@@ -113,7 +131,7 @@ export default async function resolveStudentSubjects(
 
   // Deduplicate by slug when available, otherwise by lowercased name.
   const planSet = new Set(planSubjectIds)
-  const seen = new Map<string, { id: string; name: string; slug?: string }>()
+  const seen = new Map<string, { id: string; name: string; slug: string }>()
   for (const s of subjects) {
     const key = (s.slug ?? s.name).toLowerCase()
     if (!seen.has(key) || planSet.has(s.id)) seen.set(key, s)

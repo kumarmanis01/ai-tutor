@@ -41,6 +41,7 @@ import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/
 import StudyTimeHeatmap, { type HeatmapDay } from '@/components/student/progress/StudyTimeHeatmap';
 import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
 import { subjectDefMatchesActiveSubject } from '@/lib/student/progressPage';
+import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
 
 export const dynamic = 'force-dynamic';
 
@@ -177,36 +178,17 @@ export default async function ProgressPage({
     }),
   ]);
 
-  // ── Subject defs ────────────────────────────────────────────────────────────
-  // Gap 7 fix: deduplicate subjects on read to prevent duplicate subject cards.
+  // ── Subject defs (via central resolver) ─────────────────────────────────────
+  // resolveStudentSubjects handles grade+board scoping, unscoped fallback,
+  // deduplication, and learningPlan ID fallback -- no bespoke logic needed.
+  const subjectDefs = await resolveStudentSubjects(studentProfile, []);
+
+  // Raw enrolled subject tokens for the filter bar. Using the user-stored tokens
+  // (not just resolved names) ensures every enrolled subject appears as a filter
+  // option even if it did not resolve to a SubjectDef (e.g. not yet seeded).
   const subjectNames = [...new Set(
     (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
   )];
-
-  // Filter subjectDefs to the student's own grade+board so we don't pull in
-  // chapters from other grade levels (e.g. Grade 7 Mathematics when the student
-  // is in Grade 6). Mirrors the pattern used in getOrderedTopicsForStudent.
-  const gradeNum = studentProfile?.grade ? parseInt(String(studentProfile.grade), 10) : NaN;
-  const boardSlug = studentProfile?.board ?? null;
-  const classFilter = !isNaN(gradeNum) && boardSlug
-    ? {
-        class: {
-          grade: gradeNum,
-          board: { slug: { equals: boardSlug, mode: 'insensitive' as const } },
-        },
-      }
-    : {};
-
-  const subjectDefs = subjectNames.length
-    ? await prisma.subjectDef.findMany({
-        where: {
-          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
-          lifecycle: 'active',
-          ...classFilter,
-        },
-        select: { id: true, name: true, slug: true },
-      })
-    : [];
 
   // Apply subject filter to the mastery query.
   const filteredSubjectDefs = activeSubject
