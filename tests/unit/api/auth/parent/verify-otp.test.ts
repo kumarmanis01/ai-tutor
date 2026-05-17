@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | add verify-otp tests for channel-aware activation and timestamp updates
+ * - 2026-05-17T00:00:00Z | reviewer | add test for verifyCode rate-limit branch returning 429
  */
 
 describe('POST /api/auth/parent/verify-otp', () => {
@@ -105,5 +106,45 @@ describe('POST /api/auth/parent/verify-otp', () => {
 
     expect(res.status).toBe(400)
     expect(body.error).toBe('WhatsApp verification is currently disabled')
+  })
+
+  it('returns 429 when verifyCode rate limit is exceeded', async () => {
+    jest.resetModules()
+    jest.clearAllMocks()
+
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { id: 'stu-1' } }) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: {} }))
+    jest.doMock('@/lib/middleware/authRateLimit', () => ({
+      checkAuthRateLimit: jest.fn().mockResolvedValue({
+        allowed: false,
+        remaining: 0,
+        resetAt: new Date(Date.now() + 60_000),
+        blocked: true,
+      }),
+      createRateLimitResponse: jest.fn(() =>
+        new Response(JSON.stringify({ error: 'Too many requests. Your access has been temporarily blocked.' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '60' },
+        }),
+      ),
+    }))
+
+    const route = await import('@/app/api/auth/parent/verify-otp/route')
+    const { checkAuthRateLimit } = await import('@/lib/middleware/authRateLimit')
+
+    const req = new Request('http://localhost/api/auth/parent/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: '123456' }),
+    })
+
+    const res: any = await route.POST(req as any)
+
+    expect(res.status).toBe(429)
+    expect(checkAuthRateLimit).toHaveBeenCalledWith(
+      expect.anything(),
+      'verifyCode',
+      expect.stringContaining('parent:stu-1'),
+    )
   })
 })

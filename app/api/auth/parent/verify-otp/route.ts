@@ -14,6 +14,7 @@
  *
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | add channel-aware verification and per-channel verified timestamps
+ * - 2026-05-17T00:00:00Z | reviewer | add verifyCode rate limiting to prevent OTP brute-force
  */
 
 import { NextRequest, NextResponse } from 'next/server';

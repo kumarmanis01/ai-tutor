@@ -12,6 +12,8 @@
  *
  * EDIT LOG:
  * - 2026-05-14T00:00:00Z | copilot | add standard file header and document support-email centralisation
+ * - 2026-05-17T00:00:00Z | reviewer | replace numeric accuracy/mastery values with qualitative labels
+ *   in sessionCompleteForParentHtml to comply with no-numeric-score product rule
  */
 
 import { TEMPLATES_LEGACY_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
