@@ -756,7 +756,7 @@ export const authOptions: any = {
               if (Array.isArray(dbUser.subjects)) {
                 subjectsVal = dbUser.subjects as string[];
                 subjectCount = (dbUser.subjects as string[]).filter(Boolean).length;
-              } else if (typeof dbUser.subjects === 'string' && dbUser.subjects.length > 0) {
+              } else if (typeof dbUser.subjects === 'string' && (dbUser.subjects as string).length > 0) {
                 subjectsVal = dbUser.subjects as string;
                 subjectCount = (dbUser.subjects as string)
                   .replace(/^\{/, '').replace(/\}$/, '').split(',')
