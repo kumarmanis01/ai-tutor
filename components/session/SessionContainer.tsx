@@ -29,6 +29,7 @@
  * - 2026-05-09T00:00:00Z | copilot | submit TEST answers with testId to keep backend grading aligned with displayed test version
  * - 2026-05-09T00:00:00Z | copilot | fix TEST footer gating so Continue is enabled after result is available
  * - 2026-05-11T00:00:00Z | copilot | retry pending PRACTICE hydration checks after transient failures instead of leaving the CTA stuck disabled
+ * - 2026-05-17T00:00:00Z | reviewer | use hwId presence (not error-string substring match) to decide homework link display
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -351,7 +352,7 @@ export function SessionContainer({
               : (error ?? 'Unable to load this session.')}
           </p>
 
-          {isActionableError && error?.toLowerCase().includes('homework') && hwId ? (
+          {hwId ? (
             <div className="space-y-2">
               <Link
                 href={`/homework/${hwId}`}

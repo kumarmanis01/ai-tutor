@@ -23,6 +23,7 @@
  * - 2026-05-07T00:00:00Z | copilot | enforce Google sub/email_verified linking and restore jwt/session id propagation for onboarding auth
  * - 2026-05-07T00:00:00Z | copilot | fix jwt subjects parsing type guard to avoid never narrowing on Prisma String[]
  * - 2026-05-13T00:00:00Z | copilot | emit signin analytics (`STUDENT.AUTH_SIGNIN`) in sign-in callback (best-effort)
+ * - 2026-05-17T00:00:00Z | reviewer | document cache invalidation contract on JWT session cache key
  */
 
 // src/lib/auth.ts
@@ -691,6 +692,9 @@ export const authOptions: any = {
       }
 
       if (token.email) {
+        // Cache key for JWT session data. Any API route that writes role, accountStatus,
+        // grade, board, language, or subjects MUST call invalidateUserSessionCache(email)
+        // after the DB write to prevent stale auth state within the 30s TTL window.
         const cacheKey = `session:user:${String(token.email).toLowerCase()}`;
         let cacheHit = false;
         const redis = getRedis?.();

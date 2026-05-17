@@ -12,6 +12,8 @@
  *
  * EDIT LOG:
  * - 2026-05-16T00:00:00Z | copilot | created central subject resolver
+ * - 2026-05-17T00:00:00Z | reviewer | skip unscoped lookup when scoped resolves all enrolled subjects;
+ *   tag scoped vs unscoped so dedup deterministically prefers scoped rows
  */
 
 import { prisma } from '@/lib/prisma'
@@ -19,13 +21,18 @@ import { logger } from '@/lib/logger'
 
 type UserLike = { subjects?: any; grade?: any; board?: any }
 
+// Internal shape that tracks whether a row came from the scoped (board+grade) lookup.
+// Used by dedup to deterministically prefer scoped rows over unscoped ones when
+// both lookups return the same slug/name, regardless of insertion order.
+type SubjectEntry = { id: string; name: string; slug: string; scoped: boolean }
+
 export default async function resolveStudentSubjects(
   user: UserLike | null | undefined,
   learningPlans: Array<{ subjectId: string }> | null | undefined = [],
 ) {
-  const subjects: { id: string; name: string; slug: string }[] = []
+  const subjects: SubjectEntry[] = []
 
-  if (!user) return subjects
+  if (!user) return subjects.map(({ scoped: _, ...s }) => s)
 
   // Extract enrolled subject tokens from user.subjects (array or Postgres wire-format)
   let enrolledSubjects: string[] | null = null
@@ -91,31 +98,33 @@ export default async function resolveStudentSubjects(
 
         if (rows.length > 0) {
           for (const r of rows) {
-            subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug })
+            subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug, scoped: true })
           }
         }
       }
 
-      // 2) Unscoped supplementary lookup: always run so subjects not found in the
-      //    student's scoped class level are still resolved. Common case: a subject
-      //    available under a different board/grade combination, a slug that exists
-      //    globally but not in the student's ClassLevel, or missing board/grade.
-      //    Scoped results pushed first, so deduplication (below) keeps the scoped
-      //    version when both lookups return the same slug.
-      const unscopedRows = await prisma.subjectDef.findMany({
-        where: {
-          lifecycle: 'active',
-          OR: [
-            { slug: { in: enrolledSubjects } },
-            { name: { in: enrolledSubjects, mode: 'insensitive' } },
-          ],
-        },
-        select: { id: true, name: true, slug: true },
-      })
+      // 2) Unscoped supplementary lookup: only run when the scoped lookup did NOT
+      //    resolve every enrolled subject. Running it unconditionally could introduce
+      //    rows from other boards/grades that share a slug/name, polluting results.
+      const scopedKeys = new Set(
+        subjects.flatMap((s) => [s.slug.toLowerCase(), s.name.toLowerCase()])
+      )
+      const allScopedResolved = enrolledSubjects.every((s) => scopedKeys.has(s.toLowerCase()))
 
-      if (unscopedRows.length > 0) {
+      if (!allScopedResolved) {
+        const unscopedRows = await prisma.subjectDef.findMany({
+          where: {
+            lifecycle: 'active',
+            OR: [
+              { slug: { in: enrolledSubjects } },
+              { name: { in: enrolledSubjects, mode: 'insensitive' } },
+            ],
+          },
+          select: { id: true, name: true, slug: true },
+        })
+
         for (const r of unscopedRows) {
-          subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug })
+          subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug, scoped: false })
         }
       }
 
@@ -128,7 +137,7 @@ export default async function resolveStudentSubjects(
     if (subjects.length === 0 && planSubjectIds.length > 0) {
       const rows = await prisma.subjectDef.findMany({ where: { id: { in: planSubjectIds }, lifecycle: 'active' }, select: { id: true, name: true, slug: true } })
       for (const r of rows) {
-        subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug })
+        subjects.push({ id: (r as any).id, name: (r as any).name, slug: (r as any).slug, scoped: false })
       }
     }
   } catch (err) {
@@ -136,12 +145,23 @@ export default async function resolveStudentSubjects(
   }
 
   // Deduplicate by slug when available, otherwise by lowercased name.
+  // Scoped rows always win over unscoped rows for the same key, regardless of
+  // insertion order. Among same-source rows, planSet membership breaks ties.
   const planSet = new Set(planSubjectIds)
-  const seen = new Map<string, { id: string; name: string; slug: string }>()
+  const seen = new Map<string, SubjectEntry>()
   for (const s of subjects) {
     const key = (s.slug ?? s.name).toLowerCase()
-    if (!seen.has(key) || planSet.has(s.id)) seen.set(key, s)
+    const existing = seen.get(key)
+    if (!existing) {
+      seen.set(key, s)
+    } else if (!existing.scoped && s.scoped) {
+      // Scoped row replaces an unscoped one for the same key.
+      seen.set(key, s)
+    } else if (existing.scoped === s.scoped && planSet.has(s.id)) {
+      // Same source: prefer plan-matched id (signals higher relevance).
+      seen.set(key, s)
+    }
   }
 
-  return Array.from(seen.values())
+  return Array.from(seen.values()).map(({ scoped: _, ...s }) => s)
 }
