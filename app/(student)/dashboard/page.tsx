@@ -172,13 +172,6 @@ export default async function StudentHomeDashboardPage() {
   // Use central resolver to ensure consistent behaviour across routes/pages.
   const subjects = await resolveStudentSubjects(user as any, learningPlans as any)
 
-  // Debug: log resolved subjects for troubleshooting when students report missing cards.
-  try {
-    logger.debug('dashboard.resolved_subjects', { userId, subjectCount: subjects.length, subjects });
-  } catch (err) {
-    logger.warn('dashboard.resolved_subjects.log_failed', { userId, error: err });
-  }
-
   // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
   // User.subjects is an unbounded String[], so we cap at SUBJECT_CAP and process
   // SUBJECT_CONCURRENCY subjects at a time to avoid a burst of concurrent Neon
