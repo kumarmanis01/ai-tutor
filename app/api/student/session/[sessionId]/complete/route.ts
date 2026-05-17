@@ -305,6 +305,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         subjectName: subjectName ?? 'your subject',
         sessionDate,
         dashboardUrl: DEFAULT_DASHBOARD_URL,
+        // performance details for parent email
+        xpEarned,
+        totalXp,
+        badges: badgeNames,
+        accuracy: Math.round(accuracy * 100),
+        masteryDelta: Math.round(masteryDelta * 100) / 100,
+        masteryAfter: Math.round(masteryAfter * 100) / 100,
+        sessionDurationMinutes,
+        aiInsight: aiInsight?.summary ?? aiInsight ?? '',
       },
     }).catch((err) =>
       logger.warn('StudentSessionCompleteAPI: parent notification failed', {

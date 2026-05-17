@@ -873,7 +873,25 @@ export function sessionCompleteForParentHtml(data: {
   subjectName: string;
   sessionDate: string;
   dashboardUrl: string;
+  xpEarned?: number;
+  totalXp?: number;
+  badges?: string[];
+  accuracy?: number; // percent
+  masteryDelta?: number;
+  masteryAfter?: number;
+  sessionDurationMinutes?: number;
+  aiInsight?: string;
 }): string {
+  const xpLine = typeof data.xpEarned === 'number' ? `<tr><td style="color:#666;">XP earned</td><td style="text-align:right;font-weight:600;">+${data.xpEarned}</td></tr>` : '';
+  const totalXpLine = typeof data.totalXp === 'number' ? `<tr><td style="color:#666;">Total XP</td><td style="text-align:right;font-weight:600;">${data.totalXp}</td></tr>` : '';
+  const accuracyLine = typeof data.accuracy === 'number' ? `<tr><td style="color:#666;">Accuracy</td><td style="text-align:right;font-weight:600;">${data.accuracy}%</td></tr>` : '';
+  const masteryLine = typeof data.masteryDelta === 'number' || typeof data.masteryAfter === 'number'
+    ? `<tr><td style="color:#666;">Mastery</td><td style="text-align:right;font-weight:600;">${(typeof data.masteryAfter === 'number' ? `Now ${(Math.round((data.masteryAfter ?? 0) * 100) / 100)} ` : '')}${typeof data.masteryDelta === 'number' ? `(Δ ${(Math.round((data.masteryDelta ?? 0) * 100) / 100)})` : ''}</td></tr>`
+    : '';
+  const durationLine = typeof data.sessionDurationMinutes === 'number' ? `<tr><td style="color:#666;">Duration</td><td style="text-align:right;font-weight:600;">${data.sessionDurationMinutes} min</td></tr>` : '';
+  const badgesHtml = data.badges && data.badges.length ? `<p style="margin:8px 0 0;font-size:13px;color:#555;">Badges: <strong>${data.badges.join(', ')}</strong></p>` : '';
+  const insightHtml = data.aiInsight ? `<p style="margin:12px 0 0;color:#374151;font-size:13px;">Teacher Vidya: ${data.aiInsight}</p>` : '';
+
   return `
     <div style="${BASE}">
       ${LOGO}
@@ -884,12 +902,16 @@ export function sessionCompleteForParentHtml(data: {
          and they are making steady progress.</p>
 
       <div style="background:#EAF3DE;border-radius:12px;padding:16px 20px;margin:20px 0;">
-        <p style="margin:0;font-size:14px;color:#1D9E75;font-weight:600;">
-          Session completed
-        </p>
-        <p style="margin:8px 0 0;font-size:13px;color:#555;">
-          Consistent daily sessions are the fastest path to exam confidence.
-        </p>
+        <p style="margin:0;font-size:14px;color:#1D9E75;font-weight:600;">Session highlights</p>
+        <table width="100%" cellpadding="6" style="font-size:14px;border-top:1px solid #eee;margin-top:8px;">
+          ${xpLine}
+          ${totalXpLine}
+          ${accuracyLine}
+          ${masteryLine}
+          ${durationLine}
+        </table>
+        ${badgesHtml}
+        ${insightHtml}
       </div>
 
       <a href="${data.dashboardUrl}" style="${BTN}">View progress</a>
