@@ -384,8 +384,28 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
     if (promotedKeys.has(contentKey)) {
       continue;
     }
-
     const topicId = gq.test.topicId || gq.test.topic?.id || null;
+
+    // Defensive: do not promote generated questions that lack a resolved
+    // topicId. Such rows could originate from incomplete hydration and
+    // lead to cross-topic pollution of the Question table.
+    if (!topicId) {
+      try {
+        logger.warn('syncFromGeneratedQuestions.skipping_no_topic', { gqId: gq.id });
+      } catch {}
+      continue;
+    }
+
+    // If the caller requested a specific topicId, ensure we only promote
+    // generatedQuestion rows that belong to that topic. This prevents
+    // accidental promotion from unrelated topics when a strict topic was
+    // requested by the caller.
+    if (filters.topicId && String(filters.topicId) !== String(topicId)) {
+      try {
+        logger.warn('syncFromGeneratedQuestions.skipping_mismatched_topic', { gqId: gq.id, requestedTopic: filters.topicId, rowTopic: topicId });
+      } catch {}
+      continue;
+    }
     await prisma.question.upsert({
       where: { id: gq.id },
       update: { topicId },

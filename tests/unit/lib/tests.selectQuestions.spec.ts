@@ -138,4 +138,28 @@ describe('selectQuestions', () => {
     const testWhere = callArgs.where.test as Record<string, unknown>;
     expect(testWhere).toHaveProperty('topicId', 'topic-42');
   });
+
+  it('skips promoting generated questions with null topicId', async () => {
+    prisma.question.findMany.mockResolvedValue([]);
+    prisma.generatedQuestion.findMany.mockResolvedValue([
+      {
+        id: 'gq-3',
+        type: 'mcq',
+        question: 'Placeholder?',
+        options: null,
+        answer: 'a',
+        test: {
+          difficulty: 'medium',
+          topicId: null,
+          topic: null,
+        },
+      },
+    ]);
+    prisma.question.upsert.mockResolvedValue({});
+
+    await selectQuestions({ subject: 'science' }, 1);
+
+    // upsert should not be called because topicId is null and we skip promotion
+    expect(prisma.question.upsert).not.toHaveBeenCalled();
+  });
 });
