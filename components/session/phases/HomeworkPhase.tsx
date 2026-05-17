@@ -24,7 +24,9 @@ export function HomeworkPhase({
 }: HomeworkPhaseProps) {
   const router = useRouter();
   React.useEffect(() => {
-    onReadyToProceed?.(true);
+    // Only mark the phase as ready to proceed when homework is submitted.
+    // This prevents showing the primary "Finish Session" CTA while homework is still pending.
+    onReadyToProceed?.(isAlreadyDone);
   }, [onReadyToProceed]);
   const isAlreadyDone = content.status === 'SUBMITTED';
   const questions = Array.isArray(content.questions) ? content.questions : [];

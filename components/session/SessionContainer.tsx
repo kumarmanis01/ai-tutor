@@ -318,24 +318,62 @@ export function SessionContainer({
   // ── Error ─────────────────────────────────────────────────────────────────
   if (error || !session || !phase || !content) {
     const isEngineDisabled = error?.includes('disabled');
+
+    // Actionable error detection: prefer showing short, user-facing errors
+    // (e.g. "Please submit your homework before continuing.") instead of
+    // a generic "Something went wrong" header.
+    const isActionableError =
+      !!error &&
+      !isEngineDisabled &&
+      error.length < 120 &&
+      !error.toLowerCase().includes('failed to') &&
+      !error.toLowerCase().includes('unable to');
+
+    // Try to find a homework id to link the user directly when the error
+    // mentions homework. Prefer session.homeworkId (set by server) then
+    // fallback to content.assignmentId when available.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hwId = (session as any)?.homeworkId ?? (content as any)?.assignmentId ?? null;
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="max-w-sm text-center space-y-4">
           <div className="text-4xl">{isEngineDisabled ? '🔧' : '⚠️'}</div>
           <h2 className="text-lg font-semibold text-foreground">
-            {isEngineDisabled ? 'Session engine is off' : 'Something went wrong'}
+            {isEngineDisabled ? 'Session engine is off' : isActionableError ? error : 'Something went wrong'}
           </h2>
           <p className="text-sm text-muted-foreground">
             {isEngineDisabled
               ? 'Set ENABLE_SESSION_ENGINE=1 to enable structured sessions.'
+              : isActionableError
+              ? // For actionable errors show the message and a short hint
+                'If this needs action, follow the instruction below.'
               : (error ?? 'Unable to load this session.')}
           </p>
-          <Link
-            href="/dashboard"
-            className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-          >
-            Return to Dashboard
-          </Link>
+
+          {isActionableError && error?.toLowerCase().includes('homework') && hwId ? (
+            <div className="space-y-2">
+              <Link
+                href={`/homework/${hwId}`}
+                className="inline-block w-full px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+              >
+                Go to Homework
+              </Link>
+              <Link
+                href="/dashboard"
+                className="inline-block w-full px-5 py-2.5 border border-border text-muted-foreground rounded-lg text-sm font-medium"
+              >
+                Back to Dashboard
+              </Link>
+            </div>
+          ) : (
+            <Link
+              href="/dashboard"
+              className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+            >
+              Return to Dashboard
+            </Link>
+          )}
         </div>
       </div>
     );

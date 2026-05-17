@@ -360,6 +360,7 @@ describe('Session phase components', () => {
     expect(screen.getByText('Pending')).toBeTruthy();
     fireEvent.click(screen.getByText('Start Homework Now'));
     expect(pushMock).toHaveBeenCalledWith('/homework/hw-1');
-    expect(onReady).toHaveBeenCalledWith(true);
+    // Homework is pending; the phase should not signal readiness to proceed.
+    expect(onReady).toHaveBeenCalledWith(false);
   });
 });
