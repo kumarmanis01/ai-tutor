@@ -1,17 +1,15 @@
 /**
- * Taxonomy & Content Readiness -- Launch slice (PreLaunch Gap Analysis Task 1).
+ * Taxonomy & Content Readiness -- Full-coverage seed (all active boards, grades 1-12).
  * Seeds:
- * - BoardSubjectConfig for CBSE + ICSE Grade 6-12 (isCore for mandatory subjects).
- * - BoardChapterWeight for CBSE Grade 10 Maths + Science chapters.
- * - Concept records from existing TopicDef for CBSE Grade 10 Maths + Science
- *   with description, irt_b, bloomLevel, prerequisiteConceptIds, commonlyConfusedWithIds.
+ * - BoardSubjectConfig for CBSE + ICSE all active grades (isCore for mandatory subjects).
+ * - BoardChapterWeight for all active boards/grades/subjects (placeholder 8 marks per chapter).
+ * - Concept records from existing TopicDef for all active boards/grades/subjects.
+ * - Question.irt_b backfill (default 0) for all active boards/grades.
  *
  * Run after: seed-taxonomy.cjs (Board/ClassLevel/SubjectDef must exist).
  * Idempotent: safe to rerun.
  */
 import { prisma } from '../lib/prisma';
-
-
 
 /** Core subjects per board+grade (mandatory for exam). Others are optional. */
 const CORE_SUBJECT_SLUGS = new Set([
@@ -34,9 +32,9 @@ async function seedBoardSubjectConfig() {
     include: { classes: { include: { subjects: true } } },
   });
 
+  let seeded = 0;
   for (const board of boards) {
     for (const cls of board.classes) {
-      if (cls.grade < 6 || cls.grade > 12) continue;
       for (const subj of cls.subjects) {
         const isCore = CORE_SUBJECT_SLUGS.has(subj.slug);
         await prisma.boardSubjectConfig.upsert({
@@ -47,147 +45,167 @@ async function seedBoardSubjectConfig() {
             isCore,
           },
         });
+        seeded++;
       }
     }
   }
-  console.log("✅ BoardSubjectConfig seeded for CBSE + ICSE Grade 6-12");
+  console.log(`BoardSubjectConfig seeded for ${seeded} subjects across all active CBSE + ICSE grades`);
 }
 
-/** Placeholder marks per chapter (CBSE Grade 10 style). Replace with official marking scheme. */
+/** Placeholder marks per chapter. Replace with official marking scheme per grade/subject. */
 const DEFAULT_CHAPTER_WEIGHT = 8;
 
 async function seedBoardChapterWeights() {
-  const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
-  if (!cbse) {
-    console.log("⚠️ Board CBSE not found; run seed-taxonomy.cjs first.");
-    return;
-  }
-  const class10 = await prisma.classLevel.findFirst({
-    where: { boardId: cbse.id, grade: 10 },
+  const boards = await prisma.board.findMany({
+    where: { slug: { in: ["cbse", "icse"] }, lifecycle: "active" },
     include: {
-      subjects: {
-        where: {
-          slug: { in: ["mathematics", "physics", "chemistry", "biology", "science"] },
-        },
-        include: { chapters: true },
-      },
-    },
-  });
-  if (!class10) {
-    console.log("⚠️ CBSE Grade 10 class not found.");
-    return;
-  }
-  for (const subj of class10.subjects) {
-    for (const ch of subj.chapters) {
-      await prisma.boardChapterWeight.upsert({
-        where: { chapterId: ch.id },
-        update: { weightMarks: DEFAULT_CHAPTER_WEIGHT },
-        create: {
-          chapterId: ch.id,
-          weightMarks: DEFAULT_CHAPTER_WEIGHT,
-        },
-      });
-    }
-  }
-  console.log("✅ BoardChapterWeight seeded for CBSE Grade 10 Maths + Science chapters");
-}
-
-/** One Concept per Topic for launch slice; backfill description, irt_b, bloomLevel, etc. */
-async function seedConceptsFromTopics() {
-  const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
-  if (!cbse) return;
-  const class10 = await prisma.classLevel.findFirst({
-    where: { boardId: cbse.id, grade: 10 },
-    include: {
-      subjects: {
-        where: {
-          slug: { in: ["mathematics", "physics", "chemistry", "biology", "science"] },
-        },
+      classes: {
+        where: { lifecycle: "active" },
         include: {
-          chapters: {
-            include: { topics: true },
+          subjects: {
+            where: { lifecycle: "active", isAvailable: true },
+            include: { chapters: { where: { lifecycle: "active" } } },
           },
         },
       },
     },
   });
-  if (!class10) return;
 
-  let created = 0;
-  let updated = 0;
-  for (const subj of class10.subjects) {
-    for (const ch of subj.chapters) {
-      for (const topic of ch.topics) {
-        const existing = await prisma.concept.findFirst({
-          where: { topicId: topic.id },
-        });
-        const payload = {
-          topicId: topic.id,
-          subjectId: subj.id,
-          name: topic.name,
-          description: topic.name, // Minimal; replace with real descriptions for production
-          irt_b: 0,
-          bloomLevel: "understand",
-          prerequisiteConceptIds: [],
-          commonlyConfusedWithIds: [],
-        };
-        if (existing) {
-          await prisma.concept.update({
-            where: { id: existing.id },
-            data: {
-              description: payload.description,
-              irt_b: payload.irt_b,
-              bloomLevel: payload.bloomLevel,
-              prerequisiteConceptIds: payload.prerequisiteConceptIds,
-              commonlyConfusedWithIds: payload.commonlyConfusedWithIds,
+  let seeded = 0;
+  for (const board of boards) {
+    for (const cls of board.classes) {
+      for (const subj of cls.subjects) {
+        for (const ch of subj.chapters) {
+          await prisma.boardChapterWeight.upsert({
+            where: { chapterId: ch.id },
+            update: { weightMarks: DEFAULT_CHAPTER_WEIGHT },
+            create: {
+              chapterId: ch.id,
+              weightMarks: DEFAULT_CHAPTER_WEIGHT,
             },
           });
-          updated++;
-        } else {
-          await prisma.concept.create({ data: payload });
-          created++;
+          seeded++;
         }
       }
     }
   }
-  console.log(`✅ Concepts: ${created} created, ${updated} updated for CBSE Grade 10 Maths + Science`);
+  console.log(`BoardChapterWeight seeded for ${seeded} chapters across all active boards/grades`);
 }
 
-/** Set irt_b on questions in launch slice (topic in CBSE 10 Maths/Science) where null. Default 0; replace with real values per question. */
-async function backfillQuestionIrtB() {
-  const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
-  if (!cbse) return;
-  const class10 = await prisma.classLevel.findFirst({
-    where: { boardId: cbse.id, grade: 10 },
+/** One Concept per Topic for all active boards/grades/subjects; idempotent. */
+async function seedConceptsFromTopics() {
+  const boards = await prisma.board.findMany({
+    where: { slug: { in: ["cbse", "icse"] }, lifecycle: "active" },
     include: {
-      subjects: {
-        where: {
-          slug: { in: ["mathematics", "physics", "chemistry", "biology", "science"] },
+      classes: {
+        where: { lifecycle: "active" },
+        include: {
+          subjects: {
+            where: { lifecycle: "active", isAvailable: true },
+            include: {
+              chapters: {
+                where: { lifecycle: "active" },
+                include: { topics: { where: { lifecycle: "active" } } },
+              },
+            },
+          },
         },
-        include: { chapters: { include: { topics: { select: { id: true } } } } },
       },
     },
   });
-  if (!class10) return;
-  const topicIds = class10.subjects.flatMap((s) =>
-    s.chapters.flatMap((c) => c.topics.map((t) => t.id))
+
+  let created = 0;
+  let updated = 0;
+  for (const board of boards) {
+    for (const cls of board.classes) {
+      for (const subj of cls.subjects) {
+        for (const ch of subj.chapters) {
+          for (const topic of ch.topics) {
+            const existing = await prisma.concept.findFirst({
+              where: { topicId: topic.id },
+            });
+            const payload = {
+              topicId: topic.id,
+              subjectId: subj.id,
+              name: topic.name,
+              description: topic.name, // Minimal placeholder; replace with real descriptions for production
+              irt_b: 0,
+              bloomLevel: "understand",
+              prerequisiteConceptIds: [],
+              commonlyConfusedWithIds: [],
+            };
+            if (existing) {
+              await prisma.concept.update({
+                where: { id: existing.id },
+                data: {
+                  description: payload.description,
+                  irt_b: payload.irt_b,
+                  bloomLevel: payload.bloomLevel,
+                  prerequisiteConceptIds: payload.prerequisiteConceptIds,
+                  commonlyConfusedWithIds: payload.commonlyConfusedWithIds,
+                },
+              });
+              updated++;
+            } else {
+              await prisma.concept.create({ data: payload });
+              created++;
+            }
+          }
+        }
+      }
+    }
+  }
+  console.log(`Concepts: ${created} created, ${updated} updated for all active boards/grades`);
+}
+
+/** Set irt_b=0 on questions where null, for all active boards/grades. */
+async function backfillQuestionIrtB() {
+  const boards = await prisma.board.findMany({
+    where: { slug: { in: ["cbse", "icse"] }, lifecycle: "active" },
+    include: {
+      classes: {
+        where: { lifecycle: "active" },
+        include: {
+          subjects: {
+            where: { lifecycle: "active", isAvailable: true },
+            include: {
+              chapters: {
+                where: { lifecycle: "active" },
+                include: { topics: { select: { id: true }, where: { lifecycle: "active" } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const topicIds = boards.flatMap((b) =>
+    b.classes.flatMap((c) =>
+      c.subjects.flatMap((s) =>
+        s.chapters.flatMap((ch) => ch.topics.map((t) => t.id))
+      )
+    )
   );
+
+  if (!topicIds.length) return;
+
   const result = await prisma.question.updateMany({
     where: { topicId: { in: topicIds }, irt_b: null },
     data: { irt_b: 0 },
   });
   if (result.count > 0) {
-    console.log(`✅ Question.irt_b backfilled for ${result.count} questions (default 0; set per-question manually if needed).`);
+    console.log(`Question.irt_b backfilled for ${result.count} questions across all active boards/grades`);
   }
 }
 
 async function main() {
-  console.log("🌱 [START] Taxonomy & content readiness (launch slice)...\n");
+  console.log("🌱 [START] Taxonomy & content readiness seed (all grades 1-12)...\n");
   await seedBoardSubjectConfig();
   await seedBoardChapterWeights();
   await seedConceptsFromTopics();
   await backfillQuestionIrtB();
-  console.log("\n🎉 [DONE] Taxonomy launch slice seed complete.");
+  console.log("\n🎉 [DONE] Taxonomy seed complete.");
 }
 
 main()
