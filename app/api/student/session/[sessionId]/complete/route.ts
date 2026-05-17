@@ -169,7 +169,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
 
     // Record session duration toward the user's daily study budget.
     // Fire-and-forget: never block the response if accounting fails.
-    updateDailyStudyTime(userId, sessionDurationMinutes).catch((err) =>
+    updateDailyStudyTime(userId, sessionDurationMinutes).catch((err: unknown) =>
       logger.warn('StudentSessionCompleteAPI: daily study time update failed', {
         event: 'daily_study_time_error',
         context: { userId, sessionId, sessionDurationMinutes, error: String(err) },
@@ -242,6 +242,77 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       logger.warn('session.complete.analytics.failed', { userId, sessionId, error: String(err) })
     }
 
+    // --- Session coverage: collect concepts/topics/chapters touched in this session
+    let topicsTouched: Array<{
+      topicId: string
+      topicName: string
+      chapterId?: string | null
+      chapterName?: string | null
+      concepts: Array<{ conceptId: string; conceptName: string | null; masteryAfter?: number | null; masteryDelta?: number | null }>
+    }> = []
+    const chaptersCompleted: Array<{ chapterId: string; chapterName: string; completed: boolean }> = []
+
+    try {
+      const answeredRows = (await prisma.answerEvent.findMany({
+        where: { studentId: userId, sessionId, conceptId: { not: null } },
+        select: { conceptId: true },
+      })) as Array<{ conceptId: string | null }>
+      const conceptIds = Array.from(new Set(answeredRows.map((r) => r.conceptId).filter(Boolean))) as string[]
+
+      if (conceptIds.length > 0) {
+        const concepts = await prisma.concept.findMany({
+          where: { id: { in: conceptIds } },
+          select: {
+            id: true,
+            name: true,
+            topic: { select: { id: true, name: true, chapterId: true, chapter: { select: { id: true, name: true } } } },
+          },
+        })
+
+        const states = (await prisma.studentConceptState.findMany({
+          where: { studentId: userId, conceptId: { in: conceptIds } },
+          select: { conceptId: true, masteryScore: true },
+        })) as Array<{ conceptId: string; masteryScore: number }>
+        const masteryMap = new Map(states.map((s) => [s.conceptId, s.masteryScore]))
+
+        const preSessionMap = ((learningSession?.meta as any)?.preSessionMasteryMap ?? {}) as Record<string, number | undefined>
+
+        const topicsById = new Map<string, any>()
+        for (const c of concepts) {
+          const topic = c.topic
+          if (!topic) continue
+          const t = topicsById.get(topic.id) ?? { topicId: topic.id, topicName: topic.name ?? null, chapterId: topic.chapterId ?? null, chapterName: topic.chapter?.name ?? null, concepts: [] }
+          t.concepts.push({
+            conceptId: c.id,
+            conceptName: c.name ?? null,
+            masteryAfter: typeof masteryMap.get(c.id) === 'number' ? masteryMap.get(c.id) : null,
+            masteryDelta:
+              typeof preSessionMap[c.id] === 'number' && typeof masteryMap.get(c.id) === 'number'
+                ? Math.round(((masteryMap.get(c.id) as number) - (preSessionMap[c.id] as number)) * 100) / 100
+                : null,
+          })
+          topicsById.set(topic.id, t)
+        }
+
+        topicsTouched = Array.from(topicsById.values())
+
+        // For each unique chapter touched, determine if chapter is "completed"
+        const chapterIds = Array.from(new Set(topicsTouched.map((t) => t.chapterId).filter(Boolean))) as string[]
+        for (const chId of chapterIds) {
+          // load all concept ids for chapter
+          const chConcepts = (await prisma.concept.findMany({ where: { topic: { chapterId: chId } }, select: { id: true } })) as Array<{ id: string }>
+          const chConceptIds = chConcepts.map((c) => c.id)
+          const total = chConceptIds.length
+          const stateRows = (await prisma.studentConceptState.findMany({ where: { studentId: userId, conceptId: { in: chConceptIds } }, select: { masteryScore: true } })) as Array<{ masteryScore?: number | null }>
+          const mastered = stateRows.filter((s) => (s.masteryScore ?? 0) >= 0.7).length
+          const chapterName = (await prisma.chapterDef.findUnique({ where: { id: chId }, select: { name: true } }))?.name ?? 'Chapter'
+          chaptersCompleted.push({ chapterId: chId, chapterName, completed: total > 0 ? mastered === total : false })
+        }
+      }
+    } catch (covErr) {
+      logger.warn('StudentSessionCompleteAPI: session coverage collection failed', { userId, sessionId, error: String(covErr) })
+    }
+
     // Gap 3 fix: write score (0-100 integer) to StructuredSession.meta so the
     // /student/progress session history table can display it.
     // The sessionId here is a LearningSession.id; we get the StructuredSession.id
@@ -274,7 +345,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       }
     }
 
-    const badgeNames = badgesEarned.map((b) => b.name)
+    const badgeNames = (badgesEarned as any[]).map((b) => b.name)
     const sessionDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
     // Fire-and-forget: send session-complete celebration to student and parent.
@@ -291,7 +362,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       sessionDurationMinutes,
       leveledUp,
       newLevel,
-    }).catch((err) =>
+      topicsTouched,
+      chaptersCompleted,
+    }).catch((err: unknown) =>
       logger.warn('StudentSessionCompleteAPI: student notification failed', {
         event: 'session_student_notif_error',
         context: { userId, sessionId, error: String(err) },
@@ -314,8 +387,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         masteryAfter: Math.round(masteryAfter * 100) / 100,
         sessionDurationMinutes,
         aiInsight: aiInsight?.summary ?? aiInsight ?? '',
+        topicsTouched,
+        chaptersCompleted,
       },
-    }).catch((err) =>
+    }).catch((err: unknown) =>
       logger.warn('StudentSessionCompleteAPI: parent notification failed', {
         event: 'session_parent_notif_error',
         context: { userId, sessionId, error: String(err) },
@@ -330,7 +405,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         newLevel,
         masteryDelta,
         masteryAfter,
-        badgesEarned: badgesEarned.map((b) => ({ name: b.name, description: b.description, icon: b.icon })),
+        badgesEarned: (badgesEarned as any[]).map((b) => ({ name: b.name, description: b.description, icon: b.icon })),
         aiInsight,
         sessionDurationMinutes,
         correctAnswers,
@@ -342,6 +417,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
           resetAt: dailyStudyLimitStatus.resetAt.toISOString(),
           tier: dailyStudyLimitStatus.tier,
         },
+        topicsTouched,
+        chaptersCompleted,
       },
       { status: 200 },
     )

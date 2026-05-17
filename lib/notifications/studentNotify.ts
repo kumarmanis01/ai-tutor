@@ -28,6 +28,13 @@ export type StudentSessionCompleteNotifData = {
   sessionDurationMinutes: number;
   leveledUp: boolean;
   newLevel: number | null;
+  topicsTouched?: Array<{
+    topicId: string;
+    topicName?: string | null;
+    chapterName?: string | null;
+    concepts: Array<{ conceptId: string; conceptName?: string | null; masteryAfter?: number | null; masteryDelta?: number | null }>
+  }>;
+  chaptersCompleted?: Array<{ chapterId: string; chapterName: string; completed: boolean }>;
 };
 
 export async function notifyStudentOnSessionComplete(

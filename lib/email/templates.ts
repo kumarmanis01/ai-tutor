@@ -881,6 +881,13 @@ export function sessionCompleteForParentHtml(data: {
   masteryAfter?: number;
   sessionDurationMinutes?: number;
   aiInsight?: string;
+  topicsTouched?: Array<{
+    topicId: string
+    topicName?: string | null
+    chapterName?: string | null
+    concepts: Array<{ conceptId: string; conceptName?: string | null; masteryAfter?: number | null; masteryDelta?: number | null }>
+  }>
+  chaptersCompleted?: Array<{ chapterId: string; chapterName: string; completed: boolean }>
 }): string {
   const xpLine = typeof data.xpEarned === 'number' ? `<tr><td style="color:#666;">XP earned</td><td style="text-align:right;font-weight:600;">+${data.xpEarned}</td></tr>` : '';
   const totalXpLine = typeof data.totalXp === 'number' ? `<tr><td style="color:#666;">Total XP</td><td style="text-align:right;font-weight:600;">${data.totalXp}</td></tr>` : '';
@@ -891,6 +898,15 @@ export function sessionCompleteForParentHtml(data: {
   const durationLine = typeof data.sessionDurationMinutes === 'number' ? `<tr><td style="color:#666;">Duration</td><td style="text-align:right;font-weight:600;">${data.sessionDurationMinutes} min</td></tr>` : '';
   const badgesHtml = data.badges && data.badges.length ? `<p style="margin:8px 0 0;font-size:13px;color:#555;">Badges: <strong>${data.badges.join(', ')}</strong></p>` : '';
   const insightHtml = data.aiInsight ? `<p style="margin:12px 0 0;color:#374151;font-size:13px;">Teacher Vidya: ${data.aiInsight}</p>` : '';
+
+  // Compact topics list (limit to 6 for email brevity)
+  const topics = (data.topicsTouched ?? [])
+  const topicsPreview = topics.slice(0, 6).map(t => `
+    <li style="margin:4px 0;font-size:13px;color:#374151;">${t.topicName ?? 'Topic'}${t.chapterName ? ` — ${t.chapterName}` : ''} (${t.concepts.length} concept${t.concepts.length !== 1 ? 's' : ''})</li>`).join('')
+  const topicsMore = topics.length > 6 ? `<p style="color:#666;font-size:12px;margin:6px 0 0;">and ${topics.length - 6} more topics...</p>` : ''
+
+  const chapters = (data.chaptersCompleted ?? []).filter(c => c.completed)
+  const chaptersHtml = chapters.length ? `<p style="margin:8px 0 0;font-size:13px;color:#555;">Chapters completed: <strong>${chapters.map(c => c.chapterName).slice(0,5).join(', ')}${chapters.length > 5 ? `, and ${chapters.length - 5} more` : ''}</strong></p>` : ''
 
   return `
     <div style="${BASE}">
@@ -912,6 +928,8 @@ export function sessionCompleteForParentHtml(data: {
         </table>
         ${badgesHtml}
         ${insightHtml}
+        ${topics.length ? `<div style="margin-top:12px;"><strong style="font-size:13px;color:#374151;">Topics covered</strong><ul style="margin:8px 0 0;padding-left:18px;">${topicsPreview}</ul>${topicsMore}</div>` : ''}
+        ${chaptersHtml}
       </div>
 
       <a href="${data.dashboardUrl}" style="${BTN}">View progress</a>

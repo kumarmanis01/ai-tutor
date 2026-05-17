@@ -60,6 +60,13 @@ type SessionCompleteData = {
   masteryAfter?: number;
   sessionDurationMinutes?: number;
   aiInsight?: string;
+  topicsTouched?: Array<{
+    topicId: string;
+    topicName?: string | null;
+    chapterName?: string | null;
+    concepts: Array<{ conceptId: string; conceptName?: string | null; masteryAfter?: number | null; masteryDelta?: number | null }>
+  }>;
+  chaptersCompleted?: Array<{ chapterId: string; chapterName: string; completed: boolean }>;
 };
 
 type SessionMissedData = {
@@ -159,6 +166,8 @@ async function sendEmailForEvent(
         masteryAfter: d.masteryAfter ?? undefined,
         sessionDurationMinutes: d.sessionDurationMinutes ?? undefined,
         aiInsight: d.aiInsight ?? undefined,
+        topicsTouched: d.topicsTouched ?? undefined,
+        chaptersCompleted: d.chaptersCompleted ?? undefined,
       });
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_MISSED) {
       const d = (payload as { event: string; data: SessionMissedData }).data;
@@ -202,7 +211,8 @@ async function sendWhatsAppForEvent(
       const d = (payload as { event: string; data: SessionCompleteData }).data;
       const xpPart = typeof d.xpEarned === 'number' ? ` +${d.xpEarned} XP` : '';
       const badgePart = d.badges && d.badges.length ? ` • Badge: ${d.badges[0]}` : '';
-      text = `Great news! ${studentName} completed a ${d.subjectName} session on ${d.sessionDate}.${xpPart}${badgePart} See details: ${d.dashboardUrl}`;
+      const firstTopic = d.topicsTouched && d.topicsTouched.length ? ` (${d.topicsTouched[0].topicName ?? ''})` : '';
+      text = `Great news! ${studentName} completed a ${d.subjectName} session on ${d.sessionDate}${firstTopic}.${xpPart}${badgePart} See details: ${d.dashboardUrl}`;
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_MISSED) {
       const d = (payload as { event: string; data: SessionMissedData }).data;
       text = `Give ${studentName} a nudge -- they have not had a session recently on Spinzy Academy. ${d.dashboardUrl}`;
