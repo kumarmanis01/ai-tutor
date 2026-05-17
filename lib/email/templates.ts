@@ -897,7 +897,9 @@ export function sessionCompleteForParentHtml(data: {
     : '';
   const durationLine = typeof data.sessionDurationMinutes === 'number' ? `<tr><td style="color:#666;">Duration</td><td style="text-align:right;font-weight:600;">${data.sessionDurationMinutes} min</td></tr>` : '';
   const badgesHtml = data.badges && data.badges.length ? `<p style="margin:8px 0 0;font-size:13px;color:#555;">Badges: <strong>${data.badges.join(', ')}</strong></p>` : '';
-  const insightHtml = data.aiInsight ? `<p style="margin:12px 0 0;color:#374151;font-size:13px;">Teacher Vidya: ${data.aiInsight}</p>` : '';
+    const insightText = data.aiInsight ? String(data.aiInsight).trim() : '';
+    const insightShort = insightText ? (insightText.length > 240 ? insightText.slice(0, 237) + '...' : insightText) : '';
+    const insightHtml = insightShort ? `<p style="margin:12px 0 0;color:#374151;font-size:13px;">Teacher Vidya: ${insightShort}</p>` : '';
 
   // Compact topics list (limit to 6 for email brevity)
   const topics = (data.topicsTouched ?? [])
