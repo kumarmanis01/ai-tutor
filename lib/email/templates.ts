@@ -891,10 +891,15 @@ export function sessionCompleteForParentHtml(data: {
 }): string {
   const xpLine = typeof data.xpEarned === 'number' ? `<tr><td style="color:#666;">XP earned</td><td style="text-align:right;font-weight:600;">+${data.xpEarned}</td></tr>` : '';
   const totalXpLine = typeof data.totalXp === 'number' ? `<tr><td style="color:#666;">Total XP</td><td style="text-align:right;font-weight:600;">${data.totalXp}</td></tr>` : '';
-  const accuracyLine = typeof data.accuracy === 'number' ? `<tr><td style="color:#666;">Accuracy</td><td style="text-align:right;font-weight:600;">${data.accuracy}%</td></tr>` : '';
-  const masteryLine = typeof data.masteryDelta === 'number' || typeof data.masteryAfter === 'number'
-    ? `<tr><td style="color:#666;">Mastery</td><td style="text-align:right;font-weight:600;">${(typeof data.masteryAfter === 'number' ? `Now ${(Math.round((data.masteryAfter ?? 0) * 100) / 100)} ` : '')}${typeof data.masteryDelta === 'number' ? `(Δ ${(Math.round((data.masteryDelta ?? 0) * 100) / 100)})` : ''}</td></tr>`
-    : '';
+  // Use qualitative labels for accuracy and mastery -- never raw numeric scores.
+  const accuracyLabel = typeof data.accuracy === 'number'
+    ? (data.accuracy >= 80 ? 'Strong' : data.accuracy >= 55 ? 'Good' : 'Keep going')
+    : null;
+  const accuracyLine = accuracyLabel ? `<tr><td style="color:#666;">Practice performance</td><td style="text-align:right;font-weight:600;">${accuracyLabel}</td></tr>` : '';
+  const masteryLabel = typeof data.masteryAfter === 'number'
+    ? (data.masteryAfter >= 0.7 ? 'Strong' : data.masteryAfter >= 0.45 ? 'Building' : 'Developing')
+    : null;
+  const masteryLine = masteryLabel ? `<tr><td style="color:#666;">Topic understanding</td><td style="text-align:right;font-weight:600;">${masteryLabel}</td></tr>` : '';
   const durationLine = typeof data.sessionDurationMinutes === 'number' ? `<tr><td style="color:#666;">Duration</td><td style="text-align:right;font-weight:600;">${data.sessionDurationMinutes} min</td></tr>` : '';
   const badgesHtml = data.badges && data.badges.length ? `<p style="margin:8px 0 0;font-size:13px;color:#555;">Badges: <strong>${data.badges.join(', ')}</strong></p>` : '';
     const insightText = data.aiInsight ? String(data.aiInsight).trim() : '';
@@ -904,7 +909,7 @@ export function sessionCompleteForParentHtml(data: {
   // Compact topics list (limit to 6 for email brevity)
   const topics = (data.topicsTouched ?? [])
   const topicsPreview = topics.slice(0, 6).map(t => `
-    <li style="margin:4px 0;font-size:13px;color:#374151;">${t.topicName ?? 'Topic'}${t.chapterName ? ` — ${t.chapterName}` : ''} (${t.concepts.length} concept${t.concepts.length !== 1 ? 's' : ''})</li>`).join('')
+    <li style="margin:4px 0;font-size:13px;color:#374151;">${t.topicName ?? 'Topic'}${t.chapterName ? ` -- ${t.chapterName}` : ''} (${t.concepts.length} concept${t.concepts.length !== 1 ? 's' : ''})</li>`).join('')
   const topicsMore = topics.length > 6 ? `<p style="color:#666;font-size:12px;margin:6px 0 0;">and ${topics.length - 6} more topics...</p>` : ''
 
   const chapters = (data.chaptersCompleted ?? []).filter(c => c.completed)

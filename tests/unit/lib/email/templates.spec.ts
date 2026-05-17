@@ -26,7 +26,7 @@ describe('email templates file sanity', () => {
     expect(failed).toEqual(expect.any(String));
 
     // LOGO is an absolute img URL used across templates
-    expect(welcome).toMatch(/https:\/\/spinzyacademy\.com\/icons\/spinzy-navbar-source\.png/);
+    expect(welcome).toMatch(/https:\/\/spinzyacademy\.com\/logos\/logo-email\.png/);
     expect(failed).toMatch(/You are receiving this because you have a Spinzy Academy account\.|Spinzy Academy -- AI Home Tutor/);
   });
 });

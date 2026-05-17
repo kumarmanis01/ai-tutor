@@ -42,6 +42,12 @@ export const AUTH_RATE_LIMITS = {
     windowSeconds: 60 * 15, // 15 minutes
     blockDurationSeconds: 60 * 60, // 1 hour block
   },
+  // OTP/code verification - stricter to prevent brute-force of short codes
+  verifyCode: {
+    maxRequests: 10,
+    windowSeconds: 60 * 15, // 15 minutes
+    blockDurationSeconds: 60 * 60, // 1 hour block after exceeded
+  },
   // Password reset - prevent enumeration attacks
   passwordReset: {
     maxRequests: 3,

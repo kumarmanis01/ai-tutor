@@ -23,6 +23,7 @@ import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { invalidateUserSessionCache } from '@/lib/auth';
+import { checkAuthRateLimit, createRateLimitResponse } from '@/lib/middleware/authRateLimit';
 import { channelOtpKeyByType, getParentChannelVerificationStatus, resolveParentChannels } from '@/lib/parent/contactLinking';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
@@ -40,6 +41,10 @@ export async function POST(req: NextRequest) {
     const session = await getServerSessionForHandlers();
     const studentId = session?.user?.id ? String(session.user.id) : null;
     if (!studentId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Rate-limit by student to prevent brute-force of short OTP codes.
+    const rateLimitResult = await checkAuthRateLimit(req, 'verifyCode', `parent:${studentId}`);
+    if (!rateLimitResult.allowed) return createRateLimitResponse(rateLimitResult);
 
     const body = await req.json().catch(() => ({}));
     const code = String(body.code || body.otp || '').trim();

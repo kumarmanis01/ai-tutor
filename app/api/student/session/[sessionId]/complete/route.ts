@@ -66,6 +66,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       return res
     }
 
+    // Idempotency guard: if endedAt is already set, the session was already completed.
+    // Returning 200 with a flag prevents double XP awards and duplicate notifications on
+    // client retries or network-level replays.
+    if (learningSession.endedAt) {
+      const res = NextResponse.json({ alreadyCompleted: true }, { status: 200 })
+      logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
+      return res
+    }
+
+    // Atomically claim this session by setting endedAt only when it is still null.
+    // If two requests race here, only one will get count=1; the other returns 200.
+    const claimed = await prisma.learningSession.updateMany({
+      where: { id: sessionId, studentId: userId, endedAt: null },
+      data: { endedAt: new Date() },
+    })
+    if (claimed.count === 0) {
+      const res = NextResponse.json({ alreadyCompleted: true }, { status: 200 })
+      logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
+      return res
+    }
+
     // Fire remaining session-level reads in parallel; none depend on each other.
     const [correctAnswers, totalQuestions, hintsUsed, firstAnswer] = await Promise.all([
       prisma.answerEvent.count({ where: { studentId: userId, sessionId, isCorrect: true } }),
@@ -256,6 +277,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       const answeredRows = (await prisma.answerEvent.findMany({
         where: { studentId: userId, sessionId, conceptId: { not: null } },
         select: { conceptId: true },
+        take: 500,
       })) as Array<{ conceptId: string | null }>
       const conceptIds = Array.from(new Set(answeredRows.map((r) => r.conceptId).filter(Boolean))) as string[]
 
@@ -267,6 +289,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
             name: true,
             topic: { select: { id: true, name: true, chapterId: true, chapter: { select: { id: true, name: true } } } },
           },
+          take: 200,
         })
 
         const states = (await prisma.studentConceptState.findMany({
@@ -302,6 +325,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
           const chapterConceptRows = (await prisma.concept.findMany({
             where: { topic: { chapterId: { in: chapterIds } } },
             select: { id: true, topic: { select: { chapterId: true } } },
+            take: 500,
           })) as Array<{ id: string; topic: { chapterId: string | null } | null }>
 
           const conceptIdsByChapterId = new Map<string, string[]>()
