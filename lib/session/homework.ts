@@ -183,15 +183,32 @@ async function gatherQuestions(
     excludeContentKeys,
   );
 
-  if (selectedQuestions.length < MIN_QUESTIONS) {
+  // Runtime assertion / fail-safe: ensure selected questions match the
+  // requested topicId. If any mismatch is found, log and skip those rows.
+  const matchedByTopic = selectedQuestions.filter((q: any) => String(q.topicId ?? '') === String(topicId));
+  if (matchedByTopic.length !== selectedQuestions.length) {
+    try {
+      const mismatched = selectedQuestions.filter((q: any) => String(q.topicId ?? '') !== String(topicId)).map((q: any) => q.id);
+      logger.error('[HOMEWORK_TOPIC_MISMATCH]', {
+        topicId,
+        selectedCount: selectedQuestions.length,
+        filteredCount: matchedByTopic.length,
+        mismatchedIds: mismatched,
+      });
+    } catch {}
+  }
+
+  const effectiveQuestions = matchedByTopic;
+
+  if (effectiveQuestions.length < MIN_QUESTIONS) {
     logger.warn('[HOMEWORK_QUESTION_BANK_SHORTFALL]', {
       topicId,
-      selectedCount: selectedQuestions.length,
+      selectedCount: effectiveQuestions.length,
       minimumRequired: MIN_QUESTIONS,
     });
   }
 
-  return shuffle(selectedQuestions).slice(0, MAX_QUESTIONS).map((question): HomeworkQuestion => ({
+  return shuffle(effectiveQuestions).slice(0, MAX_QUESTIONS).map((question): HomeworkQuestion => ({
     id: question.id,
     type: question.type,
     prompt: question.prompt,

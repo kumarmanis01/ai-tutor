@@ -297,6 +297,12 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
       },
     },
   };
+  // If caller asked for an exact topicId, honour it strictly to avoid
+  // promoting generated questions from unrelated topics during fallback.
+  if (filters.topicId) {
+    // scope generated test rows to this topic only
+    (testWhere as any).topicId = filters.topicId;
+  }
   // Only pass difficulty if it's a valid DifficultyLevel enum value
   const validDifficulties = ['easy', 'medium', 'hard'];
   if (filters.difficulty && validDifficulties.includes(filters.difficulty)) {
