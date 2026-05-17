@@ -110,6 +110,18 @@ const config = {
         // ── Chat bubble colours ────────────────────────────────────────────
         userBubble: '#DCF8C6',
         aiBubble:   '#F1F0F0',
+
+        // Design system additions
+        'surface-warm': 'var(--color-surface-warm)',
+        'surface-sunk': 'var(--color-surface-sunk)',
+        'ink-2':        'var(--color-ink-2)',
+        'ink-4':        'var(--color-ink-4)',
+        'subject-hindi':    'var(--subject-hindi)',
+        'subject-hindi-bg': 'var(--subject-hindi-bg)',
+        'status-fair-text':     'var(--color-fair-text)',
+        'status-fair-fill':     'var(--color-fair-fill)',
+        'status-on-track-text': 'var(--color-on-track-text)',
+        'status-on-track-fill': 'var(--color-on-track-fill)',
       },
       borderRadius: {
         sm: 'var(--radius-sm)',
@@ -117,10 +129,18 @@ const config = {
         md: 'var(--radius-md)',
         lg: 'var(--radius-lg)',
         xl: 'var(--radius-xl)',
+        '2xl': '1.5rem',
       },
       boxShadow: {
         // Only allow the focus shadow via Tailwind utilities
         focus: 'var(--shadow-focus)',
+        'press-primary': 'var(--shadow-press-primary)',
+        'press-warning': 'var(--shadow-press-warning)',
+        'press-success': 'var(--shadow-press-success)',
+        'pop':           'var(--shadow-pop)',
+      },
+      maxWidth: {
+        'page': '1120px',
       },
     },
   },
