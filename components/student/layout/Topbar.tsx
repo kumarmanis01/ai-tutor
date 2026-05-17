@@ -157,6 +157,12 @@ export default function Topbar() {
   const level = topbarData?.level ?? 1;
   const shieldAvailable = topbarData?.shieldAvailable ?? false;
 
+  const isSessionRoute =
+    pathname.startsWith('/session/') ||
+    pathname.startsWith('/diagnostic/') ||
+    pathname.startsWith('/tests/') ||
+    pathname.startsWith('/practice/session/');
+
   const fallbackMode: TopbarMode = useMemo(() => {
     if (pathname.startsWith('/dashboard/tests') || pathname.startsWith('/tests')) return 'exam';
     if (pathname.startsWith('/dashboard/doubts') || pathname.startsWith('/doubts')) return 'weak';
@@ -207,6 +213,8 @@ export default function Topbar() {
       // Ignore focus restoration errors in unsupported environments.
     }
   }, []);
+
+  if (isSessionRoute) return null;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-md">

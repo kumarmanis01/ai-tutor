@@ -18,6 +18,8 @@
  *     with model-specific filter shapes for structuredSession (heatmap) and
  *     testResult/question (trend); deduplicate subjectNames on read (Gap 7)
  * - 2026-05-10T00:00:00Z | copilot | normalize subject matching against slug/name and use read helper for filtered mastery
+ * - 2026-05-17 | reviewer | restructure layout: 3-metric row, AI narrative, trend+heatmap grid,
+ *                           chapter mastery, session history; remove SessionsChart; add formatMinutes + practiceAvg
  */
 
 import type { Metadata } from 'next';
@@ -28,7 +30,6 @@ import { prisma } from '@/lib/prisma';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
 import AiNarrativeWidget from '@/components/student/progress/AiNarrativeWidget';
 import { getRedis } from '@/lib/redis';
-import SessionsChart from '@/components/student/progress/SessionsChart';
 import ChapterMasteryBars, {
   type SubjectMasteryData,
   type ChapterRow,
@@ -39,7 +40,7 @@ import TestScoreHistory, {
 import ProgressFilters from '@/components/student/progress/ProgressFilters';
 import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/ScoreTrendGraph';
 import StudyTimeHeatmap, { type HeatmapDay } from '@/components/student/progress/StudyTimeHeatmap';
-import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
+import { barConfig } from '@/lib/student/progressReport';
 import { subjectDefMatchesActiveSubject } from '@/lib/student/progressPage';
 import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
 
@@ -52,6 +53,14 @@ export const metadata: Metadata = {
 
 /** Estimate minutes per session (no explicit duration stored). */
 const AVG_SESSION_MINUTES = 20;
+
+function formatMinutes(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
 
 export default async function ProgressPage({
   searchParams,
@@ -285,8 +294,7 @@ export default async function ProgressPage({
   }
   const heatmapDays: HeatmapDay[] = Array.from(minutesByDate.entries()).map(([date, minutes]) => ({ date, minutes }));
 
-  // ── Chart ───────────────────────────────────────────────────────────────────
-  const bucketCounts = buildBucketCounts(chartSessions, cfg, Date.now());
+  // ── Totals ──────────────────────────────────────────────────────────────────
   const totalSessions = chartSessions.length;
   const totalMinutes = totalSessions * AVG_SESSION_MINUTES;
 
@@ -312,13 +320,17 @@ export default async function ProgressPage({
     score: Math.round(r.score!),
   }));
 
+  // ── Derived metrics ─────────────────────────────────────────────────────────
+  const practiceAvg = trendData.length > 0
+    ? Math.round(trendData.reduce((sum, p) => sum + p.score, 0) / trendData.length)
+    : 0;
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <main className="max-w-5xl mx-auto px-4 py-6">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4">My Progress</h1>
-
-      {/* Filter bar */}
-      <div className="mb-6">
+    <main className="max-w-6xl mx-auto px-4 py-6">
+      {/* Title + filter inline at md+ */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">My Progress</h1>
         <Suspense>
           <ProgressFilters
             subjects={subjectNames}
@@ -328,63 +340,72 @@ export default async function ProgressPage({
         </Suspense>
       </div>
 
-      <div className="flex flex-col gap-6 md:flex-row md:items-start">
-        {/* Left column -- narrative + chart (60%) */}
-        <div className="flex flex-col gap-6 md:w-3/5">
-          <AiNarrativeWidget initialNarrative={await (async () => {
-            try {
-              const redis = getRedis();
-              if (!redis) return null;
-              const cached = await redis.get(`narrative:${userId}`);
-              return cached ?? null;
-            } catch {
-              return null;
-            }
-          })()} />
-          <SessionsChart
-            weeklyCounts={bucketCounts}
-            totalSessions={totalSessions}
-            totalMinutes={totalMinutes}
-            barLabels={cfg.labels}
-            periodLabel={cfg.periodLabel}
-          />
-        </div>
+      {/* 3-metric row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Concepts mastered */}
+        <article className="rounded-2xl border border-[#1D9E75]/30 bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#1D9E75]">Concepts mastered</p>
+            <p className="text-3xl font-bold font-mono text-gray-900 dark:text-gray-50 mt-0.5">{conceptsMasteredCount}</p>
+          </div>
+          <svg className="w-8 h-8 text-[#1D9E75] opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+        </article>
+        {/* Total study time */}
+        <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total study time</p>
+          <p className="text-3xl font-bold font-mono text-gray-900 dark:text-gray-50 mt-0.5">{formatMinutes(totalMinutes)}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{cfg.periodLabel}</p>
+        </article>
+        {/* Practice avg */}
+        <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Practice avg</p>
+          <p className="text-3xl font-bold font-mono text-gray-900 dark:text-gray-50 mt-0.5">{practiceAvg > 0 ? `${practiceAvg}%` : '--'}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Last {trendData.length} tests</p>
+        </article>
+      </div>
 
-        {/* Right column -- chapter mastery + session history (40%) */}
-        <div className="flex flex-col gap-6 md:w-2/5">
-          {/* AC-01 (F-STU-033): Concepts mastered count */}
-          <article className="rounded-2xl border border-[#1D9E75]/30 bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-5 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#1D9E75]">
-                Concepts mastered
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50 mt-0.5">
-                {conceptsMasteredCount}
-              </p>
-            </div>
-            <svg
-              className="w-8 h-8 text-[#1D9E75] opacity-70"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </article>
-          <ChapterMasteryBars subjects={subjectMasteryData} />
-          <TestScoreHistory sessions={sessionRows} />
-          {/* AC-01 (F-STU-033): chapter practice test score trend */}
-          <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
-              Practice test trend
-            </h2>
-            <ScoreTrendGraph data={trendData} />
-          </article>
-          {/* AC-01 (F-STU-033): Time spent studying weekly heatmap */}
+      {/* AI narrative callout */}
+      <div className="mb-6">
+        <AiNarrativeWidget initialNarrative={await (async () => {
+          try {
+            const redis = getRedis();
+            if (!redis) return null;
+            const cached = await redis.get(`narrative:${userId}`);
+            return cached ?? null;
+          } catch {
+            return null;
+          }
+        })()} />
+      </div>
+
+      {/* Row 2: Trend + Heatmap */}
+      <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-6 mb-6">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Score trend <span className="font-normal text-gray-400">· {cfg.periodLabel}</span>
+          </h2>
+          <ScoreTrendGraph data={trendData} />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Study time heatmap <span className="font-normal text-gray-400">· Last 28 days</span>
+          </h2>
           <StudyTimeHeatmap days={heatmapDays} />
         </div>
+      </div>
+
+      {/* Row 3: Chapter mastery */}
+      <div className="mb-6">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          Chapter mastery <span className="font-normal text-gray-400">· {activeSubject || 'All subjects'}</span>
+        </h2>
+        <ChapterMasteryBars subjects={subjectMasteryData} />
+      </div>
+
+      {/* Row 4: Session history */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Session history</h2>
+        <TestScoreHistory sessions={sessionRows} />
       </div>
     </main>
   );
