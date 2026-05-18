@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     },
     'magic-link': {
       subject: 'Spinzy Academy -- email test (magic link)',
-      html: magicLinkHtml('https://spinzyacademy.com/auth/signin?token=test'),
+      html: magicLinkHtml('https://spinzyacademy.com/auth/login?token=test'),
     },
     receipt: {
       subject: 'Spinzy Academy -- email test (receipt)',

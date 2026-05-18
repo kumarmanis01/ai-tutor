@@ -25,7 +25,7 @@ export default function RoleSelectionPage() {
     if (status === 'loading') return;
 
     if (status === 'unauthenticated') {
-      router.replace('/auth/signup');
+      router.replace('/auth/get-started');
       return;
     }
 

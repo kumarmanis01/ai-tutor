@@ -169,7 +169,7 @@ export default function StudentOnboardingPage() {
   useEffect(() => {
     if (status === 'loading') return
     if (status === 'unauthenticated') {
-      router.replace('/auth/signup')
+      router.replace('/auth/get-started')
       return
     }
     const user = session?.user as OnboardingSessionUser | undefined

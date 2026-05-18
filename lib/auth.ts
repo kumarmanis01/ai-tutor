@@ -16,7 +16,7 @@
  * - 2026-05-11T00:00:00Z | claude | fix Google sign-in: remove redundant explicit PKCE checks and cookie overrides
  *     (useSecureCookies:isProd drives security; overrides caused OAuthCallback errors in production),
  *     tighten isEmailVerified to normalize strings case-insensitively and reject unknown types,
- *     route OAuth errors to /auth/signup (the primary user-facing entry point)
+ *     route OAuth errors to /auth/get-started (the primary user-facing entry point)
  * - 2026-05-11T00:00:00Z | copilot | harden Google sign-in: derive isProd from NEXTAUTH_URL, fix linkAccount to return
  *     account, add pages.error routing, retry UI on signup/signin pages
  * - 2026-05-08T00:00:00Z | copilot | enforce Google account chooser globally via authorization prompt select_account
@@ -559,7 +559,7 @@ export const authOptions: any = {
   adapter: customAdapter,
   useSecureCookies: isProd,
   pages: {
-    signIn: '/auth/signup',
+    signIn: '/auth/get-started',
     error: '/auth/error',
   },
   providers: [

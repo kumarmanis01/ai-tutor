@@ -21,7 +21,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Logo from '@/components/Logo'
 import { Spinner } from '@/components/UI/design-system'
 
-const FALLBACK_RETURN = '/auth/signup'
+const FALLBACK_RETURN = '/auth/get-started'
 
 function sanitizeReturnTo(raw: string | null): string {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//')) {
@@ -66,7 +66,7 @@ function ErrorContent() {
 
         <div className="space-y-3">
           <button
-            onClick={() => router.push('/auth/signup')}
+            onClick={() => router.push('/auth/get-started')}
             className="w-full py-3 rounded-xl bg-primary hover:bg-primary-hover
                        text-white font-medium text-sm transition-colors
                        min-h-[44px]"

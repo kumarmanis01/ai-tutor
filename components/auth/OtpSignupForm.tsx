@@ -12,7 +12,7 @@ export function OtpSignupForm() {
     if (!email) return
     // Store email so auth page can pre-fill it
     sessionStorage.setItem('spinzy_signup_email', email)
-    router.push(`/auth/signup?email=${encodeURIComponent(email)}`)
+    router.push(`/auth/get-started?email=${encodeURIComponent(email)}`)
   }
 
   return (

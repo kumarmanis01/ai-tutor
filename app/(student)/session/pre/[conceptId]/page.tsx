@@ -47,7 +47,7 @@ export default async function PreSessionPage({ params }: Props) {
   const session = await getServerSessionForHandlers();
   const userId = (session?.user as { id?: string })?.id;
   if (!userId) {
-    redirect(`/auth/signin?callbackUrl=/session/pre/${encodeURIComponent(conceptId)}`);
+    redirect(`/auth/login?callbackUrl=/session/pre/${encodeURIComponent(conceptId)}`);
   }
 
   // Load concept + topic + chapter + subject + board chapter weight.

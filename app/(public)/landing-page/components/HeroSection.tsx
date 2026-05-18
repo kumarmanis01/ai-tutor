@@ -98,7 +98,7 @@ const HeroSection = () => {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link
-                href="/auth/signup"
+                href="/auth/get-started"
                 className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-brand-primary px-6 py-3 font-cta text-base font-semibold text-white shadow-lg shadow-brand-primary/20 transition-all duration-250 hover:bg-brand-primary-hover md:px-8 md:py-4 md:text-lg"
               >
                 <Icon name="SparklesIcon" size={20} variant="solid" />
