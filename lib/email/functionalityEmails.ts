@@ -16,6 +16,7 @@
  * - 2026-05-09T00:00:00Z | copilot | created centralized email address constants
  * - 2026-05-09T00:00:00Z | copilot | split into functionality-specific keys even when email values are identical
  * - 2026-05-09T00:00:00Z | copilot | renamed constants module to functionalityEmails for clearer intent
+ * - 2026-05-18T00:00:00Z | claude | added HYDRATION_GENERATION_REPORT_EMAIL for reconciler summary emails
  */
 
 export const CONTACT_US_SUPPORT_EMAIL = 'support@spinzyacademy.com';

@@ -2,11 +2,21 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-require-imports */
 /**
- * Worker entrypoint (production-friendly)
- * - For local runs, we load .env once to match `npm run dev` / `npm run build`.
- * - In production, environment is injected by the process manager (no .env file required).
- * - Use relative imports only (no @/ aliases).
- * - Fail fast if required env vars are missing.
+ * FILE OBJECTIVE:
+ * - Worker process entrypoint: validates env, registers global error handlers,
+ *   then bootstraps the BullMQ consumer via worker/bootstrap.ts.
+ * - Fails fast (process.exit(1)) on any unhandled rejection, uncaught exception,
+ *   or missing required environment variable.
+ * - dotenv is loaded via eval to avoid static analysis flagging in Vercel/dist checks.
+ *
+ * LINKED UNIT TEST: none (entrypoint; covered by integration tests)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18T00:00:00Z | claude | added unhandledRejection/uncaughtException handlers and env validation
  */
 
 import path from 'path';

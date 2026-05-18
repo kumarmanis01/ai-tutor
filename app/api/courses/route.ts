@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Lists all published course packages, returning one entry per syllabusId
+ *   at the highest published version (used by the onboarding course picker).
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/courses.api.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18T00:00:00Z | claude | added try/catch with structured error response and logger
+ */
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic';

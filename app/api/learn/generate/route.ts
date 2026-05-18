@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-01-23T10:30:00Z | copilot | Created on-demand generation API
+ * - 2026-05-18T00:00:00Z | claude | typed llmResponse, replaced hardcoded 'gpt-4' with llmResponse.model
  */
 
 import { NextResponse } from 'next/server';

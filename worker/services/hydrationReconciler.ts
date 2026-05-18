@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-23T00:00:00Z | copilot | fix(strict): add typed groupBy handling, annotate callbacks, guard Promise.all types
+ * - 2026-05-18T00:00:00Z | claude | feat: send generation validation summary email to HYDRATION_GENERATION_REPORT_EMAIL on root job completion
  *
  * RESPONSIBILITIES:
  * - Poll root HydrationJobs with incomplete children
@@ -580,8 +581,9 @@ export class HydrationReconciler {
         prisma.topicDef.count({ where: { chapter: { subjectId }, lifecycle: 'active' } }),
         prisma.topicNote.count({ where: { topic: { chapter: { subjectId } } } }),
         prisma.generatedQuestion.count({ where: { test: { topic: { chapter: { subjectId } } } } }),
+        // Scope to this job's window to avoid counting historical logs for the same subject
         prisma.aIContentLog.findMany({
-          where: { subject: rootJob.subject },
+          where: { subject: rootJob.subject, createdAt: { gte: rootJob.createdAt } },
           select: { tokensUsed: true, success: true },
         }),
       ]);
@@ -610,6 +612,7 @@ export class HydrationReconciler {
       });
 
       const subject = rootJob.subject ?? rootJob.subjectId ?? 'unknown';
+      const subjectSafe = subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const statusLabel = finalStatus === JobStatus.Completed ? 'Completed' : 'Completed with failures';
       await sendMailSafe({
         to: HYDRATION_GENERATION_REPORT_EMAIL,
@@ -634,7 +637,7 @@ export class HydrationReconciler {
         ].join('\n'),
         html: `<pre style="font-family:monospace;font-size:13px">`
           + `<b>Hydration generation report</b>\n`
-          + `Root job: ${rootJob.id}\nSubject: ${subject}\nStatus: <b>${statusLabel}</b>\n\n`
+          + `Root job: ${rootJob.id}\nSubject: ${subjectSafe}\nStatus: <b>${statusLabel}</b>\n\n`
           + `Chapters: ${chapters}  Topics: ${topics}  Notes: ${notes}  Questions: ${questions}\n`
           + `LLM calls: ${totalLLMCalls}  Tokens: ${tokensUsed}\n`
           + (failedChildren > 0 ? `\n<b style="color:red">FAILURES: ${failedChildren} child jobs failed</b>` : `\nNo failures.`)

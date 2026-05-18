@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created error handling utilities
+ * - 2026-05-18T00:00:00Z | claude | replaced TODO with structured logger.error in handleError
  */
 
 import { logger } from '@/lib/logger';
