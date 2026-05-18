@@ -128,7 +128,8 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
 
   const sevenDaysAgo = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
 
-  // Count distinct sessions, sum costs, trending escalations, rolling avg history, cache stats in parallel
+  // Count distinct sessions, sum costs, trending escalations, rolling avg history, cache stats,
+  // hydration job stats, and AI content log success rate in parallel
   const _res = await Promise.all([
     prisma.aITutorTurnLog.findMany({
       where: { createdAt: { gte: start, lt: end } },
@@ -157,6 +158,23 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
       where: { date: { gte: sevenDaysAgo, lt: start } },
       orderBy: { date: 'desc' },
     }),
+    // Hydration job stats for yesterday
+    prisma.hydrationJob.groupBy({
+      by: ['status'],
+      where: { createdAt: { gte: start, lt: end } },
+      _count: { status: true },
+    }),
+    // Current pending hydration backlog
+    prisma.hydrationJob.count({ where: { status: 'pending' } }),
+    // AI content generation success rate yesterday
+    prisma.aIContentLog.aggregate({
+      where: { createdAt: { gte: start, lt: end } },
+      _count: { id: true },
+      _sum: { tokensUsed: true },
+    }),
+    prisma.aIContentLog.count({
+      where: { createdAt: { gte: start, lt: end }, success: false },
+    }),
   ])
 
   const distinctSessionRows = _res[0] as Array<{ sessionId: string }>
@@ -165,6 +183,15 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
   const last7Metrics = _res[3] as Array<{ costPerSession: number }>
   const cacheStats = _res[4] as Array<{ total: bigint; cached: bigint }>
   const yesterdayMetric = _res[5] as { sessions: number } | null
+  const hydrationByStatus = _res[6] as Array<{ status: string; _count: { status: number } }>
+  const hydrationPendingBacklog = _res[7] as number
+  const contentLogAgg = _res[8] as { _count: { id: number }; _sum: { tokensUsed: number | null } }
+  const contentLogFailures = _res[9] as number
+
+  const hydrationCompleted = hydrationByStatus.find((r) => r.status === 'completed')?._count.status ?? 0
+  const hydrationFailed = hydrationByStatus.find((r) => r.status === 'failed')?._count.status ?? 0
+  const contentLogTotal = contentLogAgg._count.id ?? 0
+  const contentLogTokens = contentLogAgg._sum.tokensUsed ?? 0
 
   const sessions = distinctSessionRows.length
   const totalCostUsd = Number(agg._sum.costUsd ?? 0)
@@ -235,6 +262,11 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
           ? `\nCache hit rate: ${(cacheHitRate * 100).toFixed(1)}% (target >${(CACHE_HIT_RATE_TARGET * 100).toFixed(0)}%)${isCacheWarn ? ' ⚠️ below target' : ''}`
           : ''
         const rollingText = rollingAvg !== null ? `\n7-day avg cost/session: $${rollingAvg.toFixed(5)}` : ''
+        const hydrationText = `\n\nContent hydration (yesterday): completed=${hydrationCompleted} failed=${hydrationFailed} pending_backlog=${hydrationPendingBacklog}`
+          + (hydrationFailed > 0 ? ' ⚠️' : '')
+        const contentGenText = contentLogTotal > 0
+          ? `\nAI content generation: total=${contentLogTotal} failures=${contentLogFailures} tokens=${contentLogTokens.toLocaleString()}`
+          : ''
         await sendMailSafe({
           to: oncallEmail,
           subject: alertSubject,
@@ -245,7 +277,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
             `Total cost: $${totalCostUsd.toFixed(4)} (₹${(totalCostUsd * USD_TO_INR).toFixed(2)})`,
             `Cost per session: $${costPerSession.toFixed(5)} (₹${costInr})`,
             `Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session`,
-          ].join('\n') + rollingText + cacheText + trendingText,
+          ].join('\n') + rollingText + cacheText + hydrationText + contentGenText + trendingText,
         })
         alertSent = true
         logger.info('costReportingWorker.alertSent', { to: oncallEmail, dateLabel, costPerSession })

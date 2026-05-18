@@ -14,6 +14,7 @@
  * EDIT LOG:
  * - 2026-01-22T02:30:00Z | copilot | Phase 3: Created assemble worker handler
  * - 2026-01-23T08:00:00Z | copilot | Fixed: Use GeneratedQuestion relation instead of questionsJson field
+ * - 2026-05-18T00:00:00Z | claude  | Invalidate questions:for-topic cache after test approval so newly assembled tests are visible without waiting for TTL
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -22,6 +23,7 @@ import { logger } from '@/lib/logger.js';
 import { renderTemplate } from '@/prompts/index';
 import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper';
 import { JobStatus } from '@/lib/ai-engine/types';
+import { cacheDelPattern } from '@/lib/cache.js';
 
 const MIN_QUESTIONS_FOR_APPROVAL = 5;
 
@@ -162,6 +164,12 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
 
       logger.info('handleAssembleJob: completed', { jobId, topicId, assembledCount });
     });
+
+    // Invalidate questions cache so the newly approved tests are immediately visible
+    // without waiting for the 5-minute TTL to expire.
+    if (topicId) {
+      await cacheDelPattern(`questions:for-topic:v1:${topicId}:*`).catch(() => {});
+    }
   } catch (err: any) {
     const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
     const code = inferFailureCodeFromMessage(err?.message || '');

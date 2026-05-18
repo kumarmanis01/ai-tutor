@@ -83,12 +83,22 @@ export async function GET(req: Request) {
     const top = scoped
       .sort((x, y) => (y.score ?? 0) - (x.score ?? 0))
       .slice(0, 20)
-      .map((a, idx) => ({
-        rank: idx + 1,
-        userId: a.studentId,
-        scorePercent: a.score ?? 0,
-        attemptId: a.id,
-      }));
+      .map((a, idx) => {
+        const xp = a.score ?? 0;
+        const user = byUser.get(a.studentId);
+        return {
+          rank: idx + 1,
+          userId: a.studentId,
+          name: user?.name ?? null,
+          xp,
+          isYou: session.user.id === a.studentId,
+          // legacy fields for backward compatibility
+          id: a.studentId,
+          points: xp,
+          attemptId: a.id,
+          scorePercent: a.score ?? 0,
+        };
+      });
 
     const me = top.find((item) => item.userId === session.user.id);
     if (me) {
@@ -107,22 +117,36 @@ export async function GET(req: Request) {
   }
 
   // default leaderboard by points
-  const top = await prisma.user.findMany({
+  const topRaw = await prisma.user.findMany({
     orderBy: { points: 'desc' },
     take: 20,
     select: { id: true, name: true, image: true, points: true },
   });
-  const me = top.find((item) => item.id === session.user.id);
+
+  const top = topRaw.map((item, idx) => ({
+    rank: idx + 1,
+    userId: item.id,
+    name: item.name ?? null,
+    xp: item.points,
+    isYou: session.user.id === item.id,
+    image: item.image ?? null,
+    // legacy fields for backward compatibility
+    id: item.id,
+    points: item.points,
+  }));
+
+  const me = top.find((item) => item.userId === session.user.id);
   if (me) {
     void emitServerAnalyticsEvent(
       {
         eventType: ANALYTICS_EVENTS.STUDENT.LEADERBOARD_POSITION_CHANGE,
         userId: session.user.id,
-        metadata: { rank: top.indexOf(me) + 1, by: 'points' },
+        metadata: { rank: me.rank, by: 'points' },
       },
       'api.leaderboard',
     );
   }
+
   logApiUsage('/api/leaderboard', 'GET');
   return NextResponse.json({ top });
 }

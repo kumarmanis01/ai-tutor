@@ -19,6 +19,8 @@
  * - 2026-05-04T00:00:00Z | copilot | Soft-approve: promote GeneratedQuestion rows to Question table after job completion so practice questions are immediately available without admin approval. Admin can still quarantine/reject individual rows.
  * - 2026-05-09T00:00:00Z | copilot | skip rejected GeneratedTest rows when soft-promoting GeneratedQuestion rows into Question table
  * - 2026-05-10T00:00:00Z | copilot | enforce deduplication in worker persistence and soft-promotion paths so duplicate question content is not emitted from generation jobs
+ * - 2026-05-18T00:00:00Z | claude  | feat: QUESTIONS_PARALLEL=true env var enables parallel 3-difficulty LLM calls even when LLM_SAFE_MODE=true
+ * - 2026-05-18T00:00:00Z | claude  | feat: raise default question cap from 2 to 10 per difficulty to satisfy PRACTICE+TEST+PRACTICE_MORE supply
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -112,18 +114,18 @@ function dedupeQuestionsForPersistence(questions: any[]): any[] {
 }
 
 /**
- * Returns the validated question count per difficulty level.
- * Reads from VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY env, defaulting to 2 when LLM_MODE=real.
- * Applies this value as a HARD CAP even when a higher per-job override is provided by the reconciler.
+ * Returns the question count per difficulty level.
+ * Reads from VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY env, defaulting to 10.
+ * 10 questions per difficulty gives enough supply for PRACTICE(5)+TEST(5)+PRACTICE_MORE(5)
+ * with random sampling so students see variety across sessions.
+ * Applies this value as a HARD CAP even when a higher per-job override is provided.
  */
 function getValidationQuestionCount(jobOverride?: number): number {
   const envCap = Number(process.env.VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY || 0);
   const baseCap =
     envCap > 0
       ? envCap
-      : process.env.LLM_MODE === 'real'
-      ? 2
-      : 5;
+      : 10;
 
   if (jobOverride != null && Number.isFinite(jobOverride) && jobOverride > 0) {
     return Math.min(jobOverride, baseCap);
@@ -588,9 +590,11 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const sessionStart = Date.now();
 
   // Generate questions for all difficulties.
-  // RISK-06: When LLM_SAFE_MODE=true, run sequentially to respect safe concurrency.
-  // Otherwise run in parallel (independent leaf tasks).
-  const isSafeMode = String(process.env.LLM_SAFE_MODE || '').toLowerCase() === 'true';
+  // RISK-06: When LLM_SAFE_MODE=true, run sequentially by default.
+  // Set QUESTIONS_PARALLEL=true to enable parallel generation even in safe mode --
+  // hydration batch jobs are independent of the real-time tutor path that LLM_SAFE_MODE protects.
+  const questionsParallel = String(process.env.QUESTIONS_PARALLEL || '').toLowerCase() === 'true';
+  const isSafeMode = String(process.env.LLM_SAFE_MODE || '').toLowerCase() === 'true' && !questionsParallel;
 
   const runOneDifficulty = async (difficulty: DifficultyLevel) => {
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });

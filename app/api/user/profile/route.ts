@@ -19,7 +19,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import { getRedis } from '@/lib/redis';
 import { invalidateUserSessionCache } from '@/lib/auth';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
@@ -134,7 +133,12 @@ export async function GET(req: Request) {
     currentStreak: (savedUser as any)?.currentStreak ?? 0,
     longestStreak: (savedUser as any)?.longestStreak ?? 0,
     cosmeticUnlocks: (savedUser as any)?.cosmeticUnlocks ?? [],
-    userBadges: savedUser?.userBadges ?? [],
+    userBadges: (savedUser?.userBadges ?? []).map((ub: any) => ({
+      ...ub,
+      // Expose canonical badge key as `badge.id` so client helpers (extractBadges)
+      // can pick the correct badge identifier for UI glyph mapping.
+      badge: { ...(ub.badge ?? {}), id: ub.badgeKey ?? undefined },
+    })),
   });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'GET' }, start);
   return res;

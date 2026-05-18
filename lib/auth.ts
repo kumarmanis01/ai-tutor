@@ -25,6 +25,10 @@
  * - 2026-05-13T00:00:00Z | copilot | emit signin analytics (`STUDENT.AUTH_SIGNIN`) in sign-in callback (best-effort)
  * - 2026-05-17T00:00:00Z | reviewer | document cache invalidation contract on JWT session cache key
  */
+/*
+ * EDIT LOG:
+ * - 2026-05-18T00:00:00Z | copilot | fix: log timing catch error to avoid unused 'e' warning
+ */
 
 // src/lib/auth.ts
 // Import necessary libraries and providers for authentication
@@ -800,7 +804,12 @@ export const authOptions: any = {
           logger.add('jwt.timing', { className: 'auth', methodName: 'jwt', totalMs });
         }
       } catch (e) {
-        // swallow logging errors
+        // Log timing errors to avoid silent swallows and satisfy lint rules
+        try {
+          logger.warn('jwt.timing.log_failed', { className: 'auth', methodName: 'jwt', error: String(e) });
+        } catch {
+          // best-effort logging only
+        }
       }
       return token;
     },

@@ -1,34 +1,20 @@
-/**
- * FILE OBJECTIVE:
- * - Sentry configuration for Edge Runtime (middleware, edge functions).
- *
- * LINKED UNIT TEST:
- * - tests/unit/sentry.edge.config.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
- * EDIT LOG:
- * - 2025-01-XX | copilot | created Sentry edge configuration
- */
+// This file configures the initialization of Sentry for edge features (middleware, edge routes, and so on).
+// The config you add here will be used whenever one of the edge features is loaded.
+// Note that this config is unrelated to the Vercel Edge Runtime and is also required when running locally.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
-import * as Sentry from '@sentry/nextjs';
-
-const SENTRY_DSN = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
+import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: SENTRY_DSN,
+  dsn: "https://c34e111f6d46ca1752ec05d66a338e1e@o4510757474467840.ingest.de.sentry.io/4511410612928592",
 
-  // Only enable in production
-  enabled: process.env.NODE_ENV === 'production' && !!SENTRY_DSN,
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1,
 
-  // Lower sample rate for edge functions
-  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.01 : 1.0,
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
 
-  // Set the environment
-  environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',
-
-  // Release tracking
-  release: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
+  // Enable sending user PII (Personally Identifiable Information)
+  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
+  sendDefaultPii: true,
 });

@@ -13,6 +13,8 @@
  * - 2026-01-24T12:00:00Z | copilot | replace ESM createRequire logic with universal PrismaClient singleton to support Jest/CJS
  * - 2026-04-18T00:00:00Z | copilot | remove speculative eager-connect for test env; root fix is in prismaEnsureColumns.ts
  * - 2026-05-13T00:00:00Z | copilot | remove analyticsSignal compatibility proxy now that all callers use analyticsEvent directly
+ * - 2026-05-18T00:00:00Z | claude  | feat: buildDatabaseUrl() appends connection_limit+pool_timeout when DB_POOL_SIZE is set (validated as positive integer)
+ * - 2026-05-18T00:00:00Z | claude  | feat: slow-query middleware logs queries exceeding SLOW_QUERY_THRESHOLD_MS (default 500ms) as event:'slow_query'
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -29,9 +31,46 @@ declare global {
 // don't throw "global is not defined" in browsers. `globalThis` is available
 // in Node and browser runtimes.
 const g: any = globalThis as any;
-const client = g.prisma ?? new PrismaClient({
-  log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
+
+// Append connection_limit to DATABASE_URL when DB_POOL_SIZE is set.
+// Neon default can be too high under concurrent worker + API traffic.
+// DB_POOL_SIZE is validated as a positive integer before use.
+function buildDatabaseUrl(): string | undefined {
+  const base = process.env.DATABASE_URL;
+  const rawLimit = process.env.DB_POOL_SIZE;
+  if (!base || !rawLimit) return base;
+  const limit = parseInt(rawLimit, 10);
+  if (!Number.isFinite(limit) || limit < 1) {
+    logger.warn('[prisma] DB_POOL_SIZE is not a positive integer -- ignoring', { rawLimit });
+    return base;
+  }
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}connection_limit=${limit}&pool_timeout=20`;
+}
+
+const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_THRESHOLD_MS || 500);
+
+const rawClient = new PrismaClient({
+  datasources: { db: { url: buildDatabaseUrl() } },
+  log: process.env.NODE_ENV === 'test' ? [] : ['warn', 'error'],
 });
+
+// Slow query logging middleware -- logs any query exceeding SLOW_QUERY_THRESHOLD_MS
+const client: PrismaClient = g.prisma ?? (process.env.NODE_ENV !== 'test'
+  ? (rawClient.$extends({
+      query: {
+        async $allOperations({ operation, model, args, query }: { operation: string; model?: string; args: unknown; query: (args: unknown) => Promise<unknown> }) {
+          const t0 = Date.now();
+          const result = await query(args);
+          const dur = Date.now() - t0;
+          if (dur >= SLOW_QUERY_MS) {
+            logger.warn('[slow_query]', { event: 'slow_query', context: { model, operation, durationMs: dur, threshold: SLOW_QUERY_MS } });
+          }
+          return result;
+        },
+      },
+    }) as unknown as PrismaClient)
+  : rawClient);
 
 if (process.env.NODE_ENV !== 'production') g.prisma = client;
 const prismaProxy = new Proxy(client, {

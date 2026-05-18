@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic'
-
 /**
  * FILE OBJECTIVE:
  * - API endpoint to fetch notes for a given topic.
@@ -8,14 +6,29 @@ export const dynamic = 'force-dynamic'
  * LINKED UNIT TEST:
  * - tests/unit/app/api/notes/for-topic/route.spec.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-02-03 | claude | created for cascading filters
+ * - 2026-02-03 | claude  | created for cascading filters
  * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
+ * - 2026-05-18 | claude  | add Redis cache (TTL 300 s) + take:20 pagination
  */
+
+export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { cacheGet, cacheSet } from '@/lib/cache';
+
+const CACHE_TTL = 300; // 5 minutes
+
+/** Cache key for a topic's approved notes list. */
+export function notesForTopicCacheKey(topicId: string, language: string | null): string {
+  return `notes:for-topic:v1:${topicId}:${language ?? 'all'}`;
+}
 
 /**
  * GET /api/notes/for-topic?topicId=xxx&language=en
@@ -41,6 +54,10 @@ export async function GET(req: Request) {
       );
     }
 
+    const cacheKey = notesForTopicCacheKey(topicId, language);
+    const cached = await cacheGet<{ notes: unknown[] }>(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
     const where: Record<string, unknown> = {
       topicId,
       lifecycle: 'active',
@@ -57,6 +74,7 @@ export async function GET(req: Request) {
         { language: 'asc' },
         { version: 'desc' },
       ],
+      take: 20,
       select: {
         id: true,
         title: true,
@@ -67,7 +85,9 @@ export async function GET(req: Request) {
       },
     });
 
-    return NextResponse.json({ notes });
+    const body = { notes };
+    await cacheSet(cacheKey, body, CACHE_TTL);
+    return NextResponse.json(body);
   } catch (err) {
     logger.error('/api/notes/for-topic error', { err });
     return NextResponse.json({ error: 'internal' }, { status: 500 });

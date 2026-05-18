@@ -116,6 +116,7 @@ function RowActions({
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [stuckJobs, setStuckJobs] = useState(0)
+  const pdfInputRef = React.useRef<HTMLInputElement>(null)
 
   async function call(url: string, body: Record<string, unknown>) {
     setBusy(true)
@@ -153,6 +154,32 @@ function RowActions({
       grade: row.grade,
       language: row.language,
     })
+  }
+
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('subjectId', row.subjectId)
+      form.append('grade', String(row.grade))
+      form.append('language', row.language)
+      form.append('board', row.boardSlug)
+      const r = await fetch('/api/admin/content/ingest-pdf', { method: 'POST', body: form })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.detail ?? data.error ?? 'Upload failed')
+      setMsg(`Ingested: ${data.chunksCreated} new chunks, ${data.embeddingsGenerated} embeddings`)
+      onRefresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setBusy(false)
+      if (pdfInputRef.current) pdfInputRef.current.value = ''
+    }
   }
 
   async function handleRetry() {
@@ -248,7 +275,15 @@ function RowActions({
 
       {(s === 'not_started' || s === 'ncert_only') && (
         <>
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handlePdfUpload}
+          />
           <Btn onClick={handleIngest} disabled={busy} variant="default">Ingest NCERT</Btn>
+          <Btn onClick={() => pdfInputRef.current?.click()} disabled={busy} variant="default">Upload PDF</Btn>
           <Btn onClick={handleGenerate} disabled={busy} variant="primary">Generate all</Btn>
         </>
       )}

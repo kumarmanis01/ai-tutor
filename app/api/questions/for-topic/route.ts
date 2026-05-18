@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic'
-
 /**
  * FILE OBJECTIVE:
  * - API endpoint to fetch questions/tests for a given topic.
@@ -8,14 +6,29 @@ export const dynamic = 'force-dynamic'
  * LINKED UNIT TEST:
  * - tests/unit/app/api/questions/for-topic/route.spec.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-02-03 | claude | created for cascading filters
+ * - 2026-02-03 | claude  | created for cascading filters
  * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
+ * - 2026-05-18 | claude  | add Redis cache (TTL 300 s) + take:20 pagination
  */
+
+export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { cacheGet, cacheSet } from '@/lib/cache';
+
+const CACHE_TTL = 300; // 5 minutes
+
+/** Cache key for a topic's approved tests list. */
+export function questionsForTopicCacheKey(topicId: string, difficulty: string | null, language: string | null): string {
+  return `questions:for-topic:v1:${topicId}:${difficulty ?? 'all'}:${language ?? 'all'}`;
+}
 
 /**
  * GET /api/questions/for-topic?topicId=xxx&difficulty=easy&language=en
@@ -57,6 +70,10 @@ export async function GET(req: Request) {
       where.language = language;
     }
 
+    const cacheKey = questionsForTopicCacheKey(topicId, difficulty, language);
+    const cached = await cacheGet<{ tests: unknown[] }>(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
     const tests = await prisma.generatedTest.findMany({
       where,
       orderBy: [
@@ -64,6 +81,7 @@ export async function GET(req: Request) {
         { language: 'asc' },
         { version: 'desc' },
       ],
+      take: 20,
       select: {
         id: true,
         title: true,
@@ -90,7 +108,9 @@ export async function GET(req: Request) {
       createdAt: t.createdAt,
     }));
 
-    return NextResponse.json({ tests: result });
+    const body = { tests: result };
+    await cacheSet(cacheKey, body, CACHE_TTL);
+    return NextResponse.json(body);
   } catch (err) {
     logger.error('/api/questions/for-topic error', { err });
     return NextResponse.json({ error: 'internal' }, { status: 500 });

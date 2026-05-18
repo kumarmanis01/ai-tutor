@@ -203,6 +203,7 @@ export async function bootstrapWorker() {
     {
       connection: redisConnection,
       concurrency: effectiveConcurrency,
+      lockDuration: 10 * 60 * 1000, // 10 min -- covers worst-case 3-difficulty LLM batch
     }
   );
 
@@ -212,6 +213,7 @@ export async function bootstrapWorker() {
     {
       connection: redisConnection,
       concurrency: 2,
+      lockDuration: 2 * 60 * 1000, // 2 min
     }
   );
 
@@ -221,6 +223,7 @@ export async function bootstrapWorker() {
     {
       connection: redisConnection,
       concurrency: 1,
+      lockDuration: 5 * 60 * 1000, // 5 min -- nightly batch
     }
   );
   await registerNightlySM18Job();
@@ -228,7 +231,7 @@ export async function bootstrapWorker() {
   const weeklyDigestWorker = new Worker(
     WEEKLY_DIGEST_QUEUE_NAME,
     async (_job: Job) => processWeeklyDigest(),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1, lockDuration: 5 * 60 * 1000 },
   );
   await registerWeeklyDigestJob();
   // Register daily payment dunning job
@@ -247,20 +250,19 @@ export async function bootstrapWorker() {
   const paymentDunningWorker = new Worker(
     PAYMENT_DUNNING_QUEUE_NAME,
     async (_job: Job) => processPaymentDunning(),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1, lockDuration: 2 * 60 * 1000 },
   );
 
   const installmentDunningWorker = new Worker(
     INSTALLMENT_DUNNING_QUEUE_NAME,
     async (job: Job) => processInstallmentDunning(job.data),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1, lockDuration: 2 * 60 * 1000 },
   );
-
 
   const subscriptionRenewalWorker = new Worker(
     SUBSCRIPTION_RENEWAL_QUEUE_NAME,
     async (_job: Job) => processRenewals(),
-    { connection: redisConnection, concurrency: 1 },
+    { connection: redisConnection, concurrency: 1, lockDuration: 2 * 60 * 1000 },
   );
   await registerSubscriptionRenewalJob();
 
@@ -270,31 +272,32 @@ export async function bootstrapWorker() {
     {
       connection: redisConnection,
       concurrency: 1,
+      lockDuration: 3 * 60 * 1000, // 3 min
     }
   );
 
   const distressNotificationWorker = new Worker(
     DISTRESS_NOTIFICATION_QUEUE_NAME,
     async (job: Job) => processDistressNotification(job as Job<import("../jobs/distressNotification.js").DistressNotificationJobData>),
-    { connection: redisConnection, concurrency: 2 },
+    { connection: redisConnection, concurrency: 2, lockDuration: 60 * 1000 },
   );
 
   const reteachPlanWorker = new Worker(
     RETEACH_PLAN_QUEUE_NAME,
     async (job: Job) => processReteachPlan(job as Job<import("../jobs/reteachPlan.js").ReteachPlanJobData>),
-    { connection: redisConnection, concurrency: 2 },
+    { connection: redisConnection, concurrency: 2, lockDuration: 3 * 60 * 1000 },
   );
 
   const diagnosticAutoSubmitWorker = new Worker(
     DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME,
     async (job: Job) => processDiagnosticAutoSubmit(job as Job<import("../jobs/diagnosticAutoSubmit.js").DiagnosticAutoSubmitJobData>),
-    { connection: redisConnection, concurrency: 2 },
+    { connection: redisConnection, concurrency: 2, lockDuration: 60 * 1000 },
   );
 
   const aiWorker = new Worker(
     AI_REQUEST_QUEUE,
     async (job: Job) => processAIRequest(job),
-    { connection: redisConnection, concurrency: Number(process.env.AI_WORKER_CONCURRENCY || 2) },
+    { connection: redisConnection, concurrency: Number(process.env.AI_WORKER_CONCURRENCY || 2), lockDuration: 5 * 60 * 1000 },
   );
 
   const analyticsIngestWorker = new Worker<AnalyticsIngestPayload>(
@@ -303,6 +306,7 @@ export async function bootstrapWorker() {
     {
       connection: redisConnection,
       concurrency: Number(process.env.ANALYTICS_INGEST_BATCH_SIZE || 500),
+      lockDuration: 60 * 1000, // 1 min -- ingest jobs are fast
       removeOnComplete: { count: 200 },
       removeOnFail: { count: 50 },
     },

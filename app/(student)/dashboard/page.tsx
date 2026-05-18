@@ -25,6 +25,7 @@
  * - 2026-05-12T00:00:00Z | copilot | prevent incomplete-profile fallback subject exposure when enrollment data is missing
  * - 2026-05-17T00:00:00Z | copilot | revamp dashboard UI: welcome banner, missions hero/row, pick-next,
  *                          stats row (week+level+leaderboard), exam readiness with chapter mastery
+ * - 2026-05-18T00:00:00Z | copilot | fix: mark xpBySourceRaw as intentionally unused by prefixing with _ to satisfy ESLint
  */
 
 import type { Metadata } from 'next'
@@ -98,7 +99,7 @@ export default async function StudentHomeDashboardPage() {
     learningPlans,
     weeklyActivity,
     xpThisWeekResult,
-    xpBySourceRaw,
+    _xpBySourceRaw,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },

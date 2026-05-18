@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-01-22T04:10:00Z | copilot | Rewrote approval API to properly update status field
  * - 2026-01-22T06:55:00Z | copilot | Added support for all hydrated content types: syllabus, chapters, topics
+ * - 2026-05-18T00:00:00Z | claude  | feat: invalidate notes/questions Redis cache on approval so students see changes without TTL wait
  */
 
 import { prisma } from "@/lib/prisma";
@@ -20,6 +21,7 @@ import { logger } from "@/lib/logger";
 import { getServerSessionForHandlers } from "@/lib/session";
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
+import { cacheDelPattern } from '@/lib/cache';
 
 const SUPPORTED_TYPES = ['syllabus', 'chapter', 'topic', 'note', 'test'] as const;
 type ContentType = typeof SUPPORTED_TYPES[number];
@@ -74,18 +76,28 @@ export async function POST(req: Request) {
           data: { status: newStatus as 'draft' | 'approved' | 'rejected' },
         });
         break;
-      case 'note':
-        await db.topicNote.update({
+      case 'note': {
+        const updatedNote = await db.topicNote.update({
           where: { id },
           data: { status: newStatus as 'draft' | 'approved' | 'rejected' },
+          select: { topicId: true },
         });
+        // Invalidate serving-layer caches for this topic's notes
+        await cacheDelPattern(`notes:for-topic:v1:${updatedNote.topicId}:*`);
+        await cacheDelPattern(`notes:topic-note:v1:${id}`);
+        await cacheDelPattern(`notes:topic-content:v1:${updatedNote.topicId}:*`);
         break;
-      case 'test':
-        await db.generatedTest.update({
+      }
+      case 'test': {
+        const updatedTest = await db.generatedTest.update({
           where: { id },
           data: { status: newStatus as 'draft' | 'approved' | 'rejected' },
+          select: { topicId: true },
         });
+        // Invalidate serving-layer caches for this topic's questions
+        await cacheDelPattern(`questions:for-topic:v1:${updatedTest.topicId}:*`);
         break;
+      }
     }
 
     // Resolve the canonical DB user id for auditing. If the session identity
