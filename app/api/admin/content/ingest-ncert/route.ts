@@ -20,10 +20,18 @@ import { logger } from '@/lib/logger'
 const SUBJECT_SLUG_MAP: Record<string, string> = {
   mathematics: 'mathematics',
   math: 'mathematics',
+  maths: 'mathematics',
   science: 'science',
   physics: 'physics',
   chemistry: 'chemistry',
   biology: 'biology',
+  english: 'english',
+  hindi: 'hindi',
+  'social science': 'social-science',
+  'social-science': 'social-science',
+  'social studies': 'social-science',
+  sst: 'social-science',
+  social: 'social-science',
 }
 
 export async function POST(req: Request) {

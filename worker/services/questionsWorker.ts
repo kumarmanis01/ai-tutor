@@ -112,18 +112,18 @@ function dedupeQuestionsForPersistence(questions: any[]): any[] {
 }
 
 /**
- * Returns the validated question count per difficulty level.
- * Reads from VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY env, defaulting to 2 when LLM_MODE=real.
- * Applies this value as a HARD CAP even when a higher per-job override is provided by the reconciler.
+ * Returns the question count per difficulty level.
+ * Reads from VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY env, defaulting to 10.
+ * 10 questions per difficulty gives enough supply for PRACTICE(5)+TEST(5)+PRACTICE_MORE(5)
+ * with random sampling so students see variety across sessions.
+ * Applies this value as a HARD CAP even when a higher per-job override is provided.
  */
 function getValidationQuestionCount(jobOverride?: number): number {
   const envCap = Number(process.env.VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY || 0);
   const baseCap =
     envCap > 0
       ? envCap
-      : process.env.LLM_MODE === 'real'
-      ? 2
-      : 5;
+      : 10;
 
   if (jobOverride != null && Number.isFinite(jobOverride) && jobOverride > 0) {
     return Math.min(jobOverride, baseCap);

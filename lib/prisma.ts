@@ -40,10 +40,29 @@ function buildDatabaseUrl(): string | undefined {
   return `${base}${sep}connection_limit=${limit}&pool_timeout=20`;
 }
 
-const client = g.prisma ?? new PrismaClient({
+const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_THRESHOLD_MS || 500);
+
+const rawClient = new PrismaClient({
   datasources: { db: { url: buildDatabaseUrl() } },
-  log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
+  log: process.env.NODE_ENV === 'test' ? [] : ['warn', 'error'],
 });
+
+// Slow query logging middleware -- logs any query exceeding SLOW_QUERY_THRESHOLD_MS
+const client: PrismaClient = g.prisma ?? (process.env.NODE_ENV !== 'test'
+  ? (rawClient.$extends({
+      query: {
+        async $allOperations({ operation, model, args, query }: { operation: string; model?: string; args: unknown; query: (args: unknown) => Promise<unknown> }) {
+          const t0 = Date.now();
+          const result = await query(args);
+          const dur = Date.now() - t0;
+          if (dur >= SLOW_QUERY_MS) {
+            logger.warn('[slow_query]', { event: 'slow_query', context: { model, operation, durationMs: dur, threshold: SLOW_QUERY_MS } });
+          }
+          return result;
+        },
+      },
+    }) as unknown as PrismaClient)
+  : rawClient);
 
 if (process.env.NODE_ENV !== 'production') g.prisma = client;
 const prismaProxy = new Proxy(client, {

@@ -1491,6 +1491,7 @@ model Question {
   @@index([topicId])
   @@index([status])
   @@index([board, grade, subject, status])
+  @@index([topicId, difficulty, status])
 }
 
 model AttemptQuestion {
@@ -1784,6 +1785,7 @@ model GeneratedTest {
   topic      TopicDef            @relation(fields: [topicId], references: [id])
 
   @@unique([topicId, difficulty, language, version])
+  @@index([topicId, status, difficulty])
 }
 
 model GeneratedQuestion {
@@ -1798,6 +1800,8 @@ model GeneratedQuestion {
   sourceJobId String?
   createdAt   DateTime      @default(now())
   test        GeneratedTest @relation(fields: [testId], references: [id])
+
+  @@index([testId])
 }
 
 model AIContentLog {

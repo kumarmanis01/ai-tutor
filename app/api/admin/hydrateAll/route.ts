@@ -82,10 +82,11 @@ const AVG_TOPICS_PER_CHAPTER = 5;
 const NOTES_PER_TOPIC = 1;
 
 // Validation run hard caps -- enforced when LLM_MODE=real or LLM_SAFE_MODE=true
-// Total max: 2 chapters × 2 topics × 3 difficulties × 2 questions = 24 questions
+// Full run: 2 chapters x 2 topics x 3 difficulties x 10 questions = 120 questions per subject
+// Provides enough supply for PRACTICE(5) + TEST(5) + PRACTICE_MORE(5) per session phase
 const VALIDATION_CAP_CHAPTERS = 2;
 const VALIDATION_CAP_TOPICS_PER_CHAPTER = 2;
-const VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY = 2;
+const VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY = 10;
 
 // ============================================
 // Helper Functions

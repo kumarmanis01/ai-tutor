@@ -38,6 +38,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { cacheGet, cacheSet } from '@/lib/cache';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 import type { Prisma } from '@prisma/client';
 import {
@@ -47,6 +48,9 @@ import {
 } from '@/lib/session/sessionEngine';
 import { resolveTargetDifficulty } from '@/lib/ai/adaptiveDifficulty';
 import { buildQuestionContentKey } from '@/lib/session/questionContentKey';
+
+const OVERVIEW_CACHE_TTL = 600;
+const EXPLANATION_CACHE_TTL = 900;
 
 // ─── Session Meta Keys ────────────────────────────────────────────────────────
 
@@ -239,6 +243,10 @@ export async function resolvePhaseContent(
  * blocked from entering the session.
  */
 async function resolveOverview(topicId: string): Promise<PhaseContentData> {
+  const cacheKey = `phase:overview:v1:${topicId}`;
+  const cached = await cacheGet<PhaseContentData>(cacheKey);
+  if (cached) return cached;
+
   // Fetch the topic itself for name/subject/chapter metadata.
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
@@ -294,7 +302,7 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
     (p) => PHASE_METADATA[p].upcomingLabel!,
   );
 
-  return {
+  const result: PhaseContentData = {
     type: 'overview',
     topicName: topic.name,
     subject: topic.chapter.subject.name,
@@ -303,6 +311,8 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
     objectives,
     upcomingPhases,
   };
+  await cacheSet(cacheKey, result, OVERVIEW_CACHE_TTL);
+  return result;
 }
 
 /**
@@ -312,25 +322,21 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
  * are never blocked even during content review.
  */
 async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
+  const cacheKey = `phase:explanation:v1:${topicId}`;
+  const cached = await cacheGet<PhaseContentData>(cacheKey);
+  if (cached) return cached;
+
+  // Single query: approved preferred (status asc = 'approved' < 'draft'), latest version first.
   const note = await prisma.topicNote.findFirst({
-    where: { topicId, lifecycle: 'active', status: 'approved' },
-    orderBy: [{ version: 'desc' }],
+    where: { topicId, lifecycle: 'active' },
+    orderBy: [{ status: 'asc' }, { version: 'desc' }],
     select: { id: true, title: true, contentJson: true },
   });
 
   if (note) {
-    return { type: 'explanation', noteId: note.id, title: note.title, contentJson: note.contentJson };
-  }
-
-  // Draft fallback.
-  const draft = await prisma.topicNote.findFirst({
-    where: { topicId, lifecycle: 'active' },
-    orderBy: [{ version: 'desc' }],
-    select: { id: true, title: true, contentJson: true },
-  });
-
-  if (draft) {
-    return { type: 'explanation', noteId: draft.id, title: draft.title, contentJson: draft.contentJson };
+    const result: PhaseContentData = { type: 'explanation', noteId: note.id, title: note.title, contentJson: note.contentJson };
+    await cacheSet(cacheKey, result, EXPLANATION_CACHE_TTL);
+    return result;
   }
 
   logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'EXPLANATION', topicId });
