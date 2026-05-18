@@ -22,6 +22,7 @@ import Leaderboard from '@/components/Leaderboard';
 import WeeklyChallenge from '@/components/WeeklyChallenge';
 import { ShareDropdown } from '@/components/Profile/ShareDropdown';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
+import BadgeIcon, { BADGE_ACCENT } from '@/components/UI/design-system/BadgeIcon';
 
 export type BadgeView = {
   id: string;
@@ -150,14 +151,11 @@ export default function ProfileWidgets({
                   data-testid="badge-card"
                   className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card"
                 >
-                  <span
-                    className={[
-                      'text-2xl shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-primary-bg',
-                      showcased ? 'ring-2 ring-primary ring-offset-2 ring-offset-card' : '',
-                    ].filter(Boolean).join(' ')}
-                  >
-                    {b.icon ?? '\u{1F3C5}'}
-                  </span>
+                  <BadgeIcon
+                    badgeId={b.id}
+                    accent={BADGE_ACCENT[b.id] ?? undefined}
+                    showcased={showcased}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{b.name}</div>
                     {b.description && (
@@ -202,7 +200,7 @@ export default function ProfileWidgets({
                       isSelected ? 'bg-primary/10 border-primary' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                     }`}
                   >
-                    <span className="text-2xl">{b.icon ?? '🏅'}</span>
+                    <BadgeIcon badgeId={b.id} accent={BADGE_ACCENT[b.id] ?? undefined} />
                     <div className="min-w-0">
                       <div className="font-medium truncate">{b.name}</div>
                       {b.description && <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{b.description}</div>}
