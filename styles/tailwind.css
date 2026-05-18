@@ -73,6 +73,25 @@
   --radius-md: 0.5rem;   /* brand.ts: BRAND_RADIUS.md  */
   --radius-lg: 0.75rem;  /* brand.ts: BRAND_RADIUS.lg  */
   --radius-xl: 1rem;     /* brand.ts: BRAND_RADIUS.xl  */
+
+  /* -- Design system additions -- */
+  --color-surface-warm: #FBF8F1;
+  --color-surface-sunk: #F5F1E8;
+  --color-ink-2: #4A4458;
+  --color-ink-4: #A8A2B8;
+  --color-primary-shadow: #3A2F8C;
+  --color-warning-shadow: #7E4F0F;
+  --color-success-shadow: #176A4F;
+  --subject-hindi:    #A33B6E;
+  --subject-hindi-bg: #FBEAF1;
+  --color-fair-text:     #BA7517;
+  --color-fair-fill:     #E89645;
+  --color-on-track-text: #534AB7;
+  --color-on-track-fill: #7B74D4;
+  --shadow-press-primary: 0 2px 0 var(--color-primary-shadow);
+  --shadow-press-warning: 0 2px 0 var(--color-warning-shadow);
+  --shadow-press-success: 0 3px 0 var(--color-success-shadow);
+  --shadow-pop:           0 10px 30px -12px rgba(40, 30, 60, 0.18);
 }
 
 /* Dark theme -- toggled by adding class="dark" to <html> */
@@ -117,6 +136,22 @@
 
   --font-headline: 'Poppins', sans-serif;
   --font-body:     'Inter', sans-serif;
+
+  /* -- Design system additions -- */
+  --color-surface-warm: #1A1A2E;
+  --color-surface-sunk: #0F0F1F;
+  --color-ink-2: #B8B4C8;
+  --color-ink-4: #6B6680;
+  --color-primary-shadow: #1A1845;
+  --color-warning-shadow: #451A03;
+  --color-success-shadow: #14532D;
+  --subject-hindi:    #E07AAB;
+  --subject-hindi-bg: #3A1F2A;
+  --color-fair-text:     #F59E0B;
+  --color-fair-fill:     #FBBF24;
+  --color-on-track-text: #7B74D4;
+  --color-on-track-fill: #9A95E0;
+  --shadow-pop: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
 }
 
 @tailwind base;
@@ -149,4 +184,28 @@ h1, h2, h3, h4, h5, h6 {
   .bg-success-bg        { background-color: var(--color-success-bg); }
   .bg-warning-bg        { background-color: var(--color-warning-bg); }
   .bg-error-bg          { background-color: var(--color-error-bg); }
+}
+
+/* Conic-gradient progress ring (used by <Ring />) */
+.ds-ring {
+  position: relative;
+  border-radius: 9999px;
+  background: conic-gradient(
+    var(--ring-color, var(--color-primary)) calc(var(--ring-percent, 0) * 1%),
+    var(--color-border) 0
+  );
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ds-ring::after {
+  content: "";
+  position: absolute;
+  inset: var(--ring-thickness, 6px);
+  background: var(--color-card);
+  border-radius: 9999px;
+}
+.ds-ring > * {
+  position: relative;
+  z-index: 1;
 }

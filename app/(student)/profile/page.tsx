@@ -1,4 +1,5 @@
 'use client';
+
 /**
  * FILE OBJECTIVE:
  * - User profile page displaying account info, academic preferences, and widgets.
@@ -11,24 +12,66 @@
  * EDIT LOG:
  * - 2026-02-03 | claude | added academic preferences section with cascading info
  * - 2026-02-21 | claude | restored original profile page; linked to learning-goals sub-route
+ * - 2026-05-17 | claude | refactor: adopt design system primitives (Task 2 UI migration)
  */
+
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Flame, Zap, Trophy, Edit2, Shield, Target, ArrowRight } from 'lucide-react';
 import Avatar from '@/components/UI/Avatar';
 import LogoutButton from '@/components/Auth/LogoutButton';
 import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
 import { COSMETIC_ITEMS } from '@/lib/student/cosmetics';
-import { getTierColor } from '@/lib/student/xpLevels';
+import { getTierColor, getLevelTierName } from '@/lib/student/xpLevels';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
-import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
-import Link from 'next/link';
+import { LANGUAGES } from '@/components/CascadingFilters';
 import ParentAccessCard from '@/components/Profile/ParentAccessCard';
-import { useState } from 'react';
 import FontSizeToggle from '@/components/UI/FontSizeToggle';
 import { CardSkeleton } from '@/components/UI/loaders';
+import { Button } from '@/components/UI/design-system/Button';
+import { Card } from '@/components/UI/design-system/Card';
+import { Pill } from '@/components/UI/design-system/Pill';
+import { KV } from '@/components/UI/design-system/KV';
+import { SubjectChip, SubjectId } from '@/components/UI/design-system/SubjectChip';
+
+// grade/board immutable after first save -- strip from all PATCH handlers
+const SUBJECT_NAME_TO_ID: Record<string, SubjectId> = {
+  mathematics: 'mathematics', math: 'mathematics',
+  physics: 'physics',
+  chemistry: 'chemistry',
+  biology: 'biology',
+  science: 'science',
+  english: 'english',
+  'social studies': 'social', social: 'social',
+  hindi: 'hindi',
+};
+
+function SubjectTag({ name }: { name: string }) {
+  const id = SUBJECT_NAME_TO_ID[name.toLowerCase()];
+  if (id) return <SubjectChip subjectId={id} />;
+  return (
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary-bg text-primary">
+      {name}
+    </span>
+  );
+}
+
+function formatDate(val: string | Date | undefined | null): string {
+  if (!val) return '';
+  try {
+    return new Date(val).toLocaleDateString('en-IN', { year: 'numeric', month: 'long' });
+  } catch {
+    return String(val);
+  }
+}
+
+// Feature flag: never render referral UI until Task 28 ships
+const FEATURE_REFERRALS = false;
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -41,21 +84,18 @@ export default function ProfilePage() {
   const [deletionRequested, setDeletionRequested] = useState(false);
   const [showDeletionDialog, setShowDeletionDialog] = useState(false);
 
-  if (!session) return <div className="p-6">You are not signed in.</div>;
+  if (!session) return <div className="p-6 text-foreground">You are not signed in.</div>;
+
   if (loading) return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="flex flex-col md:flex-row gap-8">
-        <div className="flex-1 space-y-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="loader-shimmer w-20 h-20 rounded-full" aria-hidden="true" />
-            <div className="loader-shimmer h-8 w-48 rounded" aria-hidden="true" />
-            <div className="loader-shimmer h-4 w-32 rounded" aria-hidden="true" />
+    <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8 py-6">
+      <div className="space-y-5">
+        <div className="loader-shimmer h-40 rounded-2xl" aria-hidden="true" />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-5">
+          <div className="space-y-4">
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-        <div className="w-full md:w-80">
-          <CardSkeleton />
+          <div><CardSkeleton /></div>
         </div>
       </div>
       <span className="sr-only">Loading profile...</span>
@@ -74,255 +114,278 @@ export default function ProfilePage() {
     return profRole === 'admin' || sessRole === 'admin';
   })();
 
+  const showcaseCount = Array.isArray(profile?.preferences?.badgeShowcase)
+    ? (profile.preferences.badgeShowcase as string[]).length
+    : 0;
+
+  const displayName = profile?.name ?? session?.user?.name ?? '';
+  const displayEmail = profile?.email ?? session?.user?.email ?? '';
+  const level = profile?.level ?? 1;
+  const tierName = getLevelTierName(level);
+  const currentStreak = profile?.currentStreak ?? 0;
+  const longestStreak = profile?.longestStreak ?? 0;
+
+  const subjectDisplay: string[] =
+    profile?.resolvedSubjects && profile.resolvedSubjects.length > 0
+      ? profile.resolvedSubjects.map((s) => s.name)
+      : (profile?.subjects ?? []);
+
+  // Suppress unused-variable lint for COSMETIC_ITEMS (used for future cosmetics display)
+  void COSMETIC_ITEMS;
+
   return (
-    <div className="max-w-4xl mx-auto p-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg text-gray-900 dark:text-gray-100">
-      {/* keep redeem handler mounted */}
+    <div className="min-h-screen bg-background text-foreground">
       <AuthRedeemOnSignIn />
 
-      {/* layout: main profile on left, widgets (leaderboard/badges) on right */}
-      <div className="flex flex-col md:flex-row gap-8">
-        <main className="flex-1">
-          {/* Profile Header */}
-          <div className="flex flex-col items-center mb-8">
-            <Avatar
-              src={profile?.image ?? session?.user?.image ?? undefined}
-              alt={profile?.name ?? session?.user?.name ?? session?.user?.email ?? 'User avatar'}
-              size={80}
-              fallback={fallback}
-              tierColor={getTierColor(profile?.level ?? 1)}
-            />
-            <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
-            <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
-            <div className="mt-2 flex gap-3 items-center text-sm text-gray-600 dark:text-gray-300">
-              <div className="inline-flex items-center gap-2">
-                <span className="text-lg">🔥</span>
-                <span>
-                  {profile?.currentStreak ?? 0}d
-                  <span className="text-gray-400 ml-1">(best {profile?.longestStreak ?? 0}d)</span>
-                </span>
-              </div>
-              {profile?.preferences?.badgeShowcase && badges && badges.length > 0 && (
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-xs text-gray-400">Showcase:</span>
-                  <div className="inline-flex gap-1 flex-wrap">
-                    {((profile.preferences.badgeShowcase as string[]) || [])
-                      .map((id) => badges.find((b) => b.id === id))
-                      .filter(Boolean)
-                      .map((b) => (
-                        <span key={b!.id} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
-                          {b!.icon ?? '🏅'}
-                        </span>
-                      ))}
-                  </div>
-                </div>
-              )}
-              {profile?.cosmeticUnlocks && profile.cosmeticUnlocks.length > 0 && (
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-xs text-gray-400">Unlocked:</span>
-                  <div className="inline-flex gap-1 flex-wrap">
-                    {COSMETIC_ITEMS.filter(ci => (profile.cosmeticUnlocks ?? []).includes(ci.key)).map(ci => (
-                      <span key={ci.key} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">{ci.name}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <Link
-              href="/student/onboarding?edit=1"
-              className="mt-4 inline-block px-5 py-2 min-h-[44px] leading-[28px] bg-[#534AB7] text-white text-sm font-semibold rounded-xl hover:bg-[#4840a3] transition-colors"
-            >
-              Update Profile
-            </Link>
-            <div className="mt-3 flex gap-2 items-center">
-              <LogoutButton />
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => router.push('/admin')}
-                  className="px-3 py-1 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
-                  style={{ textDecoration: 'none' }}
-                >
-                  Admin
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Learning Goals Link */}
-          <div className="mb-6">
-            <Link
-              href="/dashboard/profile/learning-goals"
-              className="flex items-center justify-between w-full p-4 bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🎯</span>
-                <div>
-                  <p className="font-semibold text-foreground">My Learning Goals</p>
-                  <p className="text-sm text-muted-foreground">Set daily & weekly study targets</p>
-                </div>
-              </div>
-              <span className="text-muted-foreground group-hover:text-primary transition-colors text-xl">&rarr;</span>
-            </Link>
-          </div>
-
-          {/* Profile Details */}
-          <div className="grid grid-cols-1 gap-6">
-            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-              <div>
-                <span className="font-semibold">Plan:</span>{' '}
-                {profile?.plan || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Billing Cycle:</span>{' '}
-                {profile?.billingCycle || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Role:</span>{' '}
-                {profile?.role || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Member since:</span>{' '}
-                {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}
-              </div>
+      <main className="mx-auto max-w-page px-4 sm:px-6 lg:px-8 py-6 lg:py-7">
+        {/* Identity Hero */}
+        <Card variant="hero" padding="hero">
+          <div className="flex flex-col lg:flex-row items-center lg:items-start gap-5 lg:gap-6">
+            {/* Avatar */}
+            <div className="shrink-0 p-0.5">
+              <Avatar
+                src={profile?.image ?? session?.user?.image ?? undefined}
+                alt={displayName || 'User avatar'}
+                size={88}
+                fallback={fallback}
+                tierColor={getTierColor(level)}
+              />
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-              <h3 className="font-semibold text-lg mb-3">Academic Preferences</h3>
-              <div>
-                <span className="font-semibold">Language:</span>{' '}
-                {profile?.language ? (
-                  LANGUAGES.find(l => l.code === profile.language)?.name || profile.language
-                ) : (
-                  <span className="text-gray-400">Not set</span>
+            {/* Identity block */}
+            <div className="flex-1 min-w-0 text-center lg:text-left">
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Your profile</div>
+              <h1 className="text-4xl font-headline font-semibold text-foreground leading-tight truncate">
+                {displayName}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                {displayEmail}
+                {profile?.createdAt && (
+                  <>
+                    <span className="mx-1.5 opacity-40">&middot;</span>
+                    Member since {formatDate(profile.createdAt)}
+                  </>
+                )}
+              </p>
+              <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-3">
+                <Pill intent="amber" leftIcon={<Flame className="w-3 h-3" aria-hidden />}>
+                  <strong>{currentStreak}</strong>-day streak
+                  <span className="text-muted-foreground ml-1">&middot; best {longestStreak}d</span>
+                </Pill>
+                <Pill intent="primary" leftIcon={<Zap className="w-3 h-3" aria-hidden />}>
+                  Level {level} &middot; {tierName}
+                </Pill>
+                {showcaseCount > 0 && (
+                  <Pill intent="mint" leftIcon={<Trophy className="w-3 h-3" aria-hidden />}>
+                    {showcaseCount} showcased
+                  </Pill>
                 )}
               </div>
-              <div>
-                <span className="font-semibold">Board:</span>{' '}
-                {profile?.board || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Grade:</span>{' '}
-                {profile?.grade ? `Class ${profile.grade}` : <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Subjects:</span>{' '}
-                {(() => {
-                  // Prefer canonical resolved names; fall back to raw stored strings.
-                  const display: string[] =
-                    profile?.resolvedSubjects && profile.resolvedSubjects.length > 0
-                      ? profile.resolvedSubjects.map((s) => s.name)
-                      : (profile?.subjects ?? []);
-                  return display.length > 0 ? (
-                    <span className="inline-flex flex-wrap gap-1 mt-1">
-                      {display.map((name) => (
-                        <span key={name} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm">
-                          {name}
-                        </span>
-                      ))}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">Not set</span>
-                  );
-                })()}
-              </div>
-              <div>
-                <span className="font-semibold">Country:</span>{' '}
-                {profile?.country || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Parent Email:</span>{' '}
-                {profile?.parentEmail || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div className="mt-4">
-                <h4 className="font-semibold mb-2">Display</h4>
-                <div className="flex items-center justify-between">
-                  <FontSizeToggle />
-                </div>
-              </div>
             </div>
 
+            {/* Actions */}
+            <div className="flex flex-col gap-2 w-full lg:w-auto lg:min-w-[180px]">
+              <Link href="/student/onboarding?edit=1" className="block">
+                <Button variant="primary" fullWidth leftIcon={<Edit2 className="w-4 h-4" aria-hidden />}>
+                  Update profile
+                </Button>
+              </Link>
+              <LogoutButton />
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  onClick={() => router.push('/admin')}
+                >
+                  Admin panel
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-5 lg:gap-6 items-start mt-5 lg:mt-6">
+          {/* Main column */}
+          <div className="flex flex-col gap-4 lg:gap-5">
+            {/* Learning Goals Link */}
+            <Link
+              href="/dashboard/profile/learning-goals"
+              className="block"
+            >
+              <Card padding="compact">
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-xl bg-primary-bg text-primary flex items-center justify-center shrink-0">
+                    <Target className="w-5 h-5" aria-hidden />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base font-headline font-semibold text-foreground">My Learning Goals</div>
+                    <div className="text-xs text-muted-foreground">Set daily &amp; weekly study targets</div>
+                  </div>
+                  <div className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground">
+                    <ArrowRight className="w-4 h-4" aria-hidden />
+                  </div>
+                </div>
+              </Card>
+            </Link>
+
+            {/* Account & Plan */}
+            <Card>
+              <div className="flex items-baseline justify-between mb-4">
+                <div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Subscription</div>
+                  <h2 className="text-lg font-headline font-semibold">Account &amp; plan</h2>
+                </div>
+                <Button variant="ghost" size="sm">Manage &rarr;</Button>
+              </div>
+              <KV label="Plan"          value={profile?.plan} />
+              <KV label="Billing cycle" value={profile?.billingCycle} />
+              <KV label="Role"          value={profile?.role} />
+              <KV label="Member since"  value={formatDate(profile?.createdAt)} last />
+            </Card>
+
+            {/* Academic Preferences */}
+            <Card>
+              <div className="flex items-baseline justify-between mb-4">
+                <div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Learning</div>
+                  <h2 className="text-lg font-headline font-semibold">Academic preferences</h2>
+                </div>
+              </div>
+              <KV
+                label="Language"
+                value={profile?.language
+                  ? (LANGUAGES.find((l) => l.code === profile.language)?.name ?? profile.language)
+                  : null}
+              />
+              <KV label="Board"   value={profile?.board} />
+              <KV label="Grade"   value={profile?.grade ? `Class ${profile.grade}` : null} />
+              <KV
+                label="Subjects"
+                value={
+                  subjectDisplay.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {subjectDisplay.map((name) => <SubjectTag key={name} name={name} />)}
+                    </div>
+                  ) : null
+                }
+              />
+              <KV label="Country"      value={profile?.country} />
+              <KV label="Parent email" value={profile?.parentEmail} last />
+            </Card>
+
+            {/* Display & Accessibility */}
+            <Card>
+              <div className="mb-4">
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">How it looks</div>
+                <h2 className="text-lg font-headline font-semibold">Display &amp; accessibility</h2>
+              </div>
+              <div className="grid grid-cols-[120px_1fr] gap-3.5 py-3">
+                <span className="text-xs text-muted-foreground">Font size</span>
+                <span><FontSizeToggle /></span>
+              </div>
+            </Card>
+
+            {/* Parent Access */}
             <ParentAccessCard />
 
-            {/* Privacy & Data */}
-            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-red-200 dark:border-red-900 space-y-3">
-              <h3 className="font-semibold text-lg text-red-700 dark:text-red-400">Privacy &amp; Data</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                Delete my account and data
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Permanently deletes your account and personal data within 30 days.
-                Learning analytics are kept anonymously.
-              </p>
-              {deletionRequested ? (
-                <p className="text-sm text-green-700 dark:text-green-400 font-medium">
-                  Your deletion request has been submitted. You will receive a confirmation email.
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowDeletionDialog(true)}
-                  className="px-4 py-2 border border-red-500 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-sm"
-                >
-                  Request account deletion
-                </button>
-              )}
-              {showDeletionDialog && !deletionRequested && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full shadow-xl mx-4">
-                    <h4 className="font-semibold text-lg mb-2 text-gray-900 dark:text-gray-100">
-                      This cannot be undone
-                    </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                      Type <strong>DELETE</strong> to confirm account deletion:
-                    </p>
-                    <input
-                      type="text"
-                      value={deletionConfirmText}
-                      onChange={(e) => setDeletionConfirmText(e.target.value)}
-                      placeholder="DELETE"
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 mb-4 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setShowDeletionDialog(false); setDeletionConfirmText(''); }}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deletionConfirmText !== 'DELETE' || deletionPending}
-                        onClick={async () => {
-                          setDeletionPending(true);
-                          try {
-                            const res = await fetch('/api/student/account/deletion-request', { method: 'POST' });
-                            if (res.ok) {
-                              setDeletionRequested(true);
-                              setShowDeletionDialog(false);
-                              router.push('/login?message=deletion-requested');
-                            }
-                          } finally {
-                            setDeletionPending(false);
-                          }
-                        }}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {deletionPending ? 'Submitting...' : 'Confirm deletion'}
-                      </button>
+            {/* Danger Zone */}
+            <div className="border-t border-border pt-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="w-9 h-9 rounded-lg bg-error-bg text-error flex items-center justify-center shrink-0">
+                    <Shield className="w-4 h-4" aria-hidden />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">Privacy &amp; data</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Permanently deletes your account and personal data within 30 days.
                     </div>
                   </div>
                 </div>
-              )}
+                {!deletionRequested ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setShowDeletionDialog(true)}
+                  >
+                    Request deletion
+                  </Button>
+                ) : (
+                  <p className="text-sm text-success font-medium">Deletion request submitted.</p>
+                )}
+              </div>
             </div>
           </div>
-        </main>
 
-        {/* Sidebar widgets: keeps leaderboard visible but not above profile */}
-        <aside className="w-full md:w-80 flex-shrink-0 space-y-6">
-          <ProfileWidgets badges={badges} showLeaderboard showChallenge />
-        </aside>
-      </div>
+          {/* Sidebar */}
+          <aside className="flex flex-col gap-4 lg:gap-5">
+            {FEATURE_REFERRALS && (
+              <Card variant="warm">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-warning-bg text-warning flex items-center justify-center shrink-0">
+                    <Zap className="w-3.5 h-3.5" aria-hidden />
+                  </div>
+                  <h3 className="text-base font-headline font-semibold">Invite a friend</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">Earn XP when a friend joins.</p>
+                <Button variant="primary" fullWidth>Create invite</Button>
+              </Card>
+            )}
+            <ProfileWidgets badges={badges} showLeaderboard showChallenge />
+          </aside>
+        </div>
+      </main>
+
+      {/* Deletion confirmation modal */}
+      {showDeletionDialog && !deletionRequested && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-card rounded-xl p-6 max-w-sm w-full shadow-xl mx-4 border border-border">
+            <h4 className="font-headline font-semibold text-lg mb-2 text-foreground">
+              This cannot be undone
+            </h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              Type <strong>DELETE</strong> to confirm account deletion:
+            </p>
+            <input
+              type="text"
+              value={deletionConfirmText}
+              onChange={(e) => setDeletionConfirmText(e.target.value)}
+              placeholder="DELETE"
+              className="w-full border border-border rounded-lg px-3 py-2 mb-4 text-sm bg-background text-foreground"
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                fullWidth
+                onClick={() => { setShowDeletionDialog(false); setDeletionConfirmText(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                fullWidth
+                disabled={deletionConfirmText !== 'DELETE' || deletionPending}
+                onClick={async () => {
+                  setDeletionPending(true);
+                  try {
+                    const res = await fetch('/api/student/account/deletion-request', { method: 'POST' });
+                    if (res.ok) {
+                      setDeletionRequested(true);
+                      setShowDeletionDialog(false);
+                      router.push('/login?message=deletion-requested');
+                    }
+                  } finally {
+                    setDeletionPending(false);
+                  }
+                }}
+              >
+                {deletionPending ? 'Submitting...' : 'Confirm deletion'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,7 +20,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import InviteButton from '@/components/InviteButton';
 import Leaderboard from '@/components/Leaderboard';
 import WeeklyChallenge from '@/components/WeeklyChallenge';
-import ShareBadge from '@/components/ShareBadge';
+import { ShareDropdown } from '@/components/Profile/ShareDropdown';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 
 export type BadgeView = {
@@ -129,44 +129,49 @@ export default function ProfileWidgets({
 
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">Badges</h3>
+          <h3 className="text-lg font-headline font-semibold">Badges</h3>
           <button
             type="button"
             onClick={() => setShowManage(true)}
-            className="text-sm px-3 py-1 bg-primary text-white rounded-md hover:opacity-95"
+            className="text-sm px-3 min-h-[44px] py-2 rounded-lg border border-border text-foreground hover:bg-surface-sunk"
           >
-            Manage Showcase
+            Manage showcase
           </button>
         </div>
 
-        <div className="flex gap-3 flex-wrap max-w-full overflow-hidden" data-testid="badges-grid">
+        <div className="flex flex-col gap-2" data-testid="badges-grid">
           {orderedBadges && orderedBadges.length > 0 ? (
             orderedBadges.map((b) => {
-              const highlighted = Array.isArray(prefs?.badgeShowcase) && prefs.badgeShowcase.includes(b.id);
+              const showcased = Array.isArray(prefs?.badgeShowcase) && prefs.badgeShowcase.includes(b.id);
               return (
                 <div
                   key={b.id}
                   id={`badge-${b.id}`}
-                  className={`w-full min-w-0 max-w-full overflow-hidden flex flex-col gap-3 bg-white dark:bg-gray-900 px-3 py-2 rounded shadow-sm sm:flex-row sm:items-center ${
-                    highlighted ? 'ring-2 ring-primary' : ''
-                  }`}
                   data-testid="badge-card"
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card"
                 >
-                  <span className="text-2xl shrink-0">{b.icon ?? '🏅'}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{b.name}</div>
+                  <span
+                    className={[
+                      'text-2xl shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-primary-bg',
+                      showcased ? 'ring-2 ring-primary ring-offset-2 ring-offset-card' : '',
+                    ].filter(Boolean).join(' ')}
+                  >
+                    {b.icon ?? '\u{1F3C5}'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{b.name}</div>
                     {b.description && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{b.description}</div>
+                      <div className="text-xs text-muted-foreground truncate">{b.description}</div>
                     )}
                   </div>
-                  <div className="w-full sm:w-auto sm:ml-auto" data-testid="badge-card-actions">
-                    <ShareBadge badgeId={b.id} title={b.name} description={b.description ?? undefined} />
+                  <div data-testid="badge-card-actions">
+                    <ShareDropdown badgeId={b.id} title={b.name} description={b.description ?? undefined} />
                   </div>
                 </div>
               );
             })
           ) : (
-            <div className="text-sm text-gray-500">No badges yet</div>
+            <div className="text-sm text-muted-foreground">No badges yet</div>
           )}
         </div>
       </section>

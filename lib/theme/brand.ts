@@ -92,6 +92,36 @@ export const BRAND_COLORS = {
   // AI chat bubble colours
   userBubble: '#DCF8C6',
   aiBubble: '#F1F0F0',
+
+  // Surface layer -- warm cream for hero banners, sidebar warm cards
+  surfaceWarm: '#FBF8F1',
+  surfaceSunk: '#F5F1E8',
+
+  // Extended ink scale
+  ink2: '#4A4458',
+  ink4: '#A8A2B8',
+
+  // Press-down shadow colors for buttons + day-dots
+  primaryShadow: '#3A2F8C',
+  warningShadow: '#7E4F0F',
+  successShadow: '#176A4F',
+
+  // Subject identity -- Hindi
+  subjectHindi: '#A33B6E',
+  subjectHindiBg: '#FBEAF1',
+
+  // Readiness tiers -- fair + on-track (missing from existing critical/weak/success)
+  statusFairText: '#BA7517',
+  statusFairFill: '#E89645',
+  statusOnTrackText: '#534AB7',
+  statusOnTrackFill: '#7B74D4',
+} as const;
+
+export const BRAND_SHADOWS = {
+  pressPrimary: '0 2px 0 #3A2F8C',
+  pressWarning: '0 2px 0 #7E4F0F',
+  pressSuccess: '0 3px 0 #176A4F',
+  pop: '0 10px 30px -12px rgba(40,30,60,0.18)',
 } as const;
 
 // ============================================================================
@@ -143,6 +173,7 @@ export const BRAND_RADIUS = {
   md: '0.5rem',     // 8px  -- inputs, cards (default)
   lg: '0.75rem',    // 12px -- modals, large cards
   xl: '1rem',       // 16px -- hero cards
+  xxl: '1.5rem',   // 24px -- hero banners, identity hero
   full: '9999px',   // pill -- chips, avatar rings
 } as const;
 
@@ -212,6 +243,7 @@ const brand = {
   darkColors: BRAND_DARK_COLORS,
   typography: BRAND_TYPOGRAPHY,
   radius: BRAND_RADIUS,
+  shadows: BRAND_SHADOWS,
   agePalettes: AGE_PALETTES,
 };
 

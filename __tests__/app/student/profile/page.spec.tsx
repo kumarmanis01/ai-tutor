@@ -100,6 +100,7 @@ jest.mock('@/lib/extractBadge', () => ({
 
 jest.mock('@/lib/student/xpLevels', () => ({
   getTierColor: () => '#000000',
+  getLevelTierName: () => 'Bronze',
 }))
 
 import { useSession } from 'next-auth/react'
@@ -126,7 +127,7 @@ describe('ProfilePage', () => {
   it('routes Update Profile through onboarding edit mode', () => {
     render(<ProfilePage />)
 
-    const updateProfileLink = screen.getByRole('link', { name: 'Update Profile' })
+    const updateProfileLink = screen.getByRole('link', { name: /update profile/i })
     expect(updateProfileLink.getAttribute('href')).toBe('/student/onboarding?edit=1')
   })
 })
