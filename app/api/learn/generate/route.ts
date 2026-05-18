@@ -289,7 +289,7 @@ export async function POST(req: Request) {
 
   const prompt = buildGenerationPrompt(topic, subject, grade, board, language);
 
-  let llmResponse: { content: string };
+  let llmResponse: { content: string; model?: string };
   let tokensUsed: number | undefined;
 
   try {
@@ -346,7 +346,7 @@ export async function POST(req: Request) {
       language: language as any,
       contentJson: parsed,
       generatedBy: userId,
-      model: 'gpt-4', // TODO: Get from LLM response
+      model: llmResponse.model ?? 'unknown',
       tokensUsed,
       viewCount: 1,
     },

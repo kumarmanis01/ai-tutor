@@ -29,6 +29,16 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
+process.on('unhandledRejection', (reason) => {
+  process.stderr.write(`[worker] unhandledRejection: ${reason instanceof Error ? reason.stack : String(reason)}\n`);
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+  process.stderr.write(`[worker] uncaughtException: ${err.stack ?? String(err)}\n`);
+  process.exit(1);
+});
+
 (async () => {
   try {
     // Hard fail if env is missing -- DO NOT load dotenv here

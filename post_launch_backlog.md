@@ -100,4 +100,61 @@ that still produces reliable bootstrapped mastery scores.
 
 ## Other Features
 
+### PLB-UI-LANG-01: Hindi language toggle in StickyHeader
+**Priority**: LOW
+**Owner**: Frontend
+**Trigger**: After Hindi content is live in production
+
+**What**: `components/StickyHeader.tsx` has a language toggle removed pending Hindi content availability.
+Re-add the toggle when the Hindi syllabus hydration pipeline is complete and verified.
+See: `components/StickyHeader.tsx` line 62 comment.
+
+### PLB-INFRA-01: BullMQ explicit job timeouts
+**Priority**: MEDIUM
+**Owner**: Backend
+**Trigger**: After go-live load testing
+
+**What**: BullMQ workers currently rely on the default 30-minute job timeout.
+Add explicit `timeout` values per queue (e.g., 60 000 ms for short jobs,
+300 000 ms for content hydration) to prevent zombie jobs from blocking queues.
+
+### PLB-OPS-01: PM2 log rotation configuration
+**Priority**: LOW
+**Owner**: Ops
+**Trigger**: Before 1-month post-launch review
+
+**What**: PM2 log files grow unbounded. Configure logrotate or pm2-logrotate module
+with a max file size of 50 MB and 7-day retention for all three processes
+(ai-tutor-web, content-engine-worker, ai-tutor-scheduler).
+
+### PLB-PERF-01: Hydration and slow-query metrics in daily admin report
+**Priority**: MEDIUM
+**Owner**: Backend
+**Trigger**: After stable production baseline (1 week post-launch)
+
+**What**: `worker/services/costReportingWorker.ts` daily email covers AI cost and cache hit rate.
+Extend with: hydration job completion/failure counts (from HydrationJob table),
+slow query aggregation (from prisma slow-query logs), and worker queue depth.
+Recipient: feedback@spinzyacademy.com alongside ONCALL_EMAIL.
+
+### PLB-INFRA-02: Centralised env schema validation (Zod)
+**Priority**: MEDIUM
+**Owner**: Backend
+**Trigger**: After go-live stabilisation
+
+**What**: Environment variables are validated ad-hoc (string comparisons, parseInt with defaults).
+Create `lib/envSchema.ts` with a Zod schema covering all required vars, run it at
+process startup for both web and worker, and fail fast with a clear error message
+if any required var is missing or invalid.
+
+### PLB-INFRA-03: NEXT_PUBLIC_SENTRY_DSN / SENTRY_DSN in ecosystem.config.cjs
+**Priority**: HIGH
+**Owner**: Ops
+**Trigger**: Before go-live
+
+**What**: Sentry is integrated (sentry.server.config.ts, sentry.client.config.ts) but
+NEXT_PUBLIC_SENTRY_DSN / SENTRY_DSN are absent from ecosystem.config.cjs env_production blocks.
+Sentry is silently disabled in production. Add the DSN values to the PM2 env_production
+blocks for all three processes (web, worker, scheduler) to activate error tracking.
+
 *(Add future backlog items here as they are identified during the sprint)*

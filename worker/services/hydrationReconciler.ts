@@ -28,6 +28,8 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { logger } from '@/lib/logger.js';
+import { sendMailSafe } from '@/lib/mailer.js';
+import { HYDRATION_GENERATION_REPORT_EMAIL } from '@/lib/email/functionalityEmails.js';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 import { JobType, DifficultyLevel } from '@prisma/client';
@@ -605,6 +607,38 @@ export class HydrationReconciler {
           tokensUsed,
           failedChildren,
         },
+      });
+
+      const subject = rootJob.subject ?? rootJob.subjectId ?? 'unknown';
+      const statusLabel = finalStatus === JobStatus.Completed ? 'Completed' : 'Completed with failures';
+      await sendMailSafe({
+        to: HYDRATION_GENERATION_REPORT_EMAIL,
+        subject: `[Spinzy] Hydration generation ${statusLabel} -- ${subject}`,
+        text: [
+          `Hydration generation report`,
+          `Root job: ${rootJob.id}`,
+          `Subject: ${subject}`,
+          `Status: ${statusLabel}`,
+          ``,
+          `Content counts:`,
+          `  Chapters: ${chapters}`,
+          `  Topics:   ${topics}`,
+          `  Notes:    ${notes}`,
+          `  Questions: ${questions}`,
+          ``,
+          `LLM usage:`,
+          `  Calls:  ${totalLLMCalls}`,
+          `  Tokens: ${tokensUsed}`,
+          ``,
+          failedChildren > 0 ? `FAILURES: ${failedChildren} child jobs failed -- check PM2 logs for rootJobId ${rootJob.id}` : 'No failures.',
+        ].join('\n'),
+        html: `<pre style="font-family:monospace;font-size:13px">`
+          + `<b>Hydration generation report</b>\n`
+          + `Root job: ${rootJob.id}\nSubject: ${subject}\nStatus: <b>${statusLabel}</b>\n\n`
+          + `Chapters: ${chapters}  Topics: ${topics}  Notes: ${notes}  Questions: ${questions}\n`
+          + `LLM calls: ${totalLLMCalls}  Tokens: ${tokensUsed}\n`
+          + (failedChildren > 0 ? `\n<b style="color:red">FAILURES: ${failedChildren} child jobs failed</b>` : `\nNo failures.`)
+          + `</pre>`,
       });
     } catch (summaryErr: any) {
       logger.warn('Failed to compute validation summary', { rootJobId: rootJob.id, error: summaryErr?.message });

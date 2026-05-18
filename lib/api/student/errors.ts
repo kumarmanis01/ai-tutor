@@ -15,6 +15,7 @@
  * - 2026-02-04 | claude | created error handling utilities
  */
 
+import { logger } from '@/lib/logger';
 import type { ApiError, ApiResponse, ResponseMeta } from './schemas';
 import { ERROR_CODES, type ErrorCode } from './schemas';
 
@@ -244,9 +245,7 @@ export function handleError<T>(
   }
 
   if (error instanceof Error) {
-    // Log the actual error internally (console.error removed for production)
-    // TODO: Use proper logging service (Sentry, Winston, etc.)
-
+    logger.error('student.api.unhandled_error', { message: error.message, stack: error.stack });
     return {
       response: buildErrorResponse<T>(
         ERROR_CODES.INTERNAL_ERROR,
