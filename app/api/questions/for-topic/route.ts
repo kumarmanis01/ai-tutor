@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic'
-
 /**
  * FILE OBJECTIVE:
  * - API endpoint to fetch questions/tests for a given topic.
@@ -8,11 +6,17 @@ export const dynamic = 'force-dynamic'
  * LINKED UNIT TEST:
  * - tests/unit/app/api/questions/for-topic/route.spec.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-02-03 | claude | created for cascading filters
+ * - 2026-02-03 | claude  | created for cascading filters
  * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
- * - 2026-05-18 | claude | add Redis cache (TTL 300 s) + take:20 pagination
+ * - 2026-05-18 | claude  | add Redis cache (TTL 300 s) + take:20 pagination
  */
+
+export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';

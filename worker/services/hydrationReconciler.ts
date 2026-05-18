@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-04-23T00:00:00Z | copilot | fix(strict): add typed groupBy handling, annotate callbacks, guard Promise.all types
  * - 2026-05-18T00:00:00Z | claude | feat: send generation validation summary email to HYDRATION_GENERATION_REPORT_EMAIL on root job completion
+ * - 2026-05-18T00:00:00Z | claude  | fix: remove take-based cap from createLevel2Jobs/createLevel3Jobs -- it caused permanent truncation (topics beyond cap were never enqueued after first reconciler run)
  *
  * RESPONSIBILITIES:
  * - Poll root HydrationJobs with incomplete children
@@ -38,9 +39,13 @@ import { JobType, DifficultyLevel } from '@prisma/client';
 const RECONCILER_LOCK_NAME = 'hydration_reconciler';
 const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
-// Cap total topics fetched per subject per reconciler run (0 = unlimited).
-// Guards against unbounded scans on large subjects. Override via env.
-const TOPICS_PER_SUBJECT_CAP = Number(process.env.RECONCILER_TOPICS_PER_SUBJECT_CAP || 0);
+// RECONCILER_TOPICS_PER_SUBJECT_CAP is intentionally NOT used in findMany.
+// Applying a `take` cap to the initial topic fetch caused permanent truncation:
+// once any Level2/Level3 children existed the reconciler returned early, so
+// topics beyond the cap were never enqueued. Cap logic belongs in hydrateAll,
+// not in the reconciler which must process ALL topics for a root job.
+// The env var is kept in place so existing configs don't break.
+const _TOPICS_PER_SUBJECT_CAP_UNUSED = process.env.RECONCILER_TOPICS_PER_SUBJECT_CAP;
 
 // ============================================
 // Main Reconciler Class
@@ -279,7 +284,6 @@ export class HydrationReconciler {
       },
       include: { chapter: { select: { id: true } } },
       orderBy: { order: 'asc' },
-      ...(TOPICS_PER_SUBJECT_CAP > 0 ? { take: TOPICS_PER_SUBJECT_CAP } : {}),
     });
 
     // ── Validation cap: limit topics per chapter ──
@@ -348,7 +352,6 @@ export class HydrationReconciler {
         lifecycle: 'active',
       },
       include: { chapter: { select: { id: true } } },
-      ...(TOPICS_PER_SUBJECT_CAP > 0 ? { take: TOPICS_PER_SUBJECT_CAP } : {}),
     });
 
     const inputParams = rootJob.inputParams || {};

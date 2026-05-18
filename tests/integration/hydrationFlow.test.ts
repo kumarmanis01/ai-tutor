@@ -1,3 +1,17 @@
+/**
+ * FILE OBJECTIVE:
+ * - Integration test: syllabus -> notes -> questions -> assembleTest with full prisma mock.
+ *
+ * LINKED UNIT TEST: (this file is the test)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18 | claude | created; updated to use legacyHydrationHelpers; added full prisma mock
+ */
+
 import handleSyllabusJob from '@/worker/services/syllabusWorker'
 import { runLegacyNotesHydrate, runLegacyQuestionsHydrate } from '../helpers/legacyHydrationHelpers'
 import { assembleTest } from '@/hydrators/assembleTest'

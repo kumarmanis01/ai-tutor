@@ -14,6 +14,7 @@
  * EDIT LOG:
  * - 2026-01-22T02:20:00Z | copilot | Phase 3: Created notes worker handler
  * - 2026-01-23T10:00:00Z | copilot | Enhanced prompt with comprehensive schema (sections, keyTerms, practiceQuestions, etc.)
+ * - 2026-05-18T00:00:00Z | claude  | feat: notes now soft-approved (status: Approved) immediately on write; invalidates notes cache after completion
  */
 
 import { prisma } from '@/lib/prisma.js';
