@@ -204,7 +204,7 @@ const PricingSection = () => {
                     href="/auth/get-started"
                     className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
                       plan.recommended
-                        ? 'bg-brand-primary text-white hover:bg-brand-primary-hover shadow-lg'
+                        ? 'bg-primary text-white hover:bg-primary-hover shadow-lg'
                         : 'bg-secondary text-white hover:bg-secondary/90'
                     }`}
                   >

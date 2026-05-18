@@ -22,7 +22,7 @@ const FinalCTA = () => {
           <div className="flex justify-center">
             <Link
               href="/auth/get-started"
-              className="inline-flex items-center gap-2 px-8 py-4 md:px-10 md:py-5 min-h-[44px] bg-white text-brand-primary font-cta font-bold rounded-lg hover:bg-white/90 transition-all text-lg md:text-xl shadow-xl"
+              className="inline-flex items-center gap-2 px-8 py-4 md:px-10 md:py-5 min-h-[44px] bg-white text-primary font-cta font-bold rounded-lg hover:bg-white/90 transition-all text-lg md:text-xl shadow-xl"
             >
               <Icon name="SparklesIcon" size={24} variant="solid" />
                 Start For Free

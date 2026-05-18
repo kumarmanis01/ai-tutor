@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 import { LANDING_FOOTER_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 
@@ -45,12 +46,18 @@ const Footer = () => {
             </p>
 
             <div className="flex flex-wrap gap-3 items-center mb-4">
-              <a
+              <Link
                 href="/auth/get-started"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-lg text-sm font-semibold shadow-sm hover:bg-brand-primary-hover transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold shadow-sm hover:bg-primary-hover transition-colors"
               >
-                Start For Free
-              </a>
+                Get started free
+              </Link>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center gap-2 px-4 py-2 border border-white/30 text-white rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
+              >
+                Log in
+              </Link>
             </div>
 
             {/* contact icons moved to Support column for balanced layout */}
