@@ -15,7 +15,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import { unlockCosmeticsForStreak } from '@/lib/student/cosmetics'
+import { unlockCosmeticsForStreak } from '@/lib/student/cosmetics-service'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 import { buildMilestoneTemplate } from '@/lib/whatsapp/templates'
 import { milestoneEmailHtml } from '@/lib/email/templates'
