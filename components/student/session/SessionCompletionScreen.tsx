@@ -40,6 +40,7 @@ import { useRouter } from 'next/navigation';
 import { buildShareableSessionSummary } from '@/lib/student/sessionSummary'
 import styles from './SessionCompletionScreen.module.css'
 import { buildWhatsAppShareUrl } from '@/lib/student/sessionShare'
+import BadgeIcon, { BADGE_ACCENT } from '@/components/UI/design-system/BadgeIcon'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -93,22 +94,7 @@ const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
   size: i % 3 === 0 ? 10 : 7,
 }));
 
-// ── Badge icon map (icon key → emoji) ─────────────────────────────────────────
-
-const BADGE_EMOJI: Record<string, string> = {
-  fire:      '🔥',
-  trophy:    '🏆',
-  diamond:   '💎',
-  crown:     '👑',
-  lightning: '⚡',
-  muscle:    '💪',
-  star:      '⭐',
-}
-
-function badgeEmoji(icon?: string): string {
-  if (!icon) return '🏅'
-  return BADGE_EMOJI[icon] ?? '🏅'
-}
+// Badge glyphs are rendered via the centralized `BadgeIcon` component.
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -212,7 +198,7 @@ function BadgesEarnedSection({
             key={b.name}
             className="flex items-center gap-3 rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-4 py-3"
           >
-            <span className="text-2xl leading-none" aria-hidden>{badgeEmoji(b.icon)}</span>
+            <BadgeIcon badgeId={b.icon ?? ''} accent={BADGE_ACCENT[b.icon ?? ''] ?? undefined} />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 leading-tight truncate">
                 {b.name}
