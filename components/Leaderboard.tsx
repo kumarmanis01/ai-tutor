@@ -1,4 +1,4 @@
-'/**
+/**
  * FILE OBJECTIVE:
  * - Leaderboard component showing top students with rank chip + avatar.
  *
