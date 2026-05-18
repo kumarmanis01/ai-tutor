@@ -47,4 +47,13 @@ describe('courses API', () => {
     const res2 = await single.GET(undefined as any, { params: { syllabusId: 's1', version: '9' } } as any)
     expect(res2.status).toBe(404)
   })
+
+  test('GET /api/courses returns 500 with structured error when DB rejects', async () => {
+    ;(mockPrisma.coursePackage.findMany as jest.Mock).mockRejectedValue(new Error('db connection lost'))
+
+    const res = await listing.GET()
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data).toMatchObject({ code: 'INTERNAL_ERROR', message: expect.any(String) })
+  })
 })

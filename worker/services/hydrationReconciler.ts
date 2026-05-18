@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-23T00:00:00Z | copilot | fix(strict): add typed groupBy handling, annotate callbacks, guard Promise.all types
+ * - 2026-05-18T00:00:00Z | claude | feat: send generation validation summary email to HYDRATION_GENERATION_REPORT_EMAIL on root job completion
  * - 2026-05-18T00:00:00Z | claude  | fix: remove take-based cap from createLevel2Jobs/createLevel3Jobs -- it caused permanent truncation (topics beyond cap were never enqueued after first reconciler run)
  *
  * RESPONSIBILITIES:
@@ -29,6 +30,8 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { logger } from '@/lib/logger.js';
+import { sendMailSafe } from '@/lib/mailer.js';
+import { HYDRATION_GENERATION_REPORT_EMAIL } from '@/lib/email/functionalityEmails.js';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 import { JobType, DifficultyLevel } from '@prisma/client';
@@ -581,8 +584,9 @@ export class HydrationReconciler {
         prisma.topicDef.count({ where: { chapter: { subjectId }, lifecycle: 'active' } }),
         prisma.topicNote.count({ where: { topic: { chapter: { subjectId } } } }),
         prisma.generatedQuestion.count({ where: { test: { topic: { chapter: { subjectId } } } } }),
+        // Scope to this job's window to avoid counting historical logs for the same subject
         prisma.aIContentLog.findMany({
-          where: { subject: rootJob.subject },
+          where: { subject: rootJob.subject, createdAt: { gte: rootJob.createdAt } },
           select: { tokensUsed: true, success: true },
         }),
       ]);
@@ -608,6 +612,39 @@ export class HydrationReconciler {
           tokensUsed,
           failedChildren,
         },
+      });
+
+      const subject = rootJob.subject ?? rootJob.subjectId ?? 'unknown';
+      const subjectSafe = subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const statusLabel = finalStatus === JobStatus.Completed ? 'Completed' : 'Completed with failures';
+      await sendMailSafe({
+        to: HYDRATION_GENERATION_REPORT_EMAIL,
+        subject: `[Spinzy] Hydration generation ${statusLabel} -- ${subject}`,
+        text: [
+          `Hydration generation report`,
+          `Root job: ${rootJob.id}`,
+          `Subject: ${subject}`,
+          `Status: ${statusLabel}`,
+          ``,
+          `Content counts:`,
+          `  Chapters: ${chapters}`,
+          `  Topics:   ${topics}`,
+          `  Notes:    ${notes}`,
+          `  Questions: ${questions}`,
+          ``,
+          `LLM usage:`,
+          `  Calls:  ${totalLLMCalls}`,
+          `  Tokens: ${tokensUsed}`,
+          ``,
+          failedChildren > 0 ? `FAILURES: ${failedChildren} child jobs failed -- check PM2 logs for rootJobId ${rootJob.id}` : 'No failures.',
+        ].join('\n'),
+        html: `<pre style="font-family:monospace;font-size:13px">`
+          + `<b>Hydration generation report</b>\n`
+          + `Root job: ${rootJob.id}\nSubject: ${subjectSafe}\nStatus: <b>${statusLabel}</b>\n\n`
+          + `Chapters: ${chapters}  Topics: ${topics}  Notes: ${notes}  Questions: ${questions}\n`
+          + `LLM calls: ${totalLLMCalls}  Tokens: ${tokensUsed}\n`
+          + (failedChildren > 0 ? `\n<b style="color:red">FAILURES: ${failedChildren} child jobs failed</b>` : `\nNo failures.`)
+          + `</pre>`,
       });
     } catch (summaryErr: any) {
       logger.warn('Failed to compute validation summary', { rootJobId: rootJob.id, error: summaryErr?.message });

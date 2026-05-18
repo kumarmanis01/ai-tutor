@@ -146,7 +146,7 @@
     "@next/swc-wasm-nodejs": "^16.1.6",
     "@prisma/client": "6.19.1",
     "@radix-ui/react-dialog": "^1.1.15",
-    "@sentry/nextjs": "^10.36.0",
+    "@sentry/nextjs": "^10.53.1",
     "@smithy/smithy-client": "^4.11.1",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",

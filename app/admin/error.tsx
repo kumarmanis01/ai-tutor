@@ -1,8 +1,8 @@
 /**
  * FILE OBJECTIVE:
- * - Root-level error boundary for the Next.js App Router.
- * - Catches unhandled errors that bubble up from any route segment.
- * - Renders a generic, safe error message (never exposes raw error details).
+ * - Route-segment error boundary for all admin routes (/admin/**).
+ * - Catches errors within the admin segment without blanking the entire app.
+ * - Never exposes raw error details to the user.
  *
  * LINKED UNIT TEST: none (client error boundary -- render tested in E2E)
  *
@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-05-18T00:00:00Z | claude | added root error boundary, scrubbed raw error.message from UI
+ * - 2026-05-18T00:00:00Z | claude | added admin route-segment error boundary
  */
 'use client';
 
@@ -23,23 +23,17 @@ interface ErrorProps {
   reset: () => void;
 }
 
-export default function Error({ error: _error, reset }: ErrorProps) {
+export default function AdminError({ error: _error, reset }: ErrorProps) {
   const router = useRouter();
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <div className="text-center max-w-md">
-        <div className="flex justify-center mb-6">
-          <div className="relative">
-            <h1 className="text-7xl font-bold text-danger opacity-20">Error</h1>
-          </div>
-        </div>
-
-        <h2 className="text-2xl font-medium text-foreground mb-2">Something went wrong!</h2>
+        <h1 className="text-7xl font-bold text-danger opacity-20 mb-6">Error</h1>
+        <h2 className="text-2xl font-medium text-foreground mb-2">Admin panel error</h2>
         <p className="text-foreground/70 mb-8">
-          {"An unexpected error occurred. Please try again."}
+          {"An unexpected error occurred. Please try again or reload."}
         </p>
-
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={() => reset()}
@@ -47,12 +41,11 @@ export default function Error({ error: _error, reset }: ErrorProps) {
           >
             Try again
           </button>
-
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/admin')}
             className="inline-flex items-center justify-center gap-2 min-h-[44px] border border-border bg-background text-foreground px-6 py-3 rounded-lg font-medium hover:bg-surface-sunk transition-colors duration-200"
           >
-            Back to Home
+            Back to Admin
           </button>
         </div>
       </div>

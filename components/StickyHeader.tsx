@@ -55,11 +55,12 @@ const CODE_TO_PLAIN: Record<string, string> = {
   es: 'Spanish',
 };
 
+const HINDI_ENABLED = process.env.NEXT_PUBLIC_HINDI_ENABLED === 'true';
+
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [_lang, setLang] = useState<string>('English');
-  // TODO Phase 2: re-add language toggle when Hindi content is live
+  const [lang, setLang] = useState<string>('English');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -108,10 +109,20 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
         const t = (navigator.language || '').toLowerCase();
         if (t.startsWith('hi')) setLang('Hindi');
       }
-        } catch (err) {
+    } catch (err) {
       logger?.warn?.('StickyHeader: failed to read preferred language', { error: err });
     }
   }, []);
+
+  const toggleLanguage = () => {
+    const next = lang === 'English' ? 'Hindi' : 'English';
+    setLang(next);
+    try {
+      localStorage.setItem('ai-tutor:preferredLang', next === 'Hindi' ? 'hi' : 'en');
+    } catch {
+      // localStorage may be blocked in private mode
+    }
+  };
 
   const handleSmoothScroll = (target: string, id: string) => {
     const element = document.querySelector(target);
@@ -152,7 +163,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                   }`}
                   title={item.description}
                 >
-                  {item.labelEn}
+                  {HINDI_ENABLED && lang === 'Hindi' ? item.labelHi : item.labelEn}
                   {activeSection === item.id && (
                     <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
                   )}
@@ -161,20 +172,21 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
             </nav>
 
             <div className="flex items-center gap-2 md:gap-3">
-              {/* Login -- visible at all screen sizes to logged-out visitors */}
-              {/* {!session && (
-                <Link
-                  href="/auth/signin"
-                  className="text-sm font-medium text-gray-600 hover:text-[#534AB7] dark:text-gray-300 dark:hover:text-[#EEEDFE] transition-colors px-3 py-2"
+              {/* Language toggle -- shown only when Hindi content is live */}
+              {HINDI_ENABLED && (
+                <button
+                  onClick={toggleLanguage}
+                  aria-label={lang === 'English' ? 'Switch to Hindi' : 'Switch to English'}
+                  className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-surface transition-colors dark:border-border dark:hover:bg-surface"
                 >
-                  Login
-                </Link>
-              )} */}
+                  {lang === 'English' ? 'हिं' : 'EN'}
+                </button>
+              )}
 
               {/* Authenticated users go to their dashboard; others go to signup */}
               <Link
                 href={session ? '/student/onboarding' : '/auth/signup'}
-                className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"
+                className="min-h-[44px] inline-flex items-center px-4 py-2 md:px-6 md:py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
               >
                 {session ? 'Go to Dashboard' : 'Start Learning Now!'}
               </Link>

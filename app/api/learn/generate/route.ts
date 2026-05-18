@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-01-23T10:30:00Z | copilot | Created on-demand generation API
+ * - 2026-05-18T00:00:00Z | claude | typed llmResponse, replaced hardcoded 'gpt-4' with llmResponse.model
  */
 
 import { NextResponse } from 'next/server';
@@ -289,7 +290,7 @@ export async function POST(req: Request) {
 
   const prompt = buildGenerationPrompt(topic, subject, grade, board, language);
 
-  let llmResponse: { content: string };
+  let llmResponse: { content: string; model?: string };
   let tokensUsed: number | undefined;
 
   try {
@@ -346,7 +347,7 @@ export async function POST(req: Request) {
       language: language as any,
       contentJson: parsed,
       generatedBy: userId,
-      model: 'gpt-4', // TODO: Get from LLM response
+      model: llmResponse.model ?? 'unknown',
       tokensUsed,
       viewCount: 1,
     },

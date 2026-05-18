@@ -12,6 +12,16 @@
  * PM2 will then inherit these variables when started with --update-env.
  */
 
+// ── PM2 log rotation (run once on VPS after pm2 is installed) ──
+// pm2 install pm2-logrotate
+// pm2 set pm2-logrotate:max_size 50M
+// pm2 set pm2-logrotate:retain 7
+// pm2 set pm2-logrotate:compress true
+// pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss
+// pm2 set pm2-logrotate:rotateModule true
+// pm2 set pm2-logrotate:workerInterval 3600
+// pm2 save
+
 // ── Redis production checklist (run on VPS before first deploy) ──
 // redis-cli CONFIG SET maxmemory-policy allkeys-lru
 // redis-cli CONFIG SET maxmemory 256mb
@@ -64,6 +74,10 @@ module.exports = {
         LLM_MODE: process.env.LLM_MODE ?? 'real',
         LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
         ALLOW_LLM_CALLS: '1',
+        NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+        SENTRY_DSN: process.env.SENTRY_DSN,
+        // Set to 'true' once Hindi content pipeline is verified live
+        NEXT_PUBLIC_HINDI_ENABLED: process.env.NEXT_PUBLIC_HINDI_ENABLED ?? 'false',
       },
 
       error_file: 'logs/ai-tutor-web-error.log',
@@ -109,6 +123,7 @@ module.exports = {
         ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
         LLM_MODE: process.env.LLM_MODE ?? 'real',
         LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
+        SENTRY_DSN: process.env.SENTRY_DSN,
       },
 
       error_file: 'logs/content-engine-worker-error.log',
@@ -154,6 +169,7 @@ module.exports = {
         ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
         LLM_MODE: process.env.LLM_MODE ?? 'real',
         LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
+        SENTRY_DSN: process.env.SENTRY_DSN,
       },
 
       error_file: 'logs/ai-tutor-scheduler-error.log',

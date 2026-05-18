@@ -8,6 +8,10 @@ const mockQueryRaw = jest.fn()
 const mockMetricFindMany = jest.fn()
 const mockMetricFindFirst = jest.fn()
 const mockGroupBy = jest.fn()
+const mockHydrationGroupBy = jest.fn()
+const mockHydrationCount = jest.fn()
+const mockContentLogAggregate = jest.fn()
+const mockContentLogCount = jest.fn()
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
@@ -20,6 +24,14 @@ jest.mock('@/lib/prisma', () => ({
       upsert: (...a: any[]) => mockUpsert(...a),
       findMany: (...a: any[]) => mockMetricFindMany(...a),
       findFirst: (...a: any[]) => mockMetricFindFirst(...a),
+    },
+    hydrationJob: {
+      groupBy: (...a: any[]) => mockHydrationGroupBy(...a),
+      count: (...a: any[]) => mockHydrationCount(...a),
+    },
+    aIContentLog: {
+      aggregate: (...a: any[]) => mockContentLogAggregate(...a),
+      count: (...a: any[]) => mockContentLogCount(...a),
     },
     concept: { findMany: jest.fn().mockResolvedValue([]) },
     $queryRaw: (...a: any[]) => mockQueryRaw(...a),
@@ -42,11 +54,19 @@ beforeEach(() => {
   mockMetricFindMany.mockReset()
   mockMetricFindFirst.mockReset()
   mockGroupBy.mockReset()
+  mockHydrationGroupBy.mockReset()
+  mockHydrationCount.mockReset()
+  mockContentLogAggregate.mockReset()
+  mockContentLogCount.mockReset()
   // Safe defaults for new parallel calls
   mockQueryRaw.mockResolvedValue([{ conceptId: null, studentCount: BigInt(0) }])
   mockMetricFindMany.mockResolvedValue([])
   mockMetricFindFirst.mockResolvedValue(null)
   mockGroupBy.mockResolvedValue([])
+  mockHydrationGroupBy.mockResolvedValue([])
+  mockHydrationCount.mockResolvedValue(0)
+  mockContentLogAggregate.mockResolvedValue({ _count: { id: 0 }, _sum: { tokensUsed: 0 } })
+  mockContentLogCount.mockResolvedValue(0)
   delete process.env.ONCALL_EMAIL
 })
 

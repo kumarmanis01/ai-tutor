@@ -17,6 +17,11 @@ jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../../helpers/prismaMo
 jest.mock('@/lib/logger.js', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
+const mockSendMailSafe = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/lib/mailer.js', () => ({ sendMailSafe: mockSendMailSafe }));
+jest.mock('@/lib/email/functionalityEmails.js', () => ({
+  HYDRATION_GENERATION_REPORT_EMAIL: 'feedback@spinzyacademy.com',
+}));
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { HydrationReconciler } from '@/worker/services/hydrationReconciler';
@@ -230,6 +235,33 @@ describe('HydrationReconciler - Finalization', () => {
         status: 'failed',
       }),
     });
+  });
+
+  it('should send generation summary email on root job finalization', async () => {
+    mockSendMailSafe.mockClear();
+    const rootJob = { id: 'root123', subject: 'mathematics', subjectId: 'math-001', createdAt: new Date('2026-05-18T00:00:00Z') };
+
+    prismaMock.hydrationJob.count.mockResolvedValue(0);
+    // Validation summary Promise.all: chapterDef, topicDef, topicNote, generatedQuestion, aIContentLog
+    prismaMock.chapterDef.count.mockResolvedValue(10);
+    prismaMock.topicDef.count.mockResolvedValue(50);
+    prismaMock.topicNote.count.mockResolvedValue(100);
+    prismaMock.generatedQuestion.count.mockResolvedValue(200);
+    prismaMock.aIContentLog.findMany.mockResolvedValue([
+      { tokensUsed: 500, success: true },
+      { tokensUsed: 300, success: true },
+    ]);
+
+    await (reconciler as any).finalizeRootJob(rootJob);
+
+    expect(mockSendMailSafe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'feedback@spinzyacademy.com',
+        subject: expect.stringContaining('mathematics'),
+        text: expect.any(String),
+        html: expect.any(String),
+      })
+    );
   });
 
 });
