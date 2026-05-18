@@ -80,7 +80,14 @@ export function validateEnvOrExit(): void {
   try {
     getValidatedEnv();
   } catch (err) {
-    process.stderr.write(`[env] ${err instanceof Error ? err.message : String(err)}\n`);
-    process.exit(1);
+    const message = `[env] ${err instanceof Error ? err.message : String(err)}`;
+    const maybeProcess = (globalThis as { process?: { stderr?: { write?: (chunk: string) => void }; exit?: (code?: number) => never } }).process;
+    if (maybeProcess?.stderr?.write) {
+      maybeProcess.stderr.write(`${message}\n`);
+    }
+    if (maybeProcess?.exit) {
+      maybeProcess.exit(1);
+    }
+    throw new Error(message);
   }
 }
