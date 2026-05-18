@@ -5,6 +5,8 @@
  * and an owl mascot slot. Server component -- no client-side state needed.
  */
 
+import Image from 'next/image'
+
 interface WelcomeBannerProps {
   name: string
   completedCount: number
@@ -103,7 +105,13 @@ export default function WelcomeBanner({
         {/* Right: mascot illustration slot */}
         <div className="hidden sm:flex justify-center flex-shrink-0">
           <div className="h-[160px] w-[160px] rounded-[28px] bg-[#EDE3D0] dark:bg-[#2E2C27] border border-[#DDD3BE] dark:border-[#3A3830] flex items-center justify-center overflow-hidden">
-            <span className="text-[72px] leading-none select-none" aria-hidden>🦉</span>
+            <Image
+              src="/logos/vidya/vidya-avatar-128.png"
+              alt="Teacher Vidya"
+              width={120}
+              height={120}
+              className="object-cover h-[120px] w-[120px]"
+            />
           </div>
         </div>
       </div>

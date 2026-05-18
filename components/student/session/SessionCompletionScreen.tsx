@@ -184,7 +184,7 @@ function XpSection({
 function BadgesEarnedSection({
   badges,
 }: {
-  badges: { name: string; description: string; icon?: string }[];
+  badges: { id?: string; name: string; description: string; icon?: string }[];
 }) {
   if (badges.length === 0) return null;
   return (
@@ -198,7 +198,7 @@ function BadgesEarnedSection({
             key={b.name}
             className="flex items-center gap-3 rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-4 py-3"
           >
-            <BadgeIcon badgeId={b.icon ?? ''} accent={BADGE_ACCENT[b.icon ?? ''] ?? undefined} />
+            <BadgeIcon badgeId={b.id ?? b.icon ?? ''} accent={BADGE_ACCENT[b.id ?? b.icon ?? ''] ?? undefined} />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 leading-tight truncate">
                 {b.name}

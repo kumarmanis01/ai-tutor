@@ -26,7 +26,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
+import Avatar from '@/components/UI/Avatar';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -150,7 +150,12 @@ export default function Topbar() {
   const name = ((session?.user as { name?: string | null } | undefined)?.name ?? '').trim();
   const displayName = (profile?.name ?? name).trim();
   const firstName = displayName.split(' ')[0] || 'Student';
-  const initial = (displayName.charAt(0) || 'S').toUpperCase();
+  const initials = ((): string => {
+    if (!displayName) return 'S';
+    const parts = displayName.split(' ').filter(Boolean);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  })();
   const userImage = ((session?.user as { image?: string | null } | undefined)?.image ?? '').trim();
 
   const streak = topbarData?.streak ?? 0;
@@ -269,19 +274,13 @@ export default function Topbar() {
               aria-label="Open profile"
               className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors hover:bg-muted"
             >
-              {userImage ? (
-                <Image
-                  src={userImage}
-                  alt="Profile"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 rounded-full object-cover ring-2 ring-brand-primary-bg"
-                />
-              ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-brand-primary-fg ring-2 ring-brand-primary-bg">
-                  {initial}
-                </span>
-              )}
+              <Avatar
+                src={userImage || undefined}
+                alt={displayName || 'Profile'}
+                fallback={initials}
+                size={32}
+                className="ring-2 ring-brand-primary-bg"
+              />
             </Link>
           </div>
         </div>
@@ -337,19 +336,13 @@ export default function Topbar() {
               aria-label="My profile"
               className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-border bg-background px-2 py-1 hover:bg-muted"
             >
-              {userImage ? (
-                <Image
-                  src={userImage}
-                  alt="Profile"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 rounded-full object-cover ring-2 ring-brand-primary-bg"
-                />
-              ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-xs font-semibold text-brand-primary-fg ring-2 ring-brand-primary-bg">
-                  {initial}
-                </span>
-              )}
+              <Avatar
+                src={userImage || undefined}
+                alt={displayName || 'Profile'}
+                fallback={initials}
+                size={32}
+                className="ring-2 ring-brand-primary-bg"
+              />
             </Link>
           </div>
         </div>

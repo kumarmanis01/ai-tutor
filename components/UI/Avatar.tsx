@@ -40,6 +40,8 @@ export default function Avatar({
     </svg>
   );
 
+  const fontSize = Math.max(10, Math.floor(size * 0.45));
+
   return (
     <div
       className={`bg-gray-200 rounded-full flex items-center justify-center border relative overflow-hidden ${!loaded && src ? 'border-blue-500' : 'border'} ${className}`}
@@ -73,8 +75,8 @@ export default function Avatar({
       {/* Fallback if no src or error */}
       {(!src || error) && (
         <span
-          className="text-gray-500 font-bold text-lg flex items-center justify-center w-full h-full absolute inset-0"
-          style={{ lineHeight: `${size}px` }}
+          className="text-gray-500 font-bold flex items-center justify-center w-full h-full absolute inset-0"
+          style={{ lineHeight: `${size}px`, fontSize }}
         >
           {fallback}
         </span>
