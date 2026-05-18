@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
+import { Spinner } from '@/components/UI/design-system';
 
 type Step = 'loading' | 'select' | 'saving';
 
@@ -63,7 +64,7 @@ export default function RoleSelectionPage() {
   if (step === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+        <Spinner />
       </div>
     );
   }
@@ -88,9 +89,9 @@ export default function RoleSelectionPage() {
             onClick={() => handleRoleSelect('student')}
             disabled={step === 'saving'}
             className="w-full flex flex-col items-center gap-2 px-6 py-5 min-h-[44px]
-                       rounded-2xl border-2 border-[#534AB7] bg-[#EEEDFE]
-                       hover:bg-[#534AB7] hover:text-white
-                       text-[#534AB7] font-semibold text-base
+                       rounded-2xl border-2 border-primary bg-primary-bg
+                       hover:bg-primary hover:text-white
+                       text-primary font-semibold text-base
                        transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-3xl">🎒</span>
@@ -104,9 +105,9 @@ export default function RoleSelectionPage() {
             onClick={() => handleRoleSelect('parent')}
             disabled={step === 'saving'}
             className="w-full flex flex-col items-center gap-2 px-6 py-5 min-h-[44px]
-                       rounded-2xl border-2 border-[#1D9E75] bg-[#EAF3DE]
-                       hover:bg-[#1D9E75] hover:text-white
-                       text-[#1D9E75] font-semibold text-base
+                       rounded-2xl border-2 border-success bg-success-bg
+                       hover:bg-success hover:text-white
+                       text-success font-semibold text-base
                        transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-3xl">👨‍👩‍👧</span>
@@ -119,12 +120,12 @@ export default function RoleSelectionPage() {
 
         {step === 'saving' && (
           <div className="flex justify-center">
-            <div className="w-6 h-6 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
           </div>
         )}
 
         {error && (
-          <p className="text-center text-sm text-[#E24B4A]">{error}</p>
+          <p className="text-center text-sm text-error">{error}</p>
         )}
       </div>
     </div>

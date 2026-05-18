@@ -19,3 +19,7 @@ export type { MissionCtaResult, MissionCtaVariant, MissionKind, MissionState } f
 
 export { readinessTier, readinessLabel, READINESS_STYLE } from '@/lib/learning/readinessTiers';
 export type { ReadinessTier } from '@/lib/learning/readinessTiers';
+
+export { Spinner } from './Spinner';
+
+export { GoogleLogo } from './GoogleLogo';
