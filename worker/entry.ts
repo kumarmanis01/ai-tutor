@@ -39,6 +39,17 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+// Validate required env vars before anything else loads
+try {
+  // Dynamic import to avoid tsc-alias rewriting the @/ path at the entry level
+  const envMod = await import('../lib/envSchema.js').catch(() => null);
+  if (envMod && typeof envMod.validateEnvOrExit === 'function') {
+    envMod.validateEnvOrExit();
+  }
+} catch {
+  // Module not found in compiled output is non-fatal; hard checks below cover the critical vars
+}
+
 (async () => {
   try {
     // Hard fail if env is missing -- DO NOT load dotenv here
