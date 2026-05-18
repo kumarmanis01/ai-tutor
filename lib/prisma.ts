@@ -13,6 +13,8 @@
  * - 2026-01-24T12:00:00Z | copilot | replace ESM createRequire logic with universal PrismaClient singleton to support Jest/CJS
  * - 2026-04-18T00:00:00Z | copilot | remove speculative eager-connect for test env; root fix is in prismaEnsureColumns.ts
  * - 2026-05-13T00:00:00Z | copilot | remove analyticsSignal compatibility proxy now that all callers use analyticsEvent directly
+ * - 2026-05-18T00:00:00Z | claude  | feat: buildDatabaseUrl() appends connection_limit+pool_timeout when DB_POOL_SIZE is set (validated as positive integer)
+ * - 2026-05-18T00:00:00Z | claude  | feat: slow-query middleware logs queries exceeding SLOW_QUERY_THRESHOLD_MS (default 500ms) as event:'slow_query'
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -32,10 +34,16 @@ const g: any = globalThis as any;
 
 // Append connection_limit to DATABASE_URL when DB_POOL_SIZE is set.
 // Neon default can be too high under concurrent worker + API traffic.
+// DB_POOL_SIZE is validated as a positive integer before use.
 function buildDatabaseUrl(): string | undefined {
   const base = process.env.DATABASE_URL;
-  const limit = process.env.DB_POOL_SIZE;
-  if (!base || !limit) return base;
+  const rawLimit = process.env.DB_POOL_SIZE;
+  if (!base || !rawLimit) return base;
+  const limit = parseInt(rawLimit, 10);
+  if (!Number.isFinite(limit) || limit < 1) {
+    logger.warn('[prisma] DB_POOL_SIZE is not a positive integer -- ignoring', { rawLimit });
+    return base;
+  }
   const sep = base.includes('?') ? '&' : '?';
   return `${base}${sep}connection_limit=${limit}&pool_timeout=20`;
 }

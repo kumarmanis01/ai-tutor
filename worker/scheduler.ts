@@ -16,7 +16,9 @@
  * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
  * - 2026-05-05T12:30:00Z | copilot | fix: replace MONTHLY_INTERVAL_MS (overflows 32-bit timer) with msUntilNextMonthlyRun() in self-reschedule
  * - 2026-05-09T00:00:00Z | copilot | add nightly 00:00 UTC unit+integration test execution and email report automation
+ * - 2026-05-18T00:00:00Z | claude  | feat: add purgeOldAIContentLogs() to daily maintenance -- deletes rows older than AI_CONTENT_LOG_RETENTION_DAYS (default 30) in 500-row batches to prevent unbounded table growth
  * - 2026-05-18T00:00:00Z | copilot | fix: add explicit type annotation to purgeOldAIContentLogs map callback to satisfy TS7006
+ * - 2026-05-18T00:00:00Z | claude  | fix: validate AI_CONTENT_LOG_RETENTION_DAYS is a positive integer before computing purge threshold
  */
 
 import { logger } from '../lib/logger.js';
@@ -334,7 +336,12 @@ async function runFreemiumResetNotifications(): Promise<void> {
   }
 }
 
-const AI_CONTENT_LOG_RETENTION_DAYS = Number(process.env.AI_CONTENT_LOG_RETENTION_DAYS || 30);
+// Guard: must be a positive integer >= 1. A value of 0, negative, or NaN would
+// delete nearly all logs; default to 30 days as a safe fallback.
+const _rawRetention = Number(process.env.AI_CONTENT_LOG_RETENTION_DAYS);
+const AI_CONTENT_LOG_RETENTION_DAYS = Number.isFinite(_rawRetention) && _rawRetention >= 1
+  ? Math.floor(_rawRetention)
+  : 30;
 const AI_CONTENT_LOG_PURGE_BATCH = 500;
 
 /**

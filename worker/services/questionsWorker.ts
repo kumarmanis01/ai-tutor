@@ -19,6 +19,8 @@
  * - 2026-05-04T00:00:00Z | copilot | Soft-approve: promote GeneratedQuestion rows to Question table after job completion so practice questions are immediately available without admin approval. Admin can still quarantine/reject individual rows.
  * - 2026-05-09T00:00:00Z | copilot | skip rejected GeneratedTest rows when soft-promoting GeneratedQuestion rows into Question table
  * - 2026-05-10T00:00:00Z | copilot | enforce deduplication in worker persistence and soft-promotion paths so duplicate question content is not emitted from generation jobs
+ * - 2026-05-18T00:00:00Z | claude  | feat: QUESTIONS_PARALLEL=true env var enables parallel 3-difficulty LLM calls even when LLM_SAFE_MODE=true
+ * - 2026-05-18T00:00:00Z | claude  | feat: raise default question cap from 2 to 10 per difficulty to satisfy PRACTICE+TEST+PRACTICE_MORE supply
  */
 
 import { prisma } from '@/lib/prisma.js';

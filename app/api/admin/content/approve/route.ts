@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-01-22T04:10:00Z | copilot | Rewrote approval API to properly update status field
  * - 2026-01-22T06:55:00Z | copilot | Added support for all hydrated content types: syllabus, chapters, topics
+ * - 2026-05-18T00:00:00Z | claude  | feat: invalidate notes/questions Redis cache on approval so students see changes without TTL wait
  */
 
 import { prisma } from "@/lib/prisma";

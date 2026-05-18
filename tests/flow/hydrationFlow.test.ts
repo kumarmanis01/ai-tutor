@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - End-to-end flow test: syllabus -> notes -> questions -> assembleTest.
+ * - Validates the full hydration pipeline using in-process mocks (no BullMQ).
+ *
+ * LINKED UNIT TEST: (this file is the test)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18 | claude | created; helpers moved from hydrators/testLegacyHydrateHelpers.ts
+ */
+
 import handleSyllabusJob from '@/worker/services/syllabusWorker'
 import { runLegacyNotesHydrate, runLegacyQuestionsHydrate } from '../helpers/legacyHydrationHelpers'
 import { assembleTest } from '@/hydrators/assembleTest'
