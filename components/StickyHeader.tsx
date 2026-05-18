@@ -183,12 +183,21 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                 </button>
               )}
 
-              {/* Authenticated users go to their dashboard; others go to signup */}
+              {/* Returning users: Log in link */}
+              {!session && (
+                <Link
+                  href="/auth/login"
+                  className="min-h-[44px] hidden lg:inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:text-primary transition-colors"
+                >
+                  Log in
+                </Link>
+              )}
+              {/* Primary CTA */}
               <Link
-                href={session ? '/student/onboarding' : '/auth/signup'}
+                href={session ? '/student/onboarding' : '/auth/get-started'}
                 className="min-h-[44px] inline-flex items-center px-4 py-2 md:px-6 md:py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                {session ? 'Go to Dashboard' : 'Start Learning Now!'}
+                {session ? 'Go to Dashboard' : 'Get started free'}
               </Link>
             </div>
           </div>

@@ -49,7 +49,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
   // not to a DB lookup.
   const auth = await getServerSessionForHandlers();
   if (!auth?.user?.id) {
-    redirect(`/auth/signin?callbackUrl=/session/${id}`);
+    redirect(`/auth/login?callbackUrl=/session/${id}`);
   }
 
   // Look up both in parallel; they are mutually exclusive.

@@ -41,7 +41,7 @@ type ParentViewResponse = {
   };
 };
 
-const PARENT_SIGNIN_PATH = '/auth/signin';
+const PARENT_SIGNIN_PATH = '/auth/login';
 const PARENT_ONBOARDING_PATH = '/parent/onboarding';
 
 function buildParentInviteLink(code: string): string {

@@ -727,7 +727,7 @@ export default function ParentDashboardClient() {
     if (status === 'authenticated') {
       fetchData();
     } else if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+      router.push('/auth/login');
     }
   }, [status, fetchData, router]);
 

@@ -51,7 +51,7 @@ describe('ReferralShareCard', () => {
   it('should create referral only when copy is clicked', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ code: 'ABCD1234', url: 'https://example.com/auth/signup?ref=ABCD1234' }),
+      json: async () => ({ code: 'ABCD1234', url: 'https://example.com/auth/get-started?ref=ABCD1234' }),
     })
     mockClipboardWrite.mockResolvedValue(undefined)
 
@@ -71,7 +71,7 @@ describe('ReferralShareCard', () => {
   it('should create referral only when whatsapp share is clicked', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ code: 'ABCD1234', url: 'https://example.com/auth/signup?ref=ABCD1234' }),
+      json: async () => ({ code: 'ABCD1234', url: 'https://example.com/auth/get-started?ref=ABCD1234' }),
     })
 
     render(<ReferralShareCard />)

@@ -61,7 +61,7 @@ describe('ParentOnboardingPage', () => {
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith(
-        '/auth/signin?role=parent&callbackUrl=%2Fparent%2Fonboarding%3FinviteCode%3DABCD1234&inviteCode=ABCD1234'
+        '/auth/login?role=parent&callbackUrl=%2Fparent%2Fonboarding%3FinviteCode%3DABCD1234&inviteCode=ABCD1234'
       )
     })
   })
