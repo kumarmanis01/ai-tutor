@@ -664,3 +664,329 @@ New variables introduced by the fixes above. Add to `.env` and `.env.production`
 | `DB_POOL_SIZE` | unset (Prisma default) | Integer. Sets `connection_limit` in Prisma DATABASE_URL. Recommended: `5` for workers, `10` for Next.js API server. |
 | `AI_CONTENT_LOG_RETENTION_DAYS` | `30` | Number of days to keep `AIContentLog` rows before daily purge. |
 | `RECONCILER_TOPICS_PER_SUBJECT_CAP` | `0` (unlimited) | Max topics fetched per subject per reconciler run. Protects against unbounded scans on large subjects. Set to 0 to disable cap. |
+
+---
+
+## 15. Question Generation Counts, Session Phase Serving, and Query Performance
+
+### 15.1 Questions Generated Per Difficulty
+
+**Source:** `worker/services/questionsWorker.ts`, `getValidationQuestionCount()` (line 119)
+
+```
+VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY env (if set)  ← takes precedence
+  else LLM_MODE='real'  → 2 per difficulty  (6 total across easy/medium/hard)
+  else                  → 5 per difficulty  (15 total, dev/test)
+```
+
+The job-level override (`job.inputParams.questionsPerDifficulty`) is capped at the base cap -- it can only reduce the count, never exceed it.
+
+**What the LLM prompt requests** (`prompts/topic-questions.ts`, line 52):
+```
+Generate exactly ${count} multiple-choice questions
+All ${count} questions MUST be ${difficulty} level
+```
+
+Only MCQ format is generated. 4 options, 1 correct answer per question.
+
+**After LLM response, questions are reduced by:**
+1. JSON parse failure -- entire difficulty band discarded
+2. Zod validation (`validateQuestionsShapeWithReport`) -- malformed questions dropped
+3. In-batch dedup (`dedupeQuestionsForPersistence`) -- hash of `${prompt}::${options}::${answer}`, normalized (lowercase, collapsed whitespace)
+4. Cross-batch dedup at soft-promotion -- content keys checked against existing ACTIVE `Question` rows
+
+**Practical outcome in production (LLM_MODE='real'):**
+
+| Stage | Count per difficulty |
+|-------|---------------------|
+| Requested from LLM | 2 |
+| After Zod validation | 0-2 |
+| After in-batch dedup | 0-2 |
+| Stored in GeneratedQuestion | 0-2 |
+| Promoted to Question table | 0-2 (after cross-batch dedup) |
+| **Total in Question table (all 3 difficulties)** | **0-6** |
+
+This is the critical bottleneck: **a topic with full hydration has at most 6 questions** in production. Each session phase requires 5. There is almost no buffer.
+
+The cap of 2 was introduced as a cost-control gate. At scale it becomes a serving constraint.
+
+---
+
+### 15.2 How Questions Are Served Across Session Phases
+
+**Source files:**
+- `lib/session/getPhaseContent.ts` -- resolves content for each phase
+- `app/api/session/start/route.ts` -- starts session, resolves OVERVIEW content
+- `app/api/session/next/route.ts` -- advances phase, resolves next content
+- `app/api/session/[sessionId]/practice/more/route.ts` -- PRACTICE_MORE endpoint
+
+#### Phase: OVERVIEW
+- Queries `TopicDef.findUnique` with nested includes (chapter → subject → class → board)
+- Queries `TopicNote.findFirst` for a preview snippet
+- No questions served -- metadata only
+
+#### Phase: EXPLANATION
+- Queries `TopicNote.findFirst({ topicId, status: 'approved' })` first
+- Falls back to `TopicNote.findFirst({ topicId })` (draft) if none approved
+- Both queries are sequential (could be a single `orderBy: [{status:'approved'}, {version:'desc'}]`)
+- No questions served -- notes content only
+
+#### Phase: PRACTICE
+**Target: 5 questions**
+
+```
+1. resolveTargetDifficulty(mastery)   -- 'easy' | 'medium' | 'hard'
+2. Question.findMany({ topicId, difficulty: target, status: 'ACTIVE' })
+3. dedupe against meta.servedContentKeys   -- removes already-seen content
+4. Fisher-Yates shuffle → pick 5
+5. FALLBACK 1: if < 5 → Question.findMany({ topicId, status: 'ACTIVE' })  -- any difficulty
+6. FALLBACK 2: if still 0 → on-demand GeneratedQuestion promotion (see §15.4)
+7. FINAL: if still 0 → return { type: 'pending' }
+```
+
+Served IDs saved to `StructuredSession.meta.servedPracticeIds` and `servedContentKeys`.
+
+#### Phase: TEST (Quick Test)
+**Target: 5 questions, never repeating PRACTICE questions**
+
+```
+1. resolveTargetDifficulty(mastery)
+2. Question.findMany({ topicId, difficulty: target, status: 'ACTIVE' })
+3. filter out servedPracticeIds + servedContentKeys
+4. Fisher-Yates shuffle → pick 5
+5. FALLBACK: if < 5 → Question.findMany({ topicId, status: 'ACTIVE' })  -- any difficulty, re-dedup
+6. FINAL: if still 0 → return { type: 'pending' }
+```
+
+"Never repeat" is the hard constraint -- if all available questions were already served in PRACTICE, TEST returns pending even if questions exist.
+
+Served IDs saved to `meta.servedTestIds`.
+
+#### Phase: HOMEWORK
+- Queries `HomeworkAssignment.findFirst({ sessionId, studentId })`
+- Questions embedded in `HomeworkAssignment.questions` JSON field
+- No live question lookup -- content is pre-written into the assignment record
+- No fallback re-generation if assignment is missing: returns `{ type: 'pending' }`
+
+#### Phase: PRACTICE_MORE (Premium)
+**Target: 5 fresh questions, excludes all previously served**
+
+```
+1. Collect all servedPracticeIds from session meta
+2. Question.findMany({ topicId, status: 'ACTIVE', id: { notIn: servedPracticeIds } })
+3. Random shuffle → pick 5
+4. if < 5 available → enqueue enqueueQuestionsHydration({ questionsPerDifficulty: 5 + 5 buffer })  (non-blocking)
+5. FINAL: if < 5 → HTTP 409 "NOT_ENOUGH_FRESH_QUESTIONS"
+```
+
+Only available to premium subscribers. Daily cap enforced. Unlike other phases, PRACTICE_MORE surfaces the shortage as a hard error (409) rather than a soft pending state.
+
+---
+
+### 15.3 Distribution of Questions Per Phase (Counts)
+
+| Phase | Questions | Source table | Difficulty | Dedup scope | Hardcoded? |
+|-------|-----------|-------------|-----------|------------|-----------|
+| OVERVIEW | 0 | TopicDef, TopicNote | N/A | -- | -- |
+| EXPLANATION | 0 | TopicNote | N/A | -- | -- |
+| PRACTICE | 5 | Question | Target band → any | servedContentKeys | Yes (line 58) |
+| TEST | 5 | Question | Target band → any | + servedPracticeIds | Yes (line 59) |
+| HOMEWORK | varies | HomeworkAssignment.questions (JSON) | N/A | none | No |
+| PRACTICE_MORE | 5 | Question | None (any) | servedPracticeIds | Yes (line 31 of route) |
+
+All counts of 5 are hardcoded constants in the source. There is no env var override for phase question count.
+
+**Production math:**
+
+```
+Max questions in Question table per topic: 6 (2 per difficulty × 3 difficulties)
+PRACTICE needs:    5
+TEST needs:        5 (not overlapping with PRACTICE)
+PRACTICE_MORE:     5 (not overlapping with anything)
+Total demand:      15
+Total supply:      6
+```
+
+With the default cap of 2 per difficulty, the system structurally cannot satisfy a full PRACTICE + TEST + PRACTICE_MORE sequence for a single topic without fallback re-hydration. PRACTICE exhausts ~5 of 6 questions; TEST finds at most 1 fresh question and falls back to pending.
+
+---
+
+### 15.4 What Happens When Not Enough Questions
+
+| Phase | Shortage behaviour | Re-hydration triggered? |
+|-------|-------------------|------------------------|
+| PRACTICE | Step-down difficulty → on-demand GeneratedQuestion promotion → `{type:'pending'}` | No job enqueued -- promotion uses existing GeneratedQuestion rows |
+| TEST | Step-down difficulty → `{type:'pending'}` | No |
+| HOMEWORK | `{type:'pending'}` | No |
+| PRACTICE_MORE | Enqueues `enqueueQuestionsHydration` (non-blocking, fire-and-forget) → HTTP 409 on same request | Yes -- but student must retry manually |
+
+**On-demand GeneratedQuestion promotion (PRACTICE fallback 2):**
+
+This runs inline during the API request when the `Question` table has 0 rows for the topic:
+
+```
+1. GeneratedQuestion.findMany({ test: { topicId, status: { not: Rejected } } })
+   -- with full join chain: test → topic → chapter → subject → class → board
+2. Question.findMany({ topicId, status: 'ACTIVE' }) -- existing ACTIVE rows (dedup check)
+3. for each GeneratedQuestion not in existing set:
+     Question.upsert(...)   -- O(n) sequential upserts, no batch
+4. Question.findMany({ topicId, status: 'ACTIVE' })  -- re-query after promotion
+```
+
+This entire block runs synchronously inside the API request. With up to 6 GeneratedQuestion rows per topic, latency impact is bounded but still adds 6 sequential DB round-trips.
+
+---
+
+### 15.5 Why Lag Is High When Questions Are Assembled or Served
+
+#### Assembly lag (`assembleWorker.ts`)
+
+The assembleWorker runs after questionsWorker completes:
+
+1. `GeneratedTest.findMany({ topicId, language, difficulty, status: 'draft' }, { _count: { questions: true } })`
+   -- no index on `(topicId, status)`, potential table scan
+2. For each draft test with >= 5 questions: `GeneratedTest.update({ status: 'approved' })`
+   -- **O(n) sequential updates** across all draft tests
+
+For a fresh topic with 3 draft tests (one per difficulty), this is 3 sequential round-trips. Not critical at current scale but grows linearly.
+
+#### Serving lag (`getPhaseContent.ts`)
+
+Five structural causes:
+
+**A) Missing indexes on `Question` table**
+
+The primary PRACTICE and TEST query is:
+```sql
+SELECT ... FROM "Question"
+WHERE "topicId" = $1 AND "difficulty" = $2 AND "status" = 'ACTIVE'
+```
+
+No compound index `(topicId, difficulty, status)` exists in `prisma/schema.prisma`. As the `Question` table grows, this becomes a sequential scan filtered client-side.
+
+The fallback query drops `difficulty`:
+```sql
+WHERE "topicId" = $1 AND "status" = 'ACTIVE'
+```
+No index on `(topicId, status)` either.
+
+**B) On-demand promotion runs in the hot path**
+
+When the `Question` table has 0 rows for a topic (freshly hydrated topic, first student to reach it):
+- 6 sequential DB upserts run inside the API request
+- 1 deep-join `GeneratedQuestion.findMany` (test → topic → chapter → subject → class → board)
+- 1 re-query after promotion
+- **Typical extra latency: 100-400 ms on Neon**
+
+This hits every first student to open a freshly hydrated topic.
+
+**C) No Redis cache in front of phase content**
+
+Every `session/next` or `session/start` call re-queries Postgres for the full question set. For a popular topic with 100 concurrent students, 100 identical queries hit Neon simultaneously. There is no deduplicated read path.
+
+**D) OVERVIEW includes deep eager join**
+
+```typescript
+TopicDef.findUnique({
+  include: {
+    chapter: {
+      include: {
+        subject: {
+          include: {
+            class: { include: { board: true } }
+          }
+        }
+      }
+    }
+  }
+})
+```
+
+4 levels of nested includes for every session start. Prisma executes these as sequential JOINs or subqueries depending on the relation type.
+
+**E) EXPLANATION double-query**
+
+Two sequential `TopicNote.findFirst` calls (approved → draft fallback) when a single query with status ordering would cover both cases.
+
+#### Timing summary (estimated per `session/next` call on Neon)
+
+| Operation | Estimated latency |
+|-----------|------------------|
+| `StructuredSession.findUnique` | 5-15 ms |
+| `Question.findMany` (with index) | 5-20 ms |
+| `Question.findMany` (without index, table scan) | 20-100 ms |
+| On-demand GeneratedQuestion promotion (cold topic) | 100-400 ms |
+| `StructuredSession.update` (meta) | 5-15 ms |
+| **Total (warm topic, indexed)** | **~25-60 ms** |
+| **Total (cold topic, no index, promotion)** | **~150-550 ms** |
+
+---
+
+### 15.6 How Slow Queries Are Identified and Healed
+
+#### Current state: minimal observability for DB queries
+
+**What IS monitored:**
+- `worker/jobs/dailyLatencyReport.ts` -- queries `AITutorTurnLog.latencyMs`, sends email when p95 LLM turn latency > 10 000 ms. Covers end-to-end tutor response time (LLM + DB combined), not DB in isolation.
+- Prisma logs `['query', 'info', 'warn', 'error']` in production (`lib/prisma.ts`). Query text is emitted to stdout (PM2 logs) but there is no threshold filter, no structured latency field, and no alerting on slow queries.
+
+**What is NOT monitored:**
+- No `prisma.$on('query', handler)` event listener with duration threshold
+- No per-query latency field in application logs
+- No Neon `pg_stat_statements` surfacing to the app layer
+- No DB-level slow query log parsed by any worker
+- No circuit breaker for DB calls (only for LLM calls in `lib/ai/tutor/circuitBreaker.ts`)
+- No auto-healing (auto-reindex, query plan refresh, connection drain)
+
+#### How slow queries are currently found
+
+1. **PM2 logs**: Prisma query logs appear in PM2 stdout. A developer must manually grep for slow queries -- there is no automated alerting.
+2. **Neon console**: Neon provides `pg_stat_statements` via its web dashboard. Not integrated into the app.
+3. **LLM turn latency spike**: When DB latency degrades enough to push end-to-end LLM turn time above 10 000 ms, the daily latency report fires an email. This is a lagging indicator -- DB slowness must be severe before it surfaces.
+
+#### Identified slow query patterns and recommended fixes
+
+| Query | Table | Problem | Fix |
+|-------|-------|---------|-----|
+| `WHERE topicId=$1 AND difficulty=$2 AND status='ACTIVE'` | `Question` | No compound index | Add `@@index([topicId, difficulty, status])` |
+| `WHERE topicId=$1 AND status='ACTIVE'` | `Question` | No index on (topicId, status) | Covered by above index (topicId prefix usable) |
+| `WHERE topicId=$1 AND status NOT IN ('draft')` | `GeneratedTest` | No index | Add `@@index([topicId, status, difficulty])` |
+| `GeneratedQuestion.findMany` with 4-level join | `GeneratedQuestion` | Over-fetching (deep join) for simple check | Replace with count query or move to a background job |
+| `TopicDef.findUnique` with 4-level nested include | `TopicDef` | Deep eager-load on every session start | Cache in Redis (topicId → metadata, TTL 1 hour) |
+| Sequential `TopicNote.findFirst` x2 | `TopicNote` | Two round-trips where one suffices | Merge into single query: `orderBy: [{status: 'asc'}, {version: 'desc'}]` |
+
+#### Recommended healing additions
+
+1. **Prisma query timing middleware** -- add a Prisma extension that logs duration for all queries > 100 ms:
+   ```typescript
+   prisma.$extends({
+     query: {
+       $allModels: {
+         async $allOperations({ model, operation, args, query }) {
+           const start = Date.now();
+           const result = await query(args);
+           const ms = Date.now() - start;
+           if (ms > 100) logger.warn('slow_query', { model, operation, ms });
+           return result;
+         }
+       }
+     }
+   });
+   ```
+
+2. **Redis cache for phase content** -- cache `getPhaseContent` result per `(sessionId, phase)` with a 60 s TTL. Invalidate on `session/next` advance. Eliminates the repeat-query problem for concurrent students on the same topic.
+
+3. **Pre-warm Question table on hydration complete** -- when questionsWorker marks `contentReady=true`, immediately trigger on-demand promotion if not already done. Eliminates the cold-topic latency spike on first student access.
+
+4. **Prisma schema indexes to add** (`prisma/schema.prisma`):
+   ```prisma
+   model Question {
+     @@index([topicId, difficulty, status])
+   }
+
+   model GeneratedTest {
+     @@index([topicId, status, difficulty])
+   }
+   ```
+
+5. **Neon pg_stat_statements integration** -- expose slow query data via a scheduled job that queries `pg_stat_statements` on Neon and logs top 10 slowest queries daily alongside the latency report.
