@@ -333,6 +333,32 @@ async function runFreemiumResetNotifications(): Promise<void> {
   }
 }
 
+const AI_CONTENT_LOG_RETENTION_DAYS = Number(process.env.AI_CONTENT_LOG_RETENTION_DAYS || 30);
+const AI_CONTENT_LOG_PURGE_BATCH = 500;
+
+/**
+ * Delete AIContentLog rows older than AI_CONTENT_LOG_RETENTION_DAYS.
+ * Runs in batches to avoid long-running deletes on Neon.
+ */
+async function purgeOldAIContentLogs(): Promise<number> {
+  const threshold = new Date(Date.now() - AI_CONTENT_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  let total = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const rows = await prisma.aIContentLog.findMany({
+      where: { createdAt: { lt: threshold } },
+      select: { id: true },
+      take: AI_CONTENT_LOG_PURGE_BATCH,
+    });
+    if (rows.length === 0) break;
+    const ids = rows.map((r) => r.id);
+    await prisma.aIContentLog.deleteMany({ where: { id: { in: ids } } });
+    total += ids.length;
+    if (ids.length < AI_CONTENT_LOG_PURGE_BATCH) break;
+  }
+  return total;
+}
+
 /**
  * Run daily maintenance: expire stale tasks + recovery check
  */
@@ -402,6 +428,14 @@ async function runDailyMaintenanceJob() {
 
     // ── Push: freemium reset reminder (only fires 3 days before month-end) ──
     await runFreemiumResetNotifications();
+
+    // ── Purge old AIContentLog rows ──────────────────────────────────────
+    try {
+      const purged = await purgeOldAIContentLogs();
+      logger.info('scheduler.aiContentLogPurge.completed', { purged });
+    } catch (e) {
+      logger.error('scheduler.aiContentLogPurge.error', { err: e instanceof Error ? e.message : String(e) });
+    }
   } catch (error) {
     logger.error('scheduler.dailyMaintenance.error', {
       error: error instanceof Error ? error.message : String(error),

@@ -35,6 +35,10 @@ import { JobType, DifficultyLevel } from '@prisma/client';
 const RECONCILER_LOCK_NAME = 'hydration_reconciler';
 const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
+// Cap total topics fetched per subject per reconciler run (0 = unlimited).
+// Guards against unbounded scans on large subjects. Override via env.
+const TOPICS_PER_SUBJECT_CAP = Number(process.env.RECONCILER_TOPICS_PER_SUBJECT_CAP || 0);
+
 // ============================================
 // Main Reconciler Class
 // ============================================
@@ -272,6 +276,7 @@ export class HydrationReconciler {
       },
       include: { chapter: { select: { id: true } } },
       orderBy: { order: 'asc' },
+      ...(TOPICS_PER_SUBJECT_CAP > 0 ? { take: TOPICS_PER_SUBJECT_CAP } : {}),
     });
 
     // ── Validation cap: limit topics per chapter ──
@@ -340,6 +345,7 @@ export class HydrationReconciler {
         lifecycle: 'active',
       },
       include: { chapter: { select: { id: true } } },
+      ...(TOPICS_PER_SUBJECT_CAP > 0 ? { take: TOPICS_PER_SUBJECT_CAP } : {}),
     });
 
     const inputParams = rootJob.inputParams || {};

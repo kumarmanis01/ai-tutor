@@ -1,5 +1,4 @@
-import { hydrateNotes } from "@/hydrators/hydrateNotes"
-import { hydrateQuestions } from "@/hydrators/hydrateQuestions"
+import { enqueueNotesHydration, enqueueQuestionsHydration } from "@/lib/execution-pipeline/enqueueTopicHydration"
 import { enqueueSyllabusHydration } from "@/hydrators/hydrateSyllabus"
 // yargs is dynamic-required at runtime to avoid ESM import issues in Jest
 type Arguments<T> = T & Record<string, any>;
@@ -34,14 +33,14 @@ export async function runHydrateAll(options?: { fromTopic?: string }) {
 
   for (const topic of topics) {
     try {
-      await hydrateNotes(topic.id, "en")
-      await hydrateNotes(topic.id, "hi")
-      await hydrateQuestions(topic.id, "easy", "en")
-      await hydrateQuestions(topic.id, "medium", "en")
-      await hydrateQuestions(topic.id, "hard", "en")
-      await hydrateQuestions(topic.id, "easy", "hi")
-      await hydrateQuestions(topic.id, "medium", "hi")
-      await hydrateQuestions(topic.id, "hard", "hi")
+      await enqueueNotesHydration({ topicId: topic.id, language: "en" })
+      await enqueueNotesHydration({ topicId: topic.id, language: "hi" })
+      await enqueueQuestionsHydration({ topicId: topic.id, difficulty: "easy", language: "en" })
+      await enqueueQuestionsHydration({ topicId: topic.id, difficulty: "medium", language: "en" })
+      await enqueueQuestionsHydration({ topicId: topic.id, difficulty: "hard", language: "en" })
+      await enqueueQuestionsHydration({ topicId: topic.id, difficulty: "easy", language: "hi" })
+      await enqueueQuestionsHydration({ topicId: topic.id, difficulty: "medium", language: "hi" })
+      await enqueueQuestionsHydration({ topicId: topic.id, difficulty: "hard", language: "hi" })
     } catch (e) {
       logger.error(`FAILED at topic: ${topic.id} ${e}`)
       throw e

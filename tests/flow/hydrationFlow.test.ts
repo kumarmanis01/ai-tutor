@@ -1,6 +1,5 @@
 import handleSyllabusJob from '@/worker/services/syllabusWorker'
-import { hydrateNotes } from '@/hydrators/hydrateNotes'
-import { hydrateQuestions } from '@/hydrators/hydrateQuestions'
+import { runLegacyNotesHydrate, runLegacyQuestionsHydrate } from '../helpers/legacyHydrationHelpers'
 import { assembleTest } from '@/hydrators/assembleTest'
 
 jest.mock('@/lib/callLLM', () => ({ callLLM: jest.fn() }))
@@ -69,7 +68,7 @@ describe('Full hydration flow: syllabus -> notes -> questions -> assembleTest', 
     ;(prisma.topicNote.findFirst as jest.Mock).mockResolvedValue(null)
     ;(prisma.topicNote.create as jest.Mock).mockResolvedValue({ id: 'note-1' })
 
-    await hydrateNotes('topic-1', 'en')
+    await runLegacyNotesHydrate('topic-1', 'en')
 
     expect(prisma.topicNote.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ title: 'Integers - Notes' }) }))
 
@@ -81,7 +80,7 @@ describe('Full hydration flow: syllabus -> notes -> questions -> assembleTest', 
     ;(prisma.generatedTest.create as jest.Mock).mockResolvedValue({ id: 'test-1' })
     ;(prisma.generatedQuestion.create as jest.Mock).mockResolvedValue({})
 
-    await hydrateQuestions('topic-1', 'medium' as any, 'en' as any)
+    await runLegacyQuestionsHydrate('topic-1', 'medium', 'en')
 
     expect(prisma.generatedTest.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ title: expect.stringContaining('Integers') }) }))
     expect(prisma.generatedQuestion.create).toHaveBeenCalled()

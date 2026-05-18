@@ -29,7 +29,19 @@ declare global {
 // don't throw "global is not defined" in browsers. `globalThis` is available
 // in Node and browser runtimes.
 const g: any = globalThis as any;
+
+// Append connection_limit to DATABASE_URL when DB_POOL_SIZE is set.
+// Neon default can be too high under concurrent worker + API traffic.
+function buildDatabaseUrl(): string | undefined {
+  const base = process.env.DATABASE_URL;
+  const limit = process.env.DB_POOL_SIZE;
+  if (!base || !limit) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}connection_limit=${limit}&pool_timeout=20`;
+}
+
 const client = g.prisma ?? new PrismaClient({
+  datasources: { db: { url: buildDatabaseUrl() } },
   log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
 });
 

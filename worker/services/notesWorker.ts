@@ -27,6 +27,7 @@ import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
 import { getNextVersion } from '@/lib/getNextVersion';
+import { cacheDelPattern } from '@/lib/cache';
 
 // Local row types for strict-mode
 type SiblingRow = { name: string }
@@ -491,13 +492,14 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       // Idempotent write: upsert by topicId+language+version (unique)
       // Store the full LLM response (notes, worked_examples, key_terms, etc.) as contentJson
       const contentJson = { ...parsed, sourceJobId: job.id };
+      // Soft-approve immediately (same pattern as questions) -- admin can still quarantine/reject.
       await tx.topicNote.upsert({
         where: { topicId_language_version: { topicId, language, version } },
         update: {
           title: (parsed.metadata?.topic ?? parsed.title) as string,
           contentJson,
           source: 'ai',
-          status: ApprovalStatus.Draft
+          status: ApprovalStatus.Approved
         },
         create: {
           topicId,
@@ -506,7 +508,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           title: (parsed.metadata?.topic ?? parsed.title) as string,
           contentJson,
           source: 'ai',
-          status: ApprovalStatus.Draft
+          status: ApprovalStatus.Approved
         }
       });
 
@@ -552,6 +554,9 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       }
     });
     logger.info('handleNotesJob: completed successfully', { jobId, topicId });
+    // Invalidate serving-layer caches so the new note is visible immediately
+    await cacheDelPattern(`notes:for-topic:v1:${topicId}:*`).catch(() => {});
+    await cacheDelPattern(`notes:topic-content:v1:${topicId}:*`).catch(() => {});
   } catch (err: any) {
     // Failure path: persist failure AIContentLog outside transaction, then mark hydration job failed
     try {

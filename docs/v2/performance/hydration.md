@@ -2,7 +2,7 @@
 
 > Scope: content ingestion (syllabus, chapters, topics, notes, questions, tests) and the serving layer
 > that delivers that content to students.
-> Last updated: 2026-05-18
+> Last updated: 2026-05-18 (fixes applied same day)
 
 ---
 
@@ -19,7 +19,9 @@
 9. [DB Hits -- Serving Path](#9-db-hits----serving-path)
 10. [Caching and Redis Usage](#10-caching-and-redis-usage)
 11. [Performance Characteristics](#11-performance-characteristics)
-12. [Limitations and Gaps](#12-limitations-and-gaps)
+12. [Difficulty-Based Question Serving](#12-difficulty-based-question-serving)
+13. [Limitations -- Fixed](#13-limitations----fixed)
+14. [Environment Variables Reference](#14-environment-variables-reference)
 
 ---
 
@@ -535,3 +537,130 @@ The student Notes UI does 3 sequential `fetch()` calls on the client:
 topics-overview --> for-topic --> topic-note/[id].
 There is no server-side prefetch or parallel loading.
 **Impact:** noticeable latency on budget Android / 4G -- ~240-480 ms extra before content renders.
+
+---
+
+## 12. Difficulty-Based Question Serving
+
+### 12.1 How Difficulty is Stored
+
+Each `GeneratedTest` row carries a `difficulty` field (`easy` | `medium` | `hard`).
+Each `Question` row (soft-promoted) also carries a `difficulty: String?` field.
+Difficulty is set at hydration time by the questionsWorker for each of the 3 difficulty bands.
+
+### 12.2 Student Cannot Pick Difficulty Directly
+
+There is no UI control for difficulty. Two independent engines resolve it automatically:
+
+**A) Adaptive (Structured Session path -- `app/api/session/start` → PRACTICE/TEST phases)**
+
+```
+lib/ai/adaptiveDifficulty.ts: resolveTargetDifficulty(mastery)
+
+StudentTopicProgress.mastery (0–1 float)
+  < 0.50            → 'easy'
+  0.50 – 0.74       → 'medium'
+  >= 0.75           → 'hard'
+  null (first visit) → 'medium'
+```
+
+Called inside `lib/session/getPhaseContent.ts` → `resolvePractice()` and `resolveTest()`.
+The resolved difficulty is passed to a `Question.findMany({ where: { difficulty } })` query.
+Fallback: if target difficulty band is empty, any available question is returned.
+
+**B) Preference-based (Legacy quick-practice path -- `app/api/tests/start`)**
+
+```
+StudentContentPreference.difficulty (per subject, updated after each test)
+  → passed to selectQuestions() as filter
+  → fallback: 'medium'
+```
+
+Updated by `lib/personalization/difficultyTuning.ts: adjustDifficultyAfterTest()` after every test
+submission (`app/api/tests/submit`). Uses a weighted scoring model:
+- Accuracy 35%, Time 20%, Hints used 20%, Retry count 15%, AI confidence 10%
+- Score >= 0.5 → increase; <= -0.3 → decrease; otherwise maintain.
+
+### 12.3 Recommendation Engine Interaction
+
+`lib/recommendations/engine.ts` scores content items with a `DIFFICULTY_MATCH` weight (10 pts).
+It reads `StudentContentPreference.difficulty` and boosts items whose `GeneratedTest.difficulty`
+matches the student's current preference. The recommendation engine does NOT directly serve
+questions -- it surfaces topics; the session engine resolves difficulty at practice time.
+
+### 12.4 DB Query Chain for Difficulty-Based Question Serving
+
+```
+POST /api/session/start { topicId }
+  → StructuredSession created
+  → resolvePhaseContent('PRACTICE')
+    → StudentTopicProgress.findUnique({ studentId, topicId })   -- 1 read (mastery)
+    → resolveTargetDifficulty(mastery)                          -- in-memory
+    → Question.findMany({ topicId, difficulty, status:'ACTIVE' })  -- 1 read
+    → dedup against session.meta.servedPracticeIds              -- in-memory
+    → random pick (5 questions)
+    → StructuredSession.update({ meta: { servedPracticeIds } }) -- 1 write
+```
+
+Total: 2 DB reads + 1 write per phase content resolution. No LLM call.
+
+### 12.5 Fallback When Difficulty Band is Empty
+
+If the `Question` table has no rows for the target difficulty:
+1. `getPhaseContent.ts` re-queries with no difficulty filter (any available question)
+2. If still empty, falls back to `GeneratedQuestion` table (soft-approved but not yet promoted)
+
+This means a topic can have zero questions in a specific band right after hydration if the
+soft-promotion step failed. The VPS has a 5-min reconciler cycle that would re-enqueue a
+questions job on the next pass.
+
+### 12.6 Key Tables for Difficulty Routing
+
+| Table | Field | Type | Role |
+|-------|-------|------|------|
+| `StudentTopicProgress` | `mastery` | Float 0–1 | Drives adaptive difficulty in session engine |
+| `StudentContentPreference` | `difficulty` | Enum | Drives legacy quick-practice path |
+| `Question` | `difficulty` | String? | Filter target in `Question.findMany` |
+| `GeneratedTest` | `difficulty` | DifficultyLevel enum | Metadata; not directly queried in session path |
+| `StructuredSession` | `meta.servedPracticeIds` | JSON | Dedup -- prevents repeat questions within session |
+
+### 12.7 Mastery vs Readiness Tier -- Critical Distinction
+
+Readiness tiers (`critical` / `weak` / `fair` / `on track` / `strong`) displayed in the UI
+are computed from `SubjectReadinessScore.readinessScore` (0–100 int). They are **display labels only**
+and are NOT used to route difficulty.
+
+Difficulty routing uses `StudentTopicProgress.mastery` (0–1 float, per-topic). These are two
+separate signals that happen to correlate but are computed independently.
+
+---
+
+## 13. Limitations -- Fixed
+
+All 10 limitations from the original audit were addressed on 2026-05-18:
+
+| # | Limitation | Fix |
+|---|-----------|-----|
+| L1 | No Redis cache on serving routes | Added `cacheGet`/`cacheSet` to all 3 serving routes (TTL 300 s / 900 s). Cache invalidated on admin approval and after worker auto-approve. |
+| L2 | No pagination limit on serving queries | Added `take: 20` to `TopicNote.findMany` and `GeneratedTest.findMany` in serving routes. |
+| L3 | Sequential LLM calls under LLM_SAFE_MODE=true | Added `QUESTIONS_PARALLEL=true` env var. When set, overrides `LLM_SAFE_MODE` for the questions worker only -- enables parallel 3-difficulty generation while keeping safe mode for real-time tutor calls. |
+| L4 | Notes require manual admin approval | Notes are now soft-approved immediately on write (`status: Approved`). Admin can still quarantine/reject. Same pattern as questions. Cache is invalidated after soft-approve. |
+| L5 | Reconciler scan is unbounded | Added `RECONCILER_TOPICS_PER_SUBJECT_CAP` env var (default 0 = unlimited). When set, caps the `topicDef.findMany` in Level 2 and Level 3 job creation. |
+| L6 | Legacy dead code | Deleted `hydrators/hydrationPrompts.ts`, `hydrators/personalizeContent.ts`, `hydrators/testLegacyHydrateHelpers.ts`, `hydrators/hydrateNotes.ts`, `hydrators/hydrateQuestions.ts` and all associated test files. Test helpers moved to `tests/helpers/legacyHydrationHelpers.ts`. |
+| L7 | No connection pool config | `lib/prisma.ts` now reads `DB_POOL_SIZE` env var and appends `connection_limit` + `pool_timeout=20` to the DATABASE_URL. |
+| L8 | AIContentLog grows unboundedly | Added `purgeOldAIContentLogs()` to daily maintenance in `worker/scheduler.ts`. Deletes rows older than `AI_CONTENT_LOG_RETENTION_DAYS` (default 30) in 500-row batches. |
+| L9 | Redundant hydrator wrapper layer | Covered by L6. `scripts/hydrateAll.ts` now imports `enqueueNotesHydration`/`enqueueQuestionsHydration` directly. |
+| L10 | Notes component waterfall (3 fetches) | Created `GET /api/notes/topic-content` -- single query returning latest approved note with full `contentJson`. Student Notes component now does 1 fetch instead of 2 sequential fetches on topic select. |
+
+---
+
+## 14. Environment Variables Reference
+
+New variables introduced by the fixes above. Add to `.env` and `.env.production`:
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `QUESTIONS_PARALLEL` | `false` | Set to `true` to run 3 difficulty LLM calls in parallel even when `LLM_SAFE_MODE=true`. Reduces QUESTIONS job time from ~90 s to ~30 s. |
+| `DB_POOL_SIZE` | unset (Prisma default) | Integer. Sets `connection_limit` in Prisma DATABASE_URL. Recommended: `5` for workers, `10` for Next.js API server. |
+| `AI_CONTENT_LOG_RETENTION_DAYS` | `30` | Number of days to keep `AIContentLog` rows before daily purge. |
+| `RECONCILER_TOPICS_PER_SUBJECT_CAP` | `0` (unlimited) | Max topics fetched per subject per reconciler run. Protects against unbounded scans on large subjects. Set to 0 to disable cap. |

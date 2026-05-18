@@ -588,9 +588,11 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const sessionStart = Date.now();
 
   // Generate questions for all difficulties.
-  // RISK-06: When LLM_SAFE_MODE=true, run sequentially to respect safe concurrency.
-  // Otherwise run in parallel (independent leaf tasks).
-  const isSafeMode = String(process.env.LLM_SAFE_MODE || '').toLowerCase() === 'true';
+  // RISK-06: When LLM_SAFE_MODE=true, run sequentially by default.
+  // Set QUESTIONS_PARALLEL=true to enable parallel generation even in safe mode --
+  // hydration batch jobs are independent of the real-time tutor path that LLM_SAFE_MODE protects.
+  const questionsParallel = String(process.env.QUESTIONS_PARALLEL || '').toLowerCase() === 'true';
+  const isSafeMode = String(process.env.LLM_SAFE_MODE || '').toLowerCase() === 'true' && !questionsParallel;
 
   const runOneDifficulty = async (difficulty: DifficultyLevel) => {
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });

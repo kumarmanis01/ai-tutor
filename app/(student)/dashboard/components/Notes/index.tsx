@@ -95,6 +95,7 @@ export default function NotesTab() {
   }, []);
 
   // ── Load TopicNote when a topic is selected ───────────────────────────
+  // Single round-trip: /api/notes/topic-content returns the latest approved note with content.
   const selectTopic = useCallback((topicId: string, topicName: string) => {
     setSelectedTopicId(topicId);
     setSelectedTopicName(topicName);
@@ -102,31 +103,20 @@ export default function NotesTab() {
     setNoteError(null);
     setNoteLoading(true);
 
-    fetch(`/api/notes/for-topic?topicId=${encodeURIComponent(topicId)}`)
+    fetch(`/api/notes/topic-content?topicId=${encodeURIComponent(topicId)}`)
       .then((r) => r.json())
-      .then(async (data) => {
-        const notes = data?.notes as { id: string; title: string; language: string; version: number }[];
-        if (!notes || notes.length === 0) {
+      .then((data) => {
+        const n = data?.note as TopicNoteData | null;
+        if (!n) {
           setNoteError('No notes available for this topic yet.');
-          setNoteLoading(false);
           return;
         }
-        // Pick the latest English note, or first available
-        const pick = notes.find((n) => n.language === 'en') ?? notes[0];
-        const full = await fetch(`/api/notes/topic-note/${pick.id}`).then((r) => r.json());
-        setNote({
-          id: full.id ?? pick.id,
-          title: full.title ?? pick.title,
-          contentJson: full.contentJson ?? null,
-          language: pick.language,
-          version: pick.version,
-        });
-        setNoteLoading(false);
+        setNote(n);
       })
       .catch(() => {
-        setNoteError('Failed to load notes.');
-        setNoteLoading(false);
-      });
+        setNoteError("Couldn't load notes -- tap to retry.");
+      })
+      .finally(() => setNoteLoading(false));
   }, []);
 
   // Auto-open a topic when landing with ?topicId= (e.g. from TopicCompletionModal)
