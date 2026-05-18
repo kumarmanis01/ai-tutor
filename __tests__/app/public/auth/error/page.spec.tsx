@@ -74,12 +74,12 @@ describe('AuthErrorPage', () => {
     expect(screen.getByText(/something went wrong during sign-in/i)).toBeTruthy()
   })
 
-  it('should navigate to /auth/signup when Try again is clicked', () => {
+  it('should navigate to /auth/get-started when Try again is clicked', () => {
     render(<AuthErrorPage />)
 
     fireEvent.click(screen.getByRole('button', { name: /try again/i }))
 
-    expect(routerPushMock).toHaveBeenCalledWith('/auth/signup')
+    expect(routerPushMock).toHaveBeenCalledWith('/auth/get-started')
   })
 
   it('should use sanitized callbackUrl for Go back with a safe path', () => {
@@ -103,7 +103,7 @@ describe('AuthErrorPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /go back/i }))
 
-    expect(routerPushMock).toHaveBeenCalledWith('/auth/signup')
+    expect(routerPushMock).toHaveBeenCalledWith('/auth/get-started')
     expect(routerPushMock).not.toHaveBeenCalledWith('//evil.com')
   })
 
@@ -116,6 +116,6 @@ describe('AuthErrorPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /go back/i }))
 
-    expect(routerPushMock).toHaveBeenCalledWith('/auth/signup')
+    expect(routerPushMock).toHaveBeenCalledWith('/auth/get-started')
   })
 })

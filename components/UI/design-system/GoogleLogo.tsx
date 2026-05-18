@@ -1,3 +1,15 @@
+/**
+ * FILE OBJECTIVE:
+ * - Reusable Google "G" logo SVG primitive.
+ *   Replaces duplicated inline SVGs in auth pages.
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18T00:00:00Z | claude | create GoogleLogo primitive for design-system
+ */
+
 interface GoogleLogoProps {
   size?: number;
 }

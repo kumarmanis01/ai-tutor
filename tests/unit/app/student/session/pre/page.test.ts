@@ -76,7 +76,7 @@ describe('PreSessionPage', () => {
     const { default: Page } = require('@/app/(student)/session/pre/[conceptId]/page')
 
     await expect(Page({ params: Promise.resolve({ conceptId: 'topic-123' }) })).rejects.toThrow('REDIRECT')
-    expect(redirectMock).toHaveBeenCalledWith('/auth/signin?callbackUrl=/session/pre/topic-123')
+    expect(redirectMock).toHaveBeenCalledWith('/auth/login?callbackUrl=/session/pre/topic-123')
   })
 
   it('should resolve TopicDef id to first active concept and render pre-session screen', async () => {

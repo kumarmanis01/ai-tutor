@@ -6,8 +6,14 @@
  * LINKED UNIT TEST:
  * - __tests__/app/public/auth/login/page.spec.tsx
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-05-18 | rename from /auth/signin; updated copy for returning-user clarity
+ * - 2026-05-18T00:00:00Z | claude | create from /auth/signin rename; updated copy for
+ *     returning-user clarity ("Welcome back"), added "New to Spinzy?" ghost link
  */
 'use client'
 
@@ -167,7 +173,7 @@ function LoginContent() {
                        focus:border-transparent text-sm"
           />
           {error && (
-            <p className="text-red-500 text-xs">{error}</p>
+            <p className="text-error text-xs">{error}</p>
           )}
           <button
             onClick={handleEmailSignIn}

@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render the public landing page footer with product/support/legal links,
+ *   contact icons, and primary/secondary auth CTAs.
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18T00:00:00Z | claude | add "Log in" ghost link; swap brand-* tokens to
+ *     semantic tokens; update CTA to /auth/get-started
+ */
+
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 import { LANDING_FOOTER_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';

@@ -7,9 +7,15 @@
  * LINKED UNIT TEST:
  * - tests/unit/app/(public)/landing-page/components/hero-section.spec.tsx
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-05-18 | compress hero: cut testimonials, stat floats, duplicate trust strip;
- *     add parent path acknowledgement; token cleanup brand-* -> semantic tokens
+ * - 2026-05-07T00:00:00Z | copilot | refine hero styling with existing landing page theme classes only
+ * - 2026-05-18T00:00:00Z | claude | compress: cut testimonials, stat floats, duplicate trust strip;
+ *     add "Buying for your child?" parent path link; token cleanup brand-* -> semantic tokens
  */
 
 'use client';

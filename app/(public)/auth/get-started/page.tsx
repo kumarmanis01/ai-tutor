@@ -6,6 +6,16 @@
  *
  * LINKED UNIT TEST:
  * - __tests__/app/public/auth/get-started/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18T00:00:00Z | claude | create role-first signup page: two RoleTiles,
+ *     inviteCode fast-path, parent highlight via ?source=parent,
+ *     OAuth error banner, authenticated redirect
  */
 'use client'
 
@@ -19,6 +29,7 @@ import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier'
 
 const STUDENT_ONBOARDING = '/student/onboarding'
 const PARENT_ONBOARDING = '/parent/onboarding'
+const GOOGLE_ERROR_CODES = new Set(['Callback', 'OAuthCallback', 'OAuthSignin', 'OAuthAccountNotLinked'])
 
 function buildParentCallback(inviteCode: string): string {
   if (!inviteCode) return PARENT_ONBOARDING
@@ -95,6 +106,8 @@ function GetStartedContent() {
   const inviteCode = String(searchParams.get('inviteCode') ?? '').trim().toUpperCase().slice(0, 16)
   const source = searchParams.get('source') ?? ''
   const highlightParent = source === 'parent'
+  const authError = searchParams.get('error') ?? ''
+  const googleFailed = GOOGLE_ERROR_CODES.has(authError)
 
   const [loading, setLoading] = useState<'student' | 'parent' | null>(null)
 
@@ -107,14 +120,12 @@ function GetStartedContent() {
     }
   }, [status, session, router])
 
-  // If inviteCode present, skip the chooser and go straight to parent flow.
+  // Gate to unauthenticated only: avoids re-triggering signIn on top of an
+  // existing session (which causes OAuthAccountNotLinked / redirect loops).
   useEffect(() => {
-    if (inviteCode && status !== 'loading') {
+    if (inviteCode && status === 'unauthenticated') {
       setLoading('parent')
       const callbackUrl = buildParentCallback(inviteCode)
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('spinzy_role_intent', 'parent')
-      }
       signIn('google', { callbackUrl }).catch(() => setLoading(null))
     }
   }, [inviteCode, status])
@@ -122,9 +133,6 @@ function GetStartedContent() {
   async function handleRoleSelect(role: 'student' | 'parent') {
     setLoading(role)
     const callbackUrl = role === 'parent' ? PARENT_ONBOARDING : STUDENT_ONBOARDING
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('spinzy_role_intent', role)
-    }
     try {
       await signIn('google', { callbackUrl })
     } catch {
@@ -156,6 +164,13 @@ function GetStartedContent() {
             {"We'll set things up just for you."}
           </p>
         </div>
+
+        {/* OAuth error banner (e.g. NextAuth appends ?error= on callback failures) */}
+        {googleFailed && (
+          <div className="rounded-xl bg-error-bg border border-brand-danger/20 px-4 py-3 text-sm text-error">
+            Google sign-in did not complete. Please try again -- if the problem continues, clear your browser cookies.
+          </div>
+        )}
 
         {/* Role tiles */}
         <div className="space-y-3">
@@ -205,7 +220,7 @@ function GetStartedContent() {
           >
             Already have an account?{' '}
             <span className="font-medium text-primary underline-offset-2 hover:underline">
-              Log in →
+              Log in
             </span>
           </Link>
         </div>
