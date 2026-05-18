@@ -16,6 +16,7 @@
  * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
  * - 2026-05-05T12:30:00Z | copilot | fix: replace MONTHLY_INTERVAL_MS (overflows 32-bit timer) with msUntilNextMonthlyRun() in self-reschedule
  * - 2026-05-09T00:00:00Z | copilot | add nightly 00:00 UTC unit+integration test execution and email report automation
+ * - 2026-05-18T00:00:00Z | copilot | fix: add explicit type annotation to purgeOldAIContentLogs map callback to satisfy TS7006
  */
 
 import { logger } from '../lib/logger.js';
@@ -351,7 +352,7 @@ async function purgeOldAIContentLogs(): Promise<number> {
       take: AI_CONTENT_LOG_PURGE_BATCH,
     });
     if (rows.length === 0) break;
-    const ids = rows.map((r) => r.id);
+    const ids = rows.map((r: { id: string }) => r.id);
     await prisma.aIContentLog.deleteMany({ where: { id: { in: ids } } });
     total += ids.length;
     if (ids.length < AI_CONTENT_LOG_PURGE_BATCH) break;

@@ -2,7 +2,6 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import { getRedis } from '@/lib/redis';
 import { invalidateUserSessionCache } from '@/lib/auth';
 import { normalizeLanguage } from '@/lib/normalize';
 import { SessionUser } from '@/lib/types';
