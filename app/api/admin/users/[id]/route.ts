@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - Handle admin user detail operations: retrieve, update profile, and permanently delete users.
+ *   DELETE endpoint now properly cascades deletion through referral FK constraints.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/users/[id]/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ * - CLAUDE.md
+ *
+ * EDIT LOG:
+ * - 2026-05-18T00:00:00Z | copilot | created handler with PATCH and DELETE methods
+ * - 2026-05-19T12:00:00Z | claude  | fix: DELETE now cascades through referral FK constraints; clears referralRewards, referrals (created/redeemed), and deletionRequest before user deletion
+ */
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logApiUsage } from '@/utils/logApiUsage';
@@ -75,18 +93,29 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   const { id } = await context.params;
   try {
     await prisma.$transaction([
-      prisma.user.update({ where: { id }, data: { status: 'suspended' } }),
+      // Delete referral rewards related to this user
+      prisma.referralReward.deleteMany({ where: { userId: id } }),
+      // Delete referrals created by this user
+      prisma.referral.deleteMany({ where: { createdBy: id } }),
+      // Delete referrals redeemed by this user
+      prisma.referral.deleteMany({ where: { redeemedBy: id } }),
+      // Delete deletion request record (if exists)
+      prisma.deletionRequest.deleteMany({ where: { userId: id } }),
+      // Finally delete the user (all other FKs have onDelete: Cascade or are optional)
+      prisma.user.delete({ where: { id } }),
+      // Audit the deletion
       prisma.auditLog.create({
         data: {
           adminId:      session.user.id,
           targetEntity: 'User',
           targetId:     id,
-          action:       AdminActionType.ACCOUNT_SUSPEND,
+          action:       AdminActionType.ERASURE_PURGE,
         },
       }),
     ]);
-    return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+    return NextResponse.json({ ok: true, user: { id } });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to delete user';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
