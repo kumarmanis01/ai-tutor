@@ -126,21 +126,18 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
         }
       });
 
-      let assembledCount = 0;
+      const qualifyingIds = draftTests
+        .filter((t) => t._count.questions >= MIN_QUESTIONS_FOR_APPROVAL)
+        .map((t) => t.id);
 
-      for (const test of draftTests) {
-        // Check if test has enough questions using the relation count
-        const questionCount = test._count.questions;
+      const assembledCount = qualifyingIds.length;
 
-        if (questionCount >= MIN_QUESTIONS_FOR_APPROVAL) {
-          // Auto-approve tests that meet threshold
-          await tx.generatedTest.update({
-            where: { id: test.id },
-            data: { status: 'approved' }
-          });
-          assembledCount++;
-          logger.info('handleAssembleJob: approved test', { testId: test.id, questionCount });
-        }
+      if (qualifyingIds.length > 0) {
+        await tx.generatedTest.updateMany({
+          where: { id: { in: qualifyingIds } },
+          data: { status: 'approved' },
+        });
+        logger.info('handleAssembleJob: approved tests', { count: qualifyingIds.length, testIds: qualifyingIds });
       }
 
       // Mark hydration job completed (workers only update their own HydrationJob)

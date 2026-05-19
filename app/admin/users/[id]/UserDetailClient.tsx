@@ -26,7 +26,7 @@ export interface UserDetail {
   grade: string | null
   board: string | null
   age: number | null
-  // 'isAdult' removed — use `age` alone for display logic
+  // 'isAdult' removed -- use `age` alone for display logic
   accountStatus: string
   subscriptionStatus: string
   subscriptionExpiry: string | null

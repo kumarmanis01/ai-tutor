@@ -408,7 +408,13 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
   async function bulkApprove() {
     setBulkBusy(true)
     try {
-      await Promise.all(visible.map(i => approveItem(i.id, i.type, 'approve')))
+      await fetch('/api/admin/content/approve-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: visible.map(i => ({ id: i.id, type: i.type, action: 'approve' })),
+        }),
+      })
       refresh()
     } catch {
       // individual row errors surface per-row on refresh
