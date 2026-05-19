@@ -187,25 +187,41 @@ function RowActions({
     await call('/api/admin/content/retry', { jobId: row.jobId })
   }
 
-  async function handleRegenNotes() {
+  async function postAndShowMessage(url: string, body: Record<string, unknown>, fallbackMsg: string) {
     setBusy(true)
     setError(null)
     setMsg(null)
     try {
-      const r = await fetch('/api/admin/content-engine/notes-rehyd', {
+      const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectId: row.subjectId, language: row.language }),
+        body: JSON.stringify(body),
       })
       const data = await r.json()
       if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
-      setMsg(data.message ?? `Queued ${data.enqueued} notes jobs.`)
+      setMsg(data.message ?? fallbackMsg)
       onRefresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error')
     } finally {
       setBusy(false)
     }
+  }
+
+  function handleRegenNotes() {
+    return postAndShowMessage(
+      '/api/admin/content-engine/notes-rehyd',
+      { subjectId: row.subjectId, language: row.language },
+      `Queued notes jobs.`,
+    )
+  }
+
+  function handleTopUpQuestions() {
+    return postAndShowMessage(
+      '/api/admin/content-engine/questions-rehyd',
+      { subjectId: row.subjectId, language: row.language },
+      `Queued question jobs.`,
+    )
   }
 
   async function handleCompletePipeline() {
@@ -337,6 +353,7 @@ function RowActions({
       {s === 'ready' && (
         <>
           <Btn onClick={handleRegenNotes} disabled={busy} variant="primary">Regen notes</Btn>
+          <Btn onClick={handleTopUpQuestions} disabled={busy} variant="success">Top up Qs</Btn>
           <Btn onClick={handleCompletePipeline} disabled={busy} variant="warn">Fill gaps</Btn>
           <Link
             href={`/admin/content-engine/jobs?subjectId=${row.subjectId}`}
