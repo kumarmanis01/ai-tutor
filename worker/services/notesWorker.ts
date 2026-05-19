@@ -17,6 +17,7 @@
  * - 2026-05-18T00:00:00Z | claude  | feat: notes now soft-approved (status: Approved) immediately on write; invalidates notes cache after completion
  * - 2026-05-19T00:00:00Z | claude  | feat: detect language subjects; pass languageMeta + isLanguageSubject to
  *     renderTemplate and validateOrThrow; expand grammar weakness codes in retry list
+ * - 2026-05-19T00:00:00Z | claude  | feat: PDF-anchored grounding -- use bookTopic.rawText when available
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -219,8 +220,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
     include: {
+      bookTopic: true, // populated when topic was seeded from a PDF
       chapter: {
         include: {
+          bookChapter: true, // populated when chapter was seeded from a PDF
           subject: {
             include: {
               class: { include: { board: true } }
@@ -275,40 +278,57 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     priorTopics.push(...siblings.map((s: SiblingRow) => s.name))
   } catch { /* non-fatal -- priorTopics will be empty */ }
 
-  // ── Ground notes in NCERT CurriculumChunk content when available ─────────────
+  // ── Ground notes in PDF book text (priority) or NCERT CurriculumChunks (fallback) ──
   let ncertContext: string | undefined
-  try {
-    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    const chapterOrder = topic.chapter.order ?? 0
-    if (chapterOrder > 0) {
-      const chunks = (await prisma.curriculumChunk.findMany({
-        where: {
-          subject: subjectSlug,
-          grade: String(grade),
-          conceptIds: { hasSome: [`chapter:${chapterOrder}`] },
-        },
-        select: { content: true },
-        orderBy: { createdAt: 'asc' },
-        take: 8,
-      })) as ChunkRow[]
-      if (chunks.length > 0) {
-        ncertContext = chunks.map((c: ChunkRow) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
-        logger.info('[notesWorker] grounding notes with NCERT chunks', {
-          event: 'ncert_grounding',
-          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
-        })
-      } else {
-        logger.warn('[notesWorker] no NCERT chunks for chapter -- using GPT knowledge', {
-          event: 'ncert_grounding_fallback',
-          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
-        })
-      }
-    }
-  } catch (chunkErr) {
-    logger.warn('[notesWorker] CurriculumChunk query failed -- using GPT knowledge', {
-      event: 'ncert_grounding_error',
-      context: { jobId: job.id, error: String(chunkErr) },
+
+  // PDF-anchored path: use bookTopic.rawText if available (authoritative textbook text)
+  if (topic.bookTopic?.rawText) {
+    const bookTopic = topic.bookTopic
+    // Cap to 3000 chars (~750 tokens) to fit prompt budget
+    const capped = bookTopic.rawText.slice(0, 3000)
+    const exercisePart = bookTopic.exerciseText
+      ? `\n\n=== NCERT EXERCISES ===\n${bookTopic.exerciseText.slice(0, 1000)}`
+      : ''
+    ncertContext = capped + exercisePart
+    logger.info('[notesWorker] grounding notes with PDF book text', {
+      event: 'pdf_ncert_grounding',
+      context: { jobId: job.id, topicId, chars: capped.length },
     })
+  } else {
+    // Fallback: CurriculumChunk-based grounding
+    try {
+      const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      const chapterOrder = topic.chapter.order ?? 0
+      if (chapterOrder > 0) {
+        const chunks = (await prisma.curriculumChunk.findMany({
+          where: {
+            subject: subjectSlug,
+            grade: String(grade),
+            conceptIds: { hasSome: [`chapter:${chapterOrder}`] },
+          },
+          select: { content: true },
+          orderBy: { createdAt: 'asc' },
+          take: 8,
+        })) as ChunkRow[]
+        if (chunks.length > 0) {
+          ncertContext = chunks.map((c: ChunkRow) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
+          logger.info('[notesWorker] grounding notes with NCERT chunks', {
+            event: 'ncert_grounding',
+            context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
+          })
+        } else {
+          logger.warn('[notesWorker] no NCERT chunks for chapter -- using GPT knowledge', {
+            event: 'ncert_grounding_fallback',
+            context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
+          })
+        }
+      }
+    } catch (chunkErr) {
+      logger.warn('[notesWorker] CurriculumChunk query failed -- using GPT knowledge', {
+        event: 'ncert_grounding_error',
+        context: { jobId: job.id, error: String(chunkErr) },
+      })
+    }
   }
 
   // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint

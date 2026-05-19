@@ -15,6 +15,7 @@
 /// - 2026-05-09T00:00:00Z | staff-engineer | add NotificationAudit, NotificationChannel/Severity/EventType enums, escalationStatus on StudentEngagementStats
 /// - 2026-05-11T00:00:00Z | copilot | add todayStudyMinutes and lastStudySessionDate for daily study duration limits (30min free / 60min paid)
 /// - 2026-05-12T00:00:00Z | copilot | add parentWhatsappPhone and channel-specific parent verification timestamps; add pending_onboarding account status default
+/// - 2026-05-19T00:00:00Z | claude  | feat: add CurriculumBook/BookChapter/BookTopic models; add CurriculumBookParseStatus enum; add bookChapterId/bookTopicId to ChapterDef/TopicDef
 generator client {
   provider = "prisma-client-js"
 }
@@ -1556,6 +1557,7 @@ model SubjectDef {
   boardSubjectConfigs BoardSubjectConfig[]
   diagnosticSessions  DiagnosticSession[]
   mockExams           MockExam[] /// F-STU-021: back-relation
+  curriculumBooks     CurriculumBook[]
 
   @@unique([classId, slug], name: "classId_slug")
 }
@@ -1569,10 +1571,12 @@ model ChapterDef {
   status              ApprovalStatus       @default(draft)
   lifecycle           SoftDeleteStatus     @default(active)
   subjectId           String
+  bookChapterId       String?              @unique // linked BookChapter if this chapter was seeded from a PDF
   createdAt           DateTime             @default(now())
   subject             SubjectDef           @relation(fields: [subjectId], references: [id])
   topics              TopicDef[]
   boardChapterWeights BoardChapterWeight[]
+  bookChapter         BookChapter?         @relation(fields: [bookChapterId], references: [id])
 
   @@unique([subjectId, slug, version])
 }
@@ -1586,6 +1590,7 @@ model TopicDef {
   status             ApprovalStatus         @default(draft)
   lifecycle          SoftDeleteStatus       @default(active)
   parentId           String?
+  bookTopicId        String?                @unique // linked BookTopic if this topic was seeded from a PDF
   createdAt          DateTime               @default(now())
   logs               AIContentLog[]
   tests              GeneratedTest[]
@@ -1596,6 +1601,7 @@ model TopicDef {
   structuredSessions StructuredSession[]
   homework           HomeworkAssignment[]
   concepts           Concept[]
+  bookTopic          BookTopic?             @relation(fields: [bookTopicId], references: [id])
 
   @@unique([chapterId, slug])
 }
@@ -3053,4 +3059,76 @@ model NotificationAudit {
   @@index([eventType, sentAt])
   // Supports query: queryable by student (parent dashboard, admin)
   @@index([studentId, sentAt])
+}
+
+/// Parse lifecycle for an uploaded NCERT textbook PDF.
+enum CurriculumBookParseStatus {
+  pending
+  parsing
+  parsed
+  failed
+}
+
+/// Admin-uploaded textbook PDF for a board+grade+subject.
+/// Parsed chapters and topics are stored in BookChapter and BookTopic.
+/// Once parsed, SyllabusWorker uses these instead of LLM recall.
+model CurriculumBook {
+  id            String        @id @default(cuid())
+  board         String        // 'cbse' | 'icse'
+  grade         Int
+  subjectId     String
+  language      String        @default("en")
+  edition       String?       // e.g. "2024-25"
+  originalName  String        // original uploaded filename
+  storagePath   String        // R2 key or local path
+  fileSizeBytes Int
+  pageCount     Int?
+  parseStatus   CurriculumBookParseStatus @default(pending)
+  parseError    String?
+  parsedAt      DateTime?
+  uploadedBy    String        // admin userId
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  subject       SubjectDef    @relation(fields: [subjectId], references: [id])
+  bookChapters  BookChapter[]
+
+  @@unique([subjectId, language])
+  @@index([parseStatus])
+}
+
+/// Chapter extracted from a CurriculumBook PDF.
+model BookChapter {
+  id             String         @id @default(cuid())
+  bookId         String
+  chapterNumber  Int
+  chapterTitle   String
+  startPage      Int?
+  endPage        Int?
+  rawText        String
+  createdAt      DateTime       @default(now())
+
+  book           CurriculumBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  bookTopics     BookTopic[]
+  chapterDef     ChapterDef?    // back-relation from ChapterDef.bookChapterId
+
+  @@unique([bookId, chapterNumber])
+  @@index([bookId])
+}
+
+/// Section/topic extracted within a BookChapter.
+model BookTopic {
+  id            String      @id @default(cuid())
+  chapterId     String
+  topicOrder    Int
+  topicTitle    String
+  rawText       String
+  exerciseText  String?
+  createdAt     DateTime    @default(now())
+
+  chapter       BookChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  topicDef      TopicDef?   // back-relation from TopicDef.bookTopicId
+
+  @@unique([chapterId, topicOrder])
+  @@index([chapterId])
 }

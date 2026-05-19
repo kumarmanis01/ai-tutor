@@ -22,6 +22,7 @@
  * - 2026-05-18T00:00:00Z | claude  | feat: QUESTIONS_PARALLEL=true env var enables parallel 3-difficulty LLM calls even when LLM_SAFE_MODE=true
  * - 2026-05-18T00:00:00Z | claude  | feat: raise default question cap from 2 to 10 per difficulty to satisfy PRACTICE+TEST+PRACTICE_MORE supply
  * - 2026-05-19T00:00:00Z | claude  | fix: batch generatedQuestion inserts with createMany; batch soft-promote with createMany(skipDuplicates)
+ * - 2026-05-19T00:00:00Z | claude  | feat: PDF-anchored grounding -- use bookTopic.rawText when available
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -499,6 +500,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
     include: {
+      bookTopic: true, // populated when topic was seeded from a PDF
       chapter: {
         include: {
           subject: {
@@ -521,40 +523,56 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const grade = topic.chapter.subject.class.grade;
   const subjectName = topic.chapter.subject.name;
 
-  // ── Ground questions in NCERT CurriculumChunk content when available ─────────
+  // ── Ground questions in PDF book text (priority) or NCERT CurriculumChunks (fallback) ──
   let ncertContext: string | undefined
-  try {
-    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    const chapterOrder = (topic.chapter as any).order ?? 0
-    if (chapterOrder > 0) {
-      const chunks = await prisma.curriculumChunk.findMany({
-        where: {
-          subject: subjectSlug,
-          grade: String(grade),
-          conceptIds: { hasSome: [`chapter:${chapterOrder}`] },
-        },
-        select: { content: true },
-        orderBy: { createdAt: 'asc' },
-        take: 8,
-      })
-      if (chunks.length > 0) {
-        ncertContext = chunks.map((c: { content?: string | null }) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
-        logger.info('[questionsWorker] grounding questions with NCERT chunks', {
-          event: 'ncert_grounding',
-          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
-        })
-      } else {
-        logger.warn('[questionsWorker] no NCERT chunks for chapter -- using GPT knowledge', {
-          event: 'ncert_grounding_fallback',
-          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
-        })
-      }
-    }
-  } catch (chunkErr) {
-    logger.warn('[questionsWorker] CurriculumChunk query failed -- using GPT knowledge', {
-      event: 'ncert_grounding_error',
-      context: { jobId: job.id, error: String(chunkErr) },
+
+  // PDF-anchored path: use bookTopic text + exercises if available
+  if (topic.bookTopic?.rawText) {
+    const bookTopic = topic.bookTopic
+    const capped = bookTopic.rawText.slice(0, 3000)
+    const exercisePart = bookTopic.exerciseText
+      ? `\n\n=== NCERT EXERCISES (use as question inspiration) ===\n${bookTopic.exerciseText.slice(0, 1500)}`
+      : ''
+    ncertContext = capped + exercisePart
+    logger.info('[questionsWorker] grounding questions with PDF book text', {
+      event: 'pdf_ncert_grounding',
+      context: { jobId: job.id, topicId, chars: capped.length, hasExercises: !!bookTopic.exerciseText },
     })
+  } else {
+    // Fallback: CurriculumChunk-based grounding
+    try {
+      const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      const chapterOrder = (topic.chapter as any).order ?? 0
+      if (chapterOrder > 0) {
+        const chunks = await prisma.curriculumChunk.findMany({
+          where: {
+            subject: subjectSlug,
+            grade: String(grade),
+            conceptIds: { hasSome: [`chapter:${chapterOrder}`] },
+          },
+          select: { content: true },
+          orderBy: { createdAt: 'asc' },
+          take: 8,
+        })
+        if (chunks.length > 0) {
+          ncertContext = chunks.map((c: { content?: string | null }) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
+          logger.info('[questionsWorker] grounding questions with NCERT chunks', {
+            event: 'ncert_grounding',
+            context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
+          })
+        } else {
+          logger.warn('[questionsWorker] no NCERT chunks for chapter -- using GPT knowledge', {
+            event: 'ncert_grounding_fallback',
+            context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
+          })
+        }
+      }
+    } catch (chunkErr) {
+      logger.warn('[questionsWorker] CurriculumChunk query failed -- using GPT knowledge', {
+        event: 'ncert_grounding_error',
+        context: { jobId: job.id, error: String(chunkErr) },
+      })
+    }
   }
 
   // Log processing started for linked ExecutionJob

@@ -21,6 +21,7 @@ import {
   type PipelineJobData,
   type IngestRunData,
 } from './CoverageTable'
+import { BookPanel, type BookRowData } from './BookPanel'
 
 // ---------------------------------------------------------------------------
 // Status derivation
@@ -65,7 +66,7 @@ export default async function ContentPage() {
   )
 
   // ── 2. Batch lookups ────────────────────────────────────────────────────
-  const [generatedTestGroups, noteGroups, ragGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
+  const [generatedTestGroups, noteGroups, ragGroups, activeJobs, pipelineJobs, recentRuns, curriculumBooks] = await Promise.all([
     // GeneratedTests per topic (any approval status, active lifecycle).
     // The QUESTIONS hydration job produces GeneratedTest rows -- not the legacy
     // Question model. Counting GeneratedTest gives an accurate "questions generated"
@@ -147,6 +148,20 @@ export default async function ContentPage() {
     prisma.ingestRunLog.findMany({
       orderBy: { runAt: 'desc' },
       take: 10,
+    }),
+
+    // Curriculum books (uploaded PDFs)
+    prisma.curriculumBook.findMany({
+      include: {
+        subject: { select: { name: true } },
+        bookChapters: {
+          select: {
+            id: true,
+            _count: { select: { bookTopics: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     }),
   ])
 
@@ -275,6 +290,33 @@ export default async function ContentPage() {
 
   const runningCount = pipelineJobs.length
 
+  // ── 7. Build curriculum book rows ────────────────────────────────────────
+  const bookRows: BookRowData[] = curriculumBooks.map(b => ({
+    id: b.id,
+    board: b.board,
+    grade: b.grade,
+    subjectId: b.subjectId,
+    subjectName: b.subject.name,
+    language: b.language,
+    edition: b.edition,
+    originalName: b.originalName,
+    fileSizeBytes: b.fileSizeBytes,
+    pageCount: b.pageCount,
+    parseStatus: b.parseStatus,
+    parseError: b.parseError,
+    parsedAt: b.parsedAt?.toISOString() ?? null,
+    chapterCount: b.bookChapters.length,
+    topicCount: b.bookChapters.reduce((sum, ch) => sum + ch._count.bookTopics, 0),
+  }))
+
+  // Subject options for the upload modal dropdown
+  const subjectOptions = subjects.map(s => ({
+    id: s.id,
+    name: s.name,
+    grade: s.class.grade,
+    boardSlug: s.class.board.slug,
+  }))
+
   return (
     <>
       <AdminTopbar title="Coverage & Hydrate" runningJobs={runningCount} />
@@ -283,14 +325,19 @@ export default async function ContentPage() {
         {/* Workflow banner */}
         <div className="flex flex-wrap items-center gap-1.5 bg-[#FAEEDA] border border-[#EF9F27] rounded-lg px-4 py-2.5 text-[11px] text-[#633806]">
           <span className="font-semibold">Correct workflow:</span>
-          <span>Step 1 -- Ingest NCERT</span>
+          <span>Step 1 -- Upload Textbook PDF (optional but recommended)</span>
           <span className="text-[#BA7517]">&rarr;</span>
-          <span>Step 2 -- Generate All Content</span>
+          <span>Step 2 -- Ingest NCERT RAG chunks</span>
           <span className="text-[#BA7517]">&rarr;</span>
-          <span>Step 3 -- Review &amp; approve</span>
+          <span>Step 3 -- Generate All Content</span>
           <span className="text-[#BA7517]">&rarr;</span>
-          <span>Step 4 -- Diagnostic unlocked for students</span>
+          <span>Step 4 -- Review &amp; approve</span>
+          <span className="text-[#BA7517]">&rarr;</span>
+          <span>Step 5 -- Diagnostic unlocked for students</span>
         </div>
+
+        {/* Textbook PDFs */}
+        <BookPanel books={bookRows} subjects={subjectOptions} />
 
         {/* Coverage matrix */}
         <div>
