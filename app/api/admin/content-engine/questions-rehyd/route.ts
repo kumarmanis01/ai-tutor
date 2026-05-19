@@ -22,6 +22,7 @@ import { logger } from '@/lib/logger'
 
 const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
 const DEFAULT_QUESTIONS_PER_DIFFICULTY = 10
+const MAX_QUESTIONS_PER_DIFFICULTY = 10
 
 export async function POST(req: Request) {
   // session check -> role check -> business logic (CLAUDE.md rule 8)
@@ -30,21 +31,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'forbidden' }, { status: 401 })
   }
 
-  let body: { subjectId?: string; language?: string; questionsPerDifficulty?: number }
+  let body: { subjectId?: unknown; language?: unknown; questionsPerDifficulty?: unknown }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
   }
 
-  const { subjectId, language = 'en', questionsPerDifficulty = DEFAULT_QUESTIONS_PER_DIFFICULTY } = body
-  if (!subjectId) {
+  const { subjectId, language = 'en', questionsPerDifficulty: rawQpd = DEFAULT_QUESTIONS_PER_DIFFICULTY } = body
+
+  if (!subjectId || typeof subjectId !== 'string') {
     return NextResponse.json({ error: 'missing_fields', required: ['subjectId'] }, { status: 400 })
   }
 
-  if (!['en', 'hi'].includes(language)) {
+  if (typeof language !== 'string' || !['en', 'hi'].includes(language)) {
     return NextResponse.json({ error: 'invalid_language', supported: ['en', 'hi'] }, { status: 400 })
   }
+
+  const qpdNum = Number(rawQpd)
+  if (!Number.isFinite(qpdNum) || !Number.isInteger(qpdNum) || qpdNum < 1) {
+    return NextResponse.json(
+      { error: 'invalid_questionsPerDifficulty', message: 'Must be a positive integer (1-10)' },
+      { status: 400 },
+    )
+  }
+  const questionsPerDifficulty = Math.min(qpdNum, MAX_QUESTIONS_PER_DIFFICULTY)
 
   const subject = await prisma.subjectDef.findUnique({
     where: { id: subjectId },
@@ -78,10 +89,11 @@ export async function POST(req: Request) {
 
   let enqueued = 0
   let skipped = 0
+  let hydrationPaused = false
 
   // Enqueue serially (topic x difficulty) to avoid hammering the DB.
   // force=true: generate new versions even for topics that already have approved questions.
-  for (const topic of topics) {
+  outer: for (const topic of topics) {
     for (const difficulty of DIFFICULTIES) {
       try {
         const result = await enqueueQuestionsHydration({
@@ -97,11 +109,12 @@ export async function POST(req: Request) {
           // With force=true, only skip reasons are job_already_queued or hydration_paused
           skipped++
           if (result.reason === 'hydration_paused') {
-            logger.warn('[questions-rehyd] hydration paused, aborting', {
+            hydrationPaused = true
+            logger.warn('[questions-rehyd] hydration paused, aborting remaining topics', {
               event: 'questions_rehyd_paused',
               context: { subjectId, topicId: topic.id },
             })
-            break
+            break outer
           }
         }
       } catch (err) {
@@ -120,8 +133,9 @@ export async function POST(req: Request) {
         adminId: session.user?.id ?? null,
         targetEntity: 'HydrationJob',
         targetId: subjectId,
-        action: 'QUESTIONS_REHYDRATE',
+        action: 'CONTENT_HYDRATE',
         newValue: {
+          operation: 'questions_rehydrate',
           subjectId,
           subjectName: subject.name,
           grade: subject.class?.grade,
@@ -155,10 +169,11 @@ export async function POST(req: Request) {
     },
   })
 
+  const pausedSuffix = hydrationPaused ? ' Stopped early -- hydration is paused.' : ''
   return NextResponse.json({
     enqueued,
     skipped,
     topicCount: topics.length,
-    message: `Queued ${enqueued} question jobs (easy/medium/hard)${skipped > 0 ? `, ${skipped} skipped (already queued or paused)` : ''}.`,
+    message: `Queued ${enqueued} question jobs (easy/medium/hard)${skipped > 0 ? `, ${skipped} skipped (already queued or paused)` : ''}.${pausedSuffix}`,
   })
 }
