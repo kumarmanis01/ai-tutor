@@ -16,12 +16,13 @@
  * - 2026-01-23T08:00:00Z | copilot | Fixed: Use GeneratedQuestion relation instead of questionsJson field
  * - 2026-05-18T00:00:00Z | claude  | Invalidate questions:for-topic cache after test approval so newly assembled tests are visible without waiting for TTL
  * - 2026-05-19T00:00:00Z | claude  | fix: batch per-test update loop into updateMany; use returned count for accurate assembledCount
+ * - 2026-05-19T00:00:00Z | copilot | fix: add explicit draft test result shape so approval filtering is type-safe
+ * - 2026-05-19T00:00:00Z | copilot | fix: remove unused renderTemplate import revealed by strict type-check
  */
 
 import { prisma } from '@/lib/prisma.js';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
-import { renderTemplate } from '@/prompts/index';
 import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { cacheDelPattern } from '@/lib/cache.js';
@@ -113,7 +114,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
 
     await runTxWithRetry(async (tx) => {
       // Find draft tests for this topic that match criteria, include question count
-      const draftTests = await tx.generatedTest.findMany({
+      const draftTests: Array<{ id: string; _count: { questions: number } }> = await tx.generatedTest.findMany({
         where: {
           topicId,
           language,
