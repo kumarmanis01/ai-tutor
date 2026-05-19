@@ -70,6 +70,82 @@ export const VidyaNotesSchema = z.object({
 export type VidyaNotes = z.infer<typeof VidyaNotesSchema>
 export type NoteSection = z.infer<typeof NoteSectionSchema>
 
+// ---------------------------------------------------------------------------
+// Grammar notes schemas (language subjects only)
+// ---------------------------------------------------------------------------
+
+export const GrammarExampleSchema = z.object({
+  level: z.enum(['isolated', 'in_sentence', 'exam_style', 'chapter_extracted']),
+  incorrect: z.string().optional(),
+  correct: z.string(),
+  teacherComment: z.string(),
+})
+
+export const CommonErrorSchema = z.object({
+  errorDescription: z.string(),
+  wrongExample: z.string(),
+  correctExample: z.string(),
+  whyWrong: z.string(),
+})
+
+export const GrammarNotesBlockSchema = z.object({
+  domain: z.string(),
+  title: z.string(),
+  chapterAnchor: z.string().min(10),
+  formalRule: z.string().min(20),
+  simpleRule: z.string().min(20),
+  structurePattern: z.string(),
+  examples: z.array(GrammarExampleSchema).min(3),
+  commonErrors: z.array(CommonErrorSchema).min(2),
+  examTips: z.array(z.string()).min(2),
+  languageSpecificNuances: z.array(z.string()).optional(),
+  blackboardNotes: z.array(z.string()).min(1),
+})
+
+export const LanguageVidyaNotesSchema = VidyaNotesSchema.extend({
+  grammarNotes: GrammarNotesBlockSchema,
+})
+
+export type GrammarExample = z.infer<typeof GrammarExampleSchema>
+export type CommonError = z.infer<typeof CommonErrorSchema>
+export type GrammarNotesBlock = z.infer<typeof GrammarNotesBlockSchema>
+export type LanguageVidyaNotes = z.infer<typeof LanguageVidyaNotesSchema>
+
+// ---------------------------------------------------------------------------
+// Grammar question schemas (language subjects only)
+// ---------------------------------------------------------------------------
+
+export const GRAMMAR_QUESTION_TYPES = [
+  'identify',
+  'transform',
+  'fill_in_blanks',
+  'error_correction',
+  'match_the_column',
+  'rewrite_as_directed',
+  'sentence_formation',
+  'chapter_context',
+] as const
+
+export type GrammarQuestionType = typeof GRAMMAR_QUESTION_TYPES[number]
+
+export const GrammarQuestionSchema = z.object({
+  question: z.string(),
+  type: z.enum(GRAMMAR_QUESTION_TYPES),
+  grammarDomain: z.string(),
+  options: z.array(z.string()).min(3).max(5).optional(),
+  answer: z.any(),
+  explanation: z.string(),
+  chapterLinked: z.boolean(),
+  markingHint: z.string(),
+  difficulty: z
+    .string()
+    .transform(v => v.toLowerCase())
+    .pipe(z.enum(['easy', 'medium', 'hard']))
+    .optional(),
+})
+
+export type GrammarQuestion = z.infer<typeof GrammarQuestionSchema>
+
 export const QuestionsItemSchema = z.object({
   question: z.string(),
   type: z.string(),
@@ -83,6 +159,13 @@ export const QuestionsItemSchema = z.object({
 export const QuestionsSchema = z.object({
   questions: z.array(QuestionsItemSchema).min(1)
 })
+
+export const LanguageQuestionsSchema = z.object({
+  comprehensionQuestions: z.array(QuestionsItemSchema).optional(),
+  grammarQuestions: z.array(GrammarQuestionSchema).min(5),
+})
+
+export type LanguageQuestions = z.infer<typeof LanguageQuestionsSchema>
 
 export const BilingualNotesSchema = z.object({
   en: NoteSchema.optional(),
@@ -114,7 +197,9 @@ export type Questions = z.infer<typeof QuestionsSchema>
 const PromptSchemas = {
   NoteSchema,
   VidyaNotesSchema,
+  LanguageVidyaNotesSchema,
   QuestionsSchema,
+  LanguageQuestionsSchema,
   BilingualNotesSchema,
   SyllabusSchema,
   ChaptersArraySchema,

@@ -17,11 +17,16 @@
 
 import {
   buildDoubtsPrompt,
-  isValidDoubtsResponse,
   isOffTopicQuestion,
   getOffTopicRedirect,
   DOUBTS_OUTPUT_SCHEMA,
 } from '@/lib/ai/prompts/doubts';
+import { validateDoubtsOutput } from '@/lib/ai/prompts/validators';
+
+// Thin wrapper so existing test cases pass without change
+function isValidDoubtsResponse(val: unknown): boolean {
+  return validateDoubtsOutput(val).valid;
+}
 import type { DoubtsInputContract } from '@/lib/ai/prompts/schemas';
 
 describe('Doubts Prompt Builder', () => {

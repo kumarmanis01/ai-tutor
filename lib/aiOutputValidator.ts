@@ -59,14 +59,18 @@ function scanForPlaceholders(obj: any): string | null {
   return null
 }
 
-export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: string, difficulty?: string, subject?: string, topic?: string, grade?: number, difficultyLevel?: 'foundation' | 'standard' | 'advanced' }) {
+export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: string, difficulty?: string, subject?: string, topic?: string, grade?: number, difficultyLevel?: 'foundation' | 'standard' | 'advanced', isLanguageSubject?: boolean }) {
   if (!parsed) throw new SchemaInvalidError('empty_response')
   // Schema validation: prefer Zod strict schemas for new prompt types
   try {
     if (ctx.jobType === 'notes') {
       // Auto-detect format: VidyaNotesSchema (sections array) vs legacy NoteSchema (flat fields)
       if (Array.isArray(parsed.sections)) {
-        zodSchemas.VidyaNotesSchema.parse(parsed)
+        if (ctx.isLanguageSubject && parsed.grammarNotes) {
+          zodSchemas.LanguageVidyaNotesSchema.parse(parsed)
+        } else {
+          zodSchemas.VidyaNotesSchema.parse(parsed)
+        }
       } else {
         zodSchemas.NoteSchema.parse(parsed)
       }
@@ -196,6 +200,11 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
       if (!Array.isArray(parsed.examTips) || parsed.examTips.length < 3) {
         throw new SemanticWeaknessError('too_few_exam_tips')
       }
+
+      // Language subject grammar notes quality gates
+      if (ctx.isLanguageSubject) {
+        validateGrammarNotesBlock(parsed.grammarNotes)
+      }
     } else {
       // ---- Legacy flat NoteSchema semantic checks ----
       let notesText = ''
@@ -236,6 +245,45 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
 
   // If all checks pass, return true
   return true
+}
+
+function validateGrammarNotesBlock(grammarNotes: any): void {
+  if (!grammarNotes || typeof grammarNotes !== 'object') {
+    throw new SemanticWeaknessError('grammar_notes_missing')
+  }
+  if (!String(grammarNotes.chapterAnchor || '').trim()) {
+    throw new SemanticWeaknessError('grammar_notes_missing_chapter_anchor')
+  }
+  if (!String(grammarNotes.formalRule || '').trim()) {
+    throw new SemanticWeaknessError('grammar_notes_missing_formal_rule')
+  }
+  if (!String(grammarNotes.simpleRule || '').trim()) {
+    throw new SemanticWeaknessError('grammar_notes_missing_simple_rule')
+  }
+  if (!Array.isArray(grammarNotes.examples) || grammarNotes.examples.length < 3) {
+    throw new SemanticWeaknessError('grammar_notes_too_few_examples', { got: grammarNotes.examples?.length ?? 0, min: 3 })
+  }
+  for (let i = 0; i < grammarNotes.examples.length; i++) {
+    const ex = grammarNotes.examples[i]
+    if (!String(ex?.correct || '').trim()) {
+      throw new SemanticWeaknessError('grammar_example_missing_correct', { index: i })
+    }
+    if (!String(ex?.teacherComment || '').trim()) {
+      throw new SemanticWeaknessError('grammar_example_missing_teacher_comment', { index: i })
+    }
+  }
+  if (!Array.isArray(grammarNotes.commonErrors) || grammarNotes.commonErrors.length < 2) {
+    throw new SemanticWeaknessError('grammar_notes_too_few_common_errors', { got: grammarNotes.commonErrors?.length ?? 0, min: 2 })
+  }
+  for (let i = 0; i < grammarNotes.commonErrors.length; i++) {
+    const ce = grammarNotes.commonErrors[i]
+    if (!String(ce?.whyWrong || '').trim()) {
+      throw new SemanticWeaknessError('grammar_common_error_missing_why_wrong', { index: i })
+    }
+  }
+  if (!Array.isArray(grammarNotes.blackboardNotes) || grammarNotes.blackboardNotes.length < 1) {
+    throw new SemanticWeaknessError('grammar_notes_missing_blackboard_notes')
+  }
 }
 
 const aiOutputValidator = { validateOrThrow }

@@ -23,7 +23,7 @@ import {
 describe('Global System Prompt', () => {
   describe('GLOBAL_SYSTEM_PROMPT', () => {
     it('identifies as K-12 tutor', () => {
-      expect(GLOBAL_SYSTEM_PROMPT).toContain('K–12 students');
+      expect(GLOBAL_SYSTEM_PROMPT).toContain('K-12 students');
     });
 
     it('includes explanation-first rule', () => {
@@ -110,7 +110,7 @@ describe('Global System Prompt', () => {
     it('combines global prompt with grade guidance', () => {
       const prompt = buildSystemPrompt(5, 'English');
       
-      expect(prompt).toContain('K–12 students');
+      expect(prompt).toContain('K-12 students');
       expect(prompt).toContain('GRADE-SPECIFIC GUIDANCE');
     });
 

@@ -31,7 +31,7 @@ describe('Prompt Schemas', () => {
 
     it('calibration strings are descriptive', () => {
       expect(DIFFICULTY_CALIBRATION.easy).toContain('Definition');
-      expect(DIFFICULTY_CALIBRATION.medium).toContain('Reasoning');
+      expect(DIFFICULTY_CALIBRATION.medium).toContain('reasoning');
       expect(DIFFICULTY_CALIBRATION.hard).toContain('Application');
     });
   });
