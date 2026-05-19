@@ -13,15 +13,22 @@
  * - 2026-02-04 | claude | created unit tests for doubts prompt builder
  * - 2026-05-07T00:00:00Z | copilot | update tone-guideline assertion to match current prompt wording
  * - 2026-05-08T00:00:00Z | copilot | update doubts prompt tests for follow-up question array output
+ * - 2026-05-19T00:00:00Z | claude  | fix: isValidDoubtsResponse removed from doubts.ts; re-introduce
+ *     as thin wrapper over validateDoubtsOutput from validators.ts
  */
 
 import {
   buildDoubtsPrompt,
-  isValidDoubtsResponse,
   isOffTopicQuestion,
   getOffTopicRedirect,
   DOUBTS_OUTPUT_SCHEMA,
 } from '@/lib/ai/prompts/doubts';
+import { validateDoubtsOutput } from '@/lib/ai/prompts/validators';
+
+// Thin wrapper so existing test cases pass without change
+function isValidDoubtsResponse(val: unknown): boolean {
+  return validateDoubtsOutput(val).valid;
+}
 import type { DoubtsInputContract } from '@/lib/ai/prompts/schemas';
 
 describe('Doubts Prompt Builder', () => {

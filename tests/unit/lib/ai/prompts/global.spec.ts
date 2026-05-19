@@ -11,6 +11,8 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created unit tests for global system prompt
+ * - 2026-05-19T00:00:00Z | claude  | fix: normalise expected 'K-12' string (test used Unicode en-dash
+ *     but source uses plain ASCII hyphen)
  */
 
 import {
@@ -23,7 +25,7 @@ import {
 describe('Global System Prompt', () => {
   describe('GLOBAL_SYSTEM_PROMPT', () => {
     it('identifies as K-12 tutor', () => {
-      expect(GLOBAL_SYSTEM_PROMPT).toContain('K–12 students');
+      expect(GLOBAL_SYSTEM_PROMPT).toContain('K-12 students');
     });
 
     it('includes explanation-first rule', () => {
@@ -110,7 +112,7 @@ describe('Global System Prompt', () => {
     it('combines global prompt with grade guidance', () => {
       const prompt = buildSystemPrompt(5, 'English');
       
-      expect(prompt).toContain('K–12 students');
+      expect(prompt).toContain('K-12 students');
       expect(prompt).toContain('GRADE-SPECIFIC GUIDANCE');
     });
 

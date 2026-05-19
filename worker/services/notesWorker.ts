@@ -15,6 +15,8 @@
  * - 2026-01-22T02:20:00Z | copilot | Phase 3: Created notes worker handler
  * - 2026-01-23T10:00:00Z | copilot | Enhanced prompt with comprehensive schema (sections, keyTerms, practiceQuestions, etc.)
  * - 2026-05-18T00:00:00Z | claude  | feat: notes now soft-approved (status: Approved) immediately on write; invalidates notes cache after completion
+ * - 2026-05-19T00:00:00Z | claude  | feat: detect language subjects; pass languageMeta + isLanguageSubject to
+ *     renderTemplate and validateOrThrow; expand grammar weakness codes in retry list
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -29,6 +31,7 @@ import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
 import { getNextVersion } from '@/lib/getNextVersion';
 import { cacheDelPattern } from '@/lib/cache';
+import { detectSubjectType, buildLanguageMeta } from '@/lib/ai/prompts/grammar';
 
 // Local row types for strict-mode
 type SiblingRow = { name: string }
@@ -251,6 +254,12 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   const language = job.language || 'en';
   const difficultyLevel: 'foundation' | 'standard' | 'advanced' = grade <= 8 ? 'foundation' : grade <= 10 ? 'standard' : 'advanced'
 
+  const subjectType = detectSubjectType(subjectName);
+  const isLanguageSubject = subjectType === 'language';
+  const languageMeta = isLanguageSubject
+    ? buildLanguageMeta(subjectName, topic.name, topic.chapter?.name ?? '', board, grade)
+    : null;
+
   // Query sibling topics with lower order to build priorTopics list
   const priorTopics: string[] = []
   try {
@@ -313,6 +322,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     difficultyLevel,
     language: (language === 'hi' ? 'hi-en' : 'en') as any,
     ncertContext,
+    languageMeta: languageMeta ?? undefined,
   });
   const prompt = rendered.prompt
 
@@ -376,7 +386,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
   // Strict validation: may throw typed errors. On failure we must fail the HydrationJob and persist AIContentLog, then rethrow.
   try {
-    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
+    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel, isLanguageSubject });
     // Log a validation-passed event for observability
     try {
       const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
@@ -388,7 +398,17 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     // Decide whether this validation failure is a retryable semantic weakness.
     // Treat explicit semantic weakness types as-is, and map certain SchemaInvalid or Placeholder errors
     // into retryable weakness categories so we can attempt the one-time quality retry.
-    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge', 'notes_too_few_sections']
+    const SEMANTIC_WEAKNESS_TYPES = [
+      // Standard notes weaknesses
+      'notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples',
+      'notes_missing_bridge', 'notes_too_few_sections',
+      // Grammar notes weaknesses (all codes that validateGrammarNotesBlock can throw)
+      'grammar_notes_missing', 'grammar_notes_missing_chapter_anchor',
+      'grammar_notes_missing_formal_rule', 'grammar_notes_missing_simple_rule',
+      'grammar_notes_too_few_examples', 'grammar_example_missing_correct',
+      'grammar_example_missing_teacher_comment', 'grammar_notes_too_few_common_errors',
+      'grammar_common_error_missing_why_wrong', 'grammar_notes_missing_blackboard_notes',
+    ]
     let isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(t => vErr?.type === t || String(vErr?.message ?? '').includes(t))
     let weaknessType: string | undefined = vErr?.type || undefined
 
@@ -424,9 +444,12 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       try {
         logger.warn('[notesWorker] semantic weakness on first attempt -- retrying LLM with quality hint', { jobId: job.id, weaknessType });
         const minSectionsRequired = difficultyLevel === 'advanced' ? 9 : 7
-        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum ${minSectionsRequired} sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required. Do NOT use placeholders such as 'TBD', 'placeholder', 'content coming soon', or [insert ...].`
+        const grammarHint = isLanguageSubject
+          ? ' For language subjects: grammarNotes block is required with chapterAnchor, formalRule, simpleRule, minimum 3 examples, minimum 2 commonErrors, and blackboardNotes.'
+          : ''
+        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum ${minSectionsRequired} sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required. Do NOT use placeholders such as 'TBD', 'placeholder', 'content coming soon', or [insert ...].${grammarHint}`
         const retryRes = await callAndParseJSON(retryPrompt, { ...llmMeta, retry: 1 }, 1);
-        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
+        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel, isLanguageSubject });
         parsed = retryRes.parsed;
         llmResult = retryRes.llmResult;
         // Retry succeeded -- fall through to persist
