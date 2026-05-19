@@ -16,7 +16,6 @@
  */
 
 import React, { Suspense } from 'react';
-import localFont from 'next/font/local';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import Providers from '@/app/providers';
@@ -38,9 +37,7 @@ import '@/styles/index.css';
 
 import type { Metadata, Viewport } from 'next';
 
-// Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
-const inter = localFont({ src: '../../public/fonts/inter-latin-variable.woff2', variable: '--font-inter', display: 'swap' });
-const nunito = localFont({ src: '../../public/fonts/nunito-variable-latin.woff2', variable: '--font-nunito', display: 'swap' });
+import { inter, nunito } from '@/app/fonts';
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',

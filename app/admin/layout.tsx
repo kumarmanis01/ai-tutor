@@ -1,5 +1,4 @@
 import React, { Suspense } from 'react';
-import localFont from 'next/font/local';
 import { redirect } from 'next/navigation';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -13,17 +12,7 @@ import GoogleTagManagerClient from '../../components/ClientOnly/GoogleTagManager
 import AppModalClient from '../../components/ClientOnly/AppModalClient';
 import '@/styles/index.css';
 
-// Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
-const inter = localFont({
-  src: '../../public/fonts/inter-latin-variable.woff2',
-  variable: '--font-inter',
-  display: 'swap',
-});
-const nunito = localFont({
-  src: '../../public/fonts/nunito-variable-latin.woff2',
-  variable: '--font-nunito',
-  display: 'swap',
-});
+import { inter, nunito } from '@/app/fonts';
 
 export const viewport = {
   width: 'device-width',
