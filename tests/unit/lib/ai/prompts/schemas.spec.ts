@@ -11,6 +11,8 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created unit tests for prompt schemas
+ * - 2026-05-19T00:00:00Z | claude  | fix: calibration assertion case -- 'Reasoning' -> 'reasoning'
+ *     to match actual DIFFICULTY_CALIBRATION.medium string
  */
 
 import {

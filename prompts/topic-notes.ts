@@ -6,7 +6,7 @@
  *   blackboard callouts, and a curriculum bridge.
  *
  * LINKED UNIT TEST:
- * - tests/unit/prompts/topic-notes.spec.ts
+ * - tests/unit/prompts/topic-notes-language.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
@@ -18,6 +18,9 @@
  * - 2026-04-01T12:00:00Z | claude        | v3: Vidya persona, rich section
  *     schema with worked examples, concept checks, blackboard notes,
  *     exam tips, and curriculum bridge
+ * - 2026-05-19T00:00:00Z | claude        | feat: languageMeta param + grammar
+ *     notes section for language subjects; buildGrammarSection and
+ *     buildGrammarSchemaBlock helpers
  */
 
 export type TopicNotesParams = {
@@ -280,7 +283,8 @@ grammarNotes MUST contain:
   At least one example must use a sentence extracted directly from the chapter (level: "chapter_extracted").
 - commonErrors: minimum 2, each explaining WHY students make the error (cognitive reason, not just "it is wrong").
 - examTips: minimum 2 tips specific to ${meta.language} grammar questions in board exams.
-- languageSpecificNuances: array of language-specific rules (gender agreement, vibhakti, sandhi exceptions, etc.).
+- languageSpecificNuances: include when applicable -- language-specific rules (gender agreement,
+  vibhakti, sandhi exceptions, article usage etc.). Omit only if the domain has no such nuances.
 - blackboardNotes: key rules a teacher would write on the blackboard (formulae, key rules only -- no prose).
 
 `

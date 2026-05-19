@@ -11,6 +11,8 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created unit tests for global system prompt
+ * - 2026-05-19T00:00:00Z | claude  | fix: normalise expected 'K-12' string (test used Unicode en-dash
+ *     but source uses plain ASCII hyphen)
  */
 
 import {

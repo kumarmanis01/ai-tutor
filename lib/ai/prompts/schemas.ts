@@ -1,3 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - TypeScript contracts for schema-first prompt architecture.
+ * - Defines input contracts (from backend) and output schemas (from LLM).
+ * - These are the "API contracts" for AI interactions -- non-negotiable structure.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/ai/prompts/schemas.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-02-04T00:00:00Z | claude | created schema-first prompt contracts for K-12 AI tutor
+ * - 2026-05-19T00:00:00Z | claude | added grammar Zod schemas (GrammarNotesBlockSchema,
+ *     LanguageVidyaNotesSchema, GrammarQuestionSchema, LanguageQuestionsSchema) for
+ *     language subject support; moved FILE OBJECTIVE to top of file
+ */
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
@@ -207,22 +226,6 @@ const PromptSchemas = {
 }
 
 export default PromptSchemas
-/**
- * FILE OBJECTIVE:
- * - TypeScript contracts for schema-first prompt architecture.
- * - Defines input contracts (from backend) and output schemas (from LLM).
- * - These are the "API contracts" for AI interactions - non-negotiable structure.
- *
- * LINKED UNIT TEST:
- * - tests/unit/lib/ai/prompts/schemas.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
- * EDIT LOG:
- * - 2026-02-04 | claude | created schema-first prompt contracts for K-12 AI tutor
- */
 
 // ============================================================================
 // SHARED TYPES

@@ -1,8 +1,19 @@
 /**
- * Unit tests for grammar question prompt builder.
+ * FILE OBJECTIVE:
+ * - Unit tests for grammar question support in prompts/topic-questions.ts
+ * - Verifies: language subject routing to languageQuestionsPrompt, mandatory
+ *   grammar question type distribution, MCQ schema consistency, and that STEM
+ *   subjects continue to use the standard MCQ prompt path.
  *
- * Verifies: language question routing, grammar question type distribution,
- * JSON schema shape in the prompt, and that STEM subjects use the MCQ path.
+ * LINKED UNIT TEST:
+ * - Self-referencing: tests/unit/prompts/topic-questions-grammar.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created grammar questions prompt tests
  */
 
 import { topicQuestionsPrompt } from '@/prompts/topic-questions'

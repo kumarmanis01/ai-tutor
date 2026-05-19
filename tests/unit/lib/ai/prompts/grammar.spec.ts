@@ -1,8 +1,19 @@
 /**
- * Unit tests for lib/ai/prompts/grammar.ts
+ * FILE OBJECTIVE:
+ * - Unit tests for lib/ai/prompts/grammar.ts
+ * - Covers: subject-type detection, language name detection, topic category
+ *   detection, grammar domain lookup by board/grade, and full languageMeta
+ *   construction.
  *
- * Tests: subject-type detection, language name detection, topic category
- * detection, grammar domain lookup, and full languageMeta construction.
+ * LINKED UNIT TEST:
+ * - Self-referencing: tests/unit/lib/ai/prompts/grammar.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created grammar taxonomy tests
  */
 
 import {

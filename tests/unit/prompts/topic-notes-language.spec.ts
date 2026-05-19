@@ -1,8 +1,19 @@
 /**
- * Unit tests for language subject support in topic-notes prompt builder.
+ * FILE OBJECTIVE:
+ * - Unit tests for language subject support in prompts/topic-notes.ts
+ * - Verifies: grammar section injection, grammarNotes schema block,
+ *   board-specific quality requirements, and that STEM subjects are
+ *   unaffected by language extensions.
  *
- * Verifies: grammar section injection, schema block, quality requirements
- * line, and that non-language subjects are unaffected.
+ * LINKED UNIT TEST:
+ * - Self-referencing: tests/unit/prompts/topic-notes-language.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created language notes prompt tests
  */
 
 import { topicNotesPrompt } from '@/prompts/topic-notes'

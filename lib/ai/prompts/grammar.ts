@@ -9,8 +9,12 @@
  * LINKED UNIT TEST:
  * - tests/unit/lib/ai/prompts/grammar.spec.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-05-19 | claude | created grammar taxonomy for language subjects
+ * - 2026-05-19T00:00:00Z | claude | created grammar taxonomy for language subjects
  */
 
 // ---------------------------------------------------------------------------
@@ -596,7 +600,7 @@ export function detectLanguageName(subjectName: string): LanguageName | null {
 }
 
 const GRAMMAR_TOPIC_PATTERNS =
-  /tense|voice|narration|parts of speech|article|preposition|conjunction|pronoun|noun|verb|adjective|adverb|clause|phrase|gerund|participle|infinitive|modal|conditional|subjunctive|editing|omission|transformation|agreement|gender|number|sandhi|samas|karak|vibhakti|ling|vachan|kriya|sarvanam|visheshan|sangya|muhavare|lokokti|alankar|ras|chhand|pratyay|dhatu|lakar|shabda roop|nihilism|passif|imparfait|futur|subjonctif|conditionnel|pronom|article|zarb ul misal|muhavre|ilakkanam|vyakaranam|vyakaran|vyakarana|grammar|grammaire|qawaid|pidgin/i;
+  /tense|voice|narration|parts of speech|article|preposition|conjunction|pronoun|noun|verb|adjective|adverb|clause|phrase|gerund|participle|infinitive|modal|conditional|subjunctive|editing|omission|transformation|agreement|gender|number|sandhi|samas|karak|vibhakti|ling|vachan|kriya|sarvanam|visheshan|sangya|muhavare|lokokti|alankar|ras|chhand|pratyay|dhatu|lakar|shabda roop|passif|imparfait|futur|subjonctif|conditionnel|pronom|zarb ul misal|muhavre|ilakkanam|vyakaranam|vyakaran|vyakarana|grammar|grammaire|qawaid/i;
 
 const POETRY_TOPIC_PATTERNS =
   /poem|poetry|kavita|doha|shlok|ghazal|verse|stanza|rhyme|padya|nazm|rubayi|kavya|prabandha/i;

@@ -1,3 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Validates LLM output against expected schema and semantic quality gates.
+ * - Throws typed ValidationError subclasses (SchemaInvalidError,
+ *   PlaceholderContentError, SemanticWeaknessError, ContextMismatchError)
+ *   consumed by worker retry logic.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/aiOutputValidator.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-02-04T00:00:00Z | claude | created LLM output validator with Zod + AJV fallback
+ * - 2026-05-19T00:00:00Z | claude | added isLanguageSubject branch for LanguageVidyaNotesSchema
+ *     and validateGrammarNotesBlock quality gate for language subject notes
+ */
 import Ajv from 'ajv'
 import { ZodError, ZodIssue } from 'zod'
 import zodSchemas from './ai/prompts/schemas'

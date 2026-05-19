@@ -13,6 +13,8 @@
  * - 2026-02-04 | claude | created unit tests for doubts prompt builder
  * - 2026-05-07T00:00:00Z | copilot | update tone-guideline assertion to match current prompt wording
  * - 2026-05-08T00:00:00Z | copilot | update doubts prompt tests for follow-up question array output
+ * - 2026-05-19T00:00:00Z | claude  | fix: isValidDoubtsResponse removed from doubts.ts; re-introduce
+ *     as thin wrapper over validateDoubtsOutput from validators.ts
  */
 
 import {

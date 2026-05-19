@@ -3,7 +3,7 @@
  * - Template generator for multiple-choice question prompts (grades 6-12).
  *
  * LINKED UNIT TEST:
- * - tests/unit/prompts/topic-questions.spec.ts
+ * - tests/unit/prompts/topic-questions-grammar.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
@@ -11,6 +11,9 @@
  *
  * EDIT LOG:
  * - 2026-02-18T00:00:00Z | copilot-agent | created
+ * - 2026-05-19T00:00:00Z | claude        | feat: languageMeta routing to dedicated
+ *     languageQuestionsPrompt; grammar question types + mandatory distribution;
+ *     MCQ answer field aligned to use "answer" not "correctAnswer"
  */
 
 export type TopicQuestionsParams = {
@@ -132,8 +135,13 @@ function languageQuestionsPrompt(params: TopicQuestionsParams): string {
     ? `Typical ${boardName} exam patterns for this domain: ${examPatterns.join('; ')}.`
     : ''
 
+  // Grammar questions always take priority; ensure the mandatory distribution floor (5) is met.
+  // Comprehension questions are the remainder only after grammar is guaranteed.
+  const MIN_GRAMMAR_QUESTIONS = 5
   const isGrammarPrimary = topicCategory === 'grammar'
-  const contentQCount = isGrammarPrimary ? 0 : Math.max(0, Math.floor(count * 0.4))
+  const contentQCount = isGrammarPrimary
+    ? 0
+    : Math.max(0, Math.min(Math.floor(count * 0.4), count - MIN_GRAMMAR_QUESTIONS))
   const grammarQCount = count - contentQCount
 
   return `${ncertSection}You are an expert ${language} language question writer for grade ${grade} (${boardName} board).
@@ -170,8 +178,8 @@ STRICT RULES:
 3. "chapterLinked": true only when the question uses a sentence extracted from the chapter text.
 4. "markingHint": what the board examiner looks for (concise, 1-2 sentences).
 5. "explanation": why the answer is correct, minimum 20 words.
-6. MCQ-type questions (identify, fill_in_blanks) MUST include "options" (4 strings) and "correctAnswer".
-7. Non-MCQ questions (transform, error_correction, rewrite_as_directed, sentence_formation, chapter_context) should NOT have options -- use "answer" as a string.
+6. MCQ-type questions (identify, fill_in_blanks) MUST include "options" (4 strings); "answer" must be exactly one of the option strings.
+7. Non-MCQ questions (transform, error_correction, rewrite_as_directed, sentence_formation, chapter_context) should NOT have options -- "answer" is the full corrected/transformed string.
 8. "difficulty" MUST be "easy", "medium", or "hard".
 9. Distractors must reflect genuine common student errors, not random wrong answers.
 

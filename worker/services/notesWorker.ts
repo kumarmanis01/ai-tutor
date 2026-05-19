@@ -15,6 +15,8 @@
  * - 2026-01-22T02:20:00Z | copilot | Phase 3: Created notes worker handler
  * - 2026-01-23T10:00:00Z | copilot | Enhanced prompt with comprehensive schema (sections, keyTerms, practiceQuestions, etc.)
  * - 2026-05-18T00:00:00Z | claude  | feat: notes now soft-approved (status: Approved) immediately on write; invalidates notes cache after completion
+ * - 2026-05-19T00:00:00Z | claude  | feat: detect language subjects; pass languageMeta + isLanguageSubject to
+ *     renderTemplate and validateOrThrow; expand grammar weakness codes in retry list
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -396,7 +398,17 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     // Decide whether this validation failure is a retryable semantic weakness.
     // Treat explicit semantic weakness types as-is, and map certain SchemaInvalid or Placeholder errors
     // into retryable weakness categories so we can attempt the one-time quality retry.
-    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge', 'notes_too_few_sections', 'grammar_notes_missing', 'grammar_notes_too_few_examples', 'grammar_notes_too_few_common_errors', 'grammar_notes_missing_chapter_anchor']
+    const SEMANTIC_WEAKNESS_TYPES = [
+      // Standard notes weaknesses
+      'notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples',
+      'notes_missing_bridge', 'notes_too_few_sections',
+      // Grammar notes weaknesses (all codes that validateGrammarNotesBlock can throw)
+      'grammar_notes_missing', 'grammar_notes_missing_chapter_anchor',
+      'grammar_notes_missing_formal_rule', 'grammar_notes_missing_simple_rule',
+      'grammar_notes_too_few_examples', 'grammar_example_missing_correct',
+      'grammar_example_missing_teacher_comment', 'grammar_notes_too_few_common_errors',
+      'grammar_common_error_missing_why_wrong', 'grammar_notes_missing_blackboard_notes',
+    ]
     let isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(t => vErr?.type === t || String(vErr?.message ?? '').includes(t))
     let weaknessType: string | undefined = vErr?.type || undefined
 
