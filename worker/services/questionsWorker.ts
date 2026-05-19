@@ -21,6 +21,7 @@
  * - 2026-05-10T00:00:00Z | copilot | enforce deduplication in worker persistence and soft-promotion paths so duplicate question content is not emitted from generation jobs
  * - 2026-05-18T00:00:00Z | claude  | feat: QUESTIONS_PARALLEL=true env var enables parallel 3-difficulty LLM calls even when LLM_SAFE_MODE=true
  * - 2026-05-18T00:00:00Z | claude  | feat: raise default question cap from 2 to 10 per difficulty to satisfy PRACTICE+TEST+PRACTICE_MORE supply
+ * - 2026-05-19T00:00:00Z | claude  | fix: batch generatedQuestion inserts with createMany; batch soft-promote with createMany(skipDuplicates)
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -825,9 +826,18 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           throw new Error('validation_failed_questions_not_array');
         }
 
-        for (const q of item.parsed.questions as any[]) {
-          await tx.generatedQuestion.create({ data: { testId: upserted.id, type: q.type, question: q.question, options: q.options ?? null, answer: q.answer ?? null, explanation: q.explanation ?? null, marks: q.marks ?? null, sourceJobId: job.id } });
-        }
+        await tx.generatedQuestion.createMany({
+          data: (item.parsed.questions as any[]).map((q: any) => ({
+            testId: upserted.id,
+            type: q.type,
+            question: q.question,
+            options: q.options ?? null,
+            answer: q.answer ?? null,
+            explanation: q.explanation ?? null,
+            marks: q.marks ?? null,
+            sourceJobId: job.id,
+          })),
+        });
 
         if (typeof tx.aIContentLog?.create === 'function') {
           const successResponseBody = getResponseBodyForDb(item.parsed, item.llmResult);
@@ -935,8 +945,9 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           },
         });
 
-        let promoted = 0;
+        // Deduplicate by content key (within this batch and against existing ACTIVE questions)
         const promotedContentKeys = new Set<string>();
+        const toCreate: any[] = [];
         for (const gq of generatedRows) {
           const contentKey = buildQuestionContentKey({
             question: gq.question,
@@ -946,36 +957,34 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           if (existingContentKeys.has(contentKey) || promotedContentKeys.has(contentKey)) {
             continue;
           }
-
           const correctAnswer =
             typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer ?? '');
           const ch = gq.test.topic?.chapter;
           const sub = ch?.subject;
           const cls = sub?.class;
-
-          // Upsert: create with ACTIVE status (schema default) if not yet in Question table.
-          // update: {} preserves any existing admin moderation state (QUARANTINED / REJECTED).
-          await prisma.question.upsert({
-            where: { id: gq.id },
-            update: {},
-            create: {
-              id: gq.id,
-              type: gq.type || 'mcq',
-              prompt: gq.question,
-              choices: gq.options ?? undefined,
-              correctAnswer,
-              difficulty: gq.test.difficulty ?? null,
-              subject: sub?.name ?? null,
-              chapter: ch?.name ?? null,
-              grade: cls?.grade != null ? String(cls.grade) : null,
-              board: cls?.board?.slug ?? null,
-              topicId: gq.test.topicId ?? null,
-              source: 'generated',
-              // status defaults to ACTIVE via schema @default(ACTIVE) -- no admin approval required
-            },
+          toCreate.push({
+            id: gq.id,
+            type: gq.type || 'mcq',
+            prompt: gq.question,
+            choices: gq.options ?? undefined,
+            correctAnswer,
+            difficulty: gq.test.difficulty ?? null,
+            subject: sub?.name ?? null,
+            chapter: ch?.name ?? null,
+            grade: cls?.grade != null ? String(cls.grade) : null,
+            board: cls?.board?.slug ?? null,
+            topicId: gq.test.topicId ?? null,
+            source: 'generated',
           });
           promotedContentKeys.add(contentKey);
-          promoted++;
+        }
+
+        // createMany with skipDuplicates preserves any existing admin moderation state
+        // (QUARANTINED / REJECTED rows are not overwritten -- the insert is skipped).
+        let promoted = 0;
+        if (toCreate.length > 0) {
+          const result = await prisma.question.createMany({ data: toCreate, skipDuplicates: true });
+          promoted = result.count;
         }
 
         logger.info('[QUESTIONS_WORKER] soft-approve: GeneratedQuestion rows promoted to Question table', {
