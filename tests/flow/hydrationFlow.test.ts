@@ -26,6 +26,7 @@ jest.mock('@/lib/prisma', () => ({
     systemSetting: { findUnique: jest.fn() },
     chapterDef: { findFirst: jest.fn() },
     subjectDef: { findUnique: jest.fn() },
+    curriculumBook: { findFirst: jest.fn() },
     topicDef: { findUnique: jest.fn() },
     topicNote: { findFirst: jest.fn(), create: jest.fn() },
     generatedTest: { findFirst: jest.fn(), create: jest.fn(), findMany: jest.fn(), update: jest.fn() },
@@ -51,6 +52,7 @@ describe('Full hydration flow: syllabus -> notes -> questions -> assembleTest', 
     ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValue({ id: 'job-1', subjectId: 'sub-1', board: 'CBSE', grade: 5, language: 'en' })
     ;(prisma.systemSetting.findUnique as jest.Mock).mockResolvedValue(null)
     ;(prisma.chapterDef.findFirst as jest.Mock).mockResolvedValue(null)
+    ;(prisma.curriculumBook.findFirst as jest.Mock).mockResolvedValue(null)
     ;(prisma.subjectDef.findUnique as jest.Mock).mockResolvedValue({ id: 'sub-1', name: 'Mathematics' })
 
     const syllabusJson = { chapters: [ { title: 'Number System', order: 1, topics: [ { title: 'Integers', order: 1 }, { title: 'Fractions', order: 2 } ] }, { title: 'Geometry', order: 2, topics: [ { title: 'Lines', order: 1 } ] } ] }

@@ -102,11 +102,102 @@ export async function handleSyllabusJob(jobId: string) {
     return
   }
 
+  // ── PDF-ANCHORED PATH ─────────────────────────────────────────────────────
+  // Check for a parsed CurriculumBook for this subject. If one exists, seed
+  // ChapterDef + TopicDef directly from the PDF's BookChapter/BookTopic rows
+  // instead of asking the LLM to recall the NCERT structure.
+  const language = job.language || 'en'
+
+  const parsedBook = await prisma.curriculumBook.findFirst({
+    where: { subjectId: subjectId as string, language, parseStatus: 'parsed' },
+    include: {
+      bookChapters: {
+        orderBy: { chapterNumber: 'asc' },
+        include: { bookTopics: { orderBy: { topicOrder: 'asc' } } },
+      },
+    },
+  })
+
+  if (parsedBook && parsedBook.bookChapters.length > 0) {
+    logger.info('[syllabusWorker] PDF-anchored path: seeding chapters from book', {
+      event: 'pdf_anchored_syllabus',
+      context: { jobId: job.id, subjectId, bookId: parsedBook.id, chapterCount: parsedBook.bookChapters.length },
+    })
+
+    try {
+      const { toSlug } = await import('@/lib/slug.js')
+
+      for (const bookChapter of parsedBook.bookChapters) {
+        const slug = toSlug(bookChapter.chapterTitle)
+
+        const chExists = await prisma.chapterDef.findFirst({
+          where: { subjectId: subjectId as string, slug },
+        })
+        if (chExists) continue
+
+        const chapter = await prisma.chapterDef.create({
+          data: {
+            name: bookChapter.chapterTitle,
+            slug,
+            order: bookChapter.chapterNumber,
+            subjectId: subjectId as string,
+            status: ApprovalStatus.Draft,
+            lifecycle: 'active',
+            bookChapterId: bookChapter.id,
+          },
+        })
+
+        for (const bookTopic of bookChapter.bookTopics) {
+          const tslug = toSlug(bookTopic.topicTitle)
+          const tExists = await prisma.topicDef.findFirst({
+            where: { chapterId: chapter.id, slug: tslug },
+          })
+          if (tExists) continue
+
+          await prisma.topicDef.create({
+            data: {
+              name: bookTopic.topicTitle,
+              slug: tslug,
+              order: bookTopic.topicOrder,
+              chapterId: chapter.id,
+              status: ApprovalStatus.Draft,
+              lifecycle: 'active',
+              bookTopicId: bookTopic.id,
+            },
+          })
+        }
+      }
+
+      await prisma.hydrationJob.update({
+        where: { id: job.id },
+        data: { status: JobStatus.Running, contentReady: true, lastError: null },
+      })
+
+      logger.info('[syllabusWorker] PDF-anchored syllabus seeded', {
+        event: 'pdf_anchored_syllabus_complete',
+        context: { jobId: job.id, subjectId, chapters: parsedBook.bookChapters.length },
+      })
+      return
+    } catch (pdfErr: unknown) {
+      logger.error('[syllabusWorker] PDF-anchored path failed -- falling through to LLM', {
+        event: 'pdf_anchored_syllabus_error',
+        context: { jobId: job.id, subjectId, error: String(pdfErr) },
+      })
+      // Fall through to LLM path
+    }
+  } else {
+    logger.warn('[syllabusWorker] no parsed book found -- using LLM recall', {
+      event: 'ncert_grounding_fallback',
+      context: { jobId: job.id, subjectId, language },
+    })
+  }
+  // ── END PDF-ANCHORED PATH ─────────────────────────────────────────────────
+
   const subjectRow = await prisma.subjectDef.findUnique({ where: { id: subjectId as string } })
   const board = job.board || ''
   const grade = job.grade || 0
   const subjectName = subjectRow?.name || job.subject || ''
-  const language = job.language || 'en'
+  // language already declared above (used by PDF-anchored path)
 
   // ── Ground syllabus with NCERT content if available ──────────────────────
   // CurriculumChunk stores subject as a lowercase slug (e.g. 'science').

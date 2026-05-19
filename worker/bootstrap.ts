@@ -59,9 +59,11 @@ import { processReteachPlan } from "./services/reteachPlanWorker.js";
 import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from "../jobs/diagnosticAutoSubmit.js";
 import { processDiagnosticAutoSubmit } from "./services/diagnosticAutoSubmitWorker.js";
 import { processAIRequest } from './services/aiRequestWorker.js';
-import { AI_REQUEST_QUEUE, ANALYTICS_INGEST_QUEUE } from '../lib/queues/constants.js';
+import { AI_REQUEST_QUEUE, ANALYTICS_INGEST_QUEUE, PDF_INGEST_QUEUE } from '../lib/queues/constants.js';
 import { processAnalyticsIngest } from './services/analyticsIngestWorker.js';
 import type { AnalyticsIngestPayload } from './services/analyticsIngestWorker.js';
+import { processPdfIngestJob } from './services/pdfIngestWorker.js';
+import type { PdfIngestJobPayload } from './services/pdfIngestWorker.js';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -312,6 +314,24 @@ export async function bootstrapWorker() {
     },
   );
 
+  const pdfIngestWorker = new Worker<PdfIngestJobPayload>(
+    PDF_INGEST_QUEUE,
+    async (job: Job<PdfIngestJobPayload>) => processPdfIngestJob(job.data),
+    {
+      connection: redisConnection,
+      concurrency: 2, // parse 2 PDFs at a time (CPU-bound but not LLM-bound)
+      lockDuration: 10 * 60 * 1000, // 10 min -- large PDFs can take a while
+    },
+  );
+
+  pdfIngestWorker.on('failed', (job, err) => {
+    logger.error('[PDF_INGEST FAILED]', { jobId: job?.id, error: err?.message });
+  });
+
+  pdfIngestWorker.on('completed', (job) => {
+    logger.info('[PDF_INGEST COMPLETED]', { jobId: job.id });
+  });
+
   aiWorker.on('failed', (job, err) => {
     logger.error(`[AI WORKER FAILED] jobId=${job?.id}`, { error: err?.message });
   });
@@ -385,6 +405,7 @@ export async function bootstrapWorker() {
       await distressNotificationWorker.close();
       await reteachPlanWorker.close();
       await diagnosticAutoSubmitWorker.close();
+      await pdfIngestWorker.close();
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },

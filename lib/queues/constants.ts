@@ -14,3 +14,6 @@ export const AI_REQUEST_QUEUE = 'ai-requests';
 
 /** Analytics ingest queue -- client-submitted events enqueued here, worker bulk-writes to DB. */
 export const ANALYTICS_INGEST_QUEUE = 'analytics-ingest';
+
+/** PDF ingest queue -- parses uploaded NCERT textbook PDFs and seeds BookChapter/BookTopic rows. */
+export const PDF_INGEST_QUEUE = 'pdf-ingest';

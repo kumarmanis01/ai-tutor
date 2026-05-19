@@ -7,7 +7,7 @@
  */
 import { Queue } from "bullmq";
 import { getSharedConnection } from "@/lib/redis";
-import { CONTENT_HYDRATION_QUEUE } from "@/lib/queues/constants";
+import { CONTENT_HYDRATION_QUEUE, PDF_INGEST_QUEUE } from "@/lib/queues/constants";
 
 /**
  * Lazy-init factories for queues to avoid creating Redis/Queue instances at import time.
@@ -23,6 +23,7 @@ type QueuesMap = {
   notes?: Queue;
   questions?: Queue;
   content?: Queue;
+  pdfIngest?: Queue;
 };
 
 const queues: QueuesMap = {};
@@ -52,6 +53,21 @@ export function getQuestionsQueue() {
     queues.questions = new Queue("questions-queue", { connection: getConnection() });
   }
   return queues.questions;
+}
+
+export function getPdfIngestQueue() {
+  if (!queues.pdfIngest) {
+    queues.pdfIngest = new Queue(PDF_INGEST_QUEUE, {
+      connection: getConnection(),
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 10_000 },
+        removeOnComplete: { count: 50 },
+        removeOnFail: { count: 20 },
+      },
+    });
+  }
+  return queues.pdfIngest;
 }
 
 export function getContentQueue() {

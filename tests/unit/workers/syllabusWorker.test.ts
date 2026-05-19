@@ -11,6 +11,7 @@ jest.mock('@/lib/prisma', () => ({
     chapterDef: { findFirst: jest.fn() },
     subjectDef: { findUnique: jest.fn() },
     curriculumChunk: { findMany: jest.fn() },
+    curriculumBook: { findFirst: jest.fn() },
     aIContentLog: { create: jest.fn(), update: jest.fn() },
     $transaction: jest.fn()
   }
@@ -46,7 +47,9 @@ describe('handleSyllabusJob', () => {
     ;(prisma.systemSetting.findUnique as jest.Mock).mockResolvedValue(null)
     ;(prisma.chapterDef.findFirst as jest.Mock).mockResolvedValue(null)
     ;(prisma.subjectDef.findUnique as jest.Mock).mockResolvedValue({ id: 'sub-1', name: 'Mathematics' })
-    // No NCERT chunks for this subject — GPT knowledge path
+    // No parsed PDF book for this subject -- fall through to LLM path
+    ;(prisma.curriculumBook.findFirst as jest.Mock).mockResolvedValue(null)
+    // No NCERT chunks for this subject -- GPT knowledge path
     ;(prisma.curriculumChunk.findMany as jest.Mock).mockResolvedValue([])
 
     const llmOutput = JSON.stringify({ chapters: [{ title: 'Numbers', order: 1, topics: [{ title: 'Integers', order: 1 }] }] })
@@ -77,6 +80,8 @@ describe('handleSyllabusJob', () => {
     ;(prisma.systemSetting.findUnique as jest.Mock).mockResolvedValue(null)
     ;(prisma.chapterDef.findFirst as jest.Mock).mockResolvedValue(null)
     ;(prisma.subjectDef.findUnique as jest.Mock).mockResolvedValue({ id: 'sub-2', name: 'Science' })
+    // No parsed PDF book -- fall through to LLM+CurriculumChunk path
+    ;(prisma.curriculumBook.findFirst as jest.Mock).mockResolvedValue(null)
 
     // Simulate NCERT chunks for Grade 6 Science (Curiosity book, 2 chapters)
     ;(prisma.curriculumChunk.findMany as jest.Mock).mockResolvedValue([
