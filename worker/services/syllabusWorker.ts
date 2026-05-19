@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-01-22T13:15:00Z | copilot | Fixed enqueue function calls to use single-object input pattern
  * - 2026-01-22T07:45:00Z | copilot | Added cascadeAll support for full content hydration
+ * - 2026-05-19T00:00:00Z | claude  | feat: PDF-anchored path seeds ChapterDef/TopicDef from CurriculumBook before LLM fallback
  */
 
 import { prisma } from '@/lib/prisma.js'
@@ -125,52 +126,53 @@ export async function handleSyllabusJob(jobId: string) {
     })
 
     try {
-      const { toSlug } = await import('@/lib/slug.js')
+      // Run all chapter+topic creates atomically -- roll back the whole set if anything fails
+      await prisma.$transaction(async tx => {
+        for (const bookChapter of parsedBook.bookChapters) {
+          const slug = toSlug(bookChapter.chapterTitle)
 
-      for (const bookChapter of parsedBook.bookChapters) {
-        const slug = toSlug(bookChapter.chapterTitle)
-
-        const chExists = await prisma.chapterDef.findFirst({
-          where: { subjectId: subjectId as string, slug },
-        })
-        if (chExists) continue
-
-        const chapter = await prisma.chapterDef.create({
-          data: {
-            name: bookChapter.chapterTitle,
-            slug,
-            order: bookChapter.chapterNumber,
-            subjectId: subjectId as string,
-            status: ApprovalStatus.Draft,
-            lifecycle: 'active',
-            bookChapterId: bookChapter.id,
-          },
-        })
-
-        for (const bookTopic of bookChapter.bookTopics) {
-          const tslug = toSlug(bookTopic.topicTitle)
-          const tExists = await prisma.topicDef.findFirst({
-            where: { chapterId: chapter.id, slug: tslug },
+          const chExists = await tx.chapterDef.findFirst({
+            where: { subjectId: subjectId as string, slug },
           })
-          if (tExists) continue
+          if (chExists) continue
 
-          await prisma.topicDef.create({
+          const chapter = await tx.chapterDef.create({
             data: {
-              name: bookTopic.topicTitle,
-              slug: tslug,
-              order: bookTopic.topicOrder,
-              chapterId: chapter.id,
+              name: bookChapter.chapterTitle,
+              slug,
+              order: bookChapter.chapterNumber,
+              subjectId: subjectId as string,
               status: ApprovalStatus.Draft,
               lifecycle: 'active',
-              bookTopicId: bookTopic.id,
+              bookChapterId: bookChapter.id,
             },
           })
-        }
-      }
 
-      await prisma.hydrationJob.update({
-        where: { id: job.id },
-        data: { status: JobStatus.Running, contentReady: true, lastError: null },
+          for (const bookTopic of bookChapter.bookTopics) {
+            const tslug = toSlug(bookTopic.topicTitle)
+            const tExists = await tx.topicDef.findFirst({
+              where: { chapterId: chapter.id, slug: tslug },
+            })
+            if (tExists) continue
+
+            await tx.topicDef.create({
+              data: {
+                name: bookTopic.topicTitle,
+                slug: tslug,
+                order: bookTopic.topicOrder,
+                chapterId: chapter.id,
+                status: ApprovalStatus.Draft,
+                lifecycle: 'active',
+                bookTopicId: bookTopic.id,
+              },
+            })
+          }
+        }
+
+        await tx.hydrationJob.update({
+          where: { id: job.id },
+          data: { status: JobStatus.Running, contentReady: true, lastError: null },
+        })
       })
 
       logger.info('[syllabusWorker] PDF-anchored syllabus seeded', {

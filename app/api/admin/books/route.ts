@@ -1,20 +1,33 @@
 /**
- * GET  /api/admin/books?subjectId=xxx  -- list books with chapter/topic counts
- * DELETE /api/admin/books?id=xxx       -- delete a book (cascades BookChapter/BookTopic,
- *                                         nullifies ChapterDef.bookChapterId + TopicDef.bookTopicId)
+ * FILE OBJECTIVE:
+ * - GET  /api/admin/books?subjectId=xxx  list CurriculumBook rows with chapter/topic counts
+ * - DELETE /api/admin/books?id=xxx       delete a book (cascades BookChapter/BookTopic,
+ *                                        nullifies ChapterDef.bookChapterId + TopicDef.bookTopicId,
+ *                                        deletes underlying file from R2 or local disk)
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/admin/books/books.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created; GET + DELETE handlers; deletes underlying file on DELETE
  */
 
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { JobStatus } from '@prisma/client'
+import { JobStatus } from '@/lib/ai-engine/types'
+import path from 'path'
+import fs from 'fs/promises'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
@@ -62,7 +75,7 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
@@ -75,7 +88,7 @@ export async function DELETE(req: Request) {
 
   const book = await prisma.curriculumBook.findUnique({
     where: { id },
-    select: { id: true, subjectId: true },
+    select: { id: true, subjectId: true, storagePath: true },
   })
   if (!book) {
     return NextResponse.json({ error: 'Book not found' }, { status: 404 })
@@ -86,7 +99,7 @@ export async function DELETE(req: Request) {
     where: {
       subjectId: book.subjectId,
       hierarchyLevel: 0,
-      status: { in: [JobStatus.pending, JobStatus.running] },
+      status: { in: [JobStatus.Pending, JobStatus.Running] },
     },
     select: { id: true, status: true },
   })
@@ -97,16 +110,13 @@ export async function DELETE(req: Request) {
     )
   }
 
-  // Nullify ChapterDef.bookChapterId and TopicDef.bookTopicId links before cascade delete
-  // (FK is SET NULL on the DB side, but be explicit for clarity)
+  // Nullify ChapterDef.bookChapterId links before cascade delete
   await prisma.chapterDef.updateMany({
-    where: {
-      bookChapter: { bookId: id },
-    },
+    where: { bookChapter: { bookId: id } },
     data: { bookChapterId: null },
   })
 
-  // TopicDef links are nullified via the chapterDef cascade or direct update
+  // Nullify TopicDef.bookTopicId links
   const bookChapterIds = (
     await prisma.bookChapter.findMany({ where: { bookId: id }, select: { id: true } })
   ).map(ch => ch.id)
@@ -118,8 +128,11 @@ export async function DELETE(req: Request) {
     })
   }
 
-  // Delete book (cascades to BookChapter and BookTopic via onDelete: Cascade)
+  // Delete book row (cascades to BookChapter and BookTopic)
   await prisma.curriculumBook.delete({ where: { id } })
+
+  // Delete underlying file from R2 or local disk (best-effort -- log but don't fail the request)
+  await deleteStorageFile(book.storagePath, id)
 
   logger.info('[books/delete] deleted', {
     event: 'book_deleted',
@@ -127,4 +140,25 @@ export async function DELETE(req: Request) {
   })
 
   return NextResponse.json({ ok: true })
+}
+
+async function deleteStorageFile(storagePath: string, bookId: string): Promise<void> {
+  const isR2Key = !path.isAbsolute(storagePath)
+  if (isR2Key) {
+    const useR2 = !!(process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_ENDPOINT)
+    if (useR2) {
+      try {
+        const { deleteFromR2 } = await import('@/lib/storage/r2')
+        await deleteFromR2(storagePath)
+      } catch (err) {
+        logger.error('[books/delete] R2 file deletion failed', { bookId, storagePath, error: String(err) })
+      }
+    }
+  } else {
+    try {
+      await fs.unlink(storagePath)
+    } catch (err) {
+      logger.error('[books/delete] local file deletion failed', { bookId, storagePath, error: String(err) })
+    }
+  }
 }

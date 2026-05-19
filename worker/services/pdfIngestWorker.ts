@@ -1,19 +1,22 @@
 /**
- * PDF ingest worker -- processes uploaded NCERT textbook PDFs.
+ * FILE OBJECTIVE:
+ * - BullMQ worker handler that processes uploaded NCERT textbook PDFs.
+ * - Downloads file from R2 (or reads from local path), parses chapters/topics,
+ *   persists to BookChapter/BookTopic via idempotent upserts, then triggers a
+ *   HydrationJob so SyllabusWorker can seed from PDF structure.
  *
- * Flow:
- *  1. Marks CurriculumBook as 'parsing'
- *  2. Calls pdfParser to extract chapters + topics
- *  3. Persists BookChapter + BookTopic rows (idempotent)
- *  4. Marks CurriculumBook as 'parsed'
- *  5. Triggers a HydrationJob (syllabus type) via Outbox so the
- *     SyllabusWorker can pick up the PDF-seeded structure instead of
- *     asking the LLM to recall it.
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/services/pdfIngestWorker.test.ts
  *
- * The worker does NOT delete existing ChapterDef/TopicDef rows. The
- * SyllabusWorker's PDF-first path handles upserts idempotently.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created; idempotent upserts for BookTopic; R2 download support
  */
 
+import path from 'path'
 import { prisma } from '@/lib/prisma.js'
 import { parseNCERTBook } from '@/lib/services/pdfParser.js'
 import { logger } from '@/lib/logger.js'
@@ -30,32 +33,46 @@ export interface PdfIngestJobPayload {
   uploadedBy: string
 }
 
+// Returns true when filePath is an R2 object key (no leading slash, no drive letter on Windows)
+function isR2Key(filePath: string): boolean {
+  return !path.isAbsolute(filePath)
+}
+
+async function resolveBuffer(filePath: string): Promise<Buffer> {
+  if (isR2Key(filePath)) {
+    const { downloadBufferFromR2 } = await import('@/lib/storage/r2.js')
+    return downloadBufferFromR2(filePath)
+  }
+  const fs = await import('fs/promises')
+  return fs.readFile(filePath)
+}
+
 export async function processPdfIngestJob(payload: PdfIngestJobPayload): Promise<void> {
   const { bookId, subjectId, filePath, subjectType, language, uploadedBy } = payload
 
   logger.info('[pdfIngest] starting', { event: 'pdf_ingest_start', context: { bookId, subjectId } })
 
-  // 1. Claim: mark as parsing
+  // 1. Claim: mark as parsing (idempotent -- skip if already claimed or done)
   const claimed = await prisma.curriculumBook.updateMany({
     where: { id: bookId, parseStatus: { in: ['pending', 'failed'] } },
     data: { parseStatus: 'parsing', parseError: null },
   })
   if (claimed.count === 0) {
-    // Already being parsed or already parsed -- skip
     logger.warn('[pdfIngest] skipping: already parsing or parsed', { bookId })
     return
   }
 
   try {
-    // 2. Parse
-    const result = await parseNCERTBook(filePath, subjectType)
+    // 2. Download from R2 or read from local disk, then parse
+    const buffer = await resolveBuffer(filePath)
+    const result = await parseNCERTBook(buffer, subjectType)
 
     logger.info('[pdfIngest] pdf parsed', {
       event: 'pdf_parsed',
       context: { bookId, chapters: result.chapters.length, warnings: result.warnings },
     })
 
-    // 3. Persist BookChapter + BookTopic rows (idempotent upserts)
+    // 3. Persist BookChapter + BookTopic rows (fully idempotent upserts)
     for (const ch of result.chapters) {
       const bookChapter = await prisma.bookChapter.upsert({
         where: { bookId_chapterNumber: { bookId, chapterNumber: ch.chapterNumber } },
@@ -75,18 +92,22 @@ export async function processPdfIngestJob(payload: PdfIngestJobPayload): Promise
         },
       })
 
-      // Delete old topics before re-creating (idempotent re-parse)
-      await prisma.bookTopic.deleteMany({ where: { chapterId: bookChapter.id } })
-
-      if (ch.topics.length > 0) {
-        await prisma.bookTopic.createMany({
-          data: ch.topics.map(t => ({
+      // Upsert each topic by (chapterId, topicOrder) -- safe on re-parse without breaking FK links
+      for (const t of ch.topics) {
+        await prisma.bookTopic.upsert({
+          where: { chapterId_topicOrder: { chapterId: bookChapter.id, topicOrder: t.topicOrder } },
+          update: {
+            topicTitle: t.topicTitle,
+            rawText: t.rawText,
+            exerciseText: t.exerciseText ?? null,
+          },
+          create: {
             chapterId: bookChapter.id,
             topicOrder: t.topicOrder,
             topicTitle: t.topicTitle,
             rawText: t.rawText,
             exerciseText: t.exerciseText ?? null,
-          })),
+          },
         })
       }
     }
@@ -192,7 +213,6 @@ async function triggerHydration(params: {
           subjectId,
           triggeredBy: 'pdf_ingest',
           triggeredByUserId: uploadedBy,
-          // No validation caps for PDF-anchored hydration -- structure comes from PDF
           generationLimits: {
             validationRun: false,
             safeMode: false,

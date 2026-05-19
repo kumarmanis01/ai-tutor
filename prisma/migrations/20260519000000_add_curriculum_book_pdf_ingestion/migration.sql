@@ -1,6 +1,9 @@
 -- Migration: add_curriculum_book_pdf_ingestion
 -- Adds CurriculumBook, BookChapter, BookTopic models and links ChapterDef/TopicDef back to PDF source.
 
+-- 0. Enum type for PDF parse lifecycle
+CREATE TYPE "CurriculumBookParseStatus" AS ENUM ('pending', 'parsing', 'parsed', 'failed');
+
 -- 1. CurriculumBook: one PDF per subject per language
 CREATE TABLE "CurriculumBook" (
     "id" TEXT NOT NULL,
@@ -13,7 +16,7 @@ CREATE TABLE "CurriculumBook" (
     "storagePath" TEXT NOT NULL,
     "fileSizeBytes" INTEGER NOT NULL,
     "pageCount" INTEGER,
-    "parseStatus" TEXT NOT NULL DEFAULT 'pending',
+    "parseStatus" "CurriculumBookParseStatus" NOT NULL DEFAULT 'pending',
     "parseError" TEXT,
     "parsedAt" TIMESTAMP(3),
     "uploadedBy" TEXT NOT NULL,
@@ -56,6 +59,7 @@ CREATE TABLE "BookTopic" (
     CONSTRAINT "BookTopic_pkey" PRIMARY KEY ("id")
 );
 
+CREATE UNIQUE INDEX "BookTopic_chapterId_topicOrder_key" ON "BookTopic"("chapterId", "topicOrder");
 CREATE INDEX "BookTopic_chapterId_idx" ON "BookTopic"("chapterId");
 
 -- 4. Link ChapterDef back to BookChapter (nullable)

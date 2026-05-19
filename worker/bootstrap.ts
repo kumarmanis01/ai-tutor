@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-01-10T00:00:00Z | github-copilot | add Node types reference to fix "process" type error and update file header
  * - 2026-01-22T03:05:00Z | copilot | Phase 4: Switch to new worker service handlers (notesWorker, questionsWorker, assembleWorker)
+ * - 2026-05-19T00:00:00Z | claude  | feat: add pdfIngestWorker for NCERT textbook PDF ingestion pipeline
  */
 
 /* eslint-disable no-console */

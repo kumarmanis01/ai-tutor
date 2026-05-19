@@ -110,4 +110,44 @@ describe('Full hydration flow: syllabus -> notes -> questions -> assembleTest', 
 
     expect(prisma.generatedTest.update).toHaveBeenCalledWith({ where: { id: 'test-1' }, data: { status: 'approved' } })
   })
+
+  test('PDF-anchored path: syllabus seeded from book skips LLM and produces correct chapters', async () => {
+    // Setup syllabus worker mocks with a parsed CurriculumBook
+    ;(prisma.hydrationJob.updateMany as jest.Mock).mockResolvedValue({ count: 1 })
+    ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValue({ id: 'job-pdf', subjectId: 'sub-2', board: 'CBSE', grade: 8, language: 'en' })
+    ;(prisma.systemSetting.findUnique as jest.Mock).mockResolvedValue(null)
+    ;(prisma.chapterDef.findFirst as jest.Mock).mockResolvedValue(null)
+
+    // Parsed book with 1 chapter + 2 topics
+    ;(prisma.curriculumBook.findFirst as jest.Mock).mockResolvedValue({
+      id: 'book-pdf',
+      bookChapters: [
+        {
+          id: 'bch-pdf-1',
+          chapterTitle: 'Real Numbers',
+          chapterNumber: 1,
+          bookTopics: [
+            { id: 'bt-pdf-1', topicTitle: 'Euclid Lemma', topicOrder: 1 },
+            { id: 'bt-pdf-2', topicTitle: 'Irrational Numbers', topicOrder: 2 },
+          ],
+        },
+      ],
+    })
+
+    const tx = {
+      chapterDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'chap-pdf-1', name: 'Real Numbers' }) },
+      topicDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'topic-pdf-1' }) },
+      hydrationJob: { update: jest.fn().mockResolvedValue({}) },
+    }
+    ;(prisma.$transaction as jest.Mock).mockImplementation(async (cb: any) => cb(tx))
+
+    await handleSyllabusJob('job-pdf')
+
+    // LLM must NOT have been invoked for the PDF path
+    expect(callLLM).not.toHaveBeenCalled()
+    expect(tx.chapterDef.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Real Numbers', bookChapterId: 'bch-pdf-1' }) })
+    )
+    expect(tx.topicDef.create).toHaveBeenCalledTimes(2)
+  })
 })

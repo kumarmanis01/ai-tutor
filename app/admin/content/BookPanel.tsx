@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import type { CurriculumBookParseStatus } from '@prisma/client'
 
 export interface BookRowData {
   id: string
@@ -14,7 +15,7 @@ export interface BookRowData {
   originalName: string
   fileSizeBytes: number
   pageCount: number | null
-  parseStatus: string
+  parseStatus: CurriculumBookParseStatus
   parseError: string | null
   parsedAt: string | null
   chapterCount: number
@@ -33,7 +34,7 @@ interface BookPanelProps {
   subjects: SubjectOption[]
 }
 
-function parseStatusIcon(status: string) {
+function parseStatusIcon(status: CurriculumBookParseStatus) {
   if (status === 'parsed') return <span className="text-[#1D9E75] font-bold">&#10003;</span>
   if (status === 'parsing') return <span className="animate-spin inline-block w-4 h-4 border-2 border-[#534AB7] border-t-transparent rounded-full" />
   if (status === 'failed') return <span className="text-[#E24B4A] font-bold">&#10007;</span>

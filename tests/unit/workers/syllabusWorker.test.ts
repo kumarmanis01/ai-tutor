@@ -125,4 +125,67 @@ describe('handleSyllabusJob', () => {
 
     promptSpy.mockRestore()
   })
+
+  test('PDF-anchored path: seeds ChapterDef + TopicDef from parsed CurriculumBook without calling LLM', async () => {
+    ;(prisma.hydrationJob.updateMany as jest.Mock).mockResolvedValue({ count: 1 })
+    ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValue({ id: 'job-4', subjectId: 'sub-3', board: 'CBSE', grade: 8, language: 'en' })
+    ;(prisma.systemSetting.findUnique as jest.Mock).mockResolvedValue(null)
+    ;(prisma.chapterDef.findFirst as jest.Mock).mockResolvedValue(null)
+    // No NCERT chunks needed for PDF path
+    ;(prisma.curriculumChunk.findMany as jest.Mock).mockResolvedValue([])
+
+    // Parsed book with 2 chapters exists for this subject
+    ;(prisma.curriculumBook.findFirst as jest.Mock).mockResolvedValue({
+      id: 'book-1',
+      bookChapters: [
+        {
+          id: 'bch-1',
+          chapterTitle: 'Real Numbers',
+          chapterNumber: 1,
+          bookTopics: [
+            { id: 'bt-1', topicTitle: 'Introduction', topicOrder: 1 },
+            { id: 'bt-2', topicTitle: "Euclid's Division Lemma", topicOrder: 2 },
+          ],
+        },
+        {
+          id: 'bch-2',
+          chapterTitle: 'Polynomials',
+          chapterNumber: 2,
+          bookTopics: [
+            { id: 'bt-3', topicTitle: 'Geometrical Meaning', topicOrder: 1 },
+          ],
+        },
+      ],
+    })
+
+    const tx = {
+      chapterDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockImplementation(({ data }) => ({ id: `ch-${data.slug}` })) },
+      topicDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'topic-1' }) },
+      hydrationJob: { update: jest.fn().mockResolvedValue({}) },
+    }
+    ;(prisma.$transaction as jest.Mock).mockImplementation(async (cb: any) => cb(tx))
+
+    await handleSyllabusJob('job-4')
+
+    // LLM must NOT have been called
+    expect(callLLM).not.toHaveBeenCalled()
+
+    // Chapters created from PDF data
+    expect(tx.chapterDef.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Real Numbers', bookChapterId: 'bch-1' }) })
+    )
+    expect(tx.chapterDef.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Polynomials', bookChapterId: 'bch-2' }) })
+    )
+
+    // Topics created from PDF data
+    expect(tx.topicDef.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Introduction', bookTopicId: 'bt-1' }) })
+    )
+
+    // Job marked running + contentReady
+    expect(tx.hydrationJob.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ contentReady: true }) })
+    )
+  })
 })

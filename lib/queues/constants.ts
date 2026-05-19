@@ -1,9 +1,11 @@
 /**
- * Centralized queue names for BullMQ.
+ * FILE OBJECTIVE:
+ * - Centralized queue name constants for BullMQ.
+ * - COUPLING-02: Both outboxDispatcher and worker bootstrap MUST import from here.
+ *   No hardcoded queue names elsewhere -- prevents mismatch between dispatcher and worker.
  *
- * COUPLING-02: Both outboxDispatcher and worker bootstrap MUST import from here.
- * No hardcoded queue names elsewhere -- prevents mismatch between dispatcher
- * and worker.
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | added PDF_INGEST_QUEUE for NCERT textbook PDF ingestion pipeline
  */
 
 /** Content hydration queue -- syllabus, notes, questions, tests. */

@@ -1,13 +1,17 @@
 /**
- * PDF parser for NCERT textbook ingestion.
- * Extracts chapter and section structure from uploaded PDFs.
+ * FILE OBJECTIVE:
+ * - Parse NCERT textbook PDFs to extract chapter and topic structure.
+ * - Used by pdfIngestWorker to seed BookChapter/BookTopic rows.
  *
- * Strategy:
- *  - Use pdf-parse (already in package.json) for text extraction.
- *  - Detect chapter boundaries via NCERT heading patterns.
- *  - Detect numbered section headings within each chapter.
- *  - Extract exercise blocks (NCERT exercises, Activities, etc.).
- *  - Falls back gracefully when structure cannot be detected.
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/services/pdfParser.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created; NCERT chapter/topic parsing with exercise extraction
  */
 
 import fs from 'fs'
@@ -46,7 +50,7 @@ const CHAPTER_PATTERNS = [
   /(?:^|\n)\s*CHAPTER\s+(\d+)\s*[\n:]\s*([^\n]{3,80})/gi,
   /(?:^|\n)\s*अध्याय\s+(\d+)\s*[\n:]\s*([^\n]{3,80})/gi,
   /(?:^|\n)\s*पाठ\s+(\d+)\s*[\n:]\s*([^\n]{3,80})/gi,
-  /(?:^|\n)\s*Unit\s+(\d+)\s*[:\--]\s*([^\n]{3,80})/gi,
+  /(?:^|\n)\s*Unit\s+(\d+)\s*[:\-]\s*([^\n]{3,80})/gi,
 ]
 
 // Numbered section heading pattern: "1.1 Title", "2.3 Some Heading"
@@ -71,7 +75,7 @@ function extractExercises(text: string): string | null {
   return parts.join('\n\n').slice(0, 4000)
 }
 
-function extractTopicsFromChapter(chapterText: string, chapterTitle: string, chapterNum: number): ParsedTopic[] {
+function extractTopicsFromChapter(chapterText: string, chapterTitle: string, _chapterNum: number): ParsedTopic[] {
   NUMBERED_SECTION_RE.lastIndex = 0
   const matches = [...chapterText.matchAll(NUMBERED_SECTION_RE)]
 
@@ -105,14 +109,17 @@ function extractTopicsFromChapter(chapterText: string, chapterTitle: string, cha
   return topics
 }
 
-export async function parseNCERTBook(filePath: string, _subjectType: string): Promise<PDFParseResult> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require('pdf-parse') as (
+export async function parseNCERTBook(source: Buffer | string, _subjectType: string): Promise<PDFParseResult> {
+  // Lazy import -- pdf-parse is a CJS module. Use `.default` when available (ESM interop),
+  // otherwise the module itself is the function (pure CJS require).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfParseRaw = await import('pdf-parse') as any
+  const pdfParse = (pdfParseRaw.default ?? pdfParseRaw) as (
     buffer: Buffer,
     options?: Record<string, unknown>
   ) => Promise<{ text: string; numpages: number }>
 
-  const buffer = fs.readFileSync(filePath)
+  const buffer = typeof source === 'string' ? fs.readFileSync(source) : source
   const data = await pdfParse(buffer)
 
   const fullText: string = data.text
@@ -127,7 +134,7 @@ export async function parseNCERTBook(filePath: string, _subjectType: string): Pr
     )
   }
 
-  // Try each chapter pattern until one yields ≥ 2 matches
+  // Try each chapter pattern until one yields >= 2 matches
   let chapterMatches: RegExpMatchArray[] = []
   for (const pat of CHAPTER_PATTERNS) {
     pat.lastIndex = 0
@@ -140,7 +147,7 @@ export async function parseNCERTBook(filePath: string, _subjectType: string): Pr
 
   if (chapterMatches.length === 0) {
     warnings.push('No chapter boundaries detected via standard NCERT patterns.')
-    logger.warn('[pdfParser] no chapter boundaries found', { filePath, pageCount })
+    logger.warn('[pdfParser] no chapter boundaries found', { pageCount })
     throw new Error('PDF_PARSE_FAILED: No chapter boundaries detected. Ensure this is a standard NCERT textbook PDF.')
   }
 
@@ -178,7 +185,7 @@ export async function parseNCERTBook(filePath: string, _subjectType: string): Pr
 
   logger.info('[pdfParser] parsed successfully', {
     event: 'pdf_parsed',
-    context: { filePath, pageCount, chapters: chapters.length, warnings },
+    context: { pageCount, chapters: chapters.length, warnings },
   })
 
   return { pageCount, chapters, parseStrategy: _subjectType, warnings }

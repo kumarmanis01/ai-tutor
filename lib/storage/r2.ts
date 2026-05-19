@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { Readable } from 'stream';
 
 let _s3: S3Client | null = null;
 function getS3Client() {
@@ -42,5 +43,29 @@ export async function uploadBufferToR2(buffer: Buffer, key: string, contentType 
   return `${endpoint}/${bucketPart}/${key}`;
 }
 
-const R2 = { uploadBufferToR2 };
+export async function downloadBufferFromR2(key: string): Promise<Buffer> {
+  const bucket = process.env.R2_BUCKET;
+  if (!bucket) throw new Error('[r2] R2_BUCKET not configured');
+  const client = getS3Client();
+  const cmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+  const response = await client.send(cmd);
+  if (!response.Body) throw new Error(`[r2] empty response for key: ${key}`);
+  const stream = response.Body as Readable;
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', reject);
+  });
+}
+
+export async function deleteFromR2(key: string): Promise<void> {
+  const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+  const bucket = process.env.R2_BUCKET;
+  if (!bucket) throw new Error('[r2] R2_BUCKET not configured');
+  const client = getS3Client();
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
+const R2 = { uploadBufferToR2, downloadBufferFromR2, deleteFromR2 };
 export default R2;

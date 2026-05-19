@@ -1,24 +1,33 @@
 /**
- * POST /api/admin/books/upload
+ * FILE OBJECTIVE:
+ * - Accept multipart PDF upload for NCERT textbook, persist to R2 or local disk,
+ *   create CurriculumBook row, and enqueue a pdf-ingest BullMQ job.
  *
- * Accepts a multipart/form-data PDF upload for an NCERT textbook.
- * Saves the file, creates a CurriculumBook row, and enqueues a pdf-ingest job.
+ * LINKED UNIT TEST:
+ * - tests/unit/api/admin/books/upload.test.ts
  *
- * Fields:
- *   file      (File)    -- PDF, max 50MB
- *   subjectId (string)  -- SubjectDef.id
- *   language  (string)  -- 'en' | 'hi', default 'en'
- *   edition   (string)  -- optional, e.g. "2024-25"
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
- * Returns 202: { ok: true, bookId, message }
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created; R2 or local upload, enqueue pdf-ingest job
+ *
+ * Required env vars (add to .env / .env.production):
+ *   R2_ACCESS_KEY_ID      -- R2 HMAC key ID (optional; local fallback used if absent)
+ *   R2_SECRET_ACCESS_KEY  -- R2 HMAC secret
+ *   R2_ENDPOINT           -- e.g. https://<account>.r2.cloudflarestorage.com
+ *   R2_BUCKET             -- R2 bucket name
+ *   R2_REGION             -- default 'auto'
+ *   R2_PUBLIC_URL         -- optional CDN prefix for public download links
  */
 
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { getPdfIngestQueue } from '@/queues/contentQueue'
 import { logger } from '@/lib/logger'
+import { CurriculumBookParseStatus } from '@prisma/client'
 import fs from 'fs/promises'
 import path from 'path'
 import { uploadBufferToR2 } from '@/lib/storage/r2'
@@ -28,7 +37,7 @@ export const runtime = 'nodejs'
 const MAX_FILE_BYTES = 50 * 1024 * 1024 // 50MB
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
@@ -94,7 +103,7 @@ export async function POST(req: Request) {
   const grade = subject.class.grade
   const originalName = file.name ?? `textbook-${Date.now()}.pdf`
 
-  // Save file: use R2 if configured, else local disk
+  // Save file: use R2 if configured, else write outside public/ so PDFs are not world-accessible
   let storagePath: string
   const useR2 = !!(process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_ENDPOINT)
 
@@ -108,8 +117,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File storage failed' }, { status: 500 })
     }
   } else {
-    // Local fallback
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'books')
+    // Local fallback -- store outside public/ so files are not web-accessible
+    const uploadDir = path.join(process.cwd(), 'uploads', 'books')
     try {
       await fs.mkdir(uploadDir, { recursive: true })
     } catch {
@@ -139,7 +148,7 @@ export async function POST(req: Request) {
         originalName,
         storagePath,
         fileSizeBytes: buffer.length,
-        parseStatus: 'pending',
+        parseStatus: CurriculumBookParseStatus.pending,
         uploadedBy: session.user.id,
       },
       select: { id: true },
@@ -149,7 +158,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
 
-  // Enqueue pdf-ingest job
+  // Enqueue pdf-ingest job (non-fatal if queue unavailable -- admin can retry)
   const subjectType = deriveSubjectType(subject.name)
   try {
     const queue = getPdfIngestQueue()
@@ -166,12 +175,16 @@ export async function POST(req: Request) {
       { jobId: book.id }
     )
   } catch (err) {
-    // Non-fatal: mark the book as failed so admin can retry
-    logger.error('[books/upload] queue enqueue failed', { bookId: book.id, error: String(err) })
+    logger.error('[books/upload] queue enqueue failed -- book marked failed for retry', {
+      bookId: book.id,
+      error: String(err),
+    })
     await prisma.curriculumBook.update({
       where: { id: book.id },
-      data: { parseStatus: 'failed', parseError: 'Queue unavailable -- retry parse via admin panel' },
-    }).catch(() => {})
+      data: { parseStatus: CurriculumBookParseStatus.failed, parseError: 'Queue unavailable -- retry parse via admin panel' },
+    }).catch(dbErr => {
+      logger.error('[books/upload] failed to mark book as failed after queue error', { bookId: book.id, error: String(dbErr) })
+    })
   }
 
   logger.info('[books/upload] uploaded', {

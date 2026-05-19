@@ -17,6 +17,7 @@
  * - 2026-05-18T00:00:00Z | claude  | feat: notes now soft-approved (status: Approved) immediately on write; invalidates notes cache after completion
  * - 2026-05-19T00:00:00Z | claude  | feat: detect language subjects; pass languageMeta + isLanguageSubject to
  *     renderTemplate and validateOrThrow; expand grammar weakness codes in retry list
+ * - 2026-05-19T00:00:00Z | claude  | feat: PDF-anchored grounding -- use bookTopic.rawText when available
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -281,8 +282,8 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   let ncertContext: string | undefined
 
   // PDF-anchored path: use bookTopic.rawText if available (authoritative textbook text)
-  if ((topic as any).bookTopic?.rawText) {
-    const bookTopic = (topic as any).bookTopic as { rawText: string; exerciseText?: string | null }
+  if (topic.bookTopic?.rawText) {
+    const bookTopic = topic.bookTopic
     // Cap to 3000 chars (~750 tokens) to fit prompt budget
     const capped = bookTopic.rawText.slice(0, 3000)
     const exercisePart = bookTopic.exerciseText

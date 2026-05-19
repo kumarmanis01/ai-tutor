@@ -15,6 +15,7 @@
 /// - 2026-05-09T00:00:00Z | staff-engineer | add NotificationAudit, NotificationChannel/Severity/EventType enums, escalationStatus on StudentEngagementStats
 /// - 2026-05-11T00:00:00Z | copilot | add todayStudyMinutes and lastStudySessionDate for daily study duration limits (30min free / 60min paid)
 /// - 2026-05-12T00:00:00Z | copilot | add parentWhatsappPhone and channel-specific parent verification timestamps; add pending_onboarding account status default
+/// - 2026-05-19T00:00:00Z | claude  | feat: add CurriculumBook/BookChapter/BookTopic models; add CurriculumBookParseStatus enum; add bookChapterId/bookTopicId to ChapterDef/TopicDef
 generator client {
   provider = "prisma-client-js"
 }
@@ -3060,6 +3061,14 @@ model NotificationAudit {
   @@index([studentId, sentAt])
 }
 
+/// Parse lifecycle for an uploaded NCERT textbook PDF.
+enum CurriculumBookParseStatus {
+  pending
+  parsing
+  parsed
+  failed
+}
+
 /// Admin-uploaded textbook PDF for a board+grade+subject.
 /// Parsed chapters and topics are stored in BookChapter and BookTopic.
 /// Once parsed, SyllabusWorker uses these instead of LLM recall.
@@ -3074,8 +3083,7 @@ model CurriculumBook {
   storagePath   String        // R2 key or local path
   fileSizeBytes Int
   pageCount     Int?
-  parseStatus   String        @default("pending")
-  // pending | parsing | parsed | failed
+  parseStatus   CurriculumBookParseStatus @default(pending)
   parseError    String?
   parsedAt      DateTime?
   uploadedBy    String        // admin userId
@@ -3121,5 +3129,6 @@ model BookTopic {
   chapter       BookChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   topicDef      TopicDef?   // back-relation from TopicDef.bookTopicId
 
+  @@unique([chapterId, topicOrder])
   @@index([chapterId])
 }

@@ -1,22 +1,30 @@
 /**
- * POST /api/admin/books/retry
- * Body: { bookId: string }
+ * FILE OBJECTIVE:
+ * - Re-enqueue a failed CurriculumBook parse job so the admin can retry without re-uploading.
+ * - Only valid when parseStatus === 'failed'.
  *
- * Re-enqueues a failed CurriculumBook parse job.
- * Only valid when parseStatus === 'failed'.
+ * LINKED UNIT TEST:
+ * - tests/unit/api/admin/books/retry.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created; reset parseStatus + re-enqueue pdf-ingest job
  */
 
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { getPdfIngestQueue } from '@/queues/contentQueue'
 import { logger } from '@/lib/logger'
+import { CurriculumBookParseStatus } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
@@ -40,7 +48,7 @@ export async function POST(req: Request) {
   if (!book) {
     return NextResponse.json({ error: 'Book not found' }, { status: 404 })
   }
-  if (book.parseStatus !== 'failed') {
+  if (book.parseStatus !== CurriculumBookParseStatus.failed) {
     return NextResponse.json(
       { error: `Cannot retry: current status is '${book.parseStatus}'` },
       { status: 409 }
@@ -50,7 +58,7 @@ export async function POST(req: Request) {
   // Reset status so the worker can claim it
   await prisma.curriculumBook.update({
     where: { id: bookId },
-    data: { parseStatus: 'pending', parseError: null },
+    data: { parseStatus: CurriculumBookParseStatus.pending, parseError: null },
   })
 
   const subjectType = deriveSubjectType(book.subject.name)
