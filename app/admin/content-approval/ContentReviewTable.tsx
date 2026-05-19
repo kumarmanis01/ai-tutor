@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Client component for admin content review: filter, preview, and approve/reject draft content.
+ *
+ * LINKED UNIT TEST:
+ * - None (client-side interaction component; covered by manual QA)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | fix: bulkApprove calls single /approve-bulk endpoint; check res.ok and surface errors
+ */
+
 'use client'
 
 import React, { useState, useTransition, useEffect, useCallback } from 'react'
@@ -377,6 +392,7 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
   const [typeFilter, setTypeFilter] = useState<ReviewItemType | 'all'>('all')
   const [subjectFilter, setSubjectFilter] = useState('all')
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
   const [previewState, setPreviewState] = useState<PreviewState>({ phase: 'idle' })
 
   function refresh() {
@@ -407,17 +423,23 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
 
   async function bulkApprove() {
     setBulkBusy(true)
+    setBulkError(null)
     try {
-      await fetch('/api/admin/content/approve-bulk', {
+      const res = await fetch('/api/admin/content/approve-bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: visible.map(i => ({ id: i.id, type: i.type, action: 'approve' })),
         }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setBulkError(data.error ?? `Bulk approve failed (${res.status})`)
+        return
+      }
       refresh()
     } catch {
-      // individual row errors surface per-row on refresh
+      setBulkError('Network error -- please try again')
     } finally {
       setBulkBusy(false)
     }
@@ -454,7 +476,10 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
           {visible.length} item{visible.length === 1 ? '' : 's'}
         </span>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {bulkError && (
+            <span className="text-[10px] text-[#E24B4A]">{bulkError}</span>
+          )}
           {visible.length > 0 && (
             <button
               onClick={bulkApprove}

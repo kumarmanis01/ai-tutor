@@ -21,6 +21,7 @@
  * - 2026-05-10T00:00:00Z | copilot | enforce deduplication in worker persistence and soft-promotion paths so duplicate question content is not emitted from generation jobs
  * - 2026-05-18T00:00:00Z | claude  | feat: QUESTIONS_PARALLEL=true env var enables parallel 3-difficulty LLM calls even when LLM_SAFE_MODE=true
  * - 2026-05-18T00:00:00Z | claude  | feat: raise default question cap from 2 to 10 per difficulty to satisfy PRACTICE+TEST+PRACTICE_MORE supply
+ * - 2026-05-19T00:00:00Z | claude  | fix: batch generatedQuestion inserts with createMany; batch soft-promote with createMany(skipDuplicates)
  */
 
 import { prisma } from '@/lib/prisma.js';

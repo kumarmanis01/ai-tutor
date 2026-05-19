@@ -5,6 +5,13 @@
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/api/admin/content/approve-bulk/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | claude | created -- batch bulk-approve endpoint to eliminate N parallel API calls
  */
 
 import { prisma } from "@/lib/prisma";
@@ -14,12 +21,14 @@ import { getServerSessionForHandlers } from "@/lib/session";
 import { cacheDelPattern } from "@/lib/cache";
 
 const SUPPORTED_TYPES = ["chapter", "topic", "note", "test"] as const;
+const SUPPORTED_ACTIONS = ["approve", "reject"] as const;
 type ContentType = typeof SUPPORTED_TYPES[number];
+type ActionType = typeof SUPPORTED_ACTIONS[number];
 
 interface BulkItem {
   id: string;
   type: ContentType;
-  action: "approve" | "reject";
+  action: ActionType;
 }
 
 export async function POST(req: Request) {
@@ -40,9 +49,15 @@ export async function POST(req: Request) {
   }
 
   for (const item of items) {
-    if (!item.id || !item.type || !SUPPORTED_TYPES.includes(item.type)) {
+    if (!item.id || !item.type || !SUPPORTED_TYPES.includes(item.type as ContentType)) {
       return NextResponse.json(
-        { success: false, error: `Invalid item: ${JSON.stringify(item)}` },
+        { success: false, error: `Invalid item type: ${JSON.stringify(item)}` },
+        { status: 400 },
+      );
+    }
+    if (!item.action || !SUPPORTED_ACTIONS.includes(item.action as ActionType)) {
+      return NextResponse.json(
+        { success: false, error: `Invalid action "${item.action}" -- must be "approve" or "reject"` },
         { status: 400 },
       );
     }
@@ -71,11 +86,12 @@ export async function POST(req: Request) {
     }
 
     const topicIdsForNoteCache: string[] = [];
+    const noteIdsForCache: string[] = [];
     const topicIdsForTestCache: string[] = [];
 
     await db.$transaction(async (tx: any) => {
       for (const [key, group] of Object.entries(byTypeAction)) {
-        const [type, action] = key.split(":") as [ContentType, "approve" | "reject"];
+        const [type, action] = key.split(":") as [ContentType, ActionType];
         const ids = group.map((g) => g.id);
         const newStatus = action === "reject" ? "rejected" : "approved";
 
@@ -86,9 +102,12 @@ export async function POST(req: Request) {
         } else if (type === "note") {
           const rows = await tx.topicNote.findMany({
             where: { id: { in: ids } },
-            select: { topicId: true },
+            select: { id: true, topicId: true },
           });
-          for (const r of rows) if (r.topicId) topicIdsForNoteCache.push(r.topicId);
+          for (const r of rows) {
+            if (r.topicId) topicIdsForNoteCache.push(r.topicId);
+            noteIdsForCache.push(r.id);
+          }
           await tx.topicNote.updateMany({ where: { id: { in: ids } }, data: { status: newStatus } });
         } else if (type === "test") {
           const rows = await tx.generatedTest.findMany({
@@ -129,6 +148,10 @@ export async function POST(req: Request) {
         cacheDelPattern(`notes:for-topic:v1:${topicId}:*`).catch(() => {}),
         cacheDelPattern(`notes:topic-content:v1:${topicId}:*`).catch(() => {}),
       ]),
+      // Per-note cache key (serves /api/notes/topic-note/[id])
+      ...noteIdsForCache.map((noteId) =>
+        cacheDelPattern(`notes:topic-note:v1:${noteId}`).catch(() => {}),
+      ),
       ...uniqueTestTopics.map((topicId) =>
         cacheDelPattern(`questions:for-topic:v1:${topicId}:*`).catch(() => {}),
       ),

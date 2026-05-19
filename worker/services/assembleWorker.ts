@@ -15,6 +15,7 @@
  * - 2026-01-22T02:30:00Z | copilot | Phase 3: Created assemble worker handler
  * - 2026-01-23T08:00:00Z | copilot | Fixed: Use GeneratedQuestion relation instead of questionsJson field
  * - 2026-05-18T00:00:00Z | claude  | Invalidate questions:for-topic cache after test approval so newly assembled tests are visible without waiting for TTL
+ * - 2026-05-19T00:00:00Z | claude  | fix: batch per-test update loop into updateMany; use returned count for accurate assembledCount
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -130,14 +131,16 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
         .filter((t) => t._count.questions >= MIN_QUESTIONS_FOR_APPROVAL)
         .map((t) => t.id);
 
-      const assembledCount = qualifyingIds.length;
+      let assembledCount = 0;
 
       if (qualifyingIds.length > 0) {
-        await tx.generatedTest.updateMany({
+        // Use the authoritative DB count in case concurrent jobs changed status between our read and write
+        const result = await tx.generatedTest.updateMany({
           where: { id: { in: qualifyingIds } },
           data: { status: 'approved' },
         });
-        logger.info('handleAssembleJob: approved tests', { count: qualifyingIds.length, testIds: qualifyingIds });
+        assembledCount = result.count;
+        logger.info('handleAssembleJob: approved tests', { count: assembledCount, testIds: qualifyingIds });
       }
 
       // Mark hydration job completed (workers only update their own HydrationJob)

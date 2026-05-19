@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-18T00:00:00Z | copilot | added from release_20260430 with API path adjustments
+ * - 2026-05-19T00:00:00Z | claude  | fix: auto-corrected smart-quote comment to ASCII apostrophe
  */
 
 'use client'
