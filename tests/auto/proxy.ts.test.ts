@@ -1,18 +1,19 @@
 /**
  * FILE OBJECTIVE:
- * - Verify middleware exists and does not redirect authenticated session routes based on stale JWT onboarding flags.
+ * - Verify the Next.js proxy exists and preserves the expected auth and session-route behavior.
  *
  * LINKED UNIT TEST:
- * - tests/auto/middleware.ts.test.ts
+ * - tests/auto/proxy.ts.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/ENGINEERING_PRACTICES.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | copilot | migrate middleware coverage to the Next.js proxy convention
  * - 2026-05-12T00:00:00Z | copilot | update coverage for active-account middleware guard on student routes
  * - 2026-05-07T00:00:00Z | copilot | add regression coverage for stale-token session-route redirects
- * - 2026-05-08T00:00:00Z | copilot | add /student auth guard coverage (redirect unauthenticated to /)
+ * - 2026-05-08T00:00:00Z | copilot | add /student auth guard coverage
  */
 
 import fs from 'fs';
@@ -32,11 +33,11 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 import { getToken } from 'next-auth/jwt';
-import { middleware } from '../../middleware';
+import { proxy } from '../../proxy';
 
 const mockedGetToken = jest.mocked(getToken);
 
-describe('exists middleware.ts', () => {
+describe('exists proxy.ts', () => {
   beforeEach(() => {
     mockedGetToken.mockReset();
     global.fetch = jest.fn(async () => {
@@ -45,8 +46,8 @@ describe('exists middleware.ts', () => {
   });
 
   it('source file exists on disk', () => {
-    const p = path.join(process.cwd(), 'middleware.ts');
-    expect(fs.existsSync(p)).toBe(true);
+    const filePath = path.join(process.cwd(), 'proxy.ts');
+    expect(fs.existsSync(filePath)).toBe(true);
   });
 
   it('allows authenticated session route even when JWT onboarding flags are stale', async () => {
@@ -57,7 +58,7 @@ describe('exists middleware.ts', () => {
     });
 
     const request = new NextRequest('https://example.com/session/topic-123');
-    const response = await middleware(request);
+    const response = await proxy(request);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('x-pathname')).toBe('/session/topic-123');
@@ -67,7 +68,7 @@ describe('exists middleware.ts', () => {
     mockedGetToken.mockResolvedValue(null);
 
     const request = new NextRequest('https://example.com/student/onboarding');
-    const response = await middleware(request);
+    const response = await proxy(request);
 
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('https://example.com/');
@@ -77,7 +78,7 @@ describe('exists middleware.ts', () => {
     mockedGetToken.mockResolvedValue({ role: 'student', accountStatus: 'active' });
 
     const request = new NextRequest('https://example.com/student/onboarding');
-    const response = await middleware(request);
+    const response = await proxy(request);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('x-pathname')).toBe('/student/onboarding');
@@ -87,7 +88,7 @@ describe('exists middleware.ts', () => {
     mockedGetToken.mockResolvedValue({ role: 'student', accountStatus: 'pending_parent_verification' });
 
     const request = new NextRequest('https://example.com/student/dashboard');
-    const response = await middleware(request);
+    const response = await proxy(request);
 
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('https://example.com/student/onboarding');

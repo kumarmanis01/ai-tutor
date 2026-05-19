@@ -1,16 +1,17 @@
 /**
  * FILE OBJECTIVE:
  * - Apply authentication and route canonicalization for protected UI and API paths
- *   without duplicating stale onboarding or parent-verification redirects.
+ *   using the Next.js proxy file convention.
  *
  * LINKED UNIT TEST:
- * - tests/auto/middleware.ts.test.ts
+ * - tests/auto/proxy.ts.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/ENGINEERING_PRACTICES.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-19T00:00:00Z | copilot | migrate route guard from middleware convention to proxy convention
  * - 2026-05-12T00:00:00Z | copilot | enforce active-account guard for /student and /parent routes with onboarding allowlist
  * - 2026-05-07T00:00:00Z | copilot | remove stale JWT-based onboarding redirects for /session routes
  * - 2026-05-08T00:00:00Z | copilot | enforce auth guard for /student/* paths and redirect unauthenticated requests to /
@@ -20,18 +21,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { logger } from '@/lib/logger';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
-  // Legacy /session/[sessionId] → redirect to /session/[topicId] (canonical route)
+  // Legacy /session/[sessionId] -> redirect to /session/[topicId] (canonical route)
   const sessionMatch = pathname.match(/^\/session\/([^/]+)$/);
   if (sessionMatch) {
     const segment = sessionMatch[1];
     try {
       const base = request.nextUrl.origin;
       const res = await fetch(`${base}/api/session/lookup?id=${encodeURIComponent(segment)}`, {
-        headers: request.headers.get('cookie') ? { cookie: request.headers.get('cookie')! } : {},
+        headers: request.headers.get('cookie') ? { cookie: request.headers.get('cookie') } : {},
       });
       if (res.ok) {
         const body = await res.json();
@@ -40,11 +41,10 @@ export async function middleware(request: NextRequest) {
         }
       }
     } catch {
-      // On lookup failure, continue so [topicId] page can handle or show error
+      // On lookup failure, continue so [topicId] page can handle or show error.
     }
   }
 
-  // Centralized API request logging (dev only)
   const isApiRoute = pathname.startsWith('/api/');
   const isDev = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
   if (isApiRoute && isDev) {
@@ -54,17 +54,19 @@ export async function middleware(request: NextRequest) {
       try {
         const clone = request.clone();
         const body = await clone.text();
-        if (body) logger.debug(`[API] ${method} ${pathname} body: ${body}`);
-      } catch {}
+        if (body) {
+          logger.debug(`[API] ${method} ${pathname} body: ${body}`);
+        }
+      } catch {
+        // Best-effort development logging only.
+      }
     }
   }
 
-  // Centralized protected prefixes
   const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session', '/student'];
 
-  // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    logger.debug('[MIDDLEWARE] Token: ' + String(token));
+    logger.debug('[PROXY] Token: ' + String(token));
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
     if (!allowed) {
       if (pathname.startsWith('/api/admin')) {
@@ -75,7 +77,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Generic UI protection for other prefixes: redirect to root if no valid token
   for (const prefix of protectedUiPrefixes) {
     if (pathname.startsWith(prefix)) {
       if (!token) {
@@ -96,15 +97,15 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/student/onboarding', request.url));
       }
 
-      const res = NextResponse.next();
-      res.headers.set('x-pathname', pathname);
-      return res;
+      const response = NextResponse.next();
+      response.headers.set('x-pathname', pathname);
+      return response;
     }
   }
 
-  const res = NextResponse.next();
-  res.headers.set('x-pathname', pathname);
-  return res;
+  const response = NextResponse.next();
+  response.headers.set('x-pathname', pathname);
+  return response;
 }
 
 export const config = {
