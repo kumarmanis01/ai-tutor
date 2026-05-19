@@ -208,6 +208,27 @@ function RowActions({
     }
   }
 
+  async function handleTopUpQuestions() {
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      const r = await fetch('/api/admin/content-engine/questions-rehyd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectId: row.subjectId, language: row.language }),
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
+      setMsg(data.message ?? `Queued ${data.enqueued} question jobs.`)
+      onRefresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleCompletePipeline() {
     setBusy(true)
     setError(null)
@@ -337,6 +358,7 @@ function RowActions({
       {s === 'ready' && (
         <>
           <Btn onClick={handleRegenNotes} disabled={busy} variant="primary">Regen notes</Btn>
+          <Btn onClick={handleTopUpQuestions} disabled={busy} variant="success">Top up Qs</Btn>
           <Btn onClick={handleCompletePipeline} disabled={busy} variant="warn">Fill gaps</Btn>
           <Link
             href={`/admin/content-engine/jobs?subjectId=${row.subjectId}`}
