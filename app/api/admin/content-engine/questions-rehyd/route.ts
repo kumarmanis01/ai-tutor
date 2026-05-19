@@ -20,7 +20,6 @@ import { prisma } from '@/lib/prisma'
 import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration'
 import { logger } from '@/lib/logger'
 
-const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
 const DEFAULT_QUESTIONS_PER_DIFFICULTY = 10
 const MAX_QUESTIONS_PER_DIFFICULTY = 10
 
@@ -91,39 +90,40 @@ export async function POST(req: Request) {
   let skipped = 0
   let hydrationPaused = false
 
-  // Enqueue serially (topic x difficulty) to avoid hammering the DB.
+  // One job per topic -- questionsWorker handles all 3 difficulties (easy/medium/hard) internally.
+  // Do NOT enqueue one job per difficulty: that causes 3 workers to generate identical content
+  // and upsert the same GeneratedTest rows concurrently.
   // force=true: generate new versions even for topics that already have approved questions.
-  outer: for (const topic of topics) {
-    for (const difficulty of DIFFICULTIES) {
-      try {
-        const result = await enqueueQuestionsHydration({
-          topicId: topic.id,
-          language,
-          difficulty,
-          questionsPerDifficulty,
-          force: true,
-        })
-        if (result.created) {
-          enqueued++
-        } else {
-          // With force=true, only skip reasons are job_already_queued or hydration_paused
-          skipped++
-          if (result.reason === 'hydration_paused') {
-            hydrationPaused = true
-            logger.warn('[questions-rehyd] hydration paused, aborting remaining topics', {
-              event: 'questions_rehyd_paused',
-              context: { subjectId, topicId: topic.id },
-            })
-            break outer
-          }
-        }
-      } catch (err) {
-        logger.warn('[questions-rehyd] failed to enqueue topic/difficulty, skipping', {
-          event: 'questions_rehyd_topic_error',
-          context: { topicId: topic.id, difficulty, error: String(err) },
-        })
+  for (const topic of topics) {
+    try {
+      const result = await enqueueQuestionsHydration({
+        topicId: topic.id,
+        language,
+        // difficulty is metadata only -- worker always generates all three levels
+        difficulty: 'easy',
+        questionsPerDifficulty,
+        force: true,
+      })
+      if (result.created) {
+        enqueued++
+      } else {
+        // With force=true, only skip reasons are job_already_queued or hydration_paused
         skipped++
+        if (result.reason === 'hydration_paused') {
+          hydrationPaused = true
+          logger.warn('[questions-rehyd] hydration paused, aborting remaining topics', {
+            event: 'questions_rehyd_paused',
+            context: { subjectId, topicId: topic.id },
+          })
+          break
+        }
       }
+    } catch (err) {
+      logger.warn('[questions-rehyd] failed to enqueue topic, skipping', {
+        event: 'questions_rehyd_topic_error',
+        context: { topicId: topic.id, error: String(err) },
+      })
+      skipped++
     }
   }
 
@@ -174,6 +174,6 @@ export async function POST(req: Request) {
     enqueued,
     skipped,
     topicCount: topics.length,
-    message: `Queued ${enqueued} question jobs (easy/medium/hard)${skipped > 0 ? `, ${skipped} skipped (already queued or paused)` : ''}.${pausedSuffix}`,
+    message: `Queued ${enqueued} question jobs (each covers easy/medium/hard)${skipped > 0 ? `, ${skipped} skipped (already queued or paused)` : ''}.${pausedSuffix}`,
   })
 }
