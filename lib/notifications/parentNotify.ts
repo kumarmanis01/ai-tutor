@@ -5,38 +5,49 @@
  * - Sends email via sendEmailUnifiedSafe and WhatsApp via sendWhatsAppSafe for every event.
  * - Called from workers/listeners after diagnostic complete, plan generated,
  *   session complete, session missed, and auth (welcome) events.
+ * - Channels: email + WhatsApp only. No SMS.
  *
- * NOTE: This file is missing its original import block. The types and imports below
- * are reconstructed from the function signatures visible in this file. The full
- * import block and type declarations must be restored if this file is to be used.
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/notifications/parentNotify.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-05-05T00:00:00Z | copilot | remove unsupported 'from' property from sendMailSafe call (TS2353 fix)
+ * - 2026-05-13T00:00:00Z | copilot | update parent email footer copy and record in EDIT LOG
+ * - 2026-05-20T00:00:00Z | copilot | migrate sendMailSafe -> sendEmailUnifiedSafe (email centralization)
  */
 
 import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
 import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
+import { logger } from '@/lib/logger';
+import {
+  MAIL_SUBJECTS,
+  PARENT_NOTIF_EVENTS,
+  formatSubject,
+  type ParentNotifEvent,
+} from '@/lib/constants/mail';
 import {
   diagnosticCompleteForParentHtml,
   planGeneratedForParentHtml,
   sessionCompleteForParentHtml,
   inactivityNudgeHtml,
 } from '@/lib/email/templates';
-import { MAIL_SUBJECTS } from '@/lib/constants/mail';
 
-const APP_URL = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com';
+type DiagnosticCompleteData = {
+  subjectName: string;
+  placement: string;
+  dashboardUrl: string;
+};
 
-const PARENT_NOTIF_EVENTS = {
-  DIAGNOSTIC_COMPLETE: 'diagnostic_complete',
-  PLAN_GENERATED: 'plan_generated',
-  SESSION_COMPLETE: 'session_complete',
-  SESSION_MISSED: 'session_missed',
-  AUTH: 'auth',
-} as const;
+type PlanGeneratedData = {
+  subjectName: string;
+  dashboardUrl: string;
+};
 
-type ParentNotifEvent = typeof PARENT_NOTIF_EVENTS[keyof typeof PARENT_NOTIF_EVENTS];
-
-type DiagnosticCompleteData = { subjectName: string; placement: string; dashboardUrl: string };
-type PlanGeneratedData = { subjectName: string; dashboardUrl: string };
 type SessionCompleteData = {
   topicName: string;
   subjectName: string;
@@ -45,22 +56,37 @@ type SessionCompleteData = {
   xpEarned?: number;
   totalXp?: number;
   badges?: string[];
-  accuracy?: number;
-  masteryDelta?: number;
+  accuracy?: number; // percent 0-100
+  masteryDelta?: number; // decimal or percent depending on caller
   masteryAfter?: number;
   sessionDurationMinutes?: number;
   aiInsight?: string;
-  topicsTouched?: Array<{ topicName?: string | null }>;
+  topicsTouched?: Array<{
+    topicId: string;
+    topicName?: string | null;
+    chapterName?: string | null;
+    concepts: Array<{ conceptId: string; conceptName?: string | null; masteryAfter?: number | null; masteryDelta?: number | null }>
+  }>;
   chaptersCompleted?: Array<{ chapterId: string; chapterName: string; completed: boolean }>;
 };
-type SessionMissedData = { dashboardUrl: string };
-type NotifyData = { event: ParentNotifEvent; data: DiagnosticCompleteData | PlanGeneratedData | SessionCompleteData | SessionMissedData };
 
-function formatSubject(template: string, name: string): string {
-  return template.replace('{name}', name).replace('{studentName}', name);
-}
+type SessionMissedData = {
+  dashboardUrl: string;
+};
 
-export async function notifyParent(studentId: string, eventPayload: NotifyData): Promise<void> {
+type NotifyData =
+  | { event: typeof PARENT_NOTIF_EVENTS.AUTH; data?: Record<string, never> }
+  | { event: typeof PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE; data: DiagnosticCompleteData }
+  | { event: typeof PARENT_NOTIF_EVENTS.PLAN_GENERATED; data: PlanGeneratedData }
+  | { event: typeof PARENT_NOTIF_EVENTS.SESSION_COMPLETE; data: SessionCompleteData }
+  | { event: typeof PARENT_NOTIF_EVENTS.SESSION_MISSED; data: SessionMissedData };
+
+const APP_URL = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com';
+
+export async function notifyParent(
+  studentId: string,
+  eventPayload: NotifyData,
+): Promise<void> {
   try {
     const student = await prisma.user.findUnique({
       where: { id: studentId },
@@ -160,6 +186,7 @@ async function sendEmailForEvent(
       subject,
       html,
       reason: 'parent_notify',
+      featureFlagDomain: 'notification',
     });
   } catch (err) {
     logger.error('[parentNotify] email send failed', {
