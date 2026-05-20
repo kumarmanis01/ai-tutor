@@ -28,7 +28,7 @@ import {
 } from '@/lib/email/functionalityEmails';
 
 // Temporary stub for feature flag check (replace with real import if available)
-function getFeatureFlag(domain: string): boolean { return true; }
+function getFeatureFlag(_domain: string): boolean { return true; }
 
 // ── Resend transport (internal -- not exported) ───────────────────────────────
 
@@ -79,13 +79,14 @@ async function sendMail(opts: MailOptions): Promise<string> {
   return data?.id ?? '';
 }
 
-async function sendMailSafe(opts: MailOptions): Promise<void> {
-  try {
-    await sendMail(opts);
-  } catch (err) {
-    console.error('[mail] sendMailSafe failed', err instanceof Error ? err.message : String(err));
-  }
-}
+// async function sendMailSafe(opts: MailOptions): Promise<void> {
+//   try {
+//     await sendMail(opts);
+//   } catch (err) {
+//     // eslint-disable-next-line no-console -- replaced with logger per guardrails
+//     logger.error('[mail] sendMailSafe failed', { error: err instanceof Error ? err.message : String(err) });
+//   }
+// }
 
 // ── Unified Email Facade ─────────────────────────────────────────────────────
 
@@ -165,7 +166,6 @@ export async function sendEmailUnified(params: UnifiedEmailSendParams): Promise<
     correlationId,
     actor,
     featureFlagDomain,
-    options,
   } = params;
   const start = Date.now();
   const maskedTo = maskEmail(to);

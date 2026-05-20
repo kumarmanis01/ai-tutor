@@ -313,9 +313,9 @@ export async function POST(req: Request) {
       const parent = await prisma.user.findUnique({ where: { id: orderRow.studentId }, select: { id: true, email: true, phone: true, name: true } });
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
-        const subject = `Payment failed -- action required`;
+        const _subject = `Payment failed -- action required`;
         const { MAIL_SUPPORT } = await import('@/lib/constants/mail').catch(() => ({ MAIL_SUPPORT: RAZORPAY_WEBHOOK_SUPPORT_EMAIL }));
-        const html = parentPaymentFailedHtml({ name: parent.name ?? undefined, retryUrl: retryLink, supportEmail: process.env.SUPPORT_EMAIL ?? MAIL_SUPPORT });
+        const _html = parentPaymentFailedHtml({ name: parent.name ?? undefined, retryUrl: retryLink, supportEmail: process.env.SUPPORT_EMAIL ?? MAIL_SUPPORT });
         await sendEmailUnifiedSafe({
           mode: 'raw',
           delivery: 'best_effort',
