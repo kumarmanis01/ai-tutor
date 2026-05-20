@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { weeklyDigestHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
 
@@ -56,10 +56,14 @@ async function sendDigestsAsync(adminId: string) {
         streakDays: streak?.current ?? 0,
         parentName: link.parent.name ?? undefined,
       })
-      await sendMailSafe({
+      await sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: recipientEmail,
         subject: `${student?.name ?? 'Your child'}'s weekly learning report`,
         html,
+        reason: 'parent_weekly_digest',
+        featureFlagDomain: 'notification',
       })
       sent++
     } catch (err) {

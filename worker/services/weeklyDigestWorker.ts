@@ -38,7 +38,6 @@ type ParentProfileLocal = {
   digestTimezone?: string
 }
 import { logger } from '@/lib/logger'
-import { sendMailSafe } from '@/lib/mailer'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 import { callLLM } from '@/lib/callLLM'
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'

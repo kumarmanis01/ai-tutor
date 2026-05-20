@@ -19,7 +19,7 @@
 
 import { prisma } from '../../lib/prisma.js';
 import { getRedis } from '../../lib/redis.js';
-import { sendMail } from '../../lib/mailer.js';
+import { sendEmailUnified } from '../../lib/mail.js';
 import { diagnosticReadyEmailHtml } from '../../lib/email/templates.js';
 import { logger } from '../../lib/logger.js';
 
@@ -89,14 +89,18 @@ export async function runDiagnosticReadinessCheck(): Promise<{ checked: number; 
 
           const html = diagnosticReadyEmailHtml({ studentName, subjectName, diagnosticUrl });
 
-          // Use sendMail (throws on failure) so we only delete the key after a
-          // confirmed send. sendMailSafe would suppress errors and cause the key
+          // Use sendEmailUnified with delivery: 'strict' (throws on failure) so we only delete the key after a
+          // confirmed send. sendEmailUnifiedSafe would suppress errors and cause the key
           // to be deleted even when the email never reached the student.
           try {
-            await sendMail({
+            await sendEmailUnified({
+              mode: 'raw',
+              delivery: 'strict',
               to: student.email,
               subject: `Your ${subjectName} diagnostic is ready -- start now`,
               html,
+              reason: 'diagnostic_readiness_check',
+              featureFlagDomain: 'notification',
             });
             await (redis as any).del(key);
             notified++;

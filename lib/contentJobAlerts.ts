@@ -14,7 +14,6 @@
 
 import type { Job } from 'bullmq';
 import { getRedis } from '@/lib/redis';
-import { sendMailSafe } from '@/lib/mailer';
 import { contentJobFailureAlertHtml } from '@/lib/email/templates';
 import { prisma } from '@/lib/prisma';
 import { JobStatus } from '@/lib/ai-engine/types';
@@ -146,8 +145,11 @@ export async function sendJobFailureAlert(opts: {
 
   await sendEmailUnifiedSafe({
     mode: 'raw',
+    delivery: 'best_effort',
     to: adminEmail,
     subject,
     html,
+    reason: 'content_job_failure_alert',
+    featureFlagDomain: 'ops',
   });
 }

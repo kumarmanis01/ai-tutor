@@ -10,7 +10,7 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { sendMailSafe } from '@/lib/mailer.js'
+import { sendEmailUnifiedSafe } from '@/lib/mail.js'
 import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 
 const RATING_ALERT_THRESHOLD = 3
@@ -76,11 +76,15 @@ export async function runWeeklyRatingAggregation(): Promise<RatingAggregationRes
       try {
         const title = `Weekly session rating report (last ${LOOKBACK_DAYS} days)`
         const body = `The following activity types have average ratings below ${RATING_ALERT_THRESHOLD}/5:\n\n${lowRatingRows.map((r) => `- ${r.activityType} / ${r.activityRef ?? '(no ref)'}: avg ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)`).join('\n')}\n\nTotal activity types checked: ${rows.length}`
-        await sendMailSafe({
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
           to: oncallEmail,
-          subject: `⚠️ Spinzy session rating alert: ${lowRatingRows.length} activity type(s) below ${RATING_ALERT_THRESHOLD}/5`,
+          subject: `Spinzy session rating alert: ${lowRatingRows.length} activity type(s) below ${RATING_ALERT_THRESHOLD}/5`,
           text: [title, '', ...lowRatingRows.map((r) => `- ${r.activityType} / ${r.activityRef ?? '(no ref)'}: avg ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)`), '', `Total activity types checked: ${rows.length}`].join('\n'),
           html: adminBroadcastEmailHtml({ title, body }),
+          reason: 'rating_alert',
+          featureFlagDomain: 'ops',
         })
         alerted = lowRatingRows.length
         logger.warn('weeklyRatingAggregation.alertSent', {

@@ -15,7 +15,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { paymentRetryReminderHtml, graceStartedHtml, subscriptionExpiredHtml, paymentReceiptHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { getRedis } from '@/lib/redis'
@@ -112,7 +112,7 @@ export async function processPaymentDunning(): Promise<void> {
                   billingCycle: plan.perMonthDisplay,
                   renewalDate: new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN'),
                 })
-                await sendMailSafe({ to: parent.email ?? '', subject, html })
+                await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
               } catch (err) {
                 logger.warn('paymentDunning: invoice/email after credit-apply failed', { subscriptionId: s.id, err: String(err) })
               }
@@ -180,7 +180,7 @@ export async function processPaymentDunning(): Promise<void> {
                     billingCycle: plan.perMonthDisplay,
                     renewalDate: new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN'),
                   })
-                  await sendMailSafe({ to: parent.email ?? '', subject, html })
+                  await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
                 } catch (err) {
                   logger.warn('paymentDunning: invoice/email after auto-charge failed', { subscriptionId: s.id, err: String(err) })
                 }
@@ -201,7 +201,7 @@ export async function processPaymentDunning(): Promise<void> {
         const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
         const html = paymentRetryReminderHtml({ name: parent.name ?? undefined, retryUrl: retryLink })
 
-        await sendMailSafe({ to: parent.email ?? '', subject, html })
+        await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
         if (parent.phone) await sendSms(parent.phone, `Subscription retry: please update payment at ${retryLink}`)
 
         await prisma.subscription.update({ where: { id: s.id }, data: { dunningAttempts: { increment: 1 }, lastDunningAt: now } })
@@ -222,7 +222,7 @@ export async function processPaymentDunning(): Promise<void> {
         const subject = `Payment failed -- grace period started`
         const billingUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
         const html = graceStartedHtml({ name: parent.name ?? undefined, untilLabel: graceUntil.toLocaleString('en-IN'), billingUrl })
-        await sendMailSafe({ to: parent.email ?? '', subject, html })
+        await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
         if (parent.phone) await sendSms(parent.phone, `Spinzy: grace period started until ${graceUntil.toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
       } catch (err) {
         logger.error('paymentDunning: error starting grace', { subscriptionId: s.id, error: String(err) })
@@ -246,7 +246,7 @@ export async function processPaymentDunning(): Promise<void> {
         const subject = `Reminder: update payment to keep Spinzy access`
         const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
         const html = paymentRetryReminderHtml({ name: parent.name ?? undefined, retryUrl: retryLink })
-        await sendMailSafe({ to: parent.email ?? '', subject, html })
+        await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
         if (parent.phone) await sendSms(parent.phone, `Reminder: Spinzy grace until ${new Date(s.graceUntil!).toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
       } catch (err) {
         logger.error('paymentDunning: error sending grace reminder', { subscriptionId: s.id, error: String(err) })
@@ -272,7 +272,7 @@ export async function processPaymentDunning(): Promise<void> {
           const subject = `Subscription expired -- action required`
           const renewUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
           const html = subscriptionExpiredHtml({ name: parent.name ?? undefined, renewUrl })
-          await sendMailSafe({ to: parent.email, subject, html })
+          await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email, subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
         }
       } catch (err) {
         logger.error('paymentDunning: error expiring subscription', { subscriptionId: s.id, error: String(err) })

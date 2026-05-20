@@ -2,17 +2,65 @@
  * FILE OBJECTIVE:
  * - notifyParent(studentId, event, data) -- central dispatcher for parent notifications.
  * - Resolves parent contact from the student record (parentEmail + whatsappPhone/parentPhone).
- * - Sends email via sendMailSafe and WhatsApp via sendWhatsAppSafe for every event.
+ * - Sends email via sendEmailUnifiedSafe and WhatsApp via sendWhatsAppSafe for every event.
  * - Called from workers/listeners after diagnostic complete, plan generated,
  *   session complete, session missed, and auth (welcome) events.
+ *
+ * NOTE: This file is missing its original import block. The types and imports below
+ * are reconstructed from the function signatures visible in this file. The full
+ * import block and type declarations must be restored if this file is to be used.
+ */
 
-  dashboardUrl: string;
-};
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
+import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
+import {
+  diagnosticCompleteForParentHtml,
+  planGeneratedForParentHtml,
+  sessionCompleteForParentHtml,
+  inactivityNudgeHtml,
+} from '@/lib/email/templates';
+import { MAIL_SUBJECTS } from '@/lib/constants/mail';
 
-type PlanGeneratedData = {
+const APP_URL = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com';
+
+const PARENT_NOTIF_EVENTS = {
+  DIAGNOSTIC_COMPLETE: 'diagnostic_complete',
+  PLAN_GENERATED: 'plan_generated',
+  SESSION_COMPLETE: 'session_complete',
+  SESSION_MISSED: 'session_missed',
+  AUTH: 'auth',
+} as const;
+
+type ParentNotifEvent = typeof PARENT_NOTIF_EVENTS[keyof typeof PARENT_NOTIF_EVENTS];
+
+type DiagnosticCompleteData = { subjectName: string; placement: string; dashboardUrl: string };
+type PlanGeneratedData = { subjectName: string; dashboardUrl: string };
+type SessionCompleteData = {
+  topicName: string;
   subjectName: string;
-// ...existing code...
-): Promise<void> {
+  sessionDate: string;
+  dashboardUrl: string;
+  xpEarned?: number;
+  totalXp?: number;
+  badges?: string[];
+  accuracy?: number;
+  masteryDelta?: number;
+  masteryAfter?: number;
+  sessionDurationMinutes?: number;
+  aiInsight?: string;
+  topicsTouched?: Array<{ topicName?: string | null }>;
+  chaptersCompleted?: Array<{ chapterId: string; chapterName: string; completed: boolean }>;
+};
+type SessionMissedData = { dashboardUrl: string };
+type NotifyData = { event: ParentNotifEvent; data: DiagnosticCompleteData | PlanGeneratedData | SessionCompleteData | SessionMissedData };
+
+function formatSubject(template: string, name: string): string {
+  return template.replace('{name}', name).replace('{studentName}', name);
+}
+
+export async function notifyParent(studentId: string, eventPayload: NotifyData): Promise<void> {
   try {
     const student = await prisma.user.findUnique({
       where: { id: studentId },

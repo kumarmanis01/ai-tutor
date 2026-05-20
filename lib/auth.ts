@@ -37,7 +37,7 @@ import GoogleProvider from 'next-auth/providers/google'; // Enables Google login
 // EmailProvider is disabled per request -- keep Google-only sign-in flow
 // import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
-import { sendMail } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { welcomeEmailHtml, magicLinkHtml as _magicLinkHtml } from '@/lib/email/templates';
 import { AUTH_NO_REPLY_EMAIL as _AUTH_NO_REPLY_EMAIL } from '@/lib/email/functionalityEmails';
 import { logger } from '@/lib/logger';
@@ -96,10 +96,14 @@ export async function requireActiveSession() {
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {
   try {
-    await sendMail({
+    await sendEmailUnifiedSafe({
+      mode: 'raw',
+      delivery: 'best_effort',
       to,
       subject: 'Welcome to Spinzy Academy!',
       html: welcomeEmailHtml(name || to),
+      reason: 'student_welcome_email',
+      featureFlagDomain: 'notification',
     });
     logger.add('Welcome email sent', { className: 'auth', methodName: 'sendWelcomeEmail' });
   } catch (error) {

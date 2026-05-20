@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
-import { sendEmail } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { deletionConfirmHtml } from '@/lib/email/templates'
 import { AdminActionType } from '@prisma/client'
 import { invalidateUserSessionCache } from '@/lib/auth';
@@ -58,10 +58,14 @@ export async function POST() {
 
   // Send confirmation email (non-fatal)
   if (userEmail) {
-    sendEmail({
+    sendEmailUnifiedSafe({
+      mode: 'raw',
+      delivery: 'best_effort',
       to: userEmail,
       subject: 'Account deletion request received -- Spinzy Academy',
       html: deletionConfirmHtml(),
+      reason: 'account_deletion_request',
+      featureFlagDomain: 'notification',
     }).catch(() => undefined)
   }
 

@@ -18,7 +18,7 @@ import { computeReadinessScore } from '@/lib/student/examReadiness'
 import { getRedis } from '@/lib/redis'
 import { callLLM } from '@/lib/callLLM'
 import { buildParentRemediationPrompt, parseParentRemediation } from '@/lib/ai/prompts/parentRemediation'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { sendPushSafe } from '@/lib/push/send'
@@ -227,7 +227,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
           try {
             // Provide a readable plain-text fallback that includes the remediation summary
             const textFallback = `${subject}\n\n${remediationPlain}\n\nView dashboard: ${dashboardLink}`
-            await sendMailSafe({ to: parent.email, subject, html, text: textFallback })
+            await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email, subject, html, text: textFallback, reason: 'readiness_drop_alert', featureFlagDomain: 'notification' })
             emailSent = true
           } catch (e) {
             logger.error('readinessDrop.sendMailFailed', { err: String(e), parentId })

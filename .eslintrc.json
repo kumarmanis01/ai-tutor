@@ -25,6 +25,11 @@
           {
             "name": "@/lib/callLLM",
             "message": "Do not call LLMs from UI or API handlers directly. Use job-based workers and lib/callLLM only from workers."
+          },
+          {
+            "name": "@/lib/mailer",
+            "importNames": ["sendMail", "sendMailSafe", "sendEmail"],
+            "message": "Use sendEmailUnified or sendEmailUnifiedSafe from @/lib/mail instead."
           }
         ]
       }
@@ -61,14 +66,6 @@
       "files": ["**/*.cjs"],
       "rules": {
         "@typescript-eslint/no-require-imports": "off"
-      }
-    },
-    {
-      "files": ["lib/**/*.ts", "lib/**/*.tsx", "app/api/**/*.ts", "worker/**/*.ts", "worker/**/*.tsx"],
-      "rules": {
-        "no-restricted-imports": ["error", {
-          "paths": []
-        }]
       }
     },
     {
