@@ -8,7 +8,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 import { logger } from '@/lib/logger';
 import { sessionCompleteForStudentHtml } from '@/lib/email/templates';
@@ -67,10 +67,14 @@ export async function notifyStudentOnSessionComplete(
           newLevel: data.newLevel,
           dashboardUrl: STUDENT_DASHBOARD_URL,
         });
-        await sendMailSafe({
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
           to: student.email,
           subject: `Great session today, ${studentName}! +${data.xpEarned} XP`,
           html,
+          reason: 'student_session_complete_email',
+          featureFlagDomain: 'notification',
         });
       } catch (emailErr) {
         logger.error('[studentNotify] email send failed', {

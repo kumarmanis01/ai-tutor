@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 import computeProratedCredit from '@/lib/subscription/proration';
 import { SessionUser } from '@/lib/types';
-import { sendMail } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { logApiUsage } from '@/utils/logApiUsage';
 
@@ -17,7 +17,9 @@ async function sendPaymentSuccessEmail(
   billingCycle: string,
   amount: number,
 ) {
-  await sendMail({
+  await sendEmailUnifiedSafe({
+    mode: 'raw',
+    delivery: 'best_effort',
     to,
     subject: 'Payment confirmed -- Spinzy Academy',
     html: paymentReceiptHtml({
@@ -27,6 +29,7 @@ async function sendPaymentSuccessEmail(
       billingCycle,
       renewalDate: '',
     }),
+    reason: 'payment_success',
   });
 }
 
@@ -194,3 +197,8 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ success: true });
 }
+
+/**
+ * EDIT LOG:
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMail per infra policy
+ */

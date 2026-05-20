@@ -24,7 +24,7 @@ import { logger } from '@/lib/logger'
 import { PLANS, rupeesToPaise, planEndDate } from '@/lib/billing/plans'
 import type { PlanId } from '@/lib/billing/plans'
 import { recordPaymentEvent } from '@/lib/payments/audit'
-import { sendMail } from '@/lib/mailer'
+import { sendEmailUnified } from '@/lib/mail'
 import { paymentReceiptHtml } from '@/lib/email/templates'
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 
@@ -191,7 +191,9 @@ export async function POST(req: Request) {
   // 11. Confirmation email (best-effort, non-fatal)
   if (userEmail) {
     try {
-      await sendMail({
+      await sendEmailUnified({
+        mode: 'raw',
+        delivery: 'strict',
         to: userEmail,
         subject: 'Subscription confirmed -- Spinzy Academy',
         html: paymentReceiptHtml({
@@ -201,6 +203,8 @@ export async function POST(req: Request) {
           billingCycle,
           renewalDate: endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
         }),
+        reason: 'subscription_payment_receipt',
+        featureFlagDomain: 'billing',
       })
     } catch (mailErr) {
       logger.error('verify-subscription: confirmation email failed (non-fatal)', { error: String(mailErr) })

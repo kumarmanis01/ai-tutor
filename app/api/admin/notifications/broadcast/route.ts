@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { sendPushSafe } from '@/lib/push/send';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 import { adminBroadcastEmailHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       const html = adminBroadcastEmailHtml({ title, body: msgBody });
       for (const user of users) {
         if (user.email) {
-          void sendMailSafe({ to: user.email, subject: title, html });
+          void sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: user.email, subject: title, html, reason: 'admin_broadcast_email', featureFlagDomain: 'ops' });
         }
       }
     } else {

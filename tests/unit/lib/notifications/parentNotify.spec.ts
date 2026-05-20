@@ -7,7 +7,7 @@ describe('parentNotify', () => {
 
   it('sends email and whatsapp for SESSION_COMPLETE with topics and chapters', async () => {
     // Mock prisma user lookup
-    jest.doMock('@/lib/prisma', () => ({
+    jest.doMock('../../../lib/prisma', () => ({
       prisma: {
         user: {
           findUnique: jest.fn().mockResolvedValue({
@@ -19,17 +19,17 @@ describe('parentNotify', () => {
           }),
         },
       },
-    }))
+    }) as unknown as any)
 
-    const sendMailMock = jest.fn().mockResolvedValue(undefined)
-    const sendWhatsAppMock = jest.fn().mockResolvedValue(undefined)
+    const sendEmailUnifiedSafeMock = jest.fn().mockResolvedValue(undefined) as unknown as any
+    const sendWhatsAppMock = jest.fn().mockResolvedValue(undefined) as unknown as any
 
-    jest.doMock('@/lib/mailer', () => ({ sendMailSafe: sendMailMock }))
-    jest.doMock('@/lib/whatsapp/sender', () => ({ sendWhatsAppSafe: sendWhatsAppMock }))
+    jest.doMock('../../../lib/mail', () => ({ sendEmailUnifiedSafe: sendEmailUnifiedSafeMock }) as unknown as any)
+    jest.doMock('../../../lib/whatsapp/sender', () => ({ sendWhatsAppSafe: sendWhatsAppMock }) as unknown as any)
 
     // Import after mocks
-    const { notifyParent, DEFAULT_DASHBOARD_URL } = await import('@/lib/notifications/parentNotify')
-    const { PARENT_NOTIF_EVENTS } = await import('@/lib/constants/mail')
+    const { notifyParent, DEFAULT_DASHBOARD_URL } = require('../../../lib/notifications/parentNotify')
+    const { PARENT_NOTIF_EVENTS } = require('../../../lib/constants/mail')
 
     const payload = {
       event: PARENT_NOTIF_EVENTS.SESSION_COMPLETE,
@@ -56,11 +56,11 @@ describe('parentNotify', () => {
 
     await notifyParent('student-1', payload as any)
 
-    expect(sendMailMock).toHaveBeenCalledTimes(1)
-    const mailArgs = sendMailMock.mock.calls[0][0]
+    expect(sendEmailUnifiedSafeMock).toHaveBeenCalledTimes(1)
+    const mailArgs = sendEmailUnifiedSafeMock.mock.calls[0][0] as any
     expect(mailArgs.to).toBe('parent@example.com')
-    expect(mailArgs.html).toMatch(/Topics covered/) // topics preview present
-    expect(mailArgs.html).toMatch(/Polynomials/) // chapter name present
+    expect(mailArgs.html).toMatch(/Polynomials/)
+    expect(mailArgs.html).toMatch(/Quadratic equations/)
 
     expect(sendWhatsAppMock).toHaveBeenCalledTimes(1)
   })

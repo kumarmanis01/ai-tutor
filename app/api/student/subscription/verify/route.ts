@@ -30,7 +30,7 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { recordPaymentEvent } from '@/lib/payments/audit';
-import { sendEmail } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { PLANS } from '@/lib/billing/plans';
@@ -271,7 +271,9 @@ export async function POST(req: Request) {
         billingCycle: plan.perMonthDisplay,
       });
 
-      await sendEmail({
+      await sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: user.email,
         subject: 'Payment confirmed -- Spinzy Academy',
         html: paymentReceiptHtml({
@@ -281,6 +283,8 @@ export async function POST(req: Request) {
           billingCycle: plan.perMonthDisplay,
           renewalDate,
         }),
+        reason: 'student_subscription_verified',
+        featureFlagDomain: 'billing',
         ...(invoiceResult.pdfBuffer ? {
           attachments: [
             {
@@ -290,13 +294,15 @@ export async function POST(req: Request) {
             },
           ],
         } : {}),
-      } as any).catch((err: unknown) => {
+      }).catch((err: unknown) => {
         logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
       });
       } catch (err: unknown) {
       logger.error('Invoice generation/email failed', { event: 'subscription.verify.invoice_error', context: { userId, orderId }, err });
       // Fallback: send receipt without attachment
-      sendEmail({
+      sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: user.email,
         subject: 'Payment confirmed -- Spinzy Academy',
         html: paymentReceiptHtml({
@@ -306,6 +312,8 @@ export async function POST(req: Request) {
           billingCycle: plan.perMonthDisplay,
           renewalDate,
         }),
+        reason: 'student_subscription_verified',
+        featureFlagDomain: 'billing',
       }).catch((err2: unknown) => {
         logger.error('Receipt email fallback failed', { event: 'subscription.verify.email_error', context: { userId }, err: err2 });
       });

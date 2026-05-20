@@ -14,6 +14,7 @@
  * - 2026-05-12T00:00:00Z | copilot | persist parent_whatsapp to parentWhatsappPhone and set accountStatus lifecycle with requiresOtp response
  * - 2026-05-11T00:00:00Z | copilot | auto-link matching parent accounts using onboarding parent email/whatsapp contacts
  * - 2026-05-13T00:00:00Z | copilot | emit `STUDENT.SUBJECT_SELECTED` analytics when subjects are updated during onboarding (best-effort)
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
  */
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
@@ -26,7 +27,7 @@ import { invalidateUserSessionCache } from '@/lib/auth';
 import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
 import { enqueueSubjectHydration } from '@/lib/diagnostics/enqueueSubjectHydration';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { welcomeEmailHtml } from '@/lib/email/templates';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
 import { LanguageCode } from '@prisma/client';
@@ -526,14 +527,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Welcome email: send once after the first onboarding profile save.
-    // Uses sendMailSafe so a Resend failure never blocks the 200 response.
-    // The welcomeEmailSent flag (already set by lib/auth.ts on first login for some
-    // auth providers) prevents double-sending across both trigger points.
+    // Centralized email infra: use sendEmailUnifiedSafe (no direct sendMail/sendMailSafe allowed).
     if (!updatedUser.welcomeEmailSent && updatedUser.email) {
-      sendMailSafe({
+      sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: updatedUser.email,
         subject: 'Welcome to Spinzy Academy!',
         html: welcomeEmailHtml(updatedUser.name ?? 'there'),
+        reason: 'student_onboarding_welcome',
       })
         .then(() =>
           prisma.user.update({
@@ -546,7 +548,7 @@ export async function POST(req: NextRequest) {
           ),
         )
         .catch(() => {
-          // sendMailSafe never throws; this catch is defence-in-depth
+          // sendEmailUnifiedSafe never throws; this catch is defence-in-depth
         });
     }
 

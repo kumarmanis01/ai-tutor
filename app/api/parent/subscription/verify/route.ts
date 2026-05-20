@@ -27,7 +27,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
-import { sendEmail } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { PLANS } from '@/lib/billing/plans';
@@ -252,14 +252,18 @@ export async function POST(req: Request) {
     if (parent?.email) {
       try {
         const invoiceResult = await createInvoiceForPayment({ userId, paymentId: _createdPayment?.id, studentId: childIds && childIds.length > 0 ? childIds[0] : undefined, amountPaise: order.amount, planLabel: plan.label, billingCycle: plan.perMonthDisplay });
-        await sendEmail({
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
           to: parent.email,
           subject: 'Payment confirmed -- Spinzy Academy',
           html: paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: plan.label, amountRupees: plan.billedRupees, billingCycle: plan.perMonthDisplay, renewalDate }),
+          reason: 'parent_subscription_verified',
+          featureFlagDomain: 'billing',
           ...(invoiceResult.pdfBuffer ? {
             attachments: [{ filename: `invoice-${invoiceResult.invoiceNumber}.pdf`, content: invoiceResult.pdfBuffer, contentType: 'application/pdf' }],
           } : {}),
-        } as any).catch((err) => { logger.error('Receipt email failed (parent.verify)', { event: 'parent.subscription.verify.email_error', context: { userId }, err }); });
+        }).catch((err) => { logger.error('Receipt email failed (parent.verify)', { event: 'parent.subscription.verify.email_error', context: { userId }, err }); });
       } catch (err) {
         logger.error('Invoice generation/email failed (parent.verify)', { event: 'parent.subscription.verify.invoice_error', context: { userId, orderId }, err });
       }

@@ -15,13 +15,14 @@
  * - 2026-04-08T00:00:00Z | copilot | added Razorpay webhook handler
  * - 2026-05-13T00:00:00Z | copilot | fix payment.captured analytics emission (remove invalid failure payload and duplicate success emit)
  * - 2026-05-14T00:00:00Z | copilot | update payment-failed emails to use centralized templates and support constant
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
  */
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { parentPaymentFailedHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
@@ -315,7 +316,14 @@ export async function POST(req: Request) {
         const subject = `Payment failed -- action required`;
         const { MAIL_SUPPORT } = await import('@/lib/constants/mail').catch(() => ({ MAIL_SUPPORT: RAZORPAY_WEBHOOK_SUPPORT_EMAIL }));
         const html = parentPaymentFailedHtml({ name: parent.name ?? undefined, retryUrl: retryLink, supportEmail: process.env.SUPPORT_EMAIL ?? MAIL_SUPPORT });
-        await sendMailSafe({ to: parent.email, subject, html });
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
+          to: parent.email,
+          subject: 'Payment failed -- Spinzy Academy',
+          html: parentPaymentFailedHtml({ studentName: parent.name ?? undefined, amount: payment?.amount ?? orderRow.planMonths ?? 0 }),
+          reason: 'payment_failed',
+        });
       }
       if (parent?.phone) {
         await sendSms(parent.phone, `Payment failed for your Spinzy subscription. Update payment: ${retryLink}`);

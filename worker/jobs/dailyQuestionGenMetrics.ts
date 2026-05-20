@@ -12,7 +12,7 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { sendMailSafe } from '@/lib/mailer.js'
+import { sendEmailUnifiedSafe } from '@/lib/mail.js'
 import { adminBroadcastEmailHtml } from '@/lib/email/templates'
 import { getYesterdayIstBounds } from '../services/costReportingWorker.js'
 
@@ -78,11 +78,15 @@ export async function runDailyQuestionGenMetrics(): Promise<QuestionGenMetricsRe
       try {
         const title = `Daily question generation metrics -- ${dateLabel}`
         const body = `Failure rate: ${pct}% (threshold: ${threshold}%)\nTotal calls: ${totalCalls} | Failed calls: ${failedCalls}\n\nCheck the OpenAI API key limits, model availability, and question generation prompts.`
-        await sendMailSafe({
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
           to: oncallEmail,
-          subject: `⚠️ Spinzy question-gen failure rate: ${pct}% on ${dateLabel}`,
+          subject: `Spinzy question-gen failure rate: ${pct}% on ${dateLabel}`,
           text: [title, '', `Failure rate: ${pct}% (threshold: ${threshold}%)`, `Total calls: ${totalCalls}`, `Failed calls: ${failedCalls}`, '', `Check the OpenAI API key limits, model availability, and question generation prompts.`].join('\n'),
           html: adminBroadcastEmailHtml({ title, body }),
+          reason: 'question_gen_failure_alert',
+          featureFlagDomain: 'ops',
         })
         alertSent = true
         logger.warn('dailyQuestionGenMetrics.alertSent', {

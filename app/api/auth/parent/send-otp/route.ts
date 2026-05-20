@@ -13,17 +13,8 @@
  * - /docs/ENGINEERING_PRACTICES.md
  * - .github/copilot-instructions.md
  *
- * EDIT LOG:
- * - 2026-05-12T00:00:00Z | copilot | add channel-specific OTP key generation and remove parentPhone fallback
- * - 2026-05-05 | staff-engineer | replace SMS with email OTP (no SMS policy)
- * - 2026-05-05 | staff-engineer | send to all available channels (email + WhatsApp)
- */
-
-import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
-import { prisma } from '@/lib/prisma';
-import { sendMailSafe } from '@/lib/mailer';
-import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
+ * EMAIL INFRA POLICY: All email sends must use lib/mail.ts (sendEmail, sendEmailBatch, sendEmailUnified, sendEmailUnifiedSafe). No direct sendMail/sendMailSafe allowed.
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { parentOtpHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
@@ -113,10 +104,13 @@ export async function POST(req: NextRequest) {
       });
 
       if (channel === 'email') {
-        await sendMailSafe({
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
           to: parentEmail,
           subject: MAIL_SUBJECTS.PARENT_OTP,
           html: parentOtpHtml(otp, studentName),
+          reason: 'parent_otp',
         });
         sentTo.email = parentEmail;
       } else {
@@ -143,3 +137,11 @@ export async function POST(req: NextRequest) {
     return res;
   }
 }
+
+/**
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | add channel-specific OTP key generation and remove parentPhone fallback
+ * - 2026-05-05 | staff-engineer | replace SMS with email OTP (no SMS policy)
+ * - 2026-05-05 | staff-engineer | send to all available channels (email + WhatsApp)
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
+ */

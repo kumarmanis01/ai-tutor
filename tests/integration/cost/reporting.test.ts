@@ -38,18 +38,24 @@ jest.mock('@/lib/logger', () => ({
     logAPI: jest.fn(),
   },
 }));
-jest.mock('@/lib/mailer', () => ({
-  sendEmail: jest.fn().mockResolvedValue(undefined),
-  sendMailSafe: jest.fn().mockResolvedValue(undefined),
+jest.mock('@/lib/mail', () => ({
+  sendEmailUnified: jest.fn().mockResolvedValue({ success: true }),
+  sendEmailUnifiedSafe: jest.fn().mockResolvedValue({ success: true }),
 }));
+jest.mock('resend', () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: { send: jest.fn().mockResolvedValue({ data: { id: 'mock' }, error: null }) },
+  })),
+}));
+jest.mock('@/lib/redis', () => ({ getRedis: () => null }));
 
 // ---------------------------------------------------------------------------
 // Module imports
 // ---------------------------------------------------------------------------
 import { runDailyCostReport, getYesterdayIstBounds } from '@/worker/services/costReportingWorker';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 
-const mockSendEmail = sendMailSafe as jest.Mock;
+const mockSendEmail = sendEmailUnifiedSafe as jest.Mock;
 
 // ---------------------------------------------------------------------------
 // Helpers to build mock data

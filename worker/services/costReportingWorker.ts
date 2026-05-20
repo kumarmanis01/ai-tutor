@@ -14,7 +14,7 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { sendMailSafe } from '@/lib/mailer.js'
+import { sendEmailUnifiedSafe } from '@/lib/mail.js'
 import { sendPushSafe } from '@/lib/push/send.js'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
 import { costAnomalyHtml } from '@/lib/email/templates'
@@ -267,17 +267,21 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
         const contentGenText = contentLogTotal > 0
           ? `\nAI content generation: total=${contentLogTotal} failures=${contentLogFailures} tokens=${contentLogTokens.toLocaleString()}`
           : ''
-        await sendMailSafe({
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
           to: oncallEmail,
           subject: alertSubject,
           html: costAnomalyHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
           text: [
             `Spinzy AI cost alert -- ${dateLabel}`,
             `Sessions: ${sessions}`,
-            `Total cost: $${totalCostUsd.toFixed(4)} (₹${(totalCostUsd * USD_TO_INR).toFixed(2)})`,
-            `Cost per session: $${costPerSession.toFixed(5)} (₹${costInr})`,
+            `Total cost: $${totalCostUsd.toFixed(4)} (Rs.${(totalCostUsd * USD_TO_INR).toFixed(2)})`,
+            `Cost per session: $${costPerSession.toFixed(5)} (Rs.${costInr})`,
             `Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session`,
           ].join('\n') + rollingText + cacheText + hydrationText + contentGenText + trendingText,
+          reason: 'cost_anomaly_alert',
+          featureFlagDomain: 'ops',
         })
         alertSent = true
         logger.info('costReportingWorker.alertSent', { to: oncallEmail, dateLabel, costPerSession })

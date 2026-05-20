@@ -17,12 +17,21 @@ import {
   EMAIL_FROM,
   sendEmail,
   sendEmailBatch,
+  sendEmailUnified,
+  sendEmailUnifiedSafe,
 } from '@/lib/mail';
 
-// ── Mock lib/mailer so no real email is sent ──────────────────────────────────
+// ── Mock resend so no real email is sent ─────────────────────────────────────
 
-jest.mock('@/lib/mailer', () => ({
-  sendMailSafe: jest.fn().mockResolvedValue(undefined),
+const mockResendSend = jest.fn().mockResolvedValue({ data: { id: 'mock-id' }, error: null });
+jest.mock('resend', () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: { send: mockResendSend },
+  })),
+}));
+
+jest.mock('@/lib/redis', () => ({
+  getRedis: () => null,
 }));
 
 jest.mock('@/lib/logger', () => ({
@@ -36,11 +45,9 @@ jest.mock('@/lib/logger', () => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-import { sendMailSafe } from '@/lib/mailer';
-const mockSendMailSafe = sendMailSafe as jest.MockedFunction<typeof sendMailSafe>;
-
 beforeEach(() => {
   jest.clearAllMocks();
+  mockResendSend.mockResolvedValue({ data: { id: 'mock-id' }, error: null });
 });
 
 // ── EMAIL_FROM ────────────────────────────────────────────────────────────────
@@ -316,5 +323,85 @@ describe('FROM addresses', () => {
     for (const [id, template] of Object.entries(EMAIL_TEMPLATES)) {
       expect(fromValues.has(template.from)).toBe(true);
     }
+  });
+});
+
+// ── Unified Email Facade Tests ─────────────────────────────────────────────
+
+describe('sendEmailUnified', () => {
+  it('should send a template email (mode=template)', async () => {
+    mockResendSend.mockResolvedValueOnce({ data: { id: 'mock-id' }, error: null });
+    const result = await sendEmailUnified({
+      mode: 'template',
+      delivery: 'best_effort',
+      to: 'test@example.com',
+      templateId: 'STUDENT_WELCOME',
+      context: { studentName: 'Aarav' },
+      featureFlagDomain: 'notification',
+    });
+    expect(result.success).toBe(true);
+    expect(mockResendSend).toHaveBeenCalled();
+    const call = mockResendSend.mock.calls[0][0];
+    expect(call.subject).toContain('Aarav');
+    expect(call.html).toContain('Aarav');
+  });
+
+  it('should send a raw email (mode=raw)', async () => {
+    mockResendSend.mockResolvedValueOnce({ data: { id: 'mock-id' }, error: null });
+    const result = await sendEmailUnified({
+      mode: 'raw',
+      delivery: 'best_effort',
+      to: 'raw@example.com',
+      subject: 'Test Subject',
+      html: '<b>Raw HTML</b>',
+      text: 'Raw text',
+      reason: 'test_send',
+      featureFlagDomain: 'ops',
+    });
+    expect(result.success).toBe(true);
+    expect(mockResendSend).toHaveBeenCalled();
+    const call = mockResendSend.mock.calls[0][0];
+    expect(call.subject).toBe('Test Subject');
+    expect(call.html).toContain('Raw HTML');
+  });
+
+  it('should return failure for missing templateId in template mode', async () => {
+    const result = await sendEmailUnified({
+      mode: 'template',
+      delivery: 'best_effort',
+      to: 'fail@example.com',
+      featureFlagDomain: 'default',
+      // no templateId
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('templateId');
+  });
+
+  it('should return failure for missing subject/html in raw mode', async () => {
+    const result = await sendEmailUnified({
+      mode: 'raw',
+      delivery: 'best_effort',
+      to: 'fail@example.com',
+      reason: 'test',
+      featureFlagDomain: 'ops',
+      // no subject/html
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('subject and html');
+  });
+
+  it('should log and not throw in sendEmailUnifiedSafe', async () => {
+    mockResendSend.mockResolvedValueOnce({ data: null, error: { message: 'fail' } });
+    const result = await sendEmailUnifiedSafe({
+      mode: 'raw',
+      delivery: 'best_effort',
+      to: 'fail@example.com',
+      subject: 'fail',
+      html: '<b>fail</b>',
+      reason: 'test_fail',
+      featureFlagDomain: 'ops',
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('fail');
   });
 });

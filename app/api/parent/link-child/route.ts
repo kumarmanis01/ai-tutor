@@ -22,7 +22,7 @@ import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { invalidateUserSessionCache } from '@/lib/auth'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { sendSms } from '@/lib/sms'
 import { parentWelcomeHtml } from '@/lib/email/templates'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
@@ -188,10 +188,14 @@ export async function POST(req: Request) {
     const parentName = parentUser?.name ?? 'Parent'
     const studentName = student?.name ?? 'your child'
     if (parentEmail) {
-      await sendMailSafe({
+      await sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: parentEmail,
         subject: `Welcome -- linked to ${studentName}`,
         html: parentWelcomeHtml(parentName, studentName),
+        reason: 'parent_link_child_welcome',
+        featureFlagDomain: 'notification',
       })
     }
     if (parentPhone) {

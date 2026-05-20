@@ -15,7 +15,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { paymentRetryReminderHtml, graceStartedHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { SUBSCRIPTION_RENEWAL_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails'
@@ -90,7 +90,7 @@ export async function processRenewals(now = new Date()) {
           const retryLink = `${appUrl}/account/billing`
           const subject = 'Payment failed -- Spinzy Academy'
           const html = paymentRetryReminderHtml({ name: user?.name ?? undefined, retryUrl: retryLink })
-          if (user?.email) await sendMailSafe({ to: user.email, subject, html, text: subject }).catch((e) => logger.error('sendMailSafe failed (renewal first-failure)', { err: String(e), userId: p.userId }))
+          if (user?.email) await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: user.email, subject, html, text: subject, reason: 'subscription_renewal', featureFlagDomain: 'billing' }).catch((e) => logger.error('sendEmailUnifiedSafe failed (renewal first-failure)', { err: String(e), userId: p.userId }))
           if (user?.phone) await sendSms(user.phone, `Payment failed. Retry: ${retryLink}. Grace estimate: ${graceStr}. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (renewal first-failure)', { err: e, userId: p.userId }))
         } catch (err) {
           logger.error('Failed to notify user on first payment failure', { err: String(err), paymentId: p.id })
@@ -111,7 +111,7 @@ export async function processRenewals(now = new Date()) {
         const subject = 'Payment overdue -- access will be paused soon'
         const billingUrl = `${appUrl}/account/billing`
         const html = graceStartedHtml({ name: user?.name ?? undefined, untilLabel: graceUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), billingUrl })
-        if (user?.email) await sendMailSafe({ to: user.email, subject, html, text: subject }).catch((e) => logger.error('sendMailSafe failed (enter grace)', { err: String(e), userId: p.userId }))
+        if (user?.email) await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: user.email, subject, html, text: subject, reason: 'subscription_renewal', featureFlagDomain: 'billing' }).catch((e) => logger.error('sendEmailUnifiedSafe failed (enter grace)', { err: String(e), userId: p.userId }))
         if (user?.phone) await sendSms(user.phone, `Payment overdue. Grace ends ${graceUntil.toLocaleDateString('en-IN')}. Retry: ${appUrl}/account/billing. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (enter grace)', { err: String(e), userId: p.userId }))
       } catch (err) {
         logger.error('Failed to notify user on entering grace', { err: String(err), paymentId: p.id })
@@ -136,7 +136,7 @@ export async function processRenewals(now = new Date()) {
           const user = await prisma.user.findUnique({ where: { id: p.userId }, select: { name: true, email: true, phone: true } })
           const subject = 'Reminder: payment overdue -- update billing'
           const html = paymentRetryReminderHtml({ name: user?.name ?? undefined, retryUrl: `${appUrl}/account/billing` })
-          if (user?.email) await sendMailSafe({ to: user.email, subject, html, text: subject }).catch((e) => logger.error('sendMailSafe failed (grace reminder)', { err: String(e), userId: p.userId }))
+          if (user?.email) await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: user.email, subject, html, text: subject, reason: 'subscription_renewal', featureFlagDomain: 'billing' }).catch((e) => logger.error('sendEmailUnifiedSafe failed (grace reminder)', { err: String(e), userId: p.userId }))
           if (user?.phone) await sendSms(user.phone, `Reminder: payment overdue. Update billing: ${appUrl}/account/billing. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (grace reminder)', { err: e, userId: p.userId }))
           await prisma.payment.update({ where: { id: p.id }, data: { meta: { ...meta, lastNotifiedGraceAt: now.toISOString() } } })
         } catch (err) {

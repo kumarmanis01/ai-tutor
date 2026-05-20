@@ -2,7 +2,7 @@
  * FILE OBJECTIVE:
  * - notifyParent(studentId, event, data) -- central dispatcher for parent notifications.
  * - Resolves parent contact from the student record (parentEmail + whatsappPhone/parentPhone).
- * - Sends email via sendMailSafe and WhatsApp via sendWhatsAppSafe for every event.
+ * - Sends email via sendEmailUnifiedSafe and WhatsApp via sendWhatsAppSafe for every event.
  * - Called from workers/listeners after diagnostic complete, plan generated,
  *   session complete, session missed, and auth (welcome) events.
  * - Channels: email + WhatsApp only. No SMS.
@@ -17,10 +17,11 @@
  * EDIT LOG:
  * - 2026-05-05T00:00:00Z | copilot | remove unsupported 'from' property from sendMailSafe call (TS2353 fix)
  * - 2026-05-13T00:00:00Z | copilot | update parent email footer copy and record in EDIT LOG
+ * - 2026-05-20T00:00:00Z | copilot | migrate sendMailSafe -> sendEmailUnifiedSafe (email centralization)
  */
 
 import { prisma } from '@/lib/prisma';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 import { logger } from '@/lib/logger';
 import {
@@ -178,7 +179,15 @@ async function sendEmailForEvent(
       return;
     }
 
-    await sendMailSafe({ to: parentEmail, subject, html });
+    await sendEmailUnifiedSafe({
+      mode: 'raw',
+      delivery: 'best_effort',
+      to: parentEmail,
+      subject,
+      html,
+      reason: 'parent_notify',
+      featureFlagDomain: 'notification',
+    });
   } catch (err) {
     logger.error('[parentNotify] email send failed', {
       className: 'parentNotify',

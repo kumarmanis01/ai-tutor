@@ -44,7 +44,7 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
-import { sendTopicRankerCoverageAlertSafe } from '@/lib/mailer';
+import { sendTopicRankerCoverageAlertSafe } from '@/lib/mail';
 import { computeMomentumScore } from '@/lib/learning/momentumScore';
 import { getWeakTopicIds } from '@/lib/learning/getWeakTopics';
 import {

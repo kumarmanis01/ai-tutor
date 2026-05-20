@@ -13,7 +13,7 @@
  */
 
 import { getRedis } from '@/lib/redis'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { sendWhatsAppTemplate, sendWhatsAppText } from '@/lib/whatsapp/sender'
 import type { WaTemplateMessage } from '@/lib/whatsapp/sender'
 import { logger } from '@/lib/logger'
@@ -106,7 +106,7 @@ async function doSend(
   const sent: string[] = []
 
   if (useEmail && opts.email) {
-    await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
+    await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: opts.email, subject: opts.subject, html: opts.html, text: opts.text, reason: 'parent_milestone_notification', featureFlagDomain: 'notification' })
     sent.push('email')
   }
 
