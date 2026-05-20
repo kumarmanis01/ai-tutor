@@ -617,35 +617,25 @@ export class HydrationReconciler {
       const subject = rootJob.subject ?? rootJob.subjectId ?? 'unknown';
       const subjectSafe = subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const statusLabel = finalStatus === JobStatus.Completed ? 'Completed' : 'Completed with failures';
+      const report = (await import('@/lib/email/templates')).hydrationGenerationReportHtml({
+        rootJobId: rootJob.id,
+        subject,
+        statusLabel,
+        chapters,
+        topics,
+        notes,
+        questions,
+        llmCalls: totalLLMCalls,
+        tokensUsed,
+        failedChildren,
+      })
+
       await sendMailSafe({
         to: HYDRATION_GENERATION_REPORT_EMAIL,
         subject: `[Spinzy] Hydration generation ${statusLabel} -- ${subject}`,
-        text: [
-          `Hydration generation report`,
-          `Root job: ${rootJob.id}`,
-          `Subject: ${subject}`,
-          `Status: ${statusLabel}`,
-          ``,
-          `Content counts:`,
-          `  Chapters: ${chapters}`,
-          `  Topics:   ${topics}`,
-          `  Notes:    ${notes}`,
-          `  Questions: ${questions}`,
-          ``,
-          `LLM usage:`,
-          `  Calls:  ${totalLLMCalls}`,
-          `  Tokens: ${tokensUsed}`,
-          ``,
-          failedChildren > 0 ? `FAILURES: ${failedChildren} child jobs failed -- check PM2 logs for rootJobId ${rootJob.id}` : 'No failures.',
-        ].join('\n'),
-        html: `<pre style="font-family:monospace;font-size:13px">`
-          + `<b>Hydration generation report</b>\n`
-          + `Root job: ${rootJob.id}\nSubject: ${subjectSafe}\nStatus: <b>${statusLabel}</b>\n\n`
-          + `Chapters: ${chapters}  Topics: ${topics}  Notes: ${notes}  Questions: ${questions}\n`
-          + `LLM calls: ${totalLLMCalls}  Tokens: ${tokensUsed}\n`
-          + (failedChildren > 0 ? `\n<b style="color:red">FAILURES: ${failedChildren} child jobs failed</b>` : `\nNo failures.`)
-          + `</pre>`,
-      });
+        text: report.text,
+        html: report.html,
+      })
     } catch (summaryErr: any) {
       logger.warn('Failed to compute validation summary', { rootJobId: rootJob.id, error: summaryErr?.message });
     }

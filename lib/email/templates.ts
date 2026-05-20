@@ -17,55 +17,11 @@
  */
 
 import { TEMPLATES_LEGACY_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
+import { BASE, BTN, FOOTER, LOGO } from '@/lib/email/layout'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
-const BASE: string = [
-  'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;',
-  'max-width:520px;',
-  'margin:0 auto;',
-  'color:#1a1a1a;',
-  'padding:0 8px;',
-].join('');
-
-const BTN: string = [
-  'display:inline-block;',
-  'padding:12px 28px;',
-  'background:#534AB7;',
-  'color:#ffffff;',
-  'text-decoration:none;',
-  'border-radius:8px;',
-  'font-weight:600;',
-  'font-size:15px;',
-].join('');
-
-const FOOTER: string = `
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;margin-top:32px;padding-top:16px;">
-    <tr>
-      <td style="text-align:left;color:#888;font-size:12px;">Spinzy Academy</td>
-      <td style="text-align:center;color:#888;font-size:12px;">
-        <a href="https://spinzyacademy.com" style="color:#888;text-decoration:none;">https://spinzyacademy.com</a>
-      </td>
-      <td style="text-align:right;color:#888;font-size:12px;">
-        <a href="https://spinzyacademy.com/privacy" style="color:#888;text-decoration:none;">Privacy</a>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="3" style="color:#888;font-size:12px;padding-top:8px;">
-        You are receiving this because you have a Spinzy Academy account.
-      </td>
-    </tr>
-  </table>
-`;
-
-// Email templates require fully-qualified <img> tags for wide client compatibility.
-// These are intentionally raw HTML image tags (absolute URLs) and include
-// `alt` and size attributes for accessibility and predictable layout in mail clients.
-const LOGO: string = `
-  <img src="https://spinzyacademy.com/logos/logo-email.png"
-       alt="Spinzy Academy" height="40"
-       style="margin-bottom:24px;display:block;">
-`;
+// Shared primitives (imported from lib/email/layout.ts)
 
 // ── Template exports ──────────────────────────────────────────────────────────
 
@@ -329,6 +285,41 @@ export function costAnomalyHtml(data: {
   `;
 }
 
+/**
+ * Admin-facing topic ranker coverage alert HTML.
+ */
+export function topicRankerCoverageAlertHtml(params: {
+  studentId: string
+  frontierSize: number
+  rankableFrontierSize: number
+  filteredTopicIds: string[]
+}): string {
+  const { studentId, frontierSize, rankableFrontierSize, filteredTopicIds } = params
+  const filtered = Array.from(new Set(filteredTopicIds)).filter(Boolean)
+  const sampled = filtered.slice(0, 20)
+  const extra = Math.max(0, filtered.length - sampled.length)
+
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Topic ranker coverage alert</h2>
+      <p>No active concepts were available for some frontier topics.</p>
+      <ul>
+        <li><strong>Student ID:</strong> ${studentId}</li>
+        <li><strong>Frontier size:</strong> ${frontierSize}</li>
+        <li><strong>Rankable frontier size:</strong> ${rankableFrontierSize}</li>
+        <li><strong>Filtered topic count:</strong> ${filtered.length}</li>
+      </ul>
+      <h4>Sample filtered topic IDs</h4>
+      <ul>
+        ${sampled.map((t) => `<li>${t}</li>`).join('')}
+      </ul>
+      ${extra > 0 ? `<p>...and ${extra} more</p>` : ''}
+      ${FOOTER}
+    </div>
+  `
+}
+
 export function contentJobFailureAlertHtml(data: {
   hydrationJobId: string;
   lastError: string;
@@ -390,6 +381,60 @@ export function contentJobFailureAlertHtml(data: {
       ${FOOTER}
     </div>
   `;
+}
+
+export function hydrationGenerationReportHtml(data: {
+  rootJobId: string;
+  subject: string;
+  statusLabel: string;
+  chapters: number;
+  topics: number;
+  notes: number;
+  questions: number;
+  llmCalls: number;
+  tokensUsed: number;
+  failedChildren: number;
+}): { html: string; text: string } {
+  const { rootJobId, subject, statusLabel, chapters, topics, notes, questions, llmCalls, tokensUsed, failedChildren } = data
+  const text = [
+    `Hydration generation report`,
+    `Root job: ${rootJobId}`,
+    `Subject: ${subject}`,
+    `Status: ${statusLabel}`,
+    '',
+    `Content counts:`,
+    `  Chapters: ${chapters}`,
+    `  Topics:   ${topics}`,
+    `  Notes:    ${notes}`,
+    `  Questions: ${questions}`,
+    '',
+    `LLM usage:`,
+    `  Calls:  ${llmCalls}`,
+    `  Tokens: ${tokensUsed}`,
+    '',
+    failedChildren > 0 ? `FAILURES: ${failedChildren} child jobs failed -- check PM2 logs for rootJobId ${rootJobId}` : 'No failures.',
+  ].join('\n')
+
+  const html = `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Hydration generation report</h2>
+      <p><strong>Root job:</strong> ${rootJobId}</p>
+      <p><strong>Subject:</strong> ${subject}</p>
+      <p><strong>Status:</strong> ${statusLabel}</p>
+      <table width="100%" cellpadding="6" style="font-size:14px;border-top:1px solid #eee;margin-top:8px;">
+        <tr><td style="color:#666;">Chapters</td><td style="text-align:right;font-weight:600;">${chapters}</td></tr>
+        <tr><td style="color:#666;">Topics</td><td style="text-align:right;font-weight:600;">${topics}</td></tr>
+        <tr><td style="color:#666;">Notes</td><td style="text-align:right;font-weight:600;">${notes}</td></tr>
+        <tr><td style="color:#666;">Questions</td><td style="text-align:right;font-weight:600;">${questions}</td></tr>
+      </table>
+      <p style="margin-top:12px;"><strong>LLM usage:</strong> ${llmCalls} calls, ${tokensUsed} tokens</p>
+      ${failedChildren > 0 ? `<p style="color:#DC2626;font-weight:600;">FAILURES: ${failedChildren} child jobs failed</p>` : `<p>No failures.</p>`}
+      ${FOOTER}
+    </div>
+  `
+
+  return { html, text }
 }
 
 export function diagnosticReadyEmailHtml(data: {
@@ -467,65 +512,38 @@ export function weeklyDigestParentHtml(params: {
       ? `<p style="color:#DC2626;margin:4px 0;">📉 A few concepts need more practice</p>`
       : ''
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    :root { --bg:#ffffff; --text:#111827; --muted:#6b7280; --primary:#4f46e5; --success:#16a34a; --warning:#d97706; --card-bg:#f9fafb; --card-border:rgba(0,0,0,0.06); }
-    @media (prefers-color-scheme: dark) { :root { --bg:#0b1220; --text:#e6eef8; --muted:#94a3b8; --primary:#8b77ff; } }
-    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; margin:0; padding:24px; }
-    .container { max-width:560px; margin:0 auto; }
-    .header { text-align:center; margin-bottom:18px; }
-    .logo { display:block; margin:0 auto 8px; }
-    .card { border:1px solid var(--card-border); background:var(--card-bg); border-radius:12px; padding:14px; margin:12px 0; }
-    .row { width:100%; display:flex; gap:8px; }
-    .stat { flex:1; text-align:center; padding:8px; border-radius:8px; }
-    .num { font-size:20px; font-weight:700; }
-    .muted { color:var(--muted); font-size:12px; }
-    .narrative { margin-top:12px; padding:12px; border-radius:8px; background:transparent; }
-    .cta { text-align:center; margin-top:14px; }
-    .btn { display:inline-block; padding:12px 22px; background:var(--primary); color:#fff; text-decoration:none; border-radius:8px; font-weight:600; }
-    @media (max-width:480px) { .row { flex-direction:column; } }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <img class="logo" src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;" />
-      <div class="muted" style="margin-top:6px;font-size:13px;">Weekly learning update</div>
-    </div>
+  // Wrap the existing content in the shared header/footer for consistency across channels.
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Weekly learning update</h2>
+      <p>Hi ${parentName},</p>
 
-    <p>Hi ${parentName},</p>
-
-    <div class="card">
-      <h2 style="margin:0 0 10px;font-size:16px;color:var(--text);">${childName}</h2>
-
-      <div class="row" role="group" aria-label="weekly-stats">
-        <div class="stat" style="background:rgba(79,70,229,0.06);">
-          <div class="num" style="color:var(--primary);">${sessionsThisWeek}</div>
-          <div class="muted">Sessions this week</div>
+      <div style="background:#F9FAFB;border-radius:12px;padding:14px;margin:12px 0;border:1px solid rgba(0,0,0,0.06);">
+        <h3 style="margin:0 0 10px;font-size:16px;color:#111;">${childName}</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <div style="flex:1;text-align:center;padding:8px;border-radius:8px;background:rgba(79,70,229,0.06);">
+            <div style="font-size:20px;font-weight:700;color:#4F46E5;">${sessionsThisWeek}</div>
+            <div style="color:#6B7280;font-size:12px;">Sessions this week</div>
+          </div>
+          <div style="flex:1;text-align:center;padding:8px;border-radius:8px;background:rgba(217,119,6,0.06);">
+            <div style="font-size:20px;font-weight:700;color:#D97706;">${streak}</div>
+            <div style="color:#6B7280;font-size:12px;">Day streak</div>
+          </div>
         </div>
-        <div class="stat" style="background:rgba(217,119,6,0.06);">
-          <div class="num" style="color:var(--warning);">${streak}</div>
-          <div class="muted">Day streak</div>
-        </div>
+
+        ${deltaLine}
+
+        ${narrative ? `<div style="margin-top:12px;padding:12px;border-radius:8px;border-left:3px solid ${readinessDelta !== null && readinessDelta > 0.05 ? '#16A34A' : '#D1FAE5'};"><p style="margin:0;color:#111;">${narrative}</p></div>` : ''}
       </div>
 
-      ${deltaLine}
+      <div style="text-align:center;margin-top:14px;">
+        <a href="${dashboardUrl}" style="${BTN}">View full progress →</a>
+      </div>
 
-      ${narrative ? `<div class="narrative" style="border-left:3px solid ${readinessDelta !== null && readinessDelta > 0.05 ? '#16A34A' : '#D1FAE5'}; background:transparent;"><p style="margin:0;color:var(--text);">${narrative}</p></div>` : ''}
+      ${FOOTER}
     </div>
-
-    <div class="cta">
-      <a class="btn" href="${dashboardUrl}">View full progress →</a>
-    </div>
-
-    <div class="footer" style="color:#6B7280;font-size:12px;text-align:center;margin-top:18px;">You're receiving this because you have linked student accounts on Spinzy.</div>
-  </div>
-</body>
-</html>`
+  `
 }
 
 /**
