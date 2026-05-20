@@ -44,7 +44,7 @@ describe('sendTopicRankerCoverageAlertSafe', () => {
       logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
     }));
 
-    const { sendTopicRankerCoverageAlertSafe } = await import('@/lib/mailer');
+    const { sendTopicRankerCoverageAlertSafe } = await import('@/lib/mail');
 
     await sendTopicRankerCoverageAlertSafe({
       studentId: 'student-1',
@@ -82,7 +82,7 @@ describe('sendTopicRankerCoverageAlertSafe', () => {
       logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
     }));
 
-    const { sendTopicRankerCoverageAlertSafe } = await import('@/lib/mailer');
+    const { sendTopicRankerCoverageAlertSafe } = await import('@/lib/mail');
 
     await sendTopicRankerCoverageAlertSafe({
       studentId: 'student-1',

@@ -64,7 +64,7 @@ import { prisma } from '@/lib/prisma';
 import { computeMomentumScore } from '@/lib/learning/momentumScore';
 import { getWeakTopicIds } from '@/lib/learning/getWeakTopics';
 import { getCurriculumGraph, arePrerequisitesMet } from '@/lib/curriculum/curriculumGraph';
-import { sendTopicRankerCoverageAlertSafe } from '@/lib/mailer';
+import { sendTopicRankerCoverageAlertSafe } from '@/lib/mail';
 import { rankTopics, WEIGHTS, FRONTIER_SIZE } from '@/lib/recommendations/topicRanker';
 import type { OrderedTopic } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 

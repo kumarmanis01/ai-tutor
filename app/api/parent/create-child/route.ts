@@ -23,7 +23,7 @@ import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { sendSms } from '@/lib/sms'
 import { parentWelcomeHtml } from '@/lib/email/templates'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
@@ -172,10 +172,14 @@ export async function POST(req: Request) {
       const parentName = parent?.name ?? 'Parent'
       const _childGrade = grade ? `Class ${grade}` : ''
       if (parent?.email) {
-        await sendMailSafe({
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          delivery: 'best_effort',
           to: parent.email,
           subject: `${child.name}'s learning account is ready on Spinzy`,
           html: parentWelcomeHtml(parentName, child.name),
+          reason: 'parent_child_created_welcome',
+          featureFlagDomain: 'notification',
         })
       }
       if (parent?.phone) {

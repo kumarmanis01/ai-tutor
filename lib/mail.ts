@@ -19,9 +19,74 @@
  * - 2026-05-13T00:00:00Z | copilot | update email footer copy to reference "Spinzy Academy" and add unsubscribe link
  */
 
-import { sendMailSafe, sendMail } from '@/lib/mailer';
+import { Resend } from 'resend';
+import { createHash } from 'crypto';
+import { getRedis } from '@/lib/redis';
+import {
+  MAILER_NO_REPLY_EMAIL,
+  MAILER_TOPIC_RANKER_ALERT_EMAIL,
+} from '@/lib/email/functionalityEmails';
+
 // Temporary stub for feature flag check (replace with real import if available)
 function getFeatureFlag(domain: string): boolean { return true; }
+
+// ── Resend transport (internal -- not exported) ───────────────────────────────
+
+interface MailOptions {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+  from?: string;
+  replyTo?: string;
+  cc?: string | string[];
+  attachments?: Array<{ filename: string; content: string | Buffer; contentType?: string }>;
+  idempotencyKey?: string;
+}
+
+export type { MailOptions };
+
+let _resendClient: Resend | null = null;
+function getResendClient(): Resend {
+  if (!_resendClient) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error('[mail] RESEND_API_KEY not set. Add to .env.production');
+    _resendClient = new Resend(key);
+  }
+  return _resendClient;
+}
+
+async function sendMail(opts: MailOptions): Promise<string> {
+  const client = getResendClient();
+  const from = opts.from ?? process.env.EMAIL_FROM_DEFAULT ?? `Spinzy Academy <${MAILER_NO_REPLY_EMAIL}>`;
+  const { data, error } = await client.emails.send({
+    from,
+    to: Array.isArray(opts.to) ? opts.to : [opts.to],
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+    reply_to: opts.replyTo,
+    cc: opts.cc ? (Array.isArray(opts.cc) ? opts.cc : [opts.cc]) : undefined,
+    attachments: opts.attachments?.map(a => ({
+      filename: a.filename,
+      content: Buffer.isBuffer(a.content)
+        ? a.content.toString('base64')
+        : Buffer.from(a.content).toString('base64'),
+      content_type: a.contentType,
+    })),
+  });
+  if (error) throw new Error(error.message);
+  return data?.id ?? '';
+}
+
+async function sendMailSafe(opts: MailOptions): Promise<void> {
+  try {
+    await sendMail(opts);
+  } catch (err) {
+    console.error('[mail] sendMailSafe failed', err instanceof Error ? err.message : String(err));
+  }
+}
+
 // ── Unified Email Facade ─────────────────────────────────────────────────────
 
 export type EmailDeliveryMode = 'template' | 'raw';
@@ -110,11 +175,6 @@ export async function sendEmailUnified(params: UnifiedEmailSendParams): Promise<
   if (!isFeatureEnabled(domain)) {
     logger.warn('[mail] feature flag disabled', { event, channel, domain });
     return { success: false, error: 'feature_flag_disabled' };
-  }
-  // Enforce template/raw policy
-  if (mode === 'raw' && !['infra', 'ops', 'billing'].includes(domain)) {
-    logger.error('[mail] raw mode not allowed for domain', { event, channel, domain });
-    return { success: false, error: 'raw_mode_not_allowed' };
   }
   let result: SendEmailResult = { success: false };
   let errorClass = 'unknown';
@@ -828,26 +888,14 @@ export async function sendEmail(
   context: EmailTemplateContext,
   _options?: SendEmailOptions,
 ): Promise<SendEmailResult> {
-  const template = EMAIL_TEMPLATES[templateId];
-  if (!template) {
-    logger.warn('[mail] unknown templateId', { templateId });
-    return { success: false, error: `Unknown template: ${templateId}` };
-  }
-
-  try {
-    const subject = template.subject(context);
-    const html    = template.htmlBody(context);
-    const text    = template.textBody(context);
-
-    await sendMailSafe({ to, subject, html, text });
-
-    logger.info('[mail] sent', { templateId, to: to.slice(0, 3) + '***' });
-    return { success: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.error('[mail] send failed', { templateId, error: message });
-    return { success: false, error: message };
-  }
+  return sendEmailUnified({
+    mode: 'template',
+    delivery: 'best_effort',
+    templateId,
+    to,
+    context,
+    featureFlagDomain: 'default',
+  });
 }
 
 /**
@@ -875,4 +923,104 @@ export async function sendEmailBatch(
 
   logger.info('[mail] batch complete', { total: emails.length, sent, failed });
   return { sent, failed };
+}
+
+// ── Topic Ranker Coverage Alert (formerly in lib/mailer.ts) ──────────────────
+
+const TOPIC_RANKER_ALERT_RECIPIENT = MAILER_TOPIC_RANKER_ALERT_EMAIL;
+const TOPIC_RANKER_ALERT_TTL_SECONDS = 4 * 60 * 60;
+const TOPIC_RANKER_ALERT_TOPIC_SAMPLE_LIMIT = 20;
+
+export interface TopicRankerCoverageAlert {
+  studentId: string;
+  frontierSize: number;
+  rankableFrontierSize: number;
+  filteredTopicIds: string[];
+}
+
+function makeTopicRankerAlertDedupKey(filteredTopicIds: string[]): string {
+  const normalized = [...new Set(filteredTopicIds)].sort().join('|');
+  const digest = createHash('sha1').update(normalized).digest('hex');
+  return `alerts:topic-ranker:missing-active-concept:${digest}`;
+}
+
+async function isTopicRankerAlertSuppressed(filteredTopicIds: string[]): Promise<boolean> {
+  const redis = getRedis();
+  if (!redis) return false;
+  const dedupKey = makeTopicRankerAlertDedupKey(filteredTopicIds);
+  const setResult = await (redis as any).set(dedupKey, '1', 'EX', TOPIC_RANKER_ALERT_TTL_SECONDS, 'NX');
+  return !setResult;
+}
+
+export async function sendTopicRankerCoverageAlertSafe(
+  alert: TopicRankerCoverageAlert,
+): Promise<void> {
+  const filtered = [...new Set(alert.filteredTopicIds)].filter(Boolean);
+  if (filtered.length === 0) return;
+
+  try {
+    const suppressed = await isTopicRankerAlertSuppressed(filtered);
+    if (suppressed) {
+      logger.info('[mail] topic-ranker coverage alert suppressed by dedupe window', {
+        studentId: alert.studentId,
+        filteredTopicCount: filtered.length,
+      });
+      return;
+    }
+
+    const sampledTopicIds = filtered.slice(0, TOPIC_RANKER_ALERT_TOPIC_SAMPLE_LIMIT);
+    const extraTopicCount = Math.max(0, filtered.length - sampledTopicIds.length);
+    const subject = `Spinzy alert: topic ranking skipped ${filtered.length} non-startable topic(s)`;
+    const text = [
+      'Topic ranker filtered frontier topics because no active concepts were available.',
+      '',
+      `Student ID: ${alert.studentId}`,
+      `Frontier size: ${alert.frontierSize}`,
+      `Rankable frontier size: ${alert.rankableFrontierSize}`,
+      `Filtered topic count: ${filtered.length}`,
+      '',
+      'Filtered topic IDs:',
+      ...sampledTopicIds.map((topicId) => `- ${topicId}`),
+      ...(extraTopicCount > 0 ? [`- ...and ${extraTopicCount} more`] : []),
+    ].join('\n');
+    const html = `
+      <p><strong>Topic ranker filtered frontier topics</strong></p>
+      <p>No active concepts were available for one or more frontier topics.</p>
+      <ul>
+        <li><strong>Student ID:</strong> ${alert.studentId}</li>
+        <li><strong>Frontier size:</strong> ${alert.frontierSize}</li>
+        <li><strong>Rankable frontier size:</strong> ${alert.rankableFrontierSize}</li>
+        <li><strong>Filtered topic count:</strong> ${filtered.length}</li>
+      </ul>
+      <p><strong>Filtered topic IDs</strong></p>
+      <ul>
+        ${sampledTopicIds.map((topicId) => `<li>${topicId}</li>`).join('')}
+      </ul>
+      ${extraTopicCount > 0 ? `<p>...and ${extraTopicCount} more</p>` : ''}
+    `;
+
+    await sendEmailUnifiedSafe({
+      mode: 'raw',
+      delivery: 'best_effort',
+      to: TOPIC_RANKER_ALERT_RECIPIENT,
+      subject,
+      text,
+      html,
+      reason: 'topic_ranker_coverage_alert',
+      featureFlagDomain: 'ops',
+    });
+
+    logger.warn('[mail] topic-ranker coverage alert sent', {
+      to: TOPIC_RANKER_ALERT_RECIPIENT,
+      studentId: alert.studentId,
+      filteredTopicCount: filtered.length,
+      frontierSize: alert.frontierSize,
+      rankableFrontierSize: alert.rankableFrontierSize,
+    });
+  } catch (err) {
+    logger.error('[mail] topic-ranker coverage alert failed', {
+      studentId: alert.studentId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }

@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { sendMail } from '@/lib/mailer';
+import { sendEmailUnified } from '@/lib/mail';
 import {
   welcomeEmailHtml,
   magicLinkHtml,
@@ -59,8 +59,16 @@ export async function POST(req: NextRequest) {
   const tpl = templateMap[template] ?? templateMap['welcome'];
 
   try {
-    const id = await sendMail({ to, ...tpl });
-    return NextResponse.json({ ok: true, messageId: id, template });
+    const result = await sendEmailUnified({
+      mode: 'raw',
+      delivery: 'strict',
+      to,
+      subject: tpl.subject,
+      html: tpl.html,
+      reason: 'admin_test_email',
+      featureFlagDomain: 'ops',
+    });
+    return NextResponse.json({ ok: true, messageId: result.messageId ?? '', template });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

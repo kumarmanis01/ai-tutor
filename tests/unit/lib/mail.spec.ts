@@ -21,16 +21,18 @@ import {
   sendEmailUnifiedSafe,
 } from '@/lib/mail';
 
-// ── Mock lib/mailer so no real email is sent ──────────────────────────────────
+// ── Mock resend so no real email is sent ─────────────────────────────────────
 
-jest.mock('@/lib/mailer', () => {
-  const actual = jest.requireActual('@/lib/mailer');
-  return {
-    ...actual,
-    sendMailSafe: jest.fn().mockResolvedValue(undefined),
-    sendMail: jest.fn().mockResolvedValue('mock-id'),
-  };
-});
+const mockResendSend = jest.fn().mockResolvedValue({ data: { id: 'mock-id' }, error: null });
+jest.mock('resend', () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: { send: mockResendSend },
+  })),
+}));
+
+jest.mock('@/lib/redis', () => ({
+  getRedis: () => null,
+}));
 
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -43,11 +45,9 @@ jest.mock('@/lib/logger', () => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-import { sendMailSafe } from '@/lib/mailer';
-const mockSendMailSafe = sendMailSafe as jest.MockedFunction<typeof sendMailSafe>;
-
 beforeEach(() => {
   jest.clearAllMocks();
+  mockResendSend.mockResolvedValue({ data: { id: 'mock-id' }, error: null });
 });
 
 // ── EMAIL_FROM ────────────────────────────────────────────────────────────────
@@ -330,32 +330,37 @@ describe('FROM addresses', () => {
 
 describe('sendEmailUnified', () => {
   it('should send a template email (mode=template)', async () => {
-    mockSendMail.mockResolvedValueOnce('mock-id');
+    mockResendSend.mockResolvedValueOnce({ data: { id: 'mock-id' }, error: null });
     const result = await sendEmailUnified({
       mode: 'template',
+      delivery: 'best_effort',
       to: 'test@example.com',
       templateId: 'STUDENT_WELCOME',
       context: { studentName: 'Aarav' },
+      featureFlagDomain: 'notification',
     });
     expect(result.success).toBe(true);
-    expect(mockSendMail).toHaveBeenCalled();
-    const call = mockSendMail.mock.calls[0][0];
+    expect(mockResendSend).toHaveBeenCalled();
+    const call = mockResendSend.mock.calls[0][0];
     expect(call.subject).toContain('Aarav');
     expect(call.html).toContain('Aarav');
   });
 
   it('should send a raw email (mode=raw)', async () => {
-    mockSendMail.mockResolvedValueOnce('mock-id');
+    mockResendSend.mockResolvedValueOnce({ data: { id: 'mock-id' }, error: null });
     const result = await sendEmailUnified({
       mode: 'raw',
+      delivery: 'best_effort',
       to: 'raw@example.com',
       subject: 'Test Subject',
       html: '<b>Raw HTML</b>',
       text: 'Raw text',
+      reason: 'test_send',
+      featureFlagDomain: 'ops',
     });
     expect(result.success).toBe(true);
-    expect(mockSendMail).toHaveBeenCalled();
-    const call = mockSendMail.mock.calls[0][0];
+    expect(mockResendSend).toHaveBeenCalled();
+    const call = mockResendSend.mock.calls[0][0];
     expect(call.subject).toBe('Test Subject');
     expect(call.html).toContain('Raw HTML');
   });
@@ -363,7 +368,9 @@ describe('sendEmailUnified', () => {
   it('should return failure for missing templateId in template mode', async () => {
     const result = await sendEmailUnified({
       mode: 'template',
+      delivery: 'best_effort',
       to: 'fail@example.com',
+      featureFlagDomain: 'default',
       // no templateId
     });
     expect(result.success).toBe(false);
@@ -373,7 +380,10 @@ describe('sendEmailUnified', () => {
   it('should return failure for missing subject/html in raw mode', async () => {
     const result = await sendEmailUnified({
       mode: 'raw',
+      delivery: 'best_effort',
       to: 'fail@example.com',
+      reason: 'test',
+      featureFlagDomain: 'ops',
       // no subject/html
     });
     expect(result.success).toBe(false);
@@ -381,18 +391,17 @@ describe('sendEmailUnified', () => {
   });
 
   it('should log and not throw in sendEmailUnifiedSafe', async () => {
-    mockSendMail.mockRejectedValueOnce(new Error('fail'));
+    mockResendSend.mockResolvedValueOnce({ data: null, error: { message: 'fail' } });
     const result = await sendEmailUnifiedSafe({
       mode: 'raw',
+      delivery: 'best_effort',
       to: 'fail@example.com',
       subject: 'fail',
       html: '<b>fail</b>',
+      reason: 'test_fail',
+      featureFlagDomain: 'ops',
     });
     expect(result.success).toBe(false);
     expect(result.error).toContain('fail');
   });
 });
-
-// Patch test double for sendMail to ensure all unified email API tests pass
-import * as mailer from '@/lib/mailer';
-const mockSendMail = jest.spyOn(mailer, 'sendMail').mockImplementation(async () => 'mock-id');

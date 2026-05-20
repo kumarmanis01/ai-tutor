@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { sendPushSafe } from '@/lib/push/send';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 import { adminBroadcastEmailHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
@@ -41,10 +41,14 @@ export async function POST(req: NextRequest) {
       if (!user.email) {
         return NextResponse.json({ code: 'NO_EMAIL', message: 'User has no email address' }, { status: 400 });
       }
-      await sendMailSafe({
+      await sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: user.email,
         subject: title,
         html: adminBroadcastEmailHtml({ title, body: msgBody }),
+        reason: 'admin_individual_send',
+        featureFlagDomain: 'ops',
       });
     } else {
       // whatsapp

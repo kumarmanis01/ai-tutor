@@ -16,7 +16,7 @@
 import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { sendMail } from '@/lib/mailer.js'
+import { sendEmailUnified } from '@/lib/mail.js'
 import { distressNotificationParentHtml } from '@/lib/email/templates'
 import type { DistressNotificationJobData } from '../../jobs/distressNotification.js'
 
@@ -75,8 +75,10 @@ export async function processDistressNotification(
     const childName = parentLink.student?.name ?? 'your child'
     const parentEmail = parentLink.parent.email
 
-    // sendMail (not sendMailSafe) -- distress alerts must never be silently dropped
-    await sendMail({
+    // sendEmailUnified with delivery: 'strict' -- distress alerts must never be silently dropped
+    await sendEmailUnified({
+      mode: 'raw',
+      delivery: 'strict',
       to: parentEmail,
       subject: `Important: ${childName} may need support`,
       html: distressNotificationParentHtml({ childName, severity }),
@@ -94,6 +96,8 @@ export async function processDistressNotification(
         ``,
         `- Spinzy Team`,
       ].join('\n'),
+      reason: 'distress_notification',
+      featureFlagDomain: 'ops',
     })
 
     logger.info('distressNotification.sent', {

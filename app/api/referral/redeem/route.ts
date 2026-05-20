@@ -56,18 +56,18 @@ export async function POST(req: NextRequest) {
 
           const { sendPushSafe } = await import('@/lib/push/send');
           const { PUSH_NOTIFICATIONS } = await import('@/lib/push/notifications');
-          const mailer = await import('@/lib/mailer').then(m => m.sendMailSafe).catch(() => undefined);
+          const mailer = await import('@/lib/mail').then(m => m.sendEmailUnifiedSafe).catch(() => undefined);
           const templates = await import('@/lib/email/templates').catch(() => undefined);
 
           const subject = 'Referral reward voided';
 
           if (redeemer) {
             void sendPushSafe(redeemer.id, PUSH_NOTIFICATIONS.referral_voided_redeemer(code));
-            if (redeemer.email && mailer && templates) void mailer({ to: redeemer.email!, subject, html: templates.referralVoidedHtml({ name: redeemer.name ?? undefined, code }) }).catch(() => {});
+            if (redeemer.email && mailer && templates) void mailer({ mode: 'raw', delivery: 'best_effort', to: redeemer.email!, subject, html: templates.referralVoidedHtml({ name: redeemer.name ?? undefined, code }), reason: 'referral_voided', featureFlagDomain: 'notification' }).catch(() => {});
           }
           if (creator) {
             void sendPushSafe(creator.id, PUSH_NOTIFICATIONS.referral_voided_creator(code));
-            if (creator.email && mailer && templates) void mailer({ to: creator.email!, subject, html: templates.referralVoidedHtml({ name: creator.name ?? undefined, code }) }).catch(() => {});
+            if (creator.email && mailer && templates) void mailer({ mode: 'raw', delivery: 'best_effort', to: creator.email!, subject, html: templates.referralVoidedHtml({ name: creator.name ?? undefined, code }), reason: 'referral_voided', featureFlagDomain: 'notification' }).catch(() => {});
           }
         } catch (e) {
           logger.warn('referral/redeem: post-transaction notifications failed', { err: String(e) });
@@ -89,16 +89,16 @@ export async function POST(req: NextRequest) {
               const creator = referralRow?.createdBy ? await prisma.user.findUnique({ where: { id: referralRow.createdBy }, select: { id: true, email: true, name: true } }) : null;
               const { sendPushSafe } = await import('@/lib/push/send');
               const { PUSH_NOTIFICATIONS } = await import('@/lib/push/notifications');
-              const mailer = await import('@/lib/mailer').then(m => m.sendMailSafe).catch(() => undefined);
+              const mailer = await import('@/lib/mail').then(m => m.sendEmailUnifiedSafe).catch(() => undefined);
               const templates = await import('@/lib/email/templates').catch(() => undefined);
               const subject = 'Referral reward voided';
               if (redeemer) {
                 void sendPushSafe(redeemer.id, PUSH_NOTIFICATIONS.referral_voided_redeemer(code));
-                if (redeemer.email && mailer && templates) void mailer({ to: redeemer.email!, subject, html: templates.referralVoidedHtml({ name: redeemer.name ?? undefined, code }) }).catch(() => {});
+                if (redeemer.email && mailer && templates) void mailer({ mode: 'raw', delivery: 'best_effort', to: redeemer.email!, subject, html: templates.referralVoidedHtml({ name: redeemer.name ?? undefined, code }), reason: 'referral_voided', featureFlagDomain: 'notification' }).catch(() => {});
               }
               if (creator) {
                 void sendPushSafe(creator.id, PUSH_NOTIFICATIONS.referral_voided_creator(code));
-                if (creator.email && mailer && templates) void mailer({ to: creator.email!, subject, html: templates.referralVoidedHtml({ name: creator.name ?? undefined, code }) }).catch(() => {});
+                if (creator.email && mailer && templates) void mailer({ mode: 'raw', delivery: 'best_effort', to: creator.email!, subject, html: templates.referralVoidedHtml({ name: creator.name ?? undefined, code }), reason: 'referral_voided', featureFlagDomain: 'notification' }).catch(() => {});
               }
             } catch (e) {
               logger.warn('referral/redeem: post-transaction notifications failed (retry)', { err: String(e) });

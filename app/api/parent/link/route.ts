@@ -28,7 +28,7 @@ import {
   redeemParentInviteAndLink,
   PARENT_INVITE_TTL_DAYS,
 } from '@/lib/parent/inviteService';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { parentWelcomeHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 
@@ -47,10 +47,14 @@ async function sendParentWelcomeNotifications(parentId: string, studentId: strin
     const parentName = parent?.name ?? 'Parent';
     const studentName = student?.name ?? 'your child';
     if (parent?.email) {
-      await sendMailSafe({
+      await sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: parent.email,
         subject: 'Welcome to Spinzy -- your account is linked',
         html: parentWelcomeHtml(parent.name ?? null, studentName),
+        reason: 'parent_link_welcome',
+        featureFlagDomain: 'notification',
       });
     }
     if (parent?.phone) {
