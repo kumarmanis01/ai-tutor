@@ -12,12 +12,13 @@
  *
  * EDIT LOG:
  * - 2026-05-11T00:00:00Z | copilot | switch to separate channel OTP delivery and expose channel verification status
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
  */
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { sendWhatsAppSafe } from '@/lib/whatsapp/sender'
 import { parentOtpHtml } from '@/lib/email/templates'
 import crypto from 'crypto'
@@ -103,10 +104,13 @@ export async function POST(req: Request) {
         },
       })
 
-      await sendMailSafe({
+      await sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: channels.normalizedEmail,
         subject: MAIL_SUBJECTS.PARENT_OTP,
         html: parentOtpHtml(emailOtp, studentName),
+        reason: 'parent_otp',
       })
       sentTo.email = channels.normalizedEmail
     }

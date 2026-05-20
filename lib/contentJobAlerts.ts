@@ -18,6 +18,7 @@ import { sendMailSafe } from '@/lib/mailer';
 import { contentJobFailureAlertHtml } from '@/lib/email/templates';
 import { prisma } from '@/lib/prisma';
 import { JobStatus } from '@/lib/ai-engine/types';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { CONTENT_JOB_ADMIN_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
 
 const MAX_AUTO_RETRIES = 2;
@@ -143,5 +144,10 @@ export async function sendJobFailureAlert(opts: {
     ? `[Spinzy] Content job will retry at ${opts.willRetryAt.toLocaleString('en-IN')}`
     : `[Spinzy] Content job needs attention: ${opts.hydrationJobId}`;
 
-  await sendMailSafe({ to: adminEmail, subject, html });
+  await sendEmailUnifiedSafe({
+    mode: 'raw',
+    to: adminEmail,
+    subject,
+    html,
+  });
 }

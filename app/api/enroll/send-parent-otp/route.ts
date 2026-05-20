@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-05-05 | claude | created for DPDP enrollment consent flow
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -19,7 +20,7 @@ import { getRedis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { parentOtpHtml } from '@/lib/email/templates';
 import { sendWhatsAppText } from '@/lib/whatsapp/sender';
 
@@ -98,12 +99,15 @@ export async function POST(req: NextRequest) {
     let whatsappSent = false;
 
     if (parentEmail) {
-      await sendMailSafe({
+      await sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: parentEmail,
         subject: 'Spinzy Academy -- Parent approval needed',
         html: parentOtpHtml(otp, studentName),
+        reason: 'parent_otp',
       });
-      emailSent = true; // sendMailSafe swallows errors; delivery is best-effort
+      emailSent = true; // sendEmailUnifiedSafe swallows errors; delivery is best-effort
     }
 
     // ── Deliver via WhatsApp ──────────────────────────────────────────────────

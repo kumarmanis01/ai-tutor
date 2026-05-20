@@ -19,6 +19,7 @@
  * - 2026-05-10T00:00:00Z | copilot | enforce content-signature dedupe during on-demand promotion so duplicate GeneratedQuestion rows are not inserted into Question table
  * - 2026-05-11T00:00:00Z | copilot | add PRACTICE phase guard to POST endpoint; manual hydrate only callable during active PRACTICE phase with pending content
  * - 2026-05-11T00:00:00Z | copilot | require PRACTICE phase before accepting manual hydration requests
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
  */
 
 import { NextResponse } from 'next/server';
@@ -27,7 +28,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
 import { ApprovalStatus, JobStatus } from '@/lib/ai-engine/types';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { logger } from '@/lib/logger';
 import { adminBroadcastEmailHtml } from '@/lib/email/templates';
 import { PRACTICE_HYDRATION_ALERT_EMAIL } from '@/lib/email/functionalityEmails';
@@ -320,22 +321,17 @@ export async function POST(
 
   const hydrationState = await getPracticeHydrationState(session.topicId);
 
-  void sendMailSafe({
+  // Send notification email to admin (fire-and-forget, best-effort)
+  await sendEmailUnifiedSafe({
+    mode: 'raw',
+    delivery: 'best_effort',
     to: PRACTICE_HYDRATION_ALERT_EMAIL,
-    subject: `Practice hydration requested for topic ${session.topicId}`,
-    text: [
-      'A practice hydration request was submitted.',
-      '',
-      `Session ID: ${sessionId}`,
-      `Student ID: ${studentId}`,
-      `Topic ID: ${session.topicId}`,
-      `Has active questions: ${hydrationState.hasActiveQuestions}`,
-      `Running job ID: ${hydrationState.runningJobId ?? 'none'}`,
-    ].join('\n'),
+    subject: 'Practice Hydration Requested',
     html: adminBroadcastEmailHtml({
-      title: `Practice hydration requested for topic ${session.topicId}`,
-      body: `A practice hydration request was submitted.\n\nSession ID: ${sessionId}\nStudent ID: ${studentId}\nTopic ID: ${session.topicId}\nHas active questions: ${hydrationState.hasActiveQuestions}\nRunning job ID: ${hydrationState.runningJobId ?? 'none'}`,
+      subject: 'Practice Hydration Requested',
+      body: `Manual practice hydration requested for session ${sessionId} (student ${studentId})`,
     }),
+    reason: 'practice_hydration_requested',
   });
 
   if (hydrationState.hasActiveQuestions) {

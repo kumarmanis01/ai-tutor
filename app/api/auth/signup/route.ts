@@ -9,10 +9,13 @@
  * - .github/copilot-instructions.md
  * - /docs/COPILOT_GUARDRAILS.md
  *
+ * EMAIL INFRA POLICY: All email sends must use lib/mail.ts (sendEmail, sendEmailBatch, sendEmailUnified, sendEmailUnifiedSafe). No direct sendMail/sendMailSafe allowed.
+ *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | create signup route that persists user and fires welcome email
  * - 2026-04-16T03:40:00Z | copilot | log validation/duplicate/success events and use `start` for duration
  * - 2026-05-13T00:00:00Z | copilot | emit student auth signup analytics on successful account creation
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,7 +23,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { hash } from 'bcryptjs';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { welcomeEmailHtml } from '@/lib/email/templates';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
@@ -77,13 +80,15 @@ export async function POST(req: NextRequest) {
       logger.warn('/api/auth/signup: failed to persist referral code', { err })
     }
 
-    // Fire-and-forget welcome email. Use sendMailSafe so failures don't block response.
+    // Fire-and-forget welcome email. Centralized email infra: use sendEmailUnifiedSafe (no direct sendMail/sendMailSafe allowed).
     if (created?.email) {
-      // sendMailSafe never throws; chain a flag update on success where possible.
-      sendMailSafe({
+      sendEmailUnifiedSafe({
+        mode: 'raw',
+        delivery: 'best_effort',
         to: created.email,
         subject: 'Welcome to Spinzy Academy!',
         html: welcomeEmailHtml(created.name ?? 'there'),
+        reason: 'student_signup_welcome',
       })
         .then(() => prisma.user.update({ where: { id: created.id }, data: { welcomeEmailSent: true } }))
         .catch((e) => logger.warn('/api/auth/signup: welcome email/update flag failed', { className: 'api.auth.signup', methodName: 'POST', error: String(e) }));

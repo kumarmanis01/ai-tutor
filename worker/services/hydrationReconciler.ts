@@ -30,7 +30,7 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { logger } from '@/lib/logger.js';
-import { sendMailSafe } from '@/lib/mailer.js';
+import { sendEmailUnifiedSafe } from '@/lib/mail.js';
 import { HYDRATION_GENERATION_REPORT_EMAIL } from '@/lib/email/functionalityEmails.js';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
@@ -615,7 +615,7 @@ export class HydrationReconciler {
       });
 
       const subject = rootJob.subject ?? rootJob.subjectId ?? 'unknown';
-      const subjectSafe = subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const _subjectSafe = subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const statusLabel = finalStatus === JobStatus.Completed ? 'Completed' : 'Completed with failures';
       const report = (await import('@/lib/email/templates')).hydrationGenerationReportHtml({
         rootJobId: rootJob.id,
@@ -630,12 +630,14 @@ export class HydrationReconciler {
         failedChildren,
       })
 
-      await sendMailSafe({
+      await sendEmailUnifiedSafe({
+        delivery: 'best_effort',
+        mode: 'raw',
         to: HYDRATION_GENERATION_REPORT_EMAIL,
         subject: `[Spinzy] Hydration generation ${statusLabel} -- ${subject}`,
         text: report.text,
         html: report.html,
-      })
+      });
     } catch (summaryErr: any) {
       logger.warn('Failed to compute validation summary', { rootJobId: rootJob.id, error: summaryErr?.message });
     }

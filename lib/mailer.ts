@@ -10,10 +10,13 @@
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
+ * EMAIL INFRA POLICY: All email sends must use lib/mail.ts (sendEmailUnified, sendEmailUnifiedSafe). sendMail must call sendEmailUnified; sendMailSafe must call sendEmailUnifiedSafe. No direct Resend SDK usage.
+ *
  * EDIT LOG:
  * - 2026-05-07T00:00:00Z | copilot | add throttled topic-ranker missing-concept email alert helper
+ * - 2026-05-20T00:00:00Z | copilot | refactor: route sendMail to sendEmailUnified and sendMailSafe to sendEmailUnifiedSafe (centralized infra)
  */
-import { Resend } from 'resend';
+import { sendEmailUnified, sendEmailUnifiedSafe } from '@/lib/mail';
 import { createHash } from 'crypto';
 import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
@@ -63,32 +66,21 @@ export interface MailOptions {
  * to crash the job.
  */
 export async function sendMail(opts: MailOptions): Promise<string> {
-  const from =
-    process.env.EMAIL_FROM ?? `Spinzy Academy <${MAILER_NO_REPLY_EMAIL}>`;
-  const { data, error } = await getClient().emails.send({
-    from,
-    to: Array.isArray(opts.to) ? opts.to : [opts.to],
+  // Route all direct sends through centralized email infra
+  const result = await sendEmailUnified({
+    mode: 'raw',
+    delivery: 'strict',
+    to: Array.isArray(opts.to) ? opts.to[0] : opts.to,
     subject: opts.subject,
     html: opts.html,
-    ...(opts.text && { text: opts.text }),
-    ...(opts.replyTo && { reply_to: opts.replyTo }),
-    ...(opts.cc && { cc: Array.isArray(opts.cc) ? opts.cc : [opts.cc] }),
-    ...(opts.attachments && {
-      attachments: opts.attachments.map((a) => ({
-        filename: a.filename,
-        // Resend expects base64 content for binary attachments in some SDK versions
-        content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
-        contentType: a.contentType,
-      })),
-    }),
+    text: opts.text,
+    replyTo: opts.replyTo,
+    cc: opts.cc,
+    attachments: opts.attachments,
+    reason: 'legacy_mailer',
   });
-  if (error) {
-    logger.error('[mailer] Send failed', { error: error.message, to: opts.to, subject: opts.subject });
-    throw new Error(`[mailer] ${error.message}`);
-  }
-  const id = data?.id ?? '';
-  logger.info('[mailer] Sent', { id, to: opts.to });
-  return id;
+  if (!result.success) throw new Error(result.error || 'sendMail failed');
+  return result.messageId || '';
 }
 
 /**
@@ -96,11 +88,19 @@ export async function sendMail(opts: MailOptions): Promise<string> {
  * Safe for BullMQ workers, cron jobs, and webhooks.
  */
 export async function sendMailSafe(opts: MailOptions): Promise<void> {
-  try {
-    await sendMail(opts);
-  } catch (err) {
-    logger.error('[mailer] sendMailSafe suppressed error', { error: err });
-  }
+  // Route all safe sends through centralized email infra
+  await sendEmailUnifiedSafe({
+    mode: 'raw',
+    delivery: 'best_effort',
+    to: Array.isArray(opts.to) ? opts.to[0] : opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+    replyTo: opts.replyTo,
+    cc: opts.cc,
+    attachments: opts.attachments,
+    reason: 'legacy_mailer',
+  });
 }
 
 // Alias kept for backwards compatibility with existing call sites.

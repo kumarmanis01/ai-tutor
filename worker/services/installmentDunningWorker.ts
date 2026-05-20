@@ -15,7 +15,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { sendMailSafe } from '@/lib/mailer'
+import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { paymentReceiptHtml, graceStartedHtml } from '@/lib/email/templates'
 import { sendSms } from '@/lib/sms'
 import { createRazorpayTokenCharge } from '@/lib/payments'
@@ -128,7 +128,13 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
           billingCycle: subscription.billingCycle ?? '',
           renewalDate: new Date().toLocaleDateString('en-IN'),
         })
-        await sendMailSafe({ to: parent.email ?? '', subject, html })
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          to: parent.email,
+          subject,
+          html,
+          text,
+        })
       } catch (err) {
         logger.warn('installmentDunning: invoice/email after installment charge failed', { installmentId: inst.id, err: String(err) })
       }
@@ -149,7 +155,12 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
         const subject = `Payment failed -- grace period started`
         const billingUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
         const html = graceStartedHtml({ name: parent.name ?? undefined, untilLabel: graceUntil.toLocaleString('en-IN'), billingUrl })
-        await sendMailSafe({ to: parent.email ?? '', subject, html })
+        await sendEmailUnifiedSafe({
+          mode: 'raw',
+          to: parent.email,
+          subject,
+          html,
+        })
         if (parent.phone) await sendSms(parent.phone, `Spinzy: grace period started until ${graceUntil.toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
       } catch (err) {
         logger.error('installmentDunning: error notifying parent about grace', { installmentId: inst.id, error: String(err) })

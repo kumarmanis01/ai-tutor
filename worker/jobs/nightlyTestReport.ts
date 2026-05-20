@@ -18,7 +18,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { logger } from '@/lib/logger';
-import { sendMailSafe } from '@/lib/mailer';
+import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { NIGHTLY_TEST_REPORT_RECIPIENT_EMAIL } from '@/lib/email/functionalityEmails';
 
 const NIGHTLY_REPORT_RECIPIENT = NIGHTLY_TEST_REPORT_RECIPIENT_EMAIL;
@@ -269,7 +269,9 @@ export async function runNightlyTestReportAndEmail(repoRoot: string = process.cw
   };
 
   const email = buildNightlyReportEmail(report);
-  await sendMailSafe({
+  await sendEmailUnifiedSafe({
+    delivery: 'best_effort',
+    mode: 'raw',
     to: NIGHTLY_REPORT_RECIPIENT,
     subject: email.subject,
     text: email.text,

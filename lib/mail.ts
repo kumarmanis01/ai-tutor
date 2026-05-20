@@ -19,7 +19,198 @@
  * - 2026-05-13T00:00:00Z | copilot | update email footer copy to reference "Spinzy Academy" and add unsubscribe link
  */
 
-import { sendMailSafe } from '@/lib/mailer';
+import { sendMailSafe, sendMail } from '@/lib/mailer';
+// Temporary stub for feature flag check (replace with real import if available)
+function getFeatureFlag(domain: string): boolean { return true; }
+// ── Unified Email Facade ─────────────────────────────────────────────────────
+
+export type EmailDeliveryMode = 'template' | 'raw';
+export type MailSendMode = 'best_effort' | 'strict';
+
+export interface UnifiedEmailSendParams {
+  delivery: MailSendMode; // 'best_effort' or 'strict'
+  mode: EmailDeliveryMode; // 'template' or 'raw'
+  to: string;
+  // For 'template' mode:
+  templateId?: string;
+  context?: EmailTemplateContext;
+  // For 'raw' mode:
+  subject?: string;
+  html?: string;
+  text?: string;
+  from?: string;
+  replyTo?: string;
+  cc?: string | string[];
+  attachments?: Array<{
+    filename: string;
+    content: string | Buffer;
+    contentType?: string;
+  }>;
+  idempotencyKey?: string;
+  reason?: string; // required for raw mode
+  correlationId?: string;
+  actor?: string;
+  featureFlagDomain?: string; // e.g. 'worker', 'billing', etc.
+  options?: SendEmailOptions;
+}
+
+
+function maskEmail(email: string): string {
+  if (!email) return '';
+  const [user, domain] = email.split('@');
+  if (!user || !domain) return email;
+  return user[0] + '***@' + domain;
+}
+
+function classifyError(err: any): string {
+  if (!err) return 'unknown';
+  const msg = (err.message || err).toString();
+  if (/timeout|ETIMEDOUT|ECONNRESET/i.test(msg)) return 'transient';
+  if (/invalid|missing|required/i.test(msg)) return 'validation';
+  if (/auth|apikey|key|config/i.test(msg)) return 'config';
+  if (/provider|smtp|resend|nodemailer/i.test(msg)) return 'provider';
+  return 'unknown';
+}
+
+function shouldRetry(errorClass: string): boolean {
+  return errorClass === 'transient';
+}
+
+function isFeatureEnabled(domain: string): boolean {
+  // Placeholder: replace with real feature flag check
+  return getFeatureFlag(domain) !== false;
+}
+
+export async function sendEmailUnified(params: UnifiedEmailSendParams): Promise<SendEmailResult> {
+  const {
+    delivery,
+    mode,
+    to,
+    templateId,
+    context,
+    subject,
+    html,
+    text,
+    from,
+    replyTo,
+    cc,
+    attachments,
+    idempotencyKey,
+    reason,
+    correlationId,
+    actor,
+    featureFlagDomain,
+    options,
+  } = params;
+  const start = Date.now();
+  const maskedTo = maskEmail(to);
+  const channel = 'email';
+  const event = templateId || reason || 'raw';
+  const domain = featureFlagDomain || 'default';
+  if (!isFeatureEnabled(domain)) {
+    logger.warn('[mail] feature flag disabled', { event, channel, domain });
+    return { success: false, error: 'feature_flag_disabled' };
+  }
+  // Enforce template/raw policy
+  if (mode === 'raw' && !['infra', 'ops', 'billing'].includes(domain)) {
+    logger.error('[mail] raw mode not allowed for domain', { event, channel, domain });
+    return { success: false, error: 'raw_mode_not_allowed' };
+  }
+  let result: SendEmailResult = { success: false };
+  let errorClass = 'unknown';
+  let errorCode = '';
+  let providerMessageId = '';
+  try {
+    if (mode === 'template') {
+      if (!templateId) throw new Error('templateId required for template mode');
+      const template = EMAIL_TEMPLATES[templateId];
+      if (!template) throw new Error(`Unknown template: ${templateId}`);
+      const subj = template.subject(context || {});
+      const htmlBody = template.htmlBody(context || {});
+      const textBody = template.textBody(context || {});
+      const sendResult = await sendMail({
+        to,
+        subject: subj,
+        html: htmlBody,
+        text: textBody,
+        // Only include 'from' if MailOptions allows it; if not, remove this line
+        ...(template.from && { from: template.from }),
+        ...(replyTo && { replyTo }),
+        ...(cc && { cc }),
+        ...(attachments && { attachments }),
+        ...(idempotencyKey && { idempotencyKey }),
+      });
+      providerMessageId = typeof sendResult === 'object' && sendResult !== null && 'messageId' in sendResult
+        ? (sendResult as any).messageId
+        : typeof sendResult === 'string' ? sendResult : '';
+      result = { success: true, messageId: providerMessageId };
+    } else if (mode === 'raw') {
+      if (!subject || !html) throw new Error('subject and html required for raw mode');
+      if (!reason) throw new Error('reason required for raw mode');
+      const sendResult = await sendMail({
+        to,
+        subject,
+        html,
+        text,
+        // Only include 'from' if MailOptions allows it; if not, remove this line
+        ...(from && { from: from || EMAIL_FROM.NOREPLY }),
+        ...(replyTo && { replyTo }),
+        ...(cc && { cc }),
+        ...(attachments && { attachments }),
+        ...(idempotencyKey && { idempotencyKey }),
+      });
+      providerMessageId = typeof sendResult === 'object' && sendResult !== null && 'messageId' in sendResult
+        ? (sendResult as any).messageId
+        : typeof sendResult === 'string' ? sendResult : '';
+      result = { success: true, messageId: providerMessageId };
+    } else {
+      throw new Error(`Unknown delivery mode: ${mode}`);
+    }
+    errorClass = '';
+    errorCode = '';
+  } catch (err) {
+    errorClass = classifyError(err);
+    errorCode = errorClass;
+    result = { success: false, error: err instanceof Error ? err.message : String(err) };
+    if (delivery === 'strict') throw err;
+    if (delivery === 'best_effort' && shouldRetry(errorClass)) {
+      // Optionally implement retry logic here
+      logger.warn('[mail] retrying transient error', { event, channel, domain, errorClass });
+    }
+  } finally {
+    const latencyMs = Date.now() - start;
+    logger.info('[mail] send attempt', {
+      event,
+      templateId,
+      messageType: event,
+      channel,
+      actor,
+      correlationId,
+      mode,
+      delivery,
+      domain,
+      to: maskedTo,
+      success: result.success,
+      errorCode,
+      providerMessageId,
+      latencyMs,
+    });
+  }
+  return result;
+}
+
+/**
+ * Fire-and-forget safe variant. Never throws. Logs all errors.
+ */
+export async function sendEmailUnifiedSafe(params: UnifiedEmailSendParams): Promise<SendEmailResult> {
+  try {
+    return await sendEmailUnified({ ...params, delivery: 'best_effort' });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('[mail] unified sendSafe failed', { error: message });
+    return { success: false, error: message };
+  }
+}
 import { logger } from '@/lib/logger';
 import { EMAIL_FROM as EMAIL_FROM_CONSTANTS, MAIL_SUBJECTS } from '@/lib/constants/mail';
 
