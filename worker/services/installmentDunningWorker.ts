@@ -129,11 +129,11 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
           renewalDate: new Date().toLocaleDateString('en-IN'),
         })
         await sendEmailUnifiedSafe({
+          delivery: 'best_effort',
           mode: 'raw',
           to: parent.email,
           subject,
           html,
-          text,
         })
       } catch (err) {
         logger.warn('installmentDunning: invoice/email after installment charge failed', { installmentId: inst.id, err: String(err) })
@@ -156,6 +156,7 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
         const billingUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
         const html = graceStartedHtml({ name: parent.name ?? undefined, untilLabel: graceUntil.toLocaleString('en-IN'), billingUrl })
         await sendEmailUnifiedSafe({
+          delivery: 'best_effort',
           mode: 'raw',
           to: parent.email,
           subject,

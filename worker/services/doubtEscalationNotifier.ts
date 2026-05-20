@@ -97,6 +97,7 @@ async function processEscalation(esc: any, now: Date): Promise<void> {
           const html = adminBroadcastEmailHtml({ title: subject, body: `${bodyHtml}<p><a href=\"${deepLink}\">View the improved answer</a></p>`, ctaUrl: deepLink })
           const text = `We've updated our explanation for a topic you asked about. View: ${deepLink}`
           await sendEmailUnifiedSafe({
+            delivery: 'best_effort',
             mode: 'raw',
             to: user.email,
             subject,
