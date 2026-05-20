@@ -84,7 +84,7 @@ export function startAnalyticsIngestWorker(): Worker {
 
   logger.info('analyticsIngestWorker: started', {
     event: 'analytics_ingest_worker_started',
-    context: { queue: ANALYTICS_INGEST_QUEUE, concurrency: batchSize },
+    context: { queue: ANALYTICS_INGEST_QUEUE, concurrency },
   })
 
   return worker
