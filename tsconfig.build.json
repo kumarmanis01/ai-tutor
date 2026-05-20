@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo/build.tsbuildinfo",
     "typeRoots": ["./types", "./node_modules/@types"],
     "outDir": "dist",
     "rootDir": ".",
@@ -12,6 +14,7 @@
     "sourceMap": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
