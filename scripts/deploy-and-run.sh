@@ -179,8 +179,7 @@ fi
 echo "✅ Smart quote preflight finished"
 
 step "5c — Pre-flight: TypeScript type check"
-npx tsc --noEmit --project tsconfig.json
-if [ $? -ne 0 ]; then
+if ! npx tsc --noEmit --project tsconfig.json; then
   echo "❌ TypeScript errors found. Fix before deploying."
   exit 1
 fi
@@ -197,10 +196,11 @@ LOG_DIR="${REPO_ROOT}/logs"
 mkdir -p "${LOG_DIR}"
 BUILD_LOG="${LOG_DIR}/deploy-build-$(date -u +%Y%m%dT%H%M%SZ).log"
 
-if npm run build:prod >>"${BUILD_LOG}" 2>&1; then
+# build:workers already compiled worker/ + lib/ and fixed dist imports.
+# Call next build directly to avoid re-running tsc a second time.
+# NODE_OPTIONS capped at 3072 MB — VPS has 3.6 GB RAM; 6144 MB forces swap thrashing.
+if NODE_OPTIONS=--max-old-space-size=3072 ./node_modules/.bin/next build >>"${BUILD_LOG}" 2>&1; then
   echo "Next.js build succeeded (log: ${BUILD_LOG})"
-elif npm run build >>"${BUILD_LOG}" 2>&1; then
-  echo "Next.js build succeeded via fallback (log: ${BUILD_LOG})"
 else
   echo "FATAL: Next.js build failed. Last 100 lines:" >&2
   tail -n 100 "${BUILD_LOG}" >&2 || true
