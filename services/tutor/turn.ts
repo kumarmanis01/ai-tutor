@@ -20,6 +20,7 @@
  * - 2026-04-15T12:50:00Z | copilot | refactor(F-STU-023): computeMasteryBrief returns concise tokens for Vidya system prompt
  * - 2026-04-15T00:30:00Z | copilot | fix(TEST): avoid long-running legacy prisma transaction by racing with timeout
  * - 2026-04-16T00:00:00Z | copilot | feat(F-STU-011): add copy-paste detection and include board chapter weight in prompts (AC-09, AC-07)
+ * - 2026-05-20T00:00:00Z | copilot | migrate prisma.analyticsEvent.create -> emitServerAnalyticsEvent for safety_trigger event
  */
 
 import { prisma } from '@/lib/prisma'
@@ -53,6 +54,7 @@ import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
 import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 import {
   classifyIntent,
   processPrompt,
@@ -384,17 +386,11 @@ export async function runTutorOrchestrator(args: {
       if (safetyEvents.length) {
         await prisma.safetyEvent.createMany({ data: safetyEvents })
         // Also emit a lightweight analytics event to aid observability of safety triggers
-        try {
-          await prisma.analyticsEvent.create({
-            data: {
-              eventType: 'safety_trigger',
-              userId: studentId,
-              courseId: null,
-              lessonIdx: null,
-              metadata: { triggerCount: safetyEvents.length, triggers: safetyEvents },
-            },
-          })
-        } catch {}
+        void emitServerAnalyticsEvent({
+          eventType: 'safety_trigger',
+          userId: studentId,
+          metadata: { triggerCount: safetyEvents.length, triggers: safetyEvents },
+        }, 'tutor.turn')
       }
       const err: any = new Error('JAILBREAK_DETECTED')
       err.code = 'JAILBREAK_DETECTED'

@@ -12,11 +12,12 @@
  *
  * EDIT LOG:
  * - 2026-04-14T00:00:00Z | copilot | fix cost_usd from hardcoded 0 to computed value
+ * - 2026-05-20T00:00:00Z | copilot | migrate prisma.analyticsEvent.create -> emitServerAnalyticsEvent to eliminate blocking DB writes on hot path
  */
 
 import OpenAI from 'openai'
-import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 
 /** text-embedding-3-small pricing: $0.02 per 1 000 000 input tokens (as of 2024). */
 const EMBED_COST_USD_PER_TOKEN = 0.02 / 1_000_000
@@ -46,24 +47,20 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
       try {
         const input = text.slice(0, 8000)
         const inputTokensEstimate = Math.max(1, Math.ceil(input.length / 4))
-        await prisma.analyticsEvent.create({
-          data: {
-            eventType: 'ai_call',
-            userId: null,
-            courseId: null,
-            lessonIdx: null,
-            metadata: {
-              model: 'text-embedding-3-small',
-              call_type: 'embed',
-              input_tokens: inputTokensEstimate,
-              output_tokens: fakeEmbedding.length,
-              cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
-              cache_hit: false,
-              session_id: null,
-              concept_id: null,
-            },
+        void emitServerAnalyticsEvent({
+          eventType: 'ai_call',
+          userId: null,
+          metadata: {
+            model: 'text-embedding-3-small',
+            call_type: 'embed',
+            input_tokens: inputTokensEstimate,
+            output_tokens: fakeEmbedding.length,
+            cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
+            cache_hit: false,
+            session_id: null,
+            concept_id: null,
           },
-        })
+        }, 'embeddings')
       } catch (e) {
         logger.warn('analyticsEvent.embed.create.failed', { error: String((e as any)?.message ?? e) })
       }
@@ -82,24 +79,20 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     // Fire-and-forget analytics event for embedding call
     try {
       const inputTokensEstimate = Math.max(1, Math.ceil(input.length / 4))
-      await prisma.analyticsEvent.create({
-        data: {
-          eventType: 'ai_call',
-          userId: null,
-          courseId: null,
-          lessonIdx: null,
-          metadata: {
-            model: 'text-embedding-3-small',
-            call_type: 'embed',
-            input_tokens: inputTokensEstimate,
-            output_tokens: Array.isArray(embedding) ? embedding.length : null,
-            cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
-            cache_hit: false,
-                session_id: null,
-                concept_id: null,
-          },
+      void emitServerAnalyticsEvent({
+        eventType: 'ai_call',
+        userId: null,
+        metadata: {
+          model: 'text-embedding-3-small',
+          call_type: 'embed',
+          input_tokens: inputTokensEstimate,
+          output_tokens: Array.isArray(embedding) ? embedding.length : null,
+          cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
+          cache_hit: false,
+          session_id: null,
+          concept_id: null,
         },
-      })
+      }, 'embeddings')
     } catch (e) {
       logger.warn('analyticsEvent.embed.create.failed', { error: String((e as any)?.message ?? e) })
     }
@@ -134,25 +127,21 @@ export async function getEmbeddingsBatch(
             const totalInputChars = batch.reduce((s, it) => s + (it?.length ?? 0), 0)
             const inputTokensEstimate = Math.max(1, Math.ceil(totalInputChars / 4))
             const totalOutputTokens = batch.length * fake.length
-            await prisma.analyticsEvent.create({
-              data: {
-                eventType: 'ai_call',
-                userId: null,
-                courseId: null,
-                lessonIdx: null,
-                metadata: {
-                  model: 'text-embedding-3-small',
-                  call_type: 'embed',
-                  input_tokens: inputTokensEstimate,
-                  output_tokens: totalOutputTokens,
-                  cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
-                  cache_hit: false,
-                  batch_size: batch.length,
-                  session_id: null,
-                  concept_id: null,
-                },
+            void emitServerAnalyticsEvent({
+              eventType: 'ai_call',
+              userId: null,
+              metadata: {
+                model: 'text-embedding-3-small',
+                call_type: 'embed',
+                input_tokens: inputTokensEstimate,
+                output_tokens: totalOutputTokens,
+                cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
+                cache_hit: false,
+                batch_size: batch.length,
+                session_id: null,
+                concept_id: null,
               },
-            })
+            }, 'embeddings')
           } catch (e) {
             logger.warn('analyticsEvent.embed.batch.create.failed', { error: String((e as any)?.message ?? e) })
           }
@@ -178,25 +167,21 @@ export async function getEmbeddingsBatch(
           const totalInputChars = inputs.reduce((s, it) => s + (it?.length ?? 0), 0)
           const inputTokensEstimate = Math.max(1, Math.ceil(totalInputChars / 4))
           const totalOutputTokens = batchEmbeddings.reduce((s, e) => s + (Array.isArray(e) ? e.length : 0), 0)
-          await prisma.analyticsEvent.create({
-            data: {
-              eventType: 'ai_call',
-              userId: null,
-              courseId: null,
-              lessonIdx: null,
-              metadata: {
-                model: 'text-embedding-3-small',
-                call_type: 'embed',
-                input_tokens: inputTokensEstimate,
-                output_tokens: totalOutputTokens,
-                cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
-                cache_hit: false,
-                batch_size: inputs.length,
-                session_id: null,
-                concept_id: null,
-              },
+          void emitServerAnalyticsEvent({
+            eventType: 'ai_call',
+            userId: null,
+            metadata: {
+              model: 'text-embedding-3-small',
+              call_type: 'embed',
+              input_tokens: inputTokensEstimate,
+              output_tokens: totalOutputTokens,
+              cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
+              cache_hit: false,
+              batch_size: inputs.length,
+              session_id: null,
+              concept_id: null,
             },
-          })
+          }, 'embeddings')
         } catch (e) {
           logger.warn('analyticsEvent.embed.batch.create.failed', { error: String((e as any)?.message ?? e) })
         }

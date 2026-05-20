@@ -14,6 +14,7 @@
  * - 2026-04-16T00:00:00Z | copilot | created
  * - 2026-04-22T09:20:00Z | staff-engineer | emit `diagnostic_started` analytics event on session start
  * - 2026-05-13T00:00:00Z | copilot | emit canonical diagnostics start analytics alongside ingestion payload
+ * - 2026-05-20T00:00:00Z | copilot | remove redundant manual queue-or-direct analytics block; emitServerAnalyticsEvent handles queue+fallback internally
  */
 
 import { NextResponse } from 'next/server';
@@ -24,7 +25,7 @@ import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/diagnostics/sessionStore';
 import { upsertSubjectDiagnosticStatus, getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 import { enqueueDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
-import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
+
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
@@ -130,57 +131,6 @@ export async function POST(req: Request) {
         },
         'diagnostic.start',
       );
-
-      const analyticsQueue = getAnalyticsQueue();
-      const metadata = {
-        subjectId: test.subjectId,
-        subjectName: test.subjectName ?? null,
-        boardSlug: boardSlug ?? null,
-        grade: Number(grade),
-        sessionId,
-        totalQuestions: candidateQuestionIds.length,
-      } as const;
-
-      const analyticsEventData = {
-        eventType: 'diagnostic_started',
-        userId: user.id,
-        courseId: null,
-        lessonIdx: null,
-        metadata,
-      } as const;
-
-      if (analyticsQueue) {
-        try {
-          // Job name follows analytics ingestion convention used elsewhere
-          await analyticsQueue.add('analytics.ingest', analyticsEventData);
-        } catch (enqueueErr) {
-          logger.warn('diagnostic.start: analytics enqueue failed; falling back to direct DB write', {
-            className: 'DiagnosticStartAPI',
-            methodName: 'POST',
-            error: String(enqueueErr),
-          });
-          try {
-            await prisma.analyticsEvent.create({ data: analyticsEventData });
-          } catch (dbErr) {
-            logger.warn('diagnostic.start: analytics fallback DB write failed', {
-              className: 'DiagnosticStartAPI',
-              methodName: 'POST',
-              error: String(dbErr),
-            });
-          }
-        }
-      } else {
-        try {
-          // Fallback: write directly to DB (best-effort)
-          await prisma.analyticsEvent.create({ data: analyticsEventData });
-        } catch (dbErr) {
-          logger.warn('diagnostic.start: analytics DB write failed', {
-            className: 'DiagnosticStartAPI',
-            methodName: 'POST',
-            error: String(dbErr),
-          });
-        }
-      }
     } catch (analyticsErr) {
       // Isolate analytics failures from user flow; log the issue (logger handles serialization).
       logger.warn('diagnostic.start: analytics emit failed', {

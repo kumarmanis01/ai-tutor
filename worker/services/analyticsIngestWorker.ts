@@ -17,6 +17,7 @@
  * EDIT LOG:
  * - 2026-04-21 | staff-engineer | Task D: analytics ingest worker
  * - 2026-04-21 | staff-engineer | review fix: correct header (per-job create, not createMany); add test
+ * - 2026-05-20T00:00:00Z | copilot | reduce default concurrency 500->50 (ANALYTICS_INGEST_CONCURRENCY) to prevent DB pool exhaustion
  */
 
 import { Worker, Job } from 'bullmq'
@@ -48,7 +49,10 @@ export async function processAnalyticsIngest(job: Job<AnalyticsIngestPayload>): 
 }
 
 export function startAnalyticsIngestWorker(): Worker {
-  const batchSize = Number(process.env.ANALYTICS_INGEST_BATCH_SIZE || 500)
+  // ANALYTICS_INGEST_CONCURRENCY: number of analytics jobs processed in parallel.
+  // Each concurrent job holds one DB connection; keep well below the pool limit (default: 10).
+  // Raise only if the DB pool (DATABASE_CONNECTION_LIMIT) is explicitly increased.
+  const concurrency = Number(process.env.ANALYTICS_INGEST_CONCURRENCY || 50)
 
   const worker = new Worker<AnalyticsIngestPayload>(
     ANALYTICS_INGEST_QUEUE,
@@ -65,7 +69,7 @@ export function startAnalyticsIngestWorker(): Worker {
     },
     {
       connection: redisConnection,
-      concurrency: batchSize,
+      concurrency,
       removeOnComplete: { count: 200 },
       removeOnFail: { count: 50 },
     },

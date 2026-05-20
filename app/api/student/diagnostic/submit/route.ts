@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | mark DiagnosticSession as COMPLETED on submit to keep pending diagnostics accurate
  * - 2026-05-13T00:00:00Z | copilot | emit canonical diagnostics completion analytics on submit
+ * - 2026-05-20T00:00:00Z | copilot | migrate manual queue-or-direct analytics block -> emitServerAnalyticsEvent; remove duplicate getAnalyticsQueue usage
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,7 +28,7 @@ import { computeSessionTheta } from '@/lib/diagnostics/selector';
 import { thetaToPlacement } from '@/lib/irt/irt';
 import { cancelDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
 import { diagnosticConfig } from '@/lib/config';
-import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
+
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
@@ -332,37 +333,7 @@ export async function POST(req: NextRequest) {
         metadata,
       } as const;
 
-      const analyticsQueue = getAnalyticsQueue();
-      if (analyticsQueue) {
-        try {
-          await analyticsQueue.add('analytics.ingest', analyticsEventData);
-        } catch (enqueueErr) {
-          logger.warn('diagnostic.submit: analytics enqueue failed; falling back to direct DB write', {
-            className: 'DiagnosticSubmitAPI',
-            methodName: 'POST',
-            error: String(enqueueErr),
-          });
-          try {
-            await prisma.analyticsEvent.create({ data: analyticsEventData });
-          } catch (dbErr) {
-            logger.warn('diagnostic.submit: analytics fallback DB write failed', {
-              className: 'DiagnosticSubmitAPI',
-              methodName: 'POST',
-              error: String(dbErr),
-            });
-          }
-        }
-      } else {
-        try {
-          await prisma.analyticsEvent.create({ data: analyticsEventData });
-        } catch (dbErr) {
-          logger.warn('diagnostic.submit: analytics DB write failed', {
-            className: 'DiagnosticSubmitAPI',
-            methodName: 'POST',
-            error: String(dbErr),
-          });
-        }
-      }
+      void emitServerAnalyticsEvent(analyticsEventData, 'diagnostic.submit');
     } catch (analyticsErr) {
       logger.warn('diagnostic.submit: analytics emit failed', {
         className: 'DiagnosticSubmitAPI',

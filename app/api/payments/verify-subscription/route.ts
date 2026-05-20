@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | staff-engineer | created for Sprint A C1
+ * - 2026-05-20T00:00:00Z | copilot | migrate prisma.analyticsEvent.create -> emitServerAnalyticsEvent
  */
 
 import { NextResponse } from 'next/server'
@@ -25,6 +26,7 @@ import type { PlanId } from '@/lib/billing/plans'
 import { recordPaymentEvent } from '@/lib/payments/audit'
 import { sendMail } from '@/lib/mailer'
 import { paymentReceiptHtml } from '@/lib/email/templates'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 
 function timingSafeEqual(a: string, b: string): boolean {
   try {
@@ -179,18 +181,12 @@ export async function POST(req: Request) {
     logger.warn('verify-subscription: audit write failed (non-fatal)', { error: String(auditErr) })
   }
 
-  // 10. Analytics event (best-effort, non-fatal)
-  try {
-    await prisma.analyticsEvent.create({
-      data: {
-        eventType: 'converted_to_paid',
-        userId,
-        metadata: { planId, billingCycle, amountPaise },
-      },
-    })
-  } catch (analyticsErr) {
-    logger.warn('verify-subscription: analytics write failed (non-fatal)', { error: String(analyticsErr) })
-  }
+  // 10. Analytics event (best-effort, non-blocking)
+  void emitServerAnalyticsEvent({
+    eventType: 'converted_to_paid',
+    userId,
+    metadata: { planId, billingCycle, amountPaise },
+  }, 'verify-subscription')
 
   // 11. Confirmation email (best-effort, non-fatal)
   if (userEmail) {

@@ -15,12 +15,14 @@
  * - 2026-04-19T00:00:00Z | copilot | fix(lint): prefix unused GET req param
  * - 2026-04-15T00:00:00Z | copilot-planner | created trial signup API route
  * - 2026-04-15T12:00:00Z | copilot | rename unused GET param to _req to satisfy lint
+ * - 2026-05-20T00:00:00Z | copilot | migrate prisma.analyticsEvent.create -> emitServerAnalyticsEvent
  */
 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 
 const TrialSchema = z.object({
   parentName: z.string().min(1).optional(),
@@ -72,29 +74,20 @@ export async function POST(req: Request) {
       },
     })
 
-    // Emit server-side analytics event for funnel tracking
-    try {
-      await prisma.analyticsEvent.create({
-        data: {
-          eventType: 'trial_start',
-          userId: null,
-          courseId: null,
-          lessonIdx: null,
-          metadata: {
-            phone,
-            parentName: parsed.parentName ?? null,
-            childClass: parsed.childClass ?? null,
-            utm_source: parsed.utm_source ?? null,
-            utm_medium: parsed.utm_medium ?? null,
-            utm_campaign: parsed.utm_campaign ?? null,
-            sourceUrl: url.pathname,
-          },
-        },
-      })
-    } catch (ae) {
-      // analytics failures should not block trial creation
-      logger.warn('trial: analyticsEvent.create failed', { error: String(ae), phone })
-    }
+    // Emit server-side analytics event for funnel tracking (best-effort, non-blocking)
+    void emitServerAnalyticsEvent({
+      eventType: 'trial_start',
+      userId: null,
+      metadata: {
+        phone,
+        parentName: parsed.parentName ?? null,
+        childClass: parsed.childClass ?? null,
+        utm_source: parsed.utm_source ?? null,
+        utm_medium: parsed.utm_medium ?? null,
+        utm_campaign: parsed.utm_campaign ?? null,
+        sourceUrl: url.pathname,
+      },
+    }, 'trial')
 
     const res = NextResponse.json({ ok: true, trialId: trial.id, expiresAt: trial.expiresAt }, { status: 201 })
     logger.logAPI(req, res, { className: 'TrialAPI', methodName: 'POST', trialId: trial.id }, start)

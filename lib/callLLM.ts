@@ -14,6 +14,7 @@
  * - 2026-05-07T00:00:00Z | copilot | add env validation, typed error codes, timeout enforcement, error mapping
  * - 2026-05-08T00:00:00Z | copilot | allow explicit direct doubts API LLM calls while keeping worker-only guard for other prompt types
  * - 2026-05-08T11:35:00Z | copilot | normalize AIContentLog grade metadata to Int/null to satisfy Prisma schema
+ * - 2026-05-20T00:00:00Z | copilot | migrate 3 prisma.analyticsEvent.create fire-and-forgets -> emitServerAnalyticsEvent to stop blocking DB writes on LLM hot path
  */
 
 import crypto from 'crypto'
@@ -21,6 +22,7 @@ import OpenAI from 'openai'
 import { prisma } from '@/lib/prisma'
 import { normalizeLanguage } from '@/lib/normalize'
 import { logger } from '@/lib/logger'
+import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker'
 import { redactPIIFromText, redactPIIFromMessages } from '@/lib/ai/piiRedaction'
 
@@ -473,7 +475,11 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
             session_id: meta?.sessionId ?? null,
             concept_id: meta?.conceptId ?? meta?.topicId ?? null,
           }
-          prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: metaForEvent } }).catch(() => {})
+          void emitServerAnalyticsEvent({
+            eventType: 'ai_call',
+            userId: meta?.studentId ?? null,
+            metadata: metaForEvent,
+          }, 'callLLM')
         } catch (e) {
           try { logger.warn('analyticsEvent.llm.create.failed', { error: String((e as any)?.message ?? e) }) } catch {}
         }
@@ -524,7 +530,11 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 session_id: meta?.sessionId ?? null,
                 concept_id: meta?.conceptId ?? meta?.topicId ?? null,
               }
-              prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta } }).catch(() => {})
+              void emitServerAnalyticsEvent({
+                eventType: 'ai_call',
+                userId: meta?.studentId ?? null,
+                metadata: failedMeta,
+              }, 'callLLM')
             } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }
           } else {
             await prisma.aIContentLog.create({ data: {
@@ -553,7 +563,11 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 session_id: meta?.sessionId ?? null,
                 concept_id: meta?.conceptId ?? meta?.topicId ?? null,
               }
-              prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta2 } }).catch(() => {})
+              void emitServerAnalyticsEvent({
+                eventType: 'ai_call',
+                userId: meta?.studentId ?? null,
+                metadata: failedMeta2,
+              }, 'callLLM')
             } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }
           }
         }

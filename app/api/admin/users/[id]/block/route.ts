@@ -26,6 +26,6 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     logApiUsage(`/api/admin/users/${id}/block`, 'POST')
     return NextResponse.json({ ok: true })
   } catch (err) {
-    return NextResponse.json({ error: 'failed' }, { status: 500 })
+    return NextResponse.json({ error: 'failed', err }, { status: 500 })
   }
 }

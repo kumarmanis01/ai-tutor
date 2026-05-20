@@ -8,10 +8,12 @@
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created weekly question health job
+ * - 2026-05-20T00:00:00Z | copilot | migrate prisma.analyticsEvent.create -> emitServerAnalyticsEvent
  */
 
 import { prisma } from '../../lib/prisma'
 import { logger } from '../../lib/logger'
+import { emitServerAnalyticsEvent } from '../../lib/analytics/server'
 
 const LOW_QUESTION_THRESHOLD = 5
 
@@ -59,17 +61,15 @@ export async function runWeeklyQuestionHealth(): Promise<number> {
   const lowTopics = topics.map((t: { id: string; name: string }) => ({ id: t.id, name: t.name, count: topicCounts[t.id] ?? 0 }))
 
   // Emit analytics event with summary and low topics list
-  await prisma.analyticsEvent.create({
-    data: {
-      eventType: 'weekly_question_health',
-      metadata: {
-        totalQuestions,
-        activeByTopic: topicCounts,
-        lowTopics,
-        threshold: LOW_QUESTION_THRESHOLD,
-      },
+  await emitServerAnalyticsEvent({
+    eventType: 'weekly_question_health',
+    metadata: {
+      totalQuestions,
+      activeByTopic: topicCounts,
+      lowTopics,
+      threshold: LOW_QUESTION_THRESHOLD,
     },
-  })
+  }, 'weeklyQuestionHealth')
 
   if (lowTopics.length > 0) {
     logger.warn('weeklyQuestionHealth.lowTopics', { count: lowTopics.length, lowTopics })
