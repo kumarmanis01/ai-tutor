@@ -216,8 +216,8 @@
     "@types/uuid": "^10.0.0",
     "@types/web-push": "^3.6.4",
     "@types/yargs": "^17.0.35",
-    "@typescript-eslint/eslint-plugin": "^8.44.1",
-    "@typescript-eslint/parser": "^8.44.1",
+    "@typescript-eslint/eslint-plugin": "8.59.4",
+    "@typescript-eslint/parser": "8.59.4",
     "cross-env": "^7.0.3",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.2.4",
@@ -234,13 +234,13 @@
     "prettier": "^3.5.3",
     "prisma": "6.19.1",
     "tailwindcss-animate": "^1.0.7",
-    "ts-jest": "^29.1.0",
+    "ts-jest": "29.4.10",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.44.1"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.59.4"
   },
   "engines": {
     "node": ">=20.0.0"
