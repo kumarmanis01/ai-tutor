@@ -19,7 +19,7 @@ set -euo pipefail
 #   6. Build workers + Next.js
 #   7. Verify dist is production-clean
 #   8. Ensure logs, perms, script executability
-#   9. PM2 stop → delete → start all 3 processes
+#   9. PM2 graceful restart (--kill flag: full stop → delete → start)
 #  10. PM2 save + startup (systemd persistence)
 #  11. Seed scripts (--seed): mark-admin, seed-ai-content, seed-ai-data
 #  12. Prisma Studio (--seed): launched in background for data validation
@@ -188,10 +188,10 @@ echo "✅ TypeScript clean"
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. BUILD
 # ─────────────────────────────────────────────────────────────────────────────
-step "6/11 — Build workers"
+step "6a/11 — Build workers"
 npm run build:workers
 
-step "6/11 — Build Next.js"
+step "6b/11 — Build Next.js"
 LOG_DIR="${REPO_ROOT}/logs"
 mkdir -p "${LOG_DIR}"
 BUILD_LOG="${LOG_DIR}/deploy-build-$(date -u +%Y%m%dT%H%M%SZ).log"
@@ -277,26 +277,10 @@ for script in run-worker.sh run-scheduler.sh run-migrate.sh; do
 done
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 9. PM2 STOP → DELETE → START
+# 9. PM2 RESTART (graceful; --kill flag: full stop → delete → start)
 # ─────────────────────────────────────────────────────────────────────────────
 step "9/11 — PM2 restart"
 
-# Archive old logs before restarting
-if [ -f "${SCRIPT_DIR}/reset-logs.sh" ]; then
-  bash "${SCRIPT_DIR}/reset-logs.sh" || true
-fi
-
-# Stop and delete existing processes
-pm2 stop all 2>/dev/null || true
-pm2 delete all 2>/dev/null || true
-pm2 flush 2>/dev/null || true
-
-if [ "${KILL_FLAG}" -eq 1 ]; then
-  echo "Killing PM2 daemon (--kill flag)"
-  pm2 kill || true
-fi
-
-# Start all 3 processes (web, worker, scheduler)
 if [ ! -f "${REPO_ROOT}/ecosystem.config.cjs" ]; then
   echo "FATAL: ecosystem.config.cjs not found" >&2
   exit 1
@@ -319,7 +303,29 @@ if [ -n "$MISSING" ]; then
 fi
 echo "✅ All required env vars present"
 
-pm2 start ecosystem.config.cjs --env production --update-env
+# Archive old logs before restarting
+if [ -f "${SCRIPT_DIR}/reset-logs.sh" ]; then
+  bash "${SCRIPT_DIR}/reset-logs.sh" || true
+fi
+
+if [ "${KILL_FLAG}" -eq 1 ]; then
+  echo "Hard reset: stopping, deleting, and killing PM2 daemon (--kill flag)"
+  pm2 stop all 2>/dev/null || true
+  pm2 delete all 2>/dev/null || true
+  pm2 flush 2>/dev/null || true
+  pm2 kill || true
+  pm2 start ecosystem.config.cjs --env production --update-env
+else
+  # Targeted graceful restart: sends SIGTERM only to this app's 3 processes,
+  # waits for clean shutdown, then brings them back with new code and updated env.
+  # Falls back to fresh start if processes are not yet registered (first deploy).
+  if pm2 restart ecosystem.config.cjs --update-env 2>/dev/null; then
+    echo "PM2 processes restarted gracefully"
+  else
+    echo "  No running processes found -- starting fresh"
+    pm2 start ecosystem.config.cjs --env production --update-env
+  fi
+fi
 
 # 9b. Redis hardening (idempotent; safe to re-run)
 step "9b — Redis hardening (idempotent)"
