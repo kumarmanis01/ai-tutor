@@ -89,6 +89,7 @@
     "metrics:server": "tsx scripts/metricsServer.ts",
     "perf:doubtkb": "tsx scripts/perf/doubtkb_bench.ts",
     "render:diagrams": "npx @mermaid-js/mermaid-cli -i docs/diagrams/submit-enqueue.mmd -o docs/diagrams/submit-enqueue.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/worker-claim-execute.mmd -o docs/diagrams/worker-claim-execute.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/reconciler-aggregation.mmd -o docs/diagrams/reconciler-aggregation.png",
+    "preview:emails": "npx tsx -r tsconfig-paths/register scripts/render-all-email-templates.ts",
     "test:unit": "cross-env NODE_OPTIONS=--max-old-space-size=4096 node scripts/run-focused-tests.cjs -- --runInBand",
     "ci:check-playwright": "node -e \"(async()=>{try{await import('playwright'); console.log('playwright:ok'); process.exit(0);}catch(e){console.error('playwright:missing', String(e)); process.exit(2);}})()\"",
     "orchestrator:start": "tsx worker/orchestrator.ts",
