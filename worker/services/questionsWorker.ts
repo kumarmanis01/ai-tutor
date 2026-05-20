@@ -43,7 +43,7 @@ const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CO
 
 function getResponseBodyForDb(parsed: any, llmResult: any) {
   if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
-    return parsed ? { parsed } : null;
+    return parsed ? { parsed } : undefined;
   }
   return { parsed, raw: llmResult?.content };
 }
@@ -402,7 +402,7 @@ async function generateQuestionsForDifficulty(
         success: false,
         status: 'started',
         requestBody: { jobId, difficulty, renderer: { schemaHash: rendered.schemaHash, version: rendered.version } },
-        responseBody: null,
+        responseBody: undefined,
       },
     });
   } catch {}
@@ -1102,7 +1102,7 @@ async function markJobFailed(jobId: string, error: string): Promise<void> {
 
   // Persist AIContentLog for observability when failure happens without LLM
   try {
-    await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'questions', language: 'en', success: false, status: 'failed', error: lastError, requestBody: { jobId }, responseBody: null } });
+    await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'questions', language: 'en', success: false, status: 'failed', error: lastError, requestBody: { jobId }, responseBody: undefined } });
   } catch {}
 }
 

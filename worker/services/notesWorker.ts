@@ -45,7 +45,7 @@ const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CO
 
 function getResponseBodyForDb(parsed: any, llmResult: any) {
   if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
-    return parsed ? { parsed } : null;
+    return parsed ? { parsed } : undefined;
   }
   return { parsed, raw: llmResult?.content };
 }
@@ -212,7 +212,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'missing_topicId');
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
-    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: null } }) } catch {};
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: undefined } }) } catch {};
     throw new Error('missing_topicId');
   }
 
@@ -238,7 +238,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'topic_not_found');
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
-    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: null } }) } catch {};
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: undefined } }) } catch {};
     throw new Error('topic_not_found');
   }
 
@@ -363,7 +363,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       success: false,
       status: 'started',
       requestBody: { jobId: job.id, renderer: { schemaHash: rendered.schemaHash, version: rendered.version } },
-      responseBody: null
+      responseBody: undefined
     } });
   } catch {}
 
@@ -382,10 +382,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       const raw = String(err?.message ?? 'llm_failed');
       const code = inferFailureCodeFromMessage(raw);
       const le = formatLastError(code, raw);
-      await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null } });
+      await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: undefined } });
       try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
     } catch {
-      try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err?.message ?? 'llm_failed'), requestBody: { jobId: job.id }, responseBody: null } }); } catch {}
+      try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err?.message ?? 'llm_failed'), requestBody: { jobId: job.id }, responseBody: undefined } }); } catch {}
       try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? 'llm_failed') } }); } catch {}
     }
     logger.error('handleNotesJob: LLM parse failed, marking job failed', { jobId, error: err?.message || String(err) });
