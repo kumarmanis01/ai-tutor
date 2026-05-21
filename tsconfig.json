@@ -41,6 +41,10 @@
     "lib/**/*.tsx",
     "worker/**/*.ts",
     "worker/**/*.tsx",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
     // NOTE: Do not include generated Next build artifacts with code examples
@@ -53,7 +57,6 @@
     "dist",
     "tests",
     "scripts",
-    "app",
     "public"
   ]
 }
