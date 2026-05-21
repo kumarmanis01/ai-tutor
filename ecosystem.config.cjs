@@ -29,18 +29,13 @@
 //   Scheduler      : 1 shared singleton                             =  1
 //   Web process    : 1 shared singleton                             =  1
 //   Total at idle  :                                                = 29
-// Redis Cloud free tier maxclients = 30 -- leaves 1 spare. Any additional worker
-// or plan connection will exceed the limit. Minimum viable plan: Essentials ($5/mo,
-// maxclients >= 100). Each new Worker added costs 2 connections.
+// Self-hosted Redis (127.0.0.1) has maxclients=500, so there is plenty of headroom.
+// Each new Worker added costs 2 connections. Run setup-local-redis.sh for install.
 
-// ── Redis production checklist (run on VPS before first deploy) ──
-// redis-cli CONFIG SET maxmemory-policy allkeys-lru
-// redis-cli CONFIG SET maxmemory 256mb
-// redis-cli CONFIG SET maxclients 500
-// redis-cli CONFIG SET save "3600 1 300 100 60 10000"   // persistence
-// redis-cli CONFIG SET appendonly yes                    // AOF persistence
-// redis-cli CONFIG REWRITE                       // persist above to redis.conf
-// Verify: redis-cli CONFIG GET maxmemory-policy maxclients
+// ── Redis setup (self-hosted on this VPS) ──
+// Run once: sudo bash scripts/setup-local-redis.sh
+// Then update .env.production: REDIS_URL=redis://default:<password>@127.0.0.1:6379
+// Verify: redis-cli -a <password> --no-auth-warning CLIENT LIST | wc -l
 
 module.exports = {
   apps: [
