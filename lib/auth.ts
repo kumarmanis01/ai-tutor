@@ -72,25 +72,15 @@ export async function requireAdminOrModerator() {
   return session;
 }
 
-// Require an active session for server-side pages. If no valid session or
-// matching DB user is found, callers can redirect the client to sign-in.
+// Require an active session for server-side pages. Returns null (callers
+// redirect to sign-in) when unauthenticated or account is not active.
+// accountStatus is already populated by the JWT callback (DB-fetched and
+// Redis-cached at 30 s TTL) -- no second DB round trip needed here.
 export async function requireActiveSession() {
   const session = (await getServerSession(authOptions)) as AppSession | null;
-  if (!session || !session.user?.email) {
-    return null;
-  }
-
-  try {
-    const dbUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { accountStatus: true },
-    });
-    if (!dbUser || dbUser.accountStatus !== 'active') return null;
-    return session;
-  } catch (err) {
-    logger.warn('requireActiveSession failed to verify DB user', { className: 'auth', methodName: 'requireActiveSession', error: String(err) });
-    return null;
-  }
+  if (!session || !session.user?.email) return null;
+  if ((session.user as any).accountStatus !== 'active') return null;
+  return session;
 }
 
 // This function sends a welcome email to the user
