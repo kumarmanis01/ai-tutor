@@ -207,26 +207,29 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Enqueue bootstrap worker to seed StudentConceptState + generate LearningPlan
-    if (chapterIds.length > 0) {
-      try {
-        await enqueueDiagnosticBootstrapJob({
-          studentId: userId,
-          diagnosticSessionId,
-          chapterIds,
-          boardId,
-          gradeId,
-        });
-      } catch (enqueueErr) {
-        // Non-fatal: log and continue
-        logger.warn('DiagnosticSubmitAPI: failed to enqueue bootstrap job', {
-          className: 'DiagnosticSubmitAPI',
-          methodName: 'POST',
-          studentId: userId,
-          subjectId,
-          error: String(enqueueErr),
-        });
-      }
+    // Enqueue bootstrap worker to seed StudentConceptState + generate LearningPlan.
+    // Always enqueue when subjectId is present so a plan can be generated even when
+    // questions lack topicId (nullable field) and chapterIds comes out empty.
+    // The worker handles the empty-chapterIds case by skipping concept-state seeding
+    // and generating the plan from default curriculum order.
+    try {
+      await enqueueDiagnosticBootstrapJob({
+        studentId: userId,
+        diagnosticSessionId,
+        chapterIds,
+        boardId,
+        gradeId,
+        subjectId,
+      });
+    } catch (enqueueErr) {
+      // Non-fatal: log and continue
+      logger.warn('DiagnosticSubmitAPI: failed to enqueue bootstrap job', {
+        className: 'DiagnosticSubmitAPI',
+        methodName: 'POST',
+        studentId: userId,
+        subjectId,
+        error: String(enqueueErr),
+      });
     }
 
     // Clear Redis partial state and cancel any pending auto-submit job.
