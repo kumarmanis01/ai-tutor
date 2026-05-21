@@ -194,7 +194,13 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               )}
               {/* Primary CTA */}
               <Link
-                href={session ? '/student/onboarding' : '/auth/get-started'}
+                href={
+                  session
+                    ? (session.user as any)?.onboardingComplete
+                      ? '/dashboard'
+                      : '/student/onboarding'
+                    : '/auth/get-started'
+                }
                 className="min-h-[44px] inline-flex items-center px-4 py-2 md:px-6 md:py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
               >
                 {session ? 'Go to Dashboard' : 'Get started free'}
