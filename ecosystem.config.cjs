@@ -22,10 +22,21 @@
 // pm2 set pm2-logrotate:workerInterval 3600
 // pm2 save
 
+// ── Redis connection budget (read before adding workers) ──
+// Each BullMQ Worker holds 2 persistent Redis connections (blocking BRPOP + ops).
+// Idle connection count with ENABLE_DISTRESS_DETECTION=false:
+//   Worker process : 13 workers x 2 = 26, plus 1 shared singleton  = 27
+//   Scheduler      : 1 shared singleton                             =  1
+//   Web process    : 1 shared singleton                             =  1
+//   Total at idle  :                                                = 29
+// Redis Cloud free tier maxclients = 30 -- leaves 1 spare. Any additional worker
+// or plan connection will exceed the limit. Minimum viable plan: Essentials ($5/mo,
+// maxclients >= 100). Each new Worker added costs 2 connections.
+
 // ── Redis production checklist (run on VPS before first deploy) ──
 // redis-cli CONFIG SET maxmemory-policy allkeys-lru
 // redis-cli CONFIG SET maxmemory 256mb
-// redis-cli CONFIG SET maxclients 500            // default 10 000 -- but must be set explicitly on some distros
+// redis-cli CONFIG SET maxclients 500
 // redis-cli CONFIG SET save "3600 1 300 100 60 10000"   // persistence
 // redis-cli CONFIG SET appendonly yes                    // AOF persistence
 // redis-cli CONFIG REWRITE                       // persist above to redis.conf
