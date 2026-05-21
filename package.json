@@ -58,7 +58,7 @@
     "lint:quotes": "python scripts/fix-smart-quotes.py --check",
     "preflight:smart-quotes": "npm run lint:quotes",
     "preflight:lint": "npm run lint",
-    "preflight:type-check": "npm run type-check",
+    "preflight:type-check": "npm run type-check && npm run type-check:build",
     "preflight:unit": "npm run test:unit",
     "preflight:integration": "node scripts/run-focused-tests.cjs tests/integration/ -- --config jest.integration.config.cjs --passWithNoTests",
     "fix:quotes": "python scripts/fix-smart-quotes.py",
