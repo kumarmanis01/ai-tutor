@@ -247,7 +247,7 @@
     "typescript-eslint": "8.59.4"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "lint-staged": {
     "*.{ts,tsx,cjs,js,mjs}": [
