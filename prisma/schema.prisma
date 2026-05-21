@@ -571,6 +571,7 @@ model WorkerLifecycle {
 
   @@index([status])
   @@index([lastHeartbeatAt])
+  @@index([lastHeartbeatAt, status])
 }
 
 /// JobLock table used to prevent overlapping job executions
@@ -1950,6 +1951,9 @@ model HydrationJob {
   @@index([rootJobId, status])
   @@index([lockedAt])
   @@index([hierarchyLevel])
+  @@index([rootJobId, hierarchyLevel, status])
+  @@index([status, lockedAt])
+  @@index([status, rootJobId])
 }
 
 model Outbox {

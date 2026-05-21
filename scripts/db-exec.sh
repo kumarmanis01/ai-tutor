@@ -17,7 +17,7 @@ fi
 SQL_FILE=$(mktemp /tmp/spinzy-sql-XXXXXX.sql)
 printf '%s' "$1" > "$SQL_FILE"
 
-npx prisma db execute --url "$DATABASE_URL" --file "$SQL_FILE"
+npx prisma db execute --file "$SQL_FILE"
 STATUS=$?
 
 rm -f "$SQL_FILE"
