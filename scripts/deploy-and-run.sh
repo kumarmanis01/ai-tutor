@@ -188,60 +188,63 @@ echo "✅ TypeScript clean"
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. BUILD
 # ─────────────────────────────────────────────────────────────────────────────
-step "6a/11 — Build workers"
+step "6a/11 — Build workers (tsc + alias + import-fix)"
+_T=$SECONDS
 npm run build:workers
+echo "  workers: done in $(( SECONDS - _T ))s"
+echo "  dist/worker: $(find "${REPO_ROOT}/dist/worker" -name '*.js' | wc -l | tr -d ' ') files, $(du -sh "${REPO_ROOT}/dist/worker" | cut -f1)"
 
-step "6b/11 — Build Next.js"
+step "6b/11 — Verify worker dist"
+if [ ! -f "${REPO_ROOT}/dist/worker/worker/bootstrap.js" ]; then
+  echo "FATAL: dist/worker/worker/bootstrap.js not found. build:workers may have failed." >&2
+  exit 1
+fi
+echo "  bootstrap.js: OK ($(du -sh "${REPO_ROOT}/dist/worker/worker/bootstrap.js" | cut -f1))"
+
+step "6c/11 — Build Next.js"
 LOG_DIR="${REPO_ROOT}/logs"
 mkdir -p "${LOG_DIR}"
 BUILD_LOG="${LOG_DIR}/deploy-build-$(date -u +%Y%m%dT%H%M%SZ).log"
-
+echo "  Building Next.js app... (log: ${BUILD_LOG})"
+_T=$SECONDS
 # build:workers already compiled worker/ + lib/ and fixed dist imports.
 # Call next build directly to avoid re-running tsc a second time.
 # NODE_OPTIONS capped at 3072 MB — VPS has 3.6 GB RAM; 6144 MB forces swap thrashing.
 if NODE_OPTIONS=--max-old-space-size=3072 ./node_modules/.bin/next build >>"${BUILD_LOG}" 2>&1; then
-  echo "Next.js build succeeded (log: ${BUILD_LOG})"
+  echo "  Next.js: done in $(( SECONDS - _T ))s"
+  echo "  .next/: $(du -sh "${REPO_ROOT}/.next" | cut -f1)"
 else
   echo "FATAL: Next.js build failed. Last 100 lines:" >&2
   tail -n 100 "${BUILD_LOG}" >&2 || true
   exit 1
 fi
 
-# 6b. Prompt eval gate (hard deploy gate for tutor prompt)
-step "6b — Prompt eval gate (must pass before deploy)"
+step "6d/11 — Prompt eval gate (must pass before deploy)"
+_T=$SECONDS
 if npx tsx scripts/run-prompt-eval.ts; then
-  echo "Prompt eval: all assertions passed"
+  echo "  Prompt eval: all assertions passed in $(( SECONDS - _T ))s"
 else
   echo "FATAL: Prompt eval failed. Deploy blocked." >&2
   exit 1
 fi
 
-# 6d. Integration tests gate
-#step "6d — Integration tests (must pass before deploy unless explicitly skipped)"
+# Integration tests gate — kept here for easy re-enable; excluded from CI (needs live DB/Redis)
+#step "6e-pre — Integration tests"
 #if [ "${SKIP_INTEGRATION_TESTS:-0}" = "1" ]; then
- # echo "Skipping integration tests because SKIP_INTEGRATION_TESTS=1"
+#  echo "  Skipping (SKIP_INTEGRATION_TESTS=1)"
 #else
- # echo "Running integration tests..."
-  #if npx jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests; then
-   # echo "Integration tests passed"
- # else
-  #  echo "FATAL: Integration tests failed. Deploy blocked." >&2
-   # exit 1
-  #fi
+#  if npx jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests; then
+#    echo "  Integration tests passed"
+#  else
+#    echo "FATAL: Integration tests failed. Deploy blocked." >&2
+#    exit 1
+#  fi
 #fi
 
-# 6e. Prune devDependencies — builds and tests are done, keep prod runtime lean
-step "6e — Prune devDependencies"
+step "6e/11 — Prune devDependencies"
+_T=$SECONDS
 npm prune --omit=dev
-echo "devDependencies pruned"
-
-# 6c. Verify worker dist
-step "6c — Verify worker dist"
-if [ ! -f "${REPO_ROOT}/dist/worker/worker/bootstrap.js" ]; then
-  echo "FATAL: dist/worker/worker/bootstrap.js not found. build:workers may have failed." >&2
-  exit 1
-fi
-echo "Worker dist: OK ($(du -sh "${REPO_ROOT}/dist/worker/worker/bootstrap.js" | cut -f1))"
+echo "  devDependencies pruned in $(( SECONDS - _T ))s"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7. VERIFY DIST
