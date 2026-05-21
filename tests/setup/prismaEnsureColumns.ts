@@ -14,6 +14,8 @@
 const _isNode = typeof (globalThis as any).window === 'undefined'
 
 let _LocalPrismaClient: any | undefined
+let _LocalPrismaPg: any | undefined
+let _LocalPool: any | undefined
 if (_isNode) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -21,6 +23,20 @@ if (_isNode) {
     _LocalPrismaClient = pkg && pkg.PrismaClient
   } catch {
     _LocalPrismaClient = undefined
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const adapterPkg = require('@prisma/adapter-pg')
+    _LocalPrismaPg = adapterPkg && adapterPkg.PrismaPg
+  } catch {
+    _LocalPrismaPg = undefined
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pgPkg = require('pg')
+    _LocalPool = pgPkg && pgPkg.Pool
+  } catch {
+    _LocalPool = undefined
   }
 }
 
@@ -34,7 +50,9 @@ if (_isNode && _LocalPrismaClient && typeof _LocalPrismaClient === 'function') {
    */
   beforeAll(async () => {
     try {
-      _localClient = new _LocalPrismaClient()
+      const pool = _LocalPool ? new _LocalPool({ connectionString: process.env.DATABASE_URL }) : undefined
+      const adapter = (_LocalPrismaPg && pool) ? new _LocalPrismaPg(pool) : undefined
+      _localClient = adapter ? new _LocalPrismaClient({ adapter }) : new _LocalPrismaClient()
     } catch {
       // Cannot instantiate — skip schema prep silently.
       return
