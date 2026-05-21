@@ -93,6 +93,7 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
   // 1️⃣ Global pause guard
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
   if (isSystemSettingEnabled(paused?.value)) {
+    logger.warn('[hydration] skipped: HYDRATION_PAUSED is set', { topicId, language });
     if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: HYDRATION_PAUSED');
     return { created: false, reason: 'hydration_paused' };
   }
@@ -100,17 +101,20 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
   // 2️⃣ Resolve topic and validate it exists
   const topic = await resolveTopicWithContext(topicId);
   if (!topic) {
+    logger.warn('[hydration] skipped: topic not found', { topicId, language });
     if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: topic not found', { topicId });
     return { created: false, reason: 'resolve_not_found' };
   }
 
-  // 3️⃣ Idempotency: if approved notes exist for this topic+language, skip -- unless force=true
+  // 3️⃣ Idempotency: if active approved notes exist for this topic+language, skip -- unless force=true.
+  // lifecycle: 'active' is required so soft-deleted notes do not falsely block re-generation.
   if (!force) {
     const existingNotes = await prisma.topicNote.findFirst({
-      where: { topicId, language, status: 'approved' },
+      where: { topicId, language, status: 'approved', lifecycle: 'active' },
       select: { id: true }
     });
     if (existingNotes) {
+      logger.info('[hydration] skipped: active approved notes already exist', { topicId, language, noteId: existingNotes.id });
       if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: notes_exist', { topicId, language });
       return { created: false, reason: 'content_exists' };
     }
@@ -126,6 +130,7 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
     }
   });
   if (existingJob) {
+    logger.info('[hydration] skipped: notes job already queued or running', { topicId, language, jobId: existingJob.id, jobStatus: existingJob.status });
     if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id });
     return { created: false, reason: 'job_already_queued', jobId: existingJob.id };
   }
