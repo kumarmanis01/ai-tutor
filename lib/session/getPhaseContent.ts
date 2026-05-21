@@ -344,11 +344,12 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
   // truthful. enqueueNotesHydration is idempotent: it skips silently if a job is already
   // queued/running or if approved active notes already exist, so calling this on every request is safe.
   void enqueueNotesHydration({ topicId, language: 'en' }).then((result) => {
-    logger.info('[PHASE_CONTENT] resolveExplanation: notes hydration safety-net result', {
-      topicId,
-      created: result.created,
-      ...(result.created ? { jobId: result.jobId } : { reason: result.reason }),
-    });
+    const LOG_EVENT = '[PHASE_CONTENT] resolveExplanation: notes hydration safety-net result';
+    if (result.created) {
+      logger.info(LOG_EVENT, { topicId, created: true, jobId: result.jobId });
+    } else {
+      logger.info(LOG_EVENT, { topicId, created: false}); //, reason: result.reason });
+    }
   }).catch((err) => {
     logger.error('[PHASE_CONTENT] resolveExplanation: failed to enqueue notes hydration safety-net', {
       topicId,
