@@ -23,16 +23,9 @@ import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { cacheGet, cacheSet } from '@/lib/cache';
-import { LanguageCode } from '@prisma/client';
+import { normalizeLanguage } from '@/lib/normalize';
 
 const CACHE_TTL = 900; // 15 minutes
-const SUPPORTED_LANGUAGES: ReadonlySet<string> = new Set<string>(['en', 'hi']);
-
-/** Normalize raw query param to a supported LanguageCode; defaults to 'en'. */
-function normalizeLanguage(raw: string | null): LanguageCode {
-  const lower = (raw ?? '').toLowerCase().trim();
-  return (SUPPORTED_LANGUAGES.has(lower) ? lower : 'en') as LanguageCode;
-}
 
 /** Cache key for a topic's latest note content. */
 export function topicContentCacheKey(topicId: string, language: string | null): string {
