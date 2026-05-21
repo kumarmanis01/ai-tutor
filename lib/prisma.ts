@@ -18,6 +18,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import { logger } from '@/lib/logger'
 
 /* eslint-disable no-var */
@@ -32,26 +34,29 @@ declare global {
 // in Node and browser runtimes.
 const g: any = globalThis as any;
 
-// Append connection_limit to DATABASE_URL when DB_POOL_SIZE is set.
-// Neon default can be too high under concurrent worker + API traffic.
-// DB_POOL_SIZE is validated as a positive integer before use.
-function buildDatabaseUrl(): string | undefined {
-  const base = process.env.DATABASE_URL;
+// Build a pg Pool with optional connection limits from DB_POOL_SIZE.
+// Pool size is validated as a positive integer before use.
+function buildPgPool(): Pool {
+  const connectionString = process.env.DATABASE_URL;
   const rawLimit = process.env.DB_POOL_SIZE;
-  if (!base || !rawLimit) return base;
-  const limit = parseInt(rawLimit, 10);
-  if (!Number.isFinite(limit) || limit < 1) {
-    logger.warn('[prisma] DB_POOL_SIZE is not a positive integer -- ignoring', { rawLimit });
-    return base;
+  let max: number | undefined;
+  let connectionTimeoutMillis: number | undefined;
+  if (rawLimit) {
+    const limit = parseInt(rawLimit, 10);
+    if (Number.isFinite(limit) && limit >= 1) {
+      max = limit;
+      connectionTimeoutMillis = 20000;
+    } else {
+      logger.warn('[prisma] DB_POOL_SIZE is not a positive integer -- ignoring', { rawLimit });
+    }
   }
-  const sep = base.includes('?') ? '&' : '?';
-  return `${base}${sep}connection_limit=${limit}&pool_timeout=20`;
+  return new Pool({ connectionString, max, connectionTimeoutMillis });
 }
 
 const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_THRESHOLD_MS || 500);
 
 const rawClient = new PrismaClient({
-  datasources: { db: { url: buildDatabaseUrl() } },
+  adapter: new PrismaPg(buildPgPool()),
   log: process.env.NODE_ENV === 'test' ? [] : ['warn', 'error'],
 });
 

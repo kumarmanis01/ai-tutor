@@ -25,6 +25,7 @@
       ]
     },
     "baseUrl": ".",
+    "rootDir": ".",
     "ignoreDeprecations": "6.0",
     "plugins": [
       {
