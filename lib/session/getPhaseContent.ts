@@ -348,7 +348,7 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
     if (result.created) {
       logger.info(LOG_EVENT, { topicId, created: true, jobId: result.jobId });
     } else {
-      logger.info(LOG_EVENT, { topicId, created: false, reason: result.reason });
+      logger.info(LOG_EVENT, { topicId, created: false}); //, reason: result.reason });
     }
   }).catch((err) => {
     logger.error('[PHASE_CONTENT] resolveExplanation: failed to enqueue notes hydration safety-net', {
