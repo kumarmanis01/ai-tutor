@@ -22,14 +22,20 @@
 // pm2 set pm2-logrotate:workerInterval 3600
 // pm2 save
 
-// ── Redis production checklist (run on VPS before first deploy) ──
-// redis-cli CONFIG SET maxmemory-policy allkeys-lru
-// redis-cli CONFIG SET maxmemory 256mb
-// redis-cli CONFIG SET maxclients 500            // default 10 000 -- but must be set explicitly on some distros
-// redis-cli CONFIG SET save "3600 1 300 100 60 10000"   // persistence
-// redis-cli CONFIG SET appendonly yes                    // AOF persistence
-// redis-cli CONFIG REWRITE                       // persist above to redis.conf
-// Verify: redis-cli CONFIG GET maxmemory-policy maxclients
+// ── Redis connection budget (read before adding workers) ──
+// Each BullMQ Worker holds 2 persistent Redis connections (blocking BRPOP + ops).
+// Idle connection count with ENABLE_DISTRESS_DETECTION=false:
+//   Worker process : 13 workers x 2 = 26, plus 1 shared singleton  = 27
+//   Scheduler      : 1 shared singleton                             =  1
+//   Web process    : 1 shared singleton                             =  1
+//   Total at idle  :                                                = 29
+// Self-hosted Redis (127.0.0.1) has maxclients=500, so there is plenty of headroom.
+// Each new Worker added costs 2 connections. Run setup-local-redis.sh for install.
+
+// ── Redis setup (self-hosted on this VPS) ──
+// Run once: sudo bash scripts/setup-local-redis.sh
+// Then update .env.production: REDIS_URL=redis://default:<password>@127.0.0.1:6379
+// Verify: redis-cli -a <password> --no-auth-warning CLIENT LIST | wc -l
 
 module.exports = {
   apps: [

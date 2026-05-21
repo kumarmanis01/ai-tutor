@@ -279,11 +279,16 @@ export async function bootstrapWorker() {
     }
   );
 
-  const distressNotificationWorker = new Worker(
-    DISTRESS_NOTIFICATION_QUEUE_NAME,
-    async (job: Job) => processDistressNotification(job as Job<import("../jobs/distressNotification.js").DistressNotificationJobData>),
-    { connection: redisConnection, concurrency: 2, lockDuration: 60 * 1000 },
-  );
+  // Skip creating a persistent Worker when distress detection is disabled.
+  // Each BullMQ Worker holds 2 Redis connections permanently (blocking + ops).
+  // With Redis Cloud free tier capped at 30 connections, every idle worker counts.
+  const distressNotificationWorker = process.env.ENABLE_DISTRESS_DETECTION === 'true'
+    ? new Worker(
+        DISTRESS_NOTIFICATION_QUEUE_NAME,
+        async (job: Job) => processDistressNotification(job as Job<import("../jobs/distressNotification.js").DistressNotificationJobData>),
+        { connection: redisConnection, concurrency: 2, lockDuration: 60 * 1000 },
+      )
+    : null;
 
   const reteachPlanWorker = new Worker(
     RETEACH_PLAN_QUEUE_NAME,
@@ -308,7 +313,9 @@ export async function bootstrapWorker() {
     async (job: Job<AnalyticsIngestPayload>) => processAnalyticsIngest(job),
     {
       connection: redisConnection,
-      concurrency: Number(process.env.ANALYTICS_INGEST_BATCH_SIZE || 500),
+      // ANALYTICS_INGEST_BATCH_SIZE controls DB insert batch size in the worker handler,
+      // not the number of concurrent BullMQ jobs. Use a separate env var for concurrency.
+      concurrency: Number(process.env.ANALYTICS_INGEST_CONCURRENCY || 10),
       lockDuration: 60 * 1000, // 1 min -- ingest jobs are fast
       removeOnComplete: { count: 200 },
       removeOnFail: { count: 50 },
@@ -418,7 +425,7 @@ export async function bootstrapWorker() {
         installmentDunningWorker.close(),
         subscriptionRenewalWorker.close(),
         diagnosticBootstrapWorker.close(),
-        distressNotificationWorker.close(),
+        distressNotificationWorker ? distressNotificationWorker.close() : Promise.resolve(),
         reteachPlanWorker.close(),
         diagnosticAutoSubmitWorker.close(),
         aiWorker.close(),
