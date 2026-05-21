@@ -768,7 +768,21 @@ async function stopSchedulerHeartbeat(): Promise<void> {
  */
 function shutdown() {
   logger.info('scheduler.shutdown');
-  stopSchedulerHeartbeat().finally(() => process.exit(0));
+
+  // Safety deadline: force-exit before PM2's kill_timeout (15 000 ms) fires.
+  const safetyExit = setTimeout(() => {
+    logger.error('scheduler.shutdown.deadline -- forcing exit');
+    process.exit(1);
+  }, 12_000);
+  safetyExit.unref();
+
+  stopSchedulerHeartbeat()
+    .catch(() => null)
+    .finally(async () => {
+      await prisma.$disconnect().catch(() => null);
+      clearTimeout(safetyExit);
+      process.exit(0);
+    });
 }
 
 process.on('SIGINT', shutdown);

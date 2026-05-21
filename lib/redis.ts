@@ -31,8 +31,24 @@ if (_url && (_url.startsWith('rediss://') || process.env.REDIS_USE_TLS === '1'))
   if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') _tlsOpts.rejectUnauthorized = false
 }
 
+// Jittered exponential backoff for BullMQ Worker connections.
+// Workers each create their own IORedis from these options; without jitter
+// all 14+ workers reconnect simultaneously after a Redis blip, producing a
+// thundering herd of AUTH requests that triggers ERR max number of clients.
+// Cap at 30 retries (~25 min) so a permanently-dead Redis doesn't loop forever.
+function _workerRetryStrategy(times: number): number | null {
+  if (times > 30) return null;
+  const base = Math.min(500 * Math.pow(2, times), 20_000);
+  // Add up to 3 s of jitter to spread reconnect attempts across workers.
+  return base + Math.floor(Math.random() * 3_000);
+}
+
 export const redisConnection: ConnectionOptions = _url
-  ? ({ url: _url, tls: Object.keys(_tlsOpts).length ? _tlsOpts : undefined } as any)
+  ? ({
+      url: _url,
+      tls: Object.keys(_tlsOpts).length ? _tlsOpts : undefined,
+      retryStrategy: _workerRetryStrategy,
+    } as any)
   : ({} as any)
 
 export function getRedis() {
@@ -46,9 +62,11 @@ export function getRedis() {
   const opts: any = {
     maxRetriesPerRequest: null,
     retryStrategy(times: number) {
-      // Exponential-ish backoff up to 30s
-      const delay = Math.min(1000 * Math.pow(2, times), 30_000);
-      return delay;
+      // Cap at 30 retries so a permanently-dead Redis doesn't loop forever.
+      // Add jitter to prevent thundering herd when the singleton reconnects.
+      if (times > 30) return null;
+      const base = Math.min(1000 * Math.pow(2, times), 30_000);
+      return base + Math.floor(Math.random() * 2_000);
     },
     reconnectOnError(err: Error) {
       const msg = err?.message || '';
