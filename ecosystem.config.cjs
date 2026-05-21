@@ -25,9 +25,11 @@
 // ── Redis production checklist (run on VPS before first deploy) ──
 // redis-cli CONFIG SET maxmemory-policy allkeys-lru
 // redis-cli CONFIG SET maxmemory 256mb
+// redis-cli CONFIG SET maxclients 500            // default 10 000 -- but must be set explicitly on some distros
 // redis-cli CONFIG SET save "3600 1 300 100 60 10000"   // persistence
 // redis-cli CONFIG SET appendonly yes                    // AOF persistence
-// Verify: redis-cli CONFIG GET maxmemory-policy
+// redis-cli CONFIG REWRITE                       // persist above to redis.conf
+// Verify: redis-cli CONFIG GET maxmemory-policy maxclients
 
 module.exports = {
   apps: [
