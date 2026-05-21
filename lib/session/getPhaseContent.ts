@@ -40,6 +40,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
+import { enqueueNotesHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
 import type { Prisma } from '@prisma/client';
 import {
   type SessionPhase,
@@ -339,6 +340,15 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
     return result;
   }
 
+  // Notes are absent. Enqueue a hydration job as a safety net so the pending message is always
+  // truthful. enqueueNotesHydration is idempotent: it skips silently if a job is already
+  // queued/running or if approved notes already exist, so calling this on every request is safe.
+  void enqueueNotesHydration({ topicId, language: 'en' }).catch((err) => {
+    logger.error('[PHASE_CONTENT] resolveExplanation: failed to enqueue notes hydration safety-net', {
+      topicId,
+      error: String(err),
+    });
+  });
   logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'EXPLANATION', topicId });
   return { type: 'pending', message: 'Notes for this topic are being generated. Check back soon.' };
 }

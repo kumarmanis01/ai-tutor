@@ -251,9 +251,15 @@ export async function startSession(
   // ── ABSTRACTION-01: Check content readiness before creating new session ──
   const readiness = await contentReadinessService.isTopicReady(topicId);
 
-  // ── GAP-03: When MISSING, trigger hydration fire-and-forget; do not block session start ──
-  if (readiness.status === 'MISSING') {
-    logger.info('[HYDRATION_TRIGGER] content MISSING, triggering HydrationJobs', { topicId, studentId });
+  // ── GAP-03: Trigger hydration when notes are absent (MISSING = nothing; PARTIAL = some content but notes not yet generated).
+  // PARTIAL covers the case where questions exist from a prior run but notes job was never enqueued or failed.
+  if (readiness.status === 'MISSING' || (readiness.status === 'PARTIAL' && !readiness.hasNotes)) {
+    logger.info('[HYDRATION_TRIGGER] notes absent, triggering HydrationJobs', {
+      topicId,
+      studentId,
+      readinessStatus: readiness.status,
+      hasNotes: readiness.hasNotes,
+    });
     contentHydrationTrigger.triggerForTopic(topicId);
   }
 
