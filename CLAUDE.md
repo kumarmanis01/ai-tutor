@@ -148,9 +148,7 @@ This is a deletion task. Rules:
    This is the core product differentiator. Tested in prompt eval gate.
    Violating this once destroys student trust permanently.
 
-2. **Prisma is locked to v6.19.1.**
-   Never upgrade to v7. If drift occurs:
-   npm install prisma@6.19.1 @prisma/client@6.19.1 --save-exact
+2. **Install latest stable Prisma version**
 
 3. **Schema changes are additive only.**
    Never drop a column without an explicit migration task.
