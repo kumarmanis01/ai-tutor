@@ -46,6 +46,7 @@
     "prepare": "husky",
     "build": "node scripts/prisma-generate-with-retry.cjs && tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json && node scripts/verify-dist.cjs && cross-env NODE_OPTIONS=--max-old-space-size=6144 next build --webpack",
     "build:tsc": "tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json",
+    "build:local": "npm run build:workers && next build",
     "build:prod": "node scripts/prisma-generate-with-retry.cjs && npm run build:tsc && npm run build:workers && cross-env NODE_OPTIONS=--max-old-space-size=6144 next build",
     "start": "next start",
     "start:next": "next start",
