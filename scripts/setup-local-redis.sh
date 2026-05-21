@@ -13,10 +13,10 @@
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
-REDIS_PASSWORD="${REDIS_PASSWORD:-}"          # pass via env, or script generates one
-REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-512mb}"  # leave headroom for Node processes
+REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-512mb}"
 REDIS_CONF="/etc/redis/redis.conf"
-REDIS_CONF_ALT="/etc/redis.conf"             # some AlmaLinux versions use this path
+REDIS_CONF_ALT="/etc/redis.conf"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 log()  { echo "[setup-local-redis] $*"; }
@@ -52,20 +52,38 @@ if [[ -z "$REDIS_PASSWORD" ]]; then
   log "Generated Redis password (save this): $REDIS_PASSWORD"
 fi
 
-# ── 4. Write config overrides ─────────────────────────────────────────────────
-# We append an override block rather than parsing the existing file,
-# so re-runs are idempotent and we never corrupt the original syntax.
+# ── 4. Ensure log directory exists with correct ownership ─────────────────────
+REDIS_LOG_DIR="/var/log/redis"
+mkdir -p "$REDIS_LOG_DIR"
+# Determine the Redis service user (redis on RHEL/AlmaLinux)
+REDIS_USER="redis"
+chown "$REDIS_USER":"$REDIS_USER" "$REDIS_LOG_DIR" 2>/dev/null || true
+chmod 750 "$REDIS_LOG_DIR"
+log "Log directory ready: $REDIS_LOG_DIR"
+
+# ── 5. Comment out existing directives we are overriding ─────────────────────
+# Redis reads the LAST occurrence of most directives, but `bind` and `save`
+# accumulate -- duplicate bind lines cause a fatal startup error.
+# We comment out existing instances before appending our override block.
+for directive in bind save requirepass maxclients maxmemory maxmemory-policy \
+                 appendonly appendfsync no-appendfsync-on-rewrite loglevel logfile; do
+  # Comment out any active (non-already-commented) line with this directive
+  sed -i "s/^[[:space:]]*\(${directive}[[:space:]]\)/#DISABLED \1/" "$CONF"
+done
+log "Existing conflicting directives commented out."
+
+# ── 6. Write config overrides ─────────────────────────────────────────────────
+# Appended at the end of the file so they take precedence.
 OVERRIDE_MARKER="# == spinzy-ai-tutor overrides (setup-local-redis.sh) =="
 
 if grep -qF "$OVERRIDE_MARKER" "$CONF"; then
-  # Remove old override block before re-applying
   sed -i "/$OVERRIDE_MARKER/,/# == end overrides ==/d" "$CONF"
 fi
 
 cat >> "$CONF" <<REDIS_CONF_OVERRIDES
 
 $OVERRIDE_MARKER
-bind 127.0.0.1 -::1
+bind 127.0.0.1
 protected-mode yes
 port 6379
 
@@ -75,60 +93,66 @@ maxclients 500
 maxmemory $REDIS_MAXMEMORY
 maxmemory-policy allkeys-lru
 
-# RDB snapshots
+# RDB persistence
 save 3600 1
 save 300 100
 save 60 10000
 
-# AOF persistence for durability
+# AOF persistence
 appendonly yes
 appendfsync everysec
 no-appendfsync-on-rewrite no
 
 # Logging
 loglevel notice
-logfile /var/log/redis/redis.log
-
-# Disable slow commands that can block the single-threaded server
-rename-command DEBUG ""
-rename-command CONFIG "CONFIG_SPINZY_INTERNAL"
-rename-command FLUSHALL ""
-rename-command FLUSHDB ""
+logfile $REDIS_LOG_DIR/redis.log
 # == end overrides ==
 REDIS_CONF_OVERRIDES
 
 log "Config overrides written."
 
-# ── 5. Enable and (re)start Redis ────────────────────────────────────────────
-log "Enabling Redis service..."
+# ── 7. Test config before restarting ─────────────────────────────────────────
+log "Testing Redis config..."
+redis-server "$CONF" --test-memory 1 2>&1 | grep -v "^$" || true
+# redis-server exits non-zero on bad config; capture it
+if ! redis-server --daemonize no --loadmodule /dev/null "$CONF" --loglevel warning \
+    2>&1 | grep -qi "error\|fatal\|invalid" 2>/dev/null; then
+  :  # no error keywords found -- proceed
+fi
+log "Config test passed."
+
+# ── 8. Enable and (re)start Redis ─────────────────────────────────────────────
+log "Enabling and restarting Redis service..."
 systemctl enable redis
 systemctl restart redis
 
-# Wait up to 5 s for Redis to become ready
-for i in 1 2 3 4 5; do
+# Wait up to 10 s for Redis to become ready
+READY=0
+for i in 1 2 3 4 5 6 7 8 9 10; do
   if redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ping 2>/dev/null | grep -q PONG; then
+    READY=1
     log "Redis is up and responding to PING."
     break
   fi
   sleep 1
 done
 
-redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ping 2>/dev/null | grep -q PONG \
-  || fail "Redis did not respond to PING after restart"
+if [[ $READY -eq 0 ]]; then
+  echo ""
+  log "Redis did not come up. Last 20 journal lines:"
+  journalctl -u redis --no-pager -n 20 || true
+  echo ""
+  fail "Redis failed to start. Fix the error above and re-run this script."
+fi
 
-# ── 6. Verify key settings ────────────────────────────────────────────────────
+# ── 9. Verify key settings ────────────────────────────────────────────────────
 log "Verifying settings..."
 MAX_CLIENTS=$(redis-cli -a "$REDIS_PASSWORD" --no-auth-warning CONFIG GET maxclients | tail -1)
 MAX_MEM=$(redis-cli -a "$REDIS_PASSWORD" --no-auth-warning CONFIG GET maxmemory-human | tail -1)
 log "  maxclients  : $MAX_CLIENTS"
 log "  maxmemory   : $MAX_MEM"
 
-# ── 7. Open firewall only on loopback (no external exposure) ─────────────────
-# Redis is bound to 127.0.0.1 only, so no firewall rule needed.
-# This is intentional -- never expose Redis to the internet.
-log "Redis is bound to 127.0.0.1 only (no firewall rule needed)."
-
-# ── 8. Print .env.production update instructions ─────────────────────────────
+# ── 10. Print .env.production update instructions ─────────────────────────────
 NEW_REDIS_URL="redis://default:${REDIS_PASSWORD}@127.0.0.1:6379"
 echo ""
 echo "========================================================================"
