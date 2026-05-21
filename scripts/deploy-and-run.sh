@@ -237,11 +237,11 @@ echo "devDependencies pruned"
 
 # 6c. Verify worker dist
 step "6c — Verify worker dist"
-if [ ! -f "${REPO_ROOT}/dist/worker/bootstrap.js" ]; then
-  echo "FATAL: dist/worker/bootstrap.js not found. build:workers may have failed." >&2
+if [ ! -f "${REPO_ROOT}/dist/worker/worker/bootstrap.js" ]; then
+  echo "FATAL: dist/worker/worker/bootstrap.js not found. build:workers may have failed." >&2
   exit 1
 fi
-echo "Worker dist: OK ($(du -sh "${REPO_ROOT}/dist/worker/bootstrap.js" | cut -f1))"
+echo "Worker dist: OK ($(du -sh "${REPO_ROOT}/dist/worker/worker/bootstrap.js" | cut -f1))"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7. VERIFY DIST
