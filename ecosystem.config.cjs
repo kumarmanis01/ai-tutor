@@ -90,6 +90,7 @@ module.exports = {
       min_uptime: '10s',
       restart_delay: 3000,
       max_memory_restart: '512M',
+      kill_timeout: 15000,
       watch: false,
     },
 
@@ -136,6 +137,7 @@ module.exports = {
       min_uptime: '10s',
       restart_delay: 3000,
       max_memory_restart: '256M',
+      kill_timeout: 15000,
       watch: false,
     },
 
@@ -182,6 +184,7 @@ module.exports = {
       min_uptime: '10s',
       restart_delay: 3000,
       max_memory_restart: '256M',
+      kill_timeout: 15000,
       watch: false,
     },
   ],

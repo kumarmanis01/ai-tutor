@@ -381,6 +381,14 @@ export async function bootstrapWorker() {
   async function shutdown(drain = true) {
     logger.info("[worker] shutdown requested; drain =", { drain })
 
+    // Safety deadline: force-exit before PM2's kill_timeout (15 000 ms) fires.
+    // Gives the graceful path 12 s to finish; after that we exit anyway.
+    const safetyExit = setTimeout(() => {
+      logger.error("[worker] shutdown deadline exceeded -- forcing exit");
+      process.exit(1);
+    }, 12_000);
+    safetyExit.unref(); // don't keep the event loop alive on its own
+
     try {
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },
@@ -389,44 +397,57 @@ export async function bootstrapWorker() {
 
       if (drain) {
         await worker.pause();
-        const timeout = Number(
-          process.env.WORKER_DRAIN_TIMEOUT_MS || 30_000
+        // Cap drain wait well below kill_timeout so we have time to close cleanly.
+        const drainMs = Math.min(
+          Number(process.env.WORKER_DRAIN_TIMEOUT_MS || 5_000),
+          3_000,
         );
-        await new Promise((r) =>
-          setTimeout(r, Math.min(timeout, 5_000))
-        );
+        await new Promise((r) => setTimeout(r, drainMs));
       }
 
       clearInterval(heartbeat);
-      await stopOutboxDispatcher();
-      await worker.close();
-      await irtWorker.close();
-      await sm18Worker.close();
-      await weeklyDigestWorker.close();
-      await distressNotificationWorker.close();
-      await reteachPlanWorker.close();
-      await diagnosticAutoSubmitWorker.close();
-      await pdfIngestWorker.close();
+      stopOutboxDispatcher();
+
+      // Close all BullMQ workers in parallel to minimise total shutdown time.
+      await Promise.all([
+        worker.close(),
+        irtWorker.close(),
+        sm18Worker.close(),
+        weeklyDigestWorker.close(),
+        paymentDunningWorker.close(),
+        installmentDunningWorker.close(),
+        subscriptionRenewalWorker.close(),
+        diagnosticBootstrapWorker.close(),
+        distressNotificationWorker.close(),
+        reteachPlanWorker.close(),
+        diagnosticAutoSubmitWorker.close(),
+        aiWorker.close(),
+        analyticsIngestWorker.close(),
+        pdfIngestWorker.close(),
+      ]);
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },
         data: { status: "STOPPED", stoppedAt: new Date() },
       });
-
-      process.exit(0);
     } catch (err: any) {
       logger.error("[worker] shutdown error", { error: String(err) });
-
-      await prisma.workerLifecycle.update({
-        where: { id: lifecycleId },
-        data: {
-          status: "FAILED",
-          stoppedAt: new Date(),
-          meta: { error: String(err?.message || err) },
-        },
-      });
-
-      process.exit(2);
+      try {
+        await prisma.workerLifecycle.update({
+          where: { id: lifecycleId },
+          data: {
+            status: "FAILED",
+            stoppedAt: new Date(),
+            meta: { error: String(err?.message || err) },
+          },
+        });
+      } catch {
+        // best-effort
+      }
+    } finally {
+      clearTimeout(safetyExit);
+      await prisma.$disconnect().catch(() => null);
+      process.exit(0);
     }
   }
 
