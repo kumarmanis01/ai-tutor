@@ -12,6 +12,9 @@ function getDb() {
  * Try to acquire a named job lock for ttlMs milliseconds.
  * Returns { acquired: true } when the lock is obtained.
  * If another process holds a non-expired lock, returns { skipped: true, reason: 'locked' }.
+ *
+ * Single-round-trip UPSERT: insert or update only when the existing lock is expired.
+ * Affected rows == 1 means we own the lock; 0 means another process holds a live lock.
  */
 export async function acquireJobLock(jobName: string, ttlMs: number): Promise<AcquireResult> {
   const db = getDb();
@@ -19,35 +22,20 @@ export async function acquireJobLock(jobName: string, ttlMs: number): Promise<Ac
   const until = new Date(Date.now() + ttlMs);
 
   try {
-    // Fast path: try to create a lock row. If it succeeds we have the lock.
-    await db.jobLock.create({ data: { jobName, lockedUntil: until } });
-    return { acquired: true };
+    const affected = await db.$executeRaw`
+      INSERT INTO "JobLock" ("jobName", "lockedUntil", "createdAt", "updatedAt")
+      VALUES (${jobName}, ${until}, ${now}, ${now})
+      ON CONFLICT ("jobName")
+      DO UPDATE SET
+        "lockedUntil" = ${until},
+        "updatedAt"   = ${now}
+      WHERE "JobLock"."lockedUntil" < ${now}
+    `;
+    return (affected as number) > 0
+      ? { acquired: true }
+      : { skipped: true, reason: 'locked' };
   } catch {
-    // Create failed (likely due to existing row). Try conditional update: only update when the existing lock is expired.
-    try {
-      const res = await db.jobLock.updateMany({ where: { jobName, lockedUntil: { lt: now } }, data: { lockedUntil: until } });
-      if (res.count && res.count > 0) {
-        // We updated the expired lock and acquired ownership.
-        return { acquired: true };
-      }
-
-      // Lock exists and is not expired.
-      const existing = await db.jobLock.findUnique({ where: { jobName } });
-      if (existing && existing.lockedUntil > now) {
-        return { skipped: true, reason: 'locked' };
-      }
-
-      // Edge case: try create again as a last resort.
-      try {
-        await db.jobLock.create({ data: { jobName, lockedUntil: until } });
-        return { acquired: true };
-      } catch {
-        return { skipped: true, reason: 'locked' };
-      }
-    } catch {
-      // On any unexpected error, avoid throwing to callers; signal skipped with reason.
-      return { skipped: true, reason: 'error' };
-    }
+    return { skipped: true, reason: 'error' };
   }
 }
 
