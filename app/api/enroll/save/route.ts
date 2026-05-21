@@ -19,7 +19,6 @@ import { invalidateUserSessionCache } from '@/lib/auth';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { LanguageCode } from '@prisma/client';
-import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
 import { enqueueSubjectHydration } from '@/lib/diagnostics/enqueueSubjectHydration';
 
 export const dynamic = 'force-dynamic';
@@ -152,7 +151,7 @@ export async function POST(req: NextRequest) {
         for (const subjectSlug of subjects) {
           await enqueueSubjectHydration({ boardSlug, grade: gradeNum, subjectSlug }).catch(() => {});
         }
-        await enqueueDiagnosticBootstrapJob({ userId }).catch(() => {});
+        // Bootstrap job requires a completed diagnostic session -- not triggered at enrollment.
       }
     } catch {
       // non-blocking

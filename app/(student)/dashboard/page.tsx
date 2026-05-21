@@ -358,7 +358,25 @@ export default async function StudentHomeDashboardPage() {
     : 0
   const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
 
-  type TodaysTopic = { subject: string; href: string; subjectId: string }
+  type ConceptSelectResult = {
+    name: string
+    topic: { name: string; chapter: { name: string } } | null
+  }
+  type PlanItemSelectResult = { conceptId: string; concept: ConceptSelectResult }
+
+  const PLAN_ITEM_SELECT = {
+    conceptId: true,
+    concept: { select: { name: true, topic: { select: { name: true, chapter: { select: { name: true } } } } } },
+  } as const
+
+  function topicNameFromItem(item: PlanItemSelectResult, fallback: string): string {
+    return item.concept?.topic?.name ?? item.concept?.name ?? fallback
+  }
+  function chapterFromItem(item: PlanItemSelectResult): string | null {
+    return item.concept?.topic?.chapter?.name ?? null
+  }
+
+  type TodaysTopic = { subject: string; href: string; subjectId: string; topicName: string; chapter: string | null }
   const todaysTopics: TodaysTopic[] = (
     await Promise.all(
       learningPlans.map(async (plan): Promise<TodaysTopic | null> => {
@@ -367,12 +385,14 @@ export default async function StudentHomeDashboardPage() {
         const inProgressItem = await prisma.learningPlanItem.findFirst({
           where: { planId: plan.id, status: 'IN_PROGRESS' },
           orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: { conceptId: true },
-        })
+          select: PLAN_ITEM_SELECT,
+        }) as PlanItemSelectResult | null
         if (inProgressItem?.conceptId) {
           return {
             subject: subjectInfo?.name ?? 'Your subject',
             subjectId: plan.subjectId,
+            topicName: topicNameFromItem(inProgressItem, 'Continue learning'),
+            chapter: chapterFromItem(inProgressItem),
             href: `/session/pre/${encodeURIComponent(inProgressItem.conceptId)}`,
           }
         }
@@ -380,12 +400,14 @@ export default async function StudentHomeDashboardPage() {
         const currentWeekItem = await prisma.learningPlanItem.findFirst({
           where: { planId: plan.id, status: 'UPCOMING', weekNumber: { lte: currentWeek } },
           orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: { conceptId: true },
-        })
+          select: PLAN_ITEM_SELECT,
+        }) as PlanItemSelectResult | null
         if (currentWeekItem?.conceptId) {
           return {
             subject: subjectInfo?.name ?? 'Your subject',
             subjectId: plan.subjectId,
+            topicName: topicNameFromItem(currentWeekItem, 'Start learning'),
+            chapter: chapterFromItem(currentWeekItem),
             href: `/session/pre/${encodeURIComponent(currentWeekItem.conceptId)}`,
           }
         }
@@ -393,28 +415,58 @@ export default async function StudentHomeDashboardPage() {
         const fallbackItem = await prisma.learningPlanItem.findFirst({
           where: { planId: plan.id, status: 'UPCOMING' },
           orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: { conceptId: true },
-        })
+          select: PLAN_ITEM_SELECT,
+        }) as PlanItemSelectResult | null
         if (!fallbackItem?.conceptId) return null
         return {
           subject: subjectInfo?.name ?? 'Your subject',
           subjectId: plan.subjectId,
+          topicName: topicNameFromItem(fallbackItem, 'Start learning'),
+          chapter: chapterFromItem(fallbackItem),
           href: `/session/pre/${encodeURIComponent(fallbackItem.conceptId)}`,
         }
       }),
     )
   ).filter((t): t is TodaysTopic => t !== null)
 
+  // Supplement with subjects that completed diagnostics but have no learning plan yet.
+  // This handles the case where plan generation failed or is still pending after a diagnostic.
+  const planSubjectSet = new Set(learningPlans.map((p) => p.subjectId))
+  const unplannedTopics: TodaysTopic[] = (
+    await Promise.all(
+      readinessResults
+        .filter((r) => r.diagnosticDone && !planSubjectSet.has(r.subjectId))
+        .map(async (r): Promise<TodaysTopic | null> => {
+          const firstConcept = await prisma.concept.findFirst({
+            where: { subjectId: r.subjectId, isSuspended: false },
+            orderBy: [{ topic: { chapter: { order: 'asc' } } }, { topic: { order: 'asc' } }],
+            select: { id: true, name: true, topic: { select: { name: true, chapter: { select: { name: true } } } } },
+          })
+          if (!firstConcept?.id) return null
+          return {
+            subject: r.subjectName,
+            subjectId: r.subjectId,
+            topicName: firstConcept.topic?.name ?? firstConcept.name,
+            chapter: firstConcept.topic?.chapter?.name ?? null,
+            href: `/session/pre/${encodeURIComponent(firstConcept.id)}`,
+          }
+        }),
+    )
+  ).filter((t): t is TodaysTopic => t !== null)
+
+  const allTodaysTopics = [...todaysTopics, ...unplannedTopics]
+
   // Build secondary missions (exclude the subject already covered by the hero)
   const heroSubjectId = heroMission?.subjectId
-  const secondaryMissions: DashboardMission[] = todaysTopics
+  const secondaryMissions: DashboardMission[] = allTodaysTopics
     .filter((t) => !heroSubjectId || t.subjectId !== heroSubjectId)
     .map((topic, i) => ({
       id: `secondary-${i}`,
       subjectId: topic.subjectId,
       subjectName: topic.subject,
       kind: 'Lesson' as MissionKind,
-      title: `${topic.subject} -- continue session`,
+      title: topic.topicName,
+      chapter: topic.chapter ?? undefined,
       estimatedMins: 20,
       xp: 60,
       state: 'not_started' as MissionState,
@@ -423,11 +475,10 @@ export default async function StudentHomeDashboardPage() {
     }))
 
   // ── Build warm-up cards for PickNext ──────────────────────────────────────────
-  // Use secondary topics that overlap with hero subject too, as optional warm-ups
-  const warmUps = todaysTopics.slice(0, 3).map((topic) => ({
+  const warmUps = allTodaysTopics.slice(0, 3).map((topic) => ({
     subjectId: topic.subjectId,
     subjectName: topic.subject,
-    title: `${topic.subject} warm-up session`,
+    title: topic.topicName,
     meta: '~20 min · +60 XP',
     href: topic.href,
   }))

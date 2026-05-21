@@ -12,151 +12,158 @@ export interface DiagnosticBootstrapJobData {
   chapterIds: string[]
   boardId: string
   gradeId: string
+  /** Direct subject ID -- used when questions lack topicId and chapterIds cannot be derived */
+  subjectId?: string
 }
 
 export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJobData>): Promise<void> {
   const { studentId, diagnosticSessionId, chapterIds } = job.data
 
-  if (!studentId || !diagnosticSessionId || !Array.isArray(chapterIds) || chapterIds.length === 0) {
+  const hasChapters = Array.isArray(chapterIds) && chapterIds.length > 0
+  const hasSubjectFallback = typeof job.data.subjectId === 'string' && job.data.subjectId.length > 0
+
+  if (!studentId || !diagnosticSessionId || (!hasChapters && !hasSubjectFallback)) {
     logger.warn('[diagnostic-bootstrap] invalid job data', { jobId: job.id, data: job.data })
     return
   }
 
   try {
-    const concepts = await prisma.concept.findMany({
-      where: {
-        topic: {
-          chapterId: { in: chapterIds },
-        },
-      },
-      select: {
-        id: true,
-        irt_b: true,
-        bloomLevel: true,
-      },
-    })
-
-    if (concepts.length === 0) {
-      logger.warn('[diagnostic-bootstrap] no concepts found for chapters', {
-        jobId: job.id,
-        studentId,
-        chapterIds,
-      })
-      return
-    }
-
-    const answers = await prisma.answerEvent.findMany({
-      where: {
-        studentId,
-        sessionId: diagnosticSessionId,
-      },
-      select: {
-        conceptId: true,
-        isCorrect: true,
-      },
-    })
-
-    const answerByConcept = new Map<string, boolean>()
-    for (const a of answers) {
-      if (!a.conceptId) continue
-      // If multiple answers exist for a concept, last one wins.
-      answerByConcept.set(a.conceptId, a.isCorrect)
-    }
-
-    const providedAnswersCount = answerByConcept.size
-    const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10)
-    const isPartialAbandon = providedAnswersCount < minValid
-    if (isPartialAbandon) {
-      logger.info('[diagnostic-bootstrap] partial_abandon_detected', {
-        jobId: job.id,
-        studentId,
-        diagnosticSessionId,
-        providedAnswersCount,
-        minValid,
-      })
-    }
-
     let seeded = 0
     let skipped = 0
 
-    for (const concept of concepts) {
-      const answered = answerByConcept.has(concept.id)
-      const isCorrect = answered ? answerByConcept.get(concept.id) === true : null
+    // Seed StudentConceptState from diagnostic answers only when chapter data is available.
+    // When questions lack topicId (nullable field), chapterIds is empty and seeding is skipped;
+    // generateLearningPlan will fall back to default curriculum ordering (mastery = 0 for all).
+    if (hasChapters) {
+      const concepts = await prisma.concept.findMany({
+        where: {
+          topic: {
+            chapterId: { in: chapterIds },
+          },
+        },
+        select: {
+          id: true,
+          irt_b: true,
+          bloomLevel: true,
+        },
+      })
 
-      let masteryScore = 0.3
-      let attemptCount = 0
-
-      if (!answered) {
-        if (isPartialAbandon) {
-          // If the diagnostic is deemed a partial/abandoned run, assume grade-level start
-          // for unanswered concepts but mark them as higher-uncertainty using masteryVariance.
-          masteryScore = 0.5
-          attemptCount = 0
-        } else {
-          masteryScore = 0.3
-          attemptCount = 0
-        }
-      } else if (isCorrect) {
-        masteryScore = 0.6
-        attemptCount = 1
-      } else {
-        masteryScore = 0.15
-        attemptCount = 1
+      if (concepts.length === 0) {
+        logger.warn('[diagnostic-bootstrap] no concepts found for chapters', {
+          jobId: job.id,
+          studentId,
+          chapterIds,
+        })
       }
 
-      try {
-        const existing = await prisma.studentConceptState.findUnique({
+      if (concepts.length > 0) {
+        const answers = await prisma.answerEvent.findMany({
           where: {
-            studentId_conceptId: {
-              studentId,
-              conceptId: concept.id,
-            },
+            studentId,
+            sessionId: diagnosticSessionId,
+          },
+          select: {
+            conceptId: true,
+            isCorrect: true,
           },
         })
 
-        const now = new Date()
+        const answerByConcept = new Map<string, boolean>()
+        for (const a of answers) {
+          if (!a.conceptId) continue
+          answerByConcept.set(a.conceptId, a.isCorrect)
+        }
 
-        if (!existing) {
-          await prisma.studentConceptState.create({
-            data: {
+        const providedAnswersCount = answerByConcept.size
+        const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10)
+        const isPartialAbandon = providedAnswersCount < minValid
+        if (isPartialAbandon) {
+          logger.info('[diagnostic-bootstrap] partial_abandon_detected', {
+            jobId: job.id,
+            studentId,
+            diagnosticSessionId,
+            providedAnswersCount,
+            minValid,
+          })
+        }
+
+        for (const concept of concepts) {
+          const answered = answerByConcept.has(concept.id)
+          const isCorrect = answered ? answerByConcept.get(concept.id) === true : null
+
+          let masteryScore = 0.3
+          let attemptCount = 0
+
+          if (!answered) {
+            if (isPartialAbandon) {
+              masteryScore = 0.5
+              attemptCount = 0
+            } else {
+              masteryScore = 0.3
+              attemptCount = 0
+            }
+          } else if (isCorrect) {
+            masteryScore = 0.6
+            attemptCount = 1
+          } else {
+            masteryScore = 0.15
+            attemptCount = 1
+          }
+
+          try {
+            const existing = await prisma.studentConceptState.findUnique({
+              where: {
+                studentId_conceptId: {
+                  studentId,
+                  conceptId: concept.id,
+                },
+              },
+            })
+
+            const now = new Date()
+
+            if (!existing) {
+              await prisma.studentConceptState.create({
+                data: {
+                  studentId,
+                  conceptId: concept.id,
+                  masteryScore,
+                  lastInteraction: now,
+                  attemptCount,
+                  masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
+                  memoryStrength: Math.round((masteryScore * 1.0) * 1000) / 1000,
+                },
+              })
+              seeded += 1
+            } else if (existing.masteryScore < masteryScore) {
+              await prisma.studentConceptState.update({
+                where: {
+                  studentId_conceptId: {
+                    studentId,
+                    conceptId: concept.id,
+                  },
+                },
+                data: {
+                  masteryScore,
+                  lastInteraction: now,
+                  attemptCount: existing.attemptCount + attemptCount,
+                  masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
+                  memoryStrength: Math.round((masteryScore * (existing.retention ?? 1)) * 1000) / 1000,
+                },
+              })
+              seeded += 1
+            } else {
+              skipped += 1
+            }
+          } catch (err) {
+            logger.error('[diagnostic-bootstrap] failed to upsert StudentConceptState', {
+              jobId: job.id,
               studentId,
               conceptId: concept.id,
-              masteryScore,
-              lastInteraction: now,
-              attemptCount,
-              masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
-              memoryStrength: Math.round((masteryScore * 1.0) * 1000) / 1000,
-            },
-          })
-          seeded += 1
-        } else if (existing.masteryScore < masteryScore) {
-          await prisma.studentConceptState.update({
-            where: {
-              studentId_conceptId: {
-                studentId,
-                conceptId: concept.id,
-              },
-            },
-            data: {
-              masteryScore,
-              lastInteraction: now,
-              attemptCount: existing.attemptCount + attemptCount,
-              masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
-              memoryStrength: Math.round((masteryScore * (existing.retention ?? 1)) * 1000) / 1000,
-            },
-          })
-          seeded += 1
-        } else {
-          skipped += 1
+              error: String((err as any)?.message ?? err),
+            })
+          }
         }
-      } catch (err) {
-        logger.error('[diagnostic-bootstrap] failed to upsert StudentConceptState', {
-          jobId: job.id,
-          studentId,
-          conceptId: concept.id,
-          error: String((err as any)?.message ?? err),
-        })
-        // continue with next concept
       }
     }
 
@@ -165,14 +172,28 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       diagnosticSessionId,
       conceptsSeeded: seeded,
       conceptsSkipped: skipped,
+      hasChapters,
     })
 
-    const firstChapter = await prisma.chapterDef.findUnique({
-      where: { id: chapterIds[0] },
-      select: { subjectId: true, subject: { select: { name: true } } },
-    })
-    const primarySubjectId = firstChapter?.subjectId
-    const subjectName = firstChapter?.subject?.name ?? 'your subject'
+    // Resolve the subject: prefer the directly-supplied subjectId (from submit route),
+    // fall back to deriving from the first chapter when available.
+    let primarySubjectId: string | undefined = job.data.subjectId
+    let subjectName = 'your subject'
+
+    if (!primarySubjectId && hasChapters) {
+      const firstChapter = await prisma.chapterDef.findUnique({
+        where: { id: chapterIds[0] },
+        select: { subjectId: true, subject: { select: { name: true } } },
+      })
+      primarySubjectId = firstChapter?.subjectId
+      subjectName = firstChapter?.subject?.name ?? 'your subject'
+    } else if (primarySubjectId) {
+      const subjectDef = await prisma.subjectDef.findUnique({
+        where: { id: primarySubjectId },
+        select: { name: true },
+      })
+      subjectName = subjectDef?.name ?? 'your subject'
+    }
 
     // Notify parent: diagnostic complete
     notifyParent(studentId, {
