@@ -160,7 +160,7 @@ export async function redeemCoupon(
       }
     }
 
-    await tx.couponRedemption.create({ data: { couponId: coupon.id, userId: userId ?? null, subscriptionId: targetSubscriptionId ?? null, amountApplied: amountAppliedPaise ?? null, percentApplied: percentApplied ?? null, metadata: null } })
+    await tx.couponRedemption.create({ data: { couponId: coupon.id, userId: userId ?? null, subscriptionId: targetSubscriptionId ?? null, amountApplied: amountAppliedPaise ?? null, percentApplied: percentApplied ?? null, metadata: undefined } })
 
     return { status: 200, body: { ok: true, amountAppliedPaise: amountAppliedPaise ?? undefined, percentApplied: percentApplied ?? undefined } }
   } catch (err: any) {

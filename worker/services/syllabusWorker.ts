@@ -34,7 +34,7 @@ const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CO
 
 function getResponseBodyForDb(parsed: any, llmResult: any) {
   if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
-    return parsed ? { parsed } : null;
+    return parsed ? { parsed } : undefined;
   }
   return { parsed, raw: llmResult?.content };
 }

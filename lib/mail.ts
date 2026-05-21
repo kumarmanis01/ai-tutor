@@ -65,7 +65,7 @@ async function sendMail(opts: MailOptions): Promise<string> {
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
-    reply_to: opts.replyTo,
+    replyTo: opts.replyTo,
     cc: opts.cc ? (Array.isArray(opts.cc) ? opts.cc : [opts.cc]) : undefined,
     attachments: opts.attachments?.map(a => ({
       filename: a.filename,
@@ -200,9 +200,7 @@ export async function sendEmailUnified(params: UnifiedEmailSendParams): Promise<
         ...(attachments && { attachments }),
         ...(idempotencyKey && { idempotencyKey }),
       });
-      providerMessageId = typeof sendResult === 'object' && sendResult !== null && 'messageId' in sendResult
-        ? (sendResult as any).messageId
-        : typeof sendResult === 'string' ? sendResult : '';
+      providerMessageId = sendResult;
       result = { success: true, messageId: providerMessageId };
     } else if (mode === 'raw') {
       if (!subject || !html) throw new Error('subject and html required for raw mode');
@@ -219,9 +217,7 @@ export async function sendEmailUnified(params: UnifiedEmailSendParams): Promise<
         ...(attachments && { attachments }),
         ...(idempotencyKey && { idempotencyKey }),
       });
-      providerMessageId = typeof sendResult === 'object' && sendResult !== null && 'messageId' in sendResult
-        ? (sendResult as any).messageId
-        : typeof sendResult === 'string' ? sendResult : '';
+      providerMessageId = sendResult;
       result = { success: true, messageId: providerMessageId };
     } else {
       throw new Error(`Unknown delivery mode: ${mode}`);

@@ -176,7 +176,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
     const code = inferFailureCodeFromMessage(err?.message || '');
     const le = formatLastError(code, String(err?.message || 'assemble_failed'));
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
-    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'assemble', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null } }) } catch {}
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'assemble', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: undefined } }) } catch {}
     throw err;
   }
 }
