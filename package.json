@@ -40,6 +40,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:all": "node scripts/dev-all.cjs",
     "dev:next": "npm run lint:orig && npm run type-check:orig && next dev",
     "dev:fast": "next dev",
     "prepare": "husky",
