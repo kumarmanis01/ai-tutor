@@ -96,17 +96,16 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   const auditAdminId = session.user.id === id ? null : session.user.id;
 
   try {
-    await prisma.$transaction([
-      // Null out optional foreign keys that do not cascade on delete.
+    // Phase 1: parallel bulk cleanup -- nullify optional FKs and delete child rows.
+    // chatHistory must precede chat; mockExamSectionAttempt must precede mockExamAttempt.
+    // Both orderings are preserved by splitting into two Promise.all phases.
+    await Promise.all([
       prisma.room.updateMany({ where: { createdBy: id }, data: { createdBy: null } }),
       prisma.auditLog.updateMany({ where: { adminId: id }, data: { adminId: null } }),
       prisma.approvalAudit.updateMany({ where: { actorId: id }, data: { actorId: null } }),
-
-      // Delete rows with non-cascade references to this user.
       prisma.phoneOtp.deleteMany({ where: { userId: id } }),
       prisma.trial.deleteMany({ where: { userId: id } }),
       prisma.chatHistory.deleteMany({ where: { userId: id } }),
-      prisma.chat.deleteMany({ where: { userId: id } }),
       prisma.event.deleteMany({ where: { userId: id } }),
       prisma.payment.deleteMany({ where: { userId: id } }),
       prisma.contentRecommendation.deleteMany({ where: { userId: id } }),
@@ -117,18 +116,20 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
       prisma.sessionQuestionFlag.deleteMany({ where: { studentId: id } }),
       prisma.diagnosticSession.deleteMany({ where: { studentId: id } }),
       prisma.mockExamSectionAttempt.deleteMany({ where: { attempt: { studentId: id } } }),
-      prisma.mockExamAttempt.deleteMany({ where: { studentId: id } }),
-
-      // Delete referral rewards related to this user
       prisma.referralReward.deleteMany({ where: { userId: id } }),
-      // Delete referrals created by this user
       prisma.referral.deleteMany({ where: { createdBy: id } }),
-      // Delete referrals redeemed by this user
       prisma.referral.deleteMany({ where: { redeemedBy: id } }),
-      // Delete deletion request record (if exists)
       prisma.deletionRequest.deleteMany({ where: { userId: id } }),
+    ]);
 
-      // Audit the deletion within the same transaction.
+    // Phase 2: rows that depend on phase-1 completions.
+    await Promise.all([
+      prisma.chat.deleteMany({ where: { userId: id } }),
+      prisma.mockExamAttempt.deleteMany({ where: { studentId: id } }),
+    ]);
+
+    // Phase 3: small atomic commit -- audit record + user row.
+    await prisma.$transaction([
       prisma.auditLog.create({
         data: {
           adminId:      auditAdminId,
@@ -137,8 +138,6 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
           action:       AdminActionType.ERASURE_PURGE,
         },
       }),
-
-      // Finally delete the user (all other FKs have onDelete: Cascade or are optional)
       prisma.user.delete({ where: { id } }),
     ]);
     logApiUsage(`/api/admin/users/${id}`, 'DELETE');
