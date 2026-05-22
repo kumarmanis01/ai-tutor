@@ -34,6 +34,8 @@
  *                               so sessions do not always serve the latest rows.
  *   2026-05-13T00:00:00Z | copilot | unify TEST runtime delivery on the Question bank and normalize test question payloads
  *   2026-05-13T00:00:00Z | copilot | fix TEST/PRACTICE row type compatibility for choices JsonValue and explanation-free test query rows
+ *   2026-05-22T00:00:00Z | claude  | add SessionStartOutcome discriminated union (ContentReady | ContentHydrating | ContentError)
+ *                                    and CONTENT_HYDRATING constant so the start route signals pending content to the client.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -62,6 +64,7 @@ const META_SERVED_CONTENT_KEYS = 'servedContentKeys';
 
 const PRACTICE_QUESTION_TARGET_COUNT = 5;
 const TEST_QUESTION_TARGET_COUNT = 5;
+const HYDRATING_RETRY_AFTER_MS = 5000;
 
 // ─── Return Types ─────────────────────────────────────────────────────────────
 
@@ -142,6 +145,39 @@ export type PhaseContentData =
 
 type PracticeQuestionRow = PracticeContent['questions'][number];
 type TestQuestionRow = Omit<TestContent['questions'][number], 'explanation'>;
+
+// ─── API Response Contract ────────────────────────────────────────────────────
+
+/** Session started and content is ready for the current phase. */
+export interface ContentReady {
+  status: 'READY';
+  /** Opaque session view -- typed by sessionEngine at the call site. */
+  session: unknown;
+  /** Opaque phase descriptor -- typed by sessionEngine at the call site. */
+  phase: unknown;
+  content: Exclude<PhaseContentData, PendingContent>;
+}
+
+/** Content is still being generated; client should retry after retryAfterMs ms. */
+export interface ContentHydrating {
+  status: 'HYDRATING';
+  retryAfterMs: number;
+}
+
+/** An unrecoverable error prevented the session from starting. */
+export interface ContentError {
+  status: 'ERROR';
+  code: string;
+  message: string;
+}
+
+export type SessionStartOutcome = ContentReady | ContentHydrating | ContentError;
+
+/** Ready-made sentinel returned by the start route when content is pending. */
+export const CONTENT_HYDRATING: ContentHydrating = {
+  status: 'HYDRATING',
+  retryAfterMs: HYDRATING_RETRY_AFTER_MS,
+};
 
 function getPracticeQuestionKey(question: PracticeQuestionRow): string {
   return buildQuestionContentKey({
