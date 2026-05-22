@@ -54,6 +54,8 @@ async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promis
     prisma.structuredSession.findUnique({
       where: { id: sessionId },
       select: {
+        startedAt: true,
+        completedAt: true,
         topic: {
           select: {
             name: true,
@@ -73,6 +75,10 @@ async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promis
   const topicName = session?.topic?.name ?? 'a topic';
   const subjectName = session?.topic?.chapter?.subject?.name ?? 'your subject';
   const sessionDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const endTime = session?.completedAt ?? new Date();
+  const sessionDurationMinutes = session?.startedAt
+    ? Math.max(1, Math.round((endTime.getTime() - session.startedAt.getTime()) / 60_000))
+    : 0;
 
   await Promise.all([
     notifyParent(studentId, {
@@ -93,7 +99,7 @@ async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promis
       masteryAfter,
       accuracy,
       badgeNames: [],
-      sessionDurationMinutes: 0,
+      sessionDurationMinutes,
       leveledUp,
       newLevel,
     }),
