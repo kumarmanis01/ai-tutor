@@ -64,7 +64,7 @@ export async function GET(
     const view = await getSessionView(user.id, sessionId);
 
     const phaseInfo = getPhaseContent(view.currentPhase);
-    const content = await resolvePhaseContent(
+    const contentResult = await resolvePhaseContent(
       view.currentPhase,
       view.topicId,
       view.sessionId,
@@ -93,12 +93,25 @@ export async function GET(
       }
     }
 
-    res = NextResponse.json({
-      session: view,
-      phase: phaseInfo,
-      content,
-      homework,
-    });
+    if (contentResult.status === 'pending') {
+      res = NextResponse.json({
+        session: view,
+        phase: phaseInfo,
+        content: null,
+        homework,
+        hydrating: true,
+        retryAfterMs: contentResult.retryAfterMs,
+        message: contentResult.message,
+      }, { status: 202 });
+    } else {
+      res = NextResponse.json({
+        session: view,
+        phase: phaseInfo,
+        content: contentResult.data,
+        homework,
+        hydrating: false,
+      });
+    }
   } catch (err) {
     if (err instanceof SessionError) {
       if (err.status === 404) {

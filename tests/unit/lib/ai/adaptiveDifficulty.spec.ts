@@ -23,9 +23,11 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     question: { findMany: jest.fn() },
     generatedTest: { findFirst: jest.fn() },
+    generatedQuestion: { findMany: jest.fn() },
     topicNote: { findFirst: jest.fn() },
     topicDef: { findUnique: jest.fn() },
     homeworkAssignment: { findFirst: jest.fn() },
+    structuredSession: { findUnique: jest.fn(), update: jest.fn() },
   },
 }));
 
@@ -117,6 +119,10 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
     (prisma.question.findMany as jest.Mock).mockResolvedValue([
       makeQuestion('medium'),
     ]);
+    // structuredSession returns no saved IDs so fresh selection runs each test
+    (prisma.structuredSession.findUnique as jest.Mock).mockResolvedValue({ meta: null });
+    (prisma.structuredSession.update as jest.Mock).mockResolvedValue({});
+    (prisma.generatedQuestion.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   // ── Difficulty selection from mastery ─────────────────────────────────────
@@ -182,7 +188,7 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
 
     const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.85);
 
-    expect(result.type).toBe('practice');
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'practice' } });
     // Two queries: one with difficulty filter, one without
     expect(prisma.question.findMany).toHaveBeenCalledTimes(2);
     // Second call must NOT have a difficulty filter
@@ -195,7 +201,7 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
 
     const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.60);
 
-    expect(result.type).toBe('pending');
+    expect(result.status).toBe('pending');
     expect(prisma.question.findMany).toHaveBeenCalledTimes(2);
   });
 
@@ -203,15 +209,15 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
 
   it('returns type "practice" with questions array when content is found', async () => {
     (prisma.question.findMany as jest.Mock).mockResolvedValue([
-      makeQuestion('medium'),
-      makeQuestion('medium'),
+      { id: 'q-001', type: 'mcq', prompt: 'Q1?', choices: null, difficulty: 'medium', correctAnswer: null },
+      { id: 'q-002', type: 'mcq', prompt: 'Q2?', choices: null, difficulty: 'medium', correctAnswer: null },
     ]);
 
     const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.60);
 
-    expect(result.type).toBe('practice');
-    if (result.type === 'practice') {
-      expect(result.questions).toHaveLength(2);
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'practice' } });
+    if (result.status === 'ready' && result.data.type === 'practice') {
+      expect(result.data.questions).toHaveLength(2);
     }
   });
 
