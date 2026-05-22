@@ -5,7 +5,7 @@
  * Producers emit events; consumers subscribe. No direct imports between layers.
  *
  * Events:
- *   SESSION_COMPLETED -- { studentId: string, sessionId: string }
+ *   SESSION_COMPLETED -- { studentId, sessionId, xpAwarded, accuracy, masteryDelta, masteryAfter, leveledUp, newLevel }
  */
 
 import { EventEmitter } from 'events';
@@ -14,7 +14,16 @@ import { logger } from '@/lib/logger';
 const bus = new EventEmitter();
 bus.setMaxListeners(20);
 
-export type SessionCompletedPayload = { studentId: string; sessionId: string };
+export interface SessionCompletedPayload {
+  studentId: string;
+  sessionId: string;
+  xpAwarded: number;
+  accuracy: number;       // 0-1
+  masteryDelta: number;
+  masteryAfter: number;
+  leveledUp: boolean;
+  newLevel: number | null;
+}
 
 export const SESSION_COMPLETED = 'SESSION_COMPLETED';
 
@@ -26,7 +35,7 @@ export function emitSessionCompleted(payload: SessionCompletedPayload): void {
 }
 
 /**
- * Subscribe to SESSION_COMPLETED. Handler receives { studentId }.
+ * Subscribe to SESSION_COMPLETED. Handler receives the full SessionCompletedPayload.
  */
 export function onSessionCompleted(handler: (payload: SessionCompletedPayload) => void | Promise<void>): void {
   bus.on(SESSION_COMPLETED, (payload: SessionCompletedPayload) => {
