@@ -28,7 +28,7 @@ import {
   MAILER_NO_REPLY_EMAIL,
   MAILER_TOPIC_RANKER_ALERT_EMAIL,
 } from '@/lib/email/functionalityEmails';
-import { topicRankerCoverageAlertHtml } from '@/lib/email/templates';
+import { topicRankerCoverageAlertHtml, sessionCompleteForParentHtml } from '@/lib/email/templates';
 import { BASE, BTN, FOOTER, LOGO } from '@/lib/email/layout';
 
 // Temporary stub for feature flag check (replace with real import if available)
@@ -287,6 +287,13 @@ export interface EmailTemplateContext {
   masteryScore?: number;
   examReadinessScore?: number;
   riskScore?: number;
+  xpEarned?: number;
+  totalXp?: number;
+  accuracy?: number;
+  masteryDelta?: number;
+  masteryAfter?: number;
+  sessionDurationMinutes?: number;
+  aiInsight?: string;
   // Dates / time
   sessionDate?: string;
   weekOf?: string;
@@ -838,6 +845,29 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
       ${cta('Review Account', ctx.ctaUrl ?? 'https://spinzyacademy.com/parent/settings')}
     `),
     textBody: (_ctx) => `New sign-in detected on your parent account. Review: https://spinzyacademy.com/parent/settings`,
+  },
+
+  SESSION_COMPLETE_PARENT: {
+    id:   'SESSION_COMPLETE_PARENT',
+    from: EMAIL_FROM.NOREPLY,
+    subject: (ctx) => MAIL_SUBJECTS.SESSION_COMPLETE_PARENT.replace('{name}', ctx.studentName ?? 'Your child'),
+    htmlBody: (ctx) => sessionCompleteForParentHtml({
+      parentName: ctx.parentName ?? 'there',
+      studentName: ctx.studentName ?? 'your child',
+      topicName: ctx.topicName ?? 'a topic',
+      subjectName: ctx.subjectName ?? '',
+      sessionDate: ctx.sessionDate ?? ctx.date ?? '',
+      dashboardUrl: ctx.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard',
+      xpEarned: typeof ctx.xpEarned === 'number' ? ctx.xpEarned : undefined,
+      accuracy: typeof ctx.accuracy === 'number' ? ctx.accuracy : undefined,
+      masteryDelta: typeof ctx.masteryDelta === 'number' ? ctx.masteryDelta : undefined,
+      masteryAfter: typeof ctx.masteryAfter === 'number' ? ctx.masteryAfter : undefined,
+      sessionDurationMinutes: typeof ctx.sessionDurationMinutes === 'number'
+        ? ctx.sessionDurationMinutes : undefined,
+      aiInsight: typeof ctx.aiInsight === 'string' ? ctx.aiInsight : undefined,
+    }),
+    textBody: (ctx) =>
+      `${ctx.studentName ?? 'Your child'} completed a session on ${ctx.topicName ?? 'a topic'}. View progress: ${ctx.dashboardUrl}`,
   },
 
 } as const satisfies Record<string, EmailTemplate>;
