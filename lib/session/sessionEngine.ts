@@ -42,7 +42,7 @@ import { generateHomework, type HomeworkResult } from '@/lib/session/homework';
 import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/transitionSessionPhase';
 import { validatePhaseCompletion } from '@/lib/session/phaseCompletionValidator';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
-import { emitSessionCompleted } from '@/lib/events/domainEvents';
+import { emitSessionCompleted, type SessionCompletedPayload } from '@/lib/events/domainEvents';
 
 // ─── Phase Order ──────────────────────────────────────────────────────────────
 
@@ -499,7 +499,14 @@ export async function advanceSession(
   if (transition.isComplete) {
     // Persist progress and invalidate the ranker cache -- fire-and-forget
     // so they don't block the response.
-    persistCompletionProgress(studentId, updated.topicId, sessionId);
+    persistCompletionProgress(studentId, updated.topicId, sessionId, {
+      xpAwarded: 0,
+      accuracy: 0,
+      masteryDelta: 0,
+      masteryAfter: 0,
+      leveledUp: false,
+      newLevel: null,
+    });
   } else {
     touchBridgedLearningSession(sessionId).catch(() => {});
   }
@@ -633,7 +640,14 @@ export async function completeSession(
   });
 
   // Persist progress and invalidate the ranker cache -- fire-and-forget.
-  persistCompletionProgress(studentId, updated.topicId, sessionId);
+  persistCompletionProgress(studentId, updated.topicId, sessionId, {
+    xpAwarded: 0,
+    accuracy: 0,
+    masteryDelta: 0,
+    masteryAfter: 0,
+    leveledUp: false,
+    newLevel: null,
+  });
 
   logger.info('[SESSION_FORCE_COMPLETED]', {
     studentId,
@@ -792,10 +806,13 @@ async function generateHomeworkWithRetry(
  * session completes. Both operations are fire-and-forget: failures are logged
  * but must not surface to the student.
  */
+type CompletionStats = Pick<SessionCompletedPayload, 'xpAwarded' | 'accuracy' | 'masteryDelta' | 'masteryAfter' | 'leveledUp' | 'newLevel'>;
+
 function persistCompletionProgress(
   studentId: string,
   topicId: string,
   sessionId: string,
+  stats: CompletionStats,
 ): void {
   // STUDY touch: updates lastStudiedAt so the recency signal in TopicRanker is
   // accurate. Actual mastery deltas come from practice/test answer submissions.
@@ -810,7 +827,7 @@ function persistCompletionProgress(
   );
 
   // COUPLING-01: Emit domain event; TopicRanker and engagement listen.
-  emitSessionCompleted({ studentId, sessionId });
+  emitSessionCompleted({ studentId, sessionId, ...stats });
 
   completeBridgedLearningSession(sessionId).catch((err) =>
     logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
