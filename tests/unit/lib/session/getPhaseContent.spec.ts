@@ -144,11 +144,11 @@ describe('resolvePhaseContent', () => {
         }),
       }),
     );
-    expect(result.type).toBe('practice');
-    if (result.type === 'practice') {
-      expect(result.questions).toHaveLength(1);
-      expect(result.questions[0].id).toBe('question-1');
-      expect(result.questions[0].correctAnswer).toBe('4');
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'practice' } });
+    if (result.status === 'ready' && result.data.type === 'practice') {
+      expect(result.data.questions).toHaveLength(1);
+      expect(result.data.questions[0].id).toBe('question-1');
+      expect(result.data.questions[0].correctAnswer).toBe('4');
     }
   });
 
@@ -241,7 +241,7 @@ describe('resolvePhaseContent', () => {
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('PRACTICE', 'topic-1', 'session-1', 'student-1', null);
 
-    expect(result.type).toBe('practice');
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'practice' } });
     expect(prisma.question.upsert).toHaveBeenCalledTimes(1);
     expect(prisma.question.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -318,11 +318,11 @@ describe('resolvePhaseContent', () => {
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('PRACTICE', 'topic-1', 'session-1', 'student-1', null);
 
-    expect(result.type).toBe('practice');
-    if (result.type === 'practice') {
-      expect(result.questions).toHaveLength(5);
-      expect(new Set(result.questions.map((q) => q.prompt)).size).toBe(5);
-      const resultIds = result.questions.map((q) => q.id);
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'practice' } });
+    if (result.status === 'ready' && result.data.type === 'practice') {
+      expect(result.data.questions).toHaveLength(5);
+      expect(new Set(result.data.questions.map((q) => q.prompt)).size).toBe(5);
+      const resultIds = result.data.questions.map((q) => q.id);
       expect(resultIds).not.toContain('dup-2');
       expect(resultIds).not.toContain('dup-3');
       expect(resultIds).toContain('dup-1');
@@ -340,7 +340,7 @@ describe('resolvePhaseContent', () => {
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('PRACTICE', 'topic-1', 'session-1', 'student-1', null);
 
-    expect(result.type).toBe('practice');
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'practice' } });
     expect(prisma.structuredSession.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'session-1' },
@@ -366,9 +366,9 @@ describe('resolvePhaseContent', () => {
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('PRACTICE', 'topic-1', 'session-1', 'student-1', null);
 
-    expect(result.type).toBe('practice');
-    if (result.type === 'practice') {
-      expect(result.questions.map((q) => q.id).sort()).toEqual(['locked-1', 'locked-2']);
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'practice' } });
+    if (result.status === 'ready' && result.data.type === 'practice') {
+      expect(result.data.questions.map((q) => q.id).sort()).toEqual(['locked-1', 'locked-2']);
     }
     // No meta update should happen when returning locked questions.
     expect(prisma.structuredSession.update).not.toHaveBeenCalled();
@@ -393,9 +393,9 @@ describe('resolvePhaseContent', () => {
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
 
-    expect(result.type).toBe('test');
-    if (result.type === 'test') {
-      const ids = result.questions.map((q) => q.id);
+    expect(result).toMatchObject({ status: 'ready', data: { type: 'test' } });
+    if (result.status === 'ready' && result.data.type === 'test') {
+      const ids = result.data.questions.map((q) => q.id);
       expect(ids).not.toContain('shared-q1');
       expect(ids).not.toContain('shared-q2');
       expect(ids).toContain('new-q3');
@@ -422,7 +422,7 @@ describe('resolvePhaseContent', () => {
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
 
-    expect(result.type).toBe('pending');
+    expect(result.status).toBe('pending');
   });
 
   it('excludes TEST questions when content key already exists in session meta', async () => {
@@ -462,6 +462,6 @@ describe('resolvePhaseContent', () => {
     const { resolvePhaseContent } = await import('../../../../lib/session/getPhaseContent');
     const result = await resolvePhaseContent('TEST', 'topic-1', 'session-1', 'student-1', null);
 
-    expect(result.type).toBe('pending');
+    expect(result.status).toBe('pending');
   });
 });

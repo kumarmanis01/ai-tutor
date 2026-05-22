@@ -143,6 +143,10 @@ export type PhaseContentData =
   | CompleteContent
   | PendingContent;
 
+export type PhaseContentResult =
+  | { status: 'ready'; data: PhaseContentData }
+  | { status: 'pending'; phase: string; retryAfterMs: number; message: string };
+
 type PracticeQuestionRow = PracticeContent['questions'][number];
 type TestQuestionRow = Omit<TestContent['questions'][number], 'explanation'>;
 
@@ -250,24 +254,35 @@ export async function resolvePhaseContent(
   sessionId: string,
   studentId: string,
   studentMastery?: number | null,
-): Promise<PhaseContentData> {
+): Promise<PhaseContentResult> {
+  let content: PhaseContentData;
   switch (phase) {
     case 'OVERVIEW':
-      return resolveOverview(topicId);
+      content = await resolveOverview(topicId);
+      break;
     case 'EXPLANATION':
-      return resolveExplanation(topicId);
+      content = await resolveExplanation(topicId);
+      break;
     case 'PRACTICE':
-      return resolvePractice(topicId, studentMastery ?? null, sessionId);
+      content = await resolvePractice(topicId, studentMastery ?? null, sessionId);
+      break;
     case 'TEST':
-      return resolveTest(topicId, studentMastery ?? null, sessionId);
+      content = await resolveTest(topicId, studentMastery ?? null, sessionId);
+      break;
     case 'HOMEWORK':
-      return resolveHomework(sessionId, studentId);
+      content = await resolveHomework(sessionId, studentId);
+      break;
     case 'COMPLETE':
-      return { type: 'complete' };
+      content = { type: 'complete' };
+      break;
+    default:
+      throw new Error(`Unsupported session phase: ${phase}`);
   }
 
-  // Should be unreachable: ensure function always returns the declared type.
-  throw new Error(`Unsupported session phase: ${phase}`);
+  if (content.type === 'pending') {
+    return { status: 'pending', phase, retryAfterMs: HYDRATING_RETRY_AFTER_MS, message: content.message };
+  }
+  return { status: 'ready', data: content };
 }
 
 // ─── Phase Resolvers ─────────────────────────────────────────────────────────
