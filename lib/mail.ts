@@ -28,7 +28,8 @@ import {
   MAILER_NO_REPLY_EMAIL,
   MAILER_TOPIC_RANKER_ALERT_EMAIL,
 } from '@/lib/email/functionalityEmails';
-import { topicRankerCoverageAlertHtml } from '@/lib/email/templates';
+import { topicRankerCoverageAlertHtml, sessionCompleteForParentHtml } from '@/lib/email/templates';
+import { BASE, BTN, FOOTER, LOGO } from '@/lib/email/layout';
 
 // Temporary stub for feature flag check (replace with real import if available)
 function getFeatureFlag(_domain: string): boolean { return true; }
@@ -286,6 +287,13 @@ export interface EmailTemplateContext {
   masteryScore?: number;
   examReadinessScore?: number;
   riskScore?: number;
+  xpEarned?: number;
+  totalXp?: number;
+  accuracy?: number;
+  masteryDelta?: number;
+  masteryAfter?: number;
+  sessionDurationMinutes?: number;
+  aiInsight?: string;
   // Dates / time
   sessionDate?: string;
   weekOf?: string;
@@ -334,30 +342,12 @@ export const EMAIL_FROM = EMAIL_FROM_CONSTANTS;
 
 // ── Shared HTML primitives ────────────────────────────────────────────────────
 
-const BASE_STYLE = [
-  'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;',
-  'max-width:520px;margin:0 auto;color:#1a1a1a;padding:0 8px;',
-].join('');
-
-const BTN_STYLE = [
-  'display:inline-block;padding:12px 28px;background:#534AB7;',
-  'color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;',
-].join('');
-
-const FOOTER_HTML = `
-  <p style="color:#888;font-size:12px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
-    Spinzy Academy -- AI Home Tutor<br>
-    You are receiving this because you have a Spinzy Academy account.
-    <a href="https://spinzyacademy.com/unsubscribe" style="color:#888;">Unsubscribe</a>
-  </p>
-`;
-
 function buildHtml(body: string): string {
-  return `<div style="${BASE_STYLE}">${body}${FOOTER_HTML}</div>`;
+  return `<div style="${BASE}">${LOGO}${body}${FOOTER}</div>`;
 }
 
 function cta(text: string, url: string): string {
-  return `<p><a href="${url}" style="${BTN_STYLE}">${text}</a></p>`;
+  return `<p><a href="${url}" style="${BTN}">${text}</a></p>`;
 }
 
 // ── Template catalog ──────────────────────────────────────────────────────────
@@ -855,6 +845,29 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
       ${cta('Review Account', ctx.ctaUrl ?? 'https://spinzyacademy.com/parent/settings')}
     `),
     textBody: (_ctx) => `New sign-in detected on your parent account. Review: https://spinzyacademy.com/parent/settings`,
+  },
+
+  SESSION_COMPLETE_PARENT: {
+    id:   'SESSION_COMPLETE_PARENT',
+    from: EMAIL_FROM.NOREPLY,
+    subject: (ctx) => MAIL_SUBJECTS.SESSION_COMPLETE_PARENT.replace('{name}', ctx.studentName ?? 'Your child'),
+    htmlBody: (ctx) => sessionCompleteForParentHtml({
+      parentName: ctx.parentName ?? 'there',
+      studentName: ctx.studentName ?? 'your child',
+      topicName: ctx.topicName ?? 'a topic',
+      subjectName: ctx.subjectName ?? '',
+      sessionDate: ctx.sessionDate ?? ctx.date ?? '',
+      dashboardUrl: ctx.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard',
+      xpEarned: typeof ctx.xpEarned === 'number' ? ctx.xpEarned : undefined,
+      accuracy: typeof ctx.accuracy === 'number' ? ctx.accuracy : undefined,
+      masteryDelta: typeof ctx.masteryDelta === 'number' ? ctx.masteryDelta : undefined,
+      masteryAfter: typeof ctx.masteryAfter === 'number' ? ctx.masteryAfter : undefined,
+      sessionDurationMinutes: typeof ctx.sessionDurationMinutes === 'number'
+        ? ctx.sessionDurationMinutes : undefined,
+      aiInsight: typeof ctx.aiInsight === 'string' ? ctx.aiInsight : undefined,
+    }),
+    textBody: (ctx) =>
+      `${ctx.studentName ?? 'Your child'} completed a session on ${ctx.topicName ?? 'a topic'}. View progress: ${ctx.dashboardUrl}`,
   },
 
 } as const satisfies Record<string, EmailTemplate>;

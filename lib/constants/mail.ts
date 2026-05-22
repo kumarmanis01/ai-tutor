@@ -58,6 +58,7 @@ export const MAIL_SUBJECTS = {
   DIAGNOSTIC_COMPLETE:       '{name} completed their diagnostic - Spinzy Academy',
   PLAN_GENERATED:            "{name}'s personalised learning plan is ready - Spinzy Academy",
   SESSION_COMPLETE:          '{name} completed a learning session today - Spinzy Academy',
+  SESSION_COMPLETE_PARENT:   '{name} completed a learning session today - Spinzy Academy',
   SESSION_MISSED:            'Give {name} a nudge - Spinzy Academy',
 
   // Payments
