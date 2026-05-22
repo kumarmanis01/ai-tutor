@@ -22,6 +22,7 @@ async function sendPaymentSuccessEmail(
     delivery: 'best_effort',
     to,
     subject: 'Payment confirmed -- Spinzy Academy',
+    // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
     html: paymentReceiptHtml({
       studentName: name,
       plan,

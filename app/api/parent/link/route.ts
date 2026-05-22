@@ -52,6 +52,7 @@ async function sendParentWelcomeNotifications(parentId: string, studentId: strin
         delivery: 'best_effort',
         to: parent.email,
         subject: 'Welcome to Spinzy -- your account is linked',
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         html: parentWelcomeHtml(parent.name ?? null, studentName),
         reason: 'parent_link_welcome',
         featureFlagDomain: 'notification',

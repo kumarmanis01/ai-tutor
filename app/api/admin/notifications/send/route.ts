@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         delivery: 'best_effort',
         to: user.email,
         subject: title,
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         html: adminBroadcastEmailHtml({ title, body: msgBody }),
         reason: 'admin_individual_send',
         featureFlagDomain: 'ops',

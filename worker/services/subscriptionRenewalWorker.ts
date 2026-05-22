@@ -89,6 +89,7 @@ export async function processRenewals(now = new Date()) {
           const graceStr = predictedGrace.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
           const retryLink = `${appUrl}/account/billing`
           const subject = 'Payment failed -- Spinzy Academy'
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           const html = paymentRetryReminderHtml({ name: user?.name ?? undefined, retryUrl: retryLink })
           if (user?.email) await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: user.email, subject, html, text: subject, reason: 'subscription_renewal', featureFlagDomain: 'billing' }).catch((e) => logger.error('sendEmailUnifiedSafe failed (renewal first-failure)', { err: String(e), userId: p.userId }))
           if (user?.phone) await sendSms(user.phone, `Payment failed. Retry: ${retryLink}. Grace estimate: ${graceStr}. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (renewal first-failure)', { err: e, userId: p.userId }))
@@ -110,6 +111,7 @@ export async function processRenewals(now = new Date()) {
         const user = await prisma.user.findUnique({ where: { id: p.userId }, select: { name: true, email: true, phone: true } })
         const subject = 'Payment overdue -- access will be paused soon'
         const billingUrl = `${appUrl}/account/billing`
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = graceStartedHtml({ name: user?.name ?? undefined, untilLabel: graceUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), billingUrl })
         if (user?.email) await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: user.email, subject, html, text: subject, reason: 'subscription_renewal', featureFlagDomain: 'billing' }).catch((e) => logger.error('sendEmailUnifiedSafe failed (enter grace)', { err: String(e), userId: p.userId }))
         if (user?.phone) await sendSms(user.phone, `Payment overdue. Grace ends ${graceUntil.toLocaleDateString('en-IN')}. Retry: ${appUrl}/account/billing. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (enter grace)', { err: String(e), userId: p.userId }))
@@ -135,6 +137,7 @@ export async function processRenewals(now = new Date()) {
         try {
           const user = await prisma.user.findUnique({ where: { id: p.userId }, select: { name: true, email: true, phone: true } })
           const subject = 'Reminder: payment overdue -- update billing'
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           const html = paymentRetryReminderHtml({ name: user?.name ?? undefined, retryUrl: `${appUrl}/account/billing` })
           if (user?.email) await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: user.email, subject, html, text: subject, reason: 'subscription_renewal', featureFlagDomain: 'billing' }).catch((e) => logger.error('sendEmailUnifiedSafe failed (grace reminder)', { err: String(e), userId: p.userId }))
           if (user?.phone) await sendSms(user.phone, `Reminder: payment overdue. Update billing: ${appUrl}/account/billing. Support: ${supportEmail}`).catch((e) => logger.error('sendSms failed (grace reminder)', { err: e, userId: p.userId }))

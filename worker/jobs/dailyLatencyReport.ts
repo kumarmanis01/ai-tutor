@@ -73,6 +73,7 @@ export async function runDailyLatencyReport(): Promise<LatencyReportResult> {
           to: oncallEmail,
           subject: `Spinzy latency alert: p95 ${p95LatencyMs}ms on ${dateLabel}`,
           text: [title, '', `p95 latency: ${p95LatencyMs}ms (threshold: ${LATENCY_ALERT_THRESHOLD_MS}ms)`, `Total turns: ${totalTurns}`, '', `Check OpenAI API latency, RAG retrieval times, and DB query performance.`].join('\n'),
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: adminBroadcastEmailHtml({ title, body }),
           reason: 'latency_alert',
           featureFlagDomain: 'ops',

@@ -278,6 +278,7 @@ export async function processParentDigest(parentId: string, weekStartIso: string
 
     const subject = `Teacher Vidya's weekly report for ${child.name}`
     const appUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
+    // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
     const html = weeklyDigestParentHtml({ parentName: parent.name, childName: child.name, sessionsThisWeek: sessions.length, streak: streak?.current ?? 0, readinessDelta, narrative, dashboardUrl: `${appUrl}/parent/dashboard` })
 
     await sendParentMilestoneNotification(parentId, { email: parent.email, subject, html, text: subject, meta: { type: 'digest', channel: 'email' } })

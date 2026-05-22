@@ -91,6 +91,7 @@ async function sendWelcomeEmail(to: string, name?: string) {
       delivery: 'best_effort',
       to,
       subject: 'Welcome to Spinzy Academy!',
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html: welcomeEmailHtml(name || to),
       reason: 'student_welcome_email',
       featureFlagDomain: 'notification',
@@ -576,6 +577,7 @@ export const authOptions: any = {
         await sendMail({
           to: identifier,
           subject: 'Sign in to Spinzy Academy',
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: magicLinkHtml(url),
           text: `Sign in to Spinzy Academy: ${url}\n\nThis link expires in 24 hours.`,
         });

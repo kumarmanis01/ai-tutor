@@ -63,6 +63,7 @@ export async function POST() {
       delivery: 'best_effort',
       to: userEmail,
       subject: 'Account deletion request received -- Spinzy Academy',
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html: deletionConfirmHtml(),
       reason: 'account_deletion_request',
       featureFlagDomain: 'notification',

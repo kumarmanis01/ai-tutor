@@ -19,13 +19,16 @@
  * - 2026-05-13T00:00:00Z | copilot | update email footer copy to reference "Spinzy Academy" and add unsubscribe link
  */
 
-import { Resend } from 'resend';
 import { createHash } from 'crypto';
+import { Resend } from 'resend';
 import { getRedis } from '@/lib/redis';
+import { logger } from '@/lib/logger';
+import { EMAIL_FROM as EMAIL_FROM_CONSTANTS, MAIL_SUBJECTS } from '@/lib/constants/mail';
 import {
   MAILER_NO_REPLY_EMAIL,
   MAILER_TOPIC_RANKER_ALERT_EMAIL,
 } from '@/lib/email/functionalityEmails';
+import { topicRankerCoverageAlertHtml } from '@/lib/email/templates';
 
 // Temporary stub for feature flag check (replace with real import if available)
 function getFeatureFlag(_domain: string): boolean { return true; }
@@ -78,15 +81,6 @@ async function sendMail(opts: MailOptions): Promise<string> {
   if (error) throw new Error(error.message);
   return data?.id ?? '';
 }
-
-// async function sendMailSafe(opts: MailOptions): Promise<void> {
-//   try {
-//     await sendMail(opts);
-//   } catch (err) {
-//     // eslint-disable-next-line no-console -- replaced with logger per guardrails
-//     logger.error('[mail] sendMailSafe failed', { error: err instanceof Error ? err.message : String(err) });
-//   }
-// }
 
 // ── Unified Email Facade ─────────────────────────────────────────────────────
 
@@ -267,8 +261,6 @@ export async function sendEmailUnifiedSafe(params: UnifiedEmailSendParams): Prom
     return { success: false, error: message };
   }
 }
-import { logger } from '@/lib/logger';
-import { EMAIL_FROM as EMAIL_FROM_CONSTANTS, MAIL_SUBJECTS } from '@/lib/constants/mail';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -979,21 +971,12 @@ export async function sendTopicRankerCoverageAlertSafe(
       ...sampledTopicIds.map((topicId) => `- ${topicId}`),
       ...(extraTopicCount > 0 ? [`- ...and ${extraTopicCount} more`] : []),
     ].join('\n');
-    const html = `
-      <p><strong>Topic ranker filtered frontier topics</strong></p>
-      <p>No active concepts were available for one or more frontier topics.</p>
-      <ul>
-        <li><strong>Student ID:</strong> ${alert.studentId}</li>
-        <li><strong>Frontier size:</strong> ${alert.frontierSize}</li>
-        <li><strong>Rankable frontier size:</strong> ${alert.rankableFrontierSize}</li>
-        <li><strong>Filtered topic count:</strong> ${filtered.length}</li>
-      </ul>
-      <p><strong>Filtered topic IDs</strong></p>
-      <ul>
-        ${sampledTopicIds.map((topicId) => `<li>${topicId}</li>`).join('')}
-      </ul>
-      ${extraTopicCount > 0 ? `<p>...and ${extraTopicCount} more</p>` : ''}
-    `;
+    const html = topicRankerCoverageAlertHtml({
+      studentId: alert.studentId,
+      frontierSize: alert.frontierSize,
+      rankableFrontierSize: alert.rankableFrontierSize,
+      filteredTopicIds: sampledTopicIds,
+    });
 
     await sendEmailUnifiedSafe({
       mode: 'raw',

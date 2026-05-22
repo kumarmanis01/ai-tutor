@@ -81,6 +81,7 @@ export async function processDistressNotification(
       delivery: 'strict',
       to: parentEmail,
       subject: `Important: ${childName} may need support`,
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html: distressNotificationParentHtml({ childName, severity }),
       text: [
         `Hi,`,

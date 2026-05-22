@@ -109,6 +109,7 @@ export async function POST(req: Request) {
         delivery: 'best_effort',
         to: channels.normalizedEmail,
         subject: MAIL_SUBJECTS.PARENT_OTP,
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         html: parentOtpHtml(emailOtp, studentName),
         reason: 'parent_otp',
       })

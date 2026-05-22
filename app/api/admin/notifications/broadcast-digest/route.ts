@@ -47,6 +47,7 @@ async function sendDigestsAsync(adminId: string) {
     try {
       const { student, masteryRow, streak } = await fetchStudentDigestData(link.studentId)
       const readiness = Math.round((masteryRow._avg.mastery ?? 0) * 100)
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       const html = weeklyDigestHtml({
         studentName: student?.name ?? 'Your child',
         sessionsThisWeek: 0,

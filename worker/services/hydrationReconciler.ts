@@ -617,6 +617,7 @@ export class HydrationReconciler {
       const subject = rootJob.subject ?? rootJob.subjectId ?? 'unknown';
       const _subjectSafe = subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const statusLabel = finalStatus === JobStatus.Completed ? 'Completed' : 'Completed with failures';
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       const report = (await import('@/lib/email/templates')).hydrationGenerationReportHtml({
         rootJobId: rootJob.id,
         subject,
