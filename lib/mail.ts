@@ -29,6 +29,7 @@ import {
   MAILER_TOPIC_RANKER_ALERT_EMAIL,
 } from '@/lib/email/functionalityEmails';
 import { topicRankerCoverageAlertHtml } from '@/lib/email/templates';
+import { BASE, BTN, FOOTER, LOGO } from '@/lib/email/layout';
 
 // Temporary stub for feature flag check (replace with real import if available)
 function getFeatureFlag(_domain: string): boolean { return true; }
@@ -334,30 +335,12 @@ export const EMAIL_FROM = EMAIL_FROM_CONSTANTS;
 
 // ── Shared HTML primitives ────────────────────────────────────────────────────
 
-const BASE_STYLE = [
-  'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;',
-  'max-width:520px;margin:0 auto;color:#1a1a1a;padding:0 8px;',
-].join('');
-
-const BTN_STYLE = [
-  'display:inline-block;padding:12px 28px;background:#534AB7;',
-  'color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;',
-].join('');
-
-const FOOTER_HTML = `
-  <p style="color:#888;font-size:12px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
-    Spinzy Academy -- AI Home Tutor<br>
-    You are receiving this because you have a Spinzy Academy account.
-    <a href="https://spinzyacademy.com/unsubscribe" style="color:#888;">Unsubscribe</a>
-  </p>
-`;
-
 function buildHtml(body: string): string {
-  return `<div style="${BASE_STYLE}">${body}${FOOTER_HTML}</div>`;
+  return `<div style="${BASE}">${LOGO}${body}${FOOTER}</div>`;
 }
 
 function cta(text: string, url: string): string {
-  return `<p><a href="${url}" style="${BTN_STYLE}">${text}</a></p>`;
+  return `<p><a href="${url}" style="${BTN}">${text}</a></p>`;
 }
 
 // ── Template catalog ──────────────────────────────────────────────────────────
