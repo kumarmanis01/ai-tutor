@@ -82,6 +82,10 @@ jest.mock('@/lib/events/domainEvents', () => ({
   emitSessionCompleted: jest.fn(),
 }));
 
+jest.mock('@/lib/student/xp', () => ({
+  awardXP: jest.fn().mockResolvedValue({ xpAwarded: 50, totalXp: 550, level: 3, leveledUp: false, newLevel: null }),
+}));
+
 import { prisma } from '@/lib/prisma';
 import { contentReadinessService } from '@/lib/session/contentReadinessService';
 import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
