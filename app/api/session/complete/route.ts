@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     // Engine handles state transition + progress persistence internally.
     const view = await completeSession(user.id, body.sessionId);
     const phase = getPhaseContent(view.currentPhase);
-    const content = await resolvePhaseContent(
+    const contentResult = await resolvePhaseContent(
       view.currentPhase,
       view.topicId,
       view.sessionId,
@@ -100,7 +100,18 @@ export async function POST(req: Request) {
       'session.complete',
     );
 
-    res = NextResponse.json({ session: view, phase, content });
+    if (contentResult.status === 'pending') {
+      res = NextResponse.json({
+        session: view,
+        phase,
+        content: null,
+        hydrating: true,
+        retryAfterMs: contentResult.retryAfterMs,
+        message: contentResult.message,
+      }, { status: 202 });
+    } else {
+      res = NextResponse.json({ session: view, phase, content: contentResult.data, hydrating: false });
+    }
   } catch (err) {
     if (err instanceof SessionError) {
       res = NextResponse.json({ error: err.message }, { status: err.status });
