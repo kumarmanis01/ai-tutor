@@ -121,7 +121,7 @@ export async function computeReadinessScore(
   try {
     // 2. Load all concepts grouped by chapter for this subject
     const chapters = await prisma.chapterDef.findMany({
-      where: { subject: { id: subjectId } },
+      where: { subjectId },
       select: {
         id: true,
         name: true,
