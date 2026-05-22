@@ -40,3 +40,6 @@ export const UPGRADE_FLOW_SUPPORT_EMAIL = 'support@spinzyacademy.com';
 export const CONTENT_JOB_ADMIN_ALERT_EMAIL = 'oncall@spinzyacademy.com';
 export const PRACTICE_HYDRATION_ALERT_EMAIL = 'spinzydigital@gmail.com';
 export const HYDRATION_GENERATION_REPORT_EMAIL = 'feedback@spinzyacademy.com';
+
+export const SUPPORT_EMAIL = CONTACT_US_SUPPORT_EMAIL;
+export const NO_REPLY_EMAIL = MAILER_NO_REPLY_EMAIL;

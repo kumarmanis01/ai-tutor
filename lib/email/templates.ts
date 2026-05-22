@@ -62,7 +62,7 @@
 //   worker/services/subscriptionRenewalWorker.ts                  paymentRetryReminderHtml (x2), graceStartedHtml
 //   worker/services/weeklyDigestWorker.ts                         weeklyDigestParentHtml
 
-import { TEMPLATES_LEGACY_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
+import { SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 import { BASE, BTN, FOOTER, LOGO } from '@/lib/email/layout'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -145,13 +145,13 @@ export function parentWelcomeHtml(parentName: string | null, studentName: string
 
       <h3 style="color:#534AB7;font-size:16px;margin-top:18px;">Privacy summary</h3>
       <p style="color:#374151;line-height:1.6;">
-        We collect and store learning analytics (sessions, answers, progress scores) to personalise instruction and show progress. We do not share personal data with third parties except vendors required to operate the service. Raw session transcripts used for model evaluation are pseudonymised and access-restricted. You can request data export or deletion by contacting ${TEMPLATES_LEGACY_SUPPORT_EMAIL}.
+        We collect and store learning analytics (sessions, answers, progress scores) to personalise instruction and show progress. We do not share personal data with third parties except vendors required to operate the service. Raw session transcripts used for model evaluation are pseudonymised and access-restricted. You can request data export or deletion by contacting ${SUPPORT_EMAIL}.
       </p>
 
       <a href="https://spinzyacademy.com/parent/dashboard" style="${BTN}">Open parent dashboard</a>
 
       <p style="color:#888;font-size:13px;margin-top:16px;">
-        Questions? Reply to this email or reach us at ${TEMPLATES_LEGACY_SUPPORT_EMAIL}
+        Questions? Reply to this email or reach us at ${SUPPORT_EMAIL}
       </p>
       ${FOOTER}
     </div>
@@ -197,7 +197,7 @@ export function paymentReceiptHtml(data: {
         </tr>
       </table>
       <p style="color:#888;font-size:13px;margin-top:16px;">
-        Questions? Reply to this email or reach us at ${TEMPLATES_LEGACY_SUPPORT_EMAIL}
+        Questions? Reply to this email or reach us at ${SUPPORT_EMAIL}
       </p>
       ${FOOTER}
     </div>
@@ -501,7 +501,7 @@ export function diagnosticReadyEmailHtml(data: {
         Start diagnostic now
       </a>
       <p style="color:#888;font-size:13px;margin-top:16px;">
-        Questions? Reply to this email or reach us at ${TEMPLATES_LEGACY_SUPPORT_EMAIL}
+        Questions? Reply to this email or reach us at ${SUPPORT_EMAIL}
       </p>
       ${FOOTER}
     </div>
@@ -648,7 +648,7 @@ export function deletionConfirmHtml(): string {
       </ul>
       <p style="color:#888;font-size:13px;">
         Learning analytics may be retained in anonymised form as required by law.
-        If you change your mind, contact ${TEMPLATES_LEGACY_SUPPORT_EMAIL} within 7 days.
+        If you change your mind, contact ${SUPPORT_EMAIL} within 7 days.
       </p>
       ${FOOTER}
     </div>
@@ -785,7 +785,7 @@ export function parentPaymentFailedHtml(data: { name?: string; retryUrl: string;
       <p>Hi ${data.name ?? 'Parent'},</p>
       <p>We attempted to process your recent payment but it failed. Please update your payment method and retry using the button below.</p>
       <a href="${data.retryUrl}" style="${BTN}">Update payment & retry</a>
-      <p style="color:#888;font-size:13px;margin-top:12px;">If you need help, contact ${data.supportEmail ?? TEMPLATES_LEGACY_SUPPORT_EMAIL}.</p>
+      <p style="color:#888;font-size:13px;margin-top:12px;">If you need help, contact ${data.supportEmail ?? SUPPORT_EMAIL}.</p>
       ${FOOTER}
     </div>
   `;

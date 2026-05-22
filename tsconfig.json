@@ -27,6 +27,7 @@
     "baseUrl": ".",
     "rootDir": ".",
     "ignoreDeprecations": "6.0",
+    "types": ["node", "react", "react-dom"],
     "plugins": [
       {
         "name": "next"

@@ -38,7 +38,6 @@ import GoogleProvider from 'next-auth/providers/google'; // Enables Google login
 // import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import { sendEmailUnifiedSafe } from '@/lib/mail';
-import { welcomeEmailHtml, magicLinkHtml as _magicLinkHtml } from '@/lib/email/templates';
 import { AUTH_NO_REPLY_EMAIL as _AUTH_NO_REPLY_EMAIL } from '@/lib/email/functionalityEmails';
 import { logger } from '@/lib/logger';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
@@ -87,14 +86,12 @@ export async function requireActiveSession() {
 async function sendWelcomeEmail(to: string, name?: string) {
   try {
     await sendEmailUnifiedSafe({
-      mode: 'raw',
+      mode: 'template',
       delivery: 'best_effort',
+      templateId: 'STUDENT_WELCOME',
       to,
-      subject: 'Welcome to Spinzy Academy!',
-      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
-      html: welcomeEmailHtml(name || to),
-      reason: 'student_welcome_email',
-      featureFlagDomain: 'notification',
+      context: { studentName: name || to },
+      featureFlagDomain: 'auth',
     });
     logger.add('Welcome email sent', { className: 'auth', methodName: 'sendWelcomeEmail' });
   } catch (error) {
