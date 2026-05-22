@@ -14,6 +14,11 @@
  * - .github/copilot-instructions.md
  *
  * EMAIL INFRA POLICY: All email sends must use lib/mail.ts (sendEmail, sendEmailBatch, sendEmailUnified, sendEmailUnifiedSafe). No direct sendMail/sendMailSafe allowed.
+ */
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import crypto from 'crypto';
+import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { parentOtpHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
@@ -109,9 +114,9 @@ export async function POST(req: NextRequest) {
           delivery: 'best_effort',
           to: parentEmail,
           subject: MAIL_SUBJECTS.PARENT_OTP,
-          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: parentOtpHtml(otp, studentName),
-          reason: 'parent_otp',
+          reason: 'parent_otp_verification',
+          featureFlagDomain: 'auth',
         });
         sentTo.email = parentEmail;
       } else {

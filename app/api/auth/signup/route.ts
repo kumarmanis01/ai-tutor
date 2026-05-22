@@ -24,7 +24,6 @@ import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { hash } from 'bcryptjs';
 import { sendEmailUnifiedSafe } from '@/lib/mail';
-import { welcomeEmailHtml } from '@/lib/email/templates';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 
@@ -83,13 +82,12 @@ export async function POST(req: NextRequest) {
     // Fire-and-forget welcome email. Centralized email infra: use sendEmailUnifiedSafe (no direct sendMail/sendMailSafe allowed).
     if (created?.email) {
       sendEmailUnifiedSafe({
-        mode: 'raw',
+        mode: 'template',
         delivery: 'best_effort',
+        templateId: 'STUDENT_WELCOME',
         to: created.email,
-        subject: 'Welcome to Spinzy Academy!',
-        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
-        html: welcomeEmailHtml(created.name ?? 'there'),
-        reason: 'student_signup_welcome',
+        context: { studentName: created.name ?? 'there' },
+        featureFlagDomain: 'auth',
       })
         .then(() => prisma.user.update({ where: { id: created.id }, data: { welcomeEmailSent: true } }))
         .catch((e) => logger.warn('/api/auth/signup: welcome email/update flag failed', { className: 'api.auth.signup', methodName: 'POST', error: String(e) }));
