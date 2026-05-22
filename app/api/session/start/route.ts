@@ -13,6 +13,8 @@
  * EDIT LOG:
  * - 2026-05-13T00:00:00Z | copilot | emit canonical student session start analytics on structured session entry
  * - 2026-05-13T00:00:00Z | copilot | emit first-session analytics for students who have not emitted first-session yet
+ * - 2026-05-22T00:00:00Z | claude  | return 202 HYDRATING when resolvePhaseContent yields a pending sentinel;
+ *                                    use ContentReady / ContentHydrating / ContentError union for all responses.
  */
 
 import { NextResponse } from 'next/server';
@@ -26,7 +28,12 @@ import {
   isSessionEngineEnabled,
   SessionError,
 } from '@/lib/session/sessionEngine';
-import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
+import {
+  resolvePhaseContent,
+  CONTENT_HYDRATING,
+  type ContentReady,
+  type ContentError,
+} from '@/lib/session/getPhaseContent';
 import { logger } from '@/lib/logger';
 import { recordSessionEvent } from '@/lib/session/sessionEvents';
 
@@ -42,7 +49,9 @@ export const dynamic = 'force-dynamic';
  * resumed (idempotent -- safe to call multiple times).
  *
  * Response:
- *   { session: SessionView, phase: PhaseContent, content: PhaseContentData }
+ *   200 { status: 'READY',     session, phase, content }
+ *   202 { status: 'HYDRATING', retryAfterMs: 5000 }  -- content is still being generated
+ *   4xx/5xx { status: 'ERROR', code, message }
  */
 export async function POST(req: Request) {
   const start = Date.now();
@@ -129,13 +138,20 @@ export async function POST(req: Request) {
       );
     }
 
-    res = NextResponse.json({ session: view, phase, content });
+    if (content.type === 'pending') {
+      res = NextResponse.json(CONTENT_HYDRATING, { status: 202 });
+    } else {
+      const ready: ContentReady = { status: 'READY', session: view, phase, content };
+      res = NextResponse.json(ready);
+    }
   } catch (err) {
     if (err instanceof SessionError) {
-      res = NextResponse.json({ error: err.message }, { status: err.status });
+      const errBody: ContentError = { status: 'ERROR', code: 'SESSION_ERROR', message: err.message };
+      res = NextResponse.json(errBody, { status: err.status });
     } else {
       logger.error('SessionStartAPI.error', { userId: user.id, error: err });
-      res = NextResponse.json({ error: 'Internal error' }, { status: 500 });
+      const errBody: ContentError = { status: 'ERROR', code: 'INTERNAL_ERROR', message: 'Internal error' };
+      res = NextResponse.json(errBody, { status: 500 });
     }
   }
 
