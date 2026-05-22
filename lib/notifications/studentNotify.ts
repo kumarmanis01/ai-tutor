@@ -53,6 +53,7 @@ export async function notifyStudentOnSessionComplete(
 
     if (student.email) {
       try {
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = sessionCompleteForStudentHtml({
           studentName,
           conceptName: data.conceptName,

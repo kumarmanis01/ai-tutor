@@ -16,6 +16,52 @@
  *   in sessionCompleteForParentHtml to comply with no-numeric-score product rule
  */
 
+// CONSOLIDATION PENDING: the following call sites bypass sendEmailUnified and call template
+// functions directly. Each is marked with a TODO(email-consolidation) comment at the call site.
+// Migrate each to the EMAIL_TEMPLATES catalog in lib/mail.ts as a follow-up task.
+//
+//   app/api/auth/signup/route.ts                                  welcomeEmailHtml
+//   app/api/user/onboarding/route.ts                              welcomeEmailHtml
+//   app/api/auth/parent/send-otp/route.ts                         parentOtpHtml
+//   app/api/enroll/send-parent-otp/route.ts                       parentOtpHtml
+//   app/api/student/verify-parent/send-otp/route.ts               parentOtpHtml
+//   app/api/parent/create-child/route.ts                          parentWelcomeHtml
+//   app/api/parent/link-child/route.ts                            parentWelcomeHtml
+//   app/api/parent/link/route.ts                                  parentWelcomeHtml
+//   app/api/parent/subscription/verify/route.ts                   paymentReceiptHtml
+//   app/api/billing/verify/route.ts                               paymentReceiptHtml
+//   app/api/payments/verify-subscription/route.ts                 paymentReceiptHtml
+//   app/api/student/subscription/verify/route.ts                  paymentReceiptHtml (x2)
+//   app/api/mock/attempt/[attemptId]/complete/route.ts            milestoneEmailHtml
+//   app/api/admin/test-email/route.ts                             welcomeEmailHtml, magicLinkHtml, paymentReceiptHtml, parentOtpHtml
+//   app/api/admin/notifications/broadcast/route.ts                adminBroadcastEmailHtml
+//   app/api/admin/notifications/broadcast-digest/route.ts         weeklyDigestHtml
+//   app/api/admin/notifications/send/route.ts                     adminBroadcastEmailHtml
+//   app/api/admin/notifications/trigger-pending-diagnostics/route.ts adminBroadcastEmailHtml
+//   app/api/session/[sessionId]/practice/hydrate/route.ts         adminBroadcastEmailHtml
+//   app/api/student/account/deletion-request/route.ts             deletionConfirmHtml
+//   lib/auth.ts                                                   welcomeEmailHtml, magicLinkHtml
+//   lib/contentJobAlerts.ts                                       contentJobFailureAlertHtml
+//   lib/notifications/parentNotify.ts                             diagnosticCompleteForParentHtml, planGeneratedForParentHtml, sessionCompleteForParentHtml, inactivityNudgeHtml
+//   lib/notifications/studentNotify.ts                            sessionCompleteForStudentHtml
+//   lib/student/xp.ts                                             milestoneEmailHtml
+//   lib/student/badges.ts                                         milestoneEmailHtml
+//   worker/jobs/dailyLatencyReport.ts                             adminBroadcastEmailHtml
+//   worker/jobs/dailyQuestionGenMetrics.ts                        adminBroadcastEmailHtml
+//   worker/jobs/diagnosticReadinessCheck.ts                       diagnosticReadyEmailHtml
+//   worker/jobs/inactivityAlert.ts                                inactivityNudgeHtml
+//   worker/jobs/parentEmailDigest.ts                              parentDigestHtml (x2)
+//   worker/jobs/weeklyRatingAggregation.ts                        adminBroadcastEmailHtml
+//   worker/services/costReportingWorker.ts                        costAnomalyHtml
+//   worker/services/distressNotificationWorker.ts                 distressNotificationParentHtml
+//   worker/services/doubtEscalationNotifier.ts                    adminBroadcastEmailHtml
+//   worker/services/hydrationReconciler.ts                        hydrationGenerationReportHtml
+//   worker/services/installmentDunningWorker.ts                   paymentReceiptHtml, graceStartedHtml
+//   worker/services/paymentDunningWorker.ts                       paymentReceiptHtml (x2), paymentRetryReminderHtml (x2), graceStartedHtml, subscriptionExpiredHtml
+//   worker/services/readinessDropWorker.ts                        adminBroadcastEmailHtml
+//   worker/services/subscriptionRenewalWorker.ts                  paymentRetryReminderHtml (x2), graceStartedHtml
+//   worker/services/weeklyDigestWorker.ts                         weeklyDigestParentHtml
+
 import { TEMPLATES_LEGACY_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 import { BASE, BTN, FOOTER, LOGO } from '@/lib/email/layout'
 
@@ -564,7 +610,7 @@ export function parentDigestHtml(parentName: string, childSections: string[]): s
     </head>
     <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#0f172a;background:#ffffff;">
       <div style="text-align:center;margin-bottom:24px;">
-        <img src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;margin:0 auto;max-width:100%;height:auto;" />
+        ${LOGO}
         <p style="color:#6B7280;margin:8px 0 0;">Weekly Learning Summary</p>
       </div>
 

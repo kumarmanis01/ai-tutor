@@ -121,6 +121,7 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
       try {
         await createInvoiceForPayment({ userId: subscription.userId, paymentId: undefined, studentId: undefined, amountPaise: inst.amount, planLabel: '', billingCycle: '' })
         const subject = `Payment received -- Spinzy installment paid`
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = paymentReceiptHtml({
           studentName: parent.name ?? 'Parent',
           plan: subscription.plan ?? '',
@@ -154,6 +155,7 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
       try {
         const subject = `Payment failed -- grace period started`
         const billingUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = graceStartedHtml({ name: parent.name ?? undefined, untilLabel: graceUntil.toLocaleString('en-IN'), billingUrl })
         if (parent.email) await sendEmailUnifiedSafe({
           delivery: 'best_effort',

@@ -257,6 +257,7 @@ export async function POST(req: Request) {
           delivery: 'best_effort',
           to: parent.email,
           subject: 'Payment confirmed -- Spinzy Academy',
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: plan.label, amountRupees: plan.billedRupees, billingCycle: plan.perMonthDisplay, renewalDate }),
           reason: 'parent_subscription_verified',
           featureFlagDomain: 'billing',

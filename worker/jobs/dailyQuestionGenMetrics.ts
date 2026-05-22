@@ -84,6 +84,7 @@ export async function runDailyQuestionGenMetrics(): Promise<QuestionGenMetricsRe
           to: oncallEmail,
           subject: `Spinzy question-gen failure rate: ${pct}% on ${dateLabel}`,
           text: [title, '', `Failure rate: ${pct}% (threshold: ${threshold}%)`, `Total calls: ${totalCalls}`, `Failed calls: ${failedCalls}`, '', `Check the OpenAI API key limits, model availability, and question generation prompts.`].join('\n'),
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: adminBroadcastEmailHtml({ title, body }),
           reason: 'question_gen_failure_alert',
           featureFlagDomain: 'ops',

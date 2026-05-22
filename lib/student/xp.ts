@@ -156,6 +156,7 @@ export async function awardXP(params: {
           const dashboardUrl = `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/dashboard`
 
           await Promise.allSettled(links.map((pl: (typeof links)[number]) => {
+            // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
             const brandedHtml = milestoneEmailHtml({
               parentName: pl.parent.name ?? 'Parent',
               studentName,

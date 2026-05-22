@@ -94,6 +94,7 @@ async function processEscalation(esc: any, now: Date): Promise<void> {
         if (user?.email) {
           const subject = 'Improved explanation available'
           const bodyHtml = `<p>Hi ${user.name ?? ''},</p><p>We've updated our explanation for a topic you asked about. View the improved answer below.</p>`
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           const html = adminBroadcastEmailHtml({ title: subject, body: `${bodyHtml}<p><a href=\"${deepLink}\">View the improved answer</a></p>`, ctaUrl: deepLink })
           const text = `We've updated our explanation for a topic you asked about. View: ${deepLink}`
           await sendEmailUnifiedSafe({

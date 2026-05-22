@@ -272,6 +272,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
           delivery: 'best_effort',
           to: oncallEmail,
           subject: alertSubject,
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: costAnomalyHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
           text: [
             `Spinzy AI cost alert -- ${dateLabel}`,

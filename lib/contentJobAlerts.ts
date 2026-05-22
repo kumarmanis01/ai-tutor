@@ -129,6 +129,7 @@ export async function sendJobFailureAlert(opts: {
   const adminUrl =
     `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/admin/jobs`;
 
+  // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
   const html = contentJobFailureAlertHtml({
     hydrationJobId: opts.hydrationJobId,
     lastError: opts.lastError,

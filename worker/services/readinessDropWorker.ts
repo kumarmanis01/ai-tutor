@@ -215,6 +215,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
         const remediationPlain = remediationTextParts.join(' | ')
 
         const bodyHtml = `<p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationHtml}`
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = adminBroadcastEmailHtml({ title: subject, body: bodyHtml, ctaUrl: dashboardLink })
 
         // Send email and SMS, but only mark rate-limit if at least one channel succeeded

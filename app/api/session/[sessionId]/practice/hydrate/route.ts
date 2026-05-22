@@ -327,6 +327,7 @@ export async function POST(
     delivery: 'best_effort',
     to: PRACTICE_HYDRATION_ALERT_EMAIL,
     subject: 'Practice Hydration Requested',
+    // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
     html: adminBroadcastEmailHtml({
       subject: 'Practice Hydration Requested',
       body: `Manual practice hydration requested for session ${sessionId} (student ${studentId})`,

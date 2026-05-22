@@ -188,6 +188,7 @@ export async function checkSessionBadges(params: {
         const dashboardUrl = `${baseUrl}/parent/dashboard`
 
         const sends = parentLinks.map((pl) => {
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           const brandedHtml = milestoneEmailHtml({
             parentName: pl.parent.name ?? 'Parent',
             studentName,
