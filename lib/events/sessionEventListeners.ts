@@ -6,18 +6,27 @@
  * Parent and student notifications are sent (fire-and-forget) for every completed session.
  */
 
-import { onSessionCompleted } from './domainEvents';
+import { onSessionCompleted, type SessionCompletedPayload } from './domainEvents';
 import { invalidateTopicRankerCache } from '@/lib/recommendations/topicRanker';
 import { recordSessionCompletion } from '@/lib/engagement/engagementService';
+import { cacheDel } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { notifyParent, DEFAULT_DASHBOARD_URL } from '@/lib/notifications/parentNotify';
 import { notifyStudentOnSessionComplete } from '@/lib/notifications/studentNotify';
 import { PARENT_NOTIF_EVENTS } from '@/lib/constants/mail';
 import { prisma } from '@/lib/prisma';
 
+const dashCacheKey = (userId: string) => `dash:v1:${userId}`;
+
 onSessionCompleted((payload) => {
   invalidateTopicRankerCache(payload.studentId).catch((err) =>
     logger.warn('[SESSION_EVENT] TopicRanker cache invalidation failed', {
+      studentId: payload.studentId,
+      error: err,
+    }),
+  );
+  cacheDel(dashCacheKey(payload.studentId)).catch((err) =>
+    logger.warn('[SESSION_EVENT] Dashboard cache bust failed', {
       studentId: payload.studentId,
       error: err,
     }),
@@ -29,7 +38,7 @@ onSessionCompleted((payload) => {
       error: err,
     }),
   );
-  notifyOnSessionComplete(payload.studentId, payload.sessionId).catch((err) =>
+  notifyOnSessionComplete(payload).catch((err) =>
     logger.warn('[SESSION_EVENT] Session-complete notifications failed', {
       studentId: payload.studentId,
       sessionId: payload.sessionId,
@@ -38,7 +47,9 @@ onSessionCompleted((payload) => {
   );
 });
 
-async function notifyOnSessionComplete(studentId: string, sessionId: string): Promise<void> {
+async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promise<void> {
+  const { studentId, sessionId, xpAwarded, accuracy, masteryDelta, masteryAfter, leveledUp, newLevel } = payload;
+
   const [session, student] = await Promise.all([
     prisma.structuredSession.findUnique({
       where: { id: sessionId },
@@ -74,17 +85,17 @@ async function notifyOnSessionComplete(studentId: string, sessionId: string): Pr
       },
     }),
     notifyStudentOnSessionComplete(studentId, {
-      xpEarned: 0,
+      xpEarned: xpAwarded,
       totalXp: student?.totalXp ?? 0,
       currentStreak: student?.currentStreak ?? 0,
       conceptName: topicName,
-      masteryDelta: 0,
-      masteryAfter: 0,
-      accuracy: 0,
+      masteryDelta,
+      masteryAfter,
+      accuracy,
       badgeNames: [],
       sessionDurationMinutes: 0,
-      leveledUp: false,
-      newLevel: null,
+      leveledUp,
+      newLevel,
     }),
   ]);
 }
