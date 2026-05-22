@@ -43,6 +43,7 @@ import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/tr
 import { validatePhaseCompletion } from '@/lib/session/phaseCompletionValidator';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { emitSessionCompleted, type SessionCompletedPayload } from '@/lib/events/domainEvents';
+import { awardXP } from '@/lib/student/xp';
 
 // ─── Phase Order ──────────────────────────────────────────────────────────────
 
@@ -497,16 +498,21 @@ export async function advanceSession(
   }
 
   if (transition.isComplete) {
+    // Derive accuracy from the highest-weight phase result stored in session meta.
+    // masteryDelta=0: the STUDY touch applied here has weight=0; actual deltas
+    // were applied atomically during practice/test answer submission.
+    const sessionMeta = (updated.meta as Record<string, unknown>) ?? {};
+    const testScore = (sessionMeta['testResult'] as { score?: number } | undefined)?.score;
+    const practiceScore = (sessionMeta['practiceResult'] as { score?: number } | undefined)?.score;
+
     // Persist progress and invalidate the ranker cache -- fire-and-forget
     // so they don't block the response.
     persistCompletionProgress(studentId, updated.topicId, sessionId, {
-      xpAwarded: 0,
-      accuracy: 0,
+      accuracy: testScore ?? practiceScore ?? 0,
       masteryDelta: 0,
-      masteryAfter: 0,
-      leveledUp: false,
-      newLevel: null,
-    });
+    }).catch((err) =>
+      logger.error('[SESSION_COMPLETION_PERSIST_FAILED]', { studentId, sessionId, error: err }),
+    );
   } else {
     touchBridgedLearningSession(sessionId).catch(() => {});
   }
@@ -640,14 +646,17 @@ export async function completeSession(
   });
 
   // Persist progress and invalidate the ranker cache -- fire-and-forget.
+  // Force-completed sessions may lack test/practice results; accuracy defaults to 0.
+  const forceSessionMeta = (updated.meta as Record<string, unknown>) ?? {};
+  const forceTestScore = (forceSessionMeta['testResult'] as { score?: number } | undefined)?.score;
+  const forcePracticeScore = (forceSessionMeta['practiceResult'] as { score?: number } | undefined)?.score;
+
   persistCompletionProgress(studentId, updated.topicId, sessionId, {
-    xpAwarded: 0,
-    accuracy: 0,
+    accuracy: forceTestScore ?? forcePracticeScore ?? 0,
     masteryDelta: 0,
-    masteryAfter: 0,
-    leveledUp: false,
-    newLevel: null,
-  });
+  }).catch((err) =>
+    logger.error('[SESSION_COMPLETION_PERSIST_FAILED]', { studentId, sessionId, error: err }),
+  );
 
   logger.info('[SESSION_FORCE_COMPLETED]', {
     studentId,
@@ -806,14 +815,18 @@ async function generateHomeworkWithRetry(
  * session completes. Both operations are fire-and-forget: failures are logged
  * but must not surface to the student.
  */
-type CompletionStats = Pick<SessionCompletedPayload, 'xpAwarded' | 'accuracy' | 'masteryDelta' | 'masteryAfter' | 'leveledUp' | 'newLevel'>;
+// XP awarded on every structured session completion (base; not score-adjusted).
+const XP_PER_SESSION_COMPLETE = 50;
 
-function persistCompletionProgress(
+// xpAwarded/leveledUp/newLevel are derived from awardXP inside the function, not passed by callers.
+type CompletionStats = Pick<SessionCompletedPayload, 'accuracy' | 'masteryDelta'>;
+
+async function persistCompletionProgress(
   studentId: string,
   topicId: string,
   sessionId: string,
   stats: CompletionStats,
-): void {
+): Promise<void> {
   // STUDY touch: updates lastStudiedAt so the recency signal in TopicRanker is
   // accurate. Actual mastery deltas come from practice/test answer submissions.
   updateStudentTopicProgress({
@@ -826,8 +839,32 @@ function persistCompletionProgress(
     logger.error('[SESSION_PROGRESS_UPDATE_FAILED]', { studentId, topicId, sessionId, error: err }),
   );
 
+  // Read current mastery for masteryAfter. STUDY touch has weight=0 so mastery
+  // is unchanged by this call; the real delta was applied during practice/test.
+  let masteryAfter = 0;
+  try {
+    const progress = await prisma.studentTopicProgress.findUnique({
+      where: { studentId_topicId: { studentId, topicId } },
+      select: { mastery: true },
+    });
+    if (progress) masteryAfter = progress.mastery;
+  } catch (err) {
+    logger.warn('[SESSION_MASTERY_READ_FAILED]', { studentId, topicId, sessionId, error: String(err) });
+  }
+
+  const xpResult = await awardXP({ studentId, amount: XP_PER_SESSION_COMPLETE, source: 'session_correct', sessionId });
+
   // COUPLING-01: Emit domain event; TopicRanker and engagement listen.
-  emitSessionCompleted({ studentId, sessionId, ...stats });
+  emitSessionCompleted({
+    studentId,
+    sessionId,
+    xpAwarded: xpResult?.xpAwarded ?? 0,
+    accuracy: stats.accuracy,
+    masteryDelta: stats.masteryDelta,
+    masteryAfter,
+    leveledUp: xpResult?.leveledUp ?? false,
+    newLevel: xpResult?.newLevel ?? null,
+  });
 
   completeBridgedLearningSession(sessionId).catch((err) =>
     logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
