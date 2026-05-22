@@ -9,15 +9,24 @@
 import { onSessionCompleted } from './domainEvents';
 import { invalidateTopicRankerCache } from '@/lib/recommendations/topicRanker';
 import { recordSessionCompletion } from '@/lib/engagement/engagementService';
+import { cacheDel } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { notifyParent, DEFAULT_DASHBOARD_URL } from '@/lib/notifications/parentNotify';
 import { notifyStudentOnSessionComplete } from '@/lib/notifications/studentNotify';
 import { PARENT_NOTIF_EVENTS } from '@/lib/constants/mail';
 import { prisma } from '@/lib/prisma';
 
+const dashCacheKey = (userId: string) => `dash:v1:${userId}`;
+
 onSessionCompleted((payload) => {
   invalidateTopicRankerCache(payload.studentId).catch((err) =>
     logger.warn('[SESSION_EVENT] TopicRanker cache invalidation failed', {
+      studentId: payload.studentId,
+      error: err,
+    }),
+  );
+  cacheDel(dashCacheKey(payload.studentId)).catch((err) =>
+    logger.warn('[SESSION_EVENT] Dashboard cache bust failed', {
       studentId: payload.studentId,
       error: err,
     }),
