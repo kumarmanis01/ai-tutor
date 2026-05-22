@@ -87,6 +87,7 @@ export async function runDiagnosticReadinessCheck(): Promise<{ checked: number; 
           const studentName = student.name ?? 'there';
           const diagnosticUrl = `${BASE_URL}/diagnostic/${subjectId}`;
 
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           const html = diagnosticReadyEmailHtml({ studentName, subjectName, diagnosticUrl });
 
           // Use sendEmailUnified with delivery: 'strict' (throws on failure) so we only delete the key after a

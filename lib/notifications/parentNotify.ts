@@ -133,6 +133,7 @@ async function sendEmailForEvent(
     if (event === PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE) {
       const d = (payload as { event: string; data: DiagnosticCompleteData }).data;
       subject = formatSubject(MAIL_SUBJECTS.DIAGNOSTIC_COMPLETE, studentName);
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html = diagnosticCompleteForParentHtml({
         parentName: 'there',
         studentName,
@@ -143,6 +144,7 @@ async function sendEmailForEvent(
     } else if (event === PARENT_NOTIF_EVENTS.PLAN_GENERATED) {
       const d = (payload as { event: string; data: PlanGeneratedData }).data;
       subject = formatSubject(MAIL_SUBJECTS.PLAN_GENERATED, studentName);
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html = planGeneratedForParentHtml({
         parentName: 'there',
         studentName,
@@ -152,6 +154,7 @@ async function sendEmailForEvent(
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_COMPLETE) {
       const d = (payload as { event: string; data: SessionCompleteData }).data;
       subject = formatSubject(MAIL_SUBJECTS.SESSION_COMPLETE, studentName);
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html = sessionCompleteForParentHtml({
         parentName: 'there',
         studentName,
@@ -173,6 +176,7 @@ async function sendEmailForEvent(
     } else if (event === PARENT_NOTIF_EVENTS.SESSION_MISSED) {
       const d = (payload as { event: string; data: SessionMissedData }).data;
       subject = formatSubject(MAIL_SUBJECTS.SESSION_MISSED, studentName);
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html = inactivityNudgeHtml({ parentName: 'there', studentName, inactiveDays: 0, lastStudiedLabel: '', dashboardUrl: d.dashboardUrl });
     } else {
       // AUTH / welcome -- no separate parent email for auth event (student gets magic link)

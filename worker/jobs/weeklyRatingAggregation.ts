@@ -82,6 +82,7 @@ export async function runWeeklyRatingAggregation(): Promise<RatingAggregationRes
           to: oncallEmail,
           subject: `Spinzy session rating alert: ${lowRatingRows.length} activity type(s) below ${RATING_ALERT_THRESHOLD}/5`,
           text: [title, '', ...lowRatingRows.map((r) => `- ${r.activityType} / ${r.activityRef ?? '(no ref)'}: avg ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)`), '', `Total activity types checked: ${rows.length}`].join('\n'),
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: adminBroadcastEmailHtml({ title, body }),
           reason: 'rating_alert',
           featureFlagDomain: 'ops',

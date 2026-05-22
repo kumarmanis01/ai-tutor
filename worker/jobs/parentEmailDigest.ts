@@ -212,6 +212,7 @@ export async function sendParentDigests(): Promise<number> {
         childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals, aiParagraph));
       }
 
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       const html = parentDigestHtml(parent.name, childSections);
       const subject = t('digest.subject', undefined, parent.language)
       const text = t('digest.fallback_text', undefined, parent.language)
@@ -471,6 +472,7 @@ function buildChildSection(
 // `buildDigestHtml` to be exported from this module. Delegate to
 // the centralized template to avoid breaking imports.
 export function buildDigestHtml(parentName: string, childSections: string[]): string {
+  // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
   const html = parentDigestHtml(parentName, childSections);
   // Ensure dark-mode media query is present for legacy callers/tests
   const darkModeCss = `\n@media (prefers-color-scheme: dark) {\n  body { background-color: #0b1220 !important; color: #E6EEF8 !important; }\n  .muted { color: #9aa6b2 !important; }\n  .card { background-color: #071022 !important; border-color: #1f2937 !important; color: #E6EEF8 !important; }\n  .stat-bg-1 { background: #071022 !important; }\n  .stat-text { color: #E6EEF8 !important; }\n  .cta { background: #7c3aed !important; color: #ffffff !important; }\n  a { color: #8b5cf6 !important; }\n}\n`;

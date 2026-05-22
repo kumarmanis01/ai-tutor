@@ -39,6 +39,7 @@ export async function POST(_req: NextRequest) {
     for (const t of targets) {
       try {
         void sendPushSafe(t.id, { title, body })
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         if (t.email) void sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: t.email, subject: title, html: adminBroadcastEmailHtml({ title, body, ctaUrl: 'https://spinzyacademy.com/diagnostic' }), reason: 'pending_diagnostic_reminder', featureFlagDomain: 'notification' })
       } catch (e) {
         logger.warn('[notifications/trigger-pending-diagnostics] send failed for user', { userId: t.id, error: String(e) })

@@ -34,14 +34,17 @@ export async function POST(req: NextRequest) {
   const templateMap: Record<string, { subject: string; html: string }> = {
     welcome: {
       subject: 'Spinzy Academy -- email test (welcome)',
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html: welcomeEmailHtml('Test User'),
     },
     'magic-link': {
       subject: 'Spinzy Academy -- email test (magic link)',
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html: magicLinkHtml('https://spinzyacademy.com/auth/login?token=test'),
     },
     receipt: {
       subject: 'Spinzy Academy -- email test (receipt)',
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html: paymentReceiptHtml({
         studentName: 'Test Student',
         plan: 'Monthly',
@@ -52,6 +55,7 @@ export async function POST(req: NextRequest) {
     },
     otp: {
       subject: 'Spinzy Academy -- email test (parent OTP)',
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       html: parentOtpHtml('123456', 'Test Student'),
     },
   };

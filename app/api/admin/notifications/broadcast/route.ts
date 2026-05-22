@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
         where: { id: { in: userIds }, email: { not: null } },
         select: { email: true },
       });
+      // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
       const html = adminBroadcastEmailHtml({ title, body: msgBody });
       for (const user of users) {
         if (user.email) {

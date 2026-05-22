@@ -276,6 +276,7 @@ export async function POST(req: Request) {
         delivery: 'best_effort',
         to: user.email,
         subject: 'Payment confirmed -- Spinzy Academy',
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         html: paymentReceiptHtml({
           studentName: user.name ?? 'Student',
           plan: plan.label,
@@ -305,6 +306,7 @@ export async function POST(req: Request) {
         delivery: 'best_effort',
         to: user.email,
         subject: 'Payment confirmed -- Spinzy Academy',
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         html: paymentReceiptHtml({
           studentName: user.name ?? 'Student',
           plan: plan.label,

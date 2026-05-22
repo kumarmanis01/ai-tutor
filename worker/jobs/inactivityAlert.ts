@@ -202,6 +202,7 @@ export async function runInactivityAlerts(): Promise<number> {
           const lastStudiedLabel = s.lastSessionDate
             ? new Date(s.lastSessionDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
             : ''
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           const brandedHtml = inactivityNudgeHtml({
             parentName: parent.name ?? 'Parent',
             studentName: s.name ?? 'your child',

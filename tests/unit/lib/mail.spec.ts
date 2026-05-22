@@ -43,6 +43,9 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
+// Ensure RESEND_API_KEY is set before any module-level singleton initialisation
+process.env.RESEND_API_KEY = 'test-key';
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
@@ -239,42 +242,39 @@ describe('STUDENT_DISENGAGED_CRITICAL template copy', () => {
 // ── sendEmail ─────────────────────────────────────────────────────────────────
 
 describe('sendEmail()', () => {
-  it('should return success when sendMailSafe resolves', async () => {
-    mockSendMailSafe.mockResolvedValueOnce(undefined);
+  it('should return success when Resend send resolves', async () => {
     const result = await sendEmail('STUDENT_WELCOME', 'test@example.com', { studentName: 'Aarav' });
     expect(result.success).toBe(true);
-    expect(mockSendMailSafe).toHaveBeenCalledTimes(1);
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
   });
 
   it('should return failure for unknown templateId', async () => {
     const result = await sendEmail('NONEXISTENT_TEMPLATE', 'test@example.com', {});
     expect(result.success).toBe(false);
     expect(result.error).toContain('Unknown template');
-    expect(mockSendMailSafe).not.toHaveBeenCalled();
+    expect(mockResendSend).not.toHaveBeenCalled();
   });
 
-  it('should return failure when sendMailSafe throws', async () => {
-    mockSendMailSafe.mockRejectedValueOnce(new Error('SMTP error'));
+  it('should return failure when Resend returns an error', async () => {
+    mockResendSend.mockResolvedValueOnce({ data: null, error: { message: 'SMTP error' } });
     const result = await sendEmail('STUDENT_WELCOME', 'test@example.com', { studentName: 'Aarav' });
     expect(result.success).toBe(false);
     expect(result.error).toContain('SMTP error');
   });
 
-  it('should pass correct subject to sendMailSafe', async () => {
-    mockSendMailSafe.mockResolvedValueOnce(undefined);
+  it('should pass correct subject to Resend', async () => {
     await sendEmail('STUDENT_WELCOME', 'test@example.com', { studentName: 'Aarav' });
-    const call = mockSendMailSafe.mock.calls[0][0];
+    const call = mockResendSend.mock.calls[0][0];
     expect(call.subject).toContain('Aarav');
   });
 
-  it('should pass html and text to sendMailSafe', async () => {
-    mockSendMailSafe.mockResolvedValueOnce(undefined);
+  it('should pass html and text to Resend', async () => {
     await sendEmail('PARENT_WEEKLY_REPORT', 'parent@example.com', {
       studentName: 'Aarav',
       weekOf: 'May 2026',
       studyDays: 5,
     });
-    const call = mockSendMailSafe.mock.calls[0][0];
+    const call = mockResendSend.mock.calls[0][0];
     expect(typeof call.html).toBe('string');
     expect(call.html.length).toBeGreaterThan(0);
   });
@@ -284,10 +284,10 @@ describe('sendEmail()', () => {
 
 describe('sendEmailBatch()', () => {
   it('should return correct sent/failed counts', async () => {
-    mockSendMailSafe
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockResolvedValueOnce(undefined);
+    mockResendSend
+      .mockResolvedValueOnce({ data: { id: 'id-1' }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'fail' } })
+      .mockResolvedValueOnce({ data: { id: 'id-3' }, error: null });
 
     const result = await sendEmailBatch([
       { templateId: 'STUDENT_WELCOME',  to: 'a@example.com', context: { studentName: 'A' } },

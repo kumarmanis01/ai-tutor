@@ -105,6 +105,7 @@ export async function processPaymentDunning(): Promise<void> {
               try {
                 await createInvoiceForPayment({ userId: s.userId, paymentId: undefined, studentId: undefined, amountPaise: 0, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
                 const subject = `Payment applied from credits -- Spinzy subscription`
+                // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
                 const html = paymentReceiptHtml({
                   studentName: parent.name ?? 'Parent',
                   plan: plan.label,
@@ -173,6 +174,7 @@ export async function processPaymentDunning(): Promise<void> {
                 try {
                   await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId || undefined, studentId: undefined, amountPaise: netAmountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
                   const subject = `Payment received -- Spinzy subscription`
+                  // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
                   const html = paymentReceiptHtml({
                     studentName: parent.name ?? 'Parent',
                     plan: plan.label,
@@ -199,6 +201,7 @@ export async function processPaymentDunning(): Promise<void> {
         // fallback: send reminder and bump attempts
         const subject = `Payment retry reminder -- Spinzy subscription`
         const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = paymentRetryReminderHtml({ name: parent.name ?? undefined, retryUrl: retryLink })
 
         await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
@@ -221,6 +224,7 @@ export async function processPaymentDunning(): Promise<void> {
         if (!parent) continue
         const subject = `Payment failed -- grace period started`
         const billingUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = graceStartedHtml({ name: parent.name ?? undefined, untilLabel: graceUntil.toLocaleString('en-IN'), billingUrl })
         await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
         if (parent.phone) await sendSms(parent.phone, `Spinzy: grace period started until ${graceUntil.toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
@@ -245,6 +249,7 @@ export async function processPaymentDunning(): Promise<void> {
 
         const subject = `Reminder: update payment to keep Spinzy access`
         const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         const html = paymentRetryReminderHtml({ name: parent.name ?? undefined, retryUrl: retryLink })
         await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email ?? '', subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
         if (parent.phone) await sendSms(parent.phone, `Reminder: Spinzy grace until ${new Date(s.graceUntil!).toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
@@ -271,6 +276,7 @@ export async function processPaymentDunning(): Promise<void> {
         if (parent?.email) {
           const subject = `Subscription expired -- action required`
           const renewUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           const html = subscriptionExpiredHtml({ name: parent.name ?? undefined, renewUrl })
           await sendEmailUnifiedSafe({ mode: 'raw', delivery: 'best_effort', to: parent.email, subject, html, reason: 'payment_dunning', featureFlagDomain: 'billing' })
         }

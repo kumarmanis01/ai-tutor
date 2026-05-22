@@ -193,6 +193,7 @@ export async function POST(req: Request) {
         delivery: 'best_effort',
         to: parentEmail,
         subject: `Welcome -- linked to ${studentName}`,
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         html: parentWelcomeHtml(parentName, studentName),
         reason: 'parent_link_child_welcome',
         featureFlagDomain: 'notification',

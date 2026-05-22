@@ -177,6 +177,7 @@ export async function POST(req: Request) {
           delivery: 'best_effort',
           to: parent.email,
           subject: `${child.name}'s learning account is ready on Spinzy`,
+          // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
           html: parentWelcomeHtml(parentName, child.name),
           reason: 'parent_child_created_welcome',
           featureFlagDomain: 'notification',

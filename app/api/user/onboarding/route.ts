@@ -534,6 +534,7 @@ export async function POST(req: NextRequest) {
         delivery: 'best_effort',
         to: updatedUser.email,
         subject: 'Welcome to Spinzy Academy!',
+        // TODO(email-consolidation): this bypasses sendEmailUnified -- migrate to EMAIL_TEMPLATES catalog
         html: welcomeEmailHtml(updatedUser.name ?? 'there'),
         reason: 'student_onboarding_welcome',
       })
