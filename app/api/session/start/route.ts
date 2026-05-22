@@ -30,8 +30,6 @@ import {
 } from '@/lib/session/sessionEngine';
 import {
   resolvePhaseContent,
-  CONTENT_HYDRATING,
-  type ContentReady,
   type ContentError,
 } from '@/lib/session/getPhaseContent';
 import { logger } from '@/lib/logger';
@@ -82,7 +80,7 @@ export async function POST(req: Request) {
   try {
     const view = await startSession(user.id, body.topicId);
     const phase = getPhaseContent(view.currentPhase);
-    const content = await resolvePhaseContent(
+    const contentResult = await resolvePhaseContent(
       view.currentPhase,
       view.topicId,
       view.sessionId,
@@ -138,11 +136,22 @@ export async function POST(req: Request) {
       );
     }
 
-    if (content.type === 'pending') {
-      res = NextResponse.json(CONTENT_HYDRATING, { status: 202 });
+    if (contentResult.status === 'pending') {
+      res = NextResponse.json({
+        session: view,
+        phase,
+        content: null,
+        hydrating: true,
+        retryAfterMs: contentResult.retryAfterMs,
+        message: contentResult.message,
+      }, { status: 202 });
     } else {
-      const ready: ContentReady = { status: 'READY', session: view, phase, content };
-      res = NextResponse.json(ready);
+      res = NextResponse.json({
+        session: view,
+        phase,
+        content: contentResult.data,
+        hydrating: false,
+      });
     }
   } catch (err) {
     if (err instanceof SessionError) {
