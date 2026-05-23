@@ -15,8 +15,6 @@
  * Week boundary: Monday 00:00:00 UTC → Sunday 23:59:59 UTC.
  * This matches the boundary used by weeklyParentSummary.ts.
  *
- * EDIT LOG:
- *   2026-03-07 | UX implementation | created for WeeklyStudyStrip component
  */
 
 import { NextResponse } from 'next/server';
