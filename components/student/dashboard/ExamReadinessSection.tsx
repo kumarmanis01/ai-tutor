@@ -367,7 +367,7 @@ export default function ExamReadinessSection({ subjects }: ExamReadinessSectionP
               </Link>
             </div>
 
-            {selected.chapters.length === 0 ? (
+            {!selected.diagnosticDone || selected.chapters.length === 0 ? (
               <div className="rounded-xl border border-dashed border-[#D3D1C7] dark:border-[#4A4840] bg-[#F8F6F1] dark:bg-[#2E2C27] p-4 text-center">
                 {selected.diagnosticDone ? (
                   <p className="text-sm text-[#888780] dark:text-[#6E6C67]">No chapter data available yet.</p>
