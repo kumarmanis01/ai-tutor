@@ -9,7 +9,7 @@ import logger from "./logger";
 const MAX_CONTEXT = 10;
 
 const isBrowser = typeof globalThis !== "undefined" && typeof (globalThis as Record<string, unknown>)["localStorage"] !== "undefined";
-const storage = isBrowser ? (globalThis as unknown as Window & typeof globalThis).localStorage : null;
+const storage = isBrowser ? (globalThis as typeof window).localStorage : null;
 
 export function getContext(): { role: string; content: string }[] {
   if (!storage) return [];
