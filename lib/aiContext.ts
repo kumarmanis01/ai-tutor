@@ -8,16 +8,19 @@ import logger from "./logger";
  */
 const MAX_CONTEXT = 10;
 
+const isBrowser = typeof globalThis !== "undefined" && typeof (globalThis as Record<string, unknown>)["localStorage"] !== "undefined";
+const storage = isBrowser ? (globalThis as unknown as Window & typeof globalThis).localStorage : null;
+
 export function getContext(): { role: string; content: string }[] {
-  if (typeof window === "undefined") return [];
-  return JSON.parse(localStorage.getItem("chatContext") || "[]");
+  if (!storage) return [];
+  return JSON.parse(storage.getItem("chatContext") || "[]");
 }
 
 export function saveMessage(role: string, content: string) {
   const ctx = getContext();
   ctx.push({ role, content });
   if (ctx.length > MAX_CONTEXT) ctx.shift();
-  localStorage.setItem("chatContext", JSON.stringify(ctx));
+  storage?.setItem("chatContext", JSON.stringify(ctx));
   return ctx;
 }
 
