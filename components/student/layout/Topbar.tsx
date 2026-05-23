@@ -4,8 +4,8 @@
  * FILE OBJECTIVE:
  * - Continuation-first global student top bar that keeps the next learning action
  *   and Ask Vidya one tap away across student routes.
- * - Mobile: two-line sticky layout with focus chip. Desktop: command-center row
- *   with focus chip, momentum chip, Ask Vidya CTA, search, and profile context.
+ * - Mobile: sticky layout with streak chip, XP chip, and avatar. Desktop: command-center row
+ *   with streak chip, XP progress chip, upgrade button, and profile context.
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/student/layout/Topbar.spec.tsx
@@ -23,16 +23,17 @@
  * - 2026-05-10T00:00:00Z | copilot | apply mobile safe-area bottom spacing and overflow guard to expanded search sheet to avoid browser chrome overlap
  * - 2026-05-10T00:00:00Z | copilot | split desktop and mobile search state to prevent desktop search expansion from rendering mobile search sheet
  * - 2026-05-10T00:00:00Z | copilot | implement ordered topbar layout with Hi greeting, board-grade-school line, and right-aligned upgrade/streak/profile controls
+ * - 2026-05-23T00:00:00Z | copilot | redesign right-side controls: streak chip, XP progress chip, upgrade dot on avatar (mobile) / upgrade link (desktop)
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import Avatar from '@/components/UI/Avatar';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Flame, Moon, Sparkles, Sun, UserCircle2, X } from 'lucide-react';
+import { Flame, Moon, Sun, UserCircle2, X } from 'lucide-react';
 import StreakWidget from '../dashboard/StreakWidget';
 import Logo from '../../Logo';
 import type { StudentTopbarStatsResponse } from '../../../lib/api/student/topbarContract';
@@ -46,61 +47,6 @@ const TOPBAR_ROUTES = {
   profile: '/profile',
   subscribe: '/subscribe',
 } as const;
-
-const SEARCH_HINTS = {
-  active: 'Search this chapter concepts',
-  exam: 'Search formulas and revision questions',
-  weak: 'Ask why this method works',
-  recovery: 'Search examples and quick recap',
-} as const;
-
-const VIDYA_SEARCH_CONTEXT = {
-  title: 'Search',
-  subtitle: 'Search chapters, concepts, or quick recap',
-  emptyQueryFallback: 'quick recap',
-  searchSource: 'topbar-search',
-} as const;
-
-type TopbarMode = 'active' | 'exam' | 'weak' | 'recovery';
-
-type FocusConfig = {
-  focusLabel: string;
-  etaLabel: string;
-  askLabel: string;
-  momentumLabel: string;
-  contextTag: string;
-};
-
-const MODE_FOCUS: Record<TopbarMode, FocusConfig> = {
-  active: {
-    focusLabel: 'Continue: Algebra - Example 3',
-    etaLabel: '12 mins left',
-    askLabel: 'Ask Vidya',
-    momentumLabel: 'You are building a great routine',
-    contextTag: 'Active session',
-  },
-  exam: {
-    focusLabel: 'Revision: Physics numericals before Monday test',
-    etaLabel: '2 short tasks today',
-    askLabel: 'Ask Vidya for quick revision',
-    momentumLabel: 'You are on track',
-    contextTag: 'Exam mode',
-  },
-  weak: {
-    focusLabel: 'Strengthen fractions with 2 guided examples',
-    etaLabel: 'Step-by-step support ready',
-    askLabel: 'Ask Vidya to explain step by step',
-    momentumLabel: 'Progress grows with each attempt',
-    contextTag: 'Support mode',
-  },
-  recovery: {
-    focusLabel: 'Welcome back. Resume where you paused.',
-    etaLabel: 'Fresh start available today',
-    askLabel: 'Need a quick recap? Ask Vidya',
-    momentumLabel: 'Fresh start streak available',
-    contextTag: 'Recovery mode',
-  },
-};
 
 type UserProfile = {
   name?: string | null;
@@ -117,9 +63,6 @@ export default function Topbar() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
-  const [showStickyAsk, setShowStickyAsk] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
 
   const streakBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -136,17 +79,6 @@ export default function Topbar() {
     { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 
-  useEffect(() => {
-    function handleScroll() {
-      setShowStickyAsk(window.scrollY > 120);
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   const name = ((session?.user as { name?: string | null } | undefined)?.name ?? '').trim();
   const displayName = (profile?.name ?? name).trim();
   const firstName = displayName.split(' ')[0] || 'Student';
@@ -160,7 +92,10 @@ export default function Topbar() {
 
   const streak = topbarData?.streak ?? 0;
   const level = topbarData?.level ?? 1;
+  const totalXp = topbarData?.totalXp ?? 0;
+  const xpToNextLevel = topbarData?.xpToNextLevel ?? 1000;
   const shieldAvailable = topbarData?.shieldAvailable ?? false;
+  const xpProgressPct = xpToNextLevel > 0 ? Math.min(100, Math.round((totalXp % xpToNextLevel) / xpToNextLevel * 100)) : 0;
 
   const isSessionRoute =
     pathname.startsWith('/session/') ||
@@ -168,36 +103,7 @@ export default function Topbar() {
     pathname.startsWith('/tests/') ||
     pathname.startsWith('/practice/session/');
 
-  const fallbackMode: TopbarMode = useMemo(() => {
-    if (pathname.startsWith('/dashboard/tests') || pathname.startsWith('/tests')) return 'exam';
-    if (pathname.startsWith('/dashboard/doubts') || pathname.startsWith('/doubts')) return 'weak';
-    if (streak === 0) return 'recovery';
-    return 'active';
-  }, [pathname, streak]);
-
-  const mode: TopbarMode = (topbarData?.focus.mode ?? fallbackMode) as TopbarMode;
-
-  const focusConfig = MODE_FOCUS[mode];
-  const _resolvedFocus = {
-    focusLabel: topbarData?.focus.focusLabel ?? focusConfig.focusLabel,
-    etaLabel: topbarData?.focus.etaLabel ?? focusConfig.etaLabel,
-    askLabel: topbarData?.focus.askLabel ?? focusConfig.askLabel,
-    momentumLabel: topbarData?.focus.momentumLabel ?? focusConfig.momentumLabel,
-    contextTag: topbarData?.focus.contextTag ?? focusConfig.contextTag,
-    actionHref: topbarData?.focus.actionHref ?? TOPBAR_ROUTES.learn,
-  };
-
-  const searchPlaceholder = topbarData?.focus.searchPlaceholder ?? SEARCH_HINTS[mode];
-  const _shouldShowStickyAsk = showStickyAsk && (mode === 'active' || mode === 'weak');
   const isFree = profile !== undefined && !profile?.plan;
-
-  const normalizedSearchValue = searchValue.trim();
-  const searchTargetHref = `${TOPBAR_ROUTES.doubts}?q=${encodeURIComponent(
-    normalizedSearchValue || VIDYA_SEARCH_CONTEXT.emptyQueryFallback
-  )}&source=${VIDYA_SEARCH_CONTEXT.searchSource}`;
-
-  const momentumChipText =
-    streak > 0 ? `${streak}-day learning consistency` : 'Fresh start streak available';
 
   const isDaytime = useMemo(() => {
     const hour = new Date().getHours();
@@ -224,7 +130,8 @@ export default function Topbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-md">
       <div className="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 xl:px-8">
-        <div className="flex min-h-[64px] items-center justify-between gap-2 lg:hidden">
+        {/* Mobile layout */}
+        <div className="flex min-h-[56px] items-center justify-between gap-2 lg:hidden">
           <div className="flex min-w-0 items-center gap-2">
             <Link
               href={TOPBAR_ROUTES.dashboard}
@@ -246,33 +153,36 @@ export default function Topbar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
-            <Link
-              href={TOPBAR_ROUTES.subscribe}
-              aria-label="Upgrade"
-              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-brand-warning-bg text-brand-warning"
-            >
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-            </Link>
-
+          <div className="flex items-center gap-1.5">
             <button
+              ref={streakBtnRef}
               type="button"
               onClick={() => setStreakOpen((open) => !open)}
-              aria-label={`${momentumChipText} - open details`}
-              className={[
-                'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full',
-                mode === 'exam' ? 'bg-brand-warning-bg text-brand-warning' : 'bg-brand-success-bg text-success',
-              ].join(' ')}
+              aria-label={`${streak > 0 ? `${streak}-day streak` : 'Start your streak'} - open details`}
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-brand-success-bg px-3 text-xs font-semibold text-success"
             >
-              <Flame className="h-4 w-4" aria-hidden="true" />
+              <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{streak > 0 ? streak : '--'}</span>
               {shieldAvailable ? <span className="sr-only">Shield available</span> : null}
             </button>
 
+            <div
+              aria-label={`Level ${level}, ${xpProgressPct}% to next level`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-3 py-1.5 text-xs font-semibold text-[#534AB7] dark:text-[#A8A3E8]"
+            >
+              <span>Lv {level}</span>
+              <div className="h-1 w-10 rounded-full bg-[#C8C4F0] dark:bg-[#534AB7]/40 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#534AB7] dark:bg-[#A8A3E8] transition-all duration-500"
+                  style={{ width: `${xpProgressPct}%` }}
+                />
+              </div>
+            </div>
+
             <Link
               href={TOPBAR_ROUTES.profile}
-              data-testid="mobile-profile-button"
-              aria-label="Open profile"
-              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors hover:bg-muted"
+              aria-label="My profile"
+              className="relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center"
             >
               <Avatar
                 src={userImage || undefined}
@@ -281,11 +191,18 @@ export default function Topbar() {
                 size={32}
                 className="ring-2 ring-brand-primary-bg"
               />
+              {isFree && (
+                <span
+                  className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-[#EF9F27] ring-2 ring-card"
+                  aria-label="Free plan"
+                />
+              )}
             </Link>
           </div>
         </div>
 
-        <div className="hidden min-h-[72px] items-center justify-between gap-3 lg:flex">
+        {/* Desktop layout */}
+        <div className="hidden min-h-[60px] items-center justify-between gap-3 lg:flex">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href={TOPBAR_ROUTES.dashboard}
@@ -308,33 +225,50 @@ export default function Topbar() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href={TOPBAR_ROUTES.subscribe}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-brand-warning-bg px-4 py-2 text-sm font-semibold text-brand-warning"
-            >
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-              <span>Upgrade</span>
-            </Link>
-
             <button
               ref={streakBtnRef}
               type="button"
               onClick={() => setStreakOpen((open) => !open)}
-              aria-label={`${momentumChipText} - open details`}
-              className={[
-                'inline-flex min-h-[44px] items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold',
-                mode === 'exam' ? 'bg-brand-warning-bg text-brand-warning' : 'bg-brand-success-bg text-success',
-              ].join(' ')}
+              aria-label={`${streak > 0 ? `${streak}-day streak` : 'Start your streak'} - open details`}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-brand-success-bg px-3 py-1 text-xs font-semibold text-success"
             >
               <Flame className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{momentumChipText}</span>
-              <span className="rounded-full bg-brand-primary-bg px-2 py-0.5 text-brand-primary">Lv {level}</span>
+              <span>{streak > 0 ? `${streak}-day streak` : 'Start your streak'}</span>
+              {shieldAvailable ? <span className="sr-only">Shield available</span> : null}
             </button>
+
+            <div
+              aria-label={`Level ${level}, ${xpProgressPct}% to next level`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-3 py-1.5 text-xs font-semibold text-[#534AB7] dark:text-[#A8A3E8]"
+            >
+              <span>Lv {level}</span>
+              <div className="h-1 w-10 rounded-full bg-[#C8C4F0] dark:bg-[#534AB7]/40 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#534AB7] dark:bg-[#A8A3E8] transition-all duration-500"
+                  style={{ width: `${xpProgressPct}%` }}
+                />
+              </div>
+              <span className="text-[#534AB7]/70 dark:text-[#A8A3E8]/70">
+                {totalXp % xpToNextLevel} / {xpToNextLevel} xp
+              </span>
+            </div>
+
+            <div className="h-5 w-px bg-border" />
+
+            {isFree && (
+              <Link
+                href={TOPBAR_ROUTES.subscribe}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#EF9F27]" aria-hidden="true" />
+                Upgrade
+              </Link>
+            )}
 
             <Link
               href={TOPBAR_ROUTES.profile}
               aria-label="My profile"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-border bg-background px-2 py-1 hover:bg-muted"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border bg-background px-2 py-1 hover:bg-muted"
             >
               <Avatar
                 src={userImage || undefined}
@@ -346,24 +280,6 @@ export default function Topbar() {
             </Link>
           </div>
         </div>
-
-        {/* Legacy topbar layout kept for future reference as requested. */}
-        {/**
-        <div className="pb-2 lg:hidden">
-          <motion.div
-            className="rounded-xl border border-border bg-background px-3.5 py-2.5 shadow-sm"
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
-            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <p className="truncate text-sm font-medium text-foreground">{resolvedFocus.focusLabel}</p>
-            <p className="truncate text-xs text-muted-foreground">{resolvedFocus.etaLabel}</p>
-            <p className="sr-only" aria-live="polite">
-              Today focus updated: {resolvedFocus.focusLabel}
-            </p>
-          </motion.div>
-        </div>
-        */}
       </div>
 
       {streakOpen ? (
@@ -510,77 +426,6 @@ export default function Topbar() {
                   Help
                 </Link>
               </nav>
-            </motion.div>
-          </>
-        ) : null}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {mobileSearchOpen ? (
-          <>
-            <motion.button
-              aria-label="Close search"
-              className="fixed inset-0 z-[60] bg-black/30"
-              onClick={() => setMobileSearchOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-            <motion.div
-              data-testid="mobile-search-sheet"
-              className="fixed inset-x-0 bottom-0 z-[61] max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-border bg-card p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-xl"
-              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-              transition={{ duration: 0.18 }}
-            >
-              <div className="mb-2 flex items-center justify-between px-1">
-                <div>
-                    <p className="text-sm font-semibold text-foreground">{VIDYA_SEARCH_CONTEXT.title}</p>
-                    <p className="text-xs text-muted-foreground">{VIDYA_SEARCH_CONTEXT.subtitle}</p>
-                  </div>
-                <button
-                  type="button"
-                  onClick={() => setMobileSearchOpen(false)}
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-muted-foreground"
-                  aria-label="Close search"
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-              <div className="rounded-xl border border-border bg-background px-3 py-2">
-                <label htmlFor="mobile-topbar-search" className="sr-only">
-                  Search chapters, concepts, and formulas
-                </label>
-                <input
-                  id="mobile-topbar-search"
-                  value={searchValue}
-                  onChange={(event) => setSearchValue(event.target.value)}
-                  placeholder={searchPlaceholder}
-                  className="h-10 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="px-1 text-xs text-muted-foreground">
-                  Tip: Search examples, formulas, or why a method works.
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMobileSearchOpen(false)}
-                    className="inline-flex min-h-[44px] items-center rounded-full border border-border px-3 text-sm font-medium text-foreground"
-                  >
-                    Cancel
-                  </button>
-                  <Link
-                    href={searchTargetHref}
-                    onClick={() => setMobileSearchOpen(false)}
-                    className="inline-flex min-h-[44px] items-center rounded-full bg-brand-primary px-4 text-sm font-semibold text-brand-primary-fg"
-                  >
-                    Search
-                  </Link>
-                </div>
-              </div>
             </motion.div>
           </>
         ) : null}
