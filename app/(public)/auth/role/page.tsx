@@ -16,7 +16,7 @@ const ROLE_DASHBOARD: Record<string, string> = {
 };
 
 export default function RoleSelectionPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const [step, setStep] = useState<Step>('loading');
   const [error, setError] = useState('');
@@ -54,6 +54,7 @@ export default function RoleSelectionPage() {
         setStep('select');
         return;
       }
+      await update();
       router.replace(data.redirect);
     } catch {
       setError('Something went wrong. Please try again.');
