@@ -160,7 +160,7 @@ export default async function PreSessionPage({ params }: Props) {
       status: { in: ['UPCOMING', 'IN_PROGRESS'] },
     },
     select: { id: true },
-    orderBy: { createdAt: 'asc' },
+    orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
   });
 
   // Background prefetch -- non-blocking, best-effort
