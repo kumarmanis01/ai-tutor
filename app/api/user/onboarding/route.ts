@@ -25,7 +25,6 @@ import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { prisma } from '@/lib/prisma';
 import { invalidateUserSessionCache } from '@/lib/auth';
 import { getDailyTask } from '@/lib/dailyHabit';
-import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
 import { enqueueSubjectHydration } from '@/lib/diagnostics/enqueueSubjectHydration';
 import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { welcomeEmailHtml } from '@/lib/email/templates';
@@ -377,15 +376,12 @@ export async function POST(req: NextRequest) {
       logger.warn('/api/user/onboarding: failed to seed initial daily task', { className: 'api.user.onboarding', methodName: 'POST', error: err });
     });
 
-    // Proactive content seeding + diagnostic bootstrap (both non-blocking).
+    // Proactive content seeding (non-blocking).
     //
     // For every selected subject that has no content yet, immediately enqueue
     // a HydrationJob so the content pipeline (syllabus -> notes -> questions)
     // runs in the background. By the time the student navigates to a diagnostic
     // page the content is either ready or nearly ready, avoiding the waiting screen.
-    //
-    // The diagnostic bootstrap (StudentConceptState seeding) runs only when
-    // chapters already exist (it needs curriculum rows to seed against).
     try {
       const gradeNum = Number(grade);
       if (board && Number.isFinite(gradeNum) && subjects && subjects.length > 0) {
@@ -426,30 +422,6 @@ export async function POST(req: NextRequest) {
             }
           });
 
-          // Diagnostic bootstrap: seeds baseline StudentConceptState rows.
-          // Requires chapters to exist, so runs only when the syllabus is already seeded.
-          // Isolated try/catch so a bootstrap failure does not mask hydration errors in logs.
-          try {
-            const chapters = await prisma.chapterDef.findMany({
-              where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
-              select: { id: true },
-            });
-            const chapterIds = chapters.map((c) => c.id);
-            if (chapterIds.length === 0) return;
-
-            await enqueueDiagnosticBootstrapJob({
-              studentId: updatedUser.id,
-              diagnosticSessionId: `bootstrap:${updatedUser.id}`,
-              chapterIds,
-              boardId: cl.boardId,
-              gradeId: cl.id,
-            });
-          } catch (bootstrapErr) {
-            logger.warn('[onboarding] failed to enqueue diagnostic bootstrap', {
-              event: 'diagnostic.bootstrap.enqueue_failed',
-              context: { studentId: updatedUser.id, error: String(bootstrapErr) },
-            });
-          }
         }).catch((err) => {
           logger.warn('[onboarding] background content seeding setup failed', {
             event: 'diagnostic.seeding.setup_failed',
