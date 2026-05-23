@@ -131,8 +131,8 @@ export default function ExamDatePage() {
       const diagnosticReady: boolean = json?.diagnosticReady ?? true;
 
       if (!firstSubjectId) {
-        // No subjects resolved -- go to dashboard so the student can complete profile
-        router.replace('/dashboard');
+        // F-STU-003: Student must see their plan immediately
+        router.push('/student/learning-path?onboarding=true');
         return;
       }
 

@@ -2,6 +2,9 @@
 // Ensure common DOM methods used in components exist so unit tests don't
 // crash when run under jsdom in CI or local dev.
 
+// jest-dom custom matchers (toBeInTheDocument, toHaveAttribute, etc.)
+import '@testing-library/jest-dom';
+
 // Ensure TextDecoder/TextEncoder exist in older jsdom/node test environments
 // so components that consume streaming APIs (SSE / Fetch body readers) do
 // not crash when constructing decoders in tests.
