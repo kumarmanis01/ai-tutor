@@ -10,6 +10,7 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { type DashboardMission, missionCta, getSubjectColors } from '@/lib/student/dashboardMissions'
 
 // ── Arrow icon ────────────────────────────────────────────────────────────────
@@ -225,6 +226,12 @@ export function MissionHero({ mission }: { mission: DashboardMission }) {
             </button>
           )}
         </div>
+        <Link
+          href="/student/learning-path"
+          className="mt-2 block text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+        >
+          View full plan &rarr;
+        </Link>
       </div>
     </article>
   )

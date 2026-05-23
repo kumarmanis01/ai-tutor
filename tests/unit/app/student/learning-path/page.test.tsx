@@ -7,7 +7,7 @@
  * LINKED COMPONENT:
  * - app/(student)/student/learning-path/page.tsx
  * - components/student/learning-path/LearningPathClient.tsx
- * - components/student/dashboard/TodaysLearningCard.tsx
+ * - components/student/dashboard/TodaysMissions.tsx
  *
  * EDIT LOG:
  * - 2026-05-23T00:00:00Z | claude | created for F-STU-003 learning path tests
@@ -149,44 +149,30 @@ describe('LearningPathClient', () => {
   });
 });
 
-// ── TodaysLearningCard "View full plan" link ──────────────────────────────────
+// ── MissionHero "View full plan" link ────────────────────────────────────────
 
-describe('TodaysLearningCard (View full plan link)', () => {
+describe('MissionHero (View full plan link)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     (global as any).fetch = jest.fn();
   });
 
-  it('should show "View full plan" link in start state when planItemId is present', () => {
-    const TodaysLearningCard = require('@/components/student/dashboard/TodaysLearningCard').default;
-    const rec = {
-      conceptId: 'c1',
-      topicTitle: 'Topic 1',
-      subject: 'Math',
-      estimatedTimeMin: 10,
-      weekNumber: 1,
-      planItemId: 'lp-1',
+  it('should show "View full plan" link pointing to /student/learning-path', () => {
+    const { MissionHero } = require('@/components/student/dashboard/TodaysMissions');
+    const mission = {
+      id: 'm1',
+      subjectId: 'mathematics',
+      subjectName: 'Mathematics',
+      kind: 'Lesson',
+      title: 'Quadratic Equations',
+      estimatedMins: 20,
+      xp: 60,
+      state: 'not_started',
+      priority: true,
+      href: '/session/pre/c1',
     } as any;
 
-    render(<TodaysLearningCard type="start" recommendation={rec} />);
-
-    const link = screen.getByRole('link', { name: /View full plan/i });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/student/learning-path');
-  });
-
-  it('should show "View full plan" link in resume state', () => {
-    const TodaysLearningCard = require('@/components/student/dashboard/TodaysLearningCard').default;
-    const session = {
-      sessionId: 's1',
-      topicId: 't1',
-      topicName: 'Topic 1',
-      subject: 'Math',
-      chapter: 'Chapter 1',
-      currentPhase: 'LEARN',
-    } as any;
-
-    render(<TodaysLearningCard type="resume" session={session} />);
+    render(<MissionHero mission={mission} />);
 
     const link = screen.getByRole('link', { name: /View full plan/i });
     expect(link).toBeInTheDocument();
