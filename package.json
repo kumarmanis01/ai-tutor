@@ -105,7 +105,7 @@
     "build:scripts": "tsc --outDir scripts --project scripts/tsconfig.json || true",
     "worker:dev": "tsx worker/dev-supervisor.ts",
     "scheduler:dev": "tsx worker/scheduler.ts",
-    "postbuild": "node scripts/fix-dist-imports.cjs dist/worker && node scripts/ensure-regeneration-shim.cjs ~\\ai-tutor || true",
+    "postbuild": "node scripts/fix-dist-imports.cjs dist/worker && node scripts/ensure-regeneration-shim.cjs . || true",
     "dist:shim": "node scripts/create-dist-shims.cjs",
     "dist:parse-shim": "node scripts/parse-and-shim.cjs --log logs/worker-error.log --root dist",
     "pm2:start-worker": "pm2 start ecosystem.config.cjs --only content-engine-worker --update-env",
