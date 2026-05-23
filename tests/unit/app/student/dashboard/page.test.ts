@@ -76,11 +76,13 @@ jest.mock('@/lib/logger', () => ({
 }))
 
 // ── UI components (client components -- mock to avoid hook errors in SSR) ────
-jest.mock('@/components/student/dashboard/TodaysLearningCard', () => ({
+jest.mock('@/components/student/dashboard/TodaysMissions', () => ({
   __esModule: true,
-  // Render props as JSON inside the mock so tests can assert on values
-  // such as `diagnosticHref` without coupling to the real component.
-  default: (props: any) => React.createElement('div', { 'data-testid': 'TodaysLearningCard' }, JSON.stringify(props)),
+  // Render props as JSON so tests can assert on hero mission values (e.g. href containing conceptId)
+  // without coupling to the real component's internal markup.
+  default: (props: any) => React.createElement('div', { 'data-testid': 'TodaysMissions' }, JSON.stringify(props)),
+  MissionHero: (props: any) => React.createElement('div', { 'data-testid': 'MissionHero' }, JSON.stringify(props)),
+  MissionRow: (props: any) => React.createElement('div', { 'data-testid': 'MissionRow' }, JSON.stringify(props)),
 }))
 jest.mock('@/components/student/dashboard/SecondaryStartOptions', () => ({
   __esModule: true,
@@ -519,7 +521,7 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
-    // concept-777 must appear in the primary TodaysLearningCard props
+    // concept-777 must appear in the TodaysMissions hero mission props
     expect(html).toContain('concept-777')
     // raw topic-123 must never reach any URL (only resolved conceptId should appear)
     expect(html).not.toContain('topic-123')
