@@ -16,6 +16,9 @@
 const fs = require('fs');
 const path = require('path');
 
+require('../_env-loader').loadEnv();
+const { PrismaClient } = require('@prisma/client');
+
 function parseArgs() {
   const argv = process.argv.slice(2);
   const out = {};
@@ -99,8 +102,7 @@ async function main() {
 
   let prisma;
   try {
-const { prisma } = require('../../lib/prisma');
-    prisma = new PrismaClient();
+    prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
     await prisma.$connect();
   } catch (e) {
     console.error('Prisma client not available or failed to connect:', e.message);

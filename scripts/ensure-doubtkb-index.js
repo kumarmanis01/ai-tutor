@@ -3,11 +3,13 @@
 // Ensure IVFFLAT index exists on DoubtKb for integration tests
 // This script is safe to run repeatedly; it uses CREATE INDEX IF NOT EXISTS.
 
+require('./_env-loader').loadEnv();
+
 (async () => {
   try {
     const mod = await import('@prisma/client')
     const { PrismaClient } = mod
-    const prisma = new PrismaClient()
+    const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL })
 
     const sql = `CREATE INDEX IF NOT EXISTS "DoubtKb_embedding_ivfflat_idx" ON "DoubtKb" USING ivfflat (embedding public.vector_cosine_ops) WITH (lists = 100);`;
     console.log('Creating IVFFLAT index (if missing)')

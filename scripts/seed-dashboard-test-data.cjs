@@ -70,33 +70,13 @@
 const fs   = require('fs');
 const path = require('path');
 
-// ── env ──────────────────────────────────────────────────────────────────────
-function loadEnv() {
-  const root = path.resolve(__dirname, '..');
-  for (const name of ['.env.local', '.env']) {
-    const p = path.join(root, name);
-    if (!fs.existsSync(p)) continue;
-    for (let line of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
-      line = line.trim();
-      if (!line || line.startsWith('#')) continue;
-      const m = line.match(/^([^=\s]+)=((?:".*")|(?:'.*')|.*)$/);
-      if (!m) continue;
-      let val = m[2];
-      if ((val.startsWith('"') && val.endsWith('"')) ||
-          (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
-      if (!process.env[m[1]]) process.env[m[1]] = val;
-    }
-    console.log(`[env] loaded ${p}`);
-    break;
-  }
-}
-loadEnv();
+require('./_env-loader').loadEnv();
+const { PrismaClient } = require('@prisma/client');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 let prisma = null;
 if (!DRY_RUN) {
-const { prisma } = require('../lib/prisma');
-  prisma = new PrismaClient();
+  prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
 }
 
 // ── date helpers ─────────────────────────────────────────────────────────────

@@ -2,9 +2,10 @@
  * Check for subtle differences in question data that might cause dedup to fail.
  */
 
+require('./_env-loader').loadEnv();
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
 
 async function main() {
   console.log('=== CHECKING FOR SUBTLE DATA DIFFERENCES ===\n');
