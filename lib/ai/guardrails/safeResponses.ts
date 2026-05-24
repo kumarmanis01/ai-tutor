@@ -203,39 +203,6 @@ function selectTemplate(templates: string[], seed?: number): string {
   return templates[0];
 }
 
-/**
- * Get subject-specific topic suggestions
- */
-function _getTopicSuggestions(subject: string, grade: Grade): string[] {
-  const suggestions: Record<string, Record<string, string[]>> = {
-    Mathematics: {
-      junior: ['counting', 'shapes', 'addition', 'subtraction'],
-      middle: ['fractions', 'decimals', 'geometry', 'algebra basics'],
-      senior: ['quadratic equations', 'trigonometry', 'calculus concepts'],
-    },
-    Science: {
-      junior: ['animals', 'plants', 'weather', 'our body'],
-      middle: ['cells', 'forces', 'matter', 'ecosystems'],
-      senior: ['physics laws', 'chemical reactions', 'biological processes'],
-    },
-    English: {
-      junior: ['reading', 'spelling', 'simple sentences'],
-      middle: ['grammar', 'comprehension', 'creative writing'],
-      senior: ['literature analysis', 'essay writing', 'critical thinking'],
-    },
-  };
-  
-  const gradeBand = getGradeBand(grade);
-  const subjectSuggestions = suggestions[subject];
-  
-  if (subjectSuggestions && subjectSuggestions[gradeBand]) {
-    return subjectSuggestions[gradeBand];
-  }
-  
-  // Default suggestions
-  return ['your current topic', 'recent lessons', 'practice questions'];
-}
-
 // ============================================================================
 // MAIN API
 // ============================================================================

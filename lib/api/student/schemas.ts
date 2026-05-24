@@ -731,7 +731,7 @@ export function buildErrorResponse(
   // Mask API keys in details
   let safeDetails = details;
   if (details) {
-    safeDetails = JSON.parse(JSON.stringify(details), (k, v) => {
+    safeDetails = JSON.parse(JSON.stringify(details), (_k, v) => {
       if (typeof v === 'string' && v.startsWith('sk-')) return '[REDACTED]';
       if (typeof v === 'string' && v.match(/sk-[A-Za-z0-9]+/)) return v.replace(/sk-[A-Za-z0-9]+/g, '[REDACTED]');
       return v;

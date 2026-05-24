@@ -23,9 +23,9 @@ export default function ParentSettings() {
   const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null; excludeFromParentReport?: boolean; inactivityOptOut?: boolean; topicFocusRequest?: string | null }>>([])
   const [message, setMessage] = useState<string | null>(null)
   const [topicDraft, setTopicDraft] = useState<Record<string, string>>({})
-  const [pauseDialogStudentId, setPauseDialogStudentId] = useState<string | null>(null)
-  const [pauseDialogReason, setPauseDialogReason] = useState<string>('')
-  const [pauseDialogDate, setPauseDialogDate] = useState<string>('')
+  const [_pauseDialogStudentId, setPauseDialogStudentId] = useState<string | null>(null)
+  const [_pauseDialogReason, setPauseDialogReason] = useState<string>('')
+  const [_pauseDialogDate, setPauseDialogDate] = useState<string>('')
   const [mutedLinkStudentId, setMutedLinkStudentId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -129,18 +129,6 @@ export default function ParentSettings() {
     const isoDate = defaultDate.toISOString().slice(0, 10)
     setPauseDialogDate(isoDate)
     setPauseDialogReason('')
-  }
-
-  function _cancelPauseDialog() {
-    setPauseDialogStudentId(null)
-    setPauseDialogReason('')
-    setPauseDialogDate('')
-  }
-
-  async function _confirmPauseDialog() {
-    if (!pauseDialogStudentId) return
-    const d = pauseDialogDate ? new Date(pauseDialogDate + 'T00:00:00') : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    await togglePause(pauseDialogStudentId, true, d.toISOString(), pauseDialogReason || null)
   }
 
   async function toggleExclude(studentId: string, exclude: boolean) {

@@ -26,17 +26,26 @@ import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker'
 import { redactPIIFromText, redactPIIFromMessages } from '@/lib/ai/piiRedaction'
 
-/** Hash a prompt for audit without storing the raw text. Exported for testing. */
+/**
+ * Hash a prompt for audit without storing the raw text.
+ * @internal Exported for unit tests only -- do not call from application code.
+ */
 export function hashPrompt(text: string): string {
   return crypto.createHash('sha256').update(text).digest('hex')
 }
 
-/** Return up to 200 chars of a prompt for debugging -- never the full text. Exported for testing. */
+/**
+ * Return up to 200 chars of a prompt for debugging -- never the full text.
+ * @internal Exported for unit tests only -- do not call from application code.
+ */
 export function redactedPreview(text: string): string {
   return text.slice(0, 200)
 }
 
-/** Build the requestBody shape stored in AIContentLog -- never the raw prompt. Exported for testing. */
+/**
+ * Build the requestBody shape stored in AIContentLog -- never the raw prompt.
+ * @internal Exported for unit tests only -- do not call from application code.
+ */
 export function buildPromptRequestBody(prompt: string): { prompt_hash: string; prompt_redacted_preview: string } {
   return { prompt_hash: hashPrompt(prompt), prompt_redacted_preview: redactedPreview(prompt) }
 }

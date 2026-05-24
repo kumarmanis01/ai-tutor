@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/tests/attempt/:id
  * Returns attempt details including per-question results and answers.
  */
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers();
   const user = session?.user;
   if (!user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

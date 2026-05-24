@@ -14,10 +14,9 @@
  * - 2026-05-13T00:00:00Z | copilot | create shared best-effort server analytics emitter for API routes
  */
 
-import type { Prisma } from '@prisma/client';
 import { type AnalyticsEventName } from '@/lib/analytics/events';
 import { logger } from '@/lib/logger';
-import { prisma } from '@/lib/prisma';
+import { prisma, type PrismaInputJson } from '@/lib/prisma';
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
 
 export interface ServerAnalyticsEventInput {
@@ -25,7 +24,7 @@ export interface ServerAnalyticsEventInput {
   userId?: string | null;
   courseId?: string | null;
   lessonIdx?: number | null;
-  metadata?: Prisma.InputJsonValue;
+  metadata?: PrismaInputJson;
 }
 
 export async function emitServerAnalyticsEvent(

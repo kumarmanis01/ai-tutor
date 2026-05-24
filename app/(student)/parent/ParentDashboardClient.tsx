@@ -222,21 +222,6 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-const _PIE_COLORS: Record<string, string> = {
-  beginner: '#ef4444',
-  intermediate: '#f59e0b',
-  advanced: '#3b82f6',
-  expert: '#10b981',
-};
-
-function _masteryLabel(level: string) {
-  if (level === 'beginner') return 'Beginner';
-  if (level === 'intermediate') return 'Intermediate';
-  if (level === 'advanced') return 'Advanced';
-  if (level === 'expert') return 'Expert';
-  return level;
-}
-
 // ─── Readiness Badge ───────────────────────────────────────────────────
 
 function ReadinessBadge({ item }: { item: ReadinessItem }) {

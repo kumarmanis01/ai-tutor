@@ -25,7 +25,6 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { paymentReceiptHtml } from '@/lib/email/templates';
@@ -102,7 +101,6 @@ export async function POST(req: Request) {
   // Fetch Razorpay order to read notes (childIds, isFamily, emiMonths)
   const client = getRazorpayClient();
   let childIds: string[] = [];
-  let _isFamily = false;
   let emiMonths = 0;
   let rzNotes: any = {};
   try {

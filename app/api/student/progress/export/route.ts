@@ -88,19 +88,4 @@ export async function GET(_req: Request) {
   }
 }
 
-function _splitText(text: string, maxChars = 90) {
-  if (!text) return []
-  const words = text.split(/\s+/)
-  const lines: string[] = []
-  let cur = ''
-  for (const w of words) {
-    if ((cur + ' ' + w).trim().length > maxChars) {
-      lines.push(cur.trim())
-      cur = w
-    } else {
-      cur = (cur + ' ' + w).trim()
-    }
-  }
-  if (cur) lines.push(cur.trim())
-  return lines
-}
+

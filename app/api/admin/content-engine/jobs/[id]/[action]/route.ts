@@ -16,7 +16,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { formatLastError, FailureCode } from '@/lib/failureCodes';
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string; action: string }> }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string; action: string }> }) {
   try {
     const { id, action } = await params;
     if (!id || !action) return NextResponse.json({ error: 'missing parameters' }, { status: 400 });

@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { type PrismaTx } from '@/lib/prisma';
 import { logAuditEvent } from '../audit/log'
 
 export type CreateRetryIntentInput = {
@@ -51,7 +52,7 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
     return created
   }
 
-  async function consumeRetryIntent(id: string, tx?: Prisma.TransactionClient) {
+  async function consumeRetryIntent(id: string, tx?: PrismaTx) {
     const client = tx ?? prisma
 
     // Attempt guarded update: only transition PENDING -> CONSUMED

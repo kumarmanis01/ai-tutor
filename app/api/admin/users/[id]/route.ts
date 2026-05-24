@@ -87,7 +87,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   return NextResponse.json(user);
 }
 
-export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

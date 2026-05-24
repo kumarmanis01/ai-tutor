@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- chore(dead-code-pruning): SAFE_DELETE pass — 865 lines removed across 14 symbols/9 files (branch: prune/dead-code-cleanup → claude/sharp-hawking-xQH3y)
+  - **Deleted files**: `PendingContenet.tsx` (typo-filename stub), `SafetyEventTable.tsx` + its two orphaned hooks (`useAdminSafetyEvents`, `usePatchSafetyEventResolved`), `ProfileCompletionGate.tsx` (null stub), `TestHome.tsx` (dev scratchpad), `LoadingSpinner.tsx` (prohibited by skeleton-mandate in CLAUDE.md), `lib/onboarding.ts` (replaced by routing-based `OnboardingGateShell`)
+  - **Type-only removals**: `AccountStatus` (hand-rolled duplicate of Prisma enum), `AiErrorCode`, `AuditEventKey`, `GrammarQuestionType`, `MailSubjectKey` — all zero-ref type aliases
+  - **Comment block**: 285-line superseded NextAuth config in `lib/auth.ts`
+  - **Rationale documented in triage**: `triage/dead-code-2026-05-24.md` (14 SAFE_DELETE, 26 SPECULATIVE kept, 7 RISKY deferred)
+  - **Preserved**: all SPECULATIVE (distress detection, ConsentGate, V1 hooks pending Task 32) and all RISKY (freeTierUsage prop, seed-mocks queue, image-caption/save-chats routes, billing contract types)
+
+- chore(hardening): post-pruning surface-area lockdown
+  - ESLint: upgraded `@typescript-eslint/no-unused-vars` from warn → **error**; added explicit `no-unreachable: error`
+  - tsconfig: added `noUnusedLocals: true` and `noUnusedParameters: true`; resolved all 118 new compiler errors (unused `req` params in 30+ route handlers, unused `_`-prefixed locals, orphaned `Prisma` imports)
+  - BullMQ: added `KNOWN_QUEUE_NAMES` startup assertion in `worker/bootstrap.ts` — throws if `WORKER_TYPE` is not a registered queue constant; prevents silent worker misconfiguration
+  - `@internal` JSDoc: added to `hashPrompt`, `redactedPreview`, `buildPromptRequestBody` (test-only exports in `lib/callLLM.ts`) and `requiresParentOTPGate` (auth-layer-only gate in `lib/student/accountStatus.ts`)
+  - No OpenAPI spec exists in the repo; no spec update required
+  - Bundle analysis: no browser environment available — deferred; chunk delta visible in next production deploy
+
 - refactor(student-topbar): merge focus into combined topbar stats contract
   - Removed standalone `GET /api/student/topbar-focus`
   - `GET /api/student/topbar-stats` now returns both momentum stats and the focus payload consumed by the student top bar

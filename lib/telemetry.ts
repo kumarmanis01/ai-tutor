@@ -1,5 +1,4 @@
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { prisma, type PrismaInputJson } from '@/lib/prisma';
 import { systemHealth } from '@/lib/systemHealth';
 
 /**
@@ -25,7 +24,7 @@ export async function sampleSystemHealth() {
       jobsStuckRunning: health.jobs.stuckRunning,
       queueDepth: health.queue.depth,
       queueOldestJobAge: health.queue.oldestJobAgeSec ?? undefined,
-      meta: health as unknown as Prisma.InputJsonValue,
+      meta: health as unknown as PrismaInputJson,
     },
   });
 }

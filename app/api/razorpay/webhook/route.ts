@@ -30,7 +30,6 @@ import Razorpay from 'razorpay';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 import { redeemReferral } from '@/lib/referral';
 import { redeemCoupon } from '@/lib/coupon';
-import { RAZORPAY_WEBHOOK_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server'
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events'
 
@@ -274,13 +273,10 @@ export async function POST(req: Request) {
           existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
         }
 
-        let _paymentRecordId: string | null = null;
         if (!existing) {
           const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
-          _paymentRecordId = newPayment.id;
           await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })
         } else {
-          _paymentRecordId = existing.id;
           if (existing.status !== 'failed') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'failed', meta: { ...(existing.meta || {}), reason } } });
             await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated_failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })
@@ -313,9 +309,6 @@ export async function POST(req: Request) {
       const parent = await prisma.user.findUnique({ where: { id: orderRow.studentId }, select: { id: true, email: true, phone: true, name: true } });
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
-        const _subject = `Payment failed -- action required`;
-        const { MAIL_SUPPORT } = await import('@/lib/constants/mail').catch(() => ({ MAIL_SUPPORT: RAZORPAY_WEBHOOK_SUPPORT_EMAIL }));
-        const _html = parentPaymentFailedHtml({ name: parent.name ?? undefined, retryUrl: retryLink, supportEmail: process.env.SUPPORT_EMAIL ?? MAIL_SUPPORT });
         await sendEmailUnifiedSafe({
           mode: 'raw',
           delivery: 'best_effort',

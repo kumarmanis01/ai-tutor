@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: Request, { params }: any) {
+export async function GET(_req: Request, { params }: any) {
   const topic = await prisma.topicDef.findUnique({ where: { id: params.id } });
   return NextResponse.json(topic);
 }
@@ -12,7 +12,7 @@ export async function PUT(req: Request, { params }: any) {
   return NextResponse.json(topic);
 }
 
-export async function DELETE(req: Request, { params }: any) {
+export async function DELETE(_req: Request, { params }: any) {
   await prisma.topicDef.update({ where: { id: params.id }, data: { lifecycle: 'deleted' } });
   return NextResponse.json({ success: true });
 }

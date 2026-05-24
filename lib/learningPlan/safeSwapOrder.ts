@@ -14,7 +14,7 @@
  * - 2026-04-15T00:00:00Z | copilot | add safeSwapOrderInWeek helper to perform atomic swap via single UPDATE ... CASE
  */
 
-import { Prisma } from '@prisma/client'
+import { type PrismaTx } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
 export type SafeSwapParams = {
@@ -33,7 +33,7 @@ export type SafeSwapParams = {
  * constraints.
  */
 export async function safeSwapOrderInWeek(
-  tx: Prisma.TransactionClient,
+  tx: PrismaTx,
   params: SafeSwapParams,
 ): Promise<void> {
   try {

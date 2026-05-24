@@ -20,7 +20,6 @@
 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue'

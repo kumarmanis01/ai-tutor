@@ -25,8 +25,6 @@ import { createInvoiceForPayment } from '@/lib/invoices'
 import applyCreditsToCharge from '@/lib/billing/credits'
 import { recordPaymentEvent } from '@/lib/payments/audit'
 
-function toIso(d: Date) { return d.toISOString() }
-
 export async function processPaymentDunning(): Promise<void> {
   const now = new Date()
   const redis = getRedis()
@@ -49,7 +47,6 @@ export async function processPaymentDunning(): Promise<void> {
         const pm = await prisma.paymentMethod.findFirst({ where: { userId: s.userId, verified: true }, orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }], include: { customer: true } })
         let charged = false
         let chargePaymentId: string | null = null
-        let chargeOrderId: string | null = null
 
         if (pm && pm.provider === 'razorpay') {
           try {
@@ -167,7 +164,6 @@ export async function processPaymentDunning(): Promise<void> {
                 })
 
                 chargePaymentId = paymentId
-                chargeOrderId = orderId
                 charged = true
 
                 try {

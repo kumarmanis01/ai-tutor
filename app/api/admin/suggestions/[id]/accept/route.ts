@@ -10,7 +10,7 @@ import { requireAdmin } from '@/auth/adminGuard'
 import { updateSuggestionStatus } from '@/insights/store'
 import { prisma as getPrismaClient } from '@/lib/prisma'
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers()
   try { requireAdmin(session) } catch { return new Response('Forbidden', { status: 403 }) }
   const db = getPrismaClient

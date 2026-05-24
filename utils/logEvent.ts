@@ -1,6 +1,5 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, type PrismaInputJson } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 
 /**
@@ -11,7 +10,7 @@ import { logger } from '@/lib/logger';
  */
 export async function logEvent(
   type: string,
-  metadata: Prisma.InputJsonValue = {}, // Ensure metadata matches Prisma's InputJsonValue type
+  metadata: PrismaInputJson = {}, // Ensure metadata matches Prisma's InputJsonValue type
 ): Promise<void> {
   try {
     const session = await getServerSessionForHandlers();
@@ -36,7 +35,7 @@ export async function logEvent(
       data: {
         userId,
         type,
-        metadata, // Pass metadata as Prisma.InputJsonValue
+        metadata, // Pass metadata as PrismaInputJson
         timestamp: new Date(),
       },
     });

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { ApprovalStatus } from '@/lib/ai-engine/types'
 
 export async function POST(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;

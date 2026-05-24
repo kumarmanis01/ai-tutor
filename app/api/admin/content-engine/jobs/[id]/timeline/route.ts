@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { requireAdminOrModerator } from '@/lib/auth';
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminOrModerator();
     const { id } = await params;

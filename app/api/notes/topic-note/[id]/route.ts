@@ -20,7 +20,7 @@ export function topicNoteCacheKey(id: string): string {
  * Used when the Notes page loads note content for a selected topic.
  */
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSessionForHandlers();

@@ -9,7 +9,7 @@ import { requireAdmin } from '@/lib/auth';
  * - Records approval metadata inside the persisted `json.approvalMetadata`
  * - Prevents re-approving an already approved syllabus
  */
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
 
   const { id } = await params;

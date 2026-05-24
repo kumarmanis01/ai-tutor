@@ -78,22 +78,6 @@ function prereqPillStyle(masteryScore: number): {
   };
 }
 
-// ── PrereqPillsSkeleton ────────────────────────────────────────────────────────
-
-function _PrereqPillsSkeleton() {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {[80, 64, 96, 72].map((w) => (
-        <div
-          key={w}
-          className="h-7 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse"
-          style={{ width: `${w}px` }}
-        />
-      ))}
-    </div>
-  );
-}
-
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function PreSessionScreen({

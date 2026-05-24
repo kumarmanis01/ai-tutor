@@ -12,7 +12,8 @@
  * EDIT LOG:
  * - 2026-04-17T00:00:00Z | copilot | created initial coupon helper module
  */
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { type PrismaTx } from '@/lib/prisma';
 import { logger } from '@/lib/logger'
 import { rupeesToPaise, resolvePlanByShortId } from '@/lib/billing/plans'
 
@@ -64,14 +65,14 @@ export async function createCoupon(prisma: PrismaClient, input: CreateCouponInpu
 /**
  * Retrieve coupon by code (transaction-safe when provided with a TransactionClient).
  */
-export async function getCouponByCode(tx: Prisma.TransactionClient, code: string) {
+export async function getCouponByCode(tx: PrismaTx, code: string) {
   return tx.coupon.findUnique({ where: { code } })
 }
 
 /**
  * Validate a coupon code for a user. Does not mutate state.
  */
-export async function validateCoupon(tx: Prisma.TransactionClient, code: string, userId?: string): Promise<ValidateResult> {
+export async function validateCoupon(tx: PrismaTx, code: string, userId?: string): Promise<ValidateResult> {
   const c = await tx.coupon.findUnique({ where: { code } })
   if (!c) return { status: 404, body: { error: 'invalid_code' } }
   if (!c.active) return { status: 400, body: { error: 'inactive_code' } }
@@ -99,7 +100,7 @@ export async function validateCoupon(tx: Prisma.TransactionClient, code: string,
  * - For PERCENT coupons: records percentApplied and returns percentApplied for caller to compute the paise value.
  */
 export async function redeemCoupon(
-  tx: Prisma.TransactionClient,
+  tx: PrismaTx,
   code: string,
   userId?: string,
   subscriptionId?: string,

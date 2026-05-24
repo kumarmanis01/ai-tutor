@@ -22,8 +22,6 @@ import { createRazorpayTokenCharge } from '@/lib/payments'
 import { createInvoiceForPayment } from '@/lib/invoices'
 import { recordPaymentEvent } from '@/lib/payments/audit'
 
-function toIso(d: Date) { return d.toISOString() }
-
 /**
  * Process installment dunning.
  * - If jobData contains notes with subscriptionId/installmentNumber, process that installment only (immediate retry).

@@ -523,7 +523,7 @@ function buildPhaseProps(
   topicName: string,
   reasonLabel: string | null | undefined,
   estimatedTimeMin: number | undefined,
-  advancePhase: () => Promise<void>,
+  _advancePhase: () => Promise<void>,
   submitPractice: (
     a: { questionId: string; answer: string }[]
   ) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,

@@ -71,6 +71,20 @@ const argv = minimist(process.argv.slice(2));
 const workerType: string =
   argv.type || process.env.WORKER_TYPE || CONTENT_HYDRATION_QUEUE;
 
+// Startup assertion: WORKER_TYPE must match a known queue constant.
+// Adding a new queue? Add its name to this set too.
+const KNOWN_QUEUE_NAMES = new Set<string>([
+  CONTENT_HYDRATION_QUEUE, AI_REQUEST_QUEUE, ANALYTICS_INGEST_QUEUE, PDF_INGEST_QUEUE,
+  IRT_UPDATE_QUEUE_NAME, SM18_SCHEDULER_QUEUE_NAME, DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
+  WEEKLY_DIGEST_QUEUE_NAME, SUBSCRIPTION_RENEWAL_QUEUE_NAME,
+  PAYMENT_DUNNING_QUEUE_NAME, INSTALLMENT_DUNNING_QUEUE_NAME,
+  DISTRESS_NOTIFICATION_QUEUE_NAME, RETEACH_PLAN_QUEUE_NAME,
+  DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME,
+]);
+if (!KNOWN_QUEUE_NAMES.has(workerType)) {
+  throw new Error(`[bootstrap] Worker started with unknown queue "${workerType}". Add it to KNOWN_QUEUE_NAMES or set WORKER_TYPE to a valid constant.`);
+}
+
 const lifecycleIdArg: string | undefined =
   argv.lifecycleId || argv.lifecycleid || argv.lid;
 

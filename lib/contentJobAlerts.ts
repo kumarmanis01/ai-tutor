@@ -53,8 +53,8 @@ export async function getAutoRetryCount(hydrationJobId: string): Promise<number>
 export async function scheduleAutoRetry(
   hydrationJobId: string,
   bullJob: Job,
-  subject: string,
-  grade: number,
+  _subject: string,
+  _grade: number,
   lastError: string,
 ): Promise<{ scheduled: boolean; retryNumber: number }> {
   const redis = getRedis();

@@ -190,9 +190,6 @@ export default async function SystemHealthPage() {
 
   const dbStatus: HealthStatus = health?.dependencies.database.status ?? 'unhealthy'
   const redisStatus: HealthStatus = health?.dependencies.redis.status ?? 'unhealthy'
-  const _workerStatus: HealthStatus =
-    (health?.workers.stale ?? 0) > 0 ? 'degraded' :
-    (health?.workers.running ?? 0) > 0 ? 'healthy' : 'unhealthy'
   const queueStatus: HealthStatus =
     (health?.jobs.stuckRunning ?? 0) > 0 ? 'degraded' :
     (health?.queue.depth ?? 0) > 100 ? 'degraded' : 'healthy'

@@ -108,7 +108,7 @@ function splitText(text: string, maxChars = 80) {
   return lines
 }
 
-function newPage(doc: PDFDocument, pageSize: { width: number; height: number }, font: any, margin: number) {
+function newPage(doc: PDFDocument, pageSize: { width: number; height: number }, _font: any, margin: number) {
   doc.addPage([pageSize.width, pageSize.height])
   return pageSize.height - margin
 }

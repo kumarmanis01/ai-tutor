@@ -312,10 +312,6 @@ export async function runTutorOrchestrator(args: {
       ? prismaClient.user.findUnique({ where: { id: studentId }, select: { learningStyle: true, language: true } })
       : Promise.resolve(null)
 
-    const studentLearningProfilePromise = (prismaClient.studentLearningProfile && typeof prismaClient.studentLearningProfile.findUnique === 'function')
-      ? prismaClient.studentLearningProfile.findUnique({ where: { studentId }, select: { recommendations: true } })
-      : Promise.resolve(null)
-
     const conceptStatePromise: Promise<{ masteryScore: number | null } | null> =
       prismaClient.studentConceptState && typeof prismaClient.studentConceptState.findUnique === 'function'
         ? prismaClient.studentConceptState.findUnique({

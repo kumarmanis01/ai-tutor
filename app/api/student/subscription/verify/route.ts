@@ -27,7 +27,6 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmailUnifiedSafe } from '@/lib/mail';

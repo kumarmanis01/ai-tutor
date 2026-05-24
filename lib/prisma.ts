@@ -17,7 +17,7 @@
  * - 2026-05-18T00:00:00Z | claude  | feat: slow-query middleware logs queries exceeding SLOW_QUERY_THRESHOLD_MS (default 500ms) as event:'slow_query'
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { logger } from '@/lib/logger'
@@ -90,7 +90,7 @@ const prismaProxy = new Proxy(client, {
       if (prop === 'auditLog' && (target as any).auditLog) {
         const auditModel = (target as any).auditLog
         return new Proxy(auditModel, {
-          get(amTarget, name) {
+          get(_amTarget, name) {
             if (name === 'findMany' || name === 'findFirst') {
               return async (args: any) => {
                 try {
@@ -146,6 +146,12 @@ const prismaProxy = new Proxy(client, {
 });
 
 export const prisma = prismaProxy as unknown as PrismaClient;
+
+// Re-export Prisma namespace and derived types used across the codebase.
+export { Prisma };
+export type PrismaTx = Prisma.TransactionClient;
+export type PrismaInputJson = Prisma.InputJsonValue;
+export type PrismaJson = Prisma.JsonValue;
 
 process.on('exit', () => {
   try {

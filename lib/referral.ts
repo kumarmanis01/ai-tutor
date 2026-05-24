@@ -14,7 +14,7 @@
  * - 2026-04-17T14:40:00Z | copilot | fix: include required `icon` field when creating badge to satisfy Prisma types
  */
 
-import { Prisma } from '@prisma/client'
+import { type PrismaTx } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { PLANS, rupeesToPaise, resolvePlanByShortId } from '@/lib/billing/plans'
 
@@ -24,7 +24,7 @@ export type RedeemResult = { status: number; body: { error?: string; ok?: boolea
  * Redeem a referral code inside an existing Prisma transaction.
  * - `tx` must be a Prisma TransactionClient so callers can include this as part of larger operations.
  */
-export async function redeemReferral(tx: Prisma.TransactionClient, code: string, redeemerId: string, redeemerIp?: string): Promise<RedeemResult> {
+export async function redeemReferral(tx: PrismaTx, code: string, redeemerId: string, redeemerIp?: string): Promise<RedeemResult> {
   const referral = await tx.referral.findUnique({ where: { code } })
   if (!referral) return { status: 404, body: { error: 'Invalid code' } }
 

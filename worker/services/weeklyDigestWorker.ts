@@ -26,8 +26,6 @@ type ParentStudentLinkRow = {
   parent: { name: string | null; email: string | null; timezone?: string | null };
   student: { name: string | null };
 };
-type ParentProfileRow = ParentProfileLocal;
-type OutboxRow = { meta: { path: string[]; equals: string } };
 // Local minimal ParentProfile shape used for runtime checks and type-narrowing.
 // Keep this in sync with the Prisma model `ParentProfile` in prisma/schema.prisma.
 type ParentProfileLocal = {
@@ -83,9 +81,6 @@ Return only the 2 sentences, no JSON, no preamble.`
 
 export async function processWeeklyDigest(): Promise<void> {
   const monday = weekStart()
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const appUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
-  const weekLabel = monday.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
   // All parents with at least one active link. Exclude students who opted out of parent reports.
 
@@ -282,8 +277,8 @@ export async function processParentDigest(parentId: string, weekStartIso: string
 
     await sendParentMilestoneNotification(parentId, { email: parent.email, subject, html, text: subject, meta: { type: 'digest', channel: 'email' } })
     if (parent.phone) {
-      const smsUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
-      await sendSms(parent.phone, "Weekly digest: ${child.name}'s summary is ready. View: ${smsUrl}/parent/dashboard")
+      const smsBase = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
+      await sendSms(parent.phone, `Weekly digest: ${child.name}'s summary is ready. View: ${smsBase}/parent/dashboard`)
     }
     logger.info('[parentDigest] sent via delivery helper', { parentId, email: parent.email, childName: child.name })
   } catch (err) {

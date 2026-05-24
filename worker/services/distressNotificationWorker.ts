@@ -25,7 +25,7 @@ import type { DistressNotificationJobData } from '../../jobs/distressNotificatio
 export async function processDistressNotification(
   job: Job<DistressNotificationJobData>,
 ): Promise<void> {
-  const { studentId, sessionId, turnId, severity, triggerPhrases, studentMessage } = job.data
+  const { studentId, sessionId, turnId, severity, triggerPhrases, studentMessage: _studentMessage } = job.data
 
   // Gate: skip if flag is off (code ready but not yet live)
   if (process.env.ENABLE_DISTRESS_DETECTION !== 'true') {

@@ -27,11 +27,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 type Tool = 'pencil' | 'eraser';
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const PENCIL_COLORS = ['#1a1a1a', '#534AB7', '#E24B4A', '#1D9E75', '#BA7517'];
@@ -46,15 +41,6 @@ const WB_STYLE = `
 }
 .wb-step { animation: wb-step-in 0.3s ease-out forwards; }
 `;
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function _getPos(e: MouseEvent | Touch, rect: DOMRect): Point {
-  return {
-    x: (e.clientX - rect.left) * (rect.width === 0 ? 1 : 1),
-    y: (e.clientY - rect.top) * (rect.height === 0 ? 1 : 1),
-  };
-}
 
 // ── Sub-component: AI steps layer ─────────────────────────────────────────────
 

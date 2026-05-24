@@ -133,10 +133,6 @@ export default async function StudentLayout({ children }: { children: React.Reac
     }
   }
 
-  // Parent verification is shown as modal (ParentOTPGate); do not redirect to
-  // /student/verify-parent -- that page redirects to /dashboard and causes a loop.
-  const _studentName = (session.user as { name?: string })?.name ?? '';
-
   return (
     <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
       <body className="font-sans antialiased min-h-screen h-full">

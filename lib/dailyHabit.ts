@@ -247,7 +247,7 @@ function selectTaskType(
 }
 
 async function pickTopic(
-  studentId: string,
+  _studentId: string,
   taskType: DailyTaskType,
   mastery: {
     topicId: string;

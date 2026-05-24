@@ -255,10 +255,7 @@ export default async function ProgressPage({
         );
         // store with string key to match readiness.chapterId shape
         chapterWeakestConceptMap.set(String(chapterId), sorted[0]);
-      // compute average memoryStrength for the chapter
-      const msVals = conceptIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
-      const _avgMs = msVals.length > 0 ? msVals.reduce((a, b) => a + b, 0) / msVals.length : 0;
-      // store as a temporary map on chapterWeakestConceptMap via Map of maps? We'll attach later when assembling chapters.
+      // store weakest concept per chapter; average memoryStrength computed if needed later
     }
   }
 

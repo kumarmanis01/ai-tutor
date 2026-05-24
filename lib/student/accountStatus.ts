@@ -18,6 +18,7 @@ import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 
 /**
  * Check if the student's account requires parent OTP gate.
+ * @internal Auth-layer helper -- call only from layout.tsx and server-side gates.
  * Returns true when:
  *   User.accountStatus in ('pending_onboarding', 'pending_parent_verification')
  *   AND User.age is known and < DPDP_MINOR_AGE (Indian DPDP Act 2023).

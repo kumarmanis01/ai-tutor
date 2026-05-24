@@ -15,7 +15,7 @@ interface OnboardingGateShellProps {
   _initialValues?: StudentProfileData;
 }
 
-export default function OnboardingGateShell({ _initialValues }: OnboardingGateShellProps) {
+export default function OnboardingGateShell(_props: OnboardingGateShellProps) {
   return (
     // <ProfileCompletionGate
     //   standalone

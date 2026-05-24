@@ -31,7 +31,7 @@ interface RouteParams {
  * POST /api/admin/content-engine/moderation/[id]/[action]
  * Approves or rejects a piece of content
  */
-export async function POST(req: Request, { params }: RouteParams) {
+export async function POST(_req: Request, { params }: RouteParams) {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

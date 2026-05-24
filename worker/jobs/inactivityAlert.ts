@@ -35,7 +35,6 @@ import { canSendNotification } from '@/lib/notifications/policy'
 // takes precedence when available (F-PAR-021 AC-01).
 const DEFAULT_INACTIVITY_DAYS = Number(process.env.PARENT_INACTIVITY_DAYS ?? '3')
 // Widest possible threshold so the prefilter query never misses a parent with a long threshold.
-const MAX_INACTIVITY_DAYS = 7
 // Minimum supported threshold (settings allow 2,3,5,7)
 const MIN_INACTIVITY_DAYS = 2
 
@@ -172,7 +171,6 @@ export async function runInactivityAlerts(): Promise<number> {
           })
 
           // Resolve the student's next planned session for a deep-link (if available)
-          const nextTopic = nextItem?.concept?.name ?? 'their next planned session'
           const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
           const deepLink = nextItem
             ? `${baseUrl}/student/session/${nextItem.id}?focus=next&itemId=${encodeURIComponent(nextItem.id)}`

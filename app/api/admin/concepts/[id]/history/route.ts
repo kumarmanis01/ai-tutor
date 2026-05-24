@@ -12,7 +12,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 export const dynamic = 'force-dynamic'
 
 export async function GET(
-  req: Request,
+  _req: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSessionForHandlers()

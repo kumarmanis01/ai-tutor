@@ -50,8 +50,6 @@ export interface MockExamRunnerProps {
   sections: ExamSection[];
 }
 
-type _SectionState = 'active' | 'submitted' | 'locked';
-
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function formatTime(secs: number): string {

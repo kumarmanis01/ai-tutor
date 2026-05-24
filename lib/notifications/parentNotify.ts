@@ -240,29 +240,4 @@ async function sendWhatsAppForEvent(
   }
 }
 
-function _buildSessionMissedHtml(studentName: string, dashboardUrl: string): string {
-  const base = [
-    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;',
-    'max-width:520px;margin:0 auto;color:#1a1a1a;padding:0 8px;',
-  ].join('');
-  const btn = [
-    'display:inline-block;padding:12px 28px;background:#534AB7;',
-    'color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;',
-  ].join('');
-  return `
-    <div style="${base}">
-      <h2 style="color:#BA7517;">Give ${studentName} a nudge</h2>
-      <p>Hi there,</p>
-      <p>${studentName} has not completed a learning session recently on Spinzy Academy.
-         A quick reminder from you can go a long way -- consistent daily sessions build
-         exam confidence faster than cramming.</p>
-      <a href="${dashboardUrl}" style="${btn}">View progress</a>
-      <p style="color:#888;font-size:12px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
-        Spinzy Academy -- AI Home Tutor<br>
-        You are receiving this because you have a Spinzy Academy account.
-      </p>
-    </div>
-  `;
-}
-
 export const DEFAULT_DASHBOARD_URL = `${APP_URL}/parent/dashboard`;

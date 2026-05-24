@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSessionForHandlers();
   // Resolve canonical DB user id for audit safety; fall back to null

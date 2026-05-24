@@ -231,7 +231,7 @@ function validateOutput(output: DailyTaskAIOutput, forceRecovery: boolean): Dail
 // ── Fallback (no AI needed) ────────────────────────────────────────
 
 function buildFallbackTask(
-  profile: StudentProfile,
+  _profile: StudentProfile,
   context: LearningContext,
   forceRecovery: boolean,
 ): DailyTaskAIOutput {

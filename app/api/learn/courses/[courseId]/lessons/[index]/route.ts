@@ -179,7 +179,7 @@ function transformLegacyNote(content: EnhancedNoteContent, chapterName: string, 
   }
 }
 
-export async function GET(req: Request, { params }: { params: Promise<{ courseId: string; index: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ courseId: string; index: string }> }) {
   const { courseId, index } = await params
   const idx = Number(index)
   if (Number.isNaN(idx)) return NextResponse.json({ error: 'Invalid index' }, { status: 400 })

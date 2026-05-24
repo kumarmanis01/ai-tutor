@@ -150,7 +150,7 @@ export async function markRecoveryResponded(studentId: string): Promise<void> {
 /**
  * Dismiss a recovery nudge
  */
-export async function dismissRecoveryNudge(studentId: string, eventId: string): Promise<void> {
+export async function dismissRecoveryNudge(_studentId: string, eventId: string): Promise<void> {
   await prisma.recoveryEvent.update({
     where: { id: eventId },
     data: { dismissed: true },

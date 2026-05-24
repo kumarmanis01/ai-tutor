@@ -21,8 +21,7 @@
  */
 
 import { Worker, Job } from 'bullmq'
-import { Prisma } from '@prisma/client'
-import { prisma } from '../../lib/prisma'
+import { prisma, type PrismaInputJson } from '../../lib/prisma'
 import { logger } from '../../lib/logger'
 import { redisConnection } from '../../lib/redis'
 import { ANALYTICS_INGEST_QUEUE } from '../../lib/queues/constants'
@@ -32,7 +31,7 @@ export type AnalyticsIngestPayload = {
   userId: string | null
   courseId: string | null
   lessonIdx: number | null
-  metadata: Prisma.InputJsonValue
+  metadata: PrismaInputJson
 }
 
 export async function processAnalyticsIngest(job: Job<AnalyticsIngestPayload>): Promise<void> {

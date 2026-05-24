@@ -63,44 +63,6 @@ const VIDYA_SEARCH_CONTEXT = {
 
 type TopbarMode = 'active' | 'exam' | 'weak' | 'recovery';
 
-type FocusConfig = {
-  focusLabel: string;
-  etaLabel: string;
-  askLabel: string;
-  momentumLabel: string;
-  contextTag: string;
-};
-
-const MODE_FOCUS: Record<TopbarMode, FocusConfig> = {
-  active: {
-    focusLabel: 'Continue: Algebra - Example 3',
-    etaLabel: '12 mins left',
-    askLabel: 'Ask Vidya',
-    momentumLabel: 'You are building a great routine',
-    contextTag: 'Active session',
-  },
-  exam: {
-    focusLabel: 'Revision: Physics numericals before Monday test',
-    etaLabel: '2 short tasks today',
-    askLabel: 'Ask Vidya for quick revision',
-    momentumLabel: 'You are on track',
-    contextTag: 'Exam mode',
-  },
-  weak: {
-    focusLabel: 'Strengthen fractions with 2 guided examples',
-    etaLabel: 'Step-by-step support ready',
-    askLabel: 'Ask Vidya to explain step by step',
-    momentumLabel: 'Progress grows with each attempt',
-    contextTag: 'Support mode',
-  },
-  recovery: {
-    focusLabel: 'Welcome back. Resume where you paused.',
-    etaLabel: 'Fresh start available today',
-    askLabel: 'Need a quick recap? Ask Vidya',
-    momentumLabel: 'Fresh start streak available',
-    contextTag: 'Recovery mode',
-  },
-};
 
 type UserProfile = {
   name?: string | null;
@@ -119,7 +81,7 @@ export default function Topbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [showStickyAsk, setShowStickyAsk] = useState(false);
+  const [, setShowStickyAsk] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
 
   const streakBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -177,18 +139,7 @@ export default function Topbar() {
 
   const mode: TopbarMode = (topbarData?.focus.mode ?? fallbackMode) as TopbarMode;
 
-  const focusConfig = MODE_FOCUS[mode];
-  const _resolvedFocus = {
-    focusLabel: topbarData?.focus.focusLabel ?? focusConfig.focusLabel,
-    etaLabel: topbarData?.focus.etaLabel ?? focusConfig.etaLabel,
-    askLabel: topbarData?.focus.askLabel ?? focusConfig.askLabel,
-    momentumLabel: topbarData?.focus.momentumLabel ?? focusConfig.momentumLabel,
-    contextTag: topbarData?.focus.contextTag ?? focusConfig.contextTag,
-    actionHref: topbarData?.focus.actionHref ?? TOPBAR_ROUTES.learn,
-  };
-
   const searchPlaceholder = topbarData?.focus.searchPlaceholder ?? SEARCH_HINTS[mode];
-  const _shouldShowStickyAsk = showStickyAsk && (mode === 'active' || mode === 'weak');
   const isFree = profile !== undefined && !profile?.plan;
 
   const normalizedSearchValue = searchValue.trim();

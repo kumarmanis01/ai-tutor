@@ -12,7 +12,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { requireAdminOrModerator } from '@/lib/auth';
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminOrModerator();
     const { id } = await params;
@@ -98,7 +98,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 // GET timeline: /api/admin/content-engine/jobs/[id]/timeline
-export async function timeline(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function timeline(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });

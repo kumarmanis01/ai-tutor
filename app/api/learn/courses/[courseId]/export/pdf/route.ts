@@ -1,6 +1,6 @@
 
 
-export async function GET(req: Request, { params }: { params: Promise<{ courseId: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params
   const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
 

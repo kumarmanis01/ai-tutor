@@ -202,7 +202,7 @@ export function getDayRetention(curve: RetentionPoint[], day: number): number {
  * Identify failure hotspots (questions with >40% failure)
  */
 export function identifyFailureHotspots(
-  activities: DailyActivity[],
+  _activities: DailyActivity[],
   questionFailures: Map<string, { failures: number; attempts: number; commonError: string }>
 ): FailureHotspot[] {
   const hotspots: FailureHotspot[] = [];

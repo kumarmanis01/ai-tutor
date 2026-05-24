@@ -36,12 +36,11 @@
  *   2026-05-13T00:00:00Z | copilot | fix TEST/PRACTICE row type compatibility for choices JsonValue and explanation-free test query rows
  */
 
-import { prisma } from '@/lib/prisma';
+import { prisma, type PrismaJson } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 import { enqueueNotesHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
-import type { Prisma } from '@prisma/client';
 import {
   type SessionPhase,
   PHASE_METADATA,
@@ -91,7 +90,7 @@ export interface PracticeContent {
     id: string;
     type: string;
     prompt: string;
-    choices: Prisma.JsonValue;
+    choices: PrismaJson;
     difficulty: string | null;
     correctAnswer: string | null;
   }[];
@@ -106,7 +105,7 @@ export interface TestContent {
     id: string;
     type: string;
     prompt: string;
-    choices: Prisma.JsonValue;
+    choices: PrismaJson;
     difficulty: string | null;
     correctAnswer: string | null;
     explanation: string | null;

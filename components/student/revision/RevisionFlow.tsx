@@ -132,7 +132,6 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
 
   const handleNext = useCallback(() => {
     // Post completion for this concept (fire-and-forget)
-    const _conceptResults = results.filter((r) => r.card.conceptId === card.conceptId)
     const lastResult = results[results.length - 1]
     if (lastResult) {
       const conceptCards = cards.filter((c) => c.conceptId === lastResult.card.conceptId)
@@ -244,7 +243,6 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
   if (!card) return null
 
   const isCorrect = submitted && selectedOption !== null && isAnswerCorrect(card, selectedOption)
-  const _isWrong = submitted && !isCorrect
   const correctText = resolveCorrectText(card)
   const errType = errorTypeLabel(card.subjectName)
 

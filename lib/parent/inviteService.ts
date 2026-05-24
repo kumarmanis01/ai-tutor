@@ -18,7 +18,8 @@
  */
 
 import { randomBytes } from 'crypto';
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { type PrismaTx } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { invalidateUserSessionCache } from '@/lib/auth';
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants';
@@ -303,7 +304,7 @@ export async function linkParentToStudentByEmail(params: {
   return { studentId: student.id, status: 'linked' };
 }
 
-async function ensureParentRole(prisma: Prisma.TransactionClient, parentId: string) {
+async function ensureParentRole(prisma: PrismaTx, parentId: string) {
   try {
     const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true, email: true } });
     if (parent?.role === 'user') {

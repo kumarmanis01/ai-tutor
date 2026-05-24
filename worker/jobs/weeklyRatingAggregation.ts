@@ -68,11 +68,6 @@ export async function runWeeklyRatingAggregation(): Promise<RatingAggregationRes
   if (lowRatingRows.length > 0) {
     const oncallEmail = process.env.ONCALL_EMAIL
     if (oncallEmail) {
-      const lines = lowRatingRows.map((r) => {
-        const ref = r.activityRef ?? '(no ref)'
-        return `  - ${r.activityType} / ${ref}: avg rating ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)`
-      })
-
       try {
         const title = `Weekly session rating report (last ${LOOKBACK_DAYS} days)`
         const body = `The following activity types have average ratings below ${RATING_ALERT_THRESHOLD}/5:\n\n${lowRatingRows.map((r) => `- ${r.activityType} / ${r.activityRef ?? '(no ref)'}: avg ${Number(r.avgRating).toFixed(2)} (${Number(r.ratedCount)} ratings)`).join('\n')}\n\nTotal activity types checked: ${rows.length}`

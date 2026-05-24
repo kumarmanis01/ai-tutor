@@ -45,7 +45,7 @@ const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 // topics beyond the cap were never enqueued. Cap logic belongs in hydrateAll,
 // not in the reconciler which must process ALL topics for a root job.
 // The env var is kept in place so existing configs don't break.
-const _TOPICS_PER_SUBJECT_CAP_UNUSED = process.env.RECONCILER_TOPICS_PER_SUBJECT_CAP;
+void process.env.RECONCILER_TOPICS_PER_SUBJECT_CAP;
 
 // ============================================
 // Main Reconciler Class
@@ -615,7 +615,6 @@ export class HydrationReconciler {
       });
 
       const subject = rootJob.subject ?? rootJob.subjectId ?? 'unknown';
-      const _subjectSafe = subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const statusLabel = finalStatus === JobStatus.Completed ? 'Completed' : 'Completed with failures';
       const report = (await import('@/lib/email/templates')).hydrationGenerationReportHtml({
         rootJobId: rootJob.id,

@@ -8,7 +8,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
  * API Route: Get details and messages for a specific room.
  * Compatible with Next.js App Router dynamic route signature.
  */
-export async function GET(req: NextRequest, context: { params: Promise<{ roomId: string }> }) {
+export async function GET(_req: NextRequest, context: { params: Promise<{ roomId: string }> }) {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

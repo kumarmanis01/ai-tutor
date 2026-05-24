@@ -49,26 +49,6 @@ function logRawToConsole(jobId: string, llmResult: any) {
   } catch (_e) {}
 }
 
-function validateSyllabusShape(raw: any) {
-  if (!raw || typeof raw !== 'object') return false
-  const { chapters } = raw
-  if (!Array.isArray(chapters)) return false
-  for (const ch of chapters) {
-    if (!ch || typeof ch !== 'object') return false
-    if (!ch.title || typeof ch.title !== 'string') return false
-    if (ch.order !== undefined && typeof ch.order !== 'number') return false
-    if (ch.topics !== undefined) {
-      if (!Array.isArray(ch.topics)) return false
-      for (const t of ch.topics) {
-        if (!t || typeof t !== 'object') return false
-        if (!t.title || typeof t.title !== 'string') return false
-        if (t.order !== undefined && typeof t.order !== 'number') return false
-      }
-    }
-  }
-  return true
-}
-
 export async function handleSyllabusJob(jobId: string) {
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },

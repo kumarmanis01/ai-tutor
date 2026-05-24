@@ -26,8 +26,7 @@
  *   2026-05-13T00:00:00Z | copilot | unify homework runtime selection on the shared Question bank selector
  */
 
-import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma, type PrismaInputJson } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { selectQuestions } from '@/lib/tests';
 
@@ -54,7 +53,7 @@ export interface HomeworkQuestion {
  * RISK-07: Validate and serialize HomeworkQuestion[] for Prisma Json field.
  * Ensures each question has required fields and produces JSON-serializable output.
  */
-function toHomeworkQuestionsJson(questions: HomeworkQuestion[]): Prisma.InputJsonValue {
+function toHomeworkQuestionsJson(questions: HomeworkQuestion[]): PrismaInputJson {
   const validated = questions.map((q) => ({
     id: typeof q.id === 'string' ? q.id : String(q.id),
     type: typeof q.type === 'string' ? q.type : 'mcq',
@@ -64,7 +63,7 @@ function toHomeworkQuestionsJson(questions: HomeworkQuestion[]): Prisma.InputJso
     explanation: q.explanation ?? null,
     difficulty: q.difficulty ?? null,
   }));
-  return validated as Prisma.InputJsonValue;
+  return validated as PrismaInputJson;
 }
 
 /**

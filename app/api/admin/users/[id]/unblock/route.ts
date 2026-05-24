@@ -4,7 +4,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { AdminActionType } from '@prisma/client'
 import { logApiUsage } from '@/utils/logApiUsage'
 
-export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(_req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

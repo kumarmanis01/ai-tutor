@@ -212,21 +212,6 @@ function calculateAvgSentenceLength(text: string): number {
 }
 
 /**
- * Find complex words (syllables > threshold)
- */
-function _findComplexWords(text: string, syllableThreshold: number): string[] {
-  const words = text.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-  
-  // Simple syllable estimation (vowel groups)
-  const estimateSyllables = (word: string): number => {
-    const vowelGroups = word.match(/[aeiouy]+/g) || [];
-    return Math.max(1, vowelGroups.length);
-  };
-  
-  return words.filter(word => estimateSyllables(word) > syllableThreshold);
-}
-
-/**
  * Check if content has reasoning structure
  */
 function hasReasoningStructure(text: string): boolean {
