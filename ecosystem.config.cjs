@@ -88,8 +88,8 @@ module.exports = {
         NEXT_PUBLIC_HINDI_ENABLED: process.env.NEXT_PUBLIC_HINDI_ENABLED ?? 'false',
       },
 
-      error_file: 'logs/ai-tutor-web-error.log',
-      out_file: 'logs/ai-tutor-web-out.log',
+      error_file: 'logs/pm2/ai-tutor-web-error.log',
+      out_file: 'logs/pm2/ai-tutor-web-out.log',
       merge_logs: true,
       time: true,
 
@@ -135,8 +135,8 @@ module.exports = {
         SENTRY_DSN: process.env.SENTRY_DSN,
       },
 
-      error_file: 'logs/content-engine-worker-error.log',
-      out_file: 'logs/content-engine-worker-out.log',
+      error_file: 'logs/pm2/content-engine-worker-error.log',
+      out_file: 'logs/pm2/content-engine-worker-out.log',
       merge_logs: true,
       time: true,
 
@@ -182,8 +182,8 @@ module.exports = {
         SENTRY_DSN: process.env.SENTRY_DSN,
       },
 
-      error_file: 'logs/ai-tutor-scheduler-error.log',
-      out_file: 'logs/ai-tutor-scheduler-out.log',
+      error_file: 'logs/pm2/ai-tutor-scheduler-error.log',
+      out_file: 'logs/pm2/ai-tutor-scheduler-out.log',
       merge_logs: true,
       time: true,
 
