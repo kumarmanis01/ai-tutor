@@ -19,9 +19,10 @@
 
 import { prisma } from '@/lib/prisma'
 import { getRedis } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 
 const BASELINE_MASTERY = 0.3
-const READINESS_CACHE_TTL = 3600 // 1 hour
+const READINESS_CACHE_TTL = 300 // 5 minutes
 
 // Local DB row types to provide stable typings for Prisma `select` shapes
 type ChapterRow = {
@@ -235,7 +236,15 @@ export async function computeReadinessScore(
     }
 
     return result
-  } catch {
+  } catch (err) {
+    logger.error('computeReadinessScore failed', {
+      event: 'computeReadinessScore.error',
+      context: {
+        studentId,
+        subjectId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
     return zero
   }
 }

@@ -27,6 +27,10 @@ jest.mock('@/lib/redis', () => ({
   getRedis: jest.fn().mockReturnValue(null),
 }))
 
+jest.mock('@/lib/logger', () => ({
+  logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn() },
+}))
+
 describe('lib/student/examReadiness (smoke)', () => {
   it('module loads', () => {
     // require to avoid static TS imports in the test harness

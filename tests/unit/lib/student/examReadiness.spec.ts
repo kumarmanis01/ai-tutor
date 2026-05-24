@@ -19,6 +19,7 @@
 
 jest.mock('@/lib/prisma', () => ({ prisma: { chapterDef: { findMany: jest.fn() }, studentConceptState: { findMany: jest.fn() }, mockExamAttempt: { findFirst: jest.fn() } } }));
 jest.mock('@/lib/redis', () => ({ getRedis: jest.fn().mockReturnValue(null) }));
+jest.mock('@/lib/logger', () => ({ logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn() } }));
 
 import { prisma } from '@/lib/prisma';
 import { computeReadinessScore } from '@/lib/student/examReadiness';

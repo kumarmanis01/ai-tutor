@@ -19,6 +19,10 @@ const mockProgressFindUnique = jest.fn().mockResolvedValue({ mastery: 0.5, pract
 const mockTopicDefFindUnique = jest.fn().mockResolvedValue({
   chapter: { name: 'Algebra', subject: { name: 'Mathematics' } },
 });
+// syncConceptStatesForTopic dependencies
+const mockConceptFindMany = jest.fn().mockResolvedValue([]);
+const mockTopLevelExecuteRaw = jest.fn().mockResolvedValue(1);
+const mockConceptStateCreate = jest.fn().mockResolvedValue({});
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
@@ -28,9 +32,16 @@ jest.mock('@/lib/prisma', () => ({
         studentTopicMastery: { upsert: mockMasteryUpsert },
       }),
     ),
+    $executeRaw: (...args: any[]) => mockTopLevelExecuteRaw(...args),
     studentTopicProgress: { findUnique: mockProgressFindUnique },
     topicDef: { findUnique: mockTopicDefFindUnique },
+    concept: { findMany: mockConceptFindMany },
+    studentConceptState: { create: mockConceptStateCreate },
   },
+}));
+
+jest.mock('@/lib/student/examReadiness', () => ({
+  invalidateReadinessCache: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('@/lib/logger', () => ({
@@ -58,6 +69,9 @@ describe('updateStudentTopicProgress — dual-write', () => {
     mockTopicDefFindUnique.mockResolvedValue({
       chapter: { name: 'Algebra', subject: { name: 'Mathematics' } },
     });
+    mockConceptFindMany.mockResolvedValue([]);
+    mockTopLevelExecuteRaw.mockResolvedValue(1);
+    mockConceptStateCreate.mockResolvedValue({});
   });
 
   it('writes to both StudentTopicProgress and StudentTopicMastery in a single transaction', async () => {

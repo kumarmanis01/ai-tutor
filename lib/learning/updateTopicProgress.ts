@@ -18,6 +18,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { randomUUID } from 'crypto';
+import { invalidateReadinessCache } from '@/lib/student/examReadiness';
 
 export type ActivityType = 'PRACTICE' | 'TEST' | 'HOMEWORK' | 'STUDY';
 
@@ -34,6 +35,13 @@ const PROGRESS_WEIGHTS: Record<ActivityType, number> = {
   PRACTICE: 0.1,
   TEST: 0.3,
   STUDY: 0,
+};
+
+const MASTERY_LEVEL_ORDINALS: Record<string, number> = {
+  beginner: 0,
+  intermediate: 1,
+  advanced: 2,
+  expert: 3,
 };
 
 /** Derives a MasteryLevel string from an accuracy value. */
@@ -128,6 +136,17 @@ export async function updateStudentTopicProgress(
     });
   });
 
+  // Bridge topic-level performance into StudentConceptState so that
+  // computeReadinessScore (which reads StudentConceptState) reflects practice,
+  // homework, and lesson completions -- not only IRT tutor turns.
+  // STUDY touches (totalAnswers = 0) produce derivedMasteryScore = 0, which
+  // is a no-op against GREATEST(), so we skip them entirely.
+  if (totalAnswers > 0) {
+    const normalisedLevel = (MASTERY_LEVEL_ORDINALS[masteryLevel] ?? 0) / 4;
+    const derivedMasteryScore = Math.min(1.0, 0.6 * accuracy + 0.4 * normalisedLevel);
+    await syncConceptStatesForTopic({ studentId, topicId, derivedMasteryScore });
+  }
+
   const updated = await prisma.studentTopicProgress.findUnique({
     where: { studentId_topicId: { studentId, topicId } },
     select: { mastery: true, practiceCount: true },
@@ -142,4 +161,61 @@ export async function updateStudentTopicProgress(
     newMastery: updated ? +(updated.mastery.toFixed(3)) : null,
     practiceCount: updated?.practiceCount ?? null,
   });
+}
+
+/**
+ * For every Concept under the given topic, upsert StudentConceptState with
+ * derivedMasteryScore using GREATEST() so the IRT worker's higher values
+ * are never downgraded. Creates the row if it does not yet exist.
+ *
+ * Called after topic-level writes commit so concept states are always >= the
+ * topic-level derivation. Invalidates the readiness Redis cache on success.
+ */
+async function syncConceptStatesForTopic({
+  studentId,
+  topicId,
+  derivedMasteryScore,
+}: {
+  studentId: string;
+  topicId: string;
+  derivedMasteryScore: number;
+}): Promise<void> {
+  const concepts = await prisma.concept.findMany({
+    where: { topicId },
+    select: { id: true },
+  });
+
+  if (concepts.length === 0) return;
+
+  await Promise.all(
+    concepts.map(async (concept: { id: string }) => {
+      const updated = await prisma.$executeRaw`
+        UPDATE "StudentConceptState"
+        SET "masteryScore"    = GREATEST("masteryScore", ${derivedMasteryScore}),
+            "lastInteraction" = NOW()
+        WHERE "studentId" = ${studentId}
+          AND "conceptId" = ${concept.id}
+      `;
+      if (updated === 0) {
+        await prisma.studentConceptState.create({
+          data: {
+            studentId,
+            conceptId: concept.id,
+            masteryScore: derivedMasteryScore,
+            masteryVariance: 0.25,
+            attemptCount: 1,
+            lastInteraction: new Date(),
+          },
+        });
+      }
+    }),
+  );
+
+  const topic = await prisma.topicDef.findUnique({
+    where: { id: topicId },
+    select: { chapter: { select: { subjectId: true } } },
+  });
+  if (topic?.chapter?.subjectId) {
+    await invalidateReadinessCache(studentId, topic.chapter.subjectId);
+  }
 }
