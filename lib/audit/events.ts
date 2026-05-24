@@ -15,4 +15,4 @@ export const AuditEvents = {
   REGEN_JOB_FAILED:    'REGEN_JOB_FAILED',
 } as const
 
-export type AuditEventKey = typeof AuditEvents[keyof typeof AuditEvents]
+

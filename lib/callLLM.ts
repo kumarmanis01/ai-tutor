@@ -54,7 +54,6 @@ function normalizeGradeForLog(grade: unknown): number | null {
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
 
-export type AiErrorCode = 'AI_CONFIG_MISSING' | 'AI_TIMEOUT' | 'AI_UNAUTHORIZED' | 'AI_RATE_LIMITED' | 'AI_PROVIDER_ERROR' | 'AI_UNKNOWN'
 
 export class LLMError extends Error {
   constructor(

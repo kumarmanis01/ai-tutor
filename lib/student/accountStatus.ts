@@ -16,8 +16,6 @@
 import { prisma } from '@/lib/prisma'
 import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 
-export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | 'DEACTIVATED'
-
 /**
  * Check if the student's account requires parent OTP gate.
  * Returns true when:

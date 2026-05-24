@@ -145,8 +145,6 @@ export const GRAMMAR_QUESTION_TYPES = [
   'chapter_context',
 ] as const
 
-export type GrammarQuestionType = typeof GRAMMAR_QUESTION_TYPES[number]
-
 export const GrammarQuestionSchema = z.object({
   question: z.string(),
   type: z.enum(GRAMMAR_QUESTION_TYPES),

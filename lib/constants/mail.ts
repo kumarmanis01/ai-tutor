@@ -106,8 +106,6 @@ export const MAIL_SUBJECTS = {
   PARENT_DAILY_DIGEST:       "{name}'s learning update for today",
 } as const;
 
-export type MailSubjectKey = keyof typeof MAIL_SUBJECTS;
-
 /**
  * Interpolates {name} placeholder in an email subject string.
  */
