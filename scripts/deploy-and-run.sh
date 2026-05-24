@@ -179,7 +179,7 @@ fi
 echo "✅ Smart quote preflight finished"
 
 step "5c — Pre-flight: TypeScript type check"
-if ! npx tsc --noEmit --project tsconfig.json; then
+if ! nice -n 10 npx tsc --noEmit --project tsconfig.json; then
   echo "❌ TypeScript errors found. Fix before deploying."
   exit 1
 fi
@@ -190,7 +190,7 @@ echo "✅ TypeScript clean"
 # ─────────────────────────────────────────────────────────────────────────────
 step "6a/11 — Build workers (tsc + alias + import-fix)"
 _T=$SECONDS
-npm run build:workers
+nice -n 10 npm run build:workers
 echo "  workers: done in $(( SECONDS - _T ))s"
 echo "  dist/worker: $(find "${REPO_ROOT}/dist/worker" -name '*.js' | wc -l | tr -d ' ') files, $(du -sh "${REPO_ROOT}/dist/worker" | cut -f1)"
 
@@ -226,8 +226,11 @@ _HEARTBEAT_PID=$!
 
 # build:workers already compiled worker/ + lib/ and fixed dist imports.
 # Call next build directly to avoid re-running tsc a second time.
-# NODE_OPTIONS capped at 3072 MB — VPS has 3.6 GB RAM; 6144 MB forces swap thrashing.
-NODE_OPTIONS=--max-old-space-size=3072 ./node_modules/.bin/next build >>"${BUILD_LOG}" 2>&1
+# NODE_OPTIONS capped at 1024 MB. VPS total RAM is 3.6 GB; OS + Redis + PM2 consume ~1.5 GB at
+# idle, leaving ~2 GB free. Node RSS always exceeds the V8 heap ceiling (native addons, engine
+# overhead), so 1024 MB heap keeps total Node RSS under ~1.5 GB and leaves the system breathing.
+# If the build OOM-kills, add a 4 GB swapfile on the VPS rather than raising this value.
+NODE_OPTIONS=--max-old-space-size=1024 nice -n 10 ./node_modules/.bin/next build >>"${BUILD_LOG}" 2>&1
 _BUILD_EXIT=$?
 
 kill "${_HEARTBEAT_PID}" 2>/dev/null || true
@@ -440,14 +443,19 @@ pm2 save
 
 # Log rotation — rotate when a file hits 10 MB, keep 5 rotated copies,
 # compress rotated files, check once per day (86400 s).
-pm2 install pm2-logrotate 2>/dev/null || true
-pm2 set pm2-logrotate:max_size 10M 2>/dev/null || true
-pm2 set pm2-logrotate:retain 5 2>/dev/null || true
-pm2 set pm2-logrotate:compress true 2>/dev/null || true
-pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss 2>/dev/null || true
-pm2 set pm2-logrotate:rotateModule true 2>/dev/null || true
-pm2 set pm2-logrotate:workerInterval 86400 2>/dev/null || true
-echo "  pm2-logrotate: retain=5, max_size=10M, workerInterval=86400s"
+# Guarded: pm2 install spawns a full npm subprocess; skip if already present.
+if pm2 list 2>/dev/null | grep -q 'pm2-logrotate'; then
+  echo "  pm2-logrotate: already installed -- skipping"
+else
+  pm2 install pm2-logrotate 2>/dev/null || true
+  pm2 set pm2-logrotate:max_size 10M 2>/dev/null || true
+  pm2 set pm2-logrotate:retain 5 2>/dev/null || true
+  pm2 set pm2-logrotate:compress true 2>/dev/null || true
+  pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss 2>/dev/null || true
+  pm2 set pm2-logrotate:rotateModule true 2>/dev/null || true
+  pm2 set pm2-logrotate:workerInterval 86400 2>/dev/null || true
+  echo "  pm2-logrotate: installed and configured (retain=5, max_size=10M, workerInterval=86400s)"
+fi
 
 # Systemd startup (survives reboot)
 sudo pm2 startup systemd -u "$(whoami)" --hp "$HOME" 2>/dev/null || true
