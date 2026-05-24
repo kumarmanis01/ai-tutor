@@ -10,7 +10,7 @@ const DRY_RUN = process.argv.includes('--dry-run');
 
 let prisma = null;
 if (!DRY_RUN) {
-  prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
+  prisma = new PrismaClient();
 }
 
 const BADGE_DEFINITIONS = [

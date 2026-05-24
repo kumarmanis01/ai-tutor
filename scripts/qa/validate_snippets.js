@@ -102,7 +102,7 @@ async function main() {
 
   let prisma;
   try {
-    prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
+    prisma = new PrismaClient();
     await prisma.$connect();
   } catch (e) {
     console.error('Prisma client not available or failed to connect:', e.message);
