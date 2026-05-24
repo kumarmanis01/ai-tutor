@@ -5,13 +5,14 @@ set -euo pipefail
 # Safe to run on the VPS from the project root.
 
 LOG_DIR="$(pwd)/logs"
+PM2_LOG_DIR="$LOG_DIR/pm2"
 ARCHIVE_DIR="$LOG_DIR/archive/$(date +%Y%m%d_%H%M%S)"
 
-mkdir -p "$LOG_DIR" "$ARCHIVE_DIR"
+mkdir -p "$LOG_DIR" "$PM2_LOG_DIR" "$ARCHIVE_DIR"
 
-# Move current logs into an archive folder (preserve names)
+# Move current PM2 console logs into a timestamped archive folder
 shopt -s nullglob
-for f in "$LOG_DIR"/*.log "$LOG_DIR"/*.txt; do
+for f in "$PM2_LOG_DIR"/*.log "$PM2_LOG_DIR"/*.log.*; do
   [ -e "$f" ] || continue
   mv "$f" "$ARCHIVE_DIR/"
 done

@@ -285,8 +285,13 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 step "8/11 — Ensure logs, permissions, script executability"
 
-# Logs directory
-mkdir -p "${REPO_ROOT}/logs"
+# Logs directories — pm2/ holds all process console output
+mkdir -p "${REPO_ROOT}/logs/pm2"
+
+# Purge files older than 5 days before each deploy (keeps the folder lean)
+if [ -f "${SCRIPT_DIR}/purge-old-logs.sh" ]; then
+  bash "${SCRIPT_DIR}/purge-old-logs.sh" || true
+fi
 
 # .env.production permissions
 if [ -f "${SCRIPT_DIR}/ensure-env-perms.sh" ]; then
@@ -296,7 +301,7 @@ else
 fi
 
 # Make all wrapper scripts executable
-for script in run-worker.sh run-scheduler.sh run-migrate.sh; do
+for script in run-worker.sh run-scheduler.sh run-migrate.sh purge-old-logs.sh; do
   if [ -f "${SCRIPT_DIR}/${script}" ]; then
     chmod +x "${SCRIPT_DIR}/${script}"
     echo "chmod +x ${script}"
@@ -433,13 +438,29 @@ fi
 step "10/11 — PM2 save + startup"
 pm2 save
 
-# Log rotation
+# Log rotation — rotate when a file hits 10 MB, keep 5 rotated copies,
+# compress rotated files, check once per day (86400 s).
 pm2 install pm2-logrotate 2>/dev/null || true
 pm2 set pm2-logrotate:max_size 10M 2>/dev/null || true
-pm2 set pm2-logrotate:retain 14 2>/dev/null || true
+pm2 set pm2-logrotate:retain 5 2>/dev/null || true
+pm2 set pm2-logrotate:compress true 2>/dev/null || true
+pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss 2>/dev/null || true
+pm2 set pm2-logrotate:rotateModule true 2>/dev/null || true
+pm2 set pm2-logrotate:workerInterval 86400 2>/dev/null || true
+echo "  pm2-logrotate: retain=5, max_size=10M, workerInterval=86400s"
 
 # Systemd startup (survives reboot)
 sudo pm2 startup systemd -u "$(whoami)" --hp "$HOME" 2>/dev/null || true
+
+# Register a daily cron job to purge log files older than 5 days.
+# Idempotent — only added once; subsequent deploys skip if already present.
+_PURGE_JOB="0 3 * * * bash ${REPO_ROOT}/scripts/purge-old-logs.sh >> ${REPO_ROOT}/logs/purge-cron.log 2>&1"
+if ( crontab -l 2>/dev/null | grep -qF 'purge-old-logs.sh' ); then
+  echo "  Daily log purge cron job already registered"
+else
+  ( crontab -l 2>/dev/null; echo "${_PURGE_JOB}" ) | crontab -
+  echo "  Registered daily log purge cron job (03:00 local time)"
+fi
 
 # Post-deploy: mark stale WorkerLifecycle rows as STOPPED.
 # Any DRAINING/RUNNING row that is not the single most-recent RUNNING row
