@@ -46,9 +46,7 @@ type MessageItem =
 
 export interface AITutorChatPanelProps {
   sessionId: string;
-  conceptId: string;
   conceptName: string;
-  subjectId: string;
   subjectName: string;
   initialStage: string;
   isAITutorEnabled: boolean;
@@ -385,9 +383,7 @@ function ReExplainBar({ onSelect, disabled }: { onSelect: (sentinel: string) => 
 
 export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   sessionId,
-  conceptId,
   conceptName,
-  subjectId,
   subjectName: _subjectName,
   initialStage,
   isAITutorEnabled,
@@ -635,7 +631,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       response = await fetch('/api/tutor/turn', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, conceptId, subjectId, studentMessage: message, turnNumber: Date.now() }),
+        body: JSON.stringify({ sessionId, studentMessage: message, turnNumber: Date.now() }),
       });
     } catch {
       setConnectionError('Teacher Vidya will be right back. Please try again in a moment.');
