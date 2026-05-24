@@ -207,10 +207,34 @@ mkdir -p "${LOG_DIR}"
 BUILD_LOG="${LOG_DIR}/deploy-build-$(date -u +%Y%m%dT%H%M%SZ).log"
 echo "  Building Next.js app... (log: ${BUILD_LOG})"
 _T=$SECONDS
+
+# Heartbeat: one dot per second so the terminal stays active during the long
+# build. Without this, SSH sessions and watchdogs see no output for 3-5 min
+# and may kill the process or assume it is stalled.
+(
+  _hb=0
+  while true; do
+    sleep 1
+    _hb=$(( _hb + 1 ))
+    printf "."
+    if [ $(( _hb % 60 )) -eq 0 ]; then
+      printf " %ds elapsed\n" "${_hb}"
+    fi
+  done
+) &
+_HEARTBEAT_PID=$!
+
 # build:workers already compiled worker/ + lib/ and fixed dist imports.
 # Call next build directly to avoid re-running tsc a second time.
 # NODE_OPTIONS capped at 3072 MB — VPS has 3.6 GB RAM; 6144 MB forces swap thrashing.
-if NODE_OPTIONS=--max-old-space-size=3072 ./node_modules/.bin/next build >>"${BUILD_LOG}" 2>&1; then
+NODE_OPTIONS=--max-old-space-size=3072 ./node_modules/.bin/next build >>"${BUILD_LOG}" 2>&1
+_BUILD_EXIT=$?
+
+kill "${_HEARTBEAT_PID}" 2>/dev/null || true
+wait "${_HEARTBEAT_PID}" 2>/dev/null || true
+printf "\n"
+
+if [ "${_BUILD_EXIT}" -eq 0 ]; then
   echo "  Next.js: done in $(( SECONDS - _T ))s"
   echo "  .next/: $(du -sh "${REPO_ROOT}/.next" | cut -f1)"
 else
