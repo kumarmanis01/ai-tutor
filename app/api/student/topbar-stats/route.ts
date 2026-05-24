@@ -21,6 +21,7 @@ import { prisma } from '@/lib/prisma';
 import { isShieldAvailable } from '@/lib/student/streakShield';
 import { getNextAction, type NextAction } from '@/lib/homeEngine/getNextAction';
 import { logger } from '@/lib/logger';
+import { getXPToNextLevel } from '@/lib/student/xpLevels';
 import type {
   StudentTopbarFocus,
   StudentTopbarMode,
@@ -150,16 +151,19 @@ export async function GET(req: Request) {
       getNextAction(userId),
       prisma.user.findUnique({
         where: { id: userId },
-        select: { currentStreak: true, level: true, cosmeticUnlocks: true, longestStreak: true },
+        select: { currentStreak: true, level: true, cosmeticUnlocks: true, longestStreak: true, totalXp: true },
       }),
       isShieldAvailable(userId),
     ]);
 
     const streak = user?.currentStreak ?? 0;
+    const totalXp = user?.totalXp ?? 0;
     const payload: StudentTopbarStatsResponse = {
       streak,
       longestStreak: user?.longestStreak ?? 0,
       level: user?.level ?? 1,
+      totalXp,
+      xpToNextLevel: getXPToNextLevel(totalXp) ?? 0,
       shieldAvailable: shieldAvail,
       cosmeticUnlocks: user?.cosmeticUnlocks ?? [],
       focus: buildTopbarFocus(extractAction(actionResult), streak),
@@ -176,6 +180,8 @@ export async function GET(req: Request) {
       streak: 0,
       longestStreak: 0,
       level: 1,
+      totalXp: 0,
+      xpToNextLevel: 0,
       shieldAvailable: false,
       cosmeticUnlocks: [],
       focus: buildTopbarFocus(null, 0),

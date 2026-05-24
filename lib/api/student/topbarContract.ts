@@ -42,6 +42,8 @@ export interface StudentTopbarStatsResponse extends StudentTopbarFocusResponse {
   readonly streak: number;
   readonly longestStreak: number;
   readonly level: number;
+  readonly totalXp: number;
+  readonly xpToNextLevel: number;
   readonly shieldAvailable: boolean;
   readonly cosmeticUnlocks: string[];
 }
