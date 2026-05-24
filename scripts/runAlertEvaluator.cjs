@@ -6,8 +6,9 @@
 */
 // Use PrismaClient directly to avoid TypeScript source dependency at runtime.
 // lib/prisma.ts cannot be required from a .cjs file without ts-node.
+require('./_env-loader').loadEnv();
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
 
 
 (async () => {

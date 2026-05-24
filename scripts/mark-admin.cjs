@@ -42,7 +42,7 @@ function loadEnvFileIfPresent() {
 }
 
 loadEnvFileIfPresent();
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
 
 const logger = {
   info: (...args) => console.log('[INFO]', ...args),

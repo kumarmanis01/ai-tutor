@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+require('./_env-loader').loadEnv();
 const { PrismaClient } = require('@prisma/client');
 
 async function main(){
@@ -32,7 +33,7 @@ async function main(){
   while((m = regex.exec(content)) !== null){
     events.add(m[1]);
   }
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
   const since30d = new Date(Date.now() - 30*24*60*60*1000);
   const rows = [];
   for(const ev of Array.from(events).sort()){
