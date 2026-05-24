@@ -88,7 +88,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
         where: { id: cid },
         select: {
           name: true,
-          topic: { select: { chapter: { select: { subject: { select: { name: true } } } } } },
+          topic: { select: { chapter: { select: { subject: { select: { id: true, name: true } } } } } },
         },
       }),
     ]);
@@ -99,6 +99,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
         conceptId={cid}
         topicId={id}
         conceptName={concept?.name ?? ''}
+        subjectId={concept?.topic?.chapter?.subject?.id ?? ''}
         subjectName={concept?.topic?.chapter?.subject?.name ?? ''}
         isAITutorEnabled={isAIEnabled}
       />

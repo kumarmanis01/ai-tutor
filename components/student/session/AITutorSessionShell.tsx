@@ -42,6 +42,7 @@ interface AITutorSessionShellProps {
   conceptId: string;
   topicId: string;
   conceptName: string;
+  subjectId: string;
   subjectName: string;
   isAITutorEnabled: boolean;
 }
@@ -55,9 +56,10 @@ type SessionSummary = {
 
 export default function AITutorSessionShell({
   sessionId,
-  conceptId: _conceptId,
+  conceptId,
   topicId: _topicId,
   conceptName,
+  subjectId,
   subjectName,
   isAITutorEnabled,
 }: AITutorSessionShellProps) {
@@ -104,7 +106,9 @@ export default function AITutorSessionShell({
         <div className="flex flex-col flex-1 min-h-0 md:w-3/5">
           <AITutorChatPanel
             sessionId={sessionId}
+            conceptId={conceptId}
             conceptName={conceptName}
+            subjectId={subjectId}
             subjectName={subjectName}
             initialStage="HOOK"
             isAITutorEnabled={isAITutorEnabled}
@@ -132,7 +136,9 @@ export default function AITutorSessionShell({
     <div className="h-dvh flex flex-col overflow-hidden">
       <AITutorChatPanel
         sessionId={sessionId}
+        conceptId={conceptId}
         conceptName={conceptName}
+        subjectId={subjectId}
         subjectName={subjectName}
         initialStage="HOOK"
         isAITutorEnabled={isAITutorEnabled}
