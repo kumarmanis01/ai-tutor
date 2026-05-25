@@ -199,14 +199,24 @@ async function promoteGeneratedQuestions(topicId: string): Promise<number> {
 async function getPracticeHydrationState(topicId: string): Promise<{
   hasActiveQuestions: boolean;
   runningJobId: string | null;
+  hydrationFailed: boolean;
 }> {
-  const [activeCount, runningJob] = await Promise.all([
+  const [activeCount, runningJob, failedJob] = await Promise.all([
     prisma.question.count({ where: { topicId, status: 'ACTIVE' } }),
     prisma.hydrationJob.findFirst({
       where: {
         jobType: 'questions',
         topicId,
         status: { in: [JobStatus.Pending, JobStatus.Running] },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    }),
+    prisma.hydrationJob.findFirst({
+      where: {
+        jobType: 'questions',
+        topicId,
+        status: JobStatus.Failed,
       },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
@@ -235,9 +245,13 @@ async function getPracticeHydrationState(topicId: string): Promise<{
     }
   }
 
+  const hasActiveQuestions = activeCount > 0 || promoted > 0;
   return {
-    hasActiveQuestions: activeCount > 0 || promoted > 0,
+    hasActiveQuestions,
     runningJobId: runningJob?.id ?? null,
+    // True only when the most recent job failed and there are still no active questions.
+    // Signals the UI to stop polling and show a retry CTA instead of looping indefinitely.
+    hydrationFailed: !hasActiveQuestions && !runningJob && !!failedJob,
   };
 }
 
@@ -275,6 +289,7 @@ export async function GET(
     hasActiveQuestions: hydrationState.hasActiveQuestions,
     isHydrationRunning: !!hydrationState.runningJobId,
     runningJobId: hydrationState.runningJobId,
+    hydrationFailed: hydrationState.hydrationFailed,
     sessionPhase: session.state,
   });
   logger.logAPI(req, res, { className: 'PracticeHydrateAPI', methodName: 'GET' }, start);

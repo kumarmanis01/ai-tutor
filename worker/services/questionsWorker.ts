@@ -901,11 +901,11 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
 
     // Soft-approve: promote GeneratedQuestion rows to the student-facing Question table
     // so practice questions are immediately available without waiting for admin review.
-    // Non-fatal -- if this sync fails, questions are still in GeneratedQuestion; admin can
-    // reconcile later. Admin can quarantine/reject individual Question rows afterwards.
+    // Fatal: a promote failure throws to the outer catch which stamps the job Failed
+    // and rethrows to BullMQ for retry. This prevents the dead-end where the job
+    // shows Completed but the Question table is empty and the UI has no retry path.
     if (createdTestIds.length > 0) {
-      try {
-        const existingActiveQuestions = await prisma.question.findMany({
+      const existingActiveQuestions = await prisma.question.findMany({
           where: {
             topicId,
             status: 'ACTIVE',
@@ -1011,15 +1011,6 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           testIds: createdTestIds,
           promotedCount: promoted,
         });
-      } catch (syncErr) {
-        // Non-fatal: questions exist in GeneratedQuestion; they just will not appear in practice
-        // until the admin runs a manual sync or the next hydration job completes successfully.
-        logger.error('[QUESTIONS_WORKER] soft-approve sync failed -- questions will be unavailable until next sync', {
-          jobId,
-          topicId,
-          error: String(syncErr),
-        });
-      }
     }
   } catch (err) {
     const errMsg = (err as any)?.message ?? String(err);
