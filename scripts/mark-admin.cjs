@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Standalone CJS script -- no Prisma client dependency, uses pg directly.
+// Standalone CJS script -- no Prisma client dependency, uses pg + ioredis directly.
 // Works on VPS without ts-node or Prisma client generation.
 //
 // Usage: node scripts/mark-admin.cjs <email>
@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
+const Redis = require('ioredis');
 
 function loadEnv() {
   const root = path.resolve(__dirname, '..');
@@ -47,11 +48,11 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new Client({ connectionString: dbUrl });
-  await client.connect();
-
+  // --- DB update ---
+  const db = new Client({ connectionString: dbUrl });
+  await db.connect();
   try {
-    const check = await client.query('SELECT id, email, role FROM "User" WHERE email = $1', [email]);
+    const check = await db.query('SELECT id, email, role FROM "User" WHERE email = $1', [email]);
     if (check.rowCount === 0) {
       console.error(`ERROR: No user found with email: ${email}`);
       process.exit(1);
@@ -60,13 +61,33 @@ async function main() {
     const current = check.rows[0];
     if (current.role === 'admin') {
       console.log(`[INFO] ${email} already has role=admin -- no change needed.`);
-      return;
+    } else {
+      await db.query('UPDATE "User" SET role = $1 WHERE email = $2', ['admin', email]);
+      console.log(`[INFO] ${email} updated from role=${current.role} to role=admin.`);
     }
-
-    await client.query('UPDATE "User" SET role = $1 WHERE email = $2', ['admin', email]);
-    console.log(`[INFO] ${email} updated from role=${current.role} to role=admin.`);
   } finally {
-    await client.end();
+    await db.end();
+  }
+
+  // --- Redis cache bust ---
+  // The JWT callback caches role for up to 5 minutes. Without this del,
+  // the user sees "no admin access" even after the DB is correct.
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    console.warn('[WARN] REDIS_URL not set -- skipping cache invalidation. The change will take effect within 5 minutes, or sooner if the user signs out and back in after the TTL expires.');
+    return;
+  }
+
+  const cacheKey = `session:user:${email.toLowerCase()}`;
+  const redis = new Redis.default(redisUrl, { lazyConnect: true, enableOfflineQueue: false });
+  try {
+    await redis.connect();
+    await redis.del(cacheKey);
+    console.log(`[INFO] Redis cache key deleted: ${cacheKey}`);
+  } catch (e) {
+    console.warn(`[WARN] Redis cache invalidation failed (${e.message}) -- change takes effect within 5 minutes.`);
+  } finally {
+    redis.disconnect();
   }
 }
 
