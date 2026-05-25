@@ -271,7 +271,17 @@ export function SessionContainer({
   ]);
 
   const handleGeneratePracticeQuestions = useCallback(async () => {
-    setPracticePendingStatus((prev) => ({ ...prev, isGenerating: true, errorMessage: null }));
+    // Optimistic reset: clear error state immediately so the UI transitions to
+    // "generating" rather than staying on the error screen while the POST fires.
+    // Also reset the auto-trigger guard so a subsequent failure can re-trigger
+    // automatically instead of waiting for another manual tap.
+    setPracticePendingStatus((prev) => ({
+      ...prev,
+      isGenerating: true,
+      hydrationFailed: false,
+      errorMessage: null,
+    }));
+    practiceAutoTriggerAttemptedRef.current = null;
     const result = await triggerPracticeHydration();
 
     if (!result) {
