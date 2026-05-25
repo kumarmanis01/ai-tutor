@@ -23,14 +23,17 @@ import SessionCompletionScreen from './SessionCompletionScreen';
 import WhiteboardPanel from './WhiteboardPanel';
 
 // AC-01: subjects that auto-activate the whiteboard.
+// const WHITEBOARD_SUBJECTS = new Set([
+//   'mathematics',
+//   'maths',
+//   'math',
+//   'physics',
+//   'chemistry',
+//   'geometry',
+//   'algebra',
+// ]);
 const WHITEBOARD_SUBJECTS = new Set([
-  'mathematics',
-  'maths',
-  'math',
-  'physics',
-  'chemistry',
-  'geometry',
-  'algebra',
+  'arabic',
 ]);
 
 function needsWhiteboard(subjectName: string): boolean {
