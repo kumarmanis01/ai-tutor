@@ -27,7 +27,7 @@ export const viewport = {
  * - Fetches sidebar badge counts server-side in parallel
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const headersList = headers();
+  const headersList = await headers();
   const pathname = headersList.get('x-pathname') ?? '';
 
   // Admin login page is public -- render minimal shell, skip auth + sidebar.
