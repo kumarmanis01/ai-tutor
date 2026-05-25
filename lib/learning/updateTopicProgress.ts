@@ -37,6 +37,14 @@ const PROGRESS_WEIGHTS: Record<ActivityType, number> = {
   STUDY: 0,
 };
 
+/**
+ * Activity types that own mastery state in StudentTopicMastery.
+ * Any new activity type added to ActivityType must be consciously placed here
+ * or omitted -- omission means it is a touch-only update (like STUDY) and will
+ * never overwrite accuracy/masteryLevel.
+ */
+const MASTERY_OWNING_ACTIVITIES = new Set<ActivityType>(['PRACTICE', 'TEST', 'HOMEWORK']);
+
 const MASTERY_LEVEL_ORDINALS: Record<string, number> = {
   beginner: 0,
   intermediate: 1,
@@ -128,8 +136,10 @@ export async function updateStudentTopicProgress(
         lastAttemptedAt: now,
       },
       update: {
-        accuracy,
-        masteryLevel,
+        // STUDY touches (weight=0, totalAnswers=0) must never own mastery state.
+        // Keyed on activityType rather than totalAnswers so stub HOMEWORK calls
+        // (0 questions) do not silently skip a legitimate accuracy reset.
+        ...(MASTERY_OWNING_ACTIVITIES.has(activityType) ? { accuracy, masteryLevel } : {}),
         questionsAttempted: { increment: totalAnswers },
         lastAttemptedAt: now,
       },

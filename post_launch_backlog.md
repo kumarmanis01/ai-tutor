@@ -98,6 +98,36 @@ that still produces reliable bootstrapped mastery scores.
 
 ---
 
+## Schema Debt
+
+### PLB-SCHEMA-01: Normalise StudentTopicMastery.chapter to a FK
+**Priority**: MEDIUM
+**Owner**: Engineering
+**Trigger**: Before any chapter-rename admin flow goes live.
+
+**Problem**: `StudentTopicMastery.chapter` is a denormalised plain string (chapter
+name copy), not a FK to `ChapterDef`. If a chapter is renamed, all historical
+mastery rows become silently orphaned and any name-based JOIN or rollup will miss
+them. The `@@index([subject, chapter])` index on the table is also useless for
+JOIN-based aggregation.
+
+**Migration path** (additive-only, four steps across separate tasks):
+1. Add `chapterId String? @map("chapter_id")` + FK to `ChapterDef` on
+   `StudentTopicMastery`. Make it nullable so existing rows are not rejected.
+2. Backfill: `UPDATE "StudentTopicMastery" stm SET "chapterId" = cd.id FROM
+   "ChapterDef" cd WHERE cd.name = stm.chapter`. Run with `db-exec.sh`.
+3. Audit coverage before any rename flow ships:
+   `SELECT chapter FROM "StudentTopicMastery" WHERE "chapterId" IS NULL GROUP BY 1`
+   -- any rows here are already-orphaned names from prior renames. Quantify blast
+   radius and decide whether to repair or accept as historical loss.
+4. Once coverage is confirmed acceptable, make `chapterId` required, add the index,
+   and drop the `chapter` string column in a final migration.
+
+**Do not** combine steps -- each must pass `npm run build && npm test` before the
+next is started.
+
+---
+
 ## Other Features
 
 *(Add future backlog items here as they are identified during the sprint)*

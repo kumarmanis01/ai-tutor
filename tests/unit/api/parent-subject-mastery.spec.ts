@@ -6,6 +6,7 @@ jest.mock('@/lib/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
 }));
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { makeNextRequest } from '../../helpers/makeNextRequest';
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
 import '../../helpers/mockSession';
 
@@ -21,14 +22,14 @@ describe('GET /api/parent/subject-mastery', () => {
   it('should return 401 when unauthenticated', async () => {
     (global as any).__TEST_SESSION__ = null;
     const { GET } = await import('@/app/api/parent/subject-mastery/route');
-    const req = new Request(`http://localhost?studentId=${STUDENT_ID}`);
+    const req = makeNextRequest(`http://localhost?studentId=${STUDENT_ID}`);
     const res = await GET(req as any);
     expect(res.status).toBe(401);
   });
 
   it('should return 400 when studentId is missing', async () => {
     const { GET } = await import('@/app/api/parent/subject-mastery/route');
-    const req = new Request('http://localhost');
+    const req = makeNextRequest('http://localhost');
     const res = await GET(req as any);
     expect(res.status).toBe(400);
   });
@@ -36,7 +37,7 @@ describe('GET /api/parent/subject-mastery', () => {
   it('should return 403 when student is not linked to parent', async () => {
     prismaMock.parentStudent.findUnique.mockResolvedValue(null);
     const { GET } = await import('@/app/api/parent/subject-mastery/route');
-    const req = new Request(`http://localhost?studentId=${STUDENT_ID}`);
+    const req = makeNextRequest(`http://localhost?studentId=${STUDENT_ID}`);
     const res = await GET(req as any);
     expect(res.status).toBe(403);
   });
@@ -46,7 +47,7 @@ describe('GET /api/parent/subject-mastery', () => {
     prismaMock.user.findUnique.mockResolvedValue({ grade: '10' } as any);
     prismaMock.studentTopicMastery.groupBy.mockResolvedValueOnce([]); // subject level
     const { GET } = await import('@/app/api/parent/subject-mastery/route');
-    const req = new Request(`http://localhost?studentId=${STUDENT_ID}`);
+    const req = makeNextRequest(`http://localhost?studentId=${STUDENT_ID}`);
     const res = await GET(req as any);
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -71,10 +72,12 @@ describe('GET /api/parent/subject-mastery', () => {
 
     prismaMock.learningPlanItem.findMany.mockResolvedValue([
       { concept: { chapter: 'Trigonometry' } },
+      { concept: { chapter: 'Statistics' } },
+      { concept: { chapter: 'Algebra' } },
     ] as any);
 
     const { GET } = await import('@/app/api/parent/subject-mastery/route');
-    const req = new Request(`http://localhost?studentId=${STUDENT_ID}`);
+    const req = makeNextRequest(`http://localhost?studentId=${STUDENT_ID}`);
     const res = await GET(req as any);
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -119,7 +122,7 @@ describe('GET /api/parent/subject-mastery', () => {
     prismaMock.learningPlanItem.findMany.mockResolvedValue([]);
 
     const { GET } = await import('@/app/api/parent/subject-mastery/route');
-    const req = new Request(`http://localhost?studentId=${STUDENT_ID}&locale=hi`);
+    const req = makeNextRequest(`http://localhost?studentId=${STUDENT_ID}&locale=hi`);
     const res = await GET(req as any);
     const data = await res.json();
     expect(data[0].masteryExplanation).toContain('\u0907\u0938\u0915\u093e'); // Hindi prefix
