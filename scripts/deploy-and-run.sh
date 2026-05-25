@@ -179,6 +179,13 @@ fi
 echo "✅ Smart quote preflight finished"
 
 step "5c — Pre-flight: TypeScript type check"
+# next-env.d.ts must exist before tsc runs; next build generates it but runs later.
+# Restore it here if somehow absent (e.g. wiped by a bad git clean).
+if [ ! -f "${REPO_ROOT}/next-env.d.ts" ]; then
+  printf '/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n\n// NOTE: This file should not be edited\n// see https://nextjs.org/docs/app/building-your-application/configuring/typescript for more information.\n' \
+    > "${REPO_ROOT}/next-env.d.ts"
+  echo "  Restored missing next-env.d.ts"
+fi
 if ! npx tsc --noEmit --project tsconfig.json; then
   echo "❌ TypeScript errors found. Fix before deploying."
   exit 1

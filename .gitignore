@@ -44,7 +44,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 /infra/s3/newkey.json
 # Sentry Config File
 .env.sentry-build-plugin
