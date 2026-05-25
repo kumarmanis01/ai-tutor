@@ -459,6 +459,10 @@ function isPrismaRecordNotFoundError(error: unknown): boolean {
 //      unique-constraint error.
 //   3. Using upsert in linkAccount so a duplicate Google account link is silently
 //      updated rather than causing a constraint violation.
+//   4. Swallowing linkAccount errors so a transient DB failure on first sign-in does
+//      not abort the session -- the next sign-in retries the upsert. Without this,
+//      a failed linkAccount leaves no Account row, getUserByEmail keeps returning null,
+//      and every subsequent attempt re-fails, producing a permanent redirect loop.
 const _baseAdapter = PrismaAdapter(prisma);
 const customAdapter = {
   ..._baseAdapter,
@@ -489,37 +493,46 @@ const customAdapter = {
     id_token?: string | null;
     session_state?: string | null;
   }) => {
-    // Return the upserted account so callers receive the persisted record.
-    return prisma.account.upsert({
-      where: {
-        provider_providerAccountId: {
+    try {
+      await prisma.account.upsert({
+        where: {
+          provider_providerAccountId: {
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+          },
+        },
+        update: {
+          access_token: account.access_token,
+          refresh_token: account.refresh_token,
+          expires_at: account.expires_at,
+          token_type: account.token_type,
+          scope: account.scope,
+          id_token: account.id_token,
+          session_state: account.session_state,
+        },
+        create: {
+          userId: account.userId,
           provider: account.provider,
           providerAccountId: account.providerAccountId,
+          type: account.type,
+          access_token: account.access_token,
+          refresh_token: account.refresh_token,
+          expires_at: account.expires_at,
+          token_type: account.token_type,
+          scope: account.scope,
+          id_token: account.id_token,
+          session_state: account.session_state,
         },
-      },
-      update: {
-        access_token: account.access_token,
-        refresh_token: account.refresh_token,
-        expires_at: account.expires_at,
-        token_type: account.token_type,
-        scope: account.scope,
-        id_token: account.id_token,
-        session_state: account.session_state,
-      },
-      create: {
-        userId: account.userId,
-        provider: account.provider,
-        providerAccountId: account.providerAccountId,
-        type: account.type,
-        access_token: account.access_token,
-        refresh_token: account.refresh_token,
-        expires_at: account.expires_at,
-        token_type: account.token_type,
-        scope: account.scope,
-        id_token: account.id_token,
-        session_state: account.session_state,
-      },
-    });
+      });
+    } catch (err) {
+      logger.error('adapter.linkAccount.failed', {
+        event: 'adapter.linkAccount.failed',
+        context: { provider: account.provider },
+        error: String(err),
+      });
+      // Do not re-throw -- NextAuth aborts the session if linkAccount throws.
+      // Swallowing lets the OAuth flow complete; the next sign-in will retry the upsert.
+    }
   },
   useVerificationToken: async (identifierToken: { identifier: string; token: string }) => {
     try {
@@ -718,6 +731,7 @@ export const authOptions: any = {
                 token.subjects = cachedObj.subjects ?? undefined;
                 // Recompute onboardingComplete the same way as DB path
                 token.onboardingComplete = !!(
+                  token.accountStatus === 'active' &&
                   token.grade && token.board && token.language &&
                   (Array.isArray(token.subjects) ? token.subjects.filter(Boolean).length > 0 : (typeof token.subjects === 'string' && token.subjects.length > 0))
                 );
@@ -737,8 +751,9 @@ export const authOptions: any = {
             // Select only the fields required to compute auth flags and reduce row width.
             // Keep grade/board/language/subjects so onboardingComplete can be derived
             // consistently on cache hit vs DB miss.
+            // Prefer PK lookup (O(1)) when token.id is already set; fall back to email.
             const dbUser = await prisma.user.findUnique({
-              where: { email: token.email },
+              where: token.id ? { id: String(token.id) } : { email: String(token.email) },
               select: {
                 id: true,
                 role: true,
@@ -768,8 +783,10 @@ export const authOptions: any = {
                   .filter((s) => s.trim().length > 0).length;
               }
 
-              // onboardingComplete = academic profile only (board/grade/language/subjects).
+              // onboardingComplete requires active accountStatus AND a complete academic profile.
+              // A pending_parent_verification student is not considered fully onboarded.
               token.onboardingComplete = !!(
+                dbUser.accountStatus === 'active' &&
                 dbUser.grade && dbUser.board && dbUser.language && subjectCount > 0
               );
 
@@ -794,8 +811,10 @@ export const authOptions: any = {
                     subjects: subjectsVal ?? null,
                     onboardingComplete: token.onboardingComplete,
                   };
-                  // short TTL (seconds)
-                  await redis.set(cacheKey, JSON.stringify(toCache), 'EX', 30);
+                  // 5-minute TTL balances DB load against staleness after profile updates.
+                  // Any API route that mutates role/accountStatus/grade/board/language/subjects
+                  // MUST call invalidateUserSessionCache(email) after the DB write.
+                  await redis.set(cacheKey, JSON.stringify(toCache), 'EX', 300);
                   logger.add('jwt.cache.set', { className: 'auth', methodName: 'jwt', cacheKey, ttl: 30 });
                 } catch (setErr) {
                   logger.warn('jwt cache set failed', { className: 'auth', methodName: 'jwt', error: String(setErr) });
