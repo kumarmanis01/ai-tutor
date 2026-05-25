@@ -208,7 +208,34 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
     )
 
     if (primarySubjectId) {
-      const planId = await generateLearningPlan(studentId, primarySubjectId)
+      // Read study preferences saved by generate-plan during onboarding so the
+      // regenerated plan honours the student's exam date and weekly goal.
+      let bootstrapExamDate: Date | undefined = undefined;
+      let bootstrapWeeklyGoal: number | undefined = undefined;
+      try {
+        const slp = await prisma.studentLearningProfile.findUnique({
+          where: { studentId },
+          select: { studyDaysPerWeek: true, recommendations: true },
+        });
+        if (slp?.studyDaysPerWeek) bootstrapWeeklyGoal = slp.studyDaysPerWeek;
+        if (slp?.recommendations && typeof slp.recommendations === 'object') {
+          const recs = slp.recommendations as Record<string, unknown>;
+          if (typeof recs.pendingExamDate === 'string') {
+            const parsed = new Date(recs.pendingExamDate);
+            if (!isNaN(parsed.getTime())) bootstrapExamDate = parsed;
+          }
+        }
+      } catch (slpErr) {
+        logger.warn('[diagnostic-bootstrap] failed to read study preferences', {
+          studentId,
+          error: String(slpErr),
+        });
+      }
+
+      const planId = await generateLearningPlan(studentId, primarySubjectId, {
+        ...(bootstrapExamDate !== undefined ? { examDate: bootstrapExamDate } : {}),
+        ...(bootstrapWeeklyGoal !== undefined ? { weeklyGoal: bootstrapWeeklyGoal } : {}),
+      })
       if (planId) {
         const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
         logger.info('[diagnostic-bootstrap] learning plan generated', {

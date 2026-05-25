@@ -340,7 +340,12 @@ export default async function StudentHomeDashboardPage() {
     }
   }
 
-  // ── Diagnostic fallback state ─────────────────────────────────────────────
+  // ── Diagnostic state ──────────────────────────────────────────────────────
+  // hasPendingDiagnostic is true only when subjects exist and at least one lacks a
+  // completed diagnostic. When it is true, the dashboard suppresses premature plan
+  // missions and surfaces the diagnostic CTA as the primary action.
+  const hasPendingDiagnostic =
+    readinessResults.length > 0 && readinessResults.some((r) => !r.diagnosticDone)
   const allDiagnosticsComplete =
     readinessResults.length > 0 && readinessResults.every((r) => r.diagnosticDone)
   const firstPendingDiagSubject = readinessResults.find((r) => !r.diagnosticDone)
@@ -552,39 +557,37 @@ export default async function StudentHomeDashboardPage() {
           totalMins={totalMissionMins}
         />
 
-        {/* Today's missions */}
-        {(heroMission || secondaryMissions.length > 0) ? (
+        {/* Today's missions -- suppressed when any diagnostic is still pending to
+            prevent premature plan items from being shown before mastery data exists. */}
+        {hasPendingDiagnostic ? (
+          <section className="rounded-2xl border border-dashed border-[#D3D1C7] dark:border-[#4A4840] bg-[#F8F6F1] dark:bg-[#26241F] p-6">
+            <p className="text-base font-semibold text-[#2C2C2A] dark:text-[#E8E6DF] mb-1">
+              Let&apos;s get you started
+            </p>
+            <p className="text-sm text-[#888780] dark:text-[#6E6C67] mb-4">
+              Complete your diagnostic test so Teacher Vidya can build your personalised plan.
+            </p>
+            {firstDiagSubjectId && (
+              <a
+                href={`/diagnostic/${firstDiagSubjectId}`}
+                className="inline-flex items-center min-h-[44px] rounded-xl bg-[#534AB7] text-white text-sm font-semibold px-5 hover:bg-[#4239A0] transition-colors shadow-[0_2px_0_#3C3489]"
+              >
+                Take diagnostic test
+              </a>
+            )}
+          </section>
+        ) : (heroMission || secondaryMissions.length > 0) ? (
           <TodaysMissions hero={heroMission} rest={secondaryMissions} />
-        ) : (
-          /* Onboarding / plan loading state when no missions */
-          !allDiagnosticsComplete ? (
-            <section className="rounded-2xl border border-dashed border-[#D3D1C7] dark:border-[#4A4840] bg-[#F8F6F1] dark:bg-[#26241F] p-6">
-              <p className="text-base font-semibold text-[#2C2C2A] dark:text-[#E8E6DF] mb-1">
-                Let&apos;s get you started
-              </p>
-              <p className="text-sm text-[#888780] dark:text-[#6E6C67] mb-4">
-                Complete your diagnostic test so Teacher Vidya can build your personalised plan.
-              </p>
-              {firstDiagSubjectId && (
-                <a
-                  href={`/diagnostic/${firstDiagSubjectId}`}
-                  className="inline-flex items-center min-h-[44px] rounded-xl bg-[#534AB7] text-white text-sm font-semibold px-5 hover:bg-[#4239A0] transition-colors shadow-[0_2px_0_#3C3489]"
-                >
-                  Take diagnostic test
-                </a>
-              )}
-            </section>
-          ) : (
-            <section className="rounded-2xl border border-[#534AB7]/20 dark:border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 p-6">
-              <p className="text-base font-semibold text-[#2C2C2A] dark:text-[#E8E6DF] mb-1">
-                Great work completing your diagnostic!
-              </p>
-              <p className="text-sm text-[#5F5E5A] dark:text-[#A8A69F]">
-                Teacher Vidya is building your personalised learning plan. This page auto-refreshes when it is ready.
-              </p>
-            </section>
-          )
-        )}
+        ) : allDiagnosticsComplete ? (
+          <section className="rounded-2xl border border-[#534AB7]/20 dark:border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 p-6">
+            <p className="text-base font-semibold text-[#2C2C2A] dark:text-[#E8E6DF] mb-1">
+              Great work completing your diagnostic!
+            </p>
+            <p className="text-sm text-[#5F5E5A] dark:text-[#A8A69F]">
+              Teacher Vidya is building your personalised learning plan. This page auto-refreshes when it is ready.
+            </p>
+          </section>
+        ) : null}
 
         {/* Pick what's next (hidden in crunch mode) */}
         {!isCrunchMode && (
