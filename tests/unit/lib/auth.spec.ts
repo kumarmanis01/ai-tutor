@@ -13,6 +13,8 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-05-25T00:00:00Z | claude | fix stale @/lib/mailer mock (module does not exist; auth.ts uses @/lib/mail),
+ *     add missing mocks for all auth.ts imports, add linkAccount error-swallowing test
  * - 2026-05-15T00:00:00Z | copilot | add test for idempotent useVerificationToken behavior when Prisma delete returns P2025
  * - 2026-05-12T00:00:00Z | copilot | assert onboardingComplete derives from accountStatus active state
  * - 2026-05-11T00:00:00Z | claude | add tests for email_verified absent/null (new allowed cases) and
@@ -62,11 +64,8 @@ jest.mock('next-auth/providers/email', () => ({
 
 jest.mock('@/lib/prisma', () => ({ prisma: prismaMock }));
 
-jest.mock('@/lib/mailer', () => ({ sendMail: jest.fn(async () => undefined) }));
-jest.mock('@/lib/email/templates', () => ({
-  welcomeEmailHtml: jest.fn(() => '<html>welcome</html>'),
-  magicLinkHtml: jest.fn(() => '<html>magic-link</html>'),
-}));
+jest.mock('@/lib/mail', () => ({ sendEmailUnifiedSafe: jest.fn(async () => ({ success: true })) }));
+jest.mock('@/lib/email/functionalityEmails', () => ({ AUTH_NO_REPLY_EMAIL: 'noreply@test.com' }));
 jest.mock('@/lib/logger', () => ({
   logger: {
     add: jest.fn(),
@@ -75,6 +74,23 @@ jest.mock('@/lib/logger', () => ({
     error: jest.fn(),
   },
 }));
+jest.mock('@/lib/analytics/events', () => ({
+  ANALYTICS_EVENTS: { STUDENT: { AUTH_SIGNIN: 'STUDENT.AUTH_SIGNIN' } },
+}));
+jest.mock('@/lib/analytics/server', () => ({
+  emitServerAnalyticsEvent: jest.fn(async () => undefined),
+  default: {},
+}));
+jest.mock('@/lib/redis', () => ({ getRedis: jest.fn(() => null) }));
+jest.mock('@/lib/metrics', () => ({
+  incJwtCacheHit: jest.fn(),
+  incJwtCacheMiss: jest.fn(),
+}));
+jest.mock('@/lib/sessionCacheUtils', () => ({
+  invalidateUserSessionCache: jest.fn(async () => undefined),
+}));
+jest.mock('@/lib/constants/age', () => ({ DPDP_MINOR_AGE: 18 }));
+jest.mock('next-auth/next', () => ({ getServerSession: jest.fn(async () => null) }));
 
 function loadAuthOptions() {
   return require('@/lib/auth').authOptions;
@@ -292,5 +308,46 @@ describe('lib/auth OAuth callbacks', () => {
     await expect(adapter.useVerificationToken({ identifier: 'student@example.com', token: 'token-123' })).resolves.toBeNull();
 
     expect(logger.info).toHaveBeenCalledWith('auth.verificationToken.alreadyConsumed', expect.any(Object));
+  });
+
+  it('should swallow linkAccount errors so a DB failure does not abort the OAuth session', async () => {
+    const adapter = loadAuthOptions().adapter;
+    const logger = require('@/lib/logger').logger;
+
+    prismaMock.account.upsert.mockRejectedValueOnce(new Error('DB connection error'));
+
+    await expect(
+      adapter.linkAccount({
+        userId: 'user-1',
+        provider: 'google',
+        providerAccountId: 'sub-999',
+        type: 'oauth',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'adapter.linkAccount.failed',
+      expect.objectContaining({ context: { provider: 'google' } }),
+    );
+  });
+
+  it('should use PK id lookup in jwt callback when token.id is already set', async () => {
+    const jwt = loadAuthOptions().callbacks.jwt;
+
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'pk-user-1',
+      role: 'student',
+      grade: '9',
+      board: 'cbse',
+      language: 'en',
+      subjects: ['science'],
+      accountStatus: 'active',
+    });
+
+    await jwt({ token: { id: 'pk-user-1', email: 'student@example.com' }, user: undefined });
+
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'pk-user-1' } }),
+    );
   });
 });
