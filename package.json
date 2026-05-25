@@ -65,6 +65,7 @@
     "format:orig": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
     "serve": "next start",
     "type-check": "tsc --noEmit",
+    "type:audit": "tsc -p tsconfig.audit.json --noEmit",
     "type-check:orig": "tsc -p tsconfig.json --noEmit",
     "clear-auth": "cross-env CONFIRM=true tsx scripts/clear-auth-tables.ts",
     "pretest": "node scripts/prisma-generate-with-retry.cjs",

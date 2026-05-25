@@ -1,0 +1,8 @@
+// tsconfig.audit.json  (separate file, not your main tsconfig)
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}
