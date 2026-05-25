@@ -128,8 +128,10 @@ export async function updateStudentTopicProgress(
         lastAttemptedAt: now,
       },
       update: {
-        accuracy,
-        masteryLevel,
+        // STUDY touches (weight=0, totalAnswers=0) must never own mastery state.
+        // Keyed on activityType rather than totalAnswers so stub HOMEWORK calls
+        // (0 questions) do not silently skip a legitimate accuracy reset.
+        ...(activityType !== 'STUDY' ? { accuracy, masteryLevel } : {}),
         questionsAttempted: { increment: totalAnswers },
         lastAttemptedAt: now,
       },

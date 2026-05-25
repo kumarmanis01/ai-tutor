@@ -852,9 +852,17 @@ async function persistCompletionProgress(
     logger.warn('[SESSION_MASTERY_READ_FAILED]', { studentId, topicId, sessionId, error: String(err) });
   }
 
-  const xpResult = await awardXP({ studentId, amount: XP_PER_SESSION_COMPLETE, source: 'session_correct', sessionId });
+  // awardXP is isolated so a failure never blocks the SESSION_COMPLETED event
+  // (and the dashboard cache bust that rides on it).
+  let xpResult: Awaited<ReturnType<typeof awardXP>> | null = null;
+  try {
+    xpResult = await awardXP({ studentId, amount: XP_PER_SESSION_COMPLETE, source: 'session_correct', sessionId });
+  } catch (xpErr) {
+    logger.error('[SESSION_XP_AWARD_FAILED]', { studentId, sessionId, error: xpErr });
+  }
 
   // COUPLING-01: Emit domain event; TopicRanker and engagement listen.
+  // Always runs -- emitSessionCompleted must not be blocked by XP failures.
   emitSessionCompleted({
     studentId,
     sessionId,
