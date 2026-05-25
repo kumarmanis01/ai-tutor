@@ -30,6 +30,7 @@ export interface PracticeHydrationStatusResult {
   hasActiveQuestions: boolean;
   isHydrationRunning: boolean;
   runningJobId: string | null;
+  hydrationFailed: boolean;
 }
 
 export interface PracticeHydrationTriggerResult {

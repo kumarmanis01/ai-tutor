@@ -98,6 +98,7 @@ export function SessionContainer({
     isGenerating: boolean;
     hasActiveQuestions: boolean;
     isHydrationRunning: boolean;
+    hydrationFailed: boolean;
     runningJobId: string | null;
     errorMessage: string | null;
   }>({
@@ -105,6 +106,7 @@ export function SessionContainer({
     isGenerating: false,
     hasActiveQuestions: false,
     isHydrationRunning: false,
+    hydrationFailed: false,
     runningJobId: null,
     errorMessage: null,
   });
@@ -191,11 +193,19 @@ export function SessionContainer({
         isChecking: false,
         hasActiveQuestions: status.hasActiveQuestions,
         isHydrationRunning: status.isHydrationRunning,
+        hydrationFailed: status.hydrationFailed ?? false,
         runningJobId: status.runningJobId,
       }));
 
       if (status.hasActiveQuestions) {
         void startSession(topicId);
+        return;
+      }
+
+      // Terminal failure: stop polling and let the retry CTA handle re-enqueue.
+      // Without this guard the auto-trigger fires again on the next poll, creating
+      // an infinite loop of failed jobs with no user-visible recovery path.
+      if (status.hydrationFailed) {
         return;
       }
 
@@ -261,7 +271,17 @@ export function SessionContainer({
   ]);
 
   const handleGeneratePracticeQuestions = useCallback(async () => {
-    setPracticePendingStatus((prev) => ({ ...prev, isGenerating: true, errorMessage: null }));
+    // Optimistic reset: clear error state immediately so the UI transitions to
+    // "generating" rather than staying on the error screen while the POST fires.
+    // Also reset the auto-trigger guard so a subsequent failure can re-trigger
+    // automatically instead of waiting for another manual tap.
+    setPracticePendingStatus((prev) => ({
+      ...prev,
+      isGenerating: true,
+      hydrationFailed: false,
+      errorMessage: null,
+    }));
+    practiceAutoTriggerAttemptedRef.current = null;
     const result = await triggerPracticeHydration();
 
     if (!result) {
@@ -435,8 +455,13 @@ export function SessionContainer({
                 We are generating your practice questions now. This page refreshes automatically when they are ready.
               </p>
             )}
-            {practicePendingStatus.errorMessage && (
-              <p className="text-xs text-red-600">{practicePendingStatus.errorMessage}</p>
+            {practicePendingStatus.hydrationFailed && (
+              <p className="text-xs text-status-danger">
+                {"Your questions couldn't be prepared this time. Tap below to try again."}
+              </p>
+            )}
+            {practicePendingStatus.errorMessage && !practicePendingStatus.hydrationFailed && (
+              <p className="text-xs text-status-danger">{practicePendingStatus.errorMessage}</p>
             )}
             <button
               onClick={handleGeneratePracticeQuestions}
@@ -444,12 +469,15 @@ export function SessionContainer({
                 submitting ||
                 practicePendingStatus.isGenerating ||
                 practicePendingStatus.isHydrationRunning ||
-                practicePendingStatus.isChecking
+                // Keep checking indicator; but never block on hydrationFailed so the retry CTA is tappable
+                (!practicePendingStatus.hydrationFailed && practicePendingStatus.isChecking)
               }
-              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-60"
+              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium min-h-[44px] disabled:opacity-60"
             >
               {practicePendingStatus.isGenerating || practicePendingStatus.isHydrationRunning
                 ? 'Generating practice questions...'
+                : practicePendingStatus.hydrationFailed
+                ? 'Try Again'
                 : 'Generate Practice Questions'}
             </button>
           </div>

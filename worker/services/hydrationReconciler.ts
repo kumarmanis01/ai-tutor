@@ -517,13 +517,17 @@ export class HydrationReconciler {
       },
     });
 
-    const questionsCompleted = await prisma.generatedQuestion.count({
+    // Count completed Level-3 jobs, not inserted rows.
+    // generatedQuestion.count() returns row count (e.g. 720 = 10 q × 3 diff × 24 topics)
+    // while questionsExpected counts Level-3 HydrationJobs (24).
+    // Both must use the same unit (jobs) so the progress display reads N/N, not 720/24.
+    // Note: Level-3 child jobs do not carry subjectId -- use rootJobId + hierarchyLevel
+    // to scope correctly, consistent with the questionsExpected query above.
+    const questionsCompleted = await prisma.hydrationJob.count({
       where: {
-        test: {
-          topic: {
-            chapter: { subjectId },
-          },
-        },
+        rootJobId,
+        hierarchyLevel: 3,
+        status: JobStatus.Completed,
       },
     });
 
@@ -565,7 +569,10 @@ export class HydrationReconciler {
       where: { id: rootJob.id },
       data: {
         status: finalStatus,
-        completedAt: new Date(),
+        // completedAt is only meaningful for successful completion.
+        // FAILED jobs leave it null so the field can be used as a reliable
+        // "job finished cleanly" sentinel elsewhere.
+        ...(finalStatus === JobStatus.Completed ? { completedAt: new Date() } : {}),
       },
     });
 
