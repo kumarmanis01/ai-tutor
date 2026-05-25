@@ -389,7 +389,11 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? 'llm_failed') } }); } catch {}
     }
     logger.error('handleNotesJob: LLM parse failed, marking job failed', { jobId, error: err?.message || String(err) });
-    return;
+    // Throw so contentWorker's catch block sees the failure.
+    // A bare `return` here lets contentWorker's success path overwrite
+    // the Failed status we just set, silently marking the job Completed
+    // with zero TopicNote rows.
+    throw new Error(`Notes LLM parse failed for hydrationJobId: ${jobId}`);
   }
 
   // Log response received

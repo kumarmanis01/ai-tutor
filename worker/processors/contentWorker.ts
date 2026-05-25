@@ -229,9 +229,15 @@ export async function processContentJob(job: Job) {
   // with handler-level claims and to keep a single source of truth for attempts.
 
   try {
-    // Dispatch to the appropriate handler based on worker type. Handlers must
-    // perform the atomic claim (updateMany) and set lockedAt on claim.
-    await handler(hydrationJobId);
+    // Dispatch: inner try/catch makes the success condition explicit.
+    // Everything below this block only executes when the handler did not throw.
+    // A handler that silently returns after a failure (instead of throwing) would
+    // otherwise fall through to the Completed stamp -- this guard prevents that.
+    try {
+      await handler(hydrationJobId);
+    } catch (handlerErr: any) {
+      throw handlerErr; // rethrow to outer catch so BullMQ records the failure
+    }
 
     // After handler returns, perform verification by reading the HydrationJob
     const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: hydrationJobId } })
