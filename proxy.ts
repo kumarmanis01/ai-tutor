@@ -66,15 +66,25 @@ export async function proxy(request: NextRequest) {
   const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session', '/student'];
 
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    // Admin login and bootstrap are public -- pass through so the page can render.
+    if (pathname === '/admin/login' || pathname === '/api/admin/bootstrap') {
+      const response = NextResponse.next();
+      response.headers.set('x-pathname', pathname);
+      return response;
+    }
+
     logger.debug('[PROXY] Token: ' + String(token));
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
     if (!allowed) {
       if (pathname.startsWith('/api/admin')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      return NextResponse.redirect(new URL('/', request.url));
+      // Redirect unauthenticated admin UI to the admin login page.
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set('x-pathname', pathname);
+    return response;
   }
 
   for (const prefix of protectedUiPrefixes) {

@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
@@ -26,9 +27,27 @@ export const viewport = {
  * - Fetches sidebar badge counts server-side in parallel
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const headersList = headers();
+  const pathname = headersList.get('x-pathname') ?? '';
+
+  // Admin login page is public -- render minimal shell, skip auth + sidebar.
+  if (pathname === '/admin/login') {
+    return (
+      <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+        <body className="font-sans antialiased h-full">
+          <Providers>{children}</Providers>
+        </body>
+      </html>
+    );
+  }
+
   const session = await getServerSessionForHandlers();
 
-  if (!session || session.user?.role !== 'admin') {
+  if (!session) {
+    redirect('/admin/login');
+  }
+
+  if (session.user?.role !== 'admin') {
     redirect('/dashboard');
   }
 
