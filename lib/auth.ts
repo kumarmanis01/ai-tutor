@@ -616,6 +616,27 @@ export const authOptions: any = {
         );
       }
 
+      // Ensure a DB user record exists for Google sign-ins. Some OAuth flows
+      // reach the callback before the adapter has created/linked the user record
+      // (edge cases behind proxies). Upsert here as a defensive guarantee so
+      // downstream session/jwt callbacks can reliably find the user by email.
+      if (account?.provider === 'google' && user?.email) {
+        try {
+          await prisma.user.upsert({
+            where: { email: user.email },
+            update: {},
+            create: {
+              email: user.email,
+              name: user.name ?? undefined,
+              image: user.image ?? undefined,
+              language: LanguageCode.en,
+            },
+          });
+        } catch (err) {
+          logger.warn('signIn: upsert user failed', { className: 'auth', methodName: 'signIn', error: String(err) });
+        }
+      }
+
       try {
         if (user?.email) {
           const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
