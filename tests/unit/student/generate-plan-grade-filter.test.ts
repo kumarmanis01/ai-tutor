@@ -36,6 +36,12 @@ jest.mock('@/lib/session', () => ({
   }),
 }));
 
+// These tests exercise grade/board filtering and diagnosticReady flag logic;
+// they all assume diagnostics are already complete so the guard passes.
+jest.mock('@/lib/student/diagnosticGuard', () => ({
+  hasDiagnosticForSubject: jest.fn().mockResolvedValue(true),
+}));
+
 import { POST } from '@/app/api/student/onboarding/generate-plan/route';
 import { NextRequest } from 'next/server';
 
@@ -111,7 +117,7 @@ describe('generate-plan -- SubjectDef grade+board filter', () => {
     expect(json.firstSubjectId).not.toBe('subject-cbse-1-english');
   });
 
-  it('should normalise capitalised slugs to lowercase before querying', async () => {
+  it('should resolve capitalised subject slugs via grade+board filtered query', async () => {
     // User has stored 'Mathematics', 'Science' (capitalised -- legacy data)
     prismaMock.user.findUnique.mockResolvedValueOnce({
       subjects: ['Mathematics', 'Science'],
@@ -123,11 +129,18 @@ describe('generate-plan -- SubjectDef grade+board filter', () => {
     ]);
 
     const req = makeRequest({ studyDaysPerWeek: 5 });
-    await POST(req);
+    const res = await POST(req);
+    const json = await res.json();
 
-    const findManyCall = prismaMock.subjectDef.findMany.mock.calls[0][0];
-    // Query slugs must be lowercase
-    expect(findManyCall.where.slug.in).toEqual(['mathematics', 'science']);
+    // resolveStudentSubjects performs scoped (grade+board) lookup first; verify grade filter used
+    const callsWithClassFilter = prismaMock.subjectDef.findMany.mock.calls.filter(
+      (call: any[]) => call[0]?.where?.class != null,
+    );
+    expect(callsWithClassFilter.length).toBeGreaterThan(0);
+    expect(callsWithClassFilter[0][0].where.class.grade).toBe(8);
+    // Route must still succeed and return the resolved subject
+    expect(res.status).toBe(200);
+    expect(json.firstSubjectId).toBe('sub-math-8');
   });
 
   it('should return firstSubjectId null and not throw when no SubjectDef matches', async () => {
@@ -150,12 +163,14 @@ describe('generate-plan -- SubjectDef grade+board filter', () => {
     expect(json.diagnosticReady).toBe(false);
   });
 
-  it('should skip SubjectDef query and return null firstSubjectId when student has no grade', async () => {
+  it('should return null firstSubjectId when student has no grade (no class-scoped query)', async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce({
       subjects: ['english'],
       grade: null,
       board: 'cbse',
     });
+    // Unscoped fallback runs but finds nothing
+    prismaMock.subjectDef.findMany.mockResolvedValue([]);
 
     const req = makeRequest({ studyDaysPerWeek: 5 });
     const res = await POST(req);
@@ -164,8 +179,11 @@ describe('generate-plan -- SubjectDef grade+board filter', () => {
     expect(res.status).toBe(200);
     expect(json.ok).toBe(true);
     expect(json.firstSubjectId).toBeNull();
-    // findMany must NOT have been called without grade
-    expect(prismaMock.subjectDef.findMany).not.toHaveBeenCalled();
+    // When grade is absent the scoped (class-filtered) query must NOT be issued
+    const classFilteredCalls = prismaMock.subjectDef.findMany.mock.calls.filter(
+      (call: any[]) => call[0]?.where?.class != null,
+    );
+    expect(classFilteredCalls.length).toBe(0);
   });
 });
 

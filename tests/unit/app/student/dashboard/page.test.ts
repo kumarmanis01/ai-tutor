@@ -20,6 +20,9 @@
  *                          falls back to browse syllabus when plan item missing
  * - 2026-05-08T00:00:00Z | copilot | add regression for IN_PROGRESS plan-item
  *                          selection in secondary Today's topic CTA
+ * - 2026-05-25T00:00:00Z | copilot | update mocks for v2 dashboard revamp components;
+ *                          fix useRouter mock in next/navigation; align assertions
+ *                          with hasPendingDiagnostic guard and new component structure
  */
 /**
  * Tests verify:
@@ -30,6 +33,8 @@
  *    confirming the concurrent-batch loop runs correctly.
  * 5. Freemium counter data path: sessionsUsed < cap exposes sessionsRemaining.
  * 6. Session cap hit: sessionsRemaining === 0 when sessionsUsed === cap.
+ * 7. Diagnostic guard: hasPendingDiagnostic shows CTA and suppresses missions.
+ * 8. Plan concept href surfaces via PickNextSection warmUps when all diagnostics done.
  */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
@@ -43,12 +48,24 @@ jest.mock('@/lib/prisma.js', () => ({
 
 // ── Next.js internals ─────────────────────────────────────────────────────────
 const redirectMock = jest.fn()
-jest.mock('next/navigation', () => ({ redirect: redirectMock }))
+const routerPushMock = jest.fn()
+const routerReplaceMock = jest.fn()
+jest.mock('next/navigation', () => ({
+  redirect: redirectMock,
+  useRouter: jest.fn(() => ({ push: routerPushMock, replace: routerReplaceMock, back: jest.fn(), prefetch: jest.fn() })),
+  usePathname: jest.fn(() => '/dashboard'),
+  useSearchParams: jest.fn(() => ({ get: jest.fn() })),
+}))
 jest.mock('next/link', () => ({
   __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => children,
+  default: ({ children, href }: { children: React.ReactNode; href?: string }) =>
+    React.createElement('a', { href }, children),
 }))
 jest.mock('next/headers', () => ({ cookies: jest.fn(() => ({ get: jest.fn() })) }))
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: ({ src, alt }: { src: string; alt: string }) => React.createElement('img', { src, alt }),
+}))
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 const requireActiveSessionMock = jest.fn()
@@ -79,11 +96,30 @@ jest.mock('@/lib/logger', () => ({
 jest.mock('@/components/student/dashboard/TodaysMissions', () => ({
   __esModule: true,
   // Render props as JSON so tests can assert on hero mission values (e.g. href containing conceptId)
-  // without coupling to the real component's internal markup.
   default: (props: any) => React.createElement('div', { 'data-testid': 'TodaysMissions' }, JSON.stringify(props)),
   MissionHero: (props: any) => React.createElement('div', { 'data-testid': 'MissionHero' }, JSON.stringify(props)),
   MissionRow: (props: any) => React.createElement('div', { 'data-testid': 'MissionRow' }, JSON.stringify(props)),
 }))
+// v2 dashboard revamp components
+jest.mock('@/components/student/dashboard/WelcomeBanner', () => ({
+  __esModule: true,
+  default: (props: any) => React.createElement('div', { 'data-testid': 'WelcomeBanner' }, JSON.stringify(props)),
+}))
+// PickNextSection uses useRouter -- must be mocked to avoid hook error in SSR tests
+jest.mock('@/components/student/dashboard/PickNextSection', () => ({
+  __esModule: true,
+  default: (props: any) => React.createElement('div', { 'data-testid': 'PickNextSection' }, JSON.stringify(props)),
+}))
+jest.mock('@/components/student/dashboard/StatsRow', () => ({
+  __esModule: true,
+  default: (props: any) => React.createElement('div', { 'data-testid': 'StatsRow' }, JSON.stringify(props)),
+}))
+// ExamReadinessSection is a client component ('use client')
+jest.mock('@/components/student/dashboard/ExamReadinessSection', () => ({
+  __esModule: true,
+  default: (props: any) => React.createElement('div', { 'data-testid': 'ExamReadinessSection' }, JSON.stringify(props)),
+}))
+// Legacy mocks kept for backward-compat (no longer rendered but mock prevents import errors)
 jest.mock('@/components/student/dashboard/SecondaryStartOptions', () => ({
   __esModule: true,
   default: (props: any) => React.createElement('div', { 'data-testid': 'SecondaryStartOptions' }, JSON.stringify(props)),
@@ -144,8 +180,8 @@ function makeReadinessResult() {
   return { score: 55, label: 'needs_work', chapters: [] }
 }
 
-function makeDiagnosticStatus(subjectKey: string) {
-  return { subjectKey, status: 'pending', retakeEligibleAt: null }
+function makeDiagnosticStatus(subjectKey: string, status: 'pending' | 'completed' | 'skipped' = 'pending') {
+  return { subjectKey, status, retakeEligibleAt: null }
 }
 
 function getConceptFindFirstMock(): jest.Mock {
@@ -175,17 +211,19 @@ describe('StudentHomeDashboardPage', () => {
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
 
-    prismaMock.user.findUnique.mockResolvedValue(makeUser())
+    // board + grade required for hasCompleteAcademicProfile and resolveStudentSubjects
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ board: 'CBSE', grade: '10', subjects: ['Mathematics'] }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue({
       sessionsUsed: 1,
       periodStart: new Date(),
     })
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue(null)
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 80 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
     prismaMock.subjectDef.findMany.mockResolvedValue([
-      { id: 'sub-math', name: 'Mathematics' },
+      { id: 'sub-math', name: 'Mathematics', slug: 'mathematics' },
     ])
     prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
 
@@ -272,13 +310,15 @@ describe('StudentHomeDashboardPage', () => {
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
 
-    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subjects: ['Mathematics'] }))
+    // board + grade required for resolveStudentSubjects to fire
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subjects: ['Mathematics'], board: 'CBSE', grade: '10' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue(null)
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
-    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-math', name: 'Mathematics' }])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-math', name: 'Mathematics', slug: 'mathematics' }])
     prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
 
     const { default: Page } = require('@/app/(student)/dashboard/page')
@@ -290,9 +330,9 @@ describe('StudentHomeDashboardPage', () => {
 
   it('should call computeReadinessScore for every resolved subject', async () => {
     const subjects = [
-      { id: 'sub-1', name: 'Mathematics' },
-      { id: 'sub-2', name: 'Physics' },
-      { id: 'sub-3', name: 'Chemistry' },
+      { id: 'sub-1', name: 'Mathematics', slug: 'mathematics' },
+      { id: 'sub-2', name: 'Physics', slug: 'physics' },
+      { id: 'sub-3', name: 'Chemistry', slug: 'chemistry' },
     ]
 
     requireActiveSessionMock.mockResolvedValue(makeSession())
@@ -302,10 +342,14 @@ describe('StudentHomeDashboardPage', () => {
       Promise.resolve(makeDiagnosticStatus(subjectKey)),
     )
 
-    prismaMock.user.findUnique.mockResolvedValue(makeUser())
+    // board + grade required for hasCompleteAcademicProfile
+    prismaMock.user.findUnique.mockResolvedValue(
+      makeUser({ board: 'CBSE', grade: '10', subjects: ['Mathematics', 'Physics', 'Chemistry'] }),
+    )
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue(null)
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
     prismaMock.subjectDef.findMany.mockResolvedValue(subjects)
@@ -402,7 +446,7 @@ describe('StudentHomeDashboardPage', () => {
     expect(html).not.toContain('FreemiumCounter')
   })
 
-  it('should include planned concept href in todaysTopics for resume state', async () => {
+  it('should include planned concept href in PickNextSection warmUps for resume state', async () => {
     requireActiveSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'resume_session',
@@ -414,7 +458,8 @@ describe('StudentHomeDashboardPage', () => {
       resumePhase: 'PRACTICE',
     })
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
-    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+    // All diagnostics complete so missions section renders and plan concept is surfaced
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1', 'completed'))
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
@@ -422,6 +467,7 @@ describe('StudentHomeDashboardPage', () => {
     prismaMock.learningPlan.findMany.mockResolvedValue([{ id: 'plan-42', subjectId: 'sub-1' }])
     prismaMock.learningPlanItem.findFirst.mockResolvedValue({ conceptId: 'concept-plan-9' })
     prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue(null)
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
     prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
@@ -431,11 +477,13 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
+    // Plan concept appears in PickNextSection warmUps (and possibly TodaysMissions secondary)
     expect(html).toContain('/session/pre/concept-plan-9')
+    // sessionId fallback must never appear in any URL (topicId takes precedence)
     expect(html).not.toContain('/session/sess-42')
   })
 
-  it('should pass empty todaysTopics when no plan exists (no broken pre-session URL)', async () => {
+  it('should pass empty warmUps to PickNextSection when no plan exists (no broken pre-session URL)', async () => {
     requireActiveSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'homework_pending',
@@ -443,12 +491,14 @@ describe('StudentHomeDashboardPage', () => {
       topicName: 'Fractions worksheet',
     })
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    // Diagnostic pending -- diagnostic CTA is shown, missions suppressed
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue(null)
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
     prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
@@ -458,13 +508,14 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
-    // No plans -> todaysTopics is empty -> no pre-session URL injected into secondary options
-    // renderToStaticMarkup HTML-encodes quotes, so check the unambiguous key name
-    expect(html).toContain('todaysTopics&quot;:[]')
-    expect(html).not.toContain('/homework/hw-77')
+    // No plans -> warmUps empty -> PickNextSection receives []
+    expect(html).toContain('PickNextSection')
+    expect(html).toContain('warmUps&quot;:[]')
+    // No pre-session URL injected from plan items (no plans exist)
+    expect(html).not.toContain('/session/pre/')
   })
 
-  it('should prefer IN_PROGRESS plan item for todaysTopics over UPCOMING', async () => {
+  it('should prefer IN_PROGRESS plan item for warmUps over UPCOMING', async () => {
     requireActiveSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'homework_pending',
@@ -472,7 +523,8 @@ describe('StudentHomeDashboardPage', () => {
       topicName: 'Fractions worksheet',
     })
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
-    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+    // All diagnostics complete so warmUps are rendered with plan concept
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1', 'completed'))
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
@@ -491,12 +543,13 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
+    // IN_PROGRESS concept surfaces in PickNextSection warmUps
     expect(html).toContain('/session/pre/concept-in-progress-22')
-    // No empty-topic fallback link injected
-    expect(html).not.toContain('"todaysTopics":[]')
+    // warmUps must not be empty
+    expect(html).not.toContain('warmUps&quot;:[]')
   })
 
-  it('should pass resolved concept id to start card when nextAction returns topic id', async () => {
+  it('should pass resolved concept id to TodaysMissions hero when nextAction returns topic id', async () => {
     requireActiveSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'next_new_topic',
@@ -505,12 +558,14 @@ describe('StudentHomeDashboardPage', () => {
       subject: 'Math',
     })
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
-    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+    // All diagnostics complete so TodaysMissions renders and hero concept-777 appears
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1', 'completed'))
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue(null)
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
     prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
@@ -521,13 +576,13 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
-    // concept-777 must appear in the TodaysMissions hero mission props
+    // concept-777 must appear in TodaysMissions hero mission props
     expect(html).toContain('concept-777')
     // raw topic-123 must never reach any URL (only resolved conceptId should appear)
     expect(html).not.toContain('topic-123')
   })
 
-  it('should skip start card when nextAction topic id has no active concept', async () => {
+  it('should skip hero mission and warn when nextAction topic id has no active concept', async () => {
     requireActiveSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'next_new_topic',
@@ -536,12 +591,14 @@ describe('StudentHomeDashboardPage', () => {
       subject: 'Math',
     })
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
-    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
+    // All diagnostics complete so the concept lookup runs (pending would skip hero logic entirely)
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1', 'completed'))
 
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ subscriptionStatus: 'free' }))
     prismaMock.freeTierUsage.findFirst.mockResolvedValue(null)
     prismaMock.learningPlan.findMany.mockResolvedValue([])
     prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findFirst.mockResolvedValue(null)
     prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
     prismaMock.studentXP.groupBy.mockResolvedValue([])
     prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-1', name: 'Science' }])
@@ -552,9 +609,11 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
+    // Raw topic id must never appear in any URL
     expect(html).not.toContain('/session/pre/topic-missing-concept')
+    // Logger must warn with the exact key used in the page code
     expect(loggerWarnMock).toHaveBeenCalledWith(
-      'dashboard.start_action.skipped_missing_concept',
+      'dashboard.hero_mission.skipped_missing_concept',
       expect.objectContaining({
         userId: MOCK_USER_ID,
         topicId: 'topic-missing-concept',

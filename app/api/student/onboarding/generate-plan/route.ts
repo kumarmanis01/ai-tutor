@@ -24,6 +24,7 @@ import { generateLearningPlan } from '@/lib/ai/learningPlan';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
+import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -60,11 +61,26 @@ export async function POST(req: NextRequest) {
     const weeklyMinutes = studyDaysPerWeek * dailyTargetMin;
     const belowMinimumHours = weeklyMinutes < 180; // 3 hrs = 180 min
 
-    // 1. Upsert StudentLearningProfile with study preference
+    // 1. Upsert StudentLearningProfile with study preference and persist pendingExamDate
+    // so the bootstrap worker can use it when regenerating the plan after diagnostics.
+    const existingSlp = await prisma.studentLearningProfile.findUnique({
+      where: { studentId: userId },
+      select: { id: true, recommendations: true },
+    });
+    const existingRecs: Record<string, unknown> =
+      existingSlp?.recommendations &&
+      typeof existingSlp.recommendations === 'object' &&
+      !Array.isArray(existingSlp.recommendations)
+        ? (existingSlp.recommendations as Record<string, unknown>)
+        : {};
+    const nextRecs: Record<string, unknown> = examDate
+      ? { ...existingRecs, pendingExamDate: examDate.toISOString() }
+      : existingRecs;
+
     await prisma.studentLearningProfile.upsert({
       where: { studentId: userId },
-      update: { studyDaysPerWeek },
-      create: { studentId: userId, studyDaysPerWeek },
+      update: { studyDaysPerWeek, recommendations: nextRecs },
+      create: { studentId: userId, studyDaysPerWeek, recommendations: nextRecs },
     });
 
     // 2. Find student's enrolled subjects
@@ -113,6 +129,40 @@ export async function POST(req: NextRequest) {
         studentId: userId,
         subjects: subjectDefs.map((s) => ({ id: s.id, slug: (s as any).slug })),
       });
+    }
+
+    // 2b. Guard: all enrolled subjects must have a completed diagnostic before the
+    // plan is generated. Without mastery data the generated plan is unordered and
+    // will be immediately overwritten by the bootstrap worker after the diagnostic
+    // anyway -- returning 422 here prevents the premature plan from ever being shown
+    // on the dashboard. Preferences are already saved above so the bootstrap worker
+    // can pick up examDate / studyDaysPerWeek when it generates the real plan.
+    if (subjectDefs.length > 0) {
+      const diagnosticChecks = await Promise.all(
+        subjectDefs.map((s) => hasDiagnosticForSubject(userId, s.id)),
+      );
+      const pendingSubjectIds = subjectDefs
+        .filter((_, i) => !diagnosticChecks[i])
+        .map((s) => s.id);
+
+      if (pendingSubjectIds.length > 0) {
+        logger.info('[generate-plan] diagnostics incomplete -- refusing early plan generation', {
+          className: 'GeneratePlanAPI',
+          methodName: 'POST',
+          studentId: userId,
+          pendingSubjectIds,
+        });
+        const res = NextResponse.json(
+          {
+            ok: false,
+            code: 'DIAGNOSTICS_INCOMPLETE',
+            pendingSubjects: pendingSubjectIds,
+          },
+          { status: 422 },
+        );
+        logger.logAPI(req, res, { className: 'GeneratePlanAPI', methodName: 'POST' }, start);
+        return res;
+      }
     }
 
     // 3. Generate a LearningPlan for each subject (fire sequentially to avoid overload)

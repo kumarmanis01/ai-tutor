@@ -123,6 +123,21 @@ export default function ExamDatePage() {
         }),
       });
       const json = await res.json().catch(() => ({}));
+
+      // Preferences are already saved server-side. Diagnostics not yet complete:
+      // route to the first pending subject so the student can take their diagnostic.
+      // The bootstrap worker will generate the real plan with mastery data afterwards.
+      if (res.status === 422 && json?.code === 'DIAGNOSTICS_INCOMPLETE') {
+        const pendingSubjects: string[] = Array.isArray(json?.pendingSubjects) ? json.pendingSubjects : [];
+        const nextSubjectId = pendingSubjects[0] ?? null;
+        if (nextSubjectId) {
+          router.replace(`/diagnostic/${nextSubjectId}`);
+        } else {
+          router.replace('/dashboard');
+        }
+        return;
+      }
+
       if (!res.ok) {
         setError(json?.error ?? 'Something went wrong. Please try again.');
         return;
@@ -131,7 +146,7 @@ export default function ExamDatePage() {
       const diagnosticReady: boolean = json?.diagnosticReady ?? true;
 
       if (!firstSubjectId) {
-        // F-STU-003: Student must see their plan immediately
+        // All diagnostics complete and plan generated -- go to learning path
         router.push('/student/learning-path?onboarding=true');
         return;
       }
