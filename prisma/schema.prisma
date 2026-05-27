@@ -2053,7 +2053,7 @@ model AnswerEvent {
   id            String   @id @default(cuid())
   studentId     String
   sessionId     String
-  conceptId     String
+  conceptId     String?
   questionId    String?
   isCorrect     Boolean
   studentAnswer String
