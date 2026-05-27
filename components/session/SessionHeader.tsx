@@ -7,6 +7,7 @@
  * EDIT LOG:
  * - 2026-03-08 | claude | refactored -- progress bar extracted to SessionProgressBar
  * - 2026-04-22 | redesign | add back button, topic title, thin progress fill bar
+ * - 2026-05-27 | claude | add language immersion banner for LANGUAGE-type subjects
  */
 
 import React, { useEffect, useState } from 'react';
@@ -15,15 +16,53 @@ import { MessageCircle, Star } from 'lucide-react';
 import { SessionProgressBar } from './SessionProgressBar';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
 
+// Banner text shown in the target language so students see it in the language they
+// will be using throughout the session.
+const LANGUAGE_IMMERSION_BANNERS: Record<string, string> = {
+  hi: 'इस सत्र में केवल हिंदी में बात करें',
+  sa: 'अस्मिन् सत्रे केवलं संस्कृतेन वदन्तु',
+  fr: 'Parlez uniquement en français dans cette session',
+  de: 'Sprechen Sie in dieser Sitzung nur Deutsch',
+  es: 'Hable solo en español en esta sesión',
+  ur: 'اس سیشن میں صرف اردو میں بات کریں',
+  ta: 'இந்த அமர்வில் தமிழில் மட்டும் பேசுங்கள்',
+  te: 'ఈ సెషన్‌లో తెలుగులో మాత్రమే మాట్లాడండి',
+  kn: 'ಈ ಅಧಿವೇಶನದಲ್ಲಿ ಕನ್ನಡದಲ್ಲಿ ಮಾತ್ರ ಮಾತನಾಡಿ',
+  ml: 'ഈ സെഷനിൽ മലയാളത്തിൽ മാത്രം സംസാരിക്കുക',
+  bn: 'এই সেশনে শুধুমাত্র বাংলায় কথা বলুন',
+  mr: 'या सत्रात फक्त मराठीत बोला',
+  gu: 'આ સત્રમાં માત્ર ગુજરાતીમાં વાત કરો',
+  pa: 'ਇਸ ਸੈਸ਼ਨ ਵਿੱਚ ਕੇਵਲ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲ ਕਰੋ',
+  en: 'Speak only in English during this session',
+  ar: 'تحدث باللغة العربية فقط في هذه الجلسة',
+  ja: 'このセッションでは日本語のみで話してください',
+  zh: '在本课程中请只用中文交流',
+  ru: 'Говорите только по-русски во время этого занятия',
+};
+
 interface SessionHeaderProps {
   session: SessionView;
   phase: PhaseContent;
   onStepClick?: (phase: string) => void;
   onAskVidya?: () => void;
   sessionId?: string;
+  /** Populated when the session subject is a LANGUAGE type subject. */
+  subjectType?: string | null;
+  /** ISO 639-1 code for the target language (only set when subjectType === 'LANGUAGE'). */
+  targetLanguage?: string | null;
+  /** Display name of the subject, used as fallback for the immersion banner. */
+  subjectDisplayName?: string | null;
 }
 
-export function SessionHeader({ session, phase: _phase, onStepClick, onAskVidya }: SessionHeaderProps) {
+export function SessionHeader({
+  session,
+  phase: _phase,
+  onStepClick,
+  onAskVidya,
+  subjectType,
+  targetLanguage,
+  subjectDisplayName,
+}: SessionHeaderProps) {
   const { topicName, subject, chapter: _chapter, phaseIndex, totalPhases, currentPhase } = session;
   const router = useRouter();
 
@@ -80,6 +119,16 @@ export function SessionHeader({ session, phase: _phase, onStepClick, onAskVidya 
   return (
     <>
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/50">
+        {/* Language immersion banner -- shown only for LANGUAGE-type subjects */}
+        {subjectType === 'LANGUAGE' && targetLanguage && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200 text-sm font-medium text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300">
+            <span aria-hidden="true">🗣</span>
+            <span>
+              {LANGUAGE_IMMERSION_BANNERS[targetLanguage] ??
+                `Speak only in ${subjectDisplayName ?? subject} during this session`}
+            </span>
+          </div>
+        )}
         {/* Top row: back button + topic name + subject chip + action cluster */}
         <div className="flex items-center gap-1 px-2 pt-2 pb-1 max-w-5xl mx-auto">
           <button

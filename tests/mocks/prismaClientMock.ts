@@ -94,3 +94,12 @@ export const JobStatus = {
   failed: 'failed',
 } as const
 export type JobStatus = typeof JobStatus[keyof typeof JobStatus]
+
+export const SubjectType = {
+  LANGUAGE: 'LANGUAGE',
+  STEM: 'STEM',
+  SOCIAL: 'SOCIAL',
+  VOCATIONAL: 'VOCATIONAL',
+  OTHER: 'OTHER',
+} as const
+export type SubjectType = typeof SubjectType[keyof typeof SubjectType]
