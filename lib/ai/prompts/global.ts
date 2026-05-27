@@ -130,17 +130,28 @@ Use Indian English conventions where applicable.`;
 }
 
 /**
- * Build the complete system prompt with context
+ * Build the complete system prompt with context.
+ * When languageImmersionDirective is provided (LANGUAGE subjects), it is prepended
+ * as the first instruction layer so it is never truncated by token budget management.
  */
-export function buildSystemPrompt(grade: Grade, language: Language): string {
+export function buildSystemPrompt(
+  grade: Grade,
+  language: Language,
+  languageImmersionDirective?: string | null,
+): string {
   const gradeGuidance = getGradeLanguageGuidance(grade);
   const languageInstructions = getLanguageInstructions(language);
 
-  return `${GLOBAL_SYSTEM_PROMPT}
+  const base = `${GLOBAL_SYSTEM_PROMPT}
 
 GRADE-SPECIFIC GUIDANCE:
 ${gradeGuidance}
 
 LANGUAGE INSTRUCTIONS:
 ${languageInstructions}`;
+
+  if (languageImmersionDirective) {
+    return `${languageImmersionDirective}\n\n${base}`;
+  }
+  return base;
 }

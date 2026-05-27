@@ -4,6 +4,7 @@
   import { diagnosticConfig, computeDifficultyCounts } from '@/lib/config';
   import { getRedis } from '@/lib/redis';
   import OpenAI from 'openai';
+  import { buildLanguageImmersionDirective, isoToLanguageName } from '@/services/interaction-language.service';
 
   export type DiagnosticDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -95,6 +96,8 @@
     type SubjectWithChapters = {
       id: string;
       name: string;
+      subjectType: string;
+      targetLanguage: string | null;
       chapters: {
         id: string;
         name: string;
@@ -106,6 +109,8 @@
     const subjectSelect = {
       id: true,
       name: true,
+      subjectType: true,
+      targetLanguage: true,
       chapters: {
         where: { lifecycle: 'active' as const },
         orderBy: { order: 'asc' as const },
@@ -197,6 +202,8 @@
     return {
       subjectId: subject.id,
       subjectName: subject.name,
+      subjectType: subject.subjectType,
+      targetLanguage: subject.targetLanguage,
       topicIds,
     };
   }
@@ -331,7 +338,7 @@
 
     const normalizedParams: GenerateDiagnosticTestParams = { ...params, grade: Number(gradeNum) };
 
-    const { subjectId, subjectName, topicIds } = await getCurriculumTopics(normalizedParams);
+    const { subjectId, subjectName, subjectType, targetLanguage, topicIds } = await getCurriculumTopics(normalizedParams);
     logger.info('DiagnosticQuestionService.generate.curriculum', {
       subjectId,
       subjectName,
@@ -403,6 +410,8 @@
           const onDemand = await generateDiagnosticQuestionsOnDemand({
             subjectId,
             subjectName,
+            subjectType,
+            targetLanguage,
             boardSlug: normalizedParams.boardSlug,
             grade: Number(normalizedParams.grade),
             topicIds,
@@ -460,6 +469,8 @@
   interface OnDemandParams {
     subjectId: string;
     subjectName: string;
+    subjectType: string;
+    targetLanguage: string | null;
     boardSlug: string;
     grade: number;
     topicIds: string[];
@@ -488,7 +499,7 @@
       return [];
     }
 
-    const { subjectId, subjectName, boardSlug, grade, topicIds, languageCode, totalCount } = params;
+    const { subjectId, subjectName, subjectType, targetLanguage, boardSlug, grade, topicIds, languageCode, totalCount } = params;
 
     // Concurrency guard: one OpenAI call per subject at a time.
     // If another request is already generating for this subject, return [] immediately.
@@ -530,9 +541,13 @@
       )
       .catch(() => '');
 
-    const langNote = languageCode && languageCode !== 'en'
-      ? `Write all questions in ${languageCode === 'hi' ? 'Hindi' : languageCode} language.`
-      : '';
+    // LANGUAGE subjects require mandatory immersion -- every question in the target language.
+    // Other subjects use the student's UI language preference as a soft hint only.
+    const langNote = subjectType === 'LANGUAGE' && targetLanguage
+      ? buildLanguageImmersionDirective(subjectName, targetLanguage)
+      : languageCode && languageCode !== 'en'
+        ? `Write all questions in ${isoToLanguageName(languageCode)}.`
+        : '';
 
     const { easy: easyCount, medium: mediumCount, hard: hardCount } = computeDifficultyCounts(totalCount);
 
