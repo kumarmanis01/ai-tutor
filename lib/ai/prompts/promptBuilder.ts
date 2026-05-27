@@ -171,7 +171,7 @@ export async function generateNotes(
   const metadata = generateMetadata('notes', userIdHash, sessionId);
   
   // Build prompts
-  const systemPrompt = buildSystemPrompt(input.grade, input.language);
+  const systemPrompt = buildSystemPrompt(input.grade, input.language, input.languageImmersionDirective);
   const userPrompt = buildNotesPrompt(input);
   const fullPrompt = buildFullPrompt(systemPrompt, userPrompt);
   
@@ -277,7 +277,7 @@ export async function generatePractice(
   const metadata = generateMetadata('practice', userIdHash, sessionId);
   
   // Build prompts
-  const systemPrompt = buildSystemPrompt(input.grade, input.language);
+  const systemPrompt = buildSystemPrompt(input.grade, input.language, input.languageImmersionDirective);
   const userPrompt = buildPracticePrompt(input);
   const fullPrompt = buildFullPrompt(systemPrompt, userPrompt);
   
@@ -454,7 +454,7 @@ export async function generateDoubtResponse(
     ? { ...input, studentQuestion: effectiveQuestion }
     : input;
 
-  const systemPrompt = buildSystemPrompt(input.grade, input.language);
+  const systemPrompt = buildSystemPrompt(input.grade, input.language, input.languageImmersionDirective);
   const userPrompt = buildDoubtsPrompt(effectiveInput);
   const fullPrompt = buildFullPrompt(systemPrompt, userPrompt);
 

@@ -283,6 +283,12 @@ export interface StudentContext {
   readonly language: Language;
   /** Current subject */
   readonly subject: string;
+  /**
+   * Mandatory immersion directive for LANGUAGE subjects (Hindi class, Sanskrit class, etc.).
+   * When present, injected as the first prompt layer and overrides language preference.
+   * Built by buildLanguageImmersionDirective() in interaction-language.service.ts.
+   */
+  readonly languageImmersionDirective?: string | null;
 }
 
 /**
