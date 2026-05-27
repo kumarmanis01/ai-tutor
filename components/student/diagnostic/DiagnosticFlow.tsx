@@ -477,6 +477,13 @@ export default function DiagnosticFlow({
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
+  // Must be above every early-return (cooldown, results) so hook call order is
+  // stable across all render paths.
+  const currentChoices = useMemo(
+    () => normaliseChoices(questionList[currentIndex]?.choices ?? []),
+    [questionList, currentIndex],
+  );
+
   const recordAnswer = useCallback(
     (option: string): PartialAnswer[] => {
       const timeSpentMs = Date.now() - questionStartRef.current;
@@ -671,13 +678,6 @@ export default function DiagnosticFlow({
   }
 
   // ── Quiz phase ────────────────────────────────────────────────────────────
-
-  // Normalise string[] choices into { key, label }[] for QuestionInteractionShell.
-  // Computed before the early-return so hook order is stable.
-  const currentChoices = useMemo(
-    () => normaliseChoices(questionList[currentIndex]?.choices ?? []),
-    [questionList, currentIndex],
-  );
 
   const currentQuestion = questionList[currentIndex];
   if (!currentQuestion) return null;
