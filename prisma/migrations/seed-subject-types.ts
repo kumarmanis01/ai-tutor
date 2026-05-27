@@ -2,12 +2,19 @@
  * Seed SubjectType and targetLanguage for existing SubjectDef rows.
  * Run once after applying the 20260527000001_add_subject_type_language migration.
  *
- * Usage: npx ts-node prisma/migrations/seed-subject-types.ts
+ * Usage: DATABASE_URL="..." npx tsx prisma/migrations/seed-subject-types.ts
+ *    or: npx tsx prisma/migrations/seed-subject-types.ts  (if DATABASE_URL already in env)
  */
 
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is not set');
+}
+
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.DATABASE_URL,
+});
 
 const LANGUAGE_SUBJECTS: Record<string, string> = {
   Hindi: 'hi',
