@@ -28,7 +28,13 @@ export interface PromptContext {
   studentName: string
   grade: number // 6-12
   board: string // 'CBSE' | 'ICSE' | ...
-  teachingLanguage: 'en' | 'hi'
+  teachingLanguage: string // ISO 639-1 code; 'en' | 'hi' for non-language subjects, full code for LANGUAGE subjects
+  /**
+   * Non-null when the subject is a LANGUAGE subject (e.g. Hindi, French, Sanskrit).
+   * Contains the complete language immersion directive that must appear first in the
+   * system prompt, instructing Vidya to respond exclusively in the target language.
+   */
+  languageSubjectDirective: string | null
 
   // STUDENT_PROFILE layer inputs
   examDateProximityDays: number | null // null = no exam set
@@ -95,6 +101,8 @@ export function buildPersonaLayer(ctx: PromptContext): string {
   const langNote =
     ctx.teachingLanguage === 'hi'
       ? 'Respond primarily in Hinglish (Hindi mixed with simple English) unless the student clearly prefers English.'
+      : ctx.languageSubjectDirective
+      ? `You are teaching ${ctx.subjectName}. Respond EXCLUSIVELY in ${ctx.subjectName}. See the LANGUAGE_IMMERSION directive at the top of this prompt.`
       : 'Respond in clear, simple English but allow light code-switching to Hindi when it helps understanding.'
 
   // AC-10 (F-STU-011 SHOULD): calibrate dialogue tone by grade band.
@@ -517,15 +525,24 @@ export function assembleSystemPrompt(ctx: PromptContext): AssembledPrompt {
     const curriculum = buildCurriculumContextLayer(ctx, workingRag)
     const responseFormat = buildResponseFormatLayer(ctx)
 
-    const pieces = [persona, safety, rules, studentProfile, sessionState, stageInstructions]
-    const layersIncluded: string[] = [
+    // LANGUAGE_IMMERSION directive is always first when present -- never truncated.
+    const pieces: string[] = []
+    const layersIncluded: string[] = []
+
+    if (ctx.languageSubjectDirective) {
+      pieces.push(ctx.languageSubjectDirective)
+      layersIncluded.push('LANGUAGE_IMMERSION')
+    }
+
+    pieces.push(persona, safety, rules, studentProfile, sessionState, stageInstructions)
+    layersIncluded.push(
       'PERSONA',
       'SAFETY',
       'PEDAGOGICAL_RULES',
       'STUDENT_PROFILE',
       'SESSION_STATE',
       'STAGE_INSTRUCTIONS',
-    ]
+    )
 
     if (curriculum) {
       pieces.push(curriculum)

@@ -1549,6 +1549,10 @@ model SubjectDef {
   slug                String
   classId             String
   isAvailable         Boolean              @default(false) // F-ADM-002 AC-05: admin-controlled subject availability
+  /// Pedagogical category used to determine teaching language for AI sessions.
+  subjectType         SubjectType          @default(OTHER)
+  /// ISO 639-1 code (e.g. "hi", "fr", "sa"). Only set when subjectType = LANGUAGE.
+  targetLanguage      String?
   lifecycle           SoftDeleteStatus     @default(active)
   createdAt           DateTime             @default(now())
   chapters            ChapterDef[]
@@ -2340,6 +2344,15 @@ enum SoftDeleteStatus {
 enum LanguageCode {
   en
   hi
+}
+
+/// Pedagogical category for a subject. Drives AI tutor interaction language selection.
+enum SubjectType {
+  LANGUAGE   // taught in the target language (e.g. Hindi, French, Sanskrit)
+  STEM       // science, technology, engineering, mathematics
+  SOCIAL     // history, geography, civics, economics, sociology
+  VOCATIONAL // vocational / applied skill subjects
+  OTHER      // catch-all default
 }
 
 /// Student-reported preferred learning style used by Tutor (Vidya).

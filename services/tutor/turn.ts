@@ -27,6 +27,7 @@ import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor'
 import { callTutorLLM, LLMError, type TutorCallType } from '@/lib/callLLM'
+import { resolveInteractionLanguage, isLanguageSubject } from '@/services/interaction-language.service'
 import {
   getTutorSession as getRedisTutorSession,
   setTutorSession as setRedisTutorSession,
@@ -335,34 +336,43 @@ export async function runTutorOrchestrator(args: {
       }),
       prismaClient.subjectDef.findUnique({
         where: { id: subjectId },
-        select: { name: true },
+        select: { name: true, subjectType: true, targetLanguage: true },
       }),
       userProfilePromise,
       conceptStatePromise,
     ])
     const conceptName = concept?.name ?? 'this concept'
     const subjectName = subject?.name ?? 'Subject'
+    const subjectForLang = {
+      subjectType: (subject as any)?.subjectType ?? 'OTHER',
+      targetLanguage: (subject as any)?.targetLanguage ?? null,
+    }
     const conceptDifficulty = typeof concept?.irt_b === 'number' && Number.isFinite(concept.irt_b) ? concept.irt_b : 0
     const learningStyle = (userProfile as any)?.learningStyle ?? null
     const uiLanguage = (userProfile as any)?.language ?? null
     const recommendations = (studentLearningProfile as any)?.recommendations ?? null
 
-    // Determine teaching language preference: per-subject override -> user UI language -> default 'en'
-    let teachingLanguageRaw: string | null = null
+    // Determine teaching language preference:
+    // For LANGUAGE subjects: always use targetLanguage (resolveInteractionLanguage enforces this).
+    // For other subjects: per-subject override -> user UI language -> default 'en'.
+    let studentLocale: string = 'en'
     try {
       if (recommendations && typeof recommendations === 'object') {
         const subjectLangs = (recommendations.subjectLanguages ?? {}) as Record<string, any>
         const subj = subjectLangs?.[subjectId]
-        if (typeof subj === 'string' && subj.length > 0) teachingLanguageRaw = subj
+        if (typeof subj === 'string' && subj.length > 0) studentLocale = subj
       }
     } catch (e) {
       // ignore and fall back
     }
-    if (!teachingLanguageRaw && typeof uiLanguage === 'string' && uiLanguage.length > 0) teachingLanguageRaw = uiLanguage
-    if (!teachingLanguageRaw) teachingLanguageRaw = 'en'
+    if (studentLocale === 'en' && typeof uiLanguage === 'string' && uiLanguage.length > 0) studentLocale = uiLanguage
 
-    // Normalize to supported ExplanationLang ('en' | 'hi') for downstream caches/calls
-    const teachingLanguage = (teachingLanguageRaw === 'hi' ? 'hi' : 'en') as any
+    // interactionLanguage is the full ISO 639-1 code used in the AI prompt.
+    const interactionLanguage = resolveInteractionLanguage(subjectForLang, studentLocale)
+    const subjectIsLanguage = isLanguageSubject(subjectForLang)
+
+    // Normalize to supported ExplanationLang ('en' | 'hi') for explanation cache lookups only.
+    const teachingLanguage = (interactionLanguage === 'hi' ? 'hi' : 'en') as any
 
     const safetyContext = {
       studentId,
@@ -653,11 +663,26 @@ export async function runTutorOrchestrator(args: {
     } catch (e) {
       logger.warn('boardChapterWeight.load.failed', { conceptId, error: String((e as any)?.message ?? e) })
     }
+    const languageSubjectDirective = subjectIsLanguage
+      ? [
+          '### LANGUAGE_IMMERSION',
+          `CRITICAL INSTRUCTION -- LANGUAGE SUBJECT:`,
+          `You are teaching ${subjectName}. This is a language learning session.`,
+          `You MUST respond EXCLUSIVELY in ${subjectName} (language code: ${interactionLanguage}).`,
+          `- Never use English or any other language in your responses.`,
+          `- Instructions, praise, corrections, questions -- all must be in ${subjectName}.`,
+          `- If the student writes in a different language, acknowledge it warmly and`,
+          `  redirect them in ${subjectName} only. Do not translate their message back.`,
+          `- Use vocabulary and sentence complexity appropriate for Grade 10.`,
+        ].join('\n')
+      : null
+
     const prompt = assembleSystemPrompt({
       studentName: 'Student',
       grade: 10,
       board: 'CBSE',
-      teachingLanguage: teachingLanguage,
+      teachingLanguage: interactionLanguage,
+      languageSubjectDirective,
       examDateProximityDays: null,
       learningStyle,
       recentMisconceptions: recentMisconceptionNames,
