@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     // Fetch question to grade (include topicId for concept resolution)
     const question = await prisma.question.findUnique({
       where: { id: questionId },
-      select: { id: true, correctAnswer: true, choices: true, topicId: true, prompt: true, difficulty: true },
+      select: { id: true, type: true, correctAnswer: true, choices: true, topicId: true, prompt: true, difficulty: true },
     });
     if (!question) {
       const res = NextResponse.json({ error: 'Question not found' }, { status: 404 });

@@ -16,9 +16,11 @@
  *   - Timer: amber + warning text at 2:00 remaining
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
+import { QuestionInteractionShell } from '@/components/questions/QuestionInteractionShell';
+import { normaliseChoices } from '@/lib/session/sessionUtils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -670,6 +672,13 @@ export default function DiagnosticFlow({
 
   // ── Quiz phase ────────────────────────────────────────────────────────────
 
+  // Normalise string[] choices into { key, label }[] for QuestionInteractionShell.
+  // Computed before the early-return so hook order is stable.
+  const currentChoices = useMemo(
+    () => normaliseChoices(questionList[currentIndex]?.choices ?? []),
+    [questionList, currentIndex],
+  );
+
   const currentQuestion = questionList[currentIndex];
   if (!currentQuestion) return null;
 
@@ -761,34 +770,19 @@ export default function DiagnosticFlow({
             )}
           </div>
 
-          {/* Question text */}
-          <div className="text-gray-900 dark:text-gray-100 text-[15px] leading-7 font-medium whitespace-pre-wrap">
-            {currentQuestion.prompt}
-          </div>
-
-          {/* MCQ options */}
-          <div className="flex flex-col gap-3" role="radiogroup" aria-label="Answer options">
-            {currentQuestion.choices.map((choice, idx) => {
-              const isSelected = selectedOption === choice;
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => handleSelectOption(choice)}
-                  className={[
-                    'w-full min-h-[52px] px-4 py-3 rounded-xl border-2 text-left text-sm leading-snug transition-all',
-                    isSelected
-                      ? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 font-medium'
-                      : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 hover:border-[#534AB7]/40 hover:bg-[#EEEDFE]/30 dark:hover:bg-[#534AB7]/5',
-                  ].join(' ')}
-                >
-                  {choice}
-                </button>
-              );
-            })}
-          </div>
+          <QuestionInteractionShell
+            questionId={currentQuestion.id}
+            prompt={currentQuestion.prompt}
+            questionNumber={currentIndex + 1}
+            totalQuestions={denominator}
+            choices={currentChoices}
+            value={selectedOption}
+            onChange={(key) => {
+              const match = currentChoices.find((c) => c.key === key);
+              handleSelectOption(match?.label ?? key);
+            }}
+            disabled={submitting}
+          />
 
           {/* Submit error */}
           {submitError && (
