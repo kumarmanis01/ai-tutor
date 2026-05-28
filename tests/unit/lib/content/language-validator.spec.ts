@@ -66,19 +66,19 @@ describe('assertContentLanguage', () => {
     it('should respect custom threshold', () => {
       // Pure Devanagari -- passes even at very strict threshold
       expect(() => assertContentLanguage({ title: 'हिंदी व्याकरण' }, 'hi', 0.01)).not.toThrow();
-      // Single Latin char in an 8-char string is ~12.5% -- passes default (15%) but fails strict (1%)
-      expect(() => assertContentLanguage({ title: 'अध्याय A' }, 'hi')).not.toThrow();
-      expect(() => assertContentLanguage({ title: 'अध्याय A' }, 'hi', 0.01)).toThrow('Language violation');
+      // Single Latin char in a longer string is ~3% -- passes default (35%) but fails strict (1%)
+      expect(() => assertContentLanguage({ title: 'यह हिन्दी अध्याय A पर आधारित है' }, 'hi')).not.toThrow();
+      expect(() => assertContentLanguage({ title: 'यह हिन्दी अध्याय A पर आधारित है' }, 'hi', 0.01)).toThrow('Language violation');
     });
 
     it('should check all CONTENT_FIELDS present', () => {
       const allFieldsEnglish = {
-        question: 'What is the answer?',
-        answer: 'The answer is yes.',
-        explanation: 'This explains why.',
-        title: 'Chapter Title',
-        description: 'Chapter description',
-        summary: 'Summary text here.',
+        question: 'What is the meaning of photosynthesis?',
+        answer: 'The answer is that plants make food using sunlight.',
+        explanation: 'This explains why the process occurs in chloroplasts.',
+        title: 'Chapter One: Introduction to Biology',
+        description: 'A detailed chapter description covering all topics.',
+        summary: 'Summary of all key concepts covered in this chapter.',
       };
       expect(() => assertContentLanguage(allFieldsEnglish, 'ta')).toThrow('Language violation');
     });

@@ -40,6 +40,7 @@ export function assertContentLanguage(
     if (!value) continue;
 
     const text = Array.isArray(value) ? value.join(' ') : String(value);
+    if (text.trim().length < 20) continue;
     const ratio = latinCharRatio(text);
 
     if (ratio > threshold) {
