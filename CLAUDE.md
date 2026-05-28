@@ -81,6 +81,33 @@ If you cannot verify it, say so explicitly — do not silently skip.
 - npm run type-check must exit 0 before any task is considered done
 - VERIFY: run it, paste the output, do not skip
 
+---
+## SCOPE DISCIPLINE — STOP BREAKING WORKING CODE
+
+### The Prime Directive
+If a file is not directly required by the current task, do not touch it.
+"Improving" working code during an unrelated task is how bugs are introduced.
+
+### Rules
+1. **Read the task description literally.** If the task says "fix the language validator threshold", touch ONLY lib/content/language-validator.ts and its test. Do not refactor callLLM.ts because you noticed something while reading it.
+
+2. **Never modify ecosystem.config.cjs unless the task explicitly says to.** This file controls production process management. A wrong character here takes down the entire VPS.
+
+3. **Never change a function signature that is called in more than 3 places** without explicit instruction. Trace all call sites first. List them in your response before making the change.
+
+4. **Never change threshold values, timeouts, retry counts, or feature flags** without explicit instruction. These are tuned for production. Changing them "to be safe" breaks things.
+
+5. **When fixing a bug, change the minimum possible code.** One bug = one fix = one commit. Do not bundle unrelated improvements.
+
+6. **If you see something broken while working on an unrelated task**, note it in your response as: "OBSERVED BUT NOT FIXED: [description]". Do not fix it unless instructed. Add it to aider_tasks.md instead.
+
+### Before touching any file, ask yourself:
+- Is this file in the task description? If no → do not touch it.
+- Will changing this break any PROTECTED CONTRACT? If yes → stop and ask.
+- Am I changing this because it's required, or because it looks improvable? If the latter → do not touch it.
+
+---
+
 ### MANDATORY TASK COMPLETION CHECKLIST
 Every task must end with this block in your response:
 
