@@ -26,12 +26,12 @@ function latinCharRatio(text: string): number {
  *
  * @param content - Top-level content record (question, note, etc.)
  * @param contentLanguageCode - BCP-47 code resolved by resolveContentLanguage
- * @param threshold - Latin-char ratio above which a field is flagged (default 0.15)
+ * @param threshold - Latin-char ratio above which a field is flagged (default 0.35)
  */
 export function assertContentLanguage(
   content: Record<string, unknown>,
   contentLanguageCode: string,
-  threshold = 0.15,
+  threshold = 0.35,
 ): void {
   if (contentLanguageCode === 'en') return;
 

@@ -132,6 +132,7 @@ module.exports = {
         ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
         LLM_MODE: process.env.LLM_MODE ?? 'real',
         LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
+        ALLOW_LLM_CALLS: '1',
         SENTRY_DSN: process.env.SENTRY_DSN,
       },
 
