@@ -112,6 +112,7 @@
     "pm2:start-worker": "pm2 start ecosystem.config.cjs --only content-engine-worker --update-env",
     "pm2:restart-worker": "pm2 restart content-engine-worker --update-env",
     "check-redis-keys": "node scripts/check-redis-keys.js",
+    "verify:contracts": "bash scripts/verify-contracts.sh",
     "verify:vps": "bash scripts/vps-verification.sh --auto",
     "verify:dist": "node scripts/verify-dist.cjs",
     "ensure:env": "bash scripts/ensure-env-perms.sh",

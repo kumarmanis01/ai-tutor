@@ -46,6 +46,73 @@ Violations of practices in that document are code-review blockers.
 
 ---
 
+## PROTECTED CONTRACTS — NEVER BREAK THESE
+
+These are the integration paths that must work end-to-end at all times.
+Before marking ANY task complete, verify each contract that your change touches.
+If you cannot verify it, say so explicitly — do not silently skip.
+
+### CONTRACT 1: LLM calls only reach OpenAI from the worker process
+- `callLLM()` in lib/callLLM.ts must never be called from an API route, server action, or UI component
+- The worker PM2 process (content-engine-worker) must have `ALLOW_LLM_CALLS=1` in its env_production block in ecosystem.config.cjs
+- VERIFY: grep -n "ALLOW_LLM_CALLS" ecosystem.config.cjs — must appear in content-engine-worker block
+
+### CONTRACT 2: HydrationJob state machine is not left in a broken state
+- Every code path in syllabusWorker, notesWorker, questionsWorker must either:
+  (a) complete successfully and set status=COMPLETED, OR
+  (b) catch all errors and set status=FAILED with a non-null lastError
+- A job must NEVER be left in status=RUNNING after the worker function returns
+- VERIFY: read the worker file you touched and trace every early-return and catch block
+
+### CONTRACT 3: Language validator threshold is not tightened below 0.35
+- lib/content/language-validator.ts default threshold must be >= 0.35
+- Rationale: valid Hindi/Marathi/Gujarati LLM output contains English proper nouns (NCERT, CBSE, board names)
+- VERIFY: grep "threshold = 0" lib/content/language-validator.ts
+
+### CONTRACT 4: ecosystem.config.cjs worker env_production is complete
+- content-engine-worker env_production must have ALL of: DATABASE_URL, REDIS_URL, OPENAI_API_KEY, LLM_MODE, ALLOW_LLM_CALLS
+- VERIFY: after any change to ecosystem.config.cjs, grep each of these keys and confirm they appear in the content-engine-worker block
+
+### CONTRACT 5: SystemSetting pauses are not left enabled
+- If any code path sets AI_PAUSED or HYDRATION_PAUSED to a truthy value for debugging, it must be reset before the task is closed
+- VERIFY: SELECT key, value FROM "SystemSetting" WHERE key IN ('AI_PAUSED', 'HYDRATION_PAUSED')
+
+### CONTRACT 6: Type-check passes after every change
+- npm run type-check must exit 0 before any task is considered done
+- VERIFY: run it, paste the output, do not skip
+
+---
+## SCOPE DISCIPLINE — STOP BREAKING WORKING CODE
+
+### The Prime Directive
+If a file is not directly required by the current task, do not touch it.
+"Improving" working code during an unrelated task is how bugs are introduced.
+
+### Rules
+1. **Read the task description literally.** If the task says "fix the language validator threshold", touch ONLY lib/content/language-validator.ts and its test. Do not refactor callLLM.ts because you noticed something while reading it.
+
+2. **Never modify ecosystem.config.cjs unless the task explicitly says to.** This file controls production process management. A wrong character here takes down the entire VPS.
+
+3. **Never change a function signature that is called in more than 3 places** without explicit instruction. Trace all call sites first. List them in your response before making the change.
+
+4. **Never change threshold values, timeouts, retry counts, or feature flags** without explicit instruction. These are tuned for production. Changing them "to be safe" breaks things.
+
+5. **When fixing a bug, change the minimum possible code.** One bug = one fix = one commit. Do not bundle unrelated improvements.
+
+6. **If you see something broken while working on an unrelated task**, note it in your response as: "OBSERVED BUT NOT FIXED: [description]". Do not fix it unless instructed. Add it to aider_tasks.md instead.
+
+### Before touching any file, ask yourself:
+- Is this file in the task description? If no → do not touch it.
+- Will changing this break any PROTECTED CONTRACT? If yes → stop and ask.
+- Am I changing this because it's required, or because it looks improvable? If the latter → do not touch it.
+
+---
+
+### MANDATORY TASK COMPLETION CHECKLIST
+Every task must end with this block in your response:
+
+---
+
 ## ACTIVE ROLE
 
 Read the TASK GROUP section below to find which role applies to your current task.
@@ -577,3 +644,5 @@ import { Button, missionCta } from '@/components/UI/design-system';
 ```
 
 Full reference: `design_handoff_student_app/design-system/COMPONENTS_AND_PATTERNS.md`.
+
+Before closing any task, run: npm run verify:contracts. Do not mark a task done if this fails.
