@@ -617,3 +617,5 @@ import { Button, missionCta } from '@/components/UI/design-system';
 ```
 
 Full reference: `design_handoff_student_app/design-system/COMPONENTS_AND_PATTERNS.md`.
+
+Before closing any task, run: npm run verify:contracts. Do not mark a task done if this fails.

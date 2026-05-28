@@ -35,6 +35,18 @@ else
 	npm run preflight:type-check
 fi
 
+# Contract gate — always runs unless SKIP_CONTRACT_GATE=1
+# Runs even when SKIP_UNIT_TESTS=1 because these are production-safety contracts.
+if [ "${SKIP_CONTRACT_GATE:-}" = "1" ]; then
+	echo "SKIP_CONTRACT_GATE=1 — skipping contract gate"
+else
+	if ! { npm run type-check && node scripts/run-focused-tests.cjs -- --runInBand --passWithNoTests --testPathPattern="tests/unit/contracts/"; }; then
+		echo ""
+		echo "Pre-commit gate failed. Fix type errors and contract tests before committing."
+		exit 1
+	fi
+fi
+
 # Unit tests (fast gate) — skip with SKIP_UNIT_TESTS=1
 if [ "${SKIP_UNIT_TESTS:-}" = "1" ]; then
 	echo "SKIP_UNIT_TESTS=1 — skipping unit tests"
