@@ -17,8 +17,8 @@ jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../../helpers/prismaMo
 jest.mock('@/lib/logger.js', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
-const mockSendMailSafe = jest.fn().mockResolvedValue(undefined);
-jest.mock('@/lib/mailer.js', () => ({ sendMailSafe: mockSendMailSafe }));
+const mockSendEmailUnifiedSafe = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/lib/mail.js', () => ({ sendEmailUnifiedSafe: mockSendEmailUnifiedSafe }));
 jest.mock('@/lib/email/functionalityEmails.js', () => ({
   HYDRATION_GENERATION_REPORT_EMAIL: 'feedback@spinzyacademy.com',
 }));
@@ -180,10 +180,14 @@ describe('HydrationReconciler - Progress Tracking', () => {
     const subjectId = 'subject456';
 
     prismaMock.hydrationJob.findUnique.mockResolvedValue({ subjectId });
+    // hydrationJob.count is called 3 times: notesExpected (L2), questionsExpected (L3), questionsCompleted (L3+completed)
+    prismaMock.hydrationJob.count
+      .mockResolvedValueOnce(20)  // notesExpected
+      .mockResolvedValueOnce(15)  // questionsExpected
+      .mockResolvedValueOnce(10); // questionsCompleted
     prismaMock.chapterDef.count.mockResolvedValue(8);
     prismaMock.topicDef.count.mockResolvedValue(35);
     prismaMock.topicNote.count.mockResolvedValue(20);
-    prismaMock.generatedQuestion.count.mockResolvedValue(150);
 
     await (reconciler as any).updateProgress(rootJobId);
 
@@ -193,7 +197,7 @@ describe('HydrationReconciler - Progress Tracking', () => {
         chaptersCompleted: 8,
         topicsCompleted: 35,
         notesCompleted: 20,
-        questionsCompleted: 150,
+        questionsCompleted: 10,
       }),
     });
   });
@@ -238,7 +242,7 @@ describe('HydrationReconciler - Finalization', () => {
   });
 
   it('should send generation summary email on root job finalization', async () => {
-    mockSendMailSafe.mockClear();
+    mockSendEmailUnifiedSafe.mockClear();
     const rootJob = { id: 'root123', subject: 'mathematics', subjectId: 'math-001', createdAt: new Date('2026-05-18T00:00:00Z') };
 
     prismaMock.hydrationJob.count.mockResolvedValue(0);
@@ -254,7 +258,7 @@ describe('HydrationReconciler - Finalization', () => {
 
     await (reconciler as any).finalizeRootJob(rootJob);
 
-    expect(mockSendMailSafe).toHaveBeenCalledWith(
+    expect(mockSendEmailUnifiedSafe).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'feedback@spinzyacademy.com',
         subject: expect.stringContaining('mathematics'),
