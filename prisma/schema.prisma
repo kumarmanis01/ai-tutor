@@ -16,6 +16,7 @@
 /// - 2026-05-11T00:00:00Z | copilot | add todayStudyMinutes and lastStudySessionDate for daily study duration limits (30min free / 60min paid)
 /// - 2026-05-12T00:00:00Z | copilot | add parentWhatsappPhone and channel-specific parent verification timestamps; add pending_onboarding account status default
 /// - 2026-05-19T00:00:00Z | claude  | feat: add CurriculumBook/BookChapter/BookTopic models; add CurriculumBookParseStatus enum; add bookChapterId/bookTopicId to ChapterDef/TopicDef
+/// - 2026-05-28T00:00:00Z | claude  | perf: add missing indexes for slow queries (TopicDef, AnalyticsEvent, Outbox, ExecutionJob, WorkerLifecycle, AIContentLog)
 generator client {
   provider = "prisma-client-js"
 }
@@ -390,6 +391,8 @@ model AnalyticsEvent {
 
   @@index([eventType, createdAt])
   @@index([courseId])
+  // userId missing — admin/analytics queries filter by userId frequently.
+  @@index([userId, createdAt])
 }
 
 /// Daily rollup produced by analyticsAggregator worker.
@@ -572,6 +575,9 @@ model WorkerLifecycle {
   @@index([status])
   @@index([lastHeartbeatAt])
   @@index([lastHeartbeatAt, status])
+  // Heartbeat UPDATE targets WHERE type = $workerType — no index on type causes seq scan.
+  @@index([type])
+  @@index([type, status])
 }
 
 /// JobLock table used to prevent overlapping job executions
@@ -1608,6 +1614,10 @@ model TopicDef {
   bookTopic          BookTopic?             @relation(fields: [bookTopicId], references: [id])
 
   @@unique([chapterId, slug])
+  // Worker hydration loops query by chapterId to enumerate topics per chapter.
+  // status+lifecycle used by admin/worker filters; chapterId+status for content-ready checks.
+  @@index([chapterId])
+  @@index([chapterId, status, lifecycle])
 }
 
 /// Concept-level taxonomy for IRT, prereqs, and RAG. One topic can have many concepts.
@@ -1840,8 +1850,12 @@ model AIContentLog {
 
   @@index([promptType])
   @@index([board, grade, subject])
-  @@index([createdAt])
+  // [createdAt] alone is rarely selective enough to justify the write overhead on an
+  // append-heavy table; queries use (promptType, createdAt) or (board, grade, subject) instead.
+  // Keeping promptType+schemaHash for idempotency lookup; dropping bare createdAt index.
+  @@index([promptType, createdAt])
   @@index([promptType, schemaHash])
+  @@index([topicId])
 }
 
 model AITutorTurnLog {
@@ -1970,7 +1984,12 @@ model Outbox {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Outbox poller queries: WHERE sentAt IS NULL ORDER BY createdAt — existing index is (queue, sentAt)
+  // which can't efficiently filter IS NULL. Add (sentAt, createdAt) for the unsent-rows scan,
+  // and (queue, sentAt, createdAt) as covering index for the per-queue poller.
   @@index([queue, sentAt])
+  @@index([sentAt, createdAt])
+  @@index([queue, sentAt, createdAt])
 }
 
 /// Parent-facing notification audit record for compliance and "last alert sent" views
@@ -2189,7 +2208,10 @@ model ExecutionJob {
   updatedAt   DateTime          @updatedAt
   logs        JobExecutionLog[]
 
+  // Worker findFirst: WHERE status = 'pending' AND (lockedAt IS NULL OR lockedAt < now()) ORDER BY nextRunAt
+  // Existing (status, nextRunAt) partially covers this; add lockedAt for the lock-expiry filter.
   @@index([status, nextRunAt])
+  @@index([status, lockedAt, nextRunAt])
 }
 
 model JobExecutionLog {
