@@ -85,7 +85,7 @@ module.exports = {
         NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
         SENTRY_DSN: process.env.SENTRY_DSN,
         // Set to 'true' once Hindi content pipeline is verified live
-        NEXT_PUBLIC_HINDI_ENABLED: process.env.NEXT_PUBLIC_HINDI_ENABLED ?? 'false',
+        NEXT_PUBLIC_HINDI_ENABLED: process.env.NEXT_PUBLIC_HINDI_ENABLED,
       },
 
       error_file: 'logs/pm2/ai-tutor-web-error.log',
