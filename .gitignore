@@ -37,6 +37,7 @@ yarn-error.log*
 # env files (do not commit)
 # keep all env files ignored, including .env.production
 .env*
+!.env.example
 .env.production
 
 # vercel

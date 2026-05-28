@@ -76,6 +76,9 @@ export class HydrationReconciler {
 
       logger.info('Starting hydration reconciliation cycle');
 
+      // Reset stale RUNNING jobs before enqueuing new work
+      await this.resetStaleHydrationJobs();
+
       // Get root jobs needing reconciliation
       const rootJobs = await this.getRootJobsForReconciliation();
 
@@ -142,6 +145,74 @@ export class HydrationReconciler {
       // Lock might have already expired, that's okay
       logger.debug('Failed to release lock (might have expired)', {
         error: error.message,
+      });
+    }
+  }
+
+  // ============================================
+  // Stale Lock Recovery
+  // ============================================
+
+  /**
+   * Finds RUNNING HydrationJobs whose lockedAt is older than 10 minutes and
+   * resets them so they can be retried. Jobs that have already exhausted their
+   * attempts (>= 3) are marked FAILED instead of re-queued.
+   *
+   * Called once per reconciler cycle, before root-job discovery, so any job
+   * that stalled due to a worker crash is visible to the current cycle.
+   */
+  private async resetStaleHydrationJobs(): Promise<void> {
+    const staleThreshold = new Date(Date.now() - 10 * 60 * 1000);
+
+    type StaleJob = { id: string; lockedAt: Date | null; attempts: number };
+    const staleJobs: StaleJob[] = await prisma.hydrationJob.findMany({
+      where: {
+        status: JobStatus.Running,
+        lockedAt: { lt: staleThreshold },
+      },
+      select: { id: true, lockedAt: true, attempts: true },
+    });
+
+    if (staleJobs.length === 0) return;
+
+    const exhausted = staleJobs.filter((j: StaleJob) => j.attempts >= 3);
+    const resettable = staleJobs.filter((j: StaleJob) => j.attempts < 3);
+
+    for (const job of exhausted) {
+      logger.warn('hydrationReconciler.staleJob.exceeded', {
+        jobId: job.id,
+        lockedAt: job.lockedAt,
+        attempts: job.attempts,
+      });
+    }
+
+    for (const job of resettable) {
+      logger.warn('hydrationReconciler.staleJob.reset', {
+        jobId: job.id,
+        lockedAt: job.lockedAt,
+        attempts: job.attempts,
+      });
+    }
+
+    if (exhausted.length > 0) {
+      await prisma.hydrationJob.updateMany({
+        where: { id: { in: exhausted.map((j) => j.id) } },
+        data: {
+          status: JobStatus.Failed,
+          lastError: 'stale_lock_exceeded_retries',
+          lockedAt: null,
+        },
+      });
+    }
+
+    if (resettable.length > 0) {
+      await prisma.hydrationJob.updateMany({
+        where: { id: { in: resettable.map((j) => j.id) } },
+        data: {
+          status: JobStatus.Pending,
+          lockedAt: null,
+          attempts: { increment: 1 },
+        },
       });
     }
   }
