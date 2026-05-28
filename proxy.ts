@@ -99,12 +99,18 @@ export async function proxy(request: NextRequest) {
       const isStudentOrParentUi = pathname.startsWith('/student') || pathname.startsWith('/parent');
       const accountStatus = (token as { accountStatus?: string }).accountStatus;
       if (isStudentOrParentUi && accountStatus !== 'active') {
-        if (pathname.startsWith('/student/onboarding') || pathname.startsWith('/student/verify-parent')) {
+        const isParent = (token as { role?: string }).role === 'parent';
+        const onboardingTarget = isParent ? '/parent/onboarding' : '/student/onboarding';
+        if (
+          pathname.startsWith('/student/onboarding') ||
+          pathname.startsWith('/student/verify-parent') ||
+          pathname.startsWith('/parent/onboarding')
+        ) {
           const allowed = NextResponse.next();
           allowed.headers.set('x-pathname', pathname);
           return allowed;
         }
-        return NextResponse.redirect(new URL('/student/onboarding', request.url));
+        return NextResponse.redirect(new URL(onboardingTarget, request.url));
       }
 
       const response = NextResponse.next();
