@@ -15,7 +15,7 @@
  */
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { logger } from '@/lib/logger'
@@ -48,7 +48,7 @@ function buildParentLinkRoute(inviteCode: string): string {
   return `${PARENT_LINK_ROUTE}?mode=code&inviteCode=${encodeURIComponent(inviteCode)}`
 }
 
-export default function ParentOnboardingPage() {
+function ParentOnboardingContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -130,5 +130,17 @@ export default function ParentOnboardingPage() {
         {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
       </div>
     </div>
+  )
+}
+
+export default function ParentOnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-950">
+        <div className="w-8 h-8 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ParentOnboardingContent />
+    </Suspense>
   )
 }
