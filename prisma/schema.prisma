@@ -16,6 +16,8 @@
 /// - 2026-05-11T00:00:00Z | copilot | add todayStudyMinutes and lastStudySessionDate for daily study duration limits (30min free / 60min paid)
 /// - 2026-05-12T00:00:00Z | copilot | add parentWhatsappPhone and channel-specific parent verification timestamps; add pending_onboarding account status default
 /// - 2026-05-19T00:00:00Z | claude  | feat: add CurriculumBook/BookChapter/BookTopic models; add CurriculumBookParseStatus enum; add bookChapterId/bookTopicId to ChapterDef/TopicDef
+/// - 2026-05-28T00:00:00Z | claude  | perf: add missing indexes for slow queries (TopicDef, AnalyticsEvent, Outbox, ExecutionJob, WorkerLifecycle, AIContentLog)
+/// - 2026-05-28T01:00:00Z | claude  | perf: full schema index audit — add 13 missing indexes, remove 3 redundant indexes (BoardChapterWeight, BoardSubjectConfig, RegenerationOutput)
 generator client {
   provider = "prisma-client-js"
 }
@@ -313,6 +315,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -337,6 +340,8 @@ model ChatHistory {
   messages  String
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
 }
 
 model Chat {
@@ -376,6 +381,9 @@ model Event {
   timestamp DateTime @default(now())
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, timestamp])
+  @@index([type, timestamp])
 }
 
 /// Analytics events collected from learners (Phase 10)
@@ -390,6 +398,8 @@ model AnalyticsEvent {
 
   @@index([eventType, createdAt])
   @@index([courseId])
+  // userId missing — admin/analytics queries filter by userId frequently.
+  @@index([userId, createdAt])
 }
 
 /// Daily rollup produced by analyticsAggregator worker.
@@ -464,7 +474,7 @@ model RegenerationOutput {
   job         RegenerationJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@index([targetId])
-  @@index([targetId], map: "idx_regenerationoutput_targetId")
+  // idx_regenerationoutput_targetId was an exact duplicate of the index above — removed.
 }
 
 model Subscription {
@@ -572,6 +582,9 @@ model WorkerLifecycle {
   @@index([status])
   @@index([lastHeartbeatAt])
   @@index([lastHeartbeatAt, status])
+  // Heartbeat UPDATE targets WHERE type = $workerType — no index on type causes seq scan.
+  @@index([type])
+  @@index([type, status])
 }
 
 /// JobLock table used to prevent overlapping job executions
@@ -1155,6 +1168,8 @@ model LearningSession {
   student              User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
+  @@index([studentId, activityType])
+  @@index([studentId, isCompleted, startedAt])
 }
 
 model ContentRecommendation {
@@ -1583,6 +1598,8 @@ model ChapterDef {
   bookChapter         BookChapter?         @relation(fields: [bookChapterId], references: [id])
 
   @@unique([subjectId, slug, version])
+  // Hydration worker and admin enumerate chapters by subjectId — no index caused seq scan.
+  @@index([subjectId, lifecycle, status])
 }
 
 model TopicDef {
@@ -1608,6 +1625,10 @@ model TopicDef {
   bookTopic          BookTopic?             @relation(fields: [bookTopicId], references: [id])
 
   @@unique([chapterId, slug])
+  // Worker hydration loops query by chapterId to enumerate topics per chapter.
+  // status+lifecycle used by admin/worker filters; chapterId+status for content-ready checks.
+  @@index([chapterId])
+  @@index([chapterId, status, lifecycle])
 }
 
 /// Concept-level taxonomy for IRT, prereqs, and RAG. One topic can have many concepts.
@@ -1713,7 +1734,7 @@ model BoardChapterWeight {
   chapter     ChapterDef @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   @@unique([chapterId])
-  @@index([chapterId])
+  // @@index([chapterId]) removed — @@unique([chapterId]) already implies a B-tree index.
 }
 
 /// Core vs optional subject per board+grade. Unblocks onboarding subject picker.
@@ -1726,7 +1747,7 @@ model BoardSubjectConfig {
   subjectDef   SubjectDef @relation(fields: [subjectDefId], references: [id], onDelete: Cascade)
 
   @@unique([subjectDefId])
-  @@index([subjectDefId])
+  // @@index([subjectDefId]) removed — @@unique([subjectDefId]) already implies a B-tree index.
 }
 
 /// RAG curriculum chunks; tag with conceptIds for retrieval. pgvector embedding column added separately if needed.
@@ -1779,6 +1800,9 @@ model TopicNote {
   topic           TopicDef         @relation(fields: [topicId], references: [id])
 
   @@unique([topicId, language, version])
+  // Worker and student path: findFirst WHERE topicId=X AND language=Y AND status='approved'
+  @@index([topicId, language, status])
+  @@index([status, lifecycle])
 }
 
 model GeneratedTest {
@@ -1840,8 +1864,12 @@ model AIContentLog {
 
   @@index([promptType])
   @@index([board, grade, subject])
-  @@index([createdAt])
+  // [createdAt] alone is rarely selective enough to justify the write overhead on an
+  // append-heavy table; queries use (promptType, createdAt) or (board, grade, subject) instead.
+  // Keeping promptType+schemaHash for idempotency lookup; dropping bare createdAt index.
+  @@index([promptType, createdAt])
   @@index([promptType, schemaHash])
+  @@index([topicId])
 }
 
 model AITutorTurnLog {
@@ -1970,7 +1998,12 @@ model Outbox {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Outbox poller queries: WHERE sentAt IS NULL ORDER BY createdAt — existing index is (queue, sentAt)
+  // which can't efficiently filter IS NULL. Add (sentAt, createdAt) for the unsent-rows scan,
+  // and (queue, sentAt, createdAt) as covering index for the per-queue poller.
   @@index([queue, sentAt])
+  @@index([sentAt, createdAt])
+  @@index([queue, sentAt, createdAt])
 }
 
 /// Parent-facing notification audit record for compliance and "last alert sent" views
@@ -2091,6 +2124,8 @@ model DoubtKb {
   @@index([studentId, conceptId])
   @@index([conceptId])
   @@index([subjectId])
+  // Session-dedup query is WHERE sessionId = X — sessionId was unindexed.
+  @@index([sessionId])
 }
 
 model FreeTierUsage {
@@ -2189,7 +2224,10 @@ model ExecutionJob {
   updatedAt   DateTime          @updatedAt
   logs        JobExecutionLog[]
 
+  // Worker findFirst: WHERE status = 'pending' AND (lockedAt IS NULL OR lockedAt < now()) ORDER BY nextRunAt
+  // Existing (status, nextRunAt) partially covers this; add lockedAt for the lock-expiry filter.
   @@index([status, nextRunAt])
+  @@index([status, lockedAt, nextRunAt])
 }
 
 model JobExecutionLog {
@@ -2618,7 +2656,8 @@ model GeneratedStudyContent {
   @@index([topic], name: "idx_generated_study_content_topic")
   @@index([subject, grade, board], name: "idx_generated_study_content_context")
   @@index([generatedBy], name: "idx_generated_study_content_user")
-  @@index([createdAt], name: "idx_generated_study_content_created")
+  // Bare [createdAt] replaced: low selectivity + write overhead on append table.
+  @@index([status, lifecycle, createdAt], name: "idx_generated_study_content_status_lifecycle_created")
 }
 
 /// Tracks student's saved/bookmarked study content (both official and generated)
@@ -2681,6 +2720,9 @@ model RecommendationTrace {
 
   @@index([studentId, createdAt])
   @@index([entityType])
+  // Admin debugging filters by entityId; A/B queries filter by engineVersion.
+  @@index([entityId, createdAt])
+  @@index([engineVersion, createdAt])
 }
 
 /// Home Tutor Engine decision facts (P0–P6 ladder) for aggregated analytics.
@@ -2850,6 +2892,8 @@ model SessionQuestionFlag {
 
   @@unique([questionId, studentId])
   @@index([questionId])
+  // Student-facing "my flags" view queries by studentId.
+  @@index([studentId])
 }
 
 /// Web Push API subscription record.
@@ -2886,6 +2930,8 @@ model DiagnosticSession {
 
   @@unique([studentId, subjectId])
   @@index([studentId])
+  // Background completion checker and admin filter by status.
+  @@index([status, startedAt])
 }
 
 enum DiagnosticStatus {
@@ -2908,6 +2954,9 @@ model NotificationLog {
   adminId     String?
 
   @@index([sentAt])
+  // Admin list view filters by audience and status.
+  @@index([audience, sentAt])
+  @@index([status, sentAt])
 }
 
 // ── F-STU-021: Full Syllabus Mock Exam ────────────────────────────────────────
