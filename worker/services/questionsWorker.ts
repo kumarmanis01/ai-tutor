@@ -29,6 +29,9 @@ import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { renderTemplate } from '@/prompts/index'
+import { resolveContentLanguage } from '@/lib/content/language-config'
+import { buildContentSystemPrompt } from '@/lib/content/prompt-builder'
+import { assertContentLanguage } from '@/lib/content/language-validator'
 import _fs from 'fs';
 import _path from 'path';
 import { LanguageCode } from '@prisma/client';
@@ -388,6 +391,10 @@ async function generateQuestionsForDifficulty(
     ncertContext,
   });
 
+  const contentLang = resolveContentLanguage(subjectName);
+  const langDirective = buildContentSystemPrompt({ name: subjectName, board, grade: String(grade) });
+  const finalPrompt = langDirective ? `${langDirective}\n\n---\n\n${rendered.prompt}` : rendered.prompt;
+
   // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
   try {
     await prisma.aIContentLog.create({
@@ -408,7 +415,7 @@ async function generateQuestionsForDifficulty(
   } catch {}
 
   const llmResponse = await callLLM({
-    prompt: rendered.prompt,
+    prompt: finalPrompt,
     meta: {
       promptType: 'questions',
       board,
@@ -444,6 +451,19 @@ async function generateQuestionsForDifficulty(
       keys: raw && typeof raw === 'object' ? Object.keys(raw) : null,
     });
     return { parsed: null, llmResult: llmResponse };
+  }
+
+  // Language violation guard: spot-check first question against expected script
+  if (contentLang.code !== 'en' && raw.questions.length > 0) {
+    try {
+      assertContentLanguage(raw.questions[0] as Record<string, unknown>, contentLang.code);
+    } catch (langErr: unknown) {
+      logger.error('[questionsWorker] language violation in LLM output -- discarding difficulty', {
+        event: 'content_language_violation',
+        context: { difficulty, topic: topic.name, subjectName, contentLang: contentLang.code, error: String(langErr) },
+      });
+      return { parsed: null, llmResult: llmResponse };
+    }
   }
 
   return { parsed: raw, llmResult: llmResponse };
