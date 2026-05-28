@@ -26,6 +26,9 @@ import { toSlug } from '@/lib/slug.js'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { logger } from '@/lib/logger.js'
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
+import { resolveContentLanguage } from '@/lib/content/language-config'
+import { buildContentSystemPrompt } from '@/lib/content/prompt-builder'
+import { assertContentLanguage } from '@/lib/content/language-validator'
 // Per spec, workers must not enqueue child hydration jobs; orchestrator/reconciler handles downstream job creation.
 
 // If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
@@ -254,7 +257,9 @@ export async function handleSyllabusJob(jobId: string) {
 
   // Use prompt renderer for deterministic prompt and schemaHash
   const rendered = renderTemplate('syllabus', { board, grade, subject: subjectName, language, ncertChapterHints })
-  const prompt = rendered.prompt
+  const contentLang = resolveContentLanguage(subjectName)
+  const langDirective = buildContentSystemPrompt({ name: subjectName, board, grade: String(grade) })
+  const prompt = langDirective ? `${langDirective}\n\n---\n\n${rendered.prompt}` : rendered.prompt
   // Persist initial AIContentLog with schemaHash/version before LLM call
   let aiLog: any = null
   let llmResult: any = null
@@ -326,6 +331,22 @@ export async function handleSyllabusJob(jobId: string) {
     }
     // No linked execution job: return gracefully to avoid crashing the worker process
     return;
+  }
+
+  // Language violation check: ensure chapter titles are in the expected script
+  if (contentLang.code !== 'en' && Array.isArray(parsed.chapters) && parsed.chapters.length > 0) {
+    try {
+      assertContentLanguage({ title: parsed.chapters[0].title }, contentLang.code)
+    } catch (langErr: unknown) {
+      logger.error('[syllabusWorker] language violation in LLM output -- failing job for retry', {
+        event: 'content_language_violation',
+        context: { jobId: job.id, subjectName, contentLang: contentLang.code, error: String(langErr) },
+      })
+      const { formatLastError, FailureCode } = await import('@/lib/failureCodes')
+      const le = formatLastError(FailureCode.VALIDATION_FAILED, 'content_language_violation')
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
+      throw langErr
+    }
   }
 
   parsed.chapters.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))

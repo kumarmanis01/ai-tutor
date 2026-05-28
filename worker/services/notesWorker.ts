@@ -24,6 +24,9 @@ import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson';
 import { validateOrThrow, SchemaInvalidError, PlaceholderContentError } from '@/lib/aiOutputValidator';
+import { resolveContentLanguage } from '@/lib/content/language-config';
+import { buildContentSystemPrompt } from '@/lib/content/prompt-builder';
+import { assertContentLanguage } from '@/lib/content/language-validator';
 import _fs from 'fs';
 import _path from 'path';
 import { renderTemplate } from '@/prompts/index'
@@ -344,7 +347,9 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     ncertContext,
     languageMeta: languageMeta ?? undefined,
   });
-  const prompt = rendered.prompt
+  const contentLang = resolveContentLanguage(subjectName);
+  const langDirective = buildContentSystemPrompt({ name: subjectName, board, grade: String(grade) });
+  const prompt = langDirective ? `${langDirective}\n\n---\n\n${rendered.prompt}` : rendered.prompt
 
   // Always use next version number so new jobs create v1, v2, v3... (versioned content, never overwrite).
   const version = await getNextVersion({ topicId, language, type: 'note' });
@@ -407,6 +412,22 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       }).catch(() => {});
     }
   } catch { /* ignore */ }
+
+  // Language violation guard: ensure notes are in the expected script before writing to DB
+  if (contentLang.code !== 'en') {
+    try {
+      assertContentLanguage(parsed as Record<string, unknown>, contentLang.code);
+    } catch (langErr: unknown) {
+      logger.error('[notesWorker] language violation in LLM output -- failing job for retry', {
+        event: 'content_language_violation',
+        context: { jobId: job.id, topicId, subjectName, contentLang: contentLang.code, error: String(langErr) },
+      });
+      const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+      const le = formatLastError(FailureCode.VALIDATION_FAILED, 'content_language_violation');
+      try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
+      throw langErr;
+    }
+  }
 
   // Strict validation: may throw typed errors. On failure we must fail the HydrationJob and persist AIContentLog, then rethrow.
   try {
