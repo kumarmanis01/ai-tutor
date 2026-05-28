@@ -17,6 +17,7 @@
 /// - 2026-05-12T00:00:00Z | copilot | add parentWhatsappPhone and channel-specific parent verification timestamps; add pending_onboarding account status default
 /// - 2026-05-19T00:00:00Z | claude  | feat: add CurriculumBook/BookChapter/BookTopic models; add CurriculumBookParseStatus enum; add bookChapterId/bookTopicId to ChapterDef/TopicDef
 /// - 2026-05-28T00:00:00Z | claude  | perf: add missing indexes for slow queries (TopicDef, AnalyticsEvent, Outbox, ExecutionJob, WorkerLifecycle, AIContentLog)
+/// - 2026-05-28T01:00:00Z | claude  | perf: full schema index audit — add 13 missing indexes, remove 3 redundant indexes (BoardChapterWeight, BoardSubjectConfig, RegenerationOutput)
 generator client {
   provider = "prisma-client-js"
 }
@@ -314,6 +315,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -338,6 +340,8 @@ model ChatHistory {
   messages  String
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
 }
 
 model Chat {
@@ -377,6 +381,9 @@ model Event {
   timestamp DateTime @default(now())
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, timestamp])
+  @@index([type, timestamp])
 }
 
 /// Analytics events collected from learners (Phase 10)
@@ -467,7 +474,7 @@ model RegenerationOutput {
   job         RegenerationJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@index([targetId])
-  @@index([targetId], map: "idx_regenerationoutput_targetId")
+  // idx_regenerationoutput_targetId was an exact duplicate of the index above — removed.
 }
 
 model Subscription {
@@ -1161,6 +1168,8 @@ model LearningSession {
   student              User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
+  @@index([studentId, activityType])
+  @@index([studentId, isCompleted, startedAt])
 }
 
 model ContentRecommendation {
@@ -1589,6 +1598,8 @@ model ChapterDef {
   bookChapter         BookChapter?         @relation(fields: [bookChapterId], references: [id])
 
   @@unique([subjectId, slug, version])
+  // Hydration worker and admin enumerate chapters by subjectId — no index caused seq scan.
+  @@index([subjectId, lifecycle, status])
 }
 
 model TopicDef {
@@ -1723,7 +1734,7 @@ model BoardChapterWeight {
   chapter     ChapterDef @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   @@unique([chapterId])
-  @@index([chapterId])
+  // @@index([chapterId]) removed — @@unique([chapterId]) already implies a B-tree index.
 }
 
 /// Core vs optional subject per board+grade. Unblocks onboarding subject picker.
@@ -1736,7 +1747,7 @@ model BoardSubjectConfig {
   subjectDef   SubjectDef @relation(fields: [subjectDefId], references: [id], onDelete: Cascade)
 
   @@unique([subjectDefId])
-  @@index([subjectDefId])
+  // @@index([subjectDefId]) removed — @@unique([subjectDefId]) already implies a B-tree index.
 }
 
 /// RAG curriculum chunks; tag with conceptIds for retrieval. pgvector embedding column added separately if needed.
@@ -1789,6 +1800,9 @@ model TopicNote {
   topic           TopicDef         @relation(fields: [topicId], references: [id])
 
   @@unique([topicId, language, version])
+  // Worker and student path: findFirst WHERE topicId=X AND language=Y AND status='approved'
+  @@index([topicId, language, status])
+  @@index([status, lifecycle])
 }
 
 model GeneratedTest {
@@ -2110,6 +2124,8 @@ model DoubtKb {
   @@index([studentId, conceptId])
   @@index([conceptId])
   @@index([subjectId])
+  // Session-dedup query is WHERE sessionId = X — sessionId was unindexed.
+  @@index([sessionId])
 }
 
 model FreeTierUsage {
@@ -2640,7 +2656,8 @@ model GeneratedStudyContent {
   @@index([topic], name: "idx_generated_study_content_topic")
   @@index([subject, grade, board], name: "idx_generated_study_content_context")
   @@index([generatedBy], name: "idx_generated_study_content_user")
-  @@index([createdAt], name: "idx_generated_study_content_created")
+  // Bare [createdAt] replaced: low selectivity + write overhead on append table.
+  @@index([status, lifecycle, createdAt], name: "idx_generated_study_content_status_lifecycle_created")
 }
 
 /// Tracks student's saved/bookmarked study content (both official and generated)
@@ -2703,6 +2720,9 @@ model RecommendationTrace {
 
   @@index([studentId, createdAt])
   @@index([entityType])
+  // Admin debugging filters by entityId; A/B queries filter by engineVersion.
+  @@index([entityId, createdAt])
+  @@index([engineVersion, createdAt])
 }
 
 /// Home Tutor Engine decision facts (P0–P6 ladder) for aggregated analytics.
@@ -2872,6 +2892,8 @@ model SessionQuestionFlag {
 
   @@unique([questionId, studentId])
   @@index([questionId])
+  // Student-facing "my flags" view queries by studentId.
+  @@index([studentId])
 }
 
 /// Web Push API subscription record.
@@ -2908,6 +2930,8 @@ model DiagnosticSession {
 
   @@unique([studentId, subjectId])
   @@index([studentId])
+  // Background completion checker and admin filter by status.
+  @@index([status, startedAt])
 }
 
 enum DiagnosticStatus {
@@ -2930,6 +2954,9 @@ model NotificationLog {
   adminId     String?
 
   @@index([sentAt])
+  // Admin list view filters by audience and status.
+  @@index([audience, sentAt])
+  @@index([status, sentAt])
 }
 
 // ── F-STU-021: Full Syllabus Mock Exam ────────────────────────────────────────
