@@ -64,6 +64,8 @@ export default async function ParentDashboardPage() {
             subjects: true,
             timezone: true,
             accountStatus: true,
+            role: true,
+            email: true,
           },
         },
       },
@@ -140,6 +142,8 @@ export default async function ParentDashboardPage() {
     streak: number
     sessionsThisWeek: number
     readiness: Array<{ subjectId: string; subjectName: string; score: number }>
+    isPending: boolean
+    hasEmail: boolean
   }> = []
   for (const studentId of studentIds) {
     const student = studentMap.get(studentId)
@@ -156,6 +160,7 @@ export default async function ParentDashboardPage() {
       readiness.push({ subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 })
     }
 
+    const isPending = student.accountStatus === 'pending_onboarding' || student.role === 'user'
     children.push({
       studentId,
       name: student.name ?? 'Student',
@@ -166,6 +171,8 @@ export default async function ParentDashboardPage() {
       streak: streakMap.get(studentId) ?? 0,
       sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
       readiness,
+      isPending,
+      hasEmail: Boolean(student.email),
     })
   }
 
