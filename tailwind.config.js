@@ -114,6 +114,7 @@ const config = {
         // Design system additions
         'surface-warm': 'var(--color-surface-warm)',
         'surface-sunk': 'var(--color-surface-sunk)',
+        'page-bg':      'var(--color-page-bg)',
         'ink-2':        'var(--color-ink-2)',
         'ink-4':        'var(--color-ink-4)',
         'subject-hindi':    'var(--subject-hindi)',

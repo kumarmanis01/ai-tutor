@@ -96,6 +96,8 @@ export const BRAND_COLORS = {
   // Surface layer -- warm cream for hero banners, sidebar warm cards
   surfaceWarm: '#FBF8F1',
   surfaceSunk: '#F5F1E8',
+  // Page-level background: parchment warm (progress report, content pages)
+  pageBg: '#F1EFE8',
 
   // Extended ink scale
   ink2: '#4A4458',
