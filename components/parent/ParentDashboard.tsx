@@ -22,6 +22,8 @@ import { useState } from 'react'
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard'
 import Link from 'next/link'
 
+const FAMILY_MAX_CHILDREN = 3
+
 interface ChildReadiness {
   subjectId: string
   subjectName: string
@@ -127,6 +129,26 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
           ))}
         </nav>
       )}
+
+      {/* ── Link another child action ─────────────────────────────────────── */}
+      <div className="flex justify-end">
+        {childrenData.length < FAMILY_MAX_CHILDREN ? (
+          <Link
+            href="/parent/link-child"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-medium text-[#534AB7] hover:bg-[#EEEDFE] dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950 transition-colors"
+          >
+            + Link another child
+          </Link>
+        ) : (
+          <span
+            className="inline-flex min-h-[44px] cursor-not-allowed items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-400 dark:border-gray-700 dark:text-gray-600"
+            title="You can link up to 3 children. Remove a child to add another."
+            aria-disabled="true"
+          >
+            + Link another child
+          </span>
+        )}
+      </div>
 
       {/* ── Active child card ─────────────────────────────────────────────── */}
       <section
