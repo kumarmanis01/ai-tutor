@@ -15,7 +15,7 @@
  */
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { logger } from '@/lib/logger'
@@ -48,8 +48,8 @@ function buildParentLinkRoute(inviteCode: string): string {
   return `${PARENT_LINK_ROUTE}?mode=code&inviteCode=${encodeURIComponent(inviteCode)}`
 }
 
-export default function ParentOnboardingPage() {
-  const { data: session, status } = useSession()
+function ParentOnboardingContent() {
+  const { data: session, status, update: updateSession } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const hasStartedRef = useRef(false)
@@ -104,6 +104,27 @@ export default function ParentOnboardingPage() {
           return
         }
 
+        // Force a client-side session refresh so NextAuth repopulates the JWT Redis
+        // cache with role=parent before we navigate. Capped at 6 s so a slow Neon
+        // response cannot pin the spinner forever. proxy.ts now also allows
+        // role=parent users through /parent regardless of accountStatus, so
+        // navigation proceeds even if this call races or times out.
+        try {
+          await Promise.race([
+            updateSession(),
+            new Promise<void>((_, reject) =>
+              setTimeout(() => reject(new Error('updateSession timeout')), 6000)
+            ),
+          ])
+        } catch (sessionErr) {
+          logger.warn('Parent onboarding: session refresh did not complete before navigation', {
+            className: CLASS_NAME,
+            userId: (session?.user as { id?: string } | undefined)?.id ?? 'unknown',
+            timestamp: new Date().toISOString(),
+            error: String(sessionErr),
+          })
+        }
+
         router.replace(buildParentLinkRoute(inviteCode))
       } catch (err) {
         setError('Could not prepare parent access. Please retry in a moment.')
@@ -130,5 +151,17 @@ export default function ParentOnboardingPage() {
         {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
       </div>
     </div>
+  )
+}
+
+export default function ParentOnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-950">
+        <div className="w-8 h-8 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ParentOnboardingContent />
+    </Suspense>
   )
 }

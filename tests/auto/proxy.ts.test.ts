@@ -93,4 +93,24 @@ describe('exists proxy.ts', () => {
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('https://example.com/student/onboarding');
   });
+
+  it('redirects inactive parent routes to /parent/onboarding, not /student/onboarding', async () => {
+    mockedGetToken.mockResolvedValue({ role: 'parent', accountStatus: 'pending' });
+
+    const request = new NextRequest('https://example.com/parent/dashboard');
+    const response = await proxy(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe('https://example.com/parent/onboarding');
+  });
+
+  it('allows inactive parent through /parent/onboarding without redirect', async () => {
+    mockedGetToken.mockResolvedValue({ role: 'parent', accountStatus: 'pending' });
+
+    const request = new NextRequest('https://example.com/parent/onboarding');
+    const response = await proxy(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-pathname')).toBe('/parent/onboarding');
+  });
 });
