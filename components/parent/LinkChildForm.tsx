@@ -81,7 +81,7 @@ function LinkExistingForm({
         setFieldError(
           "No account found with that " +
           (mode === 'email' ? "email address" : "invite code") +
-          ". Ask your child to share their code from Profile → Parent Access, or use the "New profile" tab to create one."
+          `. Ask your child to share their code from Profile → Parent Access, or use the "New profile" tab to create one.`
         )
       } else {
         setFieldError(msg)
