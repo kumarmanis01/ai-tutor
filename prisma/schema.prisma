@@ -168,6 +168,10 @@ model User {
   deletionRequest             DeletionRequest?
   diagnosticSessions          DiagnosticSession[]
   studentMisconceptions       StudentMisconception[]
+  /// Parent who created this account on behalf of the child (F-PAR-002 audit trail).
+  createdByParentId           String?
+  createdByParent             User?                        @relation("ParentCreatedStudents", fields: [createdByParentId], references: [id], onDelete: SetNull)
+  createdStudents             User[]                       @relation("ParentCreatedStudents")
 }
 
 model PaymentOrder {

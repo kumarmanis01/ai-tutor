@@ -127,6 +127,7 @@ export async function POST(req: Request) {
         phone,
         role: 'user',
         language: resolvedLanguage as any,
+        createdByParentId: parentId,
       }
       if (grade) (userData as any).grade = grade
       if (board) (userData as any).board = board
