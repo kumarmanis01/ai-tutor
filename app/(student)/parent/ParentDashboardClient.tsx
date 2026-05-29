@@ -779,7 +779,7 @@ export default function ParentDashboardClient() {
               </p>
             </div>
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/parent/dashboard')}
               className="text-sm text-[#534AB7] dark:text-indigo-400 hover:underline"
             >
               &larr; Back to Dashboard

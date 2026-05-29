@@ -21,6 +21,12 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { logger } from '@/lib/logger'
 import Logo from '@/components/Logo'
 
+// TODO [FEATURE]: Two-way child onboarding
+// Currently parents can only link an existing student (by email or 8-digit code).
+// Planned: parent enters child email -> platform sends magic onboarding link to child
+// OR parent creates a managed child profile directly (required for under-13 per COPPA).
+// Ticket: [create and reference ticket here]
+
 const CLASS_NAME = 'ParentOnboardingPage'
 const PARENT_ROLE = 'parent'
 const SIGN_IN_ROUTE = '/auth/login'

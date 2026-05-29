@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import Logo from '@/components/Logo';
@@ -61,6 +61,15 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
   const [lang, setLang] = useState<string>('English');
+
+  const dashboardHref = useMemo(() => {
+    const role = (session?.user as { role?: string } | undefined)?.role;
+    if (role === 'parent')  return '/parent/dashboard';
+    if (role === 'student') return '/student/dashboard';
+    if (role === 'admin')   return '/admin';
+    if (session)            return '/auth/role';
+    return '/auth/get-started';
+  }, [session]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -194,13 +203,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               )}
               {/* Primary CTA */}
               <Link
-                href={
-                  session
-                    ? (session.user as any)?.onboardingComplete
-                      ? '/dashboard'
-                      : '/student/onboarding'
-                    : '/auth/get-started'
-                }
+                href={dashboardHref}
                 className="min-h-[44px] inline-flex items-center px-4 py-2 md:px-6 md:py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
               >
                 {session ? 'Go to Dashboard' : 'Get started free'}
