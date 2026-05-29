@@ -48,21 +48,23 @@ export default function AiNarrativeWidget({ initialNarrative }: { initialNarrati
     void fetchNarrative();
   }, [fetchNarrative]);
 
+  const insightCardClass =
+    'flex gap-4 items-start rounded-2xl border border-[#AFA9EC] bg-[#EEEDFE] dark:bg-[#1A1845] dark:border-[#3A3580] p-5';
+
   if (state === 'loading') {
     return (
       <article
-        className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4"
+        className={insightCardClass}
         aria-busy="true"
         aria-label="Loading Teacher Vidya's insight"
       >
-        <div className="flex items-center justify-between mb-3">
-          <div className="h-3 w-24 bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />
-          <div className="h-3 w-20 bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />
-        </div>
-        <div className="space-y-2">
-          <div className="h-4 w-3/4 bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />
-          <div className="h-4 w-full bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />
-          <div className="h-4 w-1/2 bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />
+        {/* Avatar skeleton */}
+        <div className="w-10 h-10 rounded-full bg-[#534AB7]/30 shrink-0 animate-pulse" />
+        <div className="flex-1 space-y-2 pt-1">
+          <div className="h-3 w-24 bg-[#534AB7]/20 rounded animate-pulse" />
+          <div className="h-4 w-3/4 bg-[#534AB7]/20 rounded animate-pulse" />
+          <div className="h-4 w-full bg-[#534AB7]/20 rounded animate-pulse" />
+          <div className="h-4 w-1/2 bg-[#534AB7]/20 rounded animate-pulse" />
         </div>
       </article>
     );
@@ -70,12 +72,14 @@ export default function AiNarrativeWidget({ initialNarrative }: { initialNarrati
 
   if (state === 'error') {
     return (
-      <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+      <article className={insightCardClass}>
+        {/* Avatar */}
+        <VidyaAvatar />
+        <p className="text-sm text-[#3C3489] dark:text-[#9B96E0]">
           {"Teacher Vidya will be right back. "}
           <button
             onClick={fetchNarrative}
-            className="underline text-[#534AB7] dark:text-[#9B96E0] min-h-[44px] inline-flex items-center"
+            className="underline min-h-[44px] inline-flex items-center"
           >
             Please try again in a moment.
           </button>
@@ -85,13 +89,16 @@ export default function AiNarrativeWidget({ initialNarrative }: { initialNarrati
   }
 
   return (
-    <article className="rounded-2xl border border-[#534AB7]/20 bg-[#EEEDFE] dark:bg-[#534AB7]/10 p-4">
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#534AB7] dark:text-[#9B96E0]">
-          {"Teacher Vidya's insight"}
-        </span>
-        <button
-          onClick={async () => {
+    <article className={insightCardClass}>
+      {/* Avatar */}
+      <VidyaAvatar />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3C3489] dark:text-[#9B96E0]">
+            {"Teacher Vidya's insight"}
+          </span>
+          <button
+            onClick={async () => {
             if (exporting) return
             const now = Date.now()
             if (exportDisabledUntil && exportDisabledUntil > now) {
@@ -148,23 +155,44 @@ export default function AiNarrativeWidget({ initialNarrative }: { initialNarrati
             }
           }}
           disabled={exporting || (exportDisabledUntil ? exportDisabledUntil > Date.now() : false)}
-          className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 min-h-[44px] px-3 flex items-center rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          className="min-h-[36px] px-3 inline-flex items-center gap-1.5 rounded-lg border border-[#AFA9EC] text-xs font-medium text-[#3C3489] dark:text-[#9B96E0] hover:bg-[#534AB7]/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
           aria-label="Download progress report as PDF"
         >
           {exporting ? (
-            <span className="inline-flex items-center gap-2">
-              <svg className="h-4 w-4 animate-spin text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <>
+              <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle>
                 <path d="M22 12a10 10 0 0 1-10 10" strokeLinecap="round"></path>
               </svg>
               Generating...
-            </span>
+            </>
           ) : (
-            'Download PDF'
+            <>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              Download PDF
+            </>
           )}
         </button>
+        </div>
+        <p className="text-sm text-[#2C2C2A] dark:text-[#E6EEF8] leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: narrative.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
+        />
       </div>
-      <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{narrative}</p>
     </article>
+  );
+}
+
+function VidyaAvatar() {
+  return (
+    <div
+      className="w-10 h-10 rounded-full bg-[#534AB7] text-white flex items-center justify-center shrink-0"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1.4 4.3L18 8.6l-3.4 2.8L15.8 16 12 13.3 8.2 16l1.2-4.6L6 8.6l4.6-1.3z" />
+      </svg>
+    </div>
   );
 }

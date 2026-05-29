@@ -120,13 +120,12 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
 }
 
 export default function ChapterMasteryBars({ subjects }: ChapterMasteryBarsProps) {
+  const panelClass = 'bg-white dark:bg-slate-900 border border-[#D3D1C7] dark:border-slate-700 rounded-2xl p-5';
+
   if (subjects.length === 0) {
     return (
-      <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
-          Chapter mastery
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+      <article className={panelClass}>
+        <p className="text-sm text-[#888780] dark:text-gray-400 mb-3">
           No chapter data yet -- complete a session to start tracking your mastery.
         </p>
         <Link
@@ -140,17 +139,14 @@ export default function ChapterMasteryBars({ subjects }: ChapterMasteryBarsProps
   }
 
   return (
-    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-      <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
-        Chapter mastery
-      </h2>
-      <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-4">
+    <article className={panelClass}>
+      <p className="text-[11px] text-[#888780] dark:text-gray-500 mb-4">
         Tap a chapter to practise -- lowest mastery first
       </p>
 
       {subjects.map((subject) => (
         <section key={subject.subjectId} className="mb-5 last:mb-0">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#888780] dark:text-gray-400 mb-2">
             {subject.subjectName}
           </h3>
 

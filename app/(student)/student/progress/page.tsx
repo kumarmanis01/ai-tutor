@@ -29,6 +29,8 @@ import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
 import AiNarrativeWidget from '@/components/student/progress/AiNarrativeWidget';
+import HeroReadinessBand, { type HeroData } from '@/components/student/progress/HeroReadinessBand';
+import ProgressMetricCard from '@/components/student/progress/ProgressMetricCard';
 import { getRedis } from '@/lib/redis';
 import ChapterMasteryBars, {
   type SubjectMasteryData,
@@ -119,7 +121,7 @@ export default async function ProgressPage({
   const [studentProfile, chartSessions, completedSessions, trendRows, heatmapSessions, conceptsMasteredCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { subjects: true, grade: true, board: true },
+      select: { subjects: true, grade: true, board: true, currentStreak: true, longestStreak: true, lastSessionDate: true },
     }),
     prisma.structuredSession.findMany({
       where: {
@@ -325,87 +327,198 @@ export default async function ProgressPage({
     ? Math.round(trendData.reduce((sum, p) => sum + p.score, 0) / trendData.length)
     : 0;
 
+  // ── Overall readiness (avg across all subjects) ───────────────────────────
+  function readinessTier(pct: number): HeroData['tier'] {
+    if (pct < 20) return 'critical';
+    if (pct < 40) return 'weak';
+    if (pct < 65) return 'fair';
+    if (pct < 85) return 'ontrack';
+    return 'strong';
+  }
+  const TIER_LABELS: Record<HeroData['tier'], string> = {
+    critical: 'Critical',
+    weak: 'Weak',
+    fair: 'Fair',
+    ontrack: 'On track',
+    strong: 'Strong',
+  };
+
+  const allChaptersFlat = subjectMasteryData.flatMap((s) => s.chapters);
+  const overallPct = allChaptersFlat.length > 0
+    ? Math.round(allChaptersFlat.reduce((sum, c) => sum + c.masteryScore, 0) / allChaptersFlat.length * 100)
+    : 0;
+  const tier = readinessTier(overallPct);
+  const strongestChapter = allChaptersFlat.length > 0
+    ? [...allChaptersFlat].sort((a, b) => b.masteryScore - a.masteryScore)[0]?.chapterName ?? null
+    : null;
+  const weakestChapter = allChaptersFlat.length > 0
+    ? allChaptersFlat[0]?.chapterName ?? null
+    : null;
+
+  // ── Week dots (last 7 days) ───────────────────────────────────────────────
+  const activeDaysSet = new Set(
+    heatmapSessions
+      .filter((s) => s.completedAt)
+      .map((s) => s.completedAt!.toISOString().slice(0, 10)),
+  );
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const weekDots: HeroData['weekDots'] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const key = d.toISOString().slice(0, 10);
+    if (key === todayKey) return activeDaysSet.has(key) ? 'done' : 'today';
+    return activeDaysSet.has(key) ? 'done' : 'future';
+  });
+
+  const currentStreak = studentProfile?.currentStreak ?? 0;
+  const bestStreak = studentProfile?.longestStreak ?? 0;
+
+  // ── Grade label for hero headline ──────────────────────────────────────────
+  const gradeLabel = studentProfile?.grade ? `Grade ${studentProfile.grade}` : '';
+  const boardLabel = studentProfile?.board ?? '';
+  const heroHeadline = overallPct > 0
+    ? `You're ${TIER_LABELS[tier].toLowerCase()} for your${gradeLabel ? ` ${boardLabel} ${gradeLabel}` : ''} goals.`
+    : `Start your first session to see your readiness here.`;
+  const heroSummary = overallPct > 0 && weakestChapter
+    ? `Focus on ${weakestChapter} to lift your overall score the most.`
+    : `Complete sessions across your subjects to build your readiness profile.`;
+
+  const heroData: HeroData = {
+    overallPct,
+    tier,
+    tierLabel: TIER_LABELS[tier],
+    headline: heroHeadline,
+    summary: heroSummary,
+    strongestChapter,
+    weakestChapter,
+    weekDots,
+    currentStreak,
+    bestStreak,
+  };
+
+  // ── Cached narrative ──────────────────────────────────────────────────────
+  const cachedNarrative = await (async () => {
+    try {
+      const redis = getRedis();
+      if (!redis) return null;
+      const cached = await redis.get(`narrative:${userId}`);
+      return cached ?? null;
+    } catch {
+      return null;
+    }
+  })();
+
+  // ── Spark bar data for metric cards ──────────────────────────────────────
+  const studySparkBars = heatmapSessions
+    .filter((s) => s.completedAt)
+    .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime())
+    .slice(-7)
+    .map((s) => Math.max(1, Math.round((s.completedAt!.getTime() - s.startedAt.getTime()) / 60_000)));
+
+  const scoreSparkBars = trendData.slice(-7).map((p) => p.score);
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <main className="max-w-6xl mx-auto px-4 py-6">
-      {/* Title + filter inline at md+ */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">My Progress</h1>
-        <Suspense>
-          <ProgressFilters
-            subjects={subjectNames}
-            activeSubject={activeSubject}
-            activeDays={days}
-          />
-        </Suspense>
-      </div>
-
-      {/* 3-metric row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {/* Concepts mastered */}
-        <article className="rounded-2xl border border-[#1D9E75]/30 bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-5 py-4 flex items-center justify-between">
+    <main className="min-h-screen bg-page-bg dark:bg-background">
+      <div className="max-w-6xl mx-auto px-4 pb-24">
+        {/* Page header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-flex-end sm:justify-between pt-8 pb-5 flex-wrap">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#1D9E75]">Concepts mastered</p>
-            <p className="text-3xl font-bold font-mono text-gray-900 dark:text-gray-50 mt-0.5">{conceptsMasteredCount}</p>
+            <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-[#888780] dark:text-[#6B7280]">
+              Learning report
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-[#2C2C2A] dark:text-[#E6EEF8] mt-1.5 leading-none">
+              My Progress
+            </h1>
           </div>
-          <svg className="w-8 h-8 text-[#1D9E75] opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-        </article>
-        {/* Total study time */}
-        <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total study time</p>
-          <p className="text-3xl font-bold font-mono text-gray-900 dark:text-gray-50 mt-0.5">{formatMinutes(totalMinutes)}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{cfg.periodLabel}</p>
-        </article>
-        {/* Practice avg */}
-        <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Practice avg</p>
-          <p className="text-3xl font-bold font-mono text-gray-900 dark:text-gray-50 mt-0.5">{practiceAvg > 0 ? `${practiceAvg}%` : '--'}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Last {trendData.length} tests</p>
-        </article>
-      </div>
-
-      {/* AI narrative callout */}
-      <div className="mb-6">
-        <AiNarrativeWidget initialNarrative={await (async () => {
-          try {
-            const redis = getRedis();
-            if (!redis) return null;
-            const cached = await redis.get(`narrative:${userId}`);
-            return cached ?? null;
-          } catch {
-            return null;
-          }
-        })()} />
-      </div>
-
-      {/* Row 2: Trend + Heatmap */}
-      <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-6 mb-6">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Score trend <span className="font-normal text-gray-400">· {cfg.periodLabel}</span>
-          </h2>
-          <ScoreTrendGraph data={trendData} />
+          <Suspense>
+            <ProgressFilters
+              subjects={subjectNames}
+              activeSubject={activeSubject}
+              activeDays={days}
+            />
+          </Suspense>
         </div>
-        <div>
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Study time heatmap <span className="font-normal text-gray-400">· Last 28 days</span>
-          </h2>
-          <StudyTimeHeatmap days={heatmapDays} />
+
+        {/* Hero readiness band */}
+        <HeroReadinessBand data={heroData} />
+
+        {/* 4-metric row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <ProgressMetricCard
+            eyebrow="Concepts mastered"
+            value={String(conceptsMasteredCount)}
+            caption="mastery > 75%"
+            highlight
+            highlightColor="#1D9E75"
+          />
+          <ProgressMetricCard
+            eyebrow="Study time"
+            value={formatMinutes(totalMinutes)}
+            caption={cfg.periodLabel}
+            sparkBars={studySparkBars.length > 0 ? studySparkBars : undefined}
+          />
+          <ProgressMetricCard
+            eyebrow="Practice average"
+            value={practiceAvg > 0 ? `${practiceAvg}%` : '--'}
+            caption={`Last ${trendData.length} tests`}
+            sparkBars={scoreSparkBars.length > 0 ? scoreSparkBars : undefined}
+          />
+          <ProgressMetricCard
+            eyebrow="Day streak"
+            value={`${currentStreak}`}
+            caption={`best ${bestStreak}`}
+          />
         </div>
-      </div>
 
-      {/* Row 3: Chapter mastery */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-          Chapter mastery <span className="font-normal text-gray-400">· {activeSubject || 'All subjects'}</span>
-        </h2>
-        <ChapterMasteryBars subjects={subjectMasteryData} />
-      </div>
+        {/* Vidya insight */}
+        <div className="mb-6">
+          <AiNarrativeWidget initialNarrative={cachedNarrative} />
+        </div>
 
-      {/* Row 4: Session history */}
-      <div>
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Session history</h2>
-        <TestScoreHistory sessions={sessionRows} />
+        {/* Trend + Heatmap */}
+        <div className="grid grid-cols-1 md:grid-cols-[1.55fr_1fr] gap-6 mb-6">
+          <div className="bg-white dark:bg-slate-900 border border-[#D3D1C7] dark:border-slate-700 rounded-2xl p-5">
+            <div className="flex items-baseline justify-between gap-2 mb-4">
+              <span className="text-base font-semibold tracking-tight text-[#2C2C2A] dark:text-[#E6EEF8]">
+                Score trend
+              </span>
+              <span className="text-xs text-[#888780] dark:text-[#6B7280]">
+                {cfg.periodLabel} · chapter practice tests
+              </span>
+            </div>
+            <ScoreTrendGraph data={trendData} />
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-[#D3D1C7] dark:border-slate-700 rounded-2xl p-5">
+            <div className="flex items-baseline justify-between gap-2 mb-4">
+              <span className="text-base font-semibold tracking-tight text-[#2C2C2A] dark:text-[#E6EEF8]">
+                Study time
+              </span>
+              <span className="text-xs text-[#888780] dark:text-[#6B7280]">Last 28 days</span>
+            </div>
+            <StudyTimeHeatmap days={heatmapDays} />
+          </div>
+        </div>
+
+        {/* Chapter mastery */}
+        <section className="mb-6">
+          <h2 className="text-[17px] font-semibold tracking-tight text-[#2C2C2A] dark:text-[#E6EEF8] mb-3 flex items-baseline gap-2">
+            Chapter mastery
+            <span className="text-xs font-normal text-[#888780] dark:text-[#6B7280]">
+              {activeSubject || 'All subjects'} &middot; weakest first
+            </span>
+          </h2>
+          <ChapterMasteryBars subjects={subjectMasteryData} />
+        </section>
+
+        {/* Session history */}
+        <section>
+          <h2 className="text-[17px] font-semibold tracking-tight text-[#2C2C2A] dark:text-[#E6EEF8] mb-3 flex items-baseline gap-2">
+            Session history
+            <span className="text-xs font-normal text-[#888780] dark:text-[#6B7280]">Most recent</span>
+          </h2>
+          <TestScoreHistory sessions={sessionRows} />
+        </section>
       </div>
     </main>
   );

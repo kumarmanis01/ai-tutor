@@ -31,15 +31,13 @@ function formatDate(iso: string): string {
 }
 
 export default function TestScoreHistory({ sessions }: TestScoreHistoryProps) {
-  return (
-    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-      <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-4">
-        Session history
-      </h2>
+  const panelClass = 'bg-white dark:bg-slate-900 border border-[#D3D1C7] dark:border-slate-700 rounded-2xl p-5';
 
+  return (
+    <article className={panelClass}>
       {sessions.length === 0 ? (
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          <p className="text-sm text-[#888780] dark:text-gray-400 mb-3">
             Complete your first session to see scores here.
           </p>
           <Link
@@ -51,46 +49,47 @@ export default function TestScoreHistory({ sessions }: TestScoreHistoryProps) {
         </div>
       ) : (
         <div className="overflow-x-auto -mx-5 px-5">
-          <table className="w-full text-sm border-collapse min-w-[280px]">
+          <table className="w-full border-collapse min-w-[280px]">
             <thead>
-              <tr className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                <th className="text-left pb-2 pr-3 font-medium">Date</th>
-                <th className="text-left pb-2 pr-3 font-medium">Topic</th>
-                <th className="text-right pb-2 pr-3 font-medium">Score</th>
-                <th className="text-right pb-2 font-medium">Time</th>
+              <tr>
+                <th className="text-left pb-3 pr-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#888780] dark:text-gray-500">Date</th>
+                <th className="text-left pb-3 pr-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#888780] dark:text-gray-500">Topic</th>
+                <th className="text-right pb-3 pr-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#888780] dark:text-gray-500">Score</th>
+                <th className="text-right pb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#888780] dark:text-gray-500">Time</th>
               </tr>
             </thead>
             <tbody>
               {sessions.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-t border-gray-100 dark:border-slate-700"
+                  className="border-t border-[#D3D1C7] dark:border-slate-700"
                 >
-                  <td className="py-2.5 pr-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">
+                  <td className="py-3 pr-3 text-[#888780] dark:text-gray-400 whitespace-nowrap text-[13px]">
                     {formatDate(row.date)}
                   </td>
-                  <td className="py-2.5 pr-3 text-gray-800 dark:text-gray-100 max-w-[120px] truncate">
+                  <td className="py-3 pr-3 text-[#2C2C2A] dark:text-gray-100 text-[13px] max-w-[140px] truncate">
                     {row.topicName}
                   </td>
-                  <td className="py-2.5 pr-3 text-right whitespace-nowrap">
+                  <td className="py-3 pr-3 text-right whitespace-nowrap">
                     {row.score !== null ? (
                       <span
-                        className={
+                        className={[
+                          'text-[13px] font-semibold font-mono',
                           row.score >= 70
-                            ? 'text-[#1D9E75] font-semibold'
+                            ? 'text-[#1D9E75]'
                             : row.score >= 40
-                            ? 'text-[#BA7517] font-semibold'
-                            : 'text-[#E24B4A] font-semibold'
-                        }
+                            ? 'text-[#BA7517]'
+                            : 'text-[#E24B4A]',
+                        ].join(' ')}
                       >
                         {row.score}%
                       </span>
                     ) : (
-                      <span className="text-gray-300 dark:text-gray-600">--</span>
+                      <span className="text-[#B4B2A9] dark:text-gray-600 text-[13px]">--</span>
                     )}
                   </td>
-                  <td className="py-2.5 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                    {row.durationMin} min
+                  <td className="py-3 text-right text-[13px] text-[#888780] dark:text-gray-500 whitespace-nowrap">
+                    {row.durationMin > 0 ? `${row.durationMin} min` : '--'}
                   </td>
                 </tr>
               ))}

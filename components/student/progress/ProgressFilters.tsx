@@ -3,22 +3,21 @@
 /**
  * ProgressFilters -- subject + time-range filter bar for the progress report page.
  *
- * Pushes `?subject=<name>&days=<7|30|90|0>` to the URL.  The server component
- * (page.tsx) reads these params and re-renders with filtered data.
- *
+ * Pushes ?subject=<name>&days=<7|30|90|0> to the URL.
  * days=0 means "all time".
  *
- * Mobile-first: stacks vertically on 360px, inline on sm+.
+ * Matches the wireframe: subject select + segmented period control.
+ * Mobile-first: stacks on 360px, inline at sm+.
  *
  * EDIT LOG:
  * - 2026-04-07 | claude | created for F-STU-033 AC-02
+ * - 2026-05-29 | claude | redesign to match wireframe (hair-border select, pill segment)
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 
 interface ProgressFiltersProps {
-  /** Subject names the student is enrolled in. */
   subjects: string[];
   activeSubject: string;
   activeDays: number;
@@ -55,50 +54,65 @@ export default function ProgressFilters({
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-      {/* Subject filter -- only shown when student studies multiple subjects */}
+      {/* Subject filter */}
       {subjects.length > 1 && (
         <div className="flex items-center gap-2">
           <label
             htmlFor="subject-filter"
-            className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap"
+            className="text-[11px] font-medium text-[#888780] dark:text-[#6B7280] whitespace-nowrap uppercase tracking-wide"
           >
             Subject
           </label>
-          <select
-            id="subject-filter"
-            value={activeSubject}
-            onChange={(e) => push(e.target.value, activeDays)}
-            className="min-h-[44px] rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-800 dark:text-gray-100 px-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-[#534AB7]"
-          >
-            <option value="">All subjects</option>
-            {subjects.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="subject-filter"
+              value={activeSubject}
+              onChange={(e) => push(e.target.value, activeDays)}
+              className="min-h-[38px] appearance-none rounded-lg border border-[#B4B2A9] dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-[#2C2C2A] dark:text-gray-100 pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#534AB7] focus:border-[#534AB7]"
+            >
+              <option value="">All subjects</option>
+              {subjects.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <svg
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#888780]"
+              width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
         </div>
       )}
 
-      {/* Time-range buttons */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+      {/* Time-range segmented control */}
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-medium text-[#888780] dark:text-[#6B7280] whitespace-nowrap uppercase tracking-wide">
           Period
         </span>
-        <div className="flex gap-1.5 flex-wrap">
+        <div
+          className="inline-flex bg-white dark:bg-slate-800 border border-[#D3D1C7] dark:border-slate-600 rounded-lg p-[3px] gap-[2px]"
+          role="group"
+          aria-label="Time range"
+        >
           {DAY_OPTIONS.map((opt) => {
             const isActive = activeDays === opt.value;
             return (
               <button
                 key={opt.value}
+                type="button"
                 onClick={() => push(activeSubject, opt.value)}
+                aria-pressed={isActive}
                 className={[
-                  'min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  'min-h-[32px] px-3 rounded-md text-[12px] font-medium transition-colors',
                   isActive
                     ? 'bg-[#534AB7] text-white'
-                    : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600',
+                    : 'text-[#5F5E5A] dark:text-[#9AA6B2] hover:bg-page-bg dark:hover:bg-slate-700',
                 ].join(' ')}
-                aria-pressed={isActive}
               >
                 {opt.label}
               </button>
