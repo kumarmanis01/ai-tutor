@@ -114,6 +114,22 @@ export async function POST(req: Request) {
     const parentUser = await prisma.user.findUnique({ where: { id: parentId }, select: { language: true, name: true, email: true, phone: true } })
     const defaultLanguage = (parentUser?.language as any) ?? 'en'
 
+    // Guard: if an email is supplied, reject if it already belongs to an active account
+    if (email) {
+      const existing = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, accountStatus: true },
+      })
+      if (existing) {
+        const res = NextResponse.json(
+          { error: 'An account with this email address already exists. If this is your child, ask them to sign in instead.' },
+          { status: 409 },
+        )
+        logger.logAPI(req, res, { className: 'ParentCreateChildAPI', methodName: 'POST' }, start)
+        return res
+      }
+    }
+
     // Create child user and parentStudent link in a transaction
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
     const userAgent = req.headers.get('user-agent') ?? null
