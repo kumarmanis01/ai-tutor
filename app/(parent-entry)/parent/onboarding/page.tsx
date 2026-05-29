@@ -105,13 +105,24 @@ function ParentOnboardingContent() {
         }
 
         // Force a client-side session refresh so NextAuth repopulates the JWT Redis
-        // cache with role=parent before we navigate. Without this, the (student)
-        // layout SSR immediately after navigation hits a cold cache (set-role just
-        // cleared it) and makes an extra ~2s DB round-trip.
+        // cache with role=parent before we navigate. Capped at 6 s so a slow Neon
+        // response cannot pin the spinner forever. proxy.ts now also allows
+        // role=parent users through /parent regardless of accountStatus, so
+        // navigation proceeds even if this call races or times out.
         try {
-          await updateSession()
-        } catch {
-          // best-effort; navigation still proceeds
+          await Promise.race([
+            updateSession(),
+            new Promise<void>((_, reject) =>
+              setTimeout(() => reject(new Error('updateSession timeout')), 6000)
+            ),
+          ])
+        } catch (sessionErr) {
+          logger.warn('Parent onboarding: session refresh did not complete before navigation', {
+            className: CLASS_NAME,
+            userId: (session?.user as { id?: string } | undefined)?.id ?? 'unknown',
+            timestamp: new Date().toISOString(),
+            error: String(sessionErr),
+          })
         }
 
         router.replace(buildParentLinkRoute(inviteCode))
