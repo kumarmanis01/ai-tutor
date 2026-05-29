@@ -100,6 +100,15 @@ export async function proxy(request: NextRequest) {
       const accountStatus = (token as { accountStatus?: string }).accountStatus;
       if (isStudentOrParentUi && accountStatus !== 'active') {
         const isParent = (token as { role?: string }).role === 'parent';
+        // Parent-role users don't go through student onboarding. Once the JWT carries
+        // role=parent, allow them through /parent/* regardless of accountStatus --
+        // set-role sets accountStatus=active in the DB but the JWT cookie may lag
+        // by one request cycle after invalidation.
+        if (isParent && pathname.startsWith('/parent')) {
+          const allowed = NextResponse.next();
+          allowed.headers.set('x-pathname', pathname);
+          return allowed;
+        }
         const onboardingTarget = isParent ? '/parent/onboarding' : '/student/onboarding';
         if (
           pathname.startsWith('/student/onboarding') ||
