@@ -49,7 +49,7 @@ function buildParentLinkRoute(inviteCode: string): string {
 }
 
 function ParentOnboardingContent() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const hasStartedRef = useRef(false)
@@ -102,6 +102,16 @@ function ParentOnboardingContent() {
             status: res.status,
           })
           return
+        }
+
+        // Force a client-side session refresh so NextAuth repopulates the JWT Redis
+        // cache with role=parent before we navigate. Without this, the (student)
+        // layout SSR immediately after navigation hits a cold cache (set-role just
+        // cleared it) and makes an extra ~2s DB round-trip.
+        try {
+          await updateSession()
+        } catch {
+          // best-effort; navigation still proceeds
         }
 
         router.replace(buildParentLinkRoute(inviteCode))
