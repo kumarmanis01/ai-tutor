@@ -21,6 +21,11 @@
 import { useState } from 'react'
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard'
 import Link from 'next/link'
+import { toast } from '@/lib/toast'
+import { logger } from '@/lib/logger'
+
+const CLASS_NAME = 'ParentDashboard'
+const FAMILY_MAX_CHILDREN = 3
 
 interface ChildReadiness {
   subjectId: string
@@ -39,6 +44,10 @@ interface ChildData {
   timezone?: string | null
   /** ISO string of the student's upcoming exam date (F-PAR-010 AC-02). null when not set. */
   examDate?: string | null
+  /** True for parent-created accounts that have never logged in. */
+  isPending?: boolean
+  /** True if the child has an email on file (used for invite CTA). */
+  hasEmail?: boolean
 }
 
 interface ParentDashboardProps {
@@ -64,6 +73,80 @@ function timezoneLabel(parentTz: string | null | undefined, studentTz: string | 
   if (pTz) return `Times shown: ${pTz}`
   if (sTz) return `Times shown: Student: ${sTz}`
   return 'Times shown: your timezone'
+}
+
+// ── Pending child card (parent-created, never logged in) ─────────────────
+
+function PendingChildCard({ child }: { child: ChildData }) {
+  const [sending, setSending] = useState(false)
+
+  const sendInvite = async () => {
+    setSending(true)
+    try {
+      const res = await fetch('/api/parent/send-child-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: child.studentId }),
+      })
+      if (res.ok) {
+        toast(`Invite sent to ${child.name}!`)
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        toast(data.error ?? "Couldn't send invite. Try again shortly.")
+      }
+    } catch (err) {
+      toast("Couldn't send invite. Check your connection.")
+      logger.error('Send child invite failed', { className: CLASS_NAME, studentId: child.studentId, error: String(err) })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <section
+      className="rounded-xl border border-[#FAEEDA] bg-[#FAEEDA]/40 dark:border-amber-700/40 dark:bg-amber-900/10 px-5 py-5"
+      aria-label={`${child.name} invite pending`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-50">
+            {child.name}
+          </h2>
+          {(child.grade || child.board) && (
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {[child.grade && `Class ${child.grade}`, child.board].filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 rounded-full bg-[#FAEEDA] dark:bg-amber-900/40 border border-[#BA7517]/30 px-2.5 py-0.5 text-xs font-medium text-[#BA7517] dark:text-amber-400">
+          Invite pending
+        </span>
+      </div>
+
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        This profile was created for your child. Once they log in, their learning progress will appear here.
+      </p>
+
+      {child.hasEmail ? (
+        <button
+          type="button"
+          onClick={sendInvite}
+          disabled={sending}
+          className="min-h-[44px] w-full flex items-center justify-center rounded-lg bg-[#BA7517] py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {sending ? 'Sending...' : 'Send login link'}
+        </button>
+      ) : (
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+          No email on file.{' '}
+          <Link href="/parent/settings" className="text-[#534AB7] dark:text-indigo-400 hover:underline font-medium">
+            Edit profile
+          </Link>{' '}
+          to add one.
+        </div>
+      )}
+    </section>
+  )
 }
 
 export default function ParentDashboard({ childrenData, parentTimezone }: ParentDashboardProps) {
@@ -128,7 +211,30 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
         </nav>
       )}
 
+      {/* ── Link another child action ─────────────────────────────────────── */}
+      <div className="flex justify-end">
+        {childrenData.length < FAMILY_MAX_CHILDREN ? (
+          <Link
+            href="/parent/link-child"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-medium text-[#534AB7] hover:bg-[#EEEDFE] dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950 transition-colors"
+          >
+            + Link another child
+          </Link>
+        ) : (
+          <span
+            className="inline-flex min-h-[44px] cursor-not-allowed items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-400 dark:border-gray-700 dark:text-gray-600"
+            title="You can link up to 3 children. Remove a child to add another."
+            aria-disabled="true"
+          >
+            + Link another child
+          </span>
+        )}
+      </div>
+
       {/* ── Active child card ─────────────────────────────────────────────── */}
+      {child.isPending ? (
+        <PendingChildCard child={child} />
+      ) : (
       <section
         className="rounded-xl border border-gray-200 bg-white px-5 py-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"
         aria-label={`${child.name} progress`}
@@ -212,6 +318,7 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
           </p>
         )}
       </section>
+      )}
     </main>
   )
 }
