@@ -58,11 +58,11 @@ export default async function ParentDashboardPage() {
 
   const studentIds = links.map((l) => l.studentId)
 
-  // 2. Batch-load all student profiles, streaks, and session counts in parallel
-  const [students, streaks, sessionCounts] = await Promise.all([
+  // 2. Batch-load all student profiles, streaks, session counts, and exam dates in parallel
+  const [students, streaks, sessionCounts, examPlans] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: studentIds } },
-      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true, examDate: true },
+      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true },
     }),
     prisma.studentStreak.findMany({
       where: { studentId: { in: studentIds }, kind: 'daily' },
@@ -73,12 +73,25 @@ export default async function ParentDashboardPage() {
       where: { studentId: { in: studentIds }, startedAt: { gte: monday } },
       _count: { _all: true },
     }),
+    // Fetch earliest upcoming examDate per student from LearningPlan
+    prisma.learningPlan.findMany({
+      where: { studentId: { in: studentIds }, examDate: { gt: new Date() } },
+      select: { studentId: true, examDate: true },
+      orderBy: { examDate: 'asc' },
+    }),
   ])
 
   // Build lookup maps
   const studentMap = new Map(students.map((s) => [s.id, s]))
   const streakMap = new Map(streaks.map((s) => [s.studentId, s.current]))
   const sessionCountMap = new Map(sessionCounts.map((r) => [r.studentId, r._count._all]))
+  // First entry per studentId is the earliest upcoming exam (ordered asc above)
+  const examDateMap = new Map<string, Date>()
+  for (const p of examPlans) {
+    if (!examDateMap.has(p.studentId) && p.examDate) {
+      examDateMap.set(p.studentId, p.examDate)
+    }
+  }
 
   // 3. Resolve all unique subject names → SubjectDef IDs in one query
   const allSubjectNames = [
@@ -136,7 +149,7 @@ export default async function ParentDashboardPage() {
       grade: student.grade ?? '',
       board: student.board ?? '',
       timezone: student.timezone ?? null,
-      examDate: student.examDate ? student.examDate.toISOString() : null,
+      examDate: examDateMap.get(studentId)?.toISOString() ?? null,
       streak: streakMap.get(studentId) ?? 0,
       sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
       readiness,
