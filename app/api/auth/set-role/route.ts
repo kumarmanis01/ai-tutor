@@ -16,7 +16,7 @@
  * - 2026-05-05T00:00:00Z | copilot | mapped selected student role to persisted Prisma user enum value
  */
 
-import { UserRole } from '@prisma/client';
+import { AccountStatus, UserRole } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -56,7 +56,12 @@ export async function POST(req: NextRequest) {
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: { role: persistedRole },
+      data: {
+        role: persistedRole,
+        // Parent users skip student onboarding; activate their account immediately
+        // so the middleware accountStatus guard does not loop them back here.
+        ...(role === 'parent' ? { accountStatus: AccountStatus.active } : {}),
+      },
     });
 
     // Invalidate short-lived session cache so JWT reflects updated role
