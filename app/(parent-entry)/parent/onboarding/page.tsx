@@ -119,6 +119,8 @@ function ParentOnboardingContent() {
         } catch (sessionErr) {
           logger.warn('Parent onboarding: session refresh did not complete before navigation', {
             className: CLASS_NAME,
+            userId: (session?.user as { id?: string } | undefined)?.id ?? 'unknown',
+            timestamp: new Date().toISOString(),
             error: String(sessionErr),
           })
         }
