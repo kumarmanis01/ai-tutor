@@ -47,23 +47,36 @@ export default async function ParentDashboardPage() {
   const parentId = session.user.id
   const monday = weekStart()
 
-  // 1. Load all active child links + parent timezone in parallel
-  const [links, parent] = await Promise.all([
+  // 1. Load parent timezone + all linked children in one round-trip each (parallel).
+  //    Nested select through ParentStudent avoids the two-step collect-IDs-then-query
+  //    pattern which produces an `id: { in: [] }` query when there are no active links.
+  const [linkedRows, parent] = await Promise.all([
     prisma.parentStudent.findMany({
       where: { parentId, status: 'active' },
-      select: { studentId: true },
+      select: {
+        studentId: true,
+        student: {
+          select: {
+            id: true,
+            name: true,
+            grade: true,
+            board: true,
+            subjects: true,
+            timezone: true,
+            accountStatus: true,
+          },
+        },
+      },
     }),
     prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } }),
   ])
 
-  const studentIds = links.map((l) => l.studentId)
+  const students = linkedRows.map((r) => r.student)
+  const studentIds = linkedRows.map((r) => r.studentId)
 
-  // 2. Batch-load all student profiles, streaks, session counts, and exam dates in parallel
-  const [students, streaks, sessionCounts, examPlans] = await Promise.all([
-    prisma.user.findMany({
-      where: { id: { in: studentIds } },
-      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true },
-    }),
+  // 2. Fetch streaks, session counts, and exam dates in parallel.
+  //    All three queries return empty results cleanly when studentIds is empty.
+  const [streaks, sessionCounts, examPlans] = await Promise.all([
     prisma.studentStreak.findMany({
       where: { studentId: { in: studentIds }, kind: 'daily' },
       select: { studentId: true, current: true },
@@ -73,7 +86,7 @@ export default async function ParentDashboardPage() {
       where: { studentId: { in: studentIds }, startedAt: { gte: monday } },
       _count: { _all: true },
     }),
-    // Fetch earliest upcoming examDate per student from LearningPlan
+    // Earliest upcoming examDate per student comes from LearningPlan, not User
     prisma.learningPlan.findMany({
       where: { studentId: { in: studentIds }, examDate: { gt: new Date() } },
       select: { studentId: true, examDate: true },
@@ -81,7 +94,7 @@ export default async function ParentDashboardPage() {
     }),
   ])
 
-  // Build lookup maps
+  // Build lookup maps (students array comes from the nested ParentStudent select above)
   const studentMap = new Map(students.map((s) => [s.id, s]))
   const streakMap = new Map(streaks.map((s) => [s.studentId, s.current]))
   const sessionCountMap = new Map(sessionCounts.map((r) => [r.studentId, r._count._all]))
