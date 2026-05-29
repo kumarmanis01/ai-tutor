@@ -10,6 +10,7 @@
  * - 2026-05-29 | claude | created for parent-initiated child onboarding flow
  */
 
+import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { getRedis } from '@/lib/redis'
@@ -112,16 +113,25 @@ export async function POST(req: Request) {
       await redis.set(rateLimitKey, '1', 'EX', RATE_LIMIT_TTL_SECONDS)
     }
 
+    // Generate a fresh invite token (invalidates any previous one)
+    const inviteToken = crypto.randomBytes(32).toString('hex')
+    const inviteTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    await prisma.user.update({
+      where: { id: studentId },
+      data: { inviteToken, inviteTokenExpiry },
+    })
+
     const childName = student.name ?? 'Student'
     const parentName = parent?.name ?? 'Your parent'
-    const loginUrl = `${process.env.NEXTAUTH_URL ?? 'https://spinzy.in'}/auth/login`
+    const appUrl = process.env.NEXTAUTH_URL ?? 'https://spinzy.in'
+    const inviteUrl = `${appUrl}/student/accept-invite?token=${inviteToken}`
 
     await sendEmailUnifiedSafe({
       mode: 'raw',
       delivery: 'best_effort',
       to: student.email,
       subject: `${parentName} created your Spinzy Academy account`,
-      html: childInviteHtml(parentName, childName, loginUrl),
+      html: childInviteHtml(parentName, childName, inviteUrl),
       reason: 'parent_child_invite',
       featureFlagDomain: 'notification',
     })

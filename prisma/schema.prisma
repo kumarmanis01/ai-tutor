@@ -172,6 +172,12 @@ model User {
   createdByParentId           String?
   createdByParent             User?                        @relation("ParentCreatedStudents", fields: [createdByParentId], references: [id], onDelete: SetNull)
   createdStudents             User[]                       @relation("ParentCreatedStudents")
+  /// One-time token sent in the child invite email. Cleared on activation.
+  inviteToken                 String?                      @unique
+  /// Expiry for inviteToken (7 days from generation).
+  inviteTokenExpiry           DateTime?
+  /// Set when the child completes the accept-invite activation flow.
+  inviteAcceptedAt            DateTime?
 }
 
 model PaymentOrder {

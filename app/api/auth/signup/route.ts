@@ -48,9 +48,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Prevent account duplication
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, inviteToken: true },
+    });
     if (existing) {
       logger.warn('/api/auth/signup duplicate', { className: 'api.auth.signup', methodName: 'POST', email, durationMs: Date.now() - start });
+      if (existing.inviteToken) {
+        // A parent-created shell account exists for this email -- direct student to activate via invite
+        return NextResponse.json(
+          {
+            error: 'invited',
+            message: 'Your parent has already set up an account for you. Use your invite link to activate it.',
+            inviteHint: '/student/accept-invite',
+          },
+          { status: 409 },
+        );
+      }
       return NextResponse.json({ error: 'user_exists', message: 'Account already exists' }, { status: 409 });
     }
 

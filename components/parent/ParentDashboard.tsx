@@ -44,8 +44,12 @@ interface ChildData {
   timezone?: string | null
   /** ISO string of the student's upcoming exam date (F-PAR-010 AC-02). null when not set. */
   examDate?: string | null
-  /** True for parent-created accounts that have never logged in. */
+  /** True for parent-created accounts that have not yet activated their account. */
   isPending?: boolean
+  /** True when the child has completed the invite activation flow. */
+  inviteAccepted?: boolean
+  /** True when an invite token is currently active (invite was sent). */
+  hasInviteToken?: boolean
   /** True if the child has an email on file (used for invite CTA). */
   hasEmail?: boolean
 }
@@ -119,12 +123,14 @@ function PendingChildCard({ child }: { child: ChildData }) {
           )}
         </div>
         <span className="shrink-0 rounded-full bg-[#FAEEDA] dark:bg-amber-900/40 border border-[#BA7517]/30 px-2.5 py-0.5 text-xs font-medium text-[#BA7517] dark:text-amber-400">
-          Invite pending
+          {child.hasInviteToken ? 'Invite sent' : 'No invite sent'}
         </span>
       </div>
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        This profile was created for your child. Once they log in, their learning progress will appear here.
+        {child.hasInviteToken
+          ? "An invite link was sent to your child's email. Once they activate their account, their progress will appear here."
+          : 'This profile was created for your child. Send them an invite link to get started.'}
       </p>
 
       {child.hasEmail ? (
@@ -134,7 +140,7 @@ function PendingChildCard({ child }: { child: ChildData }) {
           disabled={sending}
           className="min-h-[44px] w-full flex items-center justify-center rounded-lg bg-[#BA7517] py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {sending ? 'Sending...' : 'Send login link'}
+          {sending ? 'Sending...' : child.hasInviteToken ? 'Resend invite' : 'Send invite'}
         </button>
       ) : (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">

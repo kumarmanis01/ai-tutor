@@ -66,6 +66,8 @@ export default async function ParentDashboardPage() {
             accountStatus: true,
             role: true,
             email: true,
+            inviteToken: true,
+            inviteAcceptedAt: true,
           },
         },
       },
@@ -143,6 +145,8 @@ export default async function ParentDashboardPage() {
     sessionsThisWeek: number
     readiness: Array<{ subjectId: string; subjectName: string; score: number }>
     isPending: boolean
+    inviteAccepted: boolean
+    hasInviteToken: boolean
     hasEmail: boolean
   }> = []
   for (const studentId of studentIds) {
@@ -160,7 +164,10 @@ export default async function ParentDashboardPage() {
       readiness.push({ subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 })
     }
 
-    const isPending = student.accountStatus === 'pending_onboarding' || student.role === 'user'
+    const inviteAccepted = Boolean((student as any).inviteAcceptedAt)
+    const hasInviteToken = Boolean((student as any).inviteToken)
+    // A child is "pending" when they have not yet activated their account
+    const isPending = !inviteAccepted && (student.accountStatus === 'pending_onboarding' || student.role === 'user')
     children.push({
       studentId,
       name: student.name ?? 'Student',
@@ -172,6 +179,8 @@ export default async function ParentDashboardPage() {
       sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
       readiness,
       isPending,
+      inviteAccepted,
+      hasInviteToken,
       hasEmail: Boolean(student.email),
     })
   }
