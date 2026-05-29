@@ -27,6 +27,72 @@ Key files:
 
 ---
 
+## Middleware
+
+The Next.js middleware for this project lives in **`proxy.ts`** (NOT `middleware.ts`).
+This is the single, canonical middleware file. Do not create `middleware.ts` -- Next.js
+will pick up both files if both exist, causing double-execution bugs.
+
+`proxy.ts` responsibilities:
+- JWT token extraction and session validation via `getToken()` from `next-auth/jwt`
+- Route protection (auth guards per role: admin, parent, student)
+- `accountStatus` guard: redirects users with `accountStatus !== 'active'` to their
+  respective onboarding routes -- `/student/onboarding` for students,
+  `/parent/onboarding` for parents
+- **IMPORTANT**: The `accountStatus` guard is BYPASSED for users who already carry
+  `role='parent'` in their JWT on `/parent/*` routes. Parents activate via a different
+  flow (set-role API + child linking) and the `accountStatus` field is not a reliable
+  signal for parent readiness (the JWT cookie lags the DB write by one request cycle).
+- Sets `x-pathname` header so server components can read the current path
+
+When adding new route protection logic, always edit `proxy.ts`. Never create or
+reference `middleware.ts`.
+
+---
+
+## Tech Stack
+
+### Runtime & Framework
+- Next.js 14+ (App Router) -- TypeScript
+- Node.js backend via Next.js API routes
+
+### Auth
+- NextAuth.js -- JWT strategy (not database sessions)
+- Session shape: `{ user: { id, email, role, accountStatus } }`
+- Role values: `'user' | 'student' | 'parent' | 'admin'`
+- `accountStatus` values: `'pending_onboarding' | 'active' | 'suspended'`
+- Session is updated via `updateSession()` (client) which calls `/api/auth/session`
+  and issues a new Set-Cookie. This is async and can lag behind DB state -- do not
+  assume the JWT reflects DB state immediately after a write.
+
+### Database
+- PostgreSQL (Neon serverless) via Prisma ORM
+- Prisma client: imported from `lib/prisma` (singleton -- do not reinstantiate)
+- Neon query latency is typically 1.5--2.8 s in production. Never put sequential
+  Prisma awaits where `Promise.all` would work. Never put Prisma calls in middleware.
+
+### Cache / Queue
+- Redis -- used for: session cache (5-min TTL keyed by `session:user:<email>`),
+  OTP storage, rate limiting, BullMQ job queues
+- Any API route that writes `role`, `accountStatus`, `grade`, `board`, `language`,
+  or `subjects` MUST call `invalidateUserSessionCache(email)` after the DB write.
+
+### Frontend
+- React 18 + TypeScript
+- Tailwind CSS -- utility-first, no CSS modules
+- Design system primitives in `components/UI/design-system/` (see DESIGN SYSTEM section)
+
+### Key Conventions
+- API routes live in `app/api/`
+- Route groups: `(parent-entry)`, `(student)`, `(parent)`, `(public)`, `(admin)`
+  -- each has its own root `layout.tsx` exporting `<html>` and `<body>`
+- Server components are the default; mark `'use client'` only when necessary
+- All Prisma calls must be awaited -- never fire-and-forget
+- Error responses: always return `NextResponse.json({ error: string }, { status: N })`
+  -- never let an API route fall through without a return statement
+
+---
+
 ## ENGINEERING PRACTICES (MANDATORY)
 
 Before writing or modifying any code, read and internalize:
@@ -333,6 +399,35 @@ Environment flags on VPS:
   ROLLOUT_PERCENTAGE=5
   LLM_MODE=real
   LLM_SAFE_MODE=true
+
+---
+
+## Known Architectural Decisions / Gotchas
+
+### JWT cookie lags DB writes
+After any write that changes `role` or `accountStatus` in the DB, the JWT cookie is
+NOT automatically updated. The client must call `updateSession()` (`useSession` hook)
+or the user must trigger a full session refresh. Always account for this lag in
+middleware and layout guards -- read from the JWT for routing decisions, not from a
+fresh DB query, unless you are in a server component that can afford the latency.
+
+### updateSession() can hang
+`updateSession()` from `next-auth/react` makes a network call to `/api/auth/session`.
+On Neon it involves 1--2 DB round-trips and can take 3--6 s or time out silently.
+Always wrap it in a `Promise.race` with a timeout (5--6 s) and log failures with
+`logger.warn`. Do not gate critical navigation on `updateSession()` completing
+successfully -- the middleware and layout guards must be resilient to a stale JWT.
+
+### proxy.ts is middleware -- not middleware.ts
+The file is `proxy.ts`. If you create `middleware.ts` you will have two active
+middlewares. Next.js only supports one. The existing one will be shadowed
+unpredictably. Always edit `proxy.ts` for route guard changes.
+
+### accountStatus guard does not apply to parent-role users on /parent/*
+Once the JWT carries `role='parent'`, `proxy.ts` bypasses the `accountStatus` check
+for all `/parent/*` routes. The `set-role` API sets `accountStatus='active'` in the
+DB, but the cookie lags. The bypass prevents a redirect loop while the cookie catches
+up. Do not remove this bypass without also fixing the cookie lag at source.
 
 ---
 
