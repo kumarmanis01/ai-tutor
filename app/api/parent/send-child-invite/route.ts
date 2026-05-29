@@ -124,7 +124,7 @@ export async function POST(req: Request) {
     const childName = student.name ?? 'Student'
     const parentName = parent?.name ?? 'Your parent'
     const appUrl = process.env.NEXTAUTH_URL ?? 'https://spinzy.in'
-    const inviteUrl = `${appUrl}/student/accept-invite?token=${inviteToken}`
+    const inviteUrl = `${appUrl}/auth/invite?token=${inviteToken}`
 
     await sendEmailUnifiedSafe({
       mode: 'raw',

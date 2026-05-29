@@ -90,12 +90,6 @@ export async function proxy(request: NextRequest) {
   for (const prefix of protectedUiPrefixes) {
     if (pathname.startsWith(prefix)) {
       if (!token) {
-        // accept-invite is a public route — no auth required to activate an invite
-        if (pathname.startsWith('/student/accept-invite')) {
-          const allowed = NextResponse.next();
-          allowed.headers.set('x-pathname', pathname);
-          return allowed;
-        }
         if (prefix === '/session') {
           return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url));
         }
@@ -119,7 +113,6 @@ export async function proxy(request: NextRequest) {
         if (
           pathname.startsWith('/student/onboarding') ||
           pathname.startsWith('/student/verify-parent') ||
-          pathname.startsWith('/student/accept-invite') ||
           pathname.startsWith('/parent/onboarding')
         ) {
           const allowed = NextResponse.next();

@@ -1,11 +1,13 @@
 /**
  * FILE OBJECTIVE:
- * - /student/accept-invite?token=xxx
- * - No auth required. Validates the invite token, then renders the pre-populated
- *   InviteOnboardingForm for the child to set their password and activate the account.
+ * - /auth/invite?token=xxx
+ * - Public, no-auth page. Validates the parent-sent invite token and renders
+ *   the pre-populated password-based activation form (InviteOnboardingForm).
+ * - Uses the /auth/ route group so no student layout guard can intercept it.
  *
  * EDIT LOG:
- * - 2026-05-29 | claude | created for parent-invite child activation flow
+ * - 2026-05-29 | claude | created (relocated from /student/accept-invite to /auth/invite
+ *   to avoid (student) layout auth guard and proxy.ts /student/* redirect)
  */
 
 import { redirect } from 'next/navigation'
@@ -19,15 +21,14 @@ interface PageProps {
   searchParams: Promise<{ token?: string }>
 }
 
-export default async function AcceptInvitePage({ searchParams }: PageProps) {
+export default async function AuthInvitePage({ searchParams }: PageProps) {
   const params = await searchParams
   const token = params.token ?? ''
 
   if (!token) {
-    redirect('/auth/role')
+    redirect('/auth/get-started')
   }
 
-  // Resolve invite token server-side to pre-populate the form
   const user = await prisma.user.findUnique({
     where: { inviteToken: token },
     select: {
@@ -85,7 +86,7 @@ export default async function AcceptInvitePage({ searchParams }: PageProps) {
 function InviteErrorPage({
   message,
   ctaLabel = 'Go to sign up',
-  ctaHref = '/auth/role',
+  ctaHref = '/auth/get-started',
 }: {
   message: string
   ctaLabel?: string

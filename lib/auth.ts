@@ -34,6 +34,7 @@
 // Import necessary libraries and providers for authentication
 import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth to your database
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
+import CredentialsProvider from 'next-auth/providers/credentials';
 // EmailProvider is disabled per request -- keep Google-only sign-in flow
 // import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
@@ -43,6 +44,7 @@ import { logger } from '@/lib/logger';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { LanguageCode } from '@/lib/normalize';
+import { compare } from 'bcryptjs';
 import { getServerSession } from 'next-auth/next';
 import crypto from 'crypto';
 import { getRedis } from '@/lib/redis';
@@ -575,6 +577,34 @@ export const authOptions: any = {
         params: {
           prompt: 'select_account',
         },
+      },
+    }),
+    // Email + password provider -- used exclusively for invite activation flow.
+    // Regular signup is Google-only; this provider is intentionally narrow.
+    CredentialsProvider({
+      id: 'credentials',
+      name: 'Email & Password',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+        const email = String(credentials.email).trim().toLowerCase();
+        const password = String(credentials.password);
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, email: true, name: true, image: true, passwordHash: true, accountStatus: true },
+          });
+          if (!user?.passwordHash) return null;
+          const valid = await compare(password, user.passwordHash);
+          if (!valid) return null;
+          return { id: user.id, email: user.email ?? '', name: user.name ?? null, image: user.image ?? null };
+        } catch (err) {
+          logger.error('CredentialsProvider.authorize failed', { className: 'auth', error: String(err) });
+          return null;
+        }
       },
     }),
     /*
