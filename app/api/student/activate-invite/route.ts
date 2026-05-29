@@ -88,7 +88,6 @@ export async function POST(req: Request) {
         where: { id: user.id },
         data: {
           accountStatus: 'active',
-          role: 'student',
           inviteAcceptedAt: now,
           inviteToken: null,
           inviteTokenExpiry: null,
