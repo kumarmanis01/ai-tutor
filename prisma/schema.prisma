@@ -72,6 +72,9 @@ model User {
   board                    String?
   schoolName               String?
   subjects                 String[]                 @default([])
+  // Subjects selected during onboarding that are not yet live (Coming Soon).
+  // Used as demand signal; does not affect enrollment or diagnostic access.
+  requestedSubjectSlugs    String[]                 @default([])
   points                   Int                      @default(0)
   // Cumulative XP for level progression (1-10).
   totalXp                  Int                      @default(0)
