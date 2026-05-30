@@ -49,6 +49,8 @@ import ExamReadinessSection, {
   type PredictedRange,
 } from '@/components/student/dashboard/ExamReadinessSection'
 import { type DashboardMission, type MissionKind, type MissionState } from '@/lib/student/dashboardMissions'
+import { FREE_TIER_SESSION_LIMIT } from '@/lib/constants/freemium'
+import { getReadinessTier } from '@/lib/constants/readiness'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,15 +72,14 @@ function normalisePct(score: number): number {
   return Math.round(score)
 }
 
-/** Map a ReadinessChapter status label to the display tag. */
+/** Map a ReadinessChapter status label to the 5-tier display tag. */
 function chapterTag(status: ReadinessChapter['status']): SubjectReadiness['tag'] {
   if (status === 'critical') return 'critical'
-  if (status === 'needs_work') return 'needs_work'
-  if (status === 'on_track') return 'on_track'
-  return 'ready'
+  if (status === 'needs_work') return 'weak'
+  if (status === 'on_track') return 'ontrack'
+  return 'strong'
 }
 
-const FREE_TIER_SESSION_CAP = 3
 
 export default async function StudentHomeDashboardPage() {
   const authSession = await requireActiveSession()
@@ -173,7 +174,7 @@ export default async function StudentHomeDashboardPage() {
 
   const isPremium = user.subscriptionStatus === 'premium'
   const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
-  const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_CAP - sessionsUsed)
+  const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_LIMIT - sessionsUsed)
   const periodStart = freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString()
 
   const latestPlan = user.learningPlans[0]
@@ -494,7 +495,7 @@ export default async function StudentHomeDashboardPage() {
     subjectId: r.subjectId,
     subjectName: r.subjectName,
     score: r.score,
-    tag: (r.score < 40 ? 'critical' : r.score < 70 ? 'needs_work' : r.score < 90 ? 'on_track' : 'ready') as SubjectReadiness['tag'],
+    tag: getReadinessTier(r.score),
     diagnosticDone: r.diagnosticDone,
     retakeEligibleAt: r.retakeEligibleAt,
     predictedRange: r.predictedRange ?? null,

@@ -11,10 +11,11 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { getSubjectColors } from '@/lib/student/dashboardMissions'
+import { type ReadinessTier, getReadinessTier } from '@/lib/constants/readiness'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type ReadinessTag = 'critical' | 'needs_work' | 'on_track' | 'ready'
+export type ReadinessTag = ReadinessTier
 
 export interface ReadinessChapterDisplay {
   chapterId: string
@@ -47,29 +48,31 @@ interface ExamReadinessSectionProps {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const TAG_STYLES: Record<ReadinessTag, { bg: string; text: string; label: string }> = {
-  critical:  { bg: '#FCEBEB', text: '#A32D2D', label: 'Critical' },
-  needs_work:{ bg: '#FAEEDA', text: '#633806', label: 'Needs work' },
-  on_track:  { bg: '#EEEDFE', text: '#3C3489', label: 'On track' },
-  ready:     { bg: '#EAF3DE', text: '#27500A', label: 'Exam ready' },
+  critical: { bg: '#FCEBEB', text: '#A32D2D', label: 'Critical' },
+  weak:     { bg: '#FAEEDA', text: '#633806', label: 'Needs work' },
+  fair:     { bg: '#FAEEDA', text: '#BA7517', label: 'Fair' },
+  ontrack:  { bg: '#EEEDFE', text: '#3C3489', label: 'On track' },
+  strong:   { bg: '#EAF3DE', text: '#27500A', label: 'Exam ready' },
 }
 
 const TAG_RING_COLOR: Record<ReadinessTag, string> = {
-  critical:  '#E24B4A',
-  needs_work:'#BA7517',
-  on_track:  '#534AB7',
-  ready:     '#1D9E75',
+  critical: '#E24B4A',
+  weak:     '#BA7517',
+  fair:     '#E89645',
+  ontrack:  '#534AB7',
+  strong:   '#1D9E75',
 }
 
 function tagFromLabel(label: string): ReadinessTag {
   if (label === 'critical') return 'critical'
-  if (label === 'needs_work') return 'needs_work'
-  if (label === 'on_track') return 'on_track'
-  return 'ready'
+  if (label === 'weak' || label === 'needs_work') return 'weak'
+  if (label === 'fair') return 'fair'
+  if (label === 'ontrack' || label === 'on_track') return 'ontrack'
+  return 'strong'
 }
 
 function normalise(label: string): ReadinessTag {
-  // handles both 'needs_work' and 'needs work' patterns
-  const key = label.toLowerCase().replace(' ', '_')
+  const key = label.toLowerCase().replace(/ /g, '_')
   return tagFromLabel(key)
 }
 
@@ -275,8 +278,7 @@ export default function ExamReadinessSection({ subjects }: ExamReadinessSectionP
 
   const selected = sorted.find((s) => s.subjectId === selectedId) ?? sorted[0]
   const overall = Math.round(subjects.reduce((sum, s) => sum + s.score, 0) / subjects.length)
-  const overallTag: ReadinessTag =
-    overall < 40 ? 'critical' : overall < 70 ? 'needs_work' : overall < 90 ? 'on_track' : 'ready'
+  const overallTag: ReadinessTag = getReadinessTier(overall)
 
   return (
     <section className="rounded-2xl border border-[#E3DDD0] dark:border-[#3A3830] bg-white dark:bg-[#26241F] overflow-hidden">

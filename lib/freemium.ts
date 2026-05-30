@@ -17,11 +17,8 @@
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { logger } from '@/lib/logger'
-
-// AC-01 (F-STU-040): 3 AI tutoring sessions per month on free tier
-export const FREE_TIER_SESSION_LIMIT = 3
-// AC-01 (F-STU-040): 1 chapter test per subject per month on free tier
-export const FREE_TIER_CHAPTER_TEST_LIMIT = 1
+export { FREE_TIER_SESSION_LIMIT, FREE_TIER_CHAPTER_TEST_LIMIT } from '@/lib/constants/freemium'
+import { FREE_TIER_SESSION_LIMIT, FREE_TIER_CHAPTER_TEST_LIMIT } from '@/lib/constants/freemium'
 const SESSION_SCOPE = '__ALL__'
 
 export interface FreeTierStatus {

@@ -60,7 +60,7 @@ interface DiagnosticFlowProps {
   // Names of other subjects the student still needs to diagnose (for post-submit nudge)
   pendingDiagnosticSubjectNames?: string[];
   // Override destination for the "Start learning" / "Continue" CTA after results.
-  // Defaults to /dashboard. Pass /enroll/diagnostic-queue in enrollment mode.
+  // Defaults to /dashboard.
   afterResultsPath?: string;
 }
 

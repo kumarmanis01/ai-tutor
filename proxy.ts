@@ -66,8 +66,8 @@ export async function proxy(request: NextRequest) {
   const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session', '/student'];
 
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    // Admin login and bootstrap are public -- pass through so the page can render.
-    if (pathname === '/admin/login' || pathname === '/api/admin/bootstrap') {
+    // Admin login is public -- pass through so the page can render.
+    if (pathname === '/admin/login') {
       const response = NextResponse.next();
       response.headers.set('x-pathname', pathname);
       return response;

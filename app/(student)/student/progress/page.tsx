@@ -45,6 +45,7 @@ import StudyTimeHeatmap, { type HeatmapDay } from '@/components/student/progress
 import { barConfig } from '@/lib/student/progressReport';
 import { subjectDefMatchesActiveSubject } from '@/lib/student/progressPage';
 import resolveStudentSubjects from '@/lib/subjects/resolveStudentSubjects';
+import { getReadinessTier } from '@/lib/constants/readiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -328,13 +329,6 @@ export default async function ProgressPage({
     : 0;
 
   // ── Overall readiness (avg across all subjects) ───────────────────────────
-  function readinessTier(pct: number): HeroData['tier'] {
-    if (pct < 20) return 'critical';
-    if (pct < 40) return 'weak';
-    if (pct < 65) return 'fair';
-    if (pct < 85) return 'ontrack';
-    return 'strong';
-  }
   const TIER_LABELS: Record<HeroData['tier'], string> = {
     critical: 'Critical',
     weak: 'Weak',
@@ -347,7 +341,7 @@ export default async function ProgressPage({
   const overallPct = allChaptersFlat.length > 0
     ? Math.round(allChaptersFlat.reduce((sum, c) => sum + c.masteryScore, 0) / allChaptersFlat.length * 100)
     : 0;
-  const tier = readinessTier(overallPct);
+  const tier = getReadinessTier(overallPct);
   const strongestChapter = allChaptersFlat.length > 0
     ? [...allChaptersFlat].sort((a, b) => b.masteryScore - a.masteryScore)[0]?.chapterName ?? null
     : null;
