@@ -49,6 +49,7 @@ import ExamReadinessSection, {
   type PredictedRange,
 } from '@/components/student/dashboard/ExamReadinessSection'
 import { type DashboardMission, type MissionKind, type MissionState } from '@/lib/student/dashboardMissions'
+import { FREE_TIER_SESSION_LIMIT } from '@/lib/constants/freemium'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,7 +79,6 @@ function chapterTag(status: ReadinessChapter['status']): SubjectReadiness['tag']
   return 'ready'
 }
 
-const FREE_TIER_SESSION_CAP = 3
 
 export default async function StudentHomeDashboardPage() {
   const authSession = await requireActiveSession()
@@ -173,7 +173,7 @@ export default async function StudentHomeDashboardPage() {
 
   const isPremium = user.subscriptionStatus === 'premium'
   const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
-  const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_CAP - sessionsUsed)
+  const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_LIMIT - sessionsUsed)
   const periodStart = freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString()
 
   const latestPlan = user.learningPlans[0]

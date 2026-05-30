@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { requireActiveSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
+import { FREE_TIER_SESSION_LIMIT } from '@/lib/constants/freemium'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,7 +66,7 @@ export default async function SubscribePage() {
   }
 
   const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
-  const sessionsRemaining = Math.max(0, 3 - sessionsUsed)
+  const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_LIMIT - sessionsUsed)
   const periodStart = freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString()
 
   return (

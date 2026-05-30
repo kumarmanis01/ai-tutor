@@ -43,8 +43,7 @@ export default async function DiagnosticPage({
   const userId = (authSession.user as { id: string }).id;
   const { subjectId } = await params;
   const sp = searchParams ? await searchParams : {};
-  const fromEnrollment = sp.from === 'enrollment';
-  const afterResultsPath = fromEnrollment ? '/enroll/diagnostic-queue' : '/dashboard';
+  const afterResultsPath = '/dashboard';
 
   // Fetch student profile and completed diagnostics in parallel.
   // Full profile needed to validate enrollment; board/grade/language for question generation;
