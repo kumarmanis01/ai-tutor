@@ -1746,6 +1746,9 @@ model BoardSubjectConfig {
   id           String     @id @default(cuid())
   subjectDefId String
   isCore       Boolean    @default(true) /// Mandatory for that board+grade
+  isEnabled    Boolean    @default(false) // Admin-controlled visibility gate -- replaces question-count heuristic
+  enabledAt    DateTime?
+  enabledBy    String?    // admin userId who last toggled
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   subjectDef   SubjectDef @relation(fields: [subjectDefId], references: [id], onDelete: Cascade)

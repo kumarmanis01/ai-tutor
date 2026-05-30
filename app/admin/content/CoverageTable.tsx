@@ -557,6 +557,160 @@ export function PipelineSection({ jobs }: { jobs: PipelineJobData[] }) {
 // Ingest runs table
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Subject Availability types + component
+// ---------------------------------------------------------------------------
+
+export interface SubjectAvailabilityRowData {
+  boardSubjectConfigId: string
+  subjectId: string
+  subjectName: string
+  grade: number
+  boardName: string
+  questionCount: number
+  isEnabled: boolean
+}
+
+type AvailabilityStatus = 'live' | 'ready' | 'not_ready'
+
+function availabilityStatus(row: SubjectAvailabilityRowData): AvailabilityStatus {
+  if (row.isEnabled) return 'live'
+  if (row.questionCount >= 10) return 'ready'
+  return 'not_ready'
+}
+
+function StatusPill({ status }: { status: AvailabilityStatus }) {
+  if (status === 'live') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#EAF3DE] text-[#1D9E75] text-[11px] font-semibold">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75]" />
+        Live
+      </span>
+    )
+  }
+  if (status === 'ready') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FAEEDA] text-[#BA7517] text-[11px] font-semibold">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#BA7517]" />
+        Ready to Enable
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FCEBEB] text-[#E24B4A] text-[11px] font-semibold">
+      <span className="w-1.5 h-1.5 rounded-full bg-[#E24B4A]" />
+      Not Ready
+    </span>
+  )
+}
+
+const DISABLE_CONFIRM_MSG =
+  "Disabling this subject will show 'Coming Soon' to all students. Students who selected this subject will retain their preference. Continue?"
+
+export function SubjectAvailabilityTable({ rows }: { rows: SubjectAvailabilityRowData[] }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [localRows, setLocalRows] = useState<SubjectAvailabilityRowData[]>(rows)
+  const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(null)
+
+  async function toggle(row: SubjectAvailabilityRowData, enable: boolean) {
+    if (!enable && !window.confirm(DISABLE_CONFIRM_MSG)) return
+
+    // Optimistic update
+    setLocalRows(prev => prev.map(r => r.boardSubjectConfigId === row.boardSubjectConfigId ? { ...r, isEnabled: enable } : r))
+
+    try {
+      const res = await fetch('/api/admin/content/subject-toggle', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boardSubjectConfigId: row.boardSubjectConfigId, isEnabled: enable }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setToast({ message: `${row.subjectName} (Grade ${row.grade}) ${enable ? 'enabled' : 'disabled'}`, ok: true })
+      startTransition(() => router.refresh())
+    } catch {
+      // Revert optimistic update on failure
+      setLocalRows(prev => prev.map(r => r.boardSubjectConfigId === row.boardSubjectConfigId ? { ...r, isEnabled: row.isEnabled } : r))
+      setToast({ message: `Failed to update ${row.subjectName}`, ok: false })
+    }
+
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  if (rows.length === 0) {
+    return (
+      <p className="text-[12px] text-gray-400 dark:text-gray-500 py-4 text-center">
+        No subject configs found. Run the seed to create BoardSubjectConfig rows.
+      </p>
+    )
+  }
+
+  return (
+    <div className="relative">
+      {toast && (
+        <div className={`absolute top-0 right-0 z-10 px-3 py-2 rounded-lg text-[12px] font-medium shadow-sm ${toast.ok ? 'bg-[#EAF3DE] text-[#1D9E75]' : 'bg-[#FCEBEB] text-[#E24B4A]'}`}>
+          {toast.message}
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px]">
+          <thead>
+            <tr className="border-b border-gray-200 dark:border-gray-800">
+              {['Board', 'Grade', 'Subject', 'Questions', 'Status', 'Action'].map(h => (
+                <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {localRows.map(row => {
+              const status = availabilityStatus(row)
+              const canEnable = status === 'ready'
+              return (
+                <tr key={row.boardSubjectConfigId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{row.boardName}</td>
+                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{row.grade}</td>
+                  <td className="px-3 py-2.5 font-medium text-gray-800 dark:text-gray-200">{row.subjectName}</td>
+                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.questionCount}</td>
+                  <td className="px-3 py-2.5"><StatusPill status={status} /></td>
+                  <td className="px-3 py-2.5">
+                    {row.isEnabled ? (
+                      <button
+                        onClick={() => toggle(row, false)}
+                        disabled={isPending}
+                        className="min-h-[28px] px-3 py-1 rounded-lg border border-[#E24B4A] text-[#E24B4A] text-[11px] font-medium hover:bg-[#FCEBEB] transition-colors disabled:opacity-50"
+                      >
+                        Disable
+                      </button>
+                    ) : canEnable ? (
+                      <button
+                        onClick={() => toggle(row, true)}
+                        disabled={isPending}
+                        className="min-h-[28px] px-3 py-1 rounded-lg bg-[#1D9E75] text-white text-[11px] font-medium hover:bg-[#198a65] transition-colors disabled:opacity-50"
+                      >
+                        Enable
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        title="Hydrate content first -- minimum 10 questions required"
+                        className="min-h-[28px] px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-400 text-[11px] font-medium cursor-not-allowed"
+                      >
+                        Enable
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export function IngestRunsTable({ runs }: { runs: IngestRunData[] }) {
   if (runs.length === 0) {
     return (
