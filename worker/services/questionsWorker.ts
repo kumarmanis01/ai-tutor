@@ -34,7 +34,7 @@ import { buildContentSystemPrompt } from '@/lib/content/prompt-builder'
 import { assertContentLanguage } from '@/lib/content/language-validator'
 import _fs from 'fs';
 import _path from 'path';
-import { LanguageCode } from '@prisma/client';
+import { LanguageCode, QuestionStatus, ContentGapStatus } from '@prisma/client';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
@@ -1031,6 +1031,10 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           testIds: createdTestIds,
           promotedCount: promoted,
         });
+
+        // Resolve any ContentGap records that are now satisfied.
+        // Re-count per difficulty to verify the threshold is actually met before marking resolved.
+        await resolveContentGapsForTopic(topicId, jobId);
     }
   } catch (err) {
     const errMsg = (err as any)?.message ?? String(err);
@@ -1089,9 +1093,66 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
 }
 
 /**
+ * After soft-promote, re-count ACTIVE MCQs per difficulty and resolve any
+ * ContentGap records for this topicId that now meet the threshold.
+ * Gaps that are still below threshold are reset to detected so the next
+ * ContentHealthChecker cycle can re-queue them if needed.
+ */
+async function resolveContentGapsForTopic(topicId: string, jobId: string): Promise<void> {
+  try {
+    const TARGET = Number(process.env.DIAGNOSTIC_TARGET_QUESTIONS_PER_BAND ?? 5);
+    const pendingGaps = await prisma.contentGap.findMany({
+      where: { topicId, status: ContentGapStatus.hydration_pending },
+      select: { id: true, difficulty: true },
+    });
+    if (pendingGaps.length === 0) return;
+
+    for (const gap of pendingGaps) {
+      try {
+        const count = await prisma.question.count({
+          where: {
+            topicId,
+            difficulty: gap.difficulty,
+            type: 'mcq',
+            status: QuestionStatus.ACTIVE,
+          },
+        });
+
+        if (count >= TARGET) {
+          await prisma.contentGap.update({
+            where: { id: gap.id },
+            data: { status: ContentGapStatus.resolved, resolvedAt: new Date(), currentCount: count },
+          });
+          logger.info('questionsWorker.contentGap.resolved', {
+            jobId, topicId, difficulty: gap.difficulty, count,
+          });
+        } else {
+          // Still below threshold after generation (e.g. dedup removed duplicates).
+          // Reset to detected so ContentHealthChecker re-evaluates on next cycle.
+          await prisma.contentGap.update({
+            where: { id: gap.id },
+            data: { status: ContentGapStatus.detected, currentCount: count, hydrationJobId: null },
+          });
+          logger.warn('questionsWorker.contentGap.still_below_threshold', {
+            jobId, topicId, difficulty: gap.difficulty, count, target: TARGET,
+          });
+        }
+      } catch (err) {
+        logger.error('questionsWorker.contentGap.resolve_error', {
+          jobId, topicId, gapId: gap.id, difficulty: gap.difficulty, error: String(err),
+        });
+      }
+    }
+  } catch (err) {
+    logger.error('questionsWorker.contentGap.query_error', {
+      jobId, topicId, error: String(err),
+    });
+  }
+}
+
+/**
  * Helper to mark job as failed and update linked ExecutionJob
  */
-
 
 async function markJobFailed(jobId: string, error: string): Promise<void> {
   // Ensure lastError follows the strict format <ERROR_CODE>::<short message>

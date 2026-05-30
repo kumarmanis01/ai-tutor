@@ -35,6 +35,24 @@ declare module '@prisma/client' {
   export const empty: any;
   export const JsonNull: any;
 
+  export const QuestionStatus: {
+    ACTIVE: 'ACTIVE';
+    QUARANTINED: 'QUARANTINED';
+    REJECTED: 'REJECTED';
+    PENDING_REVIEW: 'PENDING_REVIEW';
+    [k: string]: string;
+  };
+  export type QuestionStatus = typeof QuestionStatus[keyof typeof QuestionStatus];
+
+  export const ContentGapStatus: {
+    detected: 'detected';
+    hydration_pending: 'hydration_pending';
+    resolved: 'resolved';
+    ignored: 'ignored';
+    [k: string]: string;
+  };
+  export type ContentGapStatus = typeof ContentGapStatus[keyof typeof ContentGapStatus];
+
   export const AdminActionType: {
     GRADE_CHANGE: 'GRADE_CHANGE';
     DIAGNOSTIC_RESET: 'DIAGNOSTIC_RESET';

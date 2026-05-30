@@ -45,6 +45,8 @@ import { runDailyQuestionGenMetrics } from './jobs/dailyQuestionGenMetrics.js';
 import { runDiagnosticReadinessCheck } from './jobs/diagnosticReadinessCheck.js';
 import { runNightlyTestReportAndEmail } from './jobs/nightlyTestReport.js';
 import { aggregateDay } from './services/analyticsAggregator.js';
+import { runContentHealthCheck } from '../lib/content/ContentHealthChecker.js';
+import { processContentGaps } from './services/contentGapProcessor.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -155,7 +157,9 @@ async function runWeeklyParentJob() {
 }
 
 /**
- * Run the hydration reconciler and schedule next run
+ * Run the hydration reconciler, then ContentHealthChecker, then ContentGapProcessor.
+ * Sequential ordering keeps logs clean and ensures health data is fresh before
+ * gap processor enqueues jobs.
  */
 async function runHydrationReconciler() {
   try {
@@ -165,6 +169,26 @@ async function runHydrationReconciler() {
   } catch (error) {
     logger.error('scheduler.hydrationReconciler.error', {
       error: error instanceof Error ? error.message : String(error)
+    });
+  }
+
+  try {
+    logger.info('scheduler.contentHealthChecker.starting');
+    const health = await runContentHealthCheck();
+    logger.info('scheduler.contentHealthChecker.completed', { ...health });
+  } catch (error) {
+    logger.error('scheduler.contentHealthChecker.error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  try {
+    logger.info('scheduler.contentGapProcessor.starting');
+    const gaps = await processContentGaps();
+    logger.info('scheduler.contentGapProcessor.completed', { ...gaps });
+  } catch (error) {
+    logger.error('scheduler.contentGapProcessor.error', {
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 

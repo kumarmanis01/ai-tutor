@@ -1584,6 +1584,7 @@ model SubjectDef {
   diagnosticSessions  DiagnosticSession[]
   mockExams           MockExam[] /// F-STU-021: back-relation
   curriculumBooks     CurriculumBook[]
+  contentGaps         ContentGap[]
 
   @@unique([classId, slug], name: "classId_slug")
 }
@@ -1630,6 +1631,7 @@ model TopicDef {
   homework           HomeworkAssignment[]
   concepts           Concept[]
   bookTopic          BookTopic?             @relation(fields: [bookTopicId], references: [id])
+  contentGaps        ContentGap[]
 
   @@unique([chapterId, slug])
   // Worker hydration loops query by chapterId to enumerate topics per chapter.
@@ -3206,4 +3208,36 @@ model BookTopic {
 
   @@unique([chapterId, topicOrder])
   @@index([chapterId])
+}
+
+enum ContentGapStatus {
+  detected
+  hydration_pending
+  resolved
+  ignored
+}
+
+/// Tracks topics that have fewer than TARGET_PER_BAND questions for a given difficulty.
+/// Created/updated by ContentHealthChecker; resolved by questionsWorker after soft-promote.
+model ContentGap {
+  id             String            @id @default(cuid())
+  topicId        String
+  subjectId      String
+  boardSlug      String
+  grade          Int
+  difficulty     String            // easy | medium | hard
+  currentCount   Int
+  targetCount    Int               @default(5)
+  status         ContentGapStatus  @default(detected)
+  detectedAt     DateTime          @default(now())
+  resolvedAt     DateTime?
+  hydrationJobId String?           // HydrationJob.id once enqueued
+  updatedAt      DateTime          @updatedAt
+
+  topic   TopicDef   @relation(fields: [topicId], references: [id])
+  subject SubjectDef @relation(fields: [subjectId], references: [id])
+
+  @@unique([topicId, difficulty])
+  @@index([status])
+  @@index([subjectId, boardSlug, grade])
 }
