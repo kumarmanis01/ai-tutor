@@ -82,6 +82,7 @@ module.exports = {
         LLM_MODE: process.env.LLM_MODE ?? 'real',
         LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
         ALLOW_LLM_CALLS: '1',
+        DB_POOL_SIZE: '5',
         NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
         SENTRY_DSN: process.env.SENTRY_DSN,
         // Set to 'true' once Hindi content pipeline is verified live
@@ -133,6 +134,7 @@ module.exports = {
         LLM_MODE: process.env.LLM_MODE ?? 'real',
         LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
         ALLOW_LLM_CALLS: '1',
+        DB_POOL_SIZE: '3',
         SENTRY_DSN: process.env.SENTRY_DSN,
       },
 
@@ -180,6 +182,7 @@ module.exports = {
         ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
         LLM_MODE: process.env.LLM_MODE ?? 'real',
         LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
+        DB_POOL_SIZE: '2',
         SENTRY_DSN: process.env.SENTRY_DSN,
       },
 
