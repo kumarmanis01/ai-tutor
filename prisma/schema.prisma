@@ -1324,6 +1324,9 @@ model StructuredSession {
   @@index([studentId, state])
   @@index([studentId, completedAt])
   @@index([topicId])
+  // firstSession query (ORDER BY startedAt ASC) and weeklyActivity (startedAt >= sevenDaysAgo)
+  // both need studentId+startedAt; existing indexes cover state/completedAt but not startedAt range/sort.
+  @@index([studentId, startedAt])
 }
 
 model SessionArtifact {
@@ -2089,6 +2092,9 @@ model LearningPlanItem {
   concept     Concept        @relation(fields: [conceptId], references: [id])
 
   @@index([planId, weekNumber, status])
+  // Covers WHERE planId=X AND status=Y queries (IN_PROGRESS lookup, UPCOMING without weekNumber constraint).
+  // The existing [planId, weekNumber, status] has status as 3rd col, making it sub-optimal for status-first filters.
+  @@index([planId, status])
 }
 
 enum PlanItemStatus {
