@@ -100,6 +100,7 @@ export default async function StudentHomeDashboardPage() {
     weeklyActivity,
     xpThisWeekResult,
     _xpBySourceRaw,
+    firstSession,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -147,6 +148,13 @@ export default async function StudentHomeDashboardPage() {
       where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
       _sum: { amount: true },
     }),
+    // Batched with Round 1: independent of all other queries, only needs userId.
+    // Moved from sequential position after Round 2 to eliminate ~1700ms wall-time stall.
+    prisma.structuredSession.findFirst({
+      where: { studentId: userId },
+      orderBy: { startedAt: 'asc' },
+      select: { startedAt: true },
+    }),
   ])
 
   if (!user) redirect('/')
@@ -156,6 +164,12 @@ export default async function StudentHomeDashboardPage() {
   } catch (err) {
     logger.warn('dashboard.user_subjects.log_failed', { userId, error: err })
   }
+
+  // Derive currentWeek now that firstSession is available from Round 1.
+  const daysSinceFirst = firstSession
+    ? Math.floor((Date.now() - firstSession.startedAt.getTime()) / 86_400_000)
+    : 0
+  const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
 
   const isPremium = user.subscriptionStatus === 'premium'
   const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
@@ -353,15 +367,7 @@ export default async function StudentHomeDashboardPage() {
     firstPendingDiagSubject?.subjectId ?? latestPlan?.subjectId ?? subjects[0]?.id
 
   // ── Secondary missions from today's learning plan items ──────────────────────
-  const firstSession = await prisma.structuredSession.findFirst({
-    where: { studentId: userId },
-    orderBy: { startedAt: 'asc' },
-    select: { startedAt: true },
-  })
-  const daysSinceFirst = firstSession
-    ? Math.floor((Date.now() - firstSession.startedAt.getTime()) / 86_400_000)
-    : 0
-  const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
+  // firstSession / daysSinceFirst / currentWeek derived from Round 1 above.
 
   type ConceptSelectResult = {
     name: string
@@ -387,48 +393,36 @@ export default async function StudentHomeDashboardPage() {
       learningPlans.map(async (plan): Promise<TodaysTopic | null> => {
         const subjectInfo = subjects.find((s) => s.id === plan.subjectId)
 
-        const inProgressItem = await prisma.learningPlanItem.findFirst({
-          where: { planId: plan.id, status: 'IN_PROGRESS' },
-          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: PLAN_ITEM_SELECT,
-        }) as PlanItemSelectResult | null
-        if (inProgressItem?.conceptId) {
-          return {
-            subject: subjectInfo?.name ?? 'Your subject',
-            subjectId: plan.subjectId,
-            topicName: topicNameFromItem(inProgressItem, 'Continue learning'),
-            chapter: chapterFromItem(inProgressItem),
-            href: `/session/pre/${encodeURIComponent(inProgressItem.conceptId)}`,
-          }
-        }
+        // All three plan-item queries in parallel -- priority applied in memory.
+        // Replaces 3 sequential awaits (~5100ms worst case) with 3 parallel fetches (~1700ms).
+        const [inProgressItem, currentWeekItem, fallbackItem] = await Promise.all([
+          prisma.learningPlanItem.findFirst({
+            where: { planId: plan.id, status: 'IN_PROGRESS' },
+            orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+            select: PLAN_ITEM_SELECT,
+          }),
+          prisma.learningPlanItem.findFirst({
+            where: { planId: plan.id, status: 'UPCOMING', weekNumber: { lte: currentWeek } },
+            orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+            select: PLAN_ITEM_SELECT,
+          }),
+          prisma.learningPlanItem.findFirst({
+            where: { planId: plan.id, status: 'UPCOMING' },
+            orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+            select: PLAN_ITEM_SELECT,
+          }),
+        ]) as [PlanItemSelectResult | null, PlanItemSelectResult | null, PlanItemSelectResult | null]
 
-        const currentWeekItem = await prisma.learningPlanItem.findFirst({
-          where: { planId: plan.id, status: 'UPCOMING', weekNumber: { lte: currentWeek } },
-          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: PLAN_ITEM_SELECT,
-        }) as PlanItemSelectResult | null
-        if (currentWeekItem?.conceptId) {
-          return {
-            subject: subjectInfo?.name ?? 'Your subject',
-            subjectId: plan.subjectId,
-            topicName: topicNameFromItem(currentWeekItem, 'Start learning'),
-            chapter: chapterFromItem(currentWeekItem),
-            href: `/session/pre/${encodeURIComponent(currentWeekItem.conceptId)}`,
-          }
-        }
+        // Priority: IN_PROGRESS > current-week UPCOMING > any UPCOMING
+        const best = inProgressItem ?? currentWeekItem ?? fallbackItem
+        if (!best?.conceptId) return null
 
-        const fallbackItem = await prisma.learningPlanItem.findFirst({
-          where: { planId: plan.id, status: 'UPCOMING' },
-          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: PLAN_ITEM_SELECT,
-        }) as PlanItemSelectResult | null
-        if (!fallbackItem?.conceptId) return null
         return {
           subject: subjectInfo?.name ?? 'Your subject',
           subjectId: plan.subjectId,
-          topicName: topicNameFromItem(fallbackItem, 'Start learning'),
-          chapter: chapterFromItem(fallbackItem),
-          href: `/session/pre/${encodeURIComponent(fallbackItem.conceptId)}`,
+          topicName: topicNameFromItem(best, inProgressItem ? 'Continue learning' : 'Start learning'),
+          chapter: chapterFromItem(best),
+          href: `/session/pre/${encodeURIComponent(best.conceptId)}`,
         }
       }),
     )
