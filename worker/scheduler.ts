@@ -45,6 +45,7 @@ import { runDailyQuestionGenMetrics } from './jobs/dailyQuestionGenMetrics.js';
 import { runDiagnosticReadinessCheck } from './jobs/diagnosticReadinessCheck.js';
 import { runNightlyTestReportAndEmail } from './jobs/nightlyTestReport.js';
 import { aggregateDay } from './services/analyticsAggregator.js';
+import { runSlowQueryDigest } from '../lib/monitoring/slowQueryDigest.js';
 import { runContentHealthCheck } from '../lib/content/ContentHealthChecker.js';
 import { processContentGaps } from './services/contentGapProcessor.js';
 import { prisma } from '../lib/prisma.js';
@@ -69,6 +70,7 @@ const WEEKLY_RATING_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_LATENCY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DAILY_QUESTION_GEN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ANALYTICS_AGGREGATE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SLOW_QUERY_DIGEST_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const NIGHTLY_TEST_REPORT_TARGET_HOUR_UTC = 0;
 
 let nightlyTestReportRunning = false;
@@ -648,6 +650,22 @@ async function runNightlyTestReportJob() {
 }
 
 /**
+ * Daily slow query digest (00:30 UTC = 6:00 AM IST)
+ */
+async function runSlowQueryDigestJob() {
+  try {
+    logger.info('scheduler.slowQueryDigest.starting')
+    const result = await runSlowQueryDigest()
+    logger.info('scheduler.slowQueryDigest.completed', { ...result })
+  } catch (error) {
+    logger.error('scheduler.slowQueryDigest.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runSlowQueryDigestJob, SLOW_QUERY_DIGEST_INTERVAL_MS)
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -667,6 +685,7 @@ export async function startScheduler() {
   const delayCostReport = msUntilNextRun(0) + 30 * 60 * 1000; // 00:30 UTC = 6 AM IST
   const delayNightlyTestReport = msUntilNextRun(NIGHTLY_TEST_REPORT_TARGET_HOUR_UTC); // 00:00 UTC
   const delayWeeklyPlanAdjust = msUntilNextWeeklyRun(0, 5); // Sunday 5 AM UTC
+  const delaySlowQueryDigest = msUntilNextRun(0) + 30 * 60 * 1000; // 00:30 UTC = 6:00 AM IST
 
   logger.info('scheduler.scheduled', {
     hydrationReconcilerInterval: '2 minutes (starts immediately)',
@@ -694,6 +713,10 @@ export async function startScheduler() {
   setTimeout(runCostReportJob, delayCostReport);
   setTimeout(runNightlyTestReportJob, delayNightlyTestReport);
   setTimeout(runWeeklyPlanAdjustJob, delayWeeklyPlanAdjust);
+
+  // Slow query digest: 00:30 UTC = 6:00 AM IST
+  logger.info('scheduler.scheduled.slowQueryDigest', { firstRun: new Date(Date.now() + delaySlowQueryDigest).toISOString() })
+  setTimeout(runSlowQueryDigestJob, delaySlowQueryDigest);
 
   // Data deletion: 02:00 AM IST = 20:30 UTC
   const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000

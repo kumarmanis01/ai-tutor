@@ -60,7 +60,7 @@ const rawClient = new PrismaClient({
   log: process.env.NODE_ENV === 'test' ? [] : ['warn', 'error'],
 });
 
-// Slow query logging middleware -- logs any query exceeding SLOW_QUERY_THRESHOLD_MS
+// Slow query logging middleware -- logs and persists any query exceeding SLOW_QUERY_THRESHOLD_MS
 const client: PrismaClient = g.prisma ?? (process.env.NODE_ENV !== 'test'
   ? (rawClient.$extends({
       query: {
@@ -70,6 +70,15 @@ const client: PrismaClient = g.prisma ?? (process.env.NODE_ENV !== 'test'
           const dur = Date.now() - t0;
           if (dur >= SLOW_QUERY_MS) {
             logger.warn('[slow_query]', { event: 'slow_query', context: { model, operation, durationMs: dur, threshold: SLOW_QUERY_MS } });
+            // Fire-and-forget: persist to SlowQueryLog for daily digest. Never await.
+            // Skip self-referential inserts (model==='SlowQueryLog') to prevent recursion.
+            if (model !== 'SlowQueryLog') {
+              rawClient.slowQueryLog.create({
+                data: { model: model ?? null, operation, durationMs: dur, threshold: SLOW_QUERY_MS },
+              }).catch((err: unknown) => {
+                logger.warn('slow_query.persist.failed', { error: err instanceof Error ? err.message : String(err) });
+              });
+            }
           }
           return result;
         },

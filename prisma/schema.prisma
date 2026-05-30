@@ -3247,3 +3247,16 @@ model ContentGap {
   @@index([status])
   @@index([subjectId, boardSlug, grade])
 }
+
+/// Slow database query events captured by the Prisma middleware for daily digest.
+model SlowQueryLog {
+  id          String   @id @default(cuid())
+  model       String?
+  operation   String
+  durationMs  Int
+  threshold   Int
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([model, operation])
+}
