@@ -217,12 +217,9 @@
     excludeIds?: Set<string>,
   ) {
     const results: DiagnosticQuestion[] = [];
-    // Track IDs already selected in this band to prevent within-band duplicates
-    // (e.g. same question returned on a second topic cycle when the bank is thin).
+    // Track IDs already selected in this band to prevent within-band duplicates.
     const seenIds = new Set<string>();
 
-    // Round-robin across topics: try to pick at most one question per topic
-    // before falling back to a broader subject-level selection.
     const filtersBase: QuestionFilters = {
       subject: params.subjectSlug,
       grade: String(params.grade),
@@ -231,6 +228,43 @@
       type: 'mcq',
     };
 
+    // Batched: single query for all topics × difficulties, grouped in memory.
+    // Avoids N×D round trips (N=topics, D=difficulties) that caused ~78 DB calls
+    // per diagnostic generation. See: performance audit 2026-05-30.
+    const excludeClause =
+      excludeIds && excludeIds.size > 0 ? { id: { notIn: Array.from(excludeIds) } } : {};
+    const allQuestions = await prisma.question.findMany({
+      where: {
+        status: 'ACTIVE',
+        ...excludeClause,
+        topicId: { in: topicIds },
+        subject: { equals: params.subjectSlug, mode: 'insensitive' },
+        grade: String(params.grade),
+        board: { equals: params.boardSlug, mode: 'insensitive' },
+        difficulty,
+        type: 'mcq',
+      },
+      select: {
+        id: true,
+        prompt: true,
+        choices: true,
+        correctAnswer: true,
+        topicId: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    // Group by topicId for in-memory round-robin distribution.
+    type QuestionRow = (typeof allQuestions)[number];
+    const questionsByTopic = new Map<string, QuestionRow[]>();
+    for (const q of allQuestions) {
+      if (!q.topicId) continue;
+      if (!questionsByTopic.has(q.topicId)) questionsByTopic.set(q.topicId, []);
+      questionsByTopic.get(q.topicId)!.push(q);
+    }
+
+    // Round-robin across topics using per-topic cursors into the grouped arrays.
+    const topicCursors = new Map<string, number>(topicIds.map((id) => [id, 0]));
     let topicIndex = 0;
     const maxTopicCycles = topicIds.length * 2; // avoid infinite loops
     let cycles = 0;
@@ -240,43 +274,39 @@
       topicIndex = (topicIndex + 1) % topicIds.length;
       cycles += 1;
 
-      try {
-        const questions = await ensureQuestions({ ...filtersBase, topicId }, 1, excludeIds);
-        if (questions.length === 0) continue;
-        const q = questions[0];
-        if (!q.id || !q.prompt) continue;
-        // Skip if already selected in this difficulty band.
-        if (seenIds.has(q.id)) continue;
+      const pool = questionsByTopic.get(topicId);
+      if (!pool || pool.length === 0) continue;
 
-        const options = parseChoices(q.choices as unknown);
-        // We require at least 2 options for a usable diagnostic MCQ.
-        if (options.length < 2) continue;
+      const cursor = topicCursors.get(topicId) ?? 0;
+      if (cursor >= pool.length) continue;
+      topicCursors.set(topicId, cursor + 1);
 
-        seenIds.add(q.id);
-        results.push({
-          id: q.id,
-          questionText: q.prompt,
-          options,
-          correctAnswer: q.correctAnswer ?? '',
-          topicId: q.topicId ?? topicId,
-          difficulty,
-        });
+      const q = pool[cursor];
+      if (!q.id || !q.prompt) continue;
+      // Skip if already selected in this difficulty band.
+      if (seenIds.has(q.id)) continue;
 
-        if (results.length >= count) break;
-      } catch (err) {
-        logger.warn('DiagnosticQuestionService.ensureQuestions.topic_failed', {
-          error: String(err),
-          topicId,
-          difficulty,
-        });
-      }
+      const options = parseChoices(q.choices as unknown);
+      // We require at least 2 options for a usable diagnostic MCQ.
+      if (options.length < 2) continue;
+
+      seenIds.add(q.id);
+      results.push({
+        id: q.id,
+        questionText: q.prompt,
+        options,
+        correctAnswer: q.correctAnswer ?? '',
+        topicId: q.topicId ?? topicId,
+        difficulty,
+      });
     }
 
     if (results.length >= count) {
       return results.slice(0, count);
     }
 
-    // Fallback: subject-level selection to fill remaining slots.
+    // Fallback: subject-level selection (includes syncFromGeneratedQuestions + AI generation)
+    // to fill remaining slots when the batched query yields too few results.
     const remaining = count - results.length;
     try {
       const extra = await ensureQuestions(filtersBase, remaining, excludeIds);
