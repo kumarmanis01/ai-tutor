@@ -1,4 +1,5 @@
   import { prisma } from '@/lib/prisma';
+  import { QuestionStatus } from '@prisma/client';
   import { ensureQuestions, type QuestionFilters } from '@/lib/tests';
   import { logger } from '@/lib/logger';
   import { diagnosticConfig, computeDifficultyCounts } from '@/lib/config';
@@ -388,9 +389,23 @@
     }
 
     if (questions.length < TOTAL_QUESTIONS) {
-      logger.warn('DiagnosticQuestionService.insufficient_questions', {
+      // Distinguish a genuinely thin bank (expected) from a selection bug (actionable).
+      // Count all ACTIVE MCQs for the subject's topics; if the bank itself is smaller
+      // than TOTAL_QUESTIONS, the shortfall is not a bug -- log at info, not warn.
+      const bankSize = await prisma.question.count({
+        where: {
+          topicId: { in: topicIds },
+          type: 'mcq',
+          status: QuestionStatus.ACTIVE,
+        },
+      });
+      const poolExhausted = bankSize < TOTAL_QUESTIONS;
+      const logLevel = poolExhausted ? 'info' : 'warn';
+      logger[logLevel]('DiagnosticQuestionService.insufficient_questions', {
         have: questions.length,
         expected: TOTAL_QUESTIONS,
+        bankSize,
+        poolExhausted,
         subjectSlug: params.subjectSlug,
         boardSlug: params.boardSlug,
         grade: Number(normalizedParams.grade),
