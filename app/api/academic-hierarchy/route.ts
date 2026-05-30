@@ -47,6 +47,7 @@ export interface HierarchySubject {
   id: string;
   name: string;
   slug: string;
+  isAvailable: boolean;
   chapters: HierarchyChapter[];
 }
 
@@ -109,6 +110,7 @@ export async function GET() {
               where: { lifecycle: SoftDeleteStatus.active },
               orderBy: { name: 'asc' },
               include: {
+                boardSubjectConfigs: { select: { isEnabled: true }, take: 1 },
                 chapters: {
                   where: {
                     lifecycle: SoftDeleteStatus.active,
@@ -152,6 +154,7 @@ export async function GET() {
             id: sub.id,
             name: sub.name,
             slug: sub.slug,
+            isAvailable: sub.boardSubjectConfigs[0]?.isEnabled ?? false,
             chapters: sub.chapters.map((ch) => ({
               id: ch.id,
               name: ch.name,

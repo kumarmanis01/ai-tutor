@@ -33,7 +33,7 @@ import { ONBOARDING_THEME_CLASSES } from '@/lib/theme/componentClasses'
 
 // ── Types from academic-hierarchy API ─────────────────────────────────────────
 
-interface AcademicSubject { id: string; name: string; slug: string }
+interface AcademicSubject { id: string; name: string; slug: string; isAvailable?: boolean }
 interface AcademicClass { id: string; grade: number; slug: string; subjects: AcademicSubject[] }
 interface AcademicBoard { id: string; name: string; slug: string; classes: AcademicClass[] }
 interface AcademicLanguage { code: string; name: string }
@@ -287,6 +287,12 @@ export default function StudentOnboardingPage() {
 
     setSubmitting(true)
     try {
+      const availableSelected = form.subjectSlugs.filter(slug =>
+        availableSubjects.find(s => s.slug === slug && s.isAvailable !== false)
+      )
+      const requestedComingSoon = form.subjectSlugs.filter(slug =>
+        availableSubjects.find(s => s.slug === slug && s.isAvailable === false)
+      )
       const res = await fetch('/api/user/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -296,7 +302,8 @@ export default function StudentOnboardingPage() {
           class_grade: form.grade,
           board: form.boardSlug,
           preferred_language: form.language,
-          subjects: form.subjectSlugs,
+          subjects: availableSelected.length > 0 ? availableSelected : form.subjectSlugs,
+          requested_subject_slugs: requestedComingSoon,
           whatsapp_phone: form.whatsapp ? withCountryCode(form.whatsapp) : undefined,
           parent_email: form.parentEmail || undefined,
           parent_whatsapp: form.parentWhatsapp ? withCountryCode(form.parentWhatsapp) : undefined,
@@ -634,27 +641,41 @@ export default function StudentOnboardingPage() {
               </label>
               <div className="flex flex-wrap gap-2">
                 {availableSubjects.map((s) => {
-                  const selected = form.subjectSlugs.includes(s.slug)
-                  const disabled = !selected && form.subjectSlugs.length >= MAX_SUBJECTS
+                  const isSelected = form.subjectSlugs.includes(s.slug)
+                  const isComingSoon = s.isAvailable === false
+                  const disabled = !isSelected && form.subjectSlugs.length >= MAX_SUBJECTS
+                  const chipClass = isComingSoon
+                    ? 'border-dashed border-gray-200 bg-gray-50 text-gray-400 cursor-pointer'
+                    : isSelected
+                      ? 'border-primary bg-primary-bg text-primary shadow-sm'
+                      : disabled
+                        ? SUBJECT_DISABLED_CLASS
+                        : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-brand-primary-bg/30'
                   return (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => toggleSubject(s.slug)}
-                      disabled={disabled}
-                      className={`min-h-[36px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors
-                        ${selected
-                          ? 'border-primary bg-primary-bg text-primary shadow-sm'
-                          : disabled
-                            ? SUBJECT_DISABLED_CLASS
-                            : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-brand-primary-bg/30'
-                        }`}
+                      disabled={disabled && !isComingSoon}
+                      className={`relative min-h-[36px] rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${chipClass}`}
                     >
                       {s.name}
+                      {isComingSoon && (
+                        <span className="absolute -top-2 -right-1 text-[9px] font-semibold bg-amber-100 text-amber-600 border border-amber-200 rounded-full px-1.5 py-0.5 leading-none whitespace-nowrap">
+                          Coming Soon
+                        </span>
+                      )}
                     </button>
                   )
                 })}
               </div>
+              {form.subjectSlugs.some(slug =>
+                availableSubjects.find(s => s.slug === slug && s.isAvailable === false)
+              ) && (
+                <p className="text-xs text-amber-600 mt-2">
+                  {"We'll notify you when your selected subjects are ready. Your preference helps us prioritise."}
+                </p>
+              )}
               {fieldErrors.subjects && <p className={INLINE_ERROR_CLASS}>{fieldErrors.subjects}</p>}
             </div>
           )}

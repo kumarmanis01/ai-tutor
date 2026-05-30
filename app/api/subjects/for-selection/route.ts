@@ -68,7 +68,7 @@ export async function GET(req: Request) {
         id: true,
         name: true,
         slug: true,
-        boardSubjectConfigs: { select: { isCore: true }, take: 1 },
+        boardSubjectConfigs: { select: { isCore: true, isEnabled: true }, take: 1 },
       },
       orderBy: { name: 'asc' },
     });
@@ -79,6 +79,7 @@ export async function GET(req: Request) {
       slug: s.slug,
       isMandatory: s.boardSubjectConfigs[0]?.isCore ?? true,
       isDefault: s.boardSubjectConfigs[0]?.isCore ?? true,
+      isAvailable: s.boardSubjectConfigs[0]?.isEnabled ?? false,
     }));
 
     return NextResponse.json({ subjects: response });

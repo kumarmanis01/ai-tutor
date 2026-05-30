@@ -122,6 +122,7 @@ export default async function DiagnosticPage({
       id: true,
       name: true,
       slug: true,
+      boardSubjectConfigs: { select: { isEnabled: true }, take: 1 },
       chapters: {
         where: { lifecycle: 'active' },
         orderBy: { order: 'asc' },
@@ -138,6 +139,10 @@ export default async function DiagnosticPage({
   });
 
   if (!subjectDef) redirect('/dashboard');
+
+  // Admin visibility gate -- subject must be explicitly enabled before students can run diagnostics.
+  const isSubjectEnabled = subjectDef.boardSubjectConfigs[0]?.isEnabled ?? false;
+  if (!isSubjectEnabled) redirect('/dashboard?diagnostic=unavailable');
 
   // Content gate -- syllabus must have been hydrated (SyllabusWorker writes TopicDef first).
   // Questions are lazy-promoted from GeneratedQuestion on first session use, so we gate

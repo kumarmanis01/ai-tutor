@@ -16,10 +16,12 @@ import {
   CoverageTable,
   PipelineSection,
   IngestRunsTable,
+  SubjectAvailabilityTable,
   type CoverageRowData,
   type ContentStatus,
   type PipelineJobData,
   type IngestRunData,
+  type SubjectAvailabilityRowData,
 } from './CoverageTable'
 import { BookPanel, type BookRowData } from './BookPanel'
 
@@ -56,6 +58,7 @@ export default async function ContentPage() {
         where: { lifecycle: 'active' },
         include: { topics: { where: { lifecycle: 'active' }, select: { id: true } } },
       },
+      boardSubjectConfigs: { select: { id: true, isEnabled: true }, take: 1 },
     },
     orderBy: [{ class: { grade: 'asc' } }, { name: 'asc' }],
   })
@@ -242,6 +245,19 @@ export default async function ContentPage() {
     }
   })
 
+  // ── 4b. Build subject availability rows ─────────────────────────────────
+  const availabilityRows: SubjectAvailabilityRowData[] = subjects
+    .filter(s => s.boardSubjectConfigs.length > 0)
+    .map(s => ({
+      boardSubjectConfigId: s.boardSubjectConfigs[0].id,
+      subjectId: s.id,
+      subjectName: s.name,
+      grade: s.class.grade,
+      boardName: s.class.board.name,
+      questionCount: generatedTestBySubject.get(s.id) ?? 0,
+      isEnabled: s.boardSubjectConfigs[0].isEnabled,
+    }))
+
   // ── 5. Build pipeline rows ───────────────────────────────────────────────
   // Resolve subjectName for pipeline jobs (may differ from SubjectDef.name)
   const pipelineSubjectIds = pipelineJobs.map(j => j.subjectId).filter(Boolean) as string[]
@@ -334,6 +350,14 @@ export default async function ContentPage() {
           <span>Step 4 -- Review &amp; approve</span>
           <span className="text-[#BA7517]">&rarr;</span>
           <span>Step 5 -- Diagnostic unlocked for students</span>
+        </div>
+
+        {/* Subject Availability */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+          <p className="text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-3">
+            Subject Availability ({availabilityRows.length} configured)
+          </p>
+          <SubjectAvailabilityTable rows={availabilityRows} />
         </div>
 
         {/* Textbook PDFs */}

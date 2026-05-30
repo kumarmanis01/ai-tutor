@@ -75,6 +75,9 @@ export async function POST(req: NextRequest) {
     const subjects = Array.isArray(body.subjects)
       ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s).toLowerCase().replace(/\s+/g, '-'))).filter((s) => s.length > 0))]
       : undefined;
+    const requestedSubjectSlugs = Array.isArray(body.requested_subject_slugs)
+      ? [...new Set((body.requested_subject_slugs as any[]).map((s) => (s == null ? '' : String(s).toLowerCase().replace(/\s+/g, '-'))).filter((s) => s.length > 0))]
+      : undefined;
     const preferredLanguage = typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
     const token = typeof body.token === 'string' ? body.token : undefined;
     const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : undefined;
@@ -159,6 +162,7 @@ export async function POST(req: NextRequest) {
     if (grade) updates.grade = grade;
     if (board) updates.board = board;
     if (subjects) updates.subjects = subjects;
+    if (requestedSubjectSlugs) updates.requestedSubjectSlugs = requestedSubjectSlugs;
     if (preferredLanguage) updates.language = preferredLanguage;
     if (token) updates.lastWidgetToken = token;
     if (parentEmail !== undefined) updates.parentEmail = parentEmail || null;
