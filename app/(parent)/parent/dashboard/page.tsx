@@ -138,7 +138,7 @@ export default function ParentDashboardPage() {
     </div>
   )
 
-  // TODO: wire API — /api/parent/dashboard returns ParentDashboardData
+  // TODO: wire API -- /api/parent/dashboard returns ParentDashboardData
 
   if (data.subjectTiers.length === 0) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto">

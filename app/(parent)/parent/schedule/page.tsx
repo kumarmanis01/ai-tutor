@@ -85,7 +85,7 @@ function SessionRow({ session }: { session: ScheduleSession }) {
         <div className="text-[12px] text-[var(--text-muted)] mb-[6px]">{session.subject}</div>
         <div className="flex items-center gap-[10px]">
           <div className="flex items-center gap-1">
-            <ClockIcon size={12} style={{ color: 'var(--text-faint)' }} />
+            <ClockIcon size={12} className="text-[var(--text-faint)]" />
             <Mono className="text-[11px] text-[var(--text-muted)] font-semibold">
               {scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
             </Mono>
@@ -138,7 +138,7 @@ export default function ParentSchedulePage() {
     </div>
   )
 
-  // TODO: wire API — /api/parent/schedule returns ScheduleData
+  // TODO: wire API -- /api/parent/schedule returns ScheduleData
 
   const sessions = data.sessions.map(s => ({ ...s, scheduledAtDate: new Date(s.scheduledAt) }))
   const daySessions = sessions.filter(s => isSameDay(s.scheduledAtDate, selectedDay))

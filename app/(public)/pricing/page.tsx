@@ -145,7 +145,7 @@ export default function PricingPage() {
   return (
     <div className="max-w-5xl mx-auto py-10 px-4 bg-white dark:bg-gray-950 transition-colors">
       {/* Title */}
-      <h1 className="text-3xl font-bold text-center mb-2" style={{ color: '#534AB7' }}>
+      <h1 className="text-3xl font-bold text-center mb-2 text-[#534AB7]">
         Simple, transparent pricing
       </h1>
       <p className="text-center text-gray-500 dark:text-gray-400 mb-8">
@@ -216,7 +216,7 @@ export default function PricingPage() {
               <button
                 type="button"
                 className="min-h-[44px] w-full py-2 rounded-lg font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: '#534AB7' }}
+                className="bg-[#534AB7]"
                 onClick={() => handleSubscribe('lite_monthly')}
                 disabled={loadingPlan !== null}
               >
@@ -246,7 +246,7 @@ export default function PricingPage() {
             <button
               type="button"
               className="min-h-[44px] w-full py-2 rounded-lg font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: '#534AB7' }}
+              className="bg-[#534AB7]"
               onClick={() => handleSubscribe(standardPlanId)}
               disabled={loadingPlan !== null}
             >
@@ -277,7 +277,7 @@ export default function PricingPage() {
             <button
               type="button"
               className="min-h-[44px] w-full py-2 rounded-lg font-semibold transition hover:opacity-90 disabled:opacity-60 border"
-              style={{ borderColor: '#534AB7', color: '#534AB7' }}
+              className="border-[#534AB7] text-[#534AB7]"
               onClick={() => handleSubscribe(familyPlanId)}
               disabled={loadingPlan !== null}
             >

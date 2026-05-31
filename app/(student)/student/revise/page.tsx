@@ -10,7 +10,7 @@ interface RevisionTopic {
   id: string
   concept: string
   subject: SubjectKey
-  strength: number  // 0–1
+  strength: number  // 0-1
   dueLabel?: string
 }
 
@@ -111,7 +111,7 @@ export default function RevisePage() {
     )
   }
 
-  // TODO: wire API — /api/student/revise returns ReviseData
+  // TODO: wire API -- /api/student/revise returns ReviseData
 
   const visibleDue = data.dueToday.filter(r => !snoozed.includes(r.id))
 

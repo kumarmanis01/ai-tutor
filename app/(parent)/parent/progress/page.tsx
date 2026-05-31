@@ -31,7 +31,7 @@ interface SubjectProgress {
   tier: TierKey
   topicsCompleted: number
   topicsTotal: number
-  weeklyActivity: number[]  // 7 values, Mon–Sun
+  weeklyActivity: number[]  // 7 values, Mon-Sun
   recentSessions: RecentSession[]
 }
 
@@ -112,7 +112,8 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
             <span className="text-[13px] font-semibold text-[var(--primary)]">Recent sessions</span>
             <ChevRightIcon
               size={16}
-              style={{ color: 'var(--primary)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }}
+              className="text-[var(--primary)] transition-transform duration-200"
+              style={{ transform: expanded ? 'rotate(90deg)' : 'none' }}
             />
           </button>
           {expanded && (
@@ -171,7 +172,7 @@ export default function ParentProgressPage() {
     </div>
   )
 
-  // TODO: wire API — /api/parent/progress returns ParentProgressData
+  // TODO: wire API -- /api/parent/progress returns ParentProgressData
 
   if (data.subjects.length === 0) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto">
@@ -194,7 +195,7 @@ export default function ParentProgressPage() {
       <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
         <div className="text-[18px] font-extrabold tracking-[-0.02em] text-[var(--text)]">How {data.childName} is doing</div>
         <div className="text-[12px] text-[var(--text-muted)] mt-[2px] flex items-center gap-1">
-          <TrendIcon size={13} style={{ color: 'var(--tier-strong)' }} />
+          <TrendIcon size={13} className="text-[var(--tier-strong)]" />
           Subject-by-subject breakdown
         </div>
       </div>

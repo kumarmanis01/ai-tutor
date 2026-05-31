@@ -82,7 +82,7 @@ function TestHistoryCard({ t, onView }: { t: TestItem; onView: () => void }) {
   )
 }
 
-// Test runner — uses placeholder questions; real questions would come from /api/student/tests/[id]/questions
+// Test runner -- uses placeholder questions; real questions would come from /api/student/tests/[id]/questions
 function TestRunner({ test, onDone }: { test: TestItem; onDone: (score: number) => void }) {
   const router = useRouter()
   const questions = [
@@ -285,7 +285,7 @@ export default function TestsPage() {
     )
   }
 
-  // TODO: wire API — /api/student/tests returns TestsData
+  // TODO: wire API -- /api/student/tests returns TestsData
 
   const { isPremium, testsUsed, recommended, upcoming, history, mockExam } = data
 

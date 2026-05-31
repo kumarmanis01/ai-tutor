@@ -27,7 +27,7 @@ interface DashboardData {
   xpLevelFloor: number
   xpToNext: number
   examName: string
-  examDate: string       // ISO date string — isCrunch derived from this
+  examDate: string       // ISO date string -- isCrunch derived from this
   examDaysLeft: number
   readinessBySubject: ReadinessEntry[]
   nextTopic: { concept: string; subject: SubjectKey; minutes: number; reason: string } | null
@@ -132,7 +132,7 @@ export default function DashboardPage() {
     )
   }
 
-  // TODO: wire API — /api/student/dashboard returns DashboardData
+  // TODO: wire API -- /api/student/dashboard returns DashboardData
 
   const isCrunch = data.examDaysLeft <= 14
   const xpPct = (data.xp - data.xpLevelFloor) / (data.xpToNext - data.xpLevelFloor) * 100

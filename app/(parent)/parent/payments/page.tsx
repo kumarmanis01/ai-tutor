@@ -119,7 +119,7 @@ export default function ParentPaymentsPage() {
         {emiFailed && (
           <Card pad={16} className="mb-4 border-[1.5px] border-[var(--tier-critical)]">
             <div className="flex items-center gap-[10px] mb-[10px]">
-              <AlertIcon size={18} style={{ color: 'var(--tier-critical)', flexShrink: 0 }} />
+              <AlertIcon size={18} className="text-[var(--tier-critical)] shrink-0" />
               <div>
                 <div className="text-[14px] font-bold text-[var(--text)]">Payment could not be processed</div>
                 <div className="text-[12px] text-[var(--text-muted)]">
@@ -136,12 +136,12 @@ export default function ParentPaymentsPage() {
         {/* EMI active info */}
         {data.emiStatus === 'active' && !emiFailed && (
           <Card pad={14} className="mb-4 flex items-center gap-3">
-            <ClockIcon size={20} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <ClockIcon size={20} className="text-[var(--text-muted)] shrink-0" />
             <div className="flex-1">
               <div className="text-[13px] font-semibold text-[var(--text)]">EMI plan active</div>
               <div className="text-[12px] text-[var(--text-muted)]">Split into 3 monthly instalments of {formatINR(data.failedAmount ?? 133)}</div>
             </div>
-            <CheckCircleIcon size={18} style={{ color: 'var(--tier-strong)' }} />
+            <CheckCircleIcon size={18} className="text-[var(--tier-strong)]" />
           </Card>
         )}
 
@@ -164,7 +164,7 @@ export default function ParentPaymentsPage() {
                   key={inv.id}
                   className={['flex items-center gap-3 p-[14px]', i < data.billingHistory.length - 1 ? 'border-b border-[var(--border)]' : ''].join(' ')}
                 >
-                  <CardIcon size={19} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+                  <CardIcon size={19} className="text-[var(--text-faint)] shrink-0" />
                   <div className="flex-1">
                     <div className="text-[14px] font-semibold text-[var(--text)]">{inv.description}</div>
                     <div className="text-[12px] text-[var(--text-muted)] flex gap-2">

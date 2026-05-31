@@ -44,7 +44,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between px-4 py-[14px] border-b border-[var(--border)] last:border-b-0 min-h-[44px]">
       <div>
         <div className="text-[11.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.04em] mb-[2px]">{label}</div>
-        <div className="text-[15px] font-medium text-[var(--text)]">{value || '—'}</div>
+        <div className="text-[15px] font-medium text-[var(--text)]">{value || '--'}</div>
       </div>
     </div>
   )
@@ -55,7 +55,7 @@ function ImmutableRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between px-4 py-[14px] border-b border-[var(--border)] last:border-b-0 min-h-[44px]">
       <div>
         <div className="text-[11.5px] font-bold text-[var(--text-muted)] uppercase tracking-[0.04em] mb-[2px]">{label}</div>
-        <div className="text-[15px] font-medium text-[var(--text)]">{value || '—'}</div>
+        <div className="text-[15px] font-medium text-[var(--text)]">{value || '--'}</div>
       </div>
       <span className="text-[11px] text-[var(--text-faint)] font-semibold">Fixed</span>
     </div>

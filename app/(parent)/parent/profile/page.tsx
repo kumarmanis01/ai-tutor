@@ -78,7 +78,7 @@ function SettingRow({ icon, label, detail, danger, last, onClick }: {
       <div style={{ color: danger ? 'var(--tier-critical)' : 'var(--text-muted)' }}>{icon}</div>
       <span className={['flex-1 text-[14px] font-medium', danger ? 'text-[var(--tier-critical)]' : 'text-[var(--text)]'].join(' ')}>{label}</span>
       {detail && <span className="text-[13px] text-[var(--text-faint)] font-semibold">{detail}</span>}
-      {!danger && <ChevRightIcon size={16} style={{ color: 'var(--text-faint)' }} />}
+      {!danger && <ChevRightIcon size={16} className="text-[var(--text-faint)]" />}
     </button>
   )
 }
@@ -147,15 +147,15 @@ export default function ParentProfilePage() {
         <Card pad={0} className="overflow-hidden mb-[18px]">
           {/* Notifications toggle */}
           <div className="flex items-center gap-3 p-[14px] border-b border-[var(--border)] min-h-[44px]">
-            <BellIcon size={20} style={{ color: 'var(--text-muted)' }} />
+            <BellIcon size={20} className="text-[var(--text-muted)]" />
             <span className="flex-1 text-[14px] font-medium text-[var(--text)]">Progress notifications</span>
             <Toggle on={notificationsOn} onChange={() => setNotificationsOn(v => !v)} />
           </div>
           {/* Dark mode toggle */}
           <div className="flex items-center gap-3 p-[14px] min-h-[44px]">
             {theme === 'dark'
-              ? <MoonIcon size={20} style={{ color: 'var(--text-muted)' }} />
-              : <SunIcon size={20} style={{ color: 'var(--text-muted)' }} />
+              ? <MoonIcon size={20} className="text-[var(--text-muted)]" />
+              : <SunIcon size={20} className="text-[var(--text-muted)]" />
             }
             <span className="flex-1 text-[14px] font-medium text-[var(--text)]">Dark mode</span>
             <Toggle on={theme === 'dark'} onChange={toggle} />

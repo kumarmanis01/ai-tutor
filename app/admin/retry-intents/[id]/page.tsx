@@ -11,30 +11,29 @@ export default async function Page({ params }: Props) {
   await requireAdminOrModerator()
   const { id } = params
   const intent = await prisma.retryIntent.findUnique({ where: { id } })
-  if (!intent) return (<div style={{ padding: 24 }}><h1>RetryIntent not found</h1></div>)
+  if (!intent) return (<div className="p-6"><h1>RetryIntent not found</h1></div>)
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Retry Intent {intent.id}</h1>
-      <div style={{ marginBottom: 8 }}><strong>Status:</strong> {intent.status}</div>
-      <div style={{ marginBottom: 8 }}><strong>Source Job:</strong> {intent.sourceJobId}</div>
-      <div style={{ marginBottom: 8 }}><strong>Reason:</strong> {intent.reasonCode} -- {intent.reasonText}</div>
-      <div style={{ marginBottom: 8 }}><strong>Approved By:</strong> {intent.approvedBy} {intent.approvedAt ? `on ${new Date(intent.approvedAt).toLocaleString()}` : ''}</div>
-      <div style={{ marginTop: 16 }}>
+      <div className="mb-2"><strong>Status:</strong> {intent.status}</div>
+      <div className="mb-2"><strong>Source Job:</strong> {intent.sourceJobId}</div>
+      <div className="mb-2"><strong>Reason:</strong> {intent.reasonCode} -- {intent.reasonText}</div>
+      <div className="mb-2"><strong>Approved By:</strong> {intent.approvedBy} {intent.approvedAt ? `on ${new Date(intent.approvedAt).toLocaleString()}` : ''}</div>
+      <div className="mt-4">
         {intent.status === 'PENDING' ? (
           <ExecuteRetryButton intentId={intent.id} />
         ) : (
           <div className="text-sm text-gray-600">Execute disabled -- status is {intent.status}</div>
         )}
       </div>
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-4">
         <h3 className="text-lg font-semibold">Full JSON</h3>
         <ReadOnlyJsonViewer data={intent} collapsedByDefault={false} />
       </div>
 
-      <div style={{ marginTop: 24 }}>
+      <div className="mt-6">
         <h3 className="text-lg font-semibold">Audit Trail</h3>
-        {/* Server-render audit logs by calling admin API for audit logs */}
         <AuditTrail entityId={intent.id} />
       </div>
     </div>
@@ -85,7 +84,6 @@ function AuditTrailClient({ logs }: { logs: any[] }) {
   )
 }
 
-// Wrapper to run fetch on server and render client component
 async function AuditTrail({ entityId }: { entityId: string }) {
   const logs = await fetchAuditLogs(entityId)
   return <AuditTrailClient logs={logs} />

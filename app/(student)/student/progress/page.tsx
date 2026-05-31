@@ -12,7 +12,7 @@ interface SubjectProgress {
   tier: TierKey
   topicsCompleted: number
   topicsTotal: number
-  weeklyActivity: number[]  // 7 values, Mon–Sun, 0–100
+  weeklyActivity: number[]  // 7 values, Mon-Sun, 0-100
 }
 
 interface ProgressData {
@@ -21,8 +21,8 @@ interface ProgressData {
   xpLevel: number
   overallTier: TierKey
   subjects: SubjectProgress[]
-  trend7: number[]   // 7-day readiness trend, 0–100
-  trend30: number[]  // 30-day readiness trend, 0–100
+  trend7: number[]   // 7-day readiness trend, 0-100
+  trend30: number[]  // 30-day readiness trend, 0-100
 }
 
 // --- Trend chart ---
@@ -155,7 +155,7 @@ export default function ProgressPage() {
     )
   }
 
-  // TODO: wire API — /api/student/progress returns ProgressData
+  // TODO: wire API -- /api/student/progress returns ProgressData
 
   if (data.subjects.length === 0) {
     return (

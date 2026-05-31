@@ -35,7 +35,7 @@ export default function ExecuteRetryButton({ intentId }: { intentId: string }) {
       <button onClick={handleExecute} disabled={loading} className="px-3 py-1 bg-red-600 text-white rounded disabled:opacity-50">
         {loading ? 'Executing...' : 'Execute Retry'}
       </button>
-      {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
+      {error && <div className="text-red-600 mt-2">{error}</div>}
     </div>
   )
 }
