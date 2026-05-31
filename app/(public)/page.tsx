@@ -16,7 +16,8 @@ export default async function HomePage() {
   // for users who are mid-onboarding so the onboarding modal does not
   // render on the public landing page.
   if (session && (session.user as any)?.onboardingComplete) {
-    redirect('/dashboard');
+    const role = (session.user as any)?.role
+    redirect(role === 'parent' ? '/parent/dashboard' : '/student/dashboard')
   }
   return <LandingPageInteractive />;
 }
