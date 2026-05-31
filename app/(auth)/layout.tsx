@@ -12,7 +12,7 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default function StudentLayout({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`h-full ${inter.variable} ${nunito.variable} ${plusJakartaSans.variable} ${jetBrainsMono.variable}`}>
       <body className="font-sans antialiased min-h-screen">

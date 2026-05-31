@@ -1,4 +1,5 @@
 @import './tailwind.css';
+@import './spinzy-tokens.css';
 
 /* Subtle shimmer effect for high-priority CTAs.
 	 Use the `btn-shimmer` class in addition to Tailwind utilities.

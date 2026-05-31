@@ -24,7 +24,7 @@ import Link from 'next/link'
 import Logo from '@/components/Logo'
 import { Spinner, GoogleLogo } from '@/components/UI/design-system'
 
-const DEFAULT_CALLBACK_URL = '/dashboard'
+const DEFAULT_CALLBACK_URL = '/student/dashboard'
 const PARENT_ROLE_QUERY_VALUE = 'parent'
 const PARENT_ONBOARDING_PATH = '/parent/onboarding'
 const GOOGLE_ERROR_CODES = new Set(['Callback', 'OAuthCallback', 'OAuthSignin', 'OAuthAccountNotLinked'])
