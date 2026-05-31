@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  AppHeader, BottomNav, Card, Btn, EmptyState, ErrorState, SectionTitle,
+  BottomNav, Card, Btn, EmptyState, ErrorState, SectionTitle,
   Ring, TierPill, Bar, Skel, SubjectChip, Mono,
 } from '@/components/ui'
 import { FREE_TIER_SESSION_LIMIT } from '@/lib/constants/freemium'
@@ -131,8 +131,6 @@ export default function DashboardPage() {
       </div>
     )
   }
-
-  // TODO: wire API -- /api/student/dashboard returns DashboardData
 
   const isCrunch = data.examDaysLeft <= 14
   const xpPct = (data.xp - data.xpLevelFloor) / (data.xpToNext - data.xpLevelFloor) * 100

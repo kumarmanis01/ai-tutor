@@ -285,8 +285,6 @@ export default function TestsPage() {
     )
   }
 
-  // TODO: wire API -- /api/student/tests returns TestsData
-
   const { isPremium, testsUsed, recommended, upcoming, history, mockExam } = data
 
   return (

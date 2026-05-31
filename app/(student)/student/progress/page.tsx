@@ -155,8 +155,6 @@ export default function ProgressPage() {
     )
   }
 
-  // TODO: wire API -- /api/student/progress returns ProgressData
-
   if (data.subjects.length === 0) {
     return (
       <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative pb-[100px]">

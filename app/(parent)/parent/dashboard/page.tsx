@@ -48,6 +48,85 @@ interface ParentDashboardData {
   isPremium: boolean
 }
 
+// --- API response adapter ---
+// /api/parent/dashboard returns { students: StudentDashboard[], ... }
+// We extract the first student and map to ParentDashboardData.
+
+interface ApiReadiness { subject: string; readinessLabel: string; readinessScore: number }
+interface ApiAttention { subject: string; count: number }
+interface ApiStudentDashboard {
+  studentName: string
+  grade?: string
+  subjects?: string[]
+  readiness?: ApiReadiness[]
+  attentionBySubject?: ApiAttention[]
+  attentionOpenCount?: number
+  weekly?: Array<{ sessionsCount?: number }>
+}
+interface ApiDashboardResponse {
+  students?: ApiStudentDashboard[]
+}
+
+function readinessLabelToTier(label: string): TierKey {
+  const map: Record<string, TierKey> = {
+    ready: 'strong',
+    on_track: 'ontrack',
+    needs_work: 'weak',
+    not_started: 'critical',
+  }
+  return map[label] ?? 'fair'
+}
+
+function adaptApiResponse(raw: ApiDashboardResponse): ParentDashboardData | null {
+  const student = raw.students?.[0]
+  if (!student) return null
+
+  const subjectTiers: SubjectTier[] = (student.readiness ?? []).map((r) => ({
+    subject: r.subject,
+    tier: readinessLabelToTier(r.readinessLabel),
+  }))
+
+  const alerts: DashAlert[] = (student.attentionBySubject ?? [])
+    .filter((a) => a.count > 0)
+    .slice(0, 3)
+    .map((a, i) => ({
+      id: `alert-${i}`,
+      message: `${a.subject}: ${a.count} topic${a.count > 1 ? 's' : ''} need attention`,
+      severity: a.count >= 3 ? ('critical' as const) : ('warning' as const),
+    }))
+
+  const streak =
+    student.weekly && student.weekly.length > 0
+      ? student.weekly.filter((w) => (w.sessionsCount ?? 0) > 0).length
+      : 0
+
+  const readinessScores = (student.readiness ?? []).map((r) => r.readinessScore)
+  const avgScore =
+    readinessScores.length > 0
+      ? readinessScores.reduce((a, b) => a + b, 0) / readinessScores.length
+      : 0
+  const overallTierMap: Record<string, TierKey> = {
+    ready: 'strong', on_track: 'ontrack', needs_work: 'weak', not_started: 'critical',
+  }
+  let overallTier: TierKey = 'fair'
+  if (avgScore >= 80) overallTier = 'strong'
+  else if (avgScore >= 65) overallTier = 'ontrack'
+  else if (avgScore >= 40) overallTier = 'fair'
+  else if (avgScore >= 20) overallTier = 'weak'
+  else overallTier = 'critical'
+
+  return {
+    childName: student.studentName,
+    grade: student.grade ?? '',
+    streak,
+    overallTier,
+    subjectTiers,
+    upcomingSessions: [],
+    alerts,
+    isPremium: false,
+  }
+}
+
 // --- Sub-components ---
 
 function LoadingState() {
@@ -119,8 +198,10 @@ export default function ParentDashboardPage() {
     try {
       const res = await fetch('/api/parent/dashboard')
       if (!res.ok) throw new Error('Failed to load dashboard')
-      const json = await res.json() as ParentDashboardData
-      setData(json)
+      const raw = await res.json() as ApiDashboardResponse
+      const adapted = adaptApiResponse(raw)
+      if (!adapted) throw new Error('No linked student')
+      setData(adapted)
     } catch {
       setError('Could not load the dashboard. Tap to retry.')
     } finally {
@@ -137,8 +218,6 @@ export default function ParentDashboardPage() {
       <ErrorState title="Could not load dashboard" body={error ?? 'Please check your connection and try again.'} onRetry={fetchDashboard} />
     </div>
   )
-
-  // TODO: wire API -- /api/parent/dashboard returns ParentDashboardData
 
   if (data.subjectTiers.length === 0) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto">

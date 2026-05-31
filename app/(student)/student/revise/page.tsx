@@ -111,7 +111,6 @@ export default function RevisePage() {
     )
   }
 
-  // TODO: wire API -- /api/student/revise returns ReviseData
 
   const visibleDue = data.dueToday.filter(r => !snoozed.includes(r.id))
 

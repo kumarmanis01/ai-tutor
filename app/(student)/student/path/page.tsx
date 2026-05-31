@@ -77,8 +77,6 @@ export default function PathPage() {
     )
   }
 
-  // TODO: wire API -- /api/student/path returns PathData
-
   const topics = data.topics
 
   if (topics.length === 0) {

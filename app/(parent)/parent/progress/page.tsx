@@ -40,6 +40,48 @@ interface ParentProgressData {
   subjects: SubjectProgress[]
 }
 
+// --- API response adapter ---
+// /api/parent/progress returns { children: ParentProgressChild[] }
+// We take the first child and map to ParentProgressData.
+
+interface ApiSubject {
+  subjectName: string
+  readinessScore: number
+  daysToExam?: number | null
+  recentMasteryChange?: number | null
+}
+interface ApiChild {
+  name: string
+  subjects: ApiSubject[]
+}
+interface ApiProgressResponse {
+  children?: ApiChild[]
+}
+
+function readinessScoreToTier(score: number): TierKey {
+  if (score >= 80) return 'strong'
+  if (score >= 65) return 'ontrack'
+  if (score >= 40) return 'fair'
+  if (score >= 20) return 'weak'
+  return 'critical'
+}
+
+function adaptProgressResponse(raw: ApiProgressResponse): ParentProgressData | null {
+  const child = raw.children?.[0]
+  if (!child) return null
+
+  const subjects: SubjectProgress[] = (child.subjects ?? []).map((s) => ({
+    subject: s.subjectName,
+    tier: readinessScoreToTier(s.readinessScore),
+    topicsCompleted: 0,   // not returned by API; show as unknown
+    topicsTotal: 0,
+    weeklyActivity: Array(7).fill(0) as number[],
+    recentSessions: [],
+  }))
+
+  return { childName: child.name, subjects }
+}
+
 // --- Sub-components ---
 
 function LoadingState() {
@@ -153,8 +195,10 @@ export default function ParentProgressPage() {
     try {
       const res = await fetch('/api/parent/progress')
       if (!res.ok) throw new Error('Failed to load progress')
-      const json = await res.json() as ParentProgressData
-      setData(json)
+      const raw = await res.json() as ApiProgressResponse
+      const adapted = adaptProgressResponse(raw)
+      if (!adapted) throw new Error('No linked student')
+      setData(adapted)
     } catch {
       setError('Could not load progress. Tap to retry.')
     } finally {
@@ -171,8 +215,6 @@ export default function ParentProgressPage() {
       <ErrorState title="Could not load progress" body={error ?? 'Please check your connection and try again.'} onRetry={fetchProgress} />
     </div>
   )
-
-  // TODO: wire API -- /api/parent/progress returns ParentProgressData
 
   if (data.subjects.length === 0) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto">
