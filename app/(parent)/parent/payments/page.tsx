@@ -36,11 +36,11 @@ const STATUS_STYLE: Record<PaymentStatus, { bg: string; color: string; label: st
 
 function LoadingState() {
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ height: 24, width: 100, borderRadius: 8, background: 'var(--surface-3)' }} />
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="h-6 w-[100px] rounded-lg bg-[var(--surface-3)]" />
       </div>
-      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="px-4 pt-[14px] flex flex-col gap-3">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -74,7 +74,7 @@ export default function ParentPaymentsPage() {
 
   if (isLoading) return <LoadingState />
   if (error) return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', padding: 16 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
       <ErrorState title="Could not load billing" body="Please check your connection and try again." onRetry={() => {}} />
     </div>
   )
@@ -82,31 +82,31 @@ export default function ParentPaymentsPage() {
   const emiFailed = data.emiStatus === 'failed'
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
       {/* Header */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>Billing</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Plan and payment history</div>
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="text-[18px] font-extrabold tracking-[-0.02em] text-[var(--text)]">Billing</div>
+        <div className="text-[12px] text-[var(--text-muted)] mt-[2px]">Plan and payment history</div>
       </div>
 
-      <div style={{ padding: '14px 16px 24px' }}>
+      <div className="px-4 pt-[14px] pb-6">
         {/* Active plan card */}
-        <div style={{ borderRadius: 20, padding: 18, background: 'linear-gradient(135deg, var(--brand-600, #4338ca), var(--brand-800, #312e81))', color: '#fff', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', right: -16, top: -16, opacity: 0.14 }}>
+        <div className="rounded-[20px] p-[18px] [background:linear-gradient(135deg,var(--brand-600,#4338ca),var(--brand-800,#312e81))] text-white mb-4 relative overflow-hidden">
+          <div className="absolute right-[-16px] top-[-16px] opacity-[0.14]">
             <CrownIcon size={100} />
           </div>
-          <div style={{ position: 'relative' }}>
-            <div style={{ fontSize: 11, opacity: 0.85, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Active plan</div>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 14 }}>{data.currentPlan}</div>
-            <div style={{ display: 'flex', gap: 24 }}>
+          <div className="relative">
+            <div className="text-[11px] opacity-[0.85] font-bold uppercase tracking-[0.06em] mb-1">Active plan</div>
+            <div className="text-[22px] font-extrabold tracking-[-0.02em] mb-[14px]">{data.currentPlan}</div>
+            <div className="flex gap-6">
               <div>
-                <div style={{ fontSize: 11, opacity: 0.8 }}>Monthly</div>
-                <Mono style={{ fontSize: 16, fontWeight: 700 }}>{formatINR(data.planPrice)}</Mono>
+                <div className="text-[11px] opacity-[0.8]">Monthly</div>
+                <Mono className="text-[16px] font-bold">{formatINR(data.planPrice)}</Mono>
               </div>
               {data.nextBillingDate && (
                 <div>
-                  <div style={{ fontSize: 11, opacity: 0.8 }}>Next billing</div>
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>
+                  <div className="text-[11px] opacity-[0.8]">Next billing</div>
+                  <div className="text-[14px] font-bold">
                     {data.nextBillingDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                   </div>
                 </div>
@@ -117,12 +117,12 @@ export default function ParentPaymentsPage() {
 
         {/* EMI failed banner */}
         {emiFailed && (
-          <Card pad={16} style={{ marginBottom: 16, border: '1.5px solid var(--tier-critical)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <Card pad={16} className="mb-4 border-[1.5px] border-[var(--tier-critical)]">
+            <div className="flex items-center gap-[10px] mb-[10px]">
               <AlertIcon size={18} style={{ color: 'var(--tier-critical)', flexShrink: 0 }} />
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Payment could not be processed</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <div className="text-[14px] font-bold text-[var(--text)]">Payment could not be processed</div>
+                <div className="text-[12px] text-[var(--text-muted)]">
                   Your {data.failedAmount ? formatINR(data.failedAmount) : ''} instalment was declined. Retry to keep Premium active.
                 </div>
               </div>
@@ -135,11 +135,11 @@ export default function ParentPaymentsPage() {
 
         {/* EMI active info */}
         {data.emiStatus === 'active' && !emiFailed && (
-          <Card pad={14} style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Card pad={14} className="mb-4 flex items-center gap-3">
             <ClockIcon size={20} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>EMI plan active</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Split into 3 monthly instalments of {formatINR(data.failedAmount ?? 133)}</div>
+            <div className="flex-1">
+              <div className="text-[13px] font-semibold text-[var(--text)]">EMI plan active</div>
+              <div className="text-[12px] text-[var(--text-muted)]">Split into 3 monthly instalments of {formatINR(data.failedAmount ?? 133)}</div>
             </div>
             <CheckCircleIcon size={18} style={{ color: 'var(--tier-strong)' }} />
           </Card>
@@ -156,29 +156,32 @@ export default function ParentPaymentsPage() {
             onAction={() => {}}
           />
         ) : (
-          <Card pad={0} style={{ overflow: 'hidden' }}>
+          <Card pad={0} className="overflow-hidden">
             {data.billingHistory.map((inv, i) => {
               const st = STATUS_STYLE[inv.status]
               return (
                 <div
                   key={inv.id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, borderBottom: i < data.billingHistory.length - 1 ? '1px solid var(--border)' : 'none' }}
+                  className={['flex items-center gap-3 p-[14px]', i < data.billingHistory.length - 1 ? 'border-b border-[var(--border)]' : ''].join(' ')}
                 >
                   <CardIcon size={19} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{inv.description}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8 }}>
-                      <Mono style={{ fontWeight: 600 }}>{formatINR(inv.amount)}</Mono>
+                  <div className="flex-1">
+                    <div className="text-[14px] font-semibold text-[var(--text)]">{inv.description}</div>
+                    <div className="text-[12px] text-[var(--text-muted)] flex gap-2">
+                      <Mono className="font-semibold">{formatINR(inv.amount)}</Mono>
                       <span>{inv.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, padding: '3px 9px', borderRadius: 99 }}>
+                  <span
+                    className="text-[11px] font-bold px-[9px] py-[3px] rounded-full"
+                    style={{ color: st.color, background: st.bg }}
+                  >
                     {st.label}
                   </span>
                   {inv.status === 'paid' && (
                     <button
                       aria-label="Download invoice"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: 6, minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      className="bg-transparent border-0 cursor-pointer text-[var(--primary)] p-[6px] min-h-[44px] min-w-[44px] flex items-center justify-center"
                       onClick={() => {}}
                     >
                       <DownloadIcon size={18} />

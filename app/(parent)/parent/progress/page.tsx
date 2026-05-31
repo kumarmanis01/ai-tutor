@@ -42,11 +42,11 @@ interface ParentProgressData {
 
 function LoadingState() {
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ height: 24, width: 140, borderRadius: 8, background: 'var(--surface-3)' }} />
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="h-6 w-[140px] rounded-lg bg-[var(--surface-3)]" />
       </div>
-      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="px-4 pt-[14px] flex flex-col gap-3">
         <SkeletonCard />
         <SkeletonCard />
         <SkeletonCard />
@@ -61,39 +61,39 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
   const progressPct = s.topicsTotal > 0 ? Math.round((s.topicsCompleted / s.topicsTotal) * 100) : 0
 
   return (
-    <Card pad={16} style={{ marginBottom: 12 }}>
+    <Card pad={16} className="mb-3">
       {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{s.subject}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{PARENT_TIER_LABEL[s.tier]}</div>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1">
+          <div className="text-[15px] font-bold text-[var(--text)]">{s.subject}</div>
+          <div className="text-[12px] text-[var(--text-muted)] mt-[2px]">{PARENT_TIER_LABEL[s.tier]}</div>
         </div>
         <TierPill tier={s.tier} size="sm" />
       </div>
 
       {/* Progress bar */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Topics covered</span>
-          <Mono style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{s.topicsCompleted}/{s.topicsTotal}</Mono>
+      <div className="mb-3">
+        <div className="flex justify-between mb-[6px]">
+          <span className="text-[12px] text-[var(--text-muted)]">Topics covered</span>
+          <Mono className="text-[12px] text-[var(--text-muted)] font-semibold">{s.topicsCompleted}/{s.topicsTotal}</Mono>
         </div>
-        <div style={{ height: 6, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progressPct}%`, background: 'var(--primary)', borderRadius: 99 }} />
+        <div className="h-[6px] rounded-full bg-[var(--surface-2)] overflow-hidden">
+          <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${progressPct}%` }} />
         </div>
       </div>
 
       {/* Weekly activity bars */}
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Activity this week</div>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end' }}>
+      <div className="mb-[10px]">
+        <div className="text-[12px] text-[var(--text-muted)] mb-[6px]">Activity this week</div>
+        <div className="flex gap-1 items-end">
           {s.weeklyActivity.map((v, i) => {
             const pct = maxActivity > 0 ? (v / maxActivity) * 100 : 0
             return (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: '100%', height: 36, borderRadius: 6, background: 'var(--surface-2)', display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
-                  <div style={{ width: '100%', height: `${pct}%`, background: 'var(--primary)', borderRadius: 6 }} />
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full h-9 rounded-[6px] bg-[var(--surface-2)] flex items-end overflow-hidden">
+                  <div className="w-full rounded-[6px] bg-[var(--primary)]" style={{ height: `${pct}%` }} />
                 </div>
-                <span style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 600 }}>{DAY_LABELS[i]}</span>
+                <span className="text-[9px] text-[var(--text-faint)] font-semibold">{DAY_LABELS[i]}</span>
               </div>
             )
           })}
@@ -105,18 +105,21 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
         <>
           <button
             onClick={() => setExpanded(e => !e)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', paddingTop: 10, borderTop: '1px solid var(--border)', minHeight: 44, fontFamily: 'var(--font-sans)' }}
+            className="flex items-center justify-between w-full bg-transparent border-0 cursor-pointer pt-[10px] border-t border-[var(--border)] min-h-[44px] [font-family:var(--font-sans)]"
           >
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>Recent sessions</span>
-            <ChevRightIcon size={16} style={{ color: 'var(--primary)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
+            <span className="text-[13px] font-semibold text-[var(--primary)]">Recent sessions</span>
+            <ChevRightIcon
+              size={16}
+              style={{ color: 'var(--primary)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }}
+            />
           </button>
           {expanded && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="mt-2 flex flex-col gap-2">
               {s.recentSessions.map((r, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{r.concept}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <div key={i} className="flex items-center gap-[10px] px-3 py-[10px] rounded-[10px] bg-[var(--surface-2)]">
+                  <div className="flex-1">
+                    <div className="text-[13px] font-semibold text-[var(--text)]">{r.concept}</div>
+                    <div className="text-[11px] text-[var(--text-muted)]">
                       {r.completedAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </div>
                   </div>
@@ -184,15 +187,15 @@ export default function ParentProgressPage() {
 
   if (isLoading) return <LoadingState />
   if (error) return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', padding: 16 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
       <ErrorState title="Could not load progress" body="Please check your connection and try again." onRetry={() => {}} />
     </div>
   )
 
   if (data.subjects.length === 0) return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto' }}>
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>How {data.childName} is doing</div>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto">
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="text-[18px] font-extrabold text-[var(--text)]">How {data.childName} is doing</div>
       </div>
       <EmptyState
         icon="target"
@@ -205,17 +208,17 @@ export default function ParentProgressPage() {
   )
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
       {/* Header */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>How {data.childName} is doing</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="text-[18px] font-extrabold tracking-[-0.02em] text-[var(--text)]">How {data.childName} is doing</div>
+        <div className="text-[12px] text-[var(--text-muted)] mt-[2px] flex items-center gap-1">
           <TrendIcon size={13} style={{ color: 'var(--tier-strong)' }} />
           Subject-by-subject breakdown
         </div>
       </div>
 
-      <div style={{ padding: '14px 16px 24px' }}>
+      <div className="px-4 pt-[14px] pb-6">
         <SectionTitle>By subject</SectionTitle>
         {data.subjects.map(s => (
           <SubjectCard key={s.subject} s={s} />

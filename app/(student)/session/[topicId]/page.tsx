@@ -50,19 +50,9 @@ interface SessionData {
   status: 'loading' | 'notes' | 'question' | 'completed' | 'error' | 'no-content'
 }
 
-const ROOT_STYLE: React.CSSProperties = {
-  background: 'var(--bg)',
-  minHeight: '100vh',
-  maxWidth: 390,
-  margin: '0 auto',
-  display: 'flex',
-  flexDirection: 'column',
-  height: '100vh',
-}
-
 function StepKicker({ text }: { text: string }) {
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+    <div className="inline-flex items-center gap-[6px] text-[11.5px] font-bold text-[var(--primary)] uppercase tracking-[0.05em] mb-3">
       {text}
     </div>
   )
@@ -72,12 +62,12 @@ function ObjectiveStep({ step }: { step: StepObjective }) {
   return (
     <div>
       <StepKicker text="Lesson" />
-      <h1 style={{ margin: '0 0 18px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--text)' }}>{step.title}</h1>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <h1 className="m-0 mb-[18px] text-[24px] font-extrabold tracking-[-0.03em] leading-[1.15] text-[var(--text)]">{step.title}</h1>
+      <div className="flex flex-col gap-3">
         {step.points.map((p, i) => (
-          <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 14, borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div style={{ width: 28, height: 28, borderRadius: 9, background: 'var(--primary-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{i + 1}</div>
-            <span style={{ fontSize: 14.5, fontWeight: 500, lineHeight: 1.35, color: 'var(--text)' }}>{p}</span>
+          <div key={i} className="flex gap-3 items-center p-[14px] rounded-[14px] bg-[var(--surface)] border border-[var(--border)]">
+            <div className="w-7 h-7 rounded-[9px] bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center [font-family:var(--font-mono)] font-bold text-[13px] shrink-0">{i + 1}</div>
+            <span className="text-[14.5px] font-medium leading-[1.35] text-[var(--text)]">{p}</span>
           </div>
         ))}
       </div>
@@ -89,22 +79,22 @@ function NoteStep({ step, onAsk }: { step: StepNote; onAsk: () => void }) {
   return (
     <div>
       <StepKicker text="Notes" />
-      <h2 style={{ margin: '0 0 16px', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2, color: 'var(--text)' }}>{step.title}</h2>
-      {step.body && <p style={{ margin: '0 0 16px', fontSize: 15.5, lineHeight: 1.55, color: 'var(--text)' }}>{step.body}</p>}
+      <h2 className="m-0 mb-4 text-[21px] font-extrabold tracking-[-0.02em] leading-[1.2] text-[var(--text)]">{step.title}</h2>
+      {step.body && <p className="m-0 mb-4 text-[15.5px] leading-[1.55] text-[var(--text)]">{step.body}</p>}
       {step.formula && (
-        <div style={{ padding: '18px', borderRadius: 16, background: 'var(--surface-2)', border: '1px dashed var(--border)', textAlign: 'center', marginBottom: 16 }}>
-          <Mono style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)' }}>{step.formula}</Mono>
+        <div className="p-[18px] rounded-2xl bg-[var(--surface-2)] border border-dashed border-[var(--border)] text-center mb-4">
+          <Mono className="text-[22px] font-bold text-[var(--primary)]">{step.formula}</Mono>
         </div>
       )}
       {step.callout && (
-        <div style={{ display: 'flex', gap: 11, padding: 14, borderRadius: 14, background: 'var(--primary-soft)' }}>
-          <span style={{ fontSize: 18, flexShrink: 0 }}>💡</span>
-          <span style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--text)' }}>{step.callout}</span>
+        <div className="flex gap-[11px] p-[14px] rounded-[14px] bg-[var(--primary-soft)]">
+          <span className="text-[18px] shrink-0">💡</span>
+          <span className="text-[13.5px] leading-[1.45] text-[var(--text)]">{step.callout}</span>
         </div>
       )}
       <button
         onClick={onAsk}
-        style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '12px 14px', borderRadius: 12, background: 'transparent', border: '1px dashed var(--border)', cursor: 'pointer', color: 'var(--primary)', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, minHeight: 44 }}
+        className="mt-[18px] flex items-center gap-2 w-full px-[14px] py-3 rounded-xl bg-transparent border border-dashed border-[var(--border)] cursor-pointer text-[var(--primary)] [font-family:var(--font-sans)] text-[13px] font-semibold min-h-[44px]"
       >
         💬 Confused? Ask Vidya about this
       </button>
@@ -118,41 +108,57 @@ function QuestionStep({ step }: { step: StepQuestion }) {
   return (
     <div>
       <StepKicker text="Quick check" />
-      <h2 style={{ margin: '0 0 22px', fontSize: 19, fontWeight: 700, lineHeight: 1.4, letterSpacing: '-0.01em', color: 'var(--text)' }}>{step.text}</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+      <h2 className="m-0 mb-[22px] text-[19px] font-bold leading-[1.4] tracking-[-0.01em] text-[var(--text)]">{step.text}</h2>
+      <div className="flex flex-col gap-[11px]">
         {step.options.map((opt, i) => {
           const isPick = picked === i
           const isCorrect = i === step.correctIndex
-          let bg = 'var(--surface)', bd = 'var(--border)'
-          if (revealed) {
-            if (isCorrect) { bg = 'var(--tier-strong-soft)'; bd = 'var(--tier-strong)' }
-            else if (isPick) { bg = 'var(--tier-critical-soft)'; bd = 'var(--tier-critical)' }
-          } else if (isPick) { bg = 'var(--primary-soft)'; bd = 'var(--primary)' }
+          const bg = revealed
+            ? isCorrect ? 'bg-[var(--tier-strong-soft)]' : isPick ? 'bg-[var(--tier-critical-soft)]' : 'bg-[var(--surface)]'
+            : isPick ? 'bg-[var(--primary-soft)]' : 'bg-[var(--surface)]'
+          const bd = revealed
+            ? isCorrect ? 'border-[var(--tier-strong)]' : isPick ? 'border-[var(--tier-critical)]' : 'border-[var(--border)]'
+            : isPick ? 'border-[var(--primary)]' : 'border-[var(--border)]'
+          const badgeBg = isPick && !revealed
+            ? 'bg-[var(--primary)]'
+            : revealed && isCorrect
+              ? 'bg-[var(--tier-strong)]'
+              : revealed && isPick
+                ? 'bg-[var(--tier-critical)]'
+                : 'bg-[var(--surface-2)]'
+          const badgeColor = (isPick && !revealed) || (revealed && (isCorrect || isPick)) ? 'text-white' : 'text-[var(--text-muted)]'
           return (
             <button
               key={i}
               disabled={revealed}
               onClick={() => setPicked(i)}
-              style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '15px 16px', borderRadius: 15, cursor: revealed ? 'default' : 'pointer', textAlign: 'left', background: bg, border: `1.5px solid ${bd}`, transition: 'all .15s', minHeight: 44 }}
+              className={[
+                'flex items-center gap-[13px] px-4 py-[15px] rounded-[15px] text-left transition-all duration-150 min-h-[44px]',
+                revealed ? 'cursor-default' : 'cursor-pointer',
+                bg, 'border-[1.5px]', bd,
+              ].join(' ')}
             >
-              <div style={{ width: 27, height: 27, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 12.5, background: isPick && !revealed ? 'var(--primary)' : revealed && isCorrect ? 'var(--tier-strong)' : revealed && isPick ? 'var(--tier-critical)' : 'var(--surface-2)', color: (isPick && !revealed) || (revealed && (isCorrect || isPick)) ? '#fff' : 'var(--text-muted)' }}>{String.fromCharCode(65 + i)}</div>
-              <span style={{ flex: 1, fontSize: 14.5, fontWeight: 500, color: 'var(--text)' }}>{opt}</span>
-              {revealed && isCorrect && <span style={{ color: 'var(--tier-strong)', fontWeight: 700 }}>✓</span>}
-              {revealed && isPick && !isCorrect && <span style={{ color: 'var(--tier-critical)', fontWeight: 700 }}>✗</span>}
+              <div className={['w-[27px] h-[27px] rounded-[9px] shrink-0 flex items-center justify-center [font-family:var(--font-mono)] font-bold text-[12.5px]', badgeBg, badgeColor].join(' ')}>{String.fromCharCode(65 + i)}</div>
+              <span className="flex-1 text-[14.5px] font-medium text-[var(--text)]">{opt}</span>
+              {revealed && isCorrect && <span className="text-[var(--tier-strong)] font-bold">✓</span>}
+              {revealed && isPick && !isCorrect && <span className="text-[var(--tier-critical)] font-bold">✗</span>}
             </button>
           )
         })}
       </div>
       {!revealed ? (
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-4">
           <Btn full variant="secondary" disabled={picked === null} onClick={() => setRevealed(true)}>Check answer</Btn>
         </div>
       ) : (
-        <div style={{ marginTop: 16, padding: 14, borderRadius: 14, background: picked === step.correctIndex ? 'var(--tier-strong-soft)' : 'var(--primary-soft)', display: 'flex', gap: 11 }}>
-          <span style={{ fontSize: 18, flexShrink: 0 }}>{picked === step.correctIndex ? '✅' : '💡'}</span>
+        <div className={[
+          'mt-4 p-[14px] rounded-[14px] flex gap-[11px]',
+          picked === step.correctIndex ? 'bg-[var(--tier-strong-soft)]' : 'bg-[var(--primary-soft)]',
+        ].join(' ')}>
+          <span className="text-[18px] shrink-0">{picked === step.correctIndex ? '✅' : '💡'}</span>
           <div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 2, color: 'var(--text)' }}>{picked === step.correctIndex ? 'Correct!' : 'Not quite'}</div>
-            <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--text)' }}>{step.explanation}</div>
+            <div className="text-[13.5px] font-bold mb-[2px] text-[var(--text)]">{picked === step.correctIndex ? 'Correct!' : 'Not quite'}</div>
+            <div className="text-[13px] leading-[1.45] text-[var(--text)]">{step.explanation}</div>
           </div>
         </div>
       )}
@@ -162,19 +168,19 @@ function QuestionStep({ step }: { step: StepQuestion }) {
 
 function SummaryStep({ step }: { step: StepSummary }) {
   return (
-    <div style={{ textAlign: 'center', paddingTop: 12 }}>
-      <div style={{ width: 76, height: 76, borderRadius: 24, background: 'var(--tier-strong-soft)', color: 'var(--tier-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: 40 }}>✓</div>
-      <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)' }}>{step.title}</h1>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'var(--primary-soft)', color: 'var(--primary)', fontSize: 13, fontWeight: 700, marginBottom: 24 }}>
+    <div className="text-center pt-3">
+      <div className="w-[76px] h-[76px] rounded-3xl bg-[var(--tier-strong-soft)] text-[var(--tier-strong)] flex items-center justify-center mx-auto mb-[18px] text-[40px]">✓</div>
+      <h1 className="m-0 mb-2 text-[24px] font-extrabold tracking-[-0.03em] text-[var(--text)]">{step.title}</h1>
+      <div className="inline-flex items-center gap-[6px] px-[14px] py-[6px] rounded-full bg-[var(--primary-soft)] text-[var(--primary)] text-[13px] font-bold mb-6">
         ⚡ +{step.xp} XP earned
       </div>
-      <div style={{ textAlign: 'left', padding: 16, borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Key takeaways</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+      <div className="text-left p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
+        <div className="text-[12px] font-bold text-[var(--text-muted)] uppercase tracking-[0.05em] mb-3">Key takeaways</div>
+        <div className="flex flex-col gap-[11px]">
           {step.points.map((p, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ color: 'var(--tier-strong)', flexShrink: 0, marginTop: 2, fontWeight: 700 }}>✓</span>
-              <span style={{ fontSize: 14, lineHeight: 1.4, color: 'var(--text)' }}>{p}</span>
+            <div key={i} className="flex gap-[10px] items-start">
+              <span className="text-[var(--tier-strong)] shrink-0 mt-[2px] font-bold">✓</span>
+              <span className="text-[14px] leading-[1.4] text-[var(--text)]">{p}</span>
             </div>
           ))}
         </div>
@@ -245,14 +251,14 @@ export default function SessionPage({ params }: { params: { topicId: string } })
   // Loading
   if (sessionStatus === 'loading') {
     return (
-      <div style={ROOT_STYLE}>
-        <div style={{ padding: 20 }}>
-          <Skel w={120} h={14} style={{ marginBottom: 16, marginTop: 8 }} />
-          <Skel h={6} r={99} style={{ marginBottom: 24 }} />
-          <Skel w="70%" h={22} style={{ marginBottom: 18 }} />
-          <Skel h={120} r={16} style={{ marginBottom: 14 }} />
-          <Skel h={90} r={16} style={{ marginBottom: 14 }} />
-          <Skel w="90%" h={14} style={{ marginBottom: 8 }} />
+      <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col h-screen">
+        <div className="p-5">
+          <Skel w={120} h={14} className="mb-4 mt-2" />
+          <Skel h={6} r={99} className="mb-6" />
+          <Skel w="70%" h={22} className="mb-[18px]" />
+          <Skel h={120} r={16} className="mb-[14px]" />
+          <Skel h={90} r={16} className="mb-[14px]" />
+          <Skel w="90%" h={14} className="mb-2" />
           <Skel w="60%" h={14} />
         </div>
       </div>
@@ -262,22 +268,22 @@ export default function SessionPage({ params }: { params: { topicId: string } })
   // No content
   if (sessionStatus === 'no-content') {
     return (
-      <div style={ROOT_STYLE}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 16px', minHeight: 44 }}>
-          <button onClick={() => router.back()} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text)', minWidth: 44, minHeight: 44 }}>‹</button>
+      <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col h-screen">
+        <div className="flex items-center gap-[10px] px-4 py-[6px] min-h-[44px]">
+          <button onClick={() => router.back()} className="bg-[var(--surface-2)] border border-[var(--border)] w-[38px] h-[38px] rounded-[10px] flex items-center justify-center cursor-pointer text-[var(--text)] min-w-[44px] min-h-[44px]">‹</button>
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: 28 }}>
-          <div style={{ width: 80, height: 80, borderRadius: 26, background: 'var(--primary-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', marginBottom: 22, fontSize: 38 }}>✨</div>
-          <div style={{ marginBottom: 8 }}><SubjectChip subject={subject} size="sm" /></div>
-          <h1 style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>{concept}</h1>
-          <p style={{ margin: 0, fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 290 }}>
+        <div className="flex-1 flex flex-col justify-center items-center text-center p-7">
+          <div className="w-20 h-20 rounded-[26px] bg-[var(--primary-soft)] flex items-center justify-center text-[var(--primary)] mb-[22px] text-[38px]">✨</div>
+          <div className="mb-2"><SubjectChip subject={subject} size="sm" /></div>
+          <h1 className="m-0 mb-[10px] text-[22px] font-extrabold tracking-[-0.02em] text-[var(--text)]">{concept}</h1>
+          <p className="m-0 text-[14.5px] text-[var(--text-muted)] leading-[1.5] max-w-[290px]">
             A guided lesson is not ready for this topic yet -- but Vidya can teach it to you live, right now.
           </p>
-          <div style={{ display: 'flex', gap: 8, marginTop: 18, padding: '10px 14px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)', alignItems: 'center' }}>
-            <span style={{ fontSize: 14 }}>ℹ</span>
-            <Mono style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>notes + practice · generating</Mono>
+          <div className="flex gap-2 mt-[18px] px-[14px] py-[10px] rounded-xl bg-[var(--surface-2)] border border-[var(--border)] items-center">
+            <span className="text-[14px]">ℹ</span>
+            <Mono className="text-[11.5px] text-[var(--text-muted)]">notes + practice · generating</Mono>
           </div>
-          <div style={{ width: '100%', maxWidth: 300, marginTop: 26 }}>
+          <div className="w-full max-w-[300px] mt-[26px]">
             <Btn full size="lg" onClick={() => router.push('/student/tutor')}>Learn with Vidya chat</Btn>
           </div>
         </div>
@@ -288,34 +294,41 @@ export default function SessionPage({ params }: { params: { topicId: string } })
   // Error
   if (sessionStatus === 'error') {
     return (
-      <div style={{ ...ROOT_STYLE, justifyContent: 'center' }}>
+      <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col h-screen justify-center">
         <ErrorState onRetry={() => router.refresh()} />
       </div>
     )
   }
 
   return (
-    <div style={{ ...ROOT_STYLE, position: 'relative' }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col h-screen relative">
       {/* Lesson header */}
-      <div style={{ padding: '6px 14px 12px', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <button onClick={back} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text)', flexShrink: 0, minWidth: 44, minHeight: 44 }}>‹</button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text)' }}>{concept}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+      <div className="px-[14px] pt-[6px] pb-3 bg-[var(--surface)] border-b border-[var(--border)]">
+        <div className="flex items-center gap-[10px] mb-[10px]">
+          <button onClick={back} className="bg-[var(--surface-2)] border border-[var(--border)] w-[34px] h-[34px] rounded-[10px] flex items-center justify-center cursor-pointer text-[var(--text)] shrink-0 min-w-[44px] min-h-[44px]">‹</button>
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-bold tracking-[-0.01em] leading-[1.2] whitespace-nowrap overflow-hidden text-ellipsis text-[var(--text)]">{concept}</div>
+            <div className="flex items-center gap-[6px] mt-[2px]">
               <SubjectChip subject={subject} size="sm" />
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="flex gap-1">
           {steps.map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 4, borderRadius: 99, background: i <= idx ? 'var(--primary)' : 'var(--surface-3)', opacity: i === idx ? 1 : i < idx ? 1 : 0.6, transition: 'all .3s' }} />
+            <div
+              key={i}
+              className={[
+                'flex-1 h-1 rounded-full transition-all duration-300',
+                i <= idx ? 'bg-[var(--primary)]' : 'bg-[var(--surface-3)]',
+                i === idx ? 'opacity-100' : i < idx ? 'opacity-100' : 'opacity-60',
+              ].join(' ')}
+            />
           ))}
         </div>
       </div>
 
       {/* Step body */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 18px 96px' }}>
+      <div className="flex-1 overflow-auto px-[18px] pt-5 pb-24">
         {step.type === 'objective' && <ObjectiveStep step={step} />}
         {step.type === 'note' && <NoteStep step={step} onAsk={() => setAskOpen(true)} />}
         {step.type === 'question' && <QuestionStep step={step} />}
@@ -323,15 +336,15 @@ export default function SessionPage({ params }: { params: { topicId: string } })
       </div>
 
       {/* Footer nav */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 18px 26px', background: 'color-mix(in oklch, var(--surface) 92%, transparent)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderTop: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="absolute bottom-0 left-0 right-0 px-[18px] pt-3 pb-[26px] [background:color-mix(in_oklch,var(--surface)_92%,transparent)] [backdrop-filter:blur(16px)] [-webkit-backdrop-filter:blur(16px)] border-t border-[var(--border)]">
+        <div className="flex items-center gap-[10px]">
           <button
             onClick={() => setAskOpen(true)}
             title="Ask Vidya about this topic"
-            style={{ width: 50, height: 50, borderRadius: 15, background: 'var(--primary-soft)', border: '1px solid color-mix(in oklch, var(--primary) 30%, transparent)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--primary)', flexShrink: 0, gap: 1 }}
+            className="w-[50px] h-[50px] rounded-[15px] bg-[var(--primary-soft)] border border-[color-mix(in_oklch,var(--primary)_30%,transparent)] flex flex-col items-center justify-center cursor-pointer text-[var(--primary)] shrink-0 gap-[1px]"
           >
-            <span style={{ fontSize: 18 }}>💬</span>
-            <span style={{ fontSize: 8, fontWeight: 700 }}>Ask</span>
+            <span className="text-[18px]">💬</span>
+            <span className="text-[8px] font-bold">Ask</span>
           </button>
           <Btn full size="lg" onClick={next}>
             {isLast ? 'Finish lesson' : 'Continue'}
@@ -341,15 +354,15 @@ export default function SessionPage({ params }: { params: { topicId: string } })
 
       {/* Ask Vidya sheet (simple) */}
       {askOpen && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-          <div onClick={() => setAskOpen(false)} style={{ position: 'absolute', inset: 0, background: 'var(--overlay)' }} />
-          <div style={{ position: 'relative', height: '50%', background: 'var(--surface)', borderRadius: '26px 26px 0 0', display: 'flex', flexDirection: 'column', padding: 20 }}>
-            <div style={{ width: 38, height: 4, borderRadius: 99, background: 'var(--border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: 'var(--text)' }}>Ask Vidya about this topic</div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Open a full Vidya session to ask questions about {concept}.</p>
+        <div className="absolute inset-0 z-[60] flex flex-col justify-end">
+          <div onClick={() => setAskOpen(false)} className="absolute inset-0 bg-[var(--overlay)]" />
+          <div className="relative h-1/2 bg-[var(--surface)] rounded-[26px_26px_0_0] flex flex-col p-5">
+            <div className="w-[38px] h-1 rounded-full bg-[var(--border)] mx-auto mb-4" />
+            <div className="text-[16px] font-bold mb-3 text-[var(--text)]">Ask Vidya about this topic</div>
+            <div className="flex-1 flex flex-col gap-2">
+              <p className="text-[14px] text-[var(--text-muted)] m-0">Open a full Vidya session to ask questions about {concept}.</p>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div className="flex gap-[10px]">
               <Btn variant="secondary" full onClick={() => setAskOpen(false)}>Close</Btn>
               <Btn full onClick={() => { setAskOpen(false); router.push('/student/tutor') }}>Open Vidya</Btn>
             </div>

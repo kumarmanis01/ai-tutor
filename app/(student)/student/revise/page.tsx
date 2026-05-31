@@ -18,23 +18,19 @@ interface ReviseProps {
   error?: string | null
 }
 
-const ROOT_STYLE: React.CSSProperties = {
-  background: 'var(--bg)',
-  minHeight: '100vh',
-  maxWidth: 390,
-  margin: '0 auto',
-  paddingBottom: 24,
-}
-
 function StrengthBar({ strength }: { strength: number }) {
   const color = strength < 0.4 ? 'var(--tier-critical)' : strength < 0.7 ? 'var(--tier-weak)' : 'var(--tier-strong)'
   const filled = Math.round(strength * 5)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>Memory</span>
-      <div style={{ display: 'flex', gap: 3 }}>
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] font-semibold text-[var(--text-muted)]">Memory</span>
+      <div className="flex gap-[3px]">
         {[0, 1, 2, 3, 4].map(i => (
-          <div key={i} style={{ width: 14, height: 6, borderRadius: 3, background: i < filled ? color : 'var(--surface-3)' }} />
+          <div
+            key={i}
+            className="w-[14px] h-[6px] rounded-[3px]"
+            style={{ background: i < filled ? color : 'var(--surface-3)' }}
+          />
         ))}
       </div>
     </div>
@@ -44,20 +40,20 @@ function StrengthBar({ strength }: { strength: number }) {
 function RevisionCard({ r, onRevise, onSnooze, upcoming }: { r: RevisionTopic; onRevise?: () => void; onSnooze?: () => void; upcoming?: boolean }) {
   return (
     <Card pad={14}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ marginBottom: 7 }}><SubjectChip subject={r.subject} size="sm" /></div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.3, marginBottom: 10, color: 'var(--text)' }}>{r.concept}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="mb-[7px]"><SubjectChip subject={r.subject} size="sm" /></div>
+          <div className="text-[14.5px] font-semibold leading-[1.3] mb-[10px] text-[var(--text)]">{r.concept}</div>
+          <div className="flex items-center gap-2">
             <StrengthBar strength={r.strength} />
             {upcoming && r.dueLabel && (
-              <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--text-faint)', fontWeight: 600 }}>{r.dueLabel}</span>
+              <span className="ml-auto text-[11.5px] text-[var(--text-faint)] font-semibold">{r.dueLabel}</span>
             )}
           </div>
         </div>
       </div>
       {!upcoming && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <div className="flex gap-2 mt-3">
           <Btn size="sm" full onClick={onRevise}>Revise now</Btn>
           <Btn size="sm" variant="secondary" onClick={onSnooze}>Snooze</Btn>
         </div>
@@ -88,9 +84,9 @@ export default function RevisePage(_props: ReviseProps) {
 
   if (isLoading) {
     return (
-      <div style={ROOT_STYLE}>
-        <div style={{ padding: '14px 20px 18px' }}><div style={{ height: 24, width: 120, borderRadius: 8, background: 'var(--skeleton-base)' }} /></div>
-        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-6">
+        <div className="px-5 pt-[14px] pb-[18px]"><div className="h-6 w-[120px] rounded-lg bg-[var(--skeleton-base)]" /></div>
+        <div className="px-4 flex flex-col gap-3">
           {[0, 1, 2].map(i => <SkeletonCard key={i} />)}
         </div>
       </div>
@@ -99,19 +95,19 @@ export default function RevisePage(_props: ReviseProps) {
 
   if (error) {
     return (
-      <div style={{ ...ROOT_STYLE, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '100vh' }}>
+      <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col justify-center">
         <ErrorState body={error} onRetry={() => {}} />
       </div>
     )
   }
 
   return (
-    <div style={ROOT_STYLE}>
-      <div style={{ padding: '8px 16px 12px' }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-6">
+      <div className="px-4 pt-2 pb-3">
         <AppHeader title="Revisions" sub="Spaced repetition keeps it stuck" large />
       </div>
 
-      <div style={{ padding: '0 16px 12px' }}>
+      <div className="px-4 pb-3">
         <Segmented
           full
           options={[
@@ -123,7 +119,7 @@ export default function RevisePage(_props: ReviseProps) {
         />
       </div>
 
-      <div style={{ padding: '0 16px 24px' }}>
+      <div className="px-4 pb-6">
         {tab === 'due' ? (
           visibleDue.length === 0 ? (
             <EmptyState
@@ -133,7 +129,7 @@ export default function RevisePage(_props: ReviseProps) {
               onAction={() => router.push('/student/path')}
             />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="flex flex-col gap-[10px]">
               {visibleDue.map(r => (
                 <RevisionCard
                   key={r.id}
@@ -153,7 +149,7 @@ export default function RevisePage(_props: ReviseProps) {
               onAction={() => router.push('/student/path')}
             />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="flex flex-col gap-[10px]">
               {upcomingTopics.map(r => <RevisionCard key={r.id} r={r} upcoming />)}
             </div>
           )

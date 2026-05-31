@@ -22,11 +22,11 @@ interface ParentProfileData {
 
 function LoadingState() {
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ height: 24, width: 100, borderRadius: 8, background: 'var(--surface-3)' }} />
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="h-6 w-[100px] rounded-lg bg-[var(--surface-3)]" />
       </div>
-      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="px-4 pt-[14px] flex flex-col gap-3">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -36,9 +36,9 @@ function LoadingState() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{value}</span>
+    <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--border)]">
+      <span className="text-[13px] text-[var(--text-muted)] font-medium">{label}</span>
+      <span className="text-[14px] font-semibold text-[var(--text)]">{value}</span>
     </div>
   )
 }
@@ -48,9 +48,13 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
     <button
       onClick={onChange}
       aria-label={on ? 'Turn off' : 'Turn on'}
-      style={{ width: 46, height: 28, borderRadius: 99, border: 'none', cursor: 'pointer', background: on ? 'var(--primary)' : 'var(--surface-3)', position: 'relative', transition: 'background .2s', flexShrink: 0, minHeight: 28, minWidth: 46 }}
+      className="relative shrink-0 min-h-[28px] min-w-[46px] w-[46px] h-[28px] rounded-full border-0 cursor-pointer transition-colors duration-200"
+      style={{ background: on ? 'var(--primary)' : 'var(--surface-3)' }}
     >
-      <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 22, height: 22, borderRadius: 99, background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.22)' }} />
+      <span
+        className="absolute top-[3px] w-[22px] h-[22px] rounded-full bg-white transition-all duration-200 [box-shadow:0_1px_3px_rgba(0,0,0,0.22)]"
+        style={{ left: on ? 21 : 3 }}
+      />
     </button>
   )
 }
@@ -66,11 +70,14 @@ function SettingRow({ icon, label, detail, danger, last, onClick }: {
   return (
     <button
       onClick={onClick}
-      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'none', border: 'none', borderBottom: last ? 'none' : '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)', minHeight: 44 }}
+      className={[
+        'w-full flex items-center gap-3 p-[14px] bg-transparent border-0 cursor-pointer text-left [font-family:var(--font-sans)] min-h-[44px]',
+        last ? '' : 'border-b border-[var(--border)]',
+      ].join(' ')}
     >
       <div style={{ color: danger ? 'var(--tier-critical)' : 'var(--text-muted)' }}>{icon}</div>
-      <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: danger ? 'var(--tier-critical)' : 'var(--text)' }}>{label}</span>
-      {detail && <span style={{ fontSize: 13, color: 'var(--text-faint)', fontWeight: 600 }}>{detail}</span>}
+      <span className={['flex-1 text-[14px] font-medium', danger ? 'text-[var(--tier-critical)]' : 'text-[var(--text)]'].join(' ')}>{label}</span>
+      {detail && <span className="text-[13px] text-[var(--text-faint)] font-semibold">{detail}</span>}
       {!danger && <ChevRightIcon size={16} style={{ color: 'var(--text-faint)' }} />}
     </button>
   )
@@ -97,7 +104,7 @@ export default function ParentProfilePage() {
 
   if (isLoading) return <LoadingState />
   if (error) return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', padding: 16 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
       <ErrorState title="Could not load profile" body="Please check your connection and try again." onRetry={() => {}} />
     </div>
   )
@@ -105,66 +112,66 @@ export default function ParentProfilePage() {
   const initials = data.parentName.charAt(0).toUpperCase()
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
       {/* Header */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>Settings</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Your account and preferences</div>
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="text-[18px] font-extrabold tracking-[-0.02em] text-[var(--text)]">Settings</div>
+        <div className="text-[12px] text-[var(--text-muted)] mt-[2px]">Your account and preferences</div>
       </div>
 
-      <div style={{ padding: '14px 16px 24px' }}>
+      <div className="px-4 pt-[14px] pb-6">
         {/* Identity hero */}
-        <Card pad={16} style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Card pad={16} className="mb-[18px] flex items-center gap-4">
           <Avatar letter={initials} hue={280} size={56} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{data.parentName}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{data.email}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{data.phone}</div>
+          <div className="flex-1">
+            <div className="text-[17px] font-extrabold text-[var(--text)]">{data.parentName}</div>
+            <div className="text-[12.5px] text-[var(--text-muted)] mt-[2px]">{data.email}</div>
+            <div className="text-[12.5px] text-[var(--text-muted)]">{data.phone}</div>
           </div>
         </Card>
 
         {/* Child info (display only -- immutable) */}
         <SectionTitle>Your child</SectionTitle>
-        <Card pad={0} style={{ overflow: 'hidden', marginBottom: 18 }}>
+        <Card pad={0} className="overflow-hidden mb-[18px]">
           <InfoRow label="Name" value={data.childName} />
           <InfoRow label="Grade" value={data.childGrade} />
           {/* grade/board immutable after first save -- strip from all PATCH handlers */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Board</span>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{data.childBoard}</span>
+          <div className="flex justify-between items-center px-4 py-3">
+            <span className="text-[13px] text-[var(--text-muted)] font-medium">Board</span>
+            <span className="text-[14px] font-semibold text-[var(--text)]">{data.childBoard}</span>
           </div>
         </Card>
 
         {/* Preferences */}
         <SectionTitle>Preferences</SectionTitle>
-        <Card pad={0} style={{ overflow: 'hidden', marginBottom: 18 }}>
+        <Card pad={0} className="overflow-hidden mb-[18px]">
           {/* Notifications toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, borderBottom: '1px solid var(--border)', minHeight: 44 }}>
+          <div className="flex items-center gap-3 p-[14px] border-b border-[var(--border)] min-h-[44px]">
             <BellIcon size={20} style={{ color: 'var(--text-muted)' }} />
-            <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>Progress notifications</span>
+            <span className="flex-1 text-[14px] font-medium text-[var(--text)]">Progress notifications</span>
             <Toggle on={notificationsOn} onChange={() => setNotificationsOn(v => !v)} />
           </div>
           {/* Dark mode toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, minHeight: 44 }}>
+          <div className="flex items-center gap-3 p-[14px] min-h-[44px]">
             {theme === 'dark'
               ? <MoonIcon size={20} style={{ color: 'var(--text-muted)' }} />
               : <SunIcon size={20} style={{ color: 'var(--text-muted)' }} />
             }
-            <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>Dark mode</span>
+            <span className="flex-1 text-[14px] font-medium text-[var(--text)]">Dark mode</span>
             <Toggle on={theme === 'dark'} onChange={toggle} />
           </div>
         </Card>
 
         {/* Account actions */}
         <SectionTitle>Account</SectionTitle>
-        <Card pad={0} style={{ overflow: 'hidden', marginBottom: 18 }}>
+        <Card pad={0} className="overflow-hidden mb-[18px]">
           <SettingRow icon={<UserIcon size={20} />} label="Edit profile" onClick={() => {}} />
           <SettingRow icon={<GearIcon size={20} />} label="Notification settings" onClick={() => {}} />
           <SettingRow icon={<ShieldIcon size={20} />} label="Privacy and consent" onClick={() => {}} />
           <SettingRow icon={<LogoutIcon size={20} />} label="Sign out" danger last onClick={() => router.push('/auth/signin')} />
         </Card>
 
-        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+        <div className="text-center text-[11px] text-[var(--text-faint)] [font-family:var(--font-mono)]">
           Spinzy Academy · v1.0.0
         </div>
       </div>

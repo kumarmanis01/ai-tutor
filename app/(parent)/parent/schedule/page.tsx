@@ -50,11 +50,11 @@ function isSameDay(a: Date, b: Date): boolean {
 
 function LoadingState() {
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ height: 24, width: 120, borderRadius: 8, background: 'var(--surface-3)' }} />
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="h-6 w-[120px] rounded-lg bg-[var(--surface-3)]" />
       </div>
-      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="px-4 pt-[14px] flex flex-col gap-3">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -66,24 +66,30 @@ function SessionRow({ session }: { session: ScheduleSession }) {
   const st = STATUS_STYLE[session.status]
   const StatusIcon = session.status === 'completed' ? CheckCircleIcon : session.status === 'missed' ? AlertIcon : CalendarIcon
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 14, borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: st.bg, color: st.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+    <div className="flex items-start gap-3 p-[14px] rounded-[14px] bg-[var(--surface)] border border-[var(--border)]">
+      <div
+        className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+        style={{ background: st.bg, color: st.color }}
+      >
         <StatusIcon size={18} />
       </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{session.concept}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{session.subject}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div className="flex-1">
+        <div className="text-[14px] font-bold text-[var(--text)] mb-[2px]">{session.concept}</div>
+        <div className="text-[12px] text-[var(--text-muted)] mb-[6px]">{session.subject}</div>
+        <div className="flex items-center gap-[10px]">
+          <div className="flex items-center gap-1">
             <ClockIcon size={12} style={{ color: 'var(--text-faint)' }} />
-            <Mono style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+            <Mono className="text-[11px] text-[var(--text-muted)] font-semibold">
               {session.scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
             </Mono>
           </div>
-          <Mono style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600 }}>{session.durationMinutes} min</Mono>
+          <Mono className="text-[11px] text-[var(--text-faint)] font-semibold">{session.durationMinutes} min</Mono>
         </div>
       </div>
-      <span style={{ fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>
+      <span
+        className="text-[11px] font-bold px-2 py-[3px] rounded-full whitespace-nowrap"
+        style={{ color: st.color, background: st.bg }}
+      >
         {st.label}
       </span>
     </div>
@@ -110,7 +116,7 @@ export default function ParentSchedulePage() {
 
   if (isLoading) return <LoadingState />
   if (error) return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', padding: 16 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
       <ErrorState title="Could not load schedule" body="Please check your connection and try again." onRetry={() => {}} />
     </div>
   )
@@ -118,16 +124,16 @@ export default function ParentSchedulePage() {
   const daySessions = sessions.filter(s => isSameDay(s.scheduledAt, selectedDay))
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', maxWidth: 390, margin: '0 auto', paddingBottom: 32 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
       {/* Header */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 16px 14px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>Schedule</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Sessions this week</div>
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="text-[18px] font-extrabold tracking-[-0.02em] text-[var(--text)]">Schedule</div>
+        <div className="text-[12px] text-[var(--text-muted)] mt-[2px]">Sessions this week</div>
       </div>
 
       {/* Week strip */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '10px 12px' }}>
-        <div style={{ display: 'flex', gap: 4 }}>
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-3 py-[10px]">
+        <div className="flex gap-1">
           {weekDates.map((d, i) => {
             const isSelected = isSameDay(d, selectedDay)
             const isToday = isSameDay(d, new Date())
@@ -136,12 +142,19 @@ export default function ParentSchedulePage() {
               <button
                 key={i}
                 onClick={() => setSelectedDay(d)}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', borderRadius: 12, background: isSelected ? 'var(--primary)' : 'transparent', border: isToday && !isSelected ? '1.5px solid var(--primary)' : '1.5px solid transparent', cursor: 'pointer', minHeight: 44 }}
+                className={[
+                  'flex-1 flex flex-col items-center gap-1 px-1 py-2 rounded-xl cursor-pointer min-h-[44px]',
+                  isSelected ? 'bg-[var(--primary)]' : 'bg-transparent',
+                  isToday && !isSelected ? 'border-[1.5px] border-[var(--primary)]' : 'border-[1.5px] border-transparent',
+                ].join(' ')}
               >
-                <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? 'var(--on-brand)' : 'var(--text-muted)' }}>{WEEK_DAYS[i]}</span>
-                <Mono style={{ fontSize: 14, fontWeight: 700, color: isSelected ? 'var(--on-brand)' : isToday ? 'var(--primary)' : 'var(--text)' }}>{d.getDate()}</Mono>
+                <span className={['text-[10px] font-bold', isSelected ? 'text-[var(--on-brand)]' : 'text-[var(--text-muted)]'].join(' ')}>{WEEK_DAYS[i]}</span>
+                <Mono className={['text-[14px] font-bold', isSelected ? 'text-[var(--on-brand)]' : isToday ? 'text-[var(--primary)]' : 'text-[var(--text)]'].join(' ')}>{d.getDate()}</Mono>
                 {hasSessions && (
-                  <div style={{ width: 5, height: 5, borderRadius: 99, background: isSelected ? 'var(--on-brand)' : 'var(--primary)', opacity: isSelected ? 0.7 : 1 }} />
+                  <div
+                    className="w-[5px] h-[5px] rounded-full"
+                    style={{ background: isSelected ? 'var(--on-brand)' : 'var(--primary)', opacity: isSelected ? 0.7 : 1 }}
+                  />
                 )}
               </button>
             )
@@ -149,7 +162,7 @@ export default function ParentSchedulePage() {
         </div>
       </div>
 
-      <div style={{ padding: '14px 16px 24px' }}>
+      <div className="px-4 pt-[14px] pb-6">
         <SectionTitle>
           {selectedDay.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
         </SectionTitle>
@@ -166,7 +179,7 @@ export default function ParentSchedulePage() {
             }}
           />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex flex-col gap-[10px]">
             {daySessions.map(s => (
               <SessionRow key={s.id} session={s} />
             ))}
