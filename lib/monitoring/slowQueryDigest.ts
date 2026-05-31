@@ -38,7 +38,7 @@ async function buildSummary(since: Date, until: Date): Promise<SlowQuerySummary>
     return { totalCount: 0, uniqueOperations: 0, p95DurationMs: 0, maxDurationMs: 0, topOperations: [] };
   }
 
-  const durations = rows.map((r) => r.durationMs).sort((a, b) => a - b);
+  const durations = rows.map((r: { durationMs: number }) => r.durationMs).sort((a: number, b: number) => a - b);
   const p95Index = Math.floor(durations.length * 0.95);
   const p95DurationMs = durations[p95Index] ?? durations[durations.length - 1] ?? 0;
   const maxDurationMs = durations[durations.length - 1] ?? 0;
