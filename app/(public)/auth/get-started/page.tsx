@@ -215,7 +215,7 @@ function GetStartedContent() {
         {/* Already have an account */}
         <div className="text-center">
           <Link
-            href="/auth/login"
+            href="/login/student"
             className="inline-block text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             Already have an account?{' '}

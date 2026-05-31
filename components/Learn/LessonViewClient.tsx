@@ -115,13 +115,13 @@ export default function LessonViewClient({
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/auth/login"
+              href="/login/student"
               className="px-6 py-3 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition-colors"
             >
               Sign In
             </Link>
             <Link
-              href="/auth/get-started"
+              href="/login/student"
               className="px-6 py-3 border border-indigo-300 dark:border-primary text-primary dark:text-indigo-400 font-semibold rounded-lg hover:bg-primary-bg dark:hover:bg-indigo-900/30 transition-colors"
             >
               Create Account

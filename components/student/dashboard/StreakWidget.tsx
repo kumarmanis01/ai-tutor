@@ -213,7 +213,7 @@ export default function StreakWidget({ onClose }: Props) {
           ))}
         </div>
         <a
-          href="/dashboard"
+          href="/student/dashboard"
           className="block text-center text-sm font-semibold text-white bg-[#534AB7] rounded-xl py-3 min-h-[44px] flex items-center justify-center"
           onClick={onClose}
         >

@@ -80,7 +80,7 @@ const HeroSection = () => {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link
-                href="/auth/get-started"
+                href="/login/student"
                 className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-cta text-base font-semibold text-white shadow-lg shadow-primary/20 transition-all duration-250 hover:bg-primary-hover md:px-8 md:py-4 md:text-lg"
               >
                 <Icon name="SparklesIcon" size={20} variant="solid" />
@@ -105,7 +105,7 @@ const HeroSection = () => {
             <p className="text-sm text-muted-foreground">
               Buying for your child?{' '}
               <Link
-                href="/auth/get-started?source=parent"
+                href="/login/parent"
                 className="font-medium text-primary underline-offset-2 hover:underline"
               >
                 Start as a parent

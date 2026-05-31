@@ -191,7 +191,7 @@ function LoginContent() {
         <p className="text-center text-sm text-muted-foreground">
           New to Spinzy?{' '}
           <Link
-            href="/auth/get-started"
+            href="/login/student"
             className="font-medium text-primary underline-offset-2 hover:underline"
           >
             {'Get started free ->'}

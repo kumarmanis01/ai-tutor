@@ -622,11 +622,11 @@ export default function DiagnosticFlow({
   async function handleSaveAndLeave() {
     const updatedAnswers = selectedOption ? recordAnswer(selectedOption) : answers;
     await savePartial(updatedAnswers);
-    router.push('/dashboard');
+    router.push('/student/dashboard');
   }
 
   function handleAbandon() {
-    router.push('/dashboard');
+    router.push('/student/dashboard');
   }
 
   // ── Cooldown screen (AC-08: retake before 30-day window) ─────────────────
@@ -657,7 +657,7 @@ export default function DiagnosticFlow({
           <p className="text-sm font-semibold text-[#BA7517] mb-6">{eligibleDateStr}</p>
           <button
             type="button"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/student/dashboard')}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] transition-colors"
           >
             Back to dashboard

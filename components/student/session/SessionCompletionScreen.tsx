@@ -704,7 +704,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
 
             <button
               type="button"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/student/dashboard')}
               className="flex w-full min-h-[52px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             >
               Back to dashboard

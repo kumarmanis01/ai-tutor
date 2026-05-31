@@ -300,7 +300,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
           Your subscription is active. Keep learning -- Teacher Vidya is ready for you.
         </p>
         <a
-          href="/dashboard"
+          href="/student/dashboard"
           className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#1D9E75] px-6 text-sm font-semibold text-white hover:bg-[#178a65] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D9E75]"
         >
           Go to dashboard

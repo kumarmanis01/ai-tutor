@@ -195,7 +195,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               {/* Returning users: Log in link */}
               {!session && (
                 <Link
-                  href="/auth/login"
+                  href="/login/student"
                   className="min-h-[44px] hidden lg:inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:text-primary transition-colors"
                 >
                   Log in

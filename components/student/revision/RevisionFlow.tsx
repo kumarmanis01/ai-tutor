@@ -162,7 +162,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
           Come back tomorrow -- you can do more then!
         </p>
         <Link
-          href="/dashboard"
+          href="/student/dashboard"
           className="inline-flex items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold px-6 min-h-[44px]"
         >
           Back to dashboard
@@ -230,7 +230,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
 
           {/* CTA */}
           <Link
-            href="/dashboard"
+            href="/student/dashboard"
             className="w-full inline-flex items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold min-h-[44px] hover:bg-[#4840a3] transition-colors"
           >
             Back to dashboard

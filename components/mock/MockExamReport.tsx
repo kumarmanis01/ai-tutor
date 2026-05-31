@@ -228,7 +228,7 @@ export default function MockExamReport({ report }: ReportProps) {
             Try Another Mock Exam
           </Link>
           <Link
-            href="/dashboard"
+            href="/student/dashboard"
             className="flex items-center justify-center min-h-[52px] rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold text-sm transition-colors hover:bg-gray-200 dark:hover:bg-slate-600"
           >
             Back to Dashboard

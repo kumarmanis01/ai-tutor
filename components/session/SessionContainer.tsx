@@ -386,7 +386,7 @@ export function SessionContainer({
                 Go to Homework
               </Link>
               <Link
-                href="/dashboard"
+                href="/student/dashboard"
                 className="inline-block w-full px-5 py-2.5 border border-border text-muted-foreground rounded-lg text-sm font-medium"
               >
                 Back to Dashboard
@@ -394,7 +394,7 @@ export function SessionContainer({
             </div>
           ) : (
             <Link
-              href="/dashboard"
+              href="/student/dashboard"
               className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
             >
               Return to Dashboard

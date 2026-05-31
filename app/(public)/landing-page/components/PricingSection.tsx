@@ -201,7 +201,7 @@ const PricingSection = () => {
                   </div>
 
                   <Link
-                    href="/auth/get-started"
+                    href="/login/student"
                     className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
                       plan.recommended
                         ? 'bg-primary text-white hover:bg-primary-hover shadow-lg'

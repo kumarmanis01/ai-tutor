@@ -41,7 +41,7 @@ export default function TestScoreHistory({ sessions }: TestScoreHistoryProps) {
             Complete your first session to see scores here.
           </p>
           <Link
-            href="/dashboard"
+            href="/student/dashboard"
             className="inline-flex items-center min-h-[44px] text-sm font-medium text-[#534AB7] dark:text-[#9B96E0] underline"
           >
             Go to dashboard →

@@ -97,7 +97,7 @@ export default function InterruptedSessionSheet({
         });
       }
       onDismissed();
-      router.push('/dashboard');
+      router.push('/student/dashboard');
     } catch {
       setError('Network error. Please check your connection.');
       setBusy(false);

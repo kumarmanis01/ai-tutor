@@ -100,7 +100,7 @@ const SignupFormWidget = () => {
         toast(payload?.error || 'Failed to save profile');
         return;
       }
-      router.push('/dashboard');
+      router.push('/student/dashboard');
     } catch (err) {
       logger.error('onboarding submit error', { className: 'SignupFormWidget', methodName: 'handleSubmit', error: String(err) });
       toast('Failed to complete signup');

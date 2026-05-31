@@ -268,7 +268,7 @@ export function HomeworkTest({
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/50 px-4 py-3">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <Link href="/dashboard" className="hover:text-foreground transition-colors">Home</Link>
+            <Link href="/student/dashboard" className="hover:text-foreground transition-colors">Home</Link>
             <span>/</span>
             <span>{subject}</span>
             <span>/</span>
@@ -318,7 +318,7 @@ export function HomeworkTest({
               Teacher Vidya is preparing your homework. Check back in a moment.
             </p>
             <Link
-              href="/dashboard"
+              href="/student/dashboard"
               className="inline-flex items-center mt-2 text-xs text-[#534AB7] font-semibold hover:underline"
             >
               Back to Dashboard
@@ -388,7 +388,7 @@ export function HomeworkTest({
         {showResult && (
           <div className="flex flex-col gap-3 pt-2">
             <Link
-              href="/dashboard"
+              href="/student/dashboard"
               className="w-full min-h-[52px] rounded-2xl bg-[#534AB7] text-white font-semibold text-sm flex items-center justify-center hover:bg-[#3C3489] transition-colors"
             >
               Back to Dashboard

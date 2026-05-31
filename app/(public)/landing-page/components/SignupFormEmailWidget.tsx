@@ -22,7 +22,7 @@ export default function SignupFormEmailWidget() {
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
-      router.push('/dashboard');
+      router.push('/student/dashboard');
     }
   }, [status, session?.user, router]);
 
@@ -38,12 +38,12 @@ export default function SignupFormEmailWidget() {
 
   const handleGoogle = () => {
     setLoading(true);
-    signIn('google', { callbackUrl: '/dashboard' });
+    signIn('google', { callbackUrl: '/student/dashboard' });
   };
 
   const handleFacebook = () => {
     setLoading(true);
-    signIn('facebook', { callbackUrl: '/dashboard' });
+    signIn('facebook', { callbackUrl: '/student/dashboard' });
   };
 
   const handleMagicLink = async (e: React.MouseEvent) => {
@@ -54,7 +54,7 @@ export default function SignupFormEmailWidget() {
       return;
     }
     setLoading(true);
-    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/dashboard' });
+    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/student/dashboard' });
     if (res?.ok) {
       setEmailSent(true);
     } else {
@@ -89,10 +89,10 @@ export default function SignupFormEmailWidget() {
         email: email.trim(),
         password,
         redirect: false,
-        callbackUrl: '/dashboard',
+        callbackUrl: '/student/dashboard',
       });
       if (signInRes?.ok) {
-        router.push('/dashboard');
+        router.push('/student/dashboard');
         return;
       }
       setError('Account created. Please sign in.');
@@ -107,10 +107,10 @@ export default function SignupFormEmailWidget() {
         email: email.trim(),
         password,
         redirect: false,
-        callbackUrl: '/dashboard',
+        callbackUrl: '/student/dashboard',
       });
       if (res?.ok) {
-        router.push('/dashboard');
+        router.push('/student/dashboard');
         return;
       }
       setError('Invalid email or password.');
@@ -119,7 +119,7 @@ export default function SignupFormEmailWidget() {
     }
 
     // Sign in with magic link
-    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/dashboard' });
+    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/student/dashboard' });
     if (res?.ok) setEmailSent(true);
     else setError('No account found or failed to send link.');
     setLoading(false);

@@ -62,13 +62,13 @@ const Footer = () => {
 
             <div className="flex flex-wrap gap-3 items-center mb-4">
               <Link
-                href="/auth/get-started"
+                href="/login/student"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold shadow-sm hover:bg-primary-hover transition-colors"
               >
                 Get started free
               </Link>
               <Link
-                href="/auth/login"
+                href="/login/student"
                 className="inline-flex items-center gap-2 px-4 py-2 border border-white/30 text-white rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
               >
                 Log in

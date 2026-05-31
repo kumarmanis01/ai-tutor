@@ -20,7 +20,7 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   {
     label: 'Home',
-    href: '/dashboard',
+    href: '/student/dashboard',
     matchExact: true,
     icon: (
       <svg

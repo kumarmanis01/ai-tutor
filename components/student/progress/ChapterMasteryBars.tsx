@@ -129,7 +129,7 @@ export default function ChapterMasteryBars({ subjects }: ChapterMasteryBarsProps
           No chapter data yet -- complete a session to start tracking your mastery.
         </p>
         <Link
-          href="/dashboard"
+          href="/student/dashboard"
           className="inline-flex items-center min-h-[44px] text-sm font-medium text-[#534AB7] dark:text-[#9B96E0] underline"
         >
           Start your first session →

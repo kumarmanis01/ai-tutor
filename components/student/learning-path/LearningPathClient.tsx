@@ -365,7 +365,7 @@ export default function LearningPathClient({ data, isFirstVisit }: Props) {
       {/* Back link + heading */}
       <div className="mb-5">
         <Link
-          href="/dashboard"
+          href="/student/dashboard"
           className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 mb-1 transition-colors"
         >
           &larr; Dashboard
