@@ -1,8 +1,10 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { AppHeader, BottomNav, Card, Btn, EmptyState, ErrorState, SkeletonCard, SubjectChip, Bar } from '@/components/ui'
+import { AppHeader, BottomNav, EmptyState, ErrorState, SkeletonCard, SubjectChip, Bar } from '@/components/ui'
 import type { SubjectKey } from '@/lib/constants/subjects'
+
+// --- Types ---
 
 interface PathTopic {
   id: string
@@ -13,11 +15,11 @@ interface PathTopic {
   prerequisitesMet: boolean
 }
 
-interface PathProps {
-  topics?: PathTopic[]
-  isLoading?: boolean
-  error?: string | null
+interface PathData {
+  topics: PathTopic[]
 }
+
+// --- Constants ---
 
 const STATUS_PILL: Record<string, { label: string; color: string; bg: string }> = {
   completed:   { label: 'Completed',   color: 'var(--tier-strong)', bg: 'var(--tier-strong-soft)' },
@@ -26,25 +28,33 @@ const STATUS_PILL: Record<string, { label: string; color: string; bg: string }> 
   locked:      { label: 'Locked',      color: 'var(--text-faint)',  bg: 'var(--surface-2)' },
 }
 
-export default function PathPage(_props: PathProps) {
+// --- Page ---
+
+export default function PathPage() {
   const router = useRouter()
+  const [data, setData] = useState<PathData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | SubjectKey>('all')
-  const [isLoading] = useState(false)
-  const [error] = useState<string | null>(null)
 
-  // Demo topics -- in production these come from the API
-  const topics: PathTopic[] = [
-    { id: 't1', concept: 'Linear Equations', subject: 'math', status: 'completed', mastery: 85, prerequisitesMet: true },
-    { id: 't2', concept: 'Quadratic Equations', subject: 'math', status: 'in_progress', mastery: 45, prerequisitesMet: true },
-    { id: 't3', concept: 'Polynomials', subject: 'math', status: 'upcoming', prerequisitesMet: true },
-    { id: 't4', concept: 'Cell Biology', subject: 'science', status: 'completed', mastery: 70, prerequisitesMet: true },
-    { id: 't5', concept: 'Photosynthesis', subject: 'science', status: 'upcoming', prerequisitesMet: true },
-    { id: 't6', concept: 'The French Revolution', subject: 'social', status: 'upcoming', prerequisitesMet: false },
-  ]
+  const fetchPath = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/student/path')
+      if (!res.ok) throw new Error('Failed to load learning path')
+      const json = await res.json() as PathData
+      setData(json)
+    } catch {
+      setError('Could not load your learning path. Tap to retry.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  const subjectFilters: Array<'all' | SubjectKey> = ['all', ...Array.from(new Set(topics.map(t => t.subject))) as SubjectKey[]]
-  const filtered = filter === 'all' ? topics : topics.filter(t => t.subject === filter)
-  const nextIncomplete = filtered.find(t => t.status !== 'completed')
+  useEffect(() => { fetchPath() }, [fetchPath])
+
+  const navTo = (tab: string) => router.push(`/student/${tab === 'home' ? 'dashboard' : tab}`)
 
   if (isLoading) {
     return (
@@ -53,19 +63,23 @@ export default function PathPage(_props: PathProps) {
         <div className="px-4 flex flex-col gap-3">
           {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
         </div>
-        <BottomNav active="path" onChange={tab => router.push(`/student/${tab === 'home' ? 'dashboard' : tab}`)} />
+        <BottomNav active="path" onChange={navTo} />
       </div>
     )
   }
 
-  if (error) {
+  if (error || !data) {
     return (
       <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative flex flex-col justify-center pb-20">
-        <ErrorState body={error} onRetry={() => {}} />
-        <BottomNav active="path" onChange={tab => router.push(`/student/${tab === 'home' ? 'dashboard' : tab}`)} />
+        <ErrorState body={error ?? 'Something went wrong.'} onRetry={fetchPath} />
+        <BottomNav active="path" onChange={navTo} />
       </div>
     )
   }
+
+  // TODO: wire API — /api/student/path returns PathData
+
+  const topics = data.topics
 
   if (topics.length === 0) {
     return (
@@ -77,10 +91,14 @@ export default function PathPage(_props: PathProps) {
           action="Start diagnostic"
           onAction={() => router.push('/student/diagnostic')}
         />
-        <BottomNav active="path" onChange={tab => router.push(`/student/${tab === 'home' ? 'dashboard' : tab}`)} />
+        <BottomNav active="path" onChange={navTo} />
       </div>
     )
   }
+
+  const subjectFilters: Array<'all' | SubjectKey> = ['all', ...Array.from(new Set(topics.map(t => t.subject))) as SubjectKey[]]
+  const filtered = filter === 'all' ? topics : topics.filter(t => t.subject === filter)
+  const nextIncomplete = filtered.find(t => t.status !== 'completed')
 
   return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative pb-[100px]">
@@ -183,10 +201,7 @@ export default function PathPage(_props: PathProps) {
         </div>
       </div>
 
-      <BottomNav
-        active="path"
-        onChange={tab => router.push(`/student/${tab === 'home' ? 'dashboard' : tab}`)}
-      />
+      <BottomNav active="path" onChange={navTo} />
     </div>
   )
 }

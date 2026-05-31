@@ -1,10 +1,12 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Card, EmptyState, ErrorState, SkeletonCard, TierPill,
+  Card, EmptyState, ErrorState, SkeletonCard,
   SectionTitle, Mono,
   CalendarIcon, ClockIcon, CheckCircleIcon, AlertIcon,
 } from '@/components/ui'
+
+// --- Types ---
 
 type SessionStatus = 'upcoming' | 'completed' | 'missed'
 
@@ -12,24 +14,26 @@ interface ScheduleSession {
   id: string
   concept: string
   subject: string
-  scheduledAt: Date
+  scheduledAt: string  // ISO string from API
   status: SessionStatus
   durationMinutes: number
 }
 
-interface ScheduleProps {
-  sessions?: ScheduleSession[]
-  isLoading?: boolean
-  error?: string | null
+interface ScheduleData {
+  sessions: ScheduleSession[]
 }
+
+// --- Constants ---
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const STATUS_STYLE: Record<SessionStatus, { bg: string; color: string; label: string }> = {
-  upcoming:  { bg: 'var(--primary-soft)', color: 'var(--primary)',       label: 'Upcoming' },
+  upcoming:  { bg: 'var(--primary-soft)', color: 'var(--primary)',         label: 'Upcoming' },
   completed: { bg: 'var(--tier-strong-soft)', color: 'var(--tier-strong)', label: 'Done' },
-  missed:    { bg: 'var(--tier-weak-soft)', color: 'var(--tier-weak)',    label: 'Rescheduled' },
+  missed:    { bg: 'var(--tier-weak-soft)', color: 'var(--tier-weak)',      label: 'Rescheduled' },
 }
+
+// --- Helpers ---
 
 function getWeekDates(): Date[] {
   const now = new Date()
@@ -48,6 +52,8 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
 }
 
+// --- Sub-components ---
+
 function LoadingState() {
   return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
@@ -64,6 +70,7 @@ function LoadingState() {
 
 function SessionRow({ session }: { session: ScheduleSession }) {
   const st = STATUS_STYLE[session.status]
+  const scheduledAt = new Date(session.scheduledAt)
   const StatusIcon = session.status === 'completed' ? CheckCircleIcon : session.status === 'missed' ? AlertIcon : CalendarIcon
   return (
     <div className="flex items-start gap-3 p-[14px] rounded-[14px] bg-[var(--surface)] border border-[var(--border)]">
@@ -80,7 +87,7 @@ function SessionRow({ session }: { session: ScheduleSession }) {
           <div className="flex items-center gap-1">
             <ClockIcon size={12} style={{ color: 'var(--text-faint)' }} />
             <Mono className="text-[11px] text-[var(--text-muted)] font-semibold">
-              {session.scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              {scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
             </Mono>
           </div>
           <Mono className="text-[11px] text-[var(--text-faint)] font-semibold">{session.durationMinutes} min</Mono>
@@ -96,32 +103,45 @@ function SessionRow({ session }: { session: ScheduleSession }) {
   )
 }
 
-// --- DEMO DATA ---
-const now = new Date()
-const DEMO_SESSIONS: ScheduleSession[] = [
-  { id: 's1', concept: 'Quadratic Equations', subject: 'Mathematics', scheduledAt: new Date(now.getTime() + 3600000), status: 'upcoming', durationMinutes: 30 },
-  { id: 's2', concept: 'Light and Optics', subject: 'Science', scheduledAt: new Date(now.getTime() + 7200000), status: 'upcoming', durationMinutes: 25 },
-  { id: 's3', concept: 'Reported Speech', subject: 'English', scheduledAt: new Date(now.getTime() - 86400000), status: 'completed', durationMinutes: 20 },
-  { id: 's4', concept: 'The French Revolution', subject: 'Social Studies', scheduledAt: new Date(now.getTime() - 172800000), status: 'completed', durationMinutes: 30 },
-  { id: 's5', concept: 'Trigonometry', subject: 'Mathematics', scheduledAt: new Date(now.getTime() - 259200000), status: 'missed', durationMinutes: 30 },
-]
+// --- Page ---
 
 export default function ParentSchedulePage() {
-  const [isLoading] = useState(false)
-  const [error] = useState<string | null>(null)
-  const sessions = DEMO_SESSIONS
+  const [data, setData] = useState<ScheduleData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const weekDates = getWeekDates()
   const [selectedDay, setSelectedDay] = useState<Date>(weekDates.find(d => isSameDay(d, new Date())) ?? weekDates[0])
 
+  const fetchSchedule = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/parent/schedule')
+      if (!res.ok) throw new Error('Failed to load schedule')
+      const json = await res.json() as ScheduleData
+      setData(json)
+    } catch {
+      setError('Could not load the schedule. Tap to retry.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchSchedule() }, [fetchSchedule])
+
   if (isLoading) return <LoadingState />
-  if (error) return (
+
+  if (error || !data) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
-      <ErrorState title="Could not load schedule" body="Please check your connection and try again." onRetry={() => {}} />
+      <ErrorState title="Could not load schedule" body={error ?? 'Please check your connection and try again.'} onRetry={fetchSchedule} />
     </div>
   )
 
-  const daySessions = sessions.filter(s => isSameDay(s.scheduledAt, selectedDay))
+  // TODO: wire API — /api/parent/schedule returns ScheduleData
+
+  const sessions = data.sessions.map(s => ({ ...s, scheduledAtDate: new Date(s.scheduledAt) }))
+  const daySessions = sessions.filter(s => isSameDay(s.scheduledAtDate, selectedDay))
 
   return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
@@ -137,7 +157,7 @@ export default function ParentSchedulePage() {
           {weekDates.map((d, i) => {
             const isSelected = isSameDay(d, selectedDay)
             const isToday = isSameDay(d, new Date())
-            const hasSessions = sessions.some(s => isSameDay(s.scheduledAt, d))
+            const hasSessions = sessions.some(s => isSameDay(s.scheduledAtDate, d))
             return (
               <button
                 key={i}
@@ -174,7 +194,7 @@ export default function ParentSchedulePage() {
             body="Tap a different day to see sessions, or check upcoming days."
             action="See upcoming"
             onAction={() => {
-              const next = weekDates.find(d => sessions.some(s => isSameDay(s.scheduledAt, d) && d > selectedDay))
+              const next = weekDates.find(d => sessions.some(s => isSameDay(s.scheduledAtDate, d) && d > selectedDay))
               if (next) setSelectedDay(next)
             }}
           />

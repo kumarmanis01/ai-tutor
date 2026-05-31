@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AppHeader, BottomNav, Card, Btn, EmptyState, ErrorState, SectionTitle,
@@ -8,6 +8,8 @@ import {
 import { FREE_TIER_SESSION_LIMIT } from '@/lib/constants/freemium'
 import type { TierKey } from '@/lib/constants/tiers'
 import type { SubjectKey } from '@/lib/constants/subjects'
+
+// --- Types ---
 
 interface ReadinessEntry {
   subject: SubjectKey
@@ -25,9 +27,10 @@ interface DashboardData {
   xpLevelFloor: number
   xpToNext: number
   examName: string
+  examDate: string       // ISO date string — isCrunch derived from this
   examDaysLeft: number
   readinessBySubject: ReadinessEntry[]
-  nextTopic: { concept: string; subject: SubjectKey; minutes: number; reason: string }
+  nextTopic: { concept: string; subject: SubjectKey; minutes: number; reason: string } | null
   isPremium: boolean
   isFreemium: boolean
   sessionsUsed: number
@@ -35,7 +38,7 @@ interface DashboardData {
   revisionsDue: number
 }
 
-type DashState = 'loading' | 'error' | 'default'
+// --- Loading skeleton ---
 
 function DashLoading() {
   return (
@@ -59,6 +62,8 @@ function DashLoading() {
   )
 }
 
+// --- Sub-components ---
+
 function ReadinessRow({ entry, onClick }: { entry: ReadinessEntry; onClick: () => void }) {
   return (
     <div
@@ -80,45 +85,37 @@ function ReadinessRow({ entry, onClick }: { entry: ReadinessEntry; onClick: () =
   )
 }
 
+// --- Page ---
+
 export default function DashboardPage() {
   const router = useRouter()
-  const [dashState] = useState<DashState>('default')
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Demo data -- in production this comes from server
-  const data: DashboardData = {
-    studentName: 'Student',
-    grade: '10',
-    streak: 7,
-    longestStreak: 14,
-    xp: 1240,
-    xpLevel: 8,
-    xpLevelFloor: 1200,
-    xpToNext: 1500,
-    examName: 'CBSE Board Exam',
-    examDaysLeft: 42,
-    readinessBySubject: [
-      { subject: 'math', tier: 'fair', trend: 5 },
-      { subject: 'science', tier: 'ontrack', trend: 3 },
-      { subject: 'english', tier: 'weak', trend: -1 },
-    ],
-    nextTopic: { concept: 'Quadratic Equations', subject: 'math', minutes: 15, reason: 'Highest impact on your exam score' },
-    isPremium: false,
-    isFreemium: false,
-    sessionsUsed: 1,
-    plan: 'free',
-    revisionsDue: 3,
-  }
+  const fetchDashboard = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/student/dashboard')
+      if (!res.ok) throw new Error('Failed to load dashboard')
+      const json = await res.json() as DashboardData
+      setData(json)
+    } catch {
+      setError('Could not load your dashboard. Tap to retry.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  const isCrunch = data.examDaysLeft <= 14
-  const xpPct = (data.xp - data.xpLevelFloor) / (data.xpToNext - data.xpLevelFloor) * 100
-  const isFreemiumLocked = data.isFreemium && data.sessionsUsed >= FREE_TIER_SESSION_LIMIT
+  useEffect(() => { fetchDashboard() }, [fetchDashboard])
 
   const navTo = (tab: string) => {
     const route = tab === 'home' ? 'dashboard' : tab
     router.push(`/student/${route}`)
   }
 
-  if (dashState === 'loading') {
+  if (isLoading) {
     return (
       <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative">
         <DashLoading />
@@ -126,20 +123,27 @@ export default function DashboardPage() {
     )
   }
 
-  if (dashState === 'error') {
+  if (error || !data) {
     return (
       <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative flex flex-col justify-center pb-20">
-        <ErrorState onRetry={() => {}} />
+        <ErrorState body={error ?? 'Something went wrong.'} onRetry={fetchDashboard} />
+        <BottomNav active="home" onChange={tab => navTo(tab)} />
       </div>
     )
   }
+
+  // TODO: wire API — /api/student/dashboard returns DashboardData
+
+  const isCrunch = data.examDaysLeft <= 14
+  const xpPct = (data.xp - data.xpLevelFloor) / (data.xpToNext - data.xpLevelFloor) * 100
+  const isFreemiumLocked = data.isFreemium && data.sessionsUsed >= FREE_TIER_SESSION_LIMIT
 
   return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative pb-[100px]">
       {/* Greeting */}
       <div className="px-5 pt-[10px] pb-0 flex items-center justify-between">
         <div>
-          <div className="text-[13px] text-[var(--text-muted)] font-medium">Good day,</div>
+          <div className="text-[13px] text-[var(--text-muted)] font-medium">Welcome back,</div>
           <div className="text-[23px] font-extrabold tracking-[-0.03em] leading-[1.1] text-[var(--text)]">{data.studentName}</div>
         </div>
         <button
@@ -165,13 +169,15 @@ export default function DashboardPage() {
                   <div className="text-[13px] opacity-[0.85]">{data.examName}</div>
                 </div>
               </div>
-              <div className="bg-[rgba(255,255,255,0.16)] rounded-[14px] p-[14px]">
-                <div className="text-[12.5px] opacity-[0.9] mb-1">Today's priority</div>
-                <div className="text-[15.5px] font-bold mb-3">{data.nextTopic.concept}</div>
-                <Btn full variant="secondary" onClick={() => router.push(`/session/${encodeURIComponent(data.nextTopic.concept)}`)}>
-                  Start now
-                </Btn>
-              </div>
+              {data.nextTopic && (
+                <div className="bg-[rgba(255,255,255,0.16)] rounded-[14px] p-[14px]">
+                  <div className="text-[12.5px] opacity-[0.9] mb-1">{"Today's priority"}</div>
+                  <div className="text-[15.5px] font-bold mb-3">{data.nextTopic.concept}</div>
+                  <Btn full variant="secondary" onClick={() => router.push(`/session/${encodeURIComponent(data.nextTopic!.concept)}`)}>
+                    Start now
+                  </Btn>
+                </div>
+              )}
             </div>
             <div className="mt-4 flex gap-[10px]">
               <Card pad={14} className="flex-1 flex items-center gap-[10px]">
@@ -233,28 +239,37 @@ export default function DashboardPage() {
             )}
 
             {/* Next recommended topic */}
-            <div
-              onClick={() => isFreemiumLocked ? navTo('upgrade') : router.push(`/session/${encodeURIComponent(data.nextTopic.concept)}`)}
-              className="cursor-pointer rounded-[22px] p-5 bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-md)] relative overflow-hidden mb-4"
-            >
-              <div className="absolute top-[-30px] right-[-30px] w-[120px] h-[120px] rounded-full bg-[var(--primary-soft)] opacity-60" />
-              <div className="relative">
-                <div className="flex items-center gap-[7px] text-[12px] font-bold text-[var(--primary)] uppercase tracking-[0.05em] mb-[10px]">
-                  ✨ Recommended next
+            {data.nextTopic ? (
+              <div
+                onClick={() => isFreemiumLocked ? navTo('upgrade') : router.push(`/session/${encodeURIComponent(data.nextTopic!.concept)}`)}
+                className="cursor-pointer rounded-[22px] p-5 bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-md)] relative overflow-hidden mb-4"
+              >
+                <div className="absolute top-[-30px] right-[-30px] w-[120px] h-[120px] rounded-full bg-[var(--primary-soft)] opacity-60" />
+                <div className="relative">
+                  <div className="flex items-center gap-[7px] text-[12px] font-bold text-[var(--primary)] uppercase tracking-[0.05em] mb-[10px]">
+                    ✨ Recommended next
+                  </div>
+                  <div className="flex gap-[7px] mb-2">
+                    <SubjectChip subject={data.nextTopic.subject} size="sm" />
+                    <span className="text-[11.5px] text-[var(--text-muted)] font-semibold">⏱ {data.nextTopic.minutes} min</span>
+                  </div>
+                  <div className="text-[18px] font-bold tracking-[-0.02em] leading-[1.25] mb-1 text-[var(--text)]">
+                    {data.nextTopic.concept}
+                  </div>
+                  <div className="text-[13px] text-[var(--text-muted)] mb-4">{data.nextTopic.reason}</div>
+                  <Btn full size="md">
+                    {isFreemiumLocked ? 'Unlock with Premium' : 'Start learning session'}
+                  </Btn>
                 </div>
-                <div className="flex gap-[7px] mb-2">
-                  <SubjectChip subject={data.nextTopic.subject} size="sm" />
-                  <span className="text-[11.5px] text-[var(--text-muted)] font-semibold">⏱ {data.nextTopic.minutes} min</span>
-                </div>
-                <div className="text-[18px] font-bold tracking-[-0.02em] leading-[1.25] mb-1 text-[var(--text)]">
-                  {data.nextTopic.concept}
-                </div>
-                <div className="text-[13px] text-[var(--text-muted)] mb-4">{data.nextTopic.reason}</div>
-                <Btn full size="md">
-                  {isFreemiumLocked ? 'Unlock with Premium' : 'Start learning session'}
-                </Btn>
               </div>
-            </div>
+            ) : (
+              <EmptyState
+                title="No topics yet"
+                body="Complete your diagnostic so Vidya can recommend what to study next."
+                action="Start diagnostic"
+                onAction={() => router.push('/student/diagnostic')}
+              />
+            )}
 
             {/* Streak + XP row */}
             <div className="flex gap-3 mb-4">
@@ -263,7 +278,7 @@ export default function DashboardPage() {
                   <span className="text-[22px]">🔥</span>
                   <Mono className="text-[26px] font-bold text-[var(--text)]">{data.streak}</Mono>
                 </div>
-                <div className="text-[13px] font-semibold text-[var(--text)]">Day streak</div>
+                <div className="text-[13px] font-semibold text-[var(--text)]">Current streak</div>
                 <div className="text-[11.5px] text-[var(--text-faint)]">Best: {data.longestStreak} days</div>
               </Card>
               <Card pad={16} className="flex-1">
@@ -272,7 +287,7 @@ export default function DashboardPage() {
                     <span className="text-[20px]">⚡</span>
                     <span className="text-[15px] font-extrabold text-[var(--text)]">Lvl {data.xpLevel}</span>
                   </div>
-                  <Mono className="text-[11.5px] text-[var(--text-faint)]">{data.xp}</Mono>
+                  <Mono className="text-[11.5px] text-[var(--text-faint)]">{data.xp} XP</Mono>
                 </div>
                 <Bar value={xpPct} />
                 <div className="text-[11.5px] text-[var(--text-faint)] mt-[6px]">
@@ -297,12 +312,16 @@ export default function DashboardPage() {
             )}
 
             {/* Subject readiness */}
-            <SectionTitle action="Details" onAction={() => navTo('progress')}>Subject readiness</SectionTitle>
-            <div className="flex flex-col gap-2 mb-[18px]">
-              {data.readinessBySubject.map(r => (
-                <ReadinessRow key={r.subject} entry={r} onClick={() => navTo('progress')} />
-              ))}
-            </div>
+            {data.readinessBySubject.length > 0 ? (
+              <>
+                <SectionTitle action="Details" onAction={() => navTo('progress')}>Subject readiness</SectionTitle>
+                <div className="flex flex-col gap-2 mb-[18px]">
+                  {data.readinessBySubject.map(r => (
+                    <ReadinessRow key={r.subject} entry={r} onClick={() => navTo('progress')} />
+                  ))}
+                </div>
+              </>
+            ) : null}
           </>
         )}
       </div>

@@ -1,10 +1,12 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { AppHeader, BottomNav, Card, Btn, EmptyState, ErrorState, SkeletonCard, TierPill, SectionTitle, Ring, Bar, Segmented, SubjectChip, Mono } from '@/components/ui'
+import { AppHeader, BottomNav, Card, Btn, EmptyState, ErrorState, SkeletonCard, TierPill, Ring, Bar, Segmented, SubjectChip, Mono } from '@/components/ui'
 import { FREE_TIER_CHAPTER_TEST_LIMIT } from '@/lib/constants/freemium'
 import type { TierKey } from '@/lib/constants/tiers'
 import type { SubjectKey } from '@/lib/constants/subjects'
+
+// --- Types ---
 
 interface TestItem {
   id: string
@@ -21,15 +23,24 @@ interface TestItem {
   xpEarned?: number
 }
 
-interface TestsProps {
-  tests?: TestItem[]
-  testsUsed?: number
-  isPremium?: boolean
-  isLoading?: boolean
-  error?: string | null
+interface TestsData {
+  isPremium: boolean
+  testsUsed: number                // chapter tests used this period
+  recommended: TestItem[]
+  upcoming: TestItem[]
+  history: TestItem[]
+  mockExam: {
+    title: string
+    subject: SubjectKey
+    questionCount: number
+    durationMinutes: number
+    description: string
+  } | null
 }
 
 type Mode = 'list' | 'running' | 'results'
+
+// --- Sub-components ---
 
 function TestCard({ t, onStart, locked }: { t: TestItem; onStart: () => void; locked?: boolean }) {
   return (
@@ -71,7 +82,7 @@ function TestHistoryCard({ t, onView }: { t: TestItem; onView: () => void }) {
   )
 }
 
-// Test runner
+// Test runner — uses placeholder questions; real questions would come from /api/student/tests/[id]/questions
 function TestRunner({ test, onDone }: { test: TestItem; onDone: (score: number) => void }) {
   const router = useRouter()
   const questions = [
@@ -208,29 +219,36 @@ function TestResults({ score, onBack, onPractice }: { score: number; onBack: () 
   )
 }
 
-export default function TestsPage(_props: TestsProps) {
+// --- Page ---
+
+export default function TestsPage() {
   const router = useRouter()
+  const [data, setData] = useState<TestsData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState('recommended')
   const [mode, setMode] = useState<Mode>('list')
   const [activeTest, setActiveTest] = useState<TestItem | null>(null)
   const [testScore, setTestScore] = useState(0)
-  const [isLoading] = useState(false)
-  const [error] = useState<string | null>(null)
 
-  // Demo data
-  const isPremium = false
-  const testsUsed = 1
+  const fetchTests = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/student/tests')
+      if (!res.ok) throw new Error('Failed to load tests')
+      const json = await res.json() as TestsData
+      setData(json)
+    } catch {
+      setError('Could not load your tests. Tap to retry.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  const recommendedTests: TestItem[] = [
-    { id: 'c1', title: 'Quadratic Equations - Chapter Test', subject: 'math', type: 'chapter', questionCount: 15, durationMinutes: 20, isLocked: false, reason: 'Based on your recent progress' },
-    { id: 'c2', title: 'Photosynthesis - Quick Quiz', subject: 'science', type: 'chapter', questionCount: 10, durationMinutes: 10, isLocked: !isPremium && testsUsed >= FREE_TIER_CHAPTER_TEST_LIMIT, reason: 'Strengthen your understanding' },
-  ]
-  const upcomingTests: TestItem[] = [
-    { id: 'u1', title: 'Polynomials - Chapter Test', subject: 'math', type: 'chapter', questionCount: 12, durationMinutes: 15, isLocked: true, date: 'Unlocks in 3 days' },
-  ]
-  const historyTests: TestItem[] = [
-    { id: 'h1', title: 'Linear Equations', subject: 'math', type: 'chapter', questionCount: 10, durationMinutes: 12, isLocked: false, bestScore: 73, tier: 'ontrack', xpEarned: 150, date: '2 days ago' },
-  ]
+  useEffect(() => { fetchTests() }, [fetchTests])
+
+  const navTo = (t: string) => router.push(`/student/${t === 'home' ? 'dashboard' : t}`)
 
   if (mode === 'running' && activeTest) {
     return <TestRunner test={activeTest} onDone={score => { setTestScore(score); setMode('results') }} />
@@ -253,19 +271,23 @@ export default function TestsPage(_props: TestsProps) {
         <div className="px-4 flex flex-col gap-3">
           {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
         </div>
-        <BottomNav active="tests" onChange={t => router.push(`/student/${t === 'home' ? 'dashboard' : t}`)} />
+        <BottomNav active="tests" onChange={navTo} />
       </div>
     )
   }
 
-  if (error) {
+  if (error || !data) {
     return (
       <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative flex flex-col justify-center pb-20">
-        <ErrorState body={error} onRetry={() => {}} />
-        <BottomNav active="tests" onChange={t => router.push(`/student/${t === 'home' ? 'dashboard' : t}`)} />
+        <ErrorState body={error ?? 'Something went wrong.'} onRetry={fetchTests} />
+        <BottomNav active="tests" onChange={navTo} />
       </div>
     )
   }
+
+  // TODO: wire API — /api/student/tests returns TestsData
+
+  const { isPremium, testsUsed, recommended, upcoming, history, mockExam } = data
 
   return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto relative pb-[100px]">
@@ -291,26 +313,28 @@ export default function TestsPage(_props: TestsProps) {
       )}
 
       {/* Mock exam hero */}
-      <div className="px-4 pt-0 pb-[14px]">
-        <div
-          onClick={() => {
-            const mockTest: TestItem = { id: 'mock1', title: 'CBSE Class 10 - Maths Mock', subject: 'math', type: 'mock', questionCount: 30, durationMinutes: 60, isLocked: false }
-            setActiveTest(mockTest)
-            setMode('running')
-          }}
-          className="cursor-pointer rounded-[20px] p-[18px] [background:linear-gradient(135deg,var(--primary),oklch(0.3_0.2_270))] text-white relative overflow-hidden"
-        >
-          <div className="absolute right-[-20px] top-[-20px] opacity-[0.15] text-[120px]">📋</div>
-          <div className="relative">
-            <div className="inline-flex items-center gap-[6px] text-[11px] font-bold uppercase tracking-[0.06em] bg-[rgba(255,255,255,0.2)] px-[10px] py-1 rounded-full mb-[10px]">
-              📋 Full mock
+      {mockExam && (
+        <div className="px-4 pt-0 pb-[14px]">
+          <div
+            onClick={() => {
+              const mockTest: TestItem = { id: 'mock-hero', title: mockExam.title, subject: mockExam.subject, type: 'mock', questionCount: mockExam.questionCount, durationMinutes: mockExam.durationMinutes, isLocked: false }
+              setActiveTest(mockTest)
+              setMode('running')
+            }}
+            className="cursor-pointer rounded-[20px] p-[18px] [background:linear-gradient(135deg,var(--primary),oklch(0.3_0.2_270))] text-white relative overflow-hidden"
+          >
+            <div className="absolute right-[-20px] top-[-20px] opacity-[0.15] text-[120px]">📋</div>
+            <div className="relative">
+              <div className="inline-flex items-center gap-[6px] text-[11px] font-bold uppercase tracking-[0.06em] bg-[rgba(255,255,255,0.2)] px-[10px] py-1 rounded-full mb-[10px]">
+                📋 Full mock
+              </div>
+              <div className="text-[18px] font-extrabold tracking-[-0.02em] mb-1">{mockExam.title}</div>
+              <div className="text-[13px] opacity-[0.88] mb-[14px]">{mockExam.description}</div>
+              <Btn variant="secondary" onClick={() => {}}>Start mock exam</Btn>
             </div>
-            <div className="text-[18px] font-extrabold tracking-[-0.02em] mb-1">CBSE Class 10 - Maths Mock</div>
-            <div className="text-[13px] opacity-[0.88] mb-[14px]">Section-based · 80 marks · 3 hours</div>
-            <Btn variant="secondary" onClick={() => {}}>Start mock exam</Btn>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="px-4 pt-0 pb-3">
@@ -323,38 +347,41 @@ export default function TestsPage(_props: TestsProps) {
       </div>
 
       <div className="px-4 pt-0 pb-6 flex flex-col gap-[10px]">
-        {tab === 'recommended' && recommendedTests.map(t => (
-          <TestCard
-            key={t.id}
-            t={t}
-            locked={t.isLocked}
-            onStart={() => {
-              if (t.isLocked) { router.push('/student/upgrade'); return }
-              setActiveTest(t)
-              setMode('running')
-            }}
-          />
-        ))}
+        {tab === 'recommended' && (
+          recommended.length === 0 ? (
+            <EmptyState title="No tests yet" body="Vidya will recommend tests as you progress through your learning path." />
+          ) : (
+            recommended.map(t => (
+              <TestCard
+                key={t.id}
+                t={t}
+                locked={t.isLocked}
+                onStart={() => {
+                  if (t.isLocked) { router.push('/student/upgrade'); return }
+                  setActiveTest(t)
+                  setMode('running')
+                }}
+              />
+            ))
+          )
+        )}
         {tab === 'upcoming' && (
-          upcomingTests.length === 0 ? (
+          upcoming.length === 0 ? (
             <EmptyState title="Nothing scheduled" body="Upcoming tests unlock as you progress through your learning path." />
           ) : (
-            upcomingTests.map(t => <TestCard key={t.id} t={t} locked onStart={() => {}} />)
+            upcoming.map(t => <TestCard key={t.id} t={t} locked onStart={() => {}} />)
           )
         )}
         {tab === 'history' && (
-          historyTests.length === 0 ? (
+          history.length === 0 ? (
             <EmptyState title="No tests taken yet" body="Complete a test to see your history here." action="Browse tests" onAction={() => setTab('recommended')} />
           ) : (
-            historyTests.map(t => <TestHistoryCard key={t.id} t={t} onView={() => { setTestScore(t.bestScore ?? 0); setMode('results') }} />)
+            history.map(t => <TestHistoryCard key={t.id} t={t} onView={() => { setTestScore(t.bestScore ?? 0); setMode('results') }} />)
           )
         )}
       </div>
 
-      <BottomNav
-        active="tests"
-        onChange={t => router.push(`/student/${t === 'home' ? 'dashboard' : t}`)}
-      />
+      <BottomNav active="tests" onChange={navTo} />
     </div>
   )
 }

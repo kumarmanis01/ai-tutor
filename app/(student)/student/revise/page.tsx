@@ -1,22 +1,25 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppHeader, Card, Btn, EmptyState, ErrorState, SkeletonCard, SubjectChip, Segmented } from '@/components/ui'
 import type { SubjectKey } from '@/lib/constants/subjects'
+
+// --- Types ---
 
 interface RevisionTopic {
   id: string
   concept: string
   subject: SubjectKey
-  strength: number  // 0-1
+  strength: number  // 0–1
   dueLabel?: string
 }
 
-interface ReviseProps {
-  topics?: RevisionTopic[]
-  isLoading?: boolean
-  error?: string | null
+interface ReviseData {
+  dueToday: RevisionTopic[]
+  upcoming: RevisionTopic[]
 }
+
+// --- Sub-components ---
 
 function StrengthBar({ strength }: { strength: number }) {
   const color = strength < 0.4 ? 'var(--tier-critical)' : strength < 0.7 ? 'var(--tier-weak)' : 'var(--tier-strong)'
@@ -62,25 +65,32 @@ function RevisionCard({ r, onRevise, onSnooze, upcoming }: { r: RevisionTopic; o
   )
 }
 
-export default function RevisePage(_props: ReviseProps) {
+// --- Page ---
+
+export default function RevisePage() {
   const router = useRouter()
+  const [data, setData] = useState<ReviseData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'due' | 'upcoming'>('due')
   const [snoozed, setSnoozed] = useState<string[]>([])
-  const [isLoading] = useState(false)
-  const [error] = useState<string | null>(null)
 
-  // Demo topics -- in production from API
-  const dueTodayTopics: RevisionTopic[] = [
-    { id: 'r1', concept: 'Quadratic Equations', subject: 'math', strength: 0.35 },
-    { id: 'r2', concept: 'Photosynthesis', subject: 'science', strength: 0.6 },
-    { id: 'r3', concept: 'Linear Equations', subject: 'math', strength: 0.75 },
-  ]
-  const upcomingTopics: RevisionTopic[] = [
-    { id: 'r4', concept: 'The French Revolution', subject: 'social', strength: 0.5, dueLabel: 'Tomorrow' },
-    { id: 'r5', concept: 'Polynomials', subject: 'math', strength: 0.8, dueLabel: 'In 3 days' },
-  ]
+  const fetchRevise = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/student/revise')
+      if (!res.ok) throw new Error('Failed to load revisions')
+      const json = await res.json() as ReviseData
+      setData(json)
+    } catch {
+      setError('Could not load your revisions. Tap to retry.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  const visibleDue = dueTodayTopics.filter(r => !snoozed.includes(r.id))
+  useEffect(() => { fetchRevise() }, [fetchRevise])
 
   if (isLoading) {
     return (
@@ -93,13 +103,17 @@ export default function RevisePage(_props: ReviseProps) {
     )
   }
 
-  if (error) {
+  if (error || !data) {
     return (
       <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col justify-center">
-        <ErrorState body={error} onRetry={() => {}} />
+        <ErrorState body={error ?? 'Something went wrong.'} onRetry={fetchRevise} />
       </div>
     )
   }
+
+  // TODO: wire API — /api/student/revise returns ReviseData
+
+  const visibleDue = data.dueToday.filter(r => !snoozed.includes(r.id))
 
   return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-6">
@@ -141,7 +155,7 @@ export default function RevisePage(_props: ReviseProps) {
             </div>
           )
         ) : (
-          upcomingTopics.length === 0 ? (
+          data.upcoming.length === 0 ? (
             <EmptyState
               title="Nothing coming up"
               body="Keep learning and topics will appear here for spaced revision."
@@ -150,7 +164,7 @@ export default function RevisePage(_props: ReviseProps) {
             />
           ) : (
             <div className="flex flex-col gap-[10px]">
-              {upcomingTopics.map(r => <RevisionCard key={r.id} r={r} upcoming />)}
+              {data.upcoming.map(r => <RevisionCard key={r.id} r={r} upcoming />)}
             </div>
           )
         )}

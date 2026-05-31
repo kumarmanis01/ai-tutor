@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card, Btn, EmptyState, ErrorState, SkeletonCard, TierPill,
@@ -17,7 +17,9 @@ const PARENT_TIER_LABEL: Record<TierKey, string> = {
   critical: 'Urgent help needed',
 }
 
-interface Alert {
+// --- Types ---
+
+interface DashAlert {
   id: string
   message: string
   severity: 'info' | 'warning' | 'critical'
@@ -32,7 +34,7 @@ interface UpcomingSession {
   id: string
   concept: string
   subject: string
-  scheduledAt: Date
+  scheduledAt: string  // ISO string from API
 }
 
 interface ParentDashboardData {
@@ -42,14 +44,15 @@ interface ParentDashboardData {
   overallTier: TierKey
   subjectTiers: SubjectTier[]
   upcomingSessions: UpcomingSession[]
-  alerts: Alert[]
+  alerts: DashAlert[]
   isPremium: boolean
 }
 
-// --- Loading skeleton ---
+// --- Sub-components ---
+
 function LoadingState() {
   return (
-    <div className="spz-root bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-8">
       <div className="px-4 pt-4 pb-0">
         <div className="h-7 w-[140px] rounded-lg bg-[var(--surface-3)] mb-[6px]" />
         <div className="h-4 w-[100px] rounded-lg bg-[var(--surface-3)]" />
@@ -63,8 +66,7 @@ function LoadingState() {
   )
 }
 
-// --- Alert banner ---
-function AlertBanner({ alerts }: { alerts: Alert[] }) {
+function AlertBanner({ alerts }: { alerts: DashAlert[] }) {
   if (alerts.length === 0) return null
   return (
     <div className="mb-4">
@@ -93,7 +95,6 @@ function AlertBanner({ alerts }: { alerts: Alert[] }) {
   )
 }
 
-// --- Stat chip ---
 function StatChip({ icon, value, label }: { icon: React.ReactNode; value: string | number; label: string }) {
   return (
     <div className="flex-1 p-[10px] rounded-xl bg-[var(--surface-2)] text-center">
@@ -104,38 +105,52 @@ function StatChip({ icon, value, label }: { icon: React.ReactNode; value: string
   )
 }
 
-// --- DEMO DATA ---
-const DEMO: ParentDashboardData = {
-  childName: 'Aarav',
-  grade: '10',
-  streak: 7,
-  overallTier: 'fair',
-  subjectTiers: [
-    { subject: 'Mathematics', tier: 'weak' },
-    { subject: 'Science', tier: 'fair' },
-    { subject: 'English', tier: 'ontrack' },
-    { subject: 'Social Studies', tier: 'fair' },
-  ],
-  upcomingSessions: [
-    { id: 's1', concept: 'Quadratic Equations', subject: 'Mathematics', scheduledAt: new Date(Date.now() + 3600000) },
-    { id: 's2', concept: 'Light and Optics', subject: 'Science', scheduledAt: new Date(Date.now() + 7200000) },
-  ],
-  alerts: [
-    { id: 'a1', message: 'Aarav has not practised Mathematics in 3 days. A short session today will help.', severity: 'warning' },
-  ],
-  isPremium: true,
-}
+// --- Page ---
 
 export default function ParentDashboardPage() {
   const router = useRouter()
-  const [isLoading] = useState(false)
-  const [error] = useState<string | null>(null)
-  const data = DEMO
+  const [data, setData] = useState<ParentDashboardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchDashboard = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/parent/dashboard')
+      if (!res.ok) throw new Error('Failed to load dashboard')
+      const json = await res.json() as ParentDashboardData
+      setData(json)
+    } catch {
+      setError('Could not load the dashboard. Tap to retry.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchDashboard() }, [fetchDashboard])
 
   if (isLoading) return <LoadingState />
-  if (error) return (
+
+  if (error || !data) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
-      <ErrorState title="Could not load dashboard" body="Please check your connection and try again." onRetry={() => {}} />
+      <ErrorState title="Could not load dashboard" body={error ?? 'Please check your connection and try again.'} onRetry={fetchDashboard} />
+    </div>
+  )
+
+  // TODO: wire API — /api/parent/dashboard returns ParentDashboardData
+
+  if (data.subjectTiers.length === 0) return (
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto">
+      <div className="bg-[var(--surface)] border-b border-[var(--border)] px-4 pt-4 pb-[14px]">
+        <div className="text-[18px] font-extrabold tracking-[-0.02em] text-[var(--text)]">Home</div>
+      </div>
+      <EmptyState
+        title="No data yet"
+        body={`${data.childName} has not completed any sessions yet. Encourage them to get started!`}
+        action="View schedule"
+        onAction={() => router.push('/parent/schedule')}
+      />
     </div>
   )
 
@@ -210,30 +225,29 @@ export default function ParentDashboardPage() {
           <>
             <SectionTitle>Coming up today</SectionTitle>
             <div className="flex flex-col gap-2 mb-4">
-              {data.upcomingSessions.map(s => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 p-[13px] rounded-[14px] bg-[var(--surface)] border border-[var(--border)]"
-                >
-                  <CalendarIcon size={18} className="text-[var(--text-muted)] shrink-0" />
-                  <div className="flex-1">
-                    <div className="text-[14px] font-semibold text-[var(--text)]">{s.concept}</div>
-                    <div className="text-[12px] text-[var(--text-muted)]">{s.subject}</div>
+              {data.upcomingSessions.map(s => {
+                const scheduledAt = new Date(s.scheduledAt)
+                return (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-3 p-[13px] rounded-[14px] bg-[var(--surface)] border border-[var(--border)]"
+                  >
+                    <CalendarIcon size={18} className="text-[var(--text-muted)] shrink-0" />
+                    <div className="flex-1">
+                      <div className="text-[14px] font-semibold text-[var(--text)]">{s.concept}</div>
+                      <div className="text-[12px] text-[var(--text-muted)]">{s.subject}</div>
+                    </div>
+                    <span className="text-[12px] text-[var(--text-muted)] font-semibold">
+                      {scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
-                  <span className="text-[12px] text-[var(--text-muted)] font-semibold">
-                    {s.scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
 
-        <Btn
-          variant="primary"
-          full
-          onClick={() => router.push('/parent/schedule')}
-        >
+        <Btn variant="primary" full onClick={() => router.push('/parent/schedule')}>
           View full schedule
         </Btn>
       </div>

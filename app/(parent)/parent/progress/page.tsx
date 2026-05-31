@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Card, EmptyState, ErrorState, SkeletonCard, TierPill,
   SectionTitle, Mono,
@@ -18,9 +18,11 @@ const PARENT_TIER_LABEL: Record<TierKey, string> = {
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+// --- Types ---
+
 interface RecentSession {
   concept: string
-  completedAt: Date
+  completedAt: string  // ISO string from API
   tier: TierKey
 }
 
@@ -29,16 +31,16 @@ interface SubjectProgress {
   tier: TierKey
   topicsCompleted: number
   topicsTotal: number
-  weeklyActivity: number[]
+  weeklyActivity: number[]  // 7 values, Mon–Sun
   recentSessions: RecentSession[]
 }
 
 interface ParentProgressData {
   childName: string
   subjects: SubjectProgress[]
-  isLoading?: boolean
-  error?: string | null
 }
+
+// --- Sub-components ---
 
 function LoadingState() {
   return (
@@ -115,17 +117,20 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
           </button>
           {expanded && (
             <div className="mt-2 flex flex-col gap-2">
-              {s.recentSessions.map((r, i) => (
-                <div key={i} className="flex items-center gap-[10px] px-3 py-[10px] rounded-[10px] bg-[var(--surface-2)]">
-                  <div className="flex-1">
-                    <div className="text-[13px] font-semibold text-[var(--text)]">{r.concept}</div>
-                    <div className="text-[11px] text-[var(--text-muted)]">
-                      {r.completedAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              {s.recentSessions.map((r, i) => {
+                const completedAt = new Date(r.completedAt)
+                return (
+                  <div key={i} className="flex items-center gap-[10px] px-3 py-[10px] rounded-[10px] bg-[var(--surface-2)]">
+                    <div className="flex-1">
+                      <div className="text-[13px] font-semibold text-[var(--text)]">{r.concept}</div>
+                      <div className="text-[11px] text-[var(--text-muted)]">
+                        {completedAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </div>
                     </div>
+                    <TierPill tier={r.tier} size="sm" />
                   </div>
-                  <TierPill tier={r.tier} size="sm" />
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </>
@@ -134,63 +139,39 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
   )
 }
 
-// --- DEMO DATA ---
-const DEMO: ParentProgressData = {
-  childName: 'Aarav',
-  subjects: [
-    {
-      subject: 'Mathematics',
-      tier: 'weak',
-      topicsCompleted: 8,
-      topicsTotal: 24,
-      weeklyActivity: [2, 0, 3, 1, 0, 2, 1],
-      recentSessions: [
-        { concept: 'Quadratic Equations', completedAt: new Date(Date.now() - 86400000), tier: 'weak' },
-        { concept: 'Linear Algebra Basics', completedAt: new Date(Date.now() - 172800000), tier: 'fair' },
-      ],
-    },
-    {
-      subject: 'Science',
-      tier: 'fair',
-      topicsCompleted: 14,
-      topicsTotal: 30,
-      weeklyActivity: [1, 2, 1, 3, 2, 0, 1],
-      recentSessions: [
-        { concept: 'Light and Optics', completedAt: new Date(Date.now() - 43200000), tier: 'fair' },
-      ],
-    },
-    {
-      subject: 'English',
-      tier: 'ontrack',
-      topicsCompleted: 20,
-      topicsTotal: 28,
-      weeklyActivity: [3, 2, 3, 2, 3, 1, 2],
-      recentSessions: [
-        { concept: 'Reported Speech', completedAt: new Date(Date.now() - 86400000), tier: 'ontrack' },
-      ],
-    },
-    {
-      subject: 'Social Studies',
-      tier: 'fair',
-      topicsCompleted: 10,
-      topicsTotal: 22,
-      weeklyActivity: [0, 1, 2, 0, 1, 2, 0],
-      recentSessions: [],
-    },
-  ],
-}
+// --- Page ---
 
 export default function ParentProgressPage() {
-  const [isLoading] = useState(false)
-  const [error] = useState<string | null>(null)
-  const data = DEMO
+  const [data, setData] = useState<ParentProgressData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchProgress = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/parent/progress')
+      if (!res.ok) throw new Error('Failed to load progress')
+      const json = await res.json() as ParentProgressData
+      setData(json)
+    } catch {
+      setError('Could not load progress. Tap to retry.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchProgress() }, [fetchProgress])
 
   if (isLoading) return <LoadingState />
-  if (error) return (
+
+  if (error || !data) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
-      <ErrorState title="Could not load progress" body="Please check your connection and try again." onRetry={() => {}} />
+      <ErrorState title="Could not load progress" body={error ?? 'Please check your connection and try again.'} onRetry={fetchProgress} />
     </div>
   )
+
+  // TODO: wire API — /api/parent/progress returns ParentProgressData
 
   if (data.subjects.length === 0) return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto">
