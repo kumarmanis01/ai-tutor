@@ -34,19 +34,19 @@ export default function AdminSyllabiPage() {
   const selected = syllabi.find((s) => s.id === selectedId) ?? null;
 
   return (
-    <div style={{ padding: 20, fontFamily: 'Inter, system-ui, -apple-system' }}>
+    <div className="p-5 font-[Inter,system-ui,-apple-system]">
       <h1>Admin -- Syllabi (Read-only)</h1>
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <div style={{ display: 'flex', gap: 20 }}>
-          <div style={{ width: 300 }}>
+        <div className="flex gap-5">
+          <div className="w-[300px]">
             <h3>Versions</h3>
             {syllabi.length === 0 ? (
               <p>No syllabi found.</p>
             ) : (
               <select
-                style={{ width: '100%' }}
+                className="w-full"
                 value={selectedId ?? ''}
                 onChange={(e) => setSelectedId(e.target.value)}
               >
@@ -59,22 +59,27 @@ export default function AdminSyllabiPage() {
             )}
           </div>
 
-          <div style={{ flex: 1 }}>
+          <div className="flex-1">
             <h3>JSON Preview</h3>
             {selected ? (
               <div>
-                <div style={{ marginBottom: 8, color: '#666', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="mb-2 text-gray-600 flex items-center gap-3">
                   <div>
                     <strong>Title:</strong> {selected.title} &nbsp; | &nbsp;
                     <strong>Version:</strong> {selected.version}
                   </div>
                   <div>
                     <strong>Status:</strong>{' '}
-                    <span style={{ padding: '4px 8px', borderRadius: 6, background: selected.status === 'APPROVED' ? '#d1fae5' : '#f0f5ff', color: selected.status === 'APPROVED' ? '#065f46' : '#1e3a8a' }}>
+                    <span className={[
+                      'px-2 py-1 rounded-[6px] text-sm',
+                      selected.status === 'APPROVED'
+                        ? 'bg-[#d1fae5] text-[#065f46]'
+                        : 'bg-[#f0f5ff] text-[#1e3a8a]',
+                    ].join(' ')}>
                       {selected.status}
                     </span>
                   </div>
-                  <div style={{ marginLeft: 'auto' }}>
+                  <div className="ml-auto">
                     <button
                       onClick={async () => {
                         if (!selected) return;
@@ -86,29 +91,19 @@ export default function AdminSyllabiPage() {
                             return;
                           }
                           const updated = await res.json();
-                          // Update local state with updated record
                           setSyllabi((prev) => prev.map(p => p.id === updated.id ? updated : p));
                         } catch (e) {
                           alert(String(e));
                         }
                       }}
                       disabled={selected.status === 'APPROVED'}
-                      style={{ padding: '6px 10px', borderRadius: 6, cursor: selected.status === 'APPROVED' ? 'not-allowed' : 'pointer' }}
+                      className={['px-[10px] py-[6px] rounded-[6px]', selected.status === 'APPROVED' ? 'cursor-not-allowed' : 'cursor-pointer'].join(' ')}
                     >
                       Approve
                     </button>
                   </div>
                 </div>
-                <pre
-                  style={{
-                    background: '#0b1220',
-                    color: '#e6eef8',
-                    padding: 16,
-                    borderRadius: 8,
-                    overflowX: 'auto',
-                    maxHeight: '70vh',
-                  }}
-                >
+                <pre className="bg-[#0b1220] text-[#e6eef8] p-4 rounded-lg overflow-x-auto max-h-[70vh]">
                   {JSON.stringify(selected.json, null, 2)}
                 </pre>
               </div>

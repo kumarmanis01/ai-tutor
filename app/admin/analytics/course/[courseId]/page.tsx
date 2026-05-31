@@ -22,33 +22,33 @@ export default async function Page({ params }: { params: { courseId: string } })
   const latest = aggregates[0] || null
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="p-5">
       <h1>Course Analytics -- {courseId}</h1>
-      <section style={{ display: 'flex', gap: 20 }}>
-        <div style={{ flex: 1 }}>
+      <section className="flex gap-5">
+        <div className="flex-1">
           <h3>Overview (last {views.length} days)</h3>
-          <div style={{ width: '100%', height: 80 }}>
+          <div className="w-full h-20">
             <Sparkline points={views} width={600} height={80} />
           </div>
           <div>Latest views: {latest ? latest.totalViews : '--'}</div>
           <div>Latest completions: {latest ? latest.totalCompletions : '--'}</div>
         </div>
 
-        <div style={{ width: 320 }}>
+        <div className="w-[320px]">
           <h3>Completion rate</h3>
-          <div style={{ fontSize: 28 }}>{latest && latest.completionRate != null ? `${Math.round(latest.completionRate * 100)}%` : '--'}</div>
+          <div className="text-[28px]">{latest && latest.completionRate != null ? `${Math.round(latest.completionRate * 100)}%` : '--'}</div>
         </div>
       </section>
 
-      <section style={{ marginTop: 32 }}>
+      <section className="mt-8">
         <h2>Lesson Drop-off (approx)</h2>
-        <p style={{ color: '#666' }}>Per-lesson breakdown not available; using completion trend as an approximation.</p>
-        <div style={{ width: '100%', height: 120 }}>
+        <p className="text-gray-600">Per-lesson breakdown not available; using completion trend as an approximation.</p>
+        <div className="w-full h-[120px]">
           <Sparkline points={completions.map((c: number, i: number) => (views[i] ? (views[i] - c) : 0))} width={800} height={120} />
         </div>
       </section>
 
-      <section style={{ marginTop: 32 }}>
+      <section className="mt-8">
         <h2>Funnel (30d)</h2>
         <FunnelSummary courseId={courseId} db={db} />
       </section>

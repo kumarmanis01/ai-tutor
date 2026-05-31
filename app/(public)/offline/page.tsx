@@ -4,14 +4,11 @@ export default function OfflinePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
       {/* Logo */}
-      <div
-        className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl text-4xl font-bold text-white"
-        style={{ backgroundColor: '#534AB7' }}
-      >
+      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl text-4xl font-bold text-white bg-[var(--primary)]">
         S
       </div>
 
-      <h1 className="mb-3 text-2xl font-bold" style={{ color: '#534AB7' }}>
+      <h1 className="mb-3 text-2xl font-bold text-[var(--primary)]">
         You&apos;re offline
       </h1>
 
@@ -21,8 +18,7 @@ export default function OfflinePage() {
 
       <button
         onClick={() => window.location.reload()}
-        className="rounded-xl px-8 py-3 text-base font-semibold text-white transition-opacity active:opacity-80"
-        style={{ backgroundColor: '#534AB7' }}
+        className="rounded-xl px-8 py-3 text-base font-semibold text-white bg-[var(--primary)] transition-opacity active:opacity-80"
       >
         Try again
       </button>

@@ -17,16 +17,6 @@ interface TutorProps {
   onSend?: (message: string) => void
 }
 
-const ROOT_STYLE: React.CSSProperties = {
-  background: 'var(--bg)',
-  minHeight: '100vh',
-  maxWidth: 390,
-  margin: '0 auto',
-  display: 'flex',
-  flexDirection: 'column',
-  height: '100vh',
-}
-
 interface BubbleProps {
   role: 'user' | 'vidya'
   text?: string
@@ -37,25 +27,23 @@ interface BubbleProps {
 function Bubble({ role, text, loading, streaming }: BubbleProps) {
   const isUser = role === 'user'
   return (
-    <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
-      <div style={{
-        maxWidth: '82%', padding: '11px 14px', borderRadius: 18,
-        borderBottomRightRadius: isUser ? 5 : 18, borderBottomLeftRadius: isUser ? 18 : 5,
-        background: isUser ? 'var(--primary)' : 'var(--surface)',
-        color: isUser ? 'var(--on-brand)' : 'var(--text)',
-        border: isUser ? 'none' : '1px solid var(--border)',
-        boxShadow: isUser ? 'none' : 'var(--shadow-sm)',
-        fontSize: 14.5, lineHeight: 1.5, whiteSpace: 'pre-wrap',
-      }}>
+    <div className={['flex', isUser ? 'justify-end' : 'justify-start'].join(' ')}>
+      <div className={[
+        'max-w-[82%] px-[14px] py-[11px] text-[14.5px] leading-[1.5] whitespace-pre-wrap',
+        'rounded-[18px]',
+        isUser
+          ? 'rounded-br-[5px] bg-[var(--primary)] text-[var(--on-brand)] border-0'
+          : 'rounded-bl-[5px] bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] shadow-[var(--shadow-sm)]',
+      ].join(' ')}>
         {loading ? (
-          <div style={{ display: 'flex', gap: 4, padding: '3px 2px' }}>
+          <div className="flex gap-1 py-[3px] px-[2px]">
             {[0, 1, 2].map(i => (
-              <span key={i} style={{ width: 7, height: 7, borderRadius: 99, background: 'var(--text-faint)', display: 'inline-block' }} />
+              <span key={i} className="w-[7px] h-[7px] rounded-full bg-[var(--text-faint)] inline-block" />
             ))}
           </div>
         ) : text}
         {streaming && (
-          <span style={{ display: 'inline-block', width: 7, height: 15, background: 'var(--primary)', marginLeft: 2, verticalAlign: 'middle', borderRadius: 1 }} />
+          <span className="inline-block w-[7px] h-[15px] bg-[var(--primary)] ml-[2px] align-middle rounded-[1px]" />
         )}
       </div>
     </div>
@@ -66,14 +54,14 @@ function Bubble({ role, text, loading, streaming }: BubbleProps) {
 function GateScreen({ reason }: { reason: 'diagnostic' | 'rollout' }) {
   const router = useRouter()
   return (
-    <div style={{ ...ROOT_STYLE, justifyContent: 'center', alignItems: 'center', padding: 32, textAlign: 'center' }}>
-      <div style={{ width: 80, height: 80, borderRadius: 26, background: 'var(--primary-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 22, fontSize: 38 }}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col h-screen justify-center items-center p-8 text-center">
+      <div className="w-20 h-20 rounded-[26px] bg-[var(--primary-soft)] flex items-center justify-center mb-[22px] text-[38px]">
         {reason === 'diagnostic' ? '🧠' : '✨'}
       </div>
-      <h1 style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
+      <h1 className="m-0 mb-[10px] text-[22px] font-extrabold tracking-[-0.02em] text-[var(--text)]">
         {reason === 'diagnostic' ? 'Complete your diagnostic first' : 'Vidya is coming soon'}
       </h1>
-      <p style={{ margin: '0 0 24px', fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 280 }}>
+      <p className="m-0 mb-6 text-[14.5px] text-[var(--text-muted)] leading-[1.5] max-w-[280px]">
         {reason === 'diagnostic'
           ? 'Vidya needs to understand your starting point before she can personalise your tutoring.'
           : "We're rolling out Vidya gradually. You'll get access soon!"}
@@ -151,46 +139,46 @@ export default function TutorPage(_props: TutorProps) {
   if (!isInRollout) return <GateScreen reason="rollout" />
 
   return (
-    <div style={ROOT_STYLE}>
+    <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto flex flex-col h-screen">
       {/* Header */}
-      <div style={{ padding: '6px 16px 10px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="px-4 pt-[6px] pb-[10px] border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="flex items-center gap-[10px]">
           <button
             onClick={() => router.push('/student/dashboard')}
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', width: 36, height: 36, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text)', minWidth: 44, minHeight: 44 }}
+            className="bg-[var(--surface-2)] border border-[var(--border)] w-9 h-9 rounded-[11px] flex items-center justify-center cursor-pointer text-[var(--text)] min-w-[44px] min-h-[44px]"
           >
             ‹
           </button>
-          <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg, var(--primary), oklch(0.4 0.2 270))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20 }}>
+          <div className="w-[38px] h-[38px] rounded-xl flex items-center justify-center text-white text-[20px] [background:linear-gradient(135deg,var(--primary),oklch(0.4_0.2_270))]">
             ✨
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text)' }}>Vidya</div>
-            <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Your AI tutor</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-bold tracking-[-0.02em] text-[var(--text)]">Vidya</div>
+            <div className="text-[11.5px] text-[var(--text-muted)]">Your AI tutor</div>
           </div>
           <SubjectChip subject="math" size="sm" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+        <div className="flex items-center gap-2 mt-[10px]">
           <Bar value={progress} h={5} />
-          <Mono style={{ fontSize: 10.5, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>session {progress}%</Mono>
+          <Mono className="text-[10.5px] text-[var(--text-faint)] whitespace-nowrap">session {progress}%</Mono>
         </div>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div ref={scrollRef} className="flex-1 overflow-auto px-4 pt-4 pb-2 flex flex-col gap-[14px]">
         {msgs.map((m, i) => <Bubble key={i} role={m.role} text={m.text} />)}
         {isLoading && <Bubble role="vidya" loading />}
         {streaming && <Bubble role="vidya" text={streamText} streaming />}
 
         {phase === 'complete' && (
-          <div style={{ borderRadius: 18, padding: 18, background: 'var(--surface)', border: '1px solid var(--border)', textAlign: 'center' }}>
-            <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--tier-strong-soft)', color: 'var(--tier-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: 28 }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>Session complete!</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, marginBottom: 8 }}>+45 XP · Concept mastery improved</div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>How was this session?</div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 14 }}>
+          <div className="rounded-[18px] p-[18px] bg-[var(--surface)] border border-[var(--border)] text-center">
+            <div className="w-[52px] h-[52px] rounded-2xl bg-[var(--tier-strong-soft)] text-[var(--tier-strong)] flex items-center justify-center mx-auto mb-3 text-[28px]">✓</div>
+            <div className="text-[16px] font-extrabold tracking-[-0.02em] text-[var(--text)]">Session complete!</div>
+            <div className="text-[13px] text-[var(--text-muted)] mt-1 mb-2">+45 XP · Concept mastery improved</div>
+            <div className="text-[12.5px] font-semibold text-[var(--text-muted)] mb-2">How was this session?</div>
+            <div className="flex gap-2 justify-center mb-[14px]">
               {[1, 2, 3, 4, 5].map(s => (
-                <button key={s} onClick={() => setRating(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: s <= rating ? 'var(--tier-fair)' : 'var(--border)', padding: 0, fontSize: 28, minWidth: 44, minHeight: 44 }}>
+                <button key={s} onClick={() => setRating(s)} className={['bg-transparent border-0 cursor-pointer p-0 text-[28px] min-w-[44px] min-h-[44px]', s <= rating ? 'text-[var(--tier-fair)]' : 'text-[var(--border)]'].join(' ')}>
                   ★
                 </button>
               ))}
@@ -202,54 +190,60 @@ export default function TutorPage(_props: TutorProps) {
 
       {/* Composer */}
       {phase !== 'complete' && (
-        <div style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', paddingBottom: 24 }}>
+        <div className="bg-[var(--surface)] border-t border-[var(--border)] pb-6">
           {/* Hint toggle */}
           <button
             onClick={() => setHintOpen(!hintOpen)}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontFamily: 'var(--font-sans)', minHeight: 44 }}
+            className="w-full flex items-center gap-2 px-4 py-[10px] bg-transparent border-0 cursor-pointer text-[var(--primary)] [font-family:var(--font-sans)] min-h-[44px]"
           >
             <span>💡</span>
-            <span style={{ fontSize: 13, fontWeight: 600, flex: 1, textAlign: 'left' }}>Need a hint?</span>
-            <span style={{ transform: hintOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', display: 'inline-block' }}>▾</span>
+            <span className="text-[13px] font-semibold flex-1 text-left">Need a hint?</span>
+            <span
+              className="inline-block transition-transform duration-200"
+              style={{ transform: hintOpen ? 'rotate(180deg)' : 'none' }}
+            >▾</span>
           </button>
           {hintOpen && (
-            <div style={{ padding: '0 16px 12px' }}>
-              <div style={{ padding: 12, borderRadius: 12, background: 'var(--primary-soft)', fontSize: 13, lineHeight: 1.45, color: 'var(--text)' }}>
+            <div className="px-4 pb-3">
+              <div className="p-3 rounded-xl bg-[var(--primary-soft)] text-[13px] leading-[1.45] text-[var(--text)]">
                 {"Try breaking the problem into smaller parts. What's the first thing you need to find?"}
               </div>
             </div>
           )}
           {/* Input */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px 8px' }}>
+          <div className="flex items-center gap-2 px-3 pt-1 pb-2">
             <button
               onClick={() => router.push('/student/whiteboard')}
-              style={{ width: 44, height: 44, borderRadius: 13, background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0, fontSize: 20 }}
+              className="w-[44px] h-[44px] rounded-[13px] bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center cursor-pointer text-[var(--text-muted)] shrink-0 text-[20px]"
               title="Whiteboard"
             >
               ✏
             </button>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 22, padding: '0 6px 0 16px' }}>
+            <div className="flex-1 flex items-center bg-[var(--surface-2)] border border-[var(--border)] rounded-[22px] pl-4 pr-[6px]">
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
                 placeholder="Ask Vidya anything..."
-                style={{ flex: 1, height: 44, border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, fontFamily: 'var(--font-sans)', color: 'var(--text)' }}
+                className="flex-1 h-[44px] border-0 outline-none bg-transparent text-[14.5px] [font-family:var(--font-sans)] text-[var(--text)]"
               />
               <button
                 onClick={send}
                 disabled={!input.trim() || streaming}
-                style={{ width: 34, height: 34, borderRadius: 11, background: input.trim() && !streaming ? 'var(--primary)' : 'var(--surface-3)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: input.trim() && !streaming ? 'var(--on-brand)' : 'var(--text-faint)', flexShrink: 0, fontSize: 16 }}
+                className={[
+                  'w-[34px] h-[34px] rounded-[11px] border-0 flex items-center justify-center cursor-pointer shrink-0 text-[16px]',
+                  input.trim() && !streaming ? 'bg-[var(--primary)] text-[var(--on-brand)]' : 'bg-[var(--surface-3)] text-[var(--text-faint)]',
+                ].join(' ')}
               >
                 ›
               </button>
             </div>
           </div>
           {!streaming && (
-            <div style={{ textAlign: 'center', paddingBottom: 4 }}>
+            <div className="text-center pb-1">
               <button
                 onClick={() => setPhase('complete')}
-                style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)', minHeight: 44 }}
+                className="bg-transparent border-0 text-[var(--text-faint)] text-[12px] font-semibold cursor-pointer [font-family:var(--font-sans)] min-h-[44px]"
               >
                 End session
               </button>
