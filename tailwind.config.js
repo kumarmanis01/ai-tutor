@@ -111,6 +111,58 @@ const config = {
         userBubble: '#DCF8C6',
         aiBubble:   '#F1F0F0',
 
+        // ── Spinzy design token extensions ────────────────────────────────
+        spz: {
+          brand: {
+            50:  'var(--brand-50)',
+            100: 'var(--brand-100)',
+            200: 'var(--brand-200)',
+            300: 'var(--brand-300)',
+            400: 'var(--brand-400)',
+            500: 'var(--brand-500)',
+            600: 'var(--brand-600)',
+            700: 'var(--brand-700)',
+            800: 'var(--brand-800)',
+            900: 'var(--brand-900)',
+          },
+          tier: {
+            critical:        'var(--tier-critical)',
+            'critical-soft': 'var(--tier-critical-soft)',
+            weak:            'var(--tier-weak)',
+            'weak-soft':     'var(--tier-weak-soft)',
+            fair:            'var(--tier-fair)',
+            'fair-soft':     'var(--tier-fair-soft)',
+            ontrack:         'var(--tier-ontrack)',
+            'ontrack-soft':  'var(--tier-ontrack-soft)',
+            strong:          'var(--tier-strong)',
+            'strong-soft':   'var(--tier-strong-soft)',
+          },
+          subj: {
+            math:    'var(--subj-math)',
+            science: 'var(--subj-science)',
+            social:  'var(--subj-social)',
+            english: 'var(--subj-english)',
+            hindi:   'var(--subj-hindi)',
+          },
+          bg: 'var(--bg)',
+          surface: {
+            DEFAULT: 'var(--surface)',
+            2: 'var(--surface-2)',
+            3: 'var(--surface-3)',
+          },
+          text: {
+            DEFAULT: 'var(--text)',
+            muted: 'var(--text-muted)',
+            faint: 'var(--text-faint)',
+          },
+          border: {
+            DEFAULT: 'var(--border)',
+            strong: 'var(--border-strong)',
+          },
+          primary: 'var(--primary)',
+          'on-brand': 'var(--on-brand)',
+        },
+
         // Design system additions
         'surface-warm': 'var(--color-surface-warm)',
         'surface-sunk': 'var(--color-surface-sunk)',
@@ -131,6 +183,12 @@ const config = {
         lg: 'var(--radius-lg)',
         xl: 'var(--radius-xl)',
         '2xl': '1.5rem',
+        'spz-xs':   'var(--r-xs)',
+        'spz-sm':   'var(--r-sm)',
+        'spz-md':   'var(--r-md)',
+        'spz-lg':   'var(--r-lg)',
+        'spz-xl':   'var(--r-xl)',
+        'spz-pill': 'var(--r-pill)',
       },
       boxShadow: {
         // Only allow the focus shadow via Tailwind utilities

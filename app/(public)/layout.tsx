@@ -9,7 +9,7 @@ import ToastHost from '@/components/ToastHost';
 import StickyHeader from '@/components/StickyHeader';
 import '@/styles/index.css';
 
-import { inter, nunito } from '@/app/fonts';
+import { inter, nunito, plusJakartaSans, jetBrainsMono } from '@/app/fonts';
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable} ${plusJakartaSans.variable} ${jetBrainsMono.variable}`}>
       <body className="font-sans antialiased min-h-screen h-full">
         <Providers>
           <GlobalLoaderProvider>

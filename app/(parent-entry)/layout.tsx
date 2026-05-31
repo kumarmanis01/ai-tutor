@@ -8,7 +8,7 @@
 import type { Viewport } from 'next'
 import Providers from '@/app/providers'
 import '@/styles/index.css'
-import { inter, nunito } from '@/app/fonts'
+import { inter, nunito, plusJakartaSans, jetBrainsMono } from '@/app/fonts'
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function ParentEntryLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable} ${plusJakartaSans.variable} ${jetBrainsMono.variable}`}>
       <body className="font-sans antialiased min-h-screen bg-gray-50 dark:bg-gray-950">
         <Providers>
           {children}

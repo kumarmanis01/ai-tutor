@@ -13,7 +13,7 @@ import GoogleTagManagerClient from '../../components/ClientOnly/GoogleTagManager
 import AppModalClient from '../../components/ClientOnly/AppModalClient';
 import '@/styles/index.css';
 
-import { inter, nunito } from '@/app/fonts';
+import { inter, nunito, plusJakartaSans, jetBrainsMono } from '@/app/fonts';
 
 export const viewport = {
   width: 'device-width',
@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Admin login page is public -- render minimal shell, skip auth + sidebar.
   if (pathname === '/admin/login') {
     return (
-      <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+      <html lang="en" className={`h-full ${inter.variable} ${nunito.variable} ${plusJakartaSans.variable} ${jetBrainsMono.variable}`}>
         <body className="font-sans antialiased h-full">
           <Providers>{children}</Providers>
         </body>
@@ -83,7 +83,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]);
 
   return (
-    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable} ${plusJakartaSans.variable} ${jetBrainsMono.variable}`}>
       <body className="font-sans antialiased h-full">
         <Providers>
           <GlobalLoaderProvider>
