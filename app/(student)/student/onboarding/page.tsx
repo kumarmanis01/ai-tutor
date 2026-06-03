@@ -102,6 +102,8 @@ export default function OnboardingPage() {
   })
   const [otpSent, setOtpSent] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [otpSending, setOtpSending] = useState(false)
+  const [otpError, setOtpError] = useState('')
 
   // grade/board immutable after first save -- strip from all PATCH handlers
   const age = useMemo(() => {
@@ -140,17 +142,71 @@ export default function OnboardingPage() {
         : [...d.subjects, s],
     }))
 
+  const sendConsentOtp = async () => {
+    if (!data.parentEmail) return
+    setOtpSending(true)
+    setOtpError('')
+    try {
+      // Save parent email to DB first so send-otp can read it
+      const saveRes = await fetch('/api/user/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          age,
+          board: data.board,
+          grade: data.grade,
+          subjects: data.subjects,
+          preferred_language: data.lang,
+          parent_email: data.parentEmail,
+        }),
+      })
+      if (!saveRes.ok) {
+        setOtpError('Could not save details. Please try again.')
+        setOtpSending(false)
+        return
+      }
+      const otpRes = await fetch('/api/auth/parent/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!otpRes.ok) {
+        setOtpError('Could not send consent email. Please try again.')
+        setOtpSending(false)
+        return
+      }
+      setOtpSent(true)
+    } catch {
+      setOtpError('Something went wrong. Please try again.')
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
   const handleNext = async () => {
     if (step < total - 1) {
       setStep(step + 1)
     } else {
       setIsSubmitting(true)
       try {
-        await fetch('/api/student/onboarding', {
+        const res = await fetch('/api/user/onboarding', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify({
+            name: data.name,
+            age,
+            board: data.board,
+            grade: data.grade,
+            subjects: data.subjects,
+            preferred_language: data.lang,
+            parent_email: data.parentEmail || undefined,
+          }),
         })
+        if (!res.ok) {
+          setIsSubmitting(false)
+          return
+        }
         router.push('/student/diagnostic')
       } catch {
         setIsSubmitting(false)
@@ -290,9 +346,12 @@ export default function OnboardingPage() {
             </div>
             {!otpSent ? (
               <div className="mt-4">
-                <Btn full disabled={!data.parentEmail} onClick={() => setOtpSent(true)}>
-                  Send consent link
+                <Btn full disabled={!data.parentEmail || otpSending} onClick={sendConsentOtp}>
+                  {otpSending ? 'Sending...' : 'Send consent link'}
                 </Btn>
+                {otpError && (
+                  <div className="mt-2 text-[13px] text-[var(--danger)] text-center">{otpError}</div>
+                )}
               </div>
             ) : (
               <div className="mt-[18px] p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
@@ -310,7 +369,7 @@ export default function OnboardingPage() {
                 <div className="text-[11.5px] text-[var(--text-faint)] mt-[10px]">
                   Link expires in 30 min.{' '}
                   <button
-                    onClick={() => setOtpSent(false)}
+                    onClick={() => { setOtpSent(false); setOtpError('') }}
                     className="bg-transparent border-0 text-[var(--primary)] font-semibold cursor-pointer [font-family:var(--font-sans)] p-0 text-[11.5px]"
                   >
                     Resend
