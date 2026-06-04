@@ -107,6 +107,8 @@ export default function OnboardingPage() {
     consentDone: false,
   })
   const [otpSent, setOtpSent] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpVerifying, setOtpVerifying] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [otpSending, setOtpSending] = useState(false)
   const [otpError, setOtpError] = useState('')
@@ -192,6 +194,34 @@ export default function OnboardingPage() {
       setOtpError('Something went wrong. Please try again.')
     } finally {
       setOtpSending(false)
+    }
+  }
+
+  const verifyConsentOtp = async () => {
+    const code = otpCode.trim()
+    if (!/^\d{4,6}$/.test(code)) {
+      setOtpError('Enter the 6-digit code your parent received.')
+      return
+    }
+    setOtpVerifying(true)
+    setOtpError('')
+    try {
+      const res = await fetch('/api/auth/parent/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !(json.ok || json.verified || json.alreadyVerified)) {
+        setOtpError(typeof json.error === 'string' ? json.error : 'Invalid or expired code. Try again.')
+        return
+      }
+      // Server has set accountStatus=active. Mark consent done so footer CTA unlocks.
+      update('consentDone', true)
+    } catch {
+      setOtpError('Something went wrong. Please try again.')
+    } finally {
+      setOtpVerifying(false)
     }
   }
 
@@ -368,19 +398,38 @@ export default function OnboardingPage() {
               <div className="mt-[18px] p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
                 <div className="flex items-center gap-[10px] mb-2">
                   <div className="w-[34px] h-[34px] rounded-[10px] bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center text-[18px]">✉</div>
-                  <div className="text-[14px] font-bold text-[var(--text)]">Consent link sent</div>
+                  <div className="text-[14px] font-bold text-[var(--text)]">Code sent</div>
                 </div>
                 <div className="text-[13px] text-[var(--text-muted)] leading-[1.45] mb-3">
-                  We emailed a secure approval link to{' '}
-                  <strong className="text-[var(--text)]">{data.parentEmail}</strong>. Your parent taps it to approve.
+                  We emailed a 6-digit code to{' '}
+                  <strong className="text-[var(--text)]">{data.parentEmail}</strong>. Ask your parent to share it.
                 </div>
-                <Btn full size="sm" variant="secondary" onClick={() => update('consentDone', true)}>
-                  {data.consentDone ? 'Parent approved' : 'Mark as approved'}
-                </Btn>
+                {data.consentDone ? (
+                  <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--tier-strong)]">
+                    <span>✓</span> Parent verified
+                  </div>
+                ) : (
+                  <>
+                    <FieldLabel>Parent's code</FieldLabel>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="\d{4,6}"
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="------"
+                      className="w-full h-[50px] px-[14px] rounded-[12px] border-[1.5px] border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-[18px] tracking-[0.3em] text-center [font-family:var(--font-mono)] outline-none box-border mb-3"
+                    />
+                    <Btn full size="sm" disabled={otpVerifying || otpCode.length < 4} onClick={verifyConsentOtp}>
+                      {otpVerifying ? 'Verifying...' : 'Verify code'}
+                    </Btn>
+                  </>
+                )}
                 <div className="text-[11.5px] text-[var(--text-faint)] mt-[10px]">
-                  Link expires in 30 min.{' '}
+                  Code expires in 5 min.{' '}
                   <button
-                    onClick={() => { setOtpSent(false); setOtpError('') }}
+                    onClick={() => { setOtpSent(false); setOtpError(''); setOtpCode('') }}
                     className="bg-transparent border-0 text-[var(--primary)] font-semibold cursor-pointer [font-family:var(--font-sans)] p-0 text-[11.5px]"
                   >
                     Resend

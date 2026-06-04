@@ -12,15 +12,28 @@ the row here and add a test.
 
 | # | Screen (file:line) | Trigger | Method | URL | Payload (keys) | Response fields read by UI | Auth |
 |---|---|---|---|---|---|---|---|
-| 1 | `components/ui/AuthScreen.tsx:34` | "Continue with Google" button | (NextAuth) | `signIn('google', { callbackUrl })` | -- | OAuth redirect | none (entry point) |
-| 2 | `app/(student)/student/onboarding/page.tsx:155` | "Send consent link" button (DPDP minor flow) | POST | `/api/user/onboarding` | `name, age, board, grade, subjects[], preferred_language (en\|hi), parent_email` | `ok`, `fieldErrors` | session user |
-| 3 | `app/(student)/student/onboarding/page.tsx:173` | After consent save | POST | `/api/auth/parent/send-otp` | `{}` (reads parentEmail from session user) | `ok` / `sentTo` | session user |
-| 4 | `app/(student)/student/onboarding/page.tsx:197` | "Continue" / "Start diagnostic" (final step) | POST | `/api/user/onboarding` | `name, age, board, grade, subjects[], preferred_language (en\|hi), parent_email?` | `ok`, `requiresOtp` -> `router.push('/student/diagnostic')` | session user |
-| 5 | `app/(parent)/parent/progress/page.tsx:196` | Page mount (`useEffect`) | GET | `/api/parent/progress` | -- | `children[].{name, subjects[].{subjectName, readinessScore}}` | session user, `role === 'parent'` |
-| 6 | `app/(parent)/parent/schedule/page.tsx:120` | Page mount (`useEffect`) | GET | `/api/parent/schedule` | -- | `sessions[].{id, concept, subject, scheduledAt, status, durationMinutes}` | session user, `role === 'parent'` |
-| 7 | `app/(student)/student/profile/page.tsx:77` | Page mount (`useEffect`) | GET | `/api/user/profile` | -- | `id, name, email, grade, board, language, learningStyle, plan` | session user |
-| 8 | `app/(student)/student/profile/page.tsx:148` | "Sign out" button | (NextAuth) | `signOut({ callbackUrl: '/login/student' })` | -- | redirect | session user |
-| 9 | `app/(parent-entry)/parent/onboarding/page.tsx:97` | Page mount when role !== 'parent' | POST | `/api/auth/set-role` | `{ role: 'parent' }` | `ok` -> `router.replace('/parent/dashboard')` | session user |
+| 1 | `components/ui/AuthScreen.tsx` | "Continue with Google" button | (NextAuth) | `signIn('google', { callbackUrl })` | -- | OAuth redirect | none (entry point) |
+| 2 | `app/(student)/student/onboarding/page.tsx` (sendConsentOtp) | "Send consent link" button (DPDP minor flow) | POST | `/api/user/onboarding` | `name, age, board, grade, subjects[], preferred_language (en\|hi), parent_email` | `ok`, `fieldErrors` | session user |
+| 3 | `app/(student)/student/onboarding/page.tsx` (sendConsentOtp) | After consent save | POST | `/api/auth/parent/send-otp` | `{}` (reads parentEmail from session user) | `ok` / `sentTo` | session user |
+| 4 | `app/(student)/student/onboarding/page.tsx` (verifyConsentOtp) | "Verify code" button (under-13 inline) | POST | `/api/auth/parent/verify-otp` | `{ code: <4-6 digits> }` | `ok\|verified\|alreadyVerified` -> server sets accountStatus=active | session user |
+| 5 | `app/(student)/student/onboarding/page.tsx` (handleNext) | "Continue" / "Start diagnostic" (final step) | POST | `/api/user/onboarding` | `name, age, board, grade, subjects[], preferred_language (en\|hi), parent_email?` | `ok`, `requiresOtp` -> `router.push('/student/diagnostic')` | session user |
+| 6 | `app/(parent)/parent/progress/page.tsx` (fetchProgress) | Page mount (`useEffect`) | GET | `/api/parent/dashboard` | -- | `students[0].{studentName, subjectProgress[].{subject, totalTopics, topicsCovered, averageMastery}, readiness[].{subject, readinessScore}, weekly[]}` | session user, parent link |
+| 7 | `app/(parent)/parent/progress/page.tsx` (fetchProgress, parallel) | Page mount (`useEffect`) | GET | `/api/parent/schedule` | -- | `sessions[].{subject, scheduledAt, status, concept}` -> derive per-subject weeklyActivity + recentSessions | session user, `role === 'parent'` |
+| 8 | `app/(parent)/parent/schedule/page.tsx` | Page mount (`useEffect`) | GET | `/api/parent/schedule` | -- | `sessions[].{id, concept, subject, scheduledAt, status, durationMinutes}` | session user, `role === 'parent'` |
+| 9 | `app/(student)/student/profile/page.tsx` (fetchProfile) | Page mount (`useEffect`) | GET | `/api/user/profile` | -- | `id, name, email, grade, board, language, learningStyle, plan, resolvedSubjects` | session user |
+| 10 | `app/(student)/student/profile/page.tsx` (signOut handler) | "Sign out" button | (NextAuth) | `signOut({ callbackUrl: '/login/student' })` | -- | redirect | session user |
+| 11 | `app/(parent-entry)/parent/onboarding/page.tsx` | Page mount when role !== 'parent' | POST | `/api/auth/set-role` | `{ role: 'parent' }` | `ok` -> `router.replace('/parent/dashboard')` | session user |
+| 12 | `app/(student)/student/diagnostic/page.tsx` (load effect) | Page mount, before subject pick | GET | `/api/user/profile` | -- | `board, grade, resolvedSubjects[]` | session user |
+| 13 | `app/(student)/student/diagnostic/page.tsx` -> `components/student/diagnostic/DiagnosticFlow.tsx` | Adaptive bootstrap when no subject hardcoded | POST | `/api/student/diagnostic/start` | `{ boardSlug, grade, subjectSlug }` | `sessionId, firstQuestion, totalQuestions` | session user |
+| 14 | `DiagnosticFlow` | Per answer (adaptive) | POST | `/api/student/diagnostic/answer` | `{ sessionId, questionId, selectedOption, timeSpentMs }` | `nextQuestion, stopReason, thetaState` | session user |
+| 15 | `DiagnosticFlow` | Final submit | POST | `/api/student/diagnostic/submit` | `{ subjectId, answers[], sessionId? }` | `success, placement` -> render KnowledgeMapResults | session user |
+| 16 | `DiagnosticFlow` | "Save & continue later" | POST | `/api/student/diagnostic/save-partial` | `{ subjectId, answers[], currentIndex, sessionId? }` | `{ saved: true }` | session user |
+| 17 | `app/(student)/session/[topicId]/page.tsx` -> `components/session/SessionContainer.tsx` (useSession startSession) | Page mount | POST | `/api/session/start` | `{ topicId }` | `session, phase, content, hydrating` | session user |
+| 18 | `SessionContainer` (advancePhase) | Footer CTA per phase | POST | `/api/session/next` | `{ sessionId }` | `session, phase, content` -> last call after HOMEWORK marks COMPLETE | session user |
+| 19 | `SessionContainer` (submitPractice) | Practice phase submit | POST | `/api/session/[sessionId]/practice/submit` | `{ answers: [{ questionId, answer }] }` | `score, percentage, results, nextPhase` | session user |
+| 20 | `SessionContainer` (submitTest) | Test phase submit | POST | `/api/session/[sessionId]/test/submit` | `{ answers, testId? }` | `score, percentage, results, nextPhase` | session user |
+| 21 | `app/(student)/student/upgrade/page.tsx` (handlePay) | "Continue · ₹X" button | POST | `/api/student/subscription/order` | `{ planId: 'standard_monthly' \| 'standard_annual' }` | `{ orderId, amount, currency, keyId }` -> open Razorpay | session user |
+| 22 | Razorpay checkout handler (in `handlePay`) | Razorpay success callback | POST | `/api/student/subscription/verify` | `{ orderId, paymentId, signature, planId }` | `{ success: true, subscriptionExpiry }` -> success screen | session user |
 
 ## 2. Server-side data fetches (page.tsx server components hitting Prisma directly)
 
@@ -61,29 +74,41 @@ Implications locked in by the tests:
 
 ## 5. Known missing pieces (NOT fixed in this pass)
 
-Per the "no new APIs" constraint and the protected-contracts rules in
-`CLAUDE.md`, these were documented only:
+After this round, the following Phase-6 journey gaps were all closed by
+wiring the NEW UI to existing endpoints (no new API routes created):
 
-- **`/student/verify-parent` page does not exist.** `proxy.ts:119` already
-  whitelists the path, and the onboarding API sets
-  `accountStatus = 'pending_parent_verification'` for under-13 students
-  (`app/api/user/onboarding/route.ts:354`). Without the page and a
-  `verify-otp` endpoint, every under-13 student is stuck in an onboarding
-  redirect loop. Decision needed: build the page and add
-  `POST /api/student/verify-parent/verify-otp`, OR change the onboarding
-  API to leave under-13 students at `pending_parent_verification` but
-  route them through the existing parent send-otp flow only.
+- ✅ Under-13 verify flow: `POST /api/auth/parent/verify-otp` now wired
+  inline in `/student/onboarding` consent step. `proxy.ts:119` allowlist
+  entry for `/student/verify-parent` removed.
+- ✅ Parent progress real data: switched from `/api/parent/progress` to
+  `/api/parent/dashboard` (subjectProgress topicsCovered/totalTopics +
+  readiness) + `/api/parent/schedule` (per-day activity + recent
+  sessions).
+- ✅ Session completion: NEW `/session/[topicId]/page.tsx` now mounts the
+  already-wired `SessionContainer`, which drives `/api/session/start` →
+  `/next` → `/practice/submit` → `/test/submit` → completion through
+  the existing `useSession` hook.
+- ✅ Razorpay upgrade: `/student/upgrade` now calls
+  `/api/student/subscription/order` → opens Razorpay checkout (script
+  loaded via `next/script`) → calls `/api/student/subscription/verify`
+  on success.
+- ✅ Diagnostic real questions: `/student/diagnostic` now picks a subject
+  from `/api/user/profile.resolvedSubjects` and mounts `DiagnosticFlow`
+  in adaptive mode, which talks to `/start` → `/answer` → `/submit`.
 
-- **Parent progress UI shows zeroed values for `topicsCompleted`,
-  `topicsTotal`, `weeklyActivity`, `recentSessions`.** The new
-  `/api/parent/progress` does not return those fields, and the new UI
-  hard-codes zeros (`app/(parent)/parent/progress/page.tsx:73-80`). The OLD
-  parent dashboard pulled them from `/api/parent/subject-mastery`. Decision
-  needed: either extend `/api/parent/progress` (additive query) or have
-  the new UI call the existing `/api/parent/subject-mastery` route in
-  parallel.
+Remaining cosmetic items:
 
 - **NextAuth `pages.signIn` is `/auth/get-started`** but `proxy.ts`
   redirects unauthenticated students/parents to `/login/student` /
   `/login/parent`. Both paths render and work, but the two destinations
   should be aligned (cosmetic, low priority).
+
+- **XP / streak / badges on StructuredSession completion.** Per the GAP-3
+  forensic note, the `SessionContainer` flow currently writes a STUDY-
+  type `StudentTopicProgress` touch on completion but does not award XP/
+  streak/badges (those live behind the legacy `/api/student/session/
+  [sessionId]/complete` endpoint for the V1 `LearningSession` model).
+  Decision needed: extend the existing `/api/session/next` HOMEWORK→
+  COMPLETE handler to also award rewards, OR call the legacy completion
+  endpoint via the LearningSession bridge id. Both are server-side
+  changes; UI is fine as is.

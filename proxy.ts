@@ -114,9 +114,10 @@ export async function proxy(request: NextRequest) {
           return allowed;
         }
         const onboardingTarget = isParent ? '/parent/onboarding' : '/student/onboarding';
+        // Under-13 parent OTP verify is now an inline step inside /student/onboarding,
+        // so /student/verify-parent is no longer on the allowlist.
         if (
           pathname.startsWith('/student/onboarding') ||
-          pathname.startsWith('/student/verify-parent') ||
           pathname.startsWith('/parent/onboarding')
         ) {
           const allowed = NextResponse.next();

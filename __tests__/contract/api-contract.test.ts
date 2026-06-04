@@ -368,3 +368,131 @@ describe('POST /api/auth/parent/send-otp -- consent OTP send', () => {
     expect(res.status).toBeGreaterThanOrEqual(400)
   })
 })
+
+// --- Route: POST /api/auth/parent/verify-otp -----------------------------
+// UI caller: app/(student)/student/onboarding/page.tsx -- inline consent verify step
+// Payload: { code: <4-6 digits> }. On success: transitions accountStatus to 'active'.
+
+describe('POST /api/auth/parent/verify-otp -- consent OTP verify', () => {
+  test('returns 401 when no session', async () => {
+    const mod = await import('@/app/api/auth/parent/verify-otp/route')
+    const res = await mod.POST(makeReq('http://localhost', { method: 'POST', body: JSON.stringify({ code: '123456' }) }))
+    expect(res.status).toBeGreaterThanOrEqual(400)
+  })
+
+  test('rejects malformed code with 400', async () => {
+    testSession.current = { user: { id: 'u1', email: 's@example.com' } }
+    const mod = await import('@/app/api/auth/parent/verify-otp/route')
+    const res = await mod.POST(makeReq('http://localhost', { method: 'POST', body: JSON.stringify({ code: 'abc' }) }))
+    expect([400, 401]).toContain(res.status)
+  })
+
+  test('rejects whatsapp channel as disabled', async () => {
+    testSession.current = { user: { id: 'u1', email: 's@example.com' } }
+    const mod = await import('@/app/api/auth/parent/verify-otp/route')
+    const res = await mod.POST(makeReq('http://localhost', { method: 'POST', body: JSON.stringify({ code: '123456', channel: 'whatsapp' }) }))
+    expect([400, 401]).toContain(res.status)
+  })
+})
+
+// --- Route: GET /api/parent/dashboard ------------------------------------
+// UI caller: app/(parent)/parent/progress/page.tsx (fetched alongside /schedule)
+// Returns: { ok, students: [{ studentId, studentName, subjectProgress: [...], readiness: [...], weekly: [...] }] }
+
+describe('GET /api/parent/dashboard -- parent progress page (real data)', () => {
+  test('returns 401 when no session', async () => {
+    const mod = await import('@/app/api/parent/dashboard/route')
+    const res = await mod.GET(makeReq('http://localhost', { method: 'GET' }))
+    expect(res.status).toBe(401)
+  })
+})
+
+// --- Route: POST /api/student/subscription/order -------------------------
+// UI caller: app/(student)/student/upgrade/page.tsx -- "Continue" button
+// Payload: { planId: 'standard_monthly' | 'standard_annual' | ... }
+// Returns: { orderId, amount, currency, keyId }
+
+describe('POST /api/student/subscription/order -- Razorpay order create', () => {
+  test('returns 401 when no session', async () => {
+    const mod = await import('@/app/api/student/subscription/order/route')
+    const res = await mod.POST(makeReq('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ planId: 'standard_monthly' }),
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    expect(res.status).toBe(401)
+  })
+
+  test('rejects missing planId with 4xx', async () => {
+    testSession.current = { user: { id: 'u1', email: 's@example.com' } }
+    const mod = await import('@/app/api/student/subscription/order/route')
+    const res = await mod.POST(makeReq('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({}),
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    expect(res.status).toBeGreaterThanOrEqual(400)
+    expect(res.status).toBeLessThan(600)
+  })
+})
+
+// --- Route: POST /api/student/subscription/verify ------------------------
+// UI caller: app/(student)/student/upgrade/page.tsx -- Razorpay success handler
+// Payload: { orderId, paymentId, signature, planId }
+
+describe('POST /api/student/subscription/verify -- Razorpay signature verify', () => {
+  test('returns 401 when no session', async () => {
+    const mod = await import('@/app/api/student/subscription/verify/route')
+    const res = await mod.POST(makeReq('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ orderId: 'o1', paymentId: 'p1', signature: 's1', planId: 'standard_monthly' }),
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    expect(res.status).toBe(401)
+  })
+
+  test('rejects missing required fields with 400', async () => {
+    testSession.current = { user: { id: 'u1', email: 's@example.com' } }
+    const mod = await import('@/app/api/student/subscription/verify/route')
+    const res = await mod.POST(makeReq('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ orderId: 'o1' }),
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    expect(res.status).toBeGreaterThanOrEqual(400)
+  })
+})
+
+// --- Route: POST /api/student/diagnostic/start ---------------------------
+// UI caller: app/(student)/student/diagnostic/page.tsx (via DiagnosticFlow adaptive mode)
+// Payload: { boardSlug, grade, subjectSlug, languageCode? }
+// Returns: { sessionId, firstQuestion, totalQuestions }
+
+describe('POST /api/student/diagnostic/start -- diagnostic bootstrap', () => {
+  test('returns 401 when no session', async () => {
+    const mod = await import('@/app/api/student/diagnostic/start/route')
+    const res = await mod.POST(makeReq('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ boardSlug: 'cbse', grade: '10', subjectSlug: 'mathematics' }),
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    expect(res.status).toBe(401)
+  })
+})
+
+// --- Route: POST /api/session/start --------------------------------------
+// UI caller: app/(student)/session/[topicId]/page.tsx (via SessionContainer/useSession)
+// Payload: { topicId }
+// Returns: { session, phase, content, hydrating }
+
+describe('POST /api/session/start -- learning session bootstrap', () => {
+  test('returns 401 when no session', async () => {
+    const mod = await import('@/app/api/session/start/route')
+    const res = await mod.POST(makeReq('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ topicId: 't1' }),
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    expect(res.status).toBe(401)
+  })
+})

@@ -42,21 +42,50 @@ interface ParentProgressData {
 }
 
 // --- API response adapter ---
-// /api/parent/progress returns { children: ParentProgressChild[] }
-// We take the first child and map to ParentProgressData.
+// We pull from two existing endpoints:
+//   GET /api/parent/dashboard  -> per-student subjectProgress (topicsCovered/totalTopics,
+//                                 averageMastery) + readiness (readinessScore) + weekly[]
+//                                 (12-week per-week sessionsCount + subjectsActive)
+//   GET /api/parent/schedule    -> per-session list across 7-day window for recentSessions
+//                                 and per-day weeklyActivity derivation.
+// First linked student wins (matches OLD parent dashboard pick).
 
-interface ApiSubject {
-  subjectName: string
+interface DashboardSubject {
+  subject: string
+  totalTopics: number
+  topicsCovered: number
+  averageMastery: number
+}
+interface DashboardReadiness {
+  subject: string
   readinessScore: number
-  daysToExam?: number | null
-  recentMasteryChange?: number | null
 }
-interface ApiChild {
-  name: string
-  subjects: ApiSubject[]
+interface DashboardWeeklyPoint {
+  weekStart: string
+  sessionsCount: number
+  subjectsActive: string[]
 }
-interface ApiProgressResponse {
-  children?: ApiChild[]
+interface DashboardStudent {
+  studentId: string
+  studentName: string
+  subjectProgress: DashboardSubject[]
+  readiness: DashboardReadiness[]
+  weekly: DashboardWeeklyPoint[]
+}
+interface DashboardResponse {
+  ok?: boolean
+  students?: DashboardStudent[]
+}
+
+interface ScheduleSession {
+  id: string
+  concept: string
+  subject: string
+  scheduledAt: string
+  status: 'upcoming' | 'completed' | 'missed'
+}
+interface ScheduleResponse {
+  sessions?: ScheduleSession[]
 }
 
 function readinessScoreToTier(score: number): TierKey {
@@ -67,20 +96,65 @@ function readinessScoreToTier(score: number): TierKey {
   return 'critical'
 }
 
-function adaptProgressResponse(raw: ApiProgressResponse): ParentProgressData | null {
-  const child = raw.children?.[0]
+function masteryToTier(avgMastery: number): TierKey {
+  // averageMastery is 0..1
+  const pct = avgMastery * 100
+  return readinessScoreToTier(pct)
+}
+
+function dayIndexMonFirst(d: Date): number {
+  // 0 = Mon, 6 = Sun
+  const dow = d.getDay()
+  return dow === 0 ? 6 : dow - 1
+}
+
+function adaptProgressResponse(
+  dashboard: DashboardResponse,
+  schedule: ScheduleResponse,
+): ParentProgressData | null {
+  const child = dashboard.students?.[0]
   if (!child) return null
 
-  const subjects: SubjectProgress[] = (child.subjects ?? []).map((s) => ({
-    subject: s.subjectName,
-    tier: readinessScoreToTier(s.readinessScore),
-    topicsCompleted: 0,   // not returned by API; show as unknown
-    topicsTotal: 0,
-    weeklyActivity: Array(7).fill(0) as number[],
-    recentSessions: [],
-  }))
+  // Index readiness by subject for tier lookup.
+  const readinessBySubject = new Map<string, number>()
+  for (const r of child.readiness ?? []) {
+    readinessBySubject.set(r.subject, r.readinessScore)
+  }
 
-  return { childName: child.name, subjects }
+  // Build per-subject buckets for schedule-derived data.
+  const completed = (schedule.sessions ?? []).filter((s) => s.status === 'completed')
+  // weeklyActivity bucket: 7-day Mon..Sun counts per subject (last week window).
+  const weeklyBySubject = new Map<string, number[]>()
+  const recentBySubject = new Map<string, RecentSession[]>()
+  for (const s of completed) {
+    const d = new Date(s.scheduledAt)
+    const idx = dayIndexMonFirst(d)
+    if (!weeklyBySubject.has(s.subject)) {
+      weeklyBySubject.set(s.subject, Array(7).fill(0))
+    }
+    weeklyBySubject.get(s.subject)![idx] += 1
+    if (!recentBySubject.has(s.subject)) recentBySubject.set(s.subject, [])
+    recentBySubject.get(s.subject)!.push({
+      concept: s.concept,
+      completedAt: s.scheduledAt,
+      tier: readinessScoreToTier(readinessBySubject.get(s.subject) ?? 0),
+    })
+  }
+
+  const subjects: SubjectProgress[] = (child.subjectProgress ?? []).map((s) => {
+    const readinessScore = readinessBySubject.get(s.subject)
+    const tier = readinessScore != null ? readinessScoreToTier(readinessScore) : masteryToTier(s.averageMastery ?? 0)
+    return {
+      subject: s.subject,
+      tier,
+      topicsCompleted: s.topicsCovered,
+      topicsTotal: s.totalTopics,
+      weeklyActivity: weeklyBySubject.get(s.subject) ?? (Array(7).fill(0) as number[]),
+      recentSessions: (recentBySubject.get(s.subject) ?? []).slice(0, 5),
+    }
+  })
+
+  return { childName: child.studentName, subjects }
 }
 
 // --- Sub-components ---
@@ -195,10 +269,15 @@ export default function ParentProgressPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/parent/progress')
-      if (!res.ok) throw new Error('Failed to load progress')
-      const raw = await res.json() as ApiProgressResponse
-      const adapted = adaptProgressResponse(raw)
+      const [dashRes, schedRes] = await Promise.all([
+        fetch('/api/parent/dashboard'),
+        fetch('/api/parent/schedule'),
+      ])
+      if (!dashRes.ok) throw new Error('Failed to load dashboard')
+      const dashboard = await dashRes.json() as DashboardResponse
+      // Schedule failure is non-fatal: just lose recentSessions/weeklyActivity detail.
+      const schedule = schedRes.ok ? (await schedRes.json() as ScheduleResponse) : {}
+      const adapted = adaptProgressResponse(dashboard, schedule)
       if (!adapted) throw new Error('No linked student')
       setData(adapted)
     } catch {
