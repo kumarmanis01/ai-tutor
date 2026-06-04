@@ -19,7 +19,13 @@ interface OnboardingData {
 
 const BOARDS = ['CBSE', 'ICSE', 'State Board'] as const
 const GRADES = [6, 7, 8, 9, 10, 11, 12] as const
-const LANGS = ['English', 'Hindi', 'Hinglish (mix)'] as const
+// LANG_OPTIONS: label is shown to the user; code maps to Prisma LanguageCode enum (en|hi).
+// Backend rejects values outside the enum, so we send the code, never the label.
+const LANG_OPTIONS = [
+  { label: 'English', code: 'en' },
+  { label: 'Hindi', code: 'hi' },
+  { label: 'Hinglish (mix)', code: 'hi' },
+] as const
 
 function chipBtnClass(on: boolean): string {
   return [
@@ -142,6 +148,11 @@ export default function OnboardingPage() {
         : [...d.subjects, s],
     }))
 
+  const languageCode = useMemo(
+    () => LANG_OPTIONS.find(o => o.label === data.lang)?.code ?? 'en',
+    [data.lang],
+  )
+
   const sendConsentOtp = async () => {
     if (!data.parentEmail) return
     setOtpSending(true)
@@ -157,7 +168,7 @@ export default function OnboardingPage() {
           board: data.board,
           grade: data.grade,
           subjects: data.subjects,
-          preferred_language: data.lang,
+          preferred_language: languageCode,
           parent_email: data.parentEmail,
         }),
       })
@@ -199,7 +210,7 @@ export default function OnboardingPage() {
             board: data.board,
             grade: data.grade,
             subjects: data.subjects,
-            preferred_language: data.lang,
+            preferred_language: languageCode,
             parent_email: data.parentEmail || undefined,
           }),
         })
@@ -314,12 +325,12 @@ export default function OnboardingPage() {
         {cur === 'lang' && (
           <StepShell title="Preferred language" sub="Vidya can explain in your comfort language.">
             <div className="flex flex-col gap-[10px]">
-              {LANGS.map(l => {
-                const on = data.lang === l
+              {LANG_OPTIONS.map(l => {
+                const on = data.lang === l.label
                 return (
                   <button
-                    key={l}
-                    onClick={() => update('lang', l)}
+                    key={l.label}
+                    onClick={() => update('lang', l.label)}
                     className={[
                       'flex items-center gap-3 p-4 rounded-[14px] cursor-pointer text-left min-h-[44px]',
                       on
@@ -328,7 +339,7 @@ export default function OnboardingPage() {
                     ].join(' ')}
                   >
                     <span className="text-[20px]">🌐</span>
-                    <span className="flex-1 font-semibold text-[15px] text-[var(--text)]">{l}</span>
+                    <span className="flex-1 font-semibold text-[15px] text-[var(--text)]">{l.label}</span>
                     {on && <span className="text-[var(--primary)] font-bold">✓</span>}
                   </button>
                 )

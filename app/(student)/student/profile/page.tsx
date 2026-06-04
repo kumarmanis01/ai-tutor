@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { AppHeader, Card, Btn, ErrorState, Skel, Avatar, SectionTitle } from '@/components/ui'
 
 // --- Types ---
@@ -145,7 +146,7 @@ export default function StudentProfilePage() {
         <Btn variant="secondary" full onClick={() => router.push('/student/upgrade')}>
           Manage subscription
         </Btn>
-        <Btn variant="danger" full onClick={() => router.push('/api/auth/signout')}>
+        <Btn variant="danger" full onClick={() => signOut({ callbackUrl: '/login/student' })}>
           Sign out
         </Btn>
       </div>

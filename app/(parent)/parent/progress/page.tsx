@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Card, EmptyState, ErrorState, SkeletonCard, TierPill,
   SectionTitle, Mono,
@@ -185,6 +186,7 @@ function SubjectCard({ s }: { s: SubjectProgress }) {
 // --- Page ---
 
 export default function ParentProgressPage() {
+  const router = useRouter()
   const [data, setData] = useState<ParentProgressData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -226,7 +228,7 @@ export default function ParentProgressPage() {
         title="No progress data yet"
         body={`${data.childName} has not completed enough sessions to show a progress report. Encourage them to do a short session today.`}
         action="Go to home"
-        onAction={() => {}}
+        onAction={() => router.push('/parent/dashboard')}
       />
     </div>
   )
