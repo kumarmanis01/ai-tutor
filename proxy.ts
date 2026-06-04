@@ -93,7 +93,11 @@ export async function proxy(request: NextRequest) {
         if (prefix === '/session') {
           return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url));
         }
-        return NextResponse.redirect(new URL('/', request.url));
+        // Redirect students to student login, parents to parent login, others to student login
+        if (pathname.startsWith('/parent')) {
+          return NextResponse.redirect(new URL('/login/parent', request.url));
+        }
+        return NextResponse.redirect(new URL('/login/student', request.url));
       }
 
       const isStudentOrParentUi = pathname.startsWith('/student') || pathname.startsWith('/parent');

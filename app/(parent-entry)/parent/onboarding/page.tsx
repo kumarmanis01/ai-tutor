@@ -30,7 +30,7 @@ import Logo from '@/components/Logo'
 const CLASS_NAME = 'ParentOnboardingPage'
 const PARENT_ROLE = 'parent'
 const SIGN_IN_ROUTE = '/auth/login'
-const PARENT_LINK_ROUTE = '/parent'
+const PARENT_LINK_ROUTE = '/parent/dashboard'
 const PARENT_ONBOARDING_ROUTE = '/parent/onboarding'
 
 function buildOnboardingPathWithInvite(inviteCode: string): string {
