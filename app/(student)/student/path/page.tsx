@@ -22,7 +22,8 @@ export default async function PathPage() {
   const userId = session.user.id
 
   const plan = await prisma.learningPlan.findFirst({
-    where: { userId },
+    where: { studentId: userId },
+    orderBy: { generatedAt: 'desc' },
     select: {
       items: {
         orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],

@@ -22,7 +22,7 @@ function toSubjectKey(name: string): SubjectKey {
   return n as SubjectKey
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers()
   const userId = session?.user?.id
   if (!userId) {

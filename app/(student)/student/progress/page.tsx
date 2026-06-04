@@ -33,7 +33,7 @@ export default async function ProgressPage() {
       select: { currentStreak: true, totalXp: true, level: true },
     }),
     prisma.readinessStatus.findMany({
-      where: { userId },
+      where: { studentId: userId },
       select: {
         subject: true,
         readinessScore: true,
@@ -42,7 +42,7 @@ export default async function ProgressPage() {
       },
     }),
     prisma.structuredSession.findMany({
-      where: { userId, startedAt: { gte: days30Ago } },
+      where: { studentId: userId, startedAt: { gte: days30Ago } },
       select: { startedAt: true, topic: { select: { chapter: { select: { subject: { select: { name: true } } } } } } },
     }),
   ])
@@ -60,7 +60,7 @@ export default async function ProgressPage() {
   }
   const trend7 = trend30.slice(-7)
 
-  // Weekly activity per subject (last 7 days, Mon=0..Sun=6)
+  // Weekly activity per subject (last 7 days)
   const weekStart = new Date(now)
   weekStart.setDate(weekStart.getDate() - 6)
   weekStart.setHours(0, 0, 0, 0)

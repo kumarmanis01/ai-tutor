@@ -59,7 +59,6 @@ export async function GET(req: Request) {
 
   // 30 days ago for trend data
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000)
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000)
 
   const [
     userRow,

@@ -33,7 +33,7 @@ function readinessTierFromScore(score: number): TierKey {
   return getReadinessTier(score) as TierKey
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers()
   const userId = session?.user?.id
   if (!userId) {

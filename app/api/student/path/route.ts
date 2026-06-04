@@ -28,7 +28,7 @@ const STATUS_MAP: Record<string, 'upcoming' | 'in_progress' | 'completed' | 'loc
   DEFERRED: 'locked',
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers()
   const userId = session?.user?.id
   if (!userId) {
@@ -44,6 +44,7 @@ export async function GET(req: Request) {
       status: true,
       concept: {
         select: {
+          id: true,
           name: true,
           prerequisiteConceptIds: true,
           subject: { select: { name: true } },
@@ -52,9 +53,9 @@ export async function GET(req: Request) {
     },
   })
 
-  // Collect completed concept IDs to check prerequisitesMet
+  // completedIds holds concept IDs (not planItem IDs) so prerequisiteConceptIds can be matched
   const completedIds = new Set(
-    items.filter((i) => i.status === 'COMPLETED').map((i) => i.id),
+    items.filter((i) => i.status === 'COMPLETED').map((i) => i.concept.id),
   )
 
   const topics = items.map((item) => {

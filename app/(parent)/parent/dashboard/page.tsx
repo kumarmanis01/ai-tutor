@@ -10,7 +10,7 @@ import ParentDashboardClient from './ParentDashboardClient'
 export default async function ParentDashboardPage() {
   const session = (await getServerSession(authOptions)) as AppSession | null
   if (!session?.user?.id) redirect('/login/parent')
-  if ((session.user as { role?: string }).role !== 'parent' && (session.user as { accountStatus?: string }).accountStatus !== 'active') {
+  if ((session.user as { role?: string }).role !== 'parent') {
     redirect('/parent/onboarding')
   }
 
@@ -38,11 +38,11 @@ export default async function ParentDashboardPage() {
       select: { name: true, grade: true, currentStreak: true, subscriptionStatus: true },
     }),
     prisma.readinessStatus.findMany({
-      where: { userId: studentId },
+      where: { studentId },
       select: { subject: true, readinessScore: true },
     }),
     prisma.structuredSession.findMany({
-      where: { userId: studentId, startedAt: { gte: today, lt: tomorrow } },
+      where: { studentId, startedAt: { gte: today, lt: tomorrow } },
       orderBy: { startedAt: 'asc' },
       take: 5,
       select: {
@@ -68,7 +68,6 @@ export default async function ParentDashboardPage() {
     : 0
   const overallTier = getReadinessTier(avgScore) as TierKey
 
-  // Build alerts for subjects with critical/weak readiness
   const alerts = readinessList
     .filter(r => r.readinessScore < 40)
     .slice(0, 3)

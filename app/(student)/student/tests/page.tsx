@@ -31,7 +31,7 @@ export default async function TestsPage() {
     }),
     prisma.learningPlanItem.findMany({
       where: {
-        plan: { userId },
+        plan: { studentId: userId },
         status: { in: ['UPCOMING', 'IN_PROGRESS'] },
       },
       orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
@@ -59,11 +59,13 @@ export default async function TestsPage() {
   ])
 
   const isPremium = user.subscriptionStatus === 'premium' || user.subscriptionStatus === 'active'
-  const testsUsed = testResults.length // simplified: count of all test results
+  const testsUsed = testResults.length
+
+  const freeRemaining = Math.max(0, FREE_TIER_CHAPTER_TEST_LIMIT - testsUsed)
 
   const recommended = planItems.map((item, idx) => {
     const subjectName = item.concept.subject?.name ?? ''
-    const isLocked = !isPremium && idx >= FREE_TIER_CHAPTER_TEST_LIMIT
+    const isLocked = !isPremium && idx >= freeRemaining
     return {
       id: item.id,
       title: `${item.concept.name} Test`,

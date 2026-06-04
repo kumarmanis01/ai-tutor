@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { getReadinessTier } from '@/lib/constants/readiness'
+import { FREE_TIER_CHAPTER_TEST_LIMIT } from '@/lib/constants/freemium'
 import type { TierKey } from '@/lib/constants/tiers'
 import type { SubjectKey } from '@/lib/constants/subjects'
 
@@ -23,7 +24,7 @@ function toSubjectKey(name: string): SubjectKey {
   return n as SubjectKey
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers()
   const userId = session?.user?.id
   if (!userId) {
@@ -71,15 +72,18 @@ export async function GET(req: Request) {
     user?.subscriptionStatus === 'premium' ||
     (user?.subscriptionExpiry != null && user.subscriptionExpiry > new Date())
 
+  const testsUsed = recentResults.length
+  const freeRemaining = Math.max(0, FREE_TIER_CHAPTER_TEST_LIMIT - testsUsed)
+
   // Build recommended tests from upcoming learning plan items (chapter tests)
-  const recommended = upcomingItems.slice(0, 5).map((item) => ({
+  const recommended = upcomingItems.slice(0, 5).map((item, idx) => ({
     id: `plan-${item.id}`,
     title: `${item.concept.name} Test`,
     subject: toSubjectKey(item.concept.subject.name),
     type: 'chapter' as const,
     questionCount: 10,
     durationMinutes: 15,
-    isLocked: !isPremium && false, // unlocked for now
+    isLocked: !isPremium && idx >= freeRemaining,
     reason: item.status === 'IN_PROGRESS' ? 'In progress' : 'Up next in your plan',
   }))
 
@@ -107,7 +111,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     isPremium,
-    testsUsed: recentResults.length,
+    testsUsed,
     recommended,
     upcoming: [],
     history,

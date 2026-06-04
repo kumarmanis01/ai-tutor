@@ -37,6 +37,7 @@ export default async function DashboardPage() {
       select: {
         name: true,
         grade: true,
+        board: true,
         totalXp: true,
         level: true,
         currentStreak: true,
@@ -45,14 +46,14 @@ export default async function DashboardPage() {
       },
     }),
     prisma.readinessStatus.findMany({
-      where: { userId },
+      where: { studentId: userId },
       select: { subject: true, readinessScore: true, readinessLabel: true },
     }),
     prisma.learningPlan.findFirst({
-      where: { userId },
+      where: { studentId: userId },
+      orderBy: { generatedAt: 'desc' },
       select: {
         examDate: true,
-        examName: true,
         items: {
           where: { status: { in: ['UPCOMING', 'IN_PROGRESS'] } },
           orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
@@ -69,10 +70,10 @@ export default async function DashboardPage() {
       },
     }),
     prisma.structuredSession.count({
-      where: { userId, startedAt: { gte: today, lt: tomorrow } },
+      where: { studentId: userId, startedAt: { gte: today, lt: tomorrow } },
     }),
     prisma.studentConceptState.count({
-      where: { userId, nextReviewAt: { lte: new Date() } },
+      where: { studentId: userId, nextReviewAt: { lte: new Date() } },
     }),
   ])
 
@@ -85,12 +86,13 @@ export default async function DashboardPage() {
   const xpToNext = level * XP_PER_LEVEL
 
   let examDaysLeft = 0
-  let examName = 'Board Exam'
+  const examName = user.board && user.grade
+    ? `${user.board} Class ${user.grade}`
+    : 'Board Exam'
   if (plan?.examDate) {
     const diff = Math.ceil((plan.examDate.getTime() - Date.now()) / 86400000)
     examDaysLeft = Math.max(0, diff)
   }
-  if (plan?.examName) examName = plan.examName
 
   const readinessBySubject = readinessList.map(r => ({
     subject: toSubjectKey(r.subject) as SubjectKey,
