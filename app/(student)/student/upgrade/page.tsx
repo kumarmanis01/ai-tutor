@@ -1,4 +1,25 @@
 'use client'
+
+/**
+ * FILE OBJECTIVE:
+ * - Student upgrade / Razorpay checkout page: lists plans, opens Razorpay
+ *   checkout via POST /api/student/subscription/order, and verifies the
+ *   resulting signature via POST /api/student/subscription/verify.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/upgrade/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-04T00:00:00Z | claude | replace static upgrade stub with real Razorpay flow:
+ *                                   PLAN_ID_MAP -> /subscription/order -> SDK modal ->
+ *                                   /subscription/verify -> success/error phases;
+ *                                   add inline justification for window.Razorpay any type.
+ */
+
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
@@ -7,6 +28,8 @@ import { FREE_TIER_SESSION_LIMIT } from '@/lib/constants/freemium'
 
 declare global {
   interface Window {
+    // Razorpay SDK is attached to window by the checkout.js script loaded at runtime;
+    // it ships no first-party types, so `any` is the pragmatic boundary.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Razorpay?: any
   }

@@ -26,11 +26,16 @@
  *   COMPLETE     - Session closed; progress persisted; celebration shown.
  *
  * EDIT LOG:
- *   2026-03-07 | Manish Kumar | full rewrite: add OVERVIEW phase, move progress
- *                               update into engine, centralise StudentTopicProgress
- *                               touch, strengthen error handling and JSDoc.
- *   2026-05-08 | copilot      | proactively enqueue questions hydration on session start/resume
- *                               when no ACTIVE practice questions exist for the topic.
+ *   2026-03-07T00:00:00Z | Manish Kumar | full rewrite: add OVERVIEW phase, move progress
+ *                                          update into engine, centralise StudentTopicProgress
+ *                                          touch, strengthen error handling and JSDoc.
+ *   2026-05-08T00:00:00Z | copilot      | proactively enqueue questions hydration on session start/resume
+ *                                          when no ACTIVE practice questions exist for the topic.
+ *   2026-06-04T00:00:00Z | claude       | wire XP/streak/badge awards in persistCompletionProgress:
+ *                                          updateStreak after awardXP, then checkSessionBadges with
+ *                                          the fresh streak; each step independently try/caught so
+ *                                          SESSION_COMPLETED emission is never blocked. Pass
+ *                                          badgesAwarded + currentStreak on the event payload.
  */
 
 import { prisma } from '@/lib/prisma';

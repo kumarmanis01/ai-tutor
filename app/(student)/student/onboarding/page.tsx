@@ -1,4 +1,26 @@
 'use client'
+
+/**
+ * FILE OBJECTIVE:
+ * - Multi-step student onboarding: collects name, DOB, board+grade, subjects,
+ *   preferred language, and parent email; for under-13 students it also sends
+ *   and verifies the parent consent OTP inline against /api/auth/parent/{send,verify}-otp.
+ * - Final step POSTs to /api/user/onboarding which transitions accountStatus.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/onboarding/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-04T00:00:00Z | claude | wire inline parent OTP send+verify in consent step;
+ *                                   map Hinglish->hi for LanguageCode enum compatibility;
+ *                                   tighten OTP regex to exactly 6 digits to match UI copy
+ *                                   and the server's always-6-digit generator.
+ */
+
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Btn, Bar } from '@/components/ui'
@@ -199,7 +221,8 @@ export default function OnboardingPage() {
 
   const verifyConsentOtp = async () => {
     const code = otpCode.trim()
-    if (!/^\d{4,6}$/.test(code)) {
+    // Server only ever issues 6-digit codes (see generateOtp in /api/auth/parent/send-otp).
+    if (!/^\d{6}$/.test(code)) {
       setOtpError('Enter the 6-digit code your parent received.')
       return
     }

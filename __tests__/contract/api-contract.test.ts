@@ -180,70 +180,11 @@ describe('POST /api/user/onboarding -- student onboarding submit', () => {
   })
 })
 
-// --- Route: GET /api/parent/progress -------------------------------------
-// UI caller: app/(parent)/parent/progress/page.tsx
-// Returns: { children: Array<{ studentId, name, grade, board, streakDays,
-//   sessionsThisWeek, studyTimeThisWeekMinutes, subjects: [...], recentAlerts: [...] }> }
-
-describe('GET /api/parent/progress -- parent progress page', () => {
-  test('returns 401 when no session', async () => {
-    const { GET } = await import('@/app/api/parent/progress/route')
-    const res = await GET(makeReq())
-    expect(res.status).toBe(401)
-  })
-
-  test('returns 403 when session role is not parent', async () => {
-    testSession.current = { user: { id: 'u1', role: 'student' } }
-    const { GET } = await import('@/app/api/parent/progress/route')
-    const res = await GET(makeReq())
-    expect(res.status).toBe(403)
-  })
-
-  test('returns { children: [] } when parent has no linked students', async () => {
-    testSession.current = { user: { id: 'p1', role: 'parent' } }
-    prismaMock.parentStudent.findMany.mockResolvedValue([])
-    const { GET } = await import('@/app/api/parent/progress/route')
-    const res = await GET(makeReq())
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body).toEqual({ children: [] })
-  })
-
-  test('response shape matches the contract the UI adapter consumes', async () => {
-    testSession.current = { user: { id: 'p1', role: 'parent' } }
-    prismaMock.parentStudent.findMany.mockResolvedValue([{ studentId: 's1' }])
-    prismaMock.user.findUnique.mockResolvedValue({ name: 'Riya', grade: '10', board: 'CBSE', subjects: ['mathematics'] })
-    prismaMock.studentStreak.findFirst.mockResolvedValue({ current: 3, lastActive: new Date() })
-    prismaMock.structuredSession.findMany.mockResolvedValue([])
-    prismaMock.learningPlan.findMany.mockResolvedValue([])
-    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-math', name: 'Mathematics' }])
-    prismaMock.studentConceptState.findMany.mockResolvedValue([])
-    prismaMock.studentConceptState.count.mockResolvedValue(0)
-    const { GET } = await import('@/app/api/parent/progress/route')
-    const res = await GET(makeReq())
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(Array.isArray(body.children)).toBe(true)
-    expect(body.children[0]).toMatchObject({
-      studentId: 's1',
-      name: 'Riya',
-      grade: '10',
-      board: 'CBSE',
-      streakDays: 3,
-      sessionsThisWeek: 0,
-      studyTimeThisWeekMinutes: 0,
-    })
-    expect(Array.isArray(body.children[0].subjects)).toBe(true)
-    expect(Array.isArray(body.children[0].recentAlerts)).toBe(true)
-    // SubjectResult shape that adaptProgressResponse() reads
-    expect(Array.isArray(body.children[0].subjects)).toBe(true)
-    expect(body.children[0].subjects[0]).toMatchObject({
-      subjectId: expect.any(String),
-      subjectName: expect.any(String),
-      readinessScore: expect.any(Number),
-    })
-  })
-})
+// NOTE: GET /api/parent/progress is intentionally NOT covered here. The
+// rewritten /parent/progress UI no longer calls that legacy endpoint — it
+// fetches /api/parent/dashboard + /api/parent/schedule in parallel and
+// derives its view-model from those. Contract coverage for the new
+// dependency lives in the GET /api/parent/dashboard block below.
 
 // --- Route: GET /api/parent/schedule -------------------------------------
 // UI caller: app/(parent)/parent/schedule/page.tsx
@@ -404,6 +345,23 @@ describe('GET /api/parent/dashboard -- parent progress page (real data)', () => 
     const mod = await import('@/app/api/parent/dashboard/route')
     const res = await mod.GET(makeReq('http://localhost', { method: 'GET' }))
     expect(res.status).toBe(401)
+  })
+
+  test('returns { ok, students: [], totalStudents } when parent has no linked students', async () => {
+    testSession.current = { user: { id: 'p1', role: 'parent' } }
+    prismaMock.parentStudent.findMany.mockResolvedValue([])
+    const mod = await import('@/app/api/parent/dashboard/route')
+    const res = await mod.GET(makeReq('http://localhost', { method: 'GET' }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    // Lock the empty-state envelope the UI adapter reads.
+    expect(body).toMatchObject({
+      ok: true,
+      students: [],
+      totalStudents: 0,
+    })
+    expect(typeof body.generatedAt).toBe('string')
+    expect(Array.isArray(body.students)).toBe(true)
   })
 })
 

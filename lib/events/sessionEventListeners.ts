@@ -1,9 +1,22 @@
 /**
- * Session domain event listeners (COUPLING-01).
+ * FILE OBJECTIVE:
+ * - Session domain event listeners (COUPLING-01).
+ * - TopicRanker subscribes to SESSION_COMPLETED and invalidates its cache.
+ * - Engagement service records completion for daily habit (points, streak); idempotent by sessionId.
+ * - Parent and student notifications are sent (fire-and-forget) for every completed session.
  *
- * TopicRanker subscribes to SESSION_COMPLETED and invalidates its cache.
- * Engagement service records completion for daily habit (points, streak); idempotent by sessionId.
- * Parent and student notifications are sent (fire-and-forget) for every completed session.
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/events/sessionEventListeners.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-04T00:00:00Z | claude | resolve badge names from awarded keys via prisma.badge
+ *                                   and pass real badgeNames[] + currentStreak from payload to
+ *                                   notifyStudentOnSessionComplete; drop the redundant
+ *                                   currentStreak select from the listener's user query.
  */
 
 import { onSessionCompleted, type SessionCompletedPayload } from './domainEvents';

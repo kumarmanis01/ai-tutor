@@ -64,9 +64,9 @@ Implications locked in by the tests:
 
 | Role / state on session | Visits | Destination | Source |
 |---|---|---|---|
-| unauthenticated | `/student/*` | `/login/student` | `proxy.ts:100` |
-| unauthenticated | `/parent/*`  | `/login/parent`  | `proxy.ts:98`  |
-| unauthenticated | `/session/*` | `/auth/signin?callbackUrl=...` | `proxy.ts:94` |
+| unauthenticated | `/student/*` | `/auth/get-started?callbackUrl=/student/...` | `proxy.ts:93-101` |
+| unauthenticated | `/parent/*`  | `/auth/get-started?callbackUrl=/parent/...&source=parent` | `proxy.ts:93-101` |
+| unauthenticated | `/session/*` | `/auth/get-started?callbackUrl=/session/...` | `proxy.ts:93-101` |
 | authenticated, `accountStatus !== 'active'`, not parent role | any `/student/*` not on allowlist | `/student/onboarding` | `proxy.ts:126` |
 | authenticated, `accountStatus !== 'active'`, role === 'parent' | `/parent/*` | passthrough (cookie lag bypass) | `proxy.ts:111-115` |
 | authenticated, role === 'parent', no parent record | `/parent/onboarding` mount | POST `/api/auth/set-role` -> `/parent/dashboard` | `app/(parent-entry)/parent/onboarding/page.tsx:88-134` |
@@ -98,17 +98,16 @@ wiring the NEW UI to existing endpoints (no new API routes created):
 
 Remaining cosmetic items:
 
-- **NextAuth `pages.signIn` is `/auth/get-started`** but `proxy.ts`
-  redirects unauthenticated students/parents to `/login/student` /
-  `/login/parent`. Both paths render and work, but the two destinations
-  should be aligned (cosmetic, low priority).
+- ✅ Auth redirect alignment: `proxy.ts` now redirects all unauthenticated
+  protected routes to `/auth/get-started` (the NextAuth `pages.signIn`
+  destination) with `callbackUrl` set, and `source=parent` for parent
+  routes. The earlier `/login/student` / `/login/parent` / `/auth/signin`
+  split was removed.
 
-- **XP / streak / badges on StructuredSession completion.** Per the GAP-3
-  forensic note, the `SessionContainer` flow currently writes a STUDY-
-  type `StudentTopicProgress` touch on completion but does not award XP/
-  streak/badges (those live behind the legacy `/api/student/session/
-  [sessionId]/complete` endpoint for the V1 `LearningSession` model).
-  Decision needed: extend the existing `/api/session/next` HOMEWORK→
-  COMPLETE handler to also award rewards, OR call the legacy completion
-  endpoint via the LearningSession bridge id. Both are server-side
-  changes; UI is fine as is.
+- ✅ XP / streak / badges on StructuredSession completion: `sessionEngine`
+  `persistCompletionProgress` now calls `awardXP` → `updateStreak` →
+  `checkSessionBadges`. Results are carried on `SessionCompletedPayload`
+  (`badgesAwarded`, `currentStreak`) so the listener can pass real badge
+  names to `notifyStudentOnSessionComplete` without re-querying. Each
+  step is independently try/caught so a single failure cannot block
+  `SESSION_COMPLETED` emission.

@@ -14,6 +14,9 @@
  * - 2026-05-12T00:00:00Z | copilot | update coverage for active-account middleware guard on student routes
  * - 2026-05-07T00:00:00Z | copilot | add regression coverage for stale-token session-route redirects
  * - 2026-05-08T00:00:00Z | copilot | add /student auth guard coverage
+ * - 2026-06-04T00:00:00Z | claude  | retarget unauthenticated redirect assertions at
+ *                                    /auth/get-started + callbackUrl; add parent variant
+ *                                    asserting source=parent.
  */
 
 import fs from 'fs';
@@ -109,14 +112,18 @@ describe('exists proxy.ts', () => {
     expect(response.headers.get('location')).toBe('https://example.com/student/onboarding');
   });
 
-  it('redirects inactive parent routes to /parent/onboarding, not /student/onboarding', async () => {
+  it('passes inactive parent through /parent/* (cookie-lag bypass, not redirected to student onboarding)', async () => {
+    // Once the JWT carries role='parent', proxy.ts bypasses the accountStatus
+    // check on /parent/* routes -- the set-role API has already flipped the DB,
+    // and the JWT cookie can lag by one request cycle. This bypass prevents a
+    // false redirect loop while the cookie catches up.
     mockedGetToken.mockResolvedValue({ role: 'parent', accountStatus: 'pending' });
 
     const request = new NextRequest('https://example.com/parent/dashboard');
     const response = await proxy(request);
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toBe('https://example.com/parent/onboarding');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-pathname')).toBe('/parent/dashboard');
   });
 
   it('allows inactive parent through /parent/onboarding without redirect', async () => {

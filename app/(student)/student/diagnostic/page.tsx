@@ -1,4 +1,25 @@
 'use client'
+
+/**
+ * FILE OBJECTIVE:
+ * - Student diagnostic entry page: loads /api/user/profile, picks (or auto-selects)
+ *   a resolved subject, and mounts DiagnosticFlow in adaptive mode against
+ *   /api/student/diagnostic/{start,answer,submit}.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/diagnostic/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-04T00:00:00Z | claude | replace hardcoded demo with adaptive DiagnosticFlow;
+ *                                   wire profile fetch + subject picker; wrap useSearchParams
+ *                                   in Suspense for static export; bump retryNonce so the
+ *                                   error-state Retry button re-runs the fetch effect.
+ */
+
 import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Btn, ErrorState } from '@/components/ui'
@@ -26,6 +47,8 @@ function DiagnosticPageContent() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
   const [picked, setPicked] = useState<ResolvedSubject | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  // retryNonce drives the load effect; bumping it re-runs the fetch on Retry.
+  const [retryNonce, setRetryNonce] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +89,7 @@ function DiagnosticPageContent() {
     return () => {
       cancelled = true
     }
-  }, [subjectIdFromQuery])
+  }, [subjectIdFromQuery, retryNonce])
 
   if (phase === 'loading') {
     return (
@@ -79,7 +102,7 @@ function DiagnosticPageContent() {
   if (phase === 'error') {
     return (
       <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-4">
-        <ErrorState title="Could not load diagnostic" body={errorMsg ?? 'Please try again.'} onRetry={() => setPhase('loading')} />
+        <ErrorState title="Could not load diagnostic" body={errorMsg ?? 'Please try again.'} onRetry={() => { setPhase('loading'); setRetryNonce((n) => n + 1) }} />
       </div>
     )
   }

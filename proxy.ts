@@ -15,6 +15,9 @@
  * - 2026-05-12T00:00:00Z | copilot | enforce active-account guard for /student and /parent routes with onboarding allowlist
  * - 2026-05-07T00:00:00Z | copilot | remove stale JWT-based onboarding redirects for /session routes
  * - 2026-05-08T00:00:00Z | copilot | enforce auth guard for /student/* paths and redirect unauthenticated requests to /
+ * - 2026-06-04T00:00:00Z | claude  | align unauthenticated redirects to NextAuth pages.signIn:
+ *                                    collapse /login/student, /login/parent, /auth/signin into
+ *                                    /auth/get-started?callbackUrl=<path> (+ source=parent for /parent/*)
  */
 
 import { NextRequest, NextResponse } from 'next/server';

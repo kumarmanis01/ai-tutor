@@ -6,7 +6,7 @@
  *   badges sidebar, parent access, display settings, and account danger zone.
  *
  * ARCHITECTURE:
- * - 'use client' — uses useCurrentUser (SWR) + useSession for live data.
+ * - 'use client' -- uses useCurrentUser (SWR) + useSession for live data.
  * - No imports from OLD_student/, design-reference/, or OLD_parent/.
  * - All styling via CSS tokens (var(--...)) and components/ui primitives.
  * - No inline styles except Avatar dynamic hue (allowed by constraint).
@@ -14,10 +14,17 @@
  * LINKED UNIT TEST:
  * - tests/unit/app/student/profile/page.spec.tsx
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
- * - 2026-06-04 | claude | full rewrite: migrate minimal stub to complete profile page
- *                          using components/ui design system; add XP/streak/badges/
- *                          academic prefs/parent access/danger zone sections.
+ * - 2026-06-04T00:00:00Z | claude | full rewrite: migrate minimal stub to complete profile
+ *                                   page using components/ui design system; add XP/streak/
+ *                                   badges/academic prefs/parent access/danger zone sections.
+ * - 2026-06-04T00:00:00Z | claude | gate signed-out fallback on useSession status to avoid
+ *                                   flash for already-authenticated users (use skeleton while
+ *                                   sessionStatus === 'loading').
  */
 
 import React, { useState, useCallback } from 'react'
@@ -206,7 +213,7 @@ function DeletionDialog({
 
 export default function StudentProfilePage() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const { data: profile, loading, error, mutate } = useCurrentUser()
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -218,7 +225,11 @@ export default function StudentProfilePage() {
     router.push('/login/student?message=deletion-requested')
   }, [router])
 
-  if (!session) {
+  // Show skeleton while the session is still resolving to avoid a flash of
+  // the signed-out message for already-authenticated users.
+  if (sessionStatus === 'loading') return <ProfileSkeleton />
+
+  if (sessionStatus === 'unauthenticated' || !session) {
     return (
       <div className="flex items-center justify-center min-h-screen text-[var(--text-muted)] text-sm">
         You are not signed in.

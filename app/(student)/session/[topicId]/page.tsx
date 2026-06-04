@@ -1,5 +1,23 @@
 'use client'
 
+/**
+ * FILE OBJECTIVE:
+ * - Thin route shim for /session/[topicId]: reads the topicId param and mounts
+ *   SessionContainer, which drives the structured-session phases through
+ *   /api/session/start -> /next -> /practice/submit -> /test/submit.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/session/topicId/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-04T00:00:00Z | claude | replace 374-line hardcoded demo with thin
+ *                                   SessionContainer mount; surface no-topic empty state.
+ */
+
 import { useParams } from 'next/navigation'
 import { SessionContainer } from '@/components/session/SessionContainer'
 
