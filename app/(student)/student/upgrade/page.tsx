@@ -1,8 +1,39 @@
 'use client'
+
+/**
+ * FILE OBJECTIVE:
+ * - Student upgrade / Razorpay checkout page: lists plans, opens Razorpay
+ *   checkout via POST /api/student/subscription/order, and verifies the
+ *   resulting signature via POST /api/student/subscription/verify.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/upgrade/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-04T00:00:00Z | claude | replace static upgrade stub with real Razorpay flow:
+ *                                   PLAN_ID_MAP -> /subscription/order -> SDK modal ->
+ *                                   /subscription/verify -> success/error phases;
+ *                                   add inline justification for window.Razorpay any type.
+ */
+
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
 import { AppHeader, Card, Btn, Bar, Mono } from '@/components/ui'
 import { FREE_TIER_SESSION_LIMIT } from '@/lib/constants/freemium'
+
+declare global {
+  interface Window {
+    // Razorpay SDK is attached to window by the checkout.js script loaded at runtime;
+    // it ships no first-party types, so `any` is the pragmatic boundary.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay?: any
+  }
+}
 
 interface UpgradeProps {
   currentPlan?: 'free' | 'premium'
@@ -18,6 +49,12 @@ const PLAN_FEATURES = [
   'Personalised study plan with daily targets',
   'Priority support from our team',
 ]
+
+// UI plan id -> server canonical plan id used by /api/student/subscription/{order,verify}
+const PLAN_ID_MAP: Record<string, string> = {
+  monthly: 'standard_monthly',
+  annual: 'standard_annual',
+}
 
 const PLANS = [
   {
@@ -44,16 +81,95 @@ export default function UpgradePage(props: UpgradeProps) {
   const router = useRouter()
   const { triggerReason, currentPlan = 'free' } = props
   const [selectedPlan, setSelectedPlan] = useState('annual')
-  const [phase, setPhase] = useState<'plans' | 'paying' | 'success'>(
+  const [phase, setPhase] = useState<'plans' | 'paying' | 'success' | 'error'>(
     props.paymentStatus === 'success' ? 'success' : 'plans'
   )
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const isLocked = triggerReason === 'session_limit' || triggerReason === 'test_limit'
 
-  const handlePay = () => {
+  const handlePay = async () => {
+    const canonicalPlanId = PLAN_ID_MAP[selectedPlan]
+    if (!canonicalPlanId) {
+      setErrorMsg('Unknown plan. Please pick a plan and try again.')
+      setPhase('error')
+      return
+    }
     setPhase('paying')
-    // In production: open Razorpay
-    setTimeout(() => setPhase('success'), 1900)
+    setErrorMsg(null)
+    try {
+      const orderRes = await fetch('/api/student/subscription/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: canonicalPlanId }),
+      })
+      const orderJson = await orderRes.json().catch(() => ({}))
+      if (!orderRes.ok || !orderJson?.orderId || !orderJson?.keyId) {
+        throw new Error(typeof orderJson?.error === 'string' ? orderJson.error : 'Could not create order')
+      }
+      if (!window.Razorpay) {
+        throw new Error('Payment SDK not loaded. Please refresh and try again.')
+      }
+      const options = {
+        key: orderJson.keyId,
+        amount: orderJson.amount,
+        currency: orderJson.currency ?? 'INR',
+        name: 'Spinzy Academy',
+        description: `${selectedPlan === 'annual' ? 'Annual' : 'Monthly'} subscription`,
+        order_id: orderJson.orderId,
+        theme: { color: '#534AB7' },
+        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          try {
+            const verifyRes = await fetch('/api/student/subscription/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                planId: canonicalPlanId,
+              }),
+            })
+            const verifyJson = await verifyRes.json().catch(() => ({}))
+            if (!verifyRes.ok || !verifyJson?.success) {
+              throw new Error('Verification failed. If you were charged, contact support.')
+            }
+            setPhase('success')
+          } catch (err) {
+            setErrorMsg(err instanceof Error ? err.message : 'Payment could not be confirmed.')
+            setPhase('error')
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            // User closed checkout without paying -- return to plan selection.
+            setPhase('plans')
+          },
+        },
+      }
+      const rz = new window.Razorpay(options)
+      rz.open()
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Payment failed. Please try again.')
+      setPhase('error')
+    }
+  }
+
+  // --- ERROR ---
+  if (phase === 'error') {
+    return (
+      <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-6 flex flex-col">
+        <AppHeader title="" back onBack={() => setPhase('plans')} />
+        <div className="flex-1 flex flex-col justify-center items-center text-center gap-3">
+          <div className="w-16 h-16 rounded-[20px] bg-[var(--tier-critical-soft)] text-[var(--tier-critical)] flex items-center justify-center text-[32px]">!</div>
+          <h1 className="text-[22px] font-extrabold text-[var(--text)] m-0">Payment didn't go through</h1>
+          <p className="text-[14px] text-[var(--text-muted)] leading-[1.5] m-0 max-w-[300px]">
+            {errorMsg ?? 'Please try again, or contact support if you were charged.'}
+          </p>
+          <Btn onClick={() => setPhase('plans')}>Try again</Btn>
+        </div>
+      </div>
+    )
   }
 
   // --- SUCCESS ---
@@ -118,6 +234,7 @@ export default function UpgradePage(props: UpgradeProps) {
 
   return (
     <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto pb-[110px]">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <div className="px-4 pt-2">
         <AppHeader title="" back onBack={() => router.back()} />
       </div>

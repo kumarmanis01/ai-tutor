@@ -15,6 +15,9 @@
  * - 2026-05-12T00:00:00Z | copilot | enforce active-account guard for /student and /parent routes with onboarding allowlist
  * - 2026-05-07T00:00:00Z | copilot | remove stale JWT-based onboarding redirects for /session routes
  * - 2026-05-08T00:00:00Z | copilot | enforce auth guard for /student/* paths and redirect unauthenticated requests to /
+ * - 2026-06-04T00:00:00Z | claude  | align unauthenticated redirects to NextAuth pages.signIn:
+ *                                    collapse /login/student, /login/parent, /auth/signin into
+ *                                    /auth/get-started?callbackUrl=<path> (+ source=parent for /parent/*)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -90,14 +93,15 @@ export async function proxy(request: NextRequest) {
   for (const prefix of protectedUiPrefixes) {
     if (pathname.startsWith(prefix)) {
       if (!token) {
-        if (prefix === '/session') {
-          return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url));
-        }
-        // Redirect students to student login, parents to parent login, others to student login
+        // All unauthenticated protected routes redirect to /auth/get-started (NextAuth pages.signIn)
+        // with callbackUrl so the user lands at their intended destination post-OAuth.
+        const loginUrl = new URL('/auth/get-started', request.url);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        // Pre-highlight the parent tile when the route is parent-specific.
         if (pathname.startsWith('/parent')) {
-          return NextResponse.redirect(new URL('/login/parent', request.url));
+          loginUrl.searchParams.set('source', 'parent');
         }
-        return NextResponse.redirect(new URL('/login/student', request.url));
+        return NextResponse.redirect(loginUrl);
       }
 
       const isStudentOrParentUi = pathname.startsWith('/student') || pathname.startsWith('/parent');
@@ -114,9 +118,10 @@ export async function proxy(request: NextRequest) {
           return allowed;
         }
         const onboardingTarget = isParent ? '/parent/onboarding' : '/student/onboarding';
+        // Under-13 parent OTP verify is now an inline step inside /student/onboarding,
+        // so /student/verify-parent is no longer on the allowlist.
         if (
           pathname.startsWith('/student/onboarding') ||
-          pathname.startsWith('/student/verify-parent') ||
           pathname.startsWith('/parent/onboarding')
         ) {
           const allowed = NextResponse.next();

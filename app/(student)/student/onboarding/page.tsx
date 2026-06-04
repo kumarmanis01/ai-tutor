@@ -1,4 +1,26 @@
 'use client'
+
+/**
+ * FILE OBJECTIVE:
+ * - Multi-step student onboarding: collects name, DOB, board+grade, subjects,
+ *   preferred language, and parent email; for under-13 students it also sends
+ *   and verifies the parent consent OTP inline against /api/auth/parent/{send,verify}-otp.
+ * - Final step POSTs to /api/user/onboarding which transitions accountStatus.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/onboarding/page.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-04T00:00:00Z | claude | wire inline parent OTP send+verify in consent step;
+ *                                   map Hinglish->hi for LanguageCode enum compatibility;
+ *                                   tighten OTP regex to exactly 6 digits to match UI copy
+ *                                   and the server's always-6-digit generator.
+ */
+
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Btn, Bar } from '@/components/ui'
@@ -19,7 +41,13 @@ interface OnboardingData {
 
 const BOARDS = ['CBSE', 'ICSE', 'State Board'] as const
 const GRADES = [6, 7, 8, 9, 10, 11, 12] as const
-const LANGS = ['English', 'Hindi', 'Hinglish (mix)'] as const
+// LANG_OPTIONS: label is shown to the user; code maps to Prisma LanguageCode enum (en|hi).
+// Backend rejects values outside the enum, so we send the code, never the label.
+const LANG_OPTIONS = [
+  { label: 'English', code: 'en' },
+  { label: 'Hindi', code: 'hi' },
+  { label: 'Hinglish (mix)', code: 'hi' },
+] as const
 
 function chipBtnClass(on: boolean): string {
   return [
@@ -101,6 +129,8 @@ export default function OnboardingPage() {
     consentDone: false,
   })
   const [otpSent, setOtpSent] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpVerifying, setOtpVerifying] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [otpSending, setOtpSending] = useState(false)
   const [otpError, setOtpError] = useState('')
@@ -142,6 +172,11 @@ export default function OnboardingPage() {
         : [...d.subjects, s],
     }))
 
+  const languageCode = useMemo(
+    () => LANG_OPTIONS.find(o => o.label === data.lang)?.code ?? 'en',
+    [data.lang],
+  )
+
   const sendConsentOtp = async () => {
     if (!data.parentEmail) return
     setOtpSending(true)
@@ -157,7 +192,7 @@ export default function OnboardingPage() {
           board: data.board,
           grade: data.grade,
           subjects: data.subjects,
-          preferred_language: data.lang,
+          preferred_language: languageCode,
           parent_email: data.parentEmail,
         }),
       })
@@ -184,6 +219,35 @@ export default function OnboardingPage() {
     }
   }
 
+  const verifyConsentOtp = async () => {
+    const code = otpCode.trim()
+    // Server only ever issues 6-digit codes (see generateOtp in /api/auth/parent/send-otp).
+    if (!/^\d{6}$/.test(code)) {
+      setOtpError('Enter the 6-digit code your parent received.')
+      return
+    }
+    setOtpVerifying(true)
+    setOtpError('')
+    try {
+      const res = await fetch('/api/auth/parent/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !(json.ok || json.verified || json.alreadyVerified)) {
+        setOtpError(typeof json.error === 'string' ? json.error : 'Invalid or expired code. Try again.')
+        return
+      }
+      // Server has set accountStatus=active. Mark consent done so footer CTA unlocks.
+      update('consentDone', true)
+    } catch {
+      setOtpError('Something went wrong. Please try again.')
+    } finally {
+      setOtpVerifying(false)
+    }
+  }
+
   const handleNext = async () => {
     if (step < total - 1) {
       setStep(step + 1)
@@ -199,7 +263,7 @@ export default function OnboardingPage() {
             board: data.board,
             grade: data.grade,
             subjects: data.subjects,
-            preferred_language: data.lang,
+            preferred_language: languageCode,
             parent_email: data.parentEmail || undefined,
           }),
         })
@@ -314,12 +378,12 @@ export default function OnboardingPage() {
         {cur === 'lang' && (
           <StepShell title="Preferred language" sub="Vidya can explain in your comfort language.">
             <div className="flex flex-col gap-[10px]">
-              {LANGS.map(l => {
-                const on = data.lang === l
+              {LANG_OPTIONS.map(l => {
+                const on = data.lang === l.label
                 return (
                   <button
-                    key={l}
-                    onClick={() => update('lang', l)}
+                    key={l.label}
+                    onClick={() => update('lang', l.label)}
                     className={[
                       'flex items-center gap-3 p-4 rounded-[14px] cursor-pointer text-left min-h-[44px]',
                       on
@@ -328,7 +392,7 @@ export default function OnboardingPage() {
                     ].join(' ')}
                   >
                     <span className="text-[20px]">🌐</span>
-                    <span className="flex-1 font-semibold text-[15px] text-[var(--text)]">{l}</span>
+                    <span className="flex-1 font-semibold text-[15px] text-[var(--text)]">{l.label}</span>
                     {on && <span className="text-[var(--primary)] font-bold">✓</span>}
                   </button>
                 )
@@ -357,19 +421,38 @@ export default function OnboardingPage() {
               <div className="mt-[18px] p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
                 <div className="flex items-center gap-[10px] mb-2">
                   <div className="w-[34px] h-[34px] rounded-[10px] bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center text-[18px]">✉</div>
-                  <div className="text-[14px] font-bold text-[var(--text)]">Consent link sent</div>
+                  <div className="text-[14px] font-bold text-[var(--text)]">Code sent</div>
                 </div>
                 <div className="text-[13px] text-[var(--text-muted)] leading-[1.45] mb-3">
-                  We emailed a secure approval link to{' '}
-                  <strong className="text-[var(--text)]">{data.parentEmail}</strong>. Your parent taps it to approve.
+                  We emailed a 6-digit code to{' '}
+                  <strong className="text-[var(--text)]">{data.parentEmail}</strong>. Ask your parent to share it.
                 </div>
-                <Btn full size="sm" variant="secondary" onClick={() => update('consentDone', true)}>
-                  {data.consentDone ? 'Parent approved' : 'Mark as approved'}
-                </Btn>
+                {data.consentDone ? (
+                  <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--tier-strong)]">
+                    <span>✓</span> Parent verified
+                  </div>
+                ) : (
+                  <>
+                    <FieldLabel>Parent's code</FieldLabel>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="\d{4,6}"
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="------"
+                      className="w-full h-[50px] px-[14px] rounded-[12px] border-[1.5px] border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-[18px] tracking-[0.3em] text-center [font-family:var(--font-mono)] outline-none box-border mb-3"
+                    />
+                    <Btn full size="sm" disabled={otpVerifying || otpCode.length < 4} onClick={verifyConsentOtp}>
+                      {otpVerifying ? 'Verifying...' : 'Verify code'}
+                    </Btn>
+                  </>
+                )}
                 <div className="text-[11.5px] text-[var(--text-faint)] mt-[10px]">
-                  Link expires in 30 min.{' '}
+                  Code expires in 5 min.{' '}
                   <button
-                    onClick={() => { setOtpSent(false); setOtpError('') }}
+                    onClick={() => { setOtpSent(false); setOtpError(''); setOtpCode('') }}
                     className="bg-transparent border-0 text-[var(--primary)] font-semibold cursor-pointer [font-family:var(--font-sans)] p-0 text-[11.5px]"
                   >
                     Resend
