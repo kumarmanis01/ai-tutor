@@ -48,7 +48,7 @@ onSessionCompleted((payload) => {
 });
 
 async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promise<void> {
-  const { studentId, sessionId, xpAwarded, accuracy, masteryDelta, masteryAfter, leveledUp, newLevel } = payload;
+  const { studentId, sessionId, xpAwarded, accuracy, masteryDelta, masteryAfter, leveledUp, newLevel, badgesAwarded, currentStreak } = payload;
 
   const [session, student] = await Promise.all([
     prisma.structuredSession.findUnique({
@@ -68,7 +68,7 @@ async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promis
     }),
     prisma.user.findUnique({
       where: { id: studentId },
-      select: { totalXp: true, currentStreak: true },
+      select: { totalXp: true },
     }),
   ]);
 
@@ -79,6 +79,14 @@ async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promis
   const sessionDurationMinutes = session?.startedAt
     ? Math.max(1, Math.round((endTime.getTime() - session.startedAt.getTime()) / 60_000))
     : 0;
+
+  // Resolve badge names from awarded keys for the notification.
+  const badgeNames = badgesAwarded.length > 0
+    ? (await prisma.badge.findMany({
+        where: { key: { in: badgesAwarded } },
+        select: { name: true },
+      })).map((b: { name: string }) => b.name)
+    : [];
 
   await Promise.all([
     notifyParent(studentId, {
@@ -93,12 +101,12 @@ async function notifyOnSessionComplete(payload: SessionCompletedPayload): Promis
     notifyStudentOnSessionComplete(studentId, {
       xpEarned: xpAwarded,
       totalXp: student?.totalXp ?? 0,
-      currentStreak: student?.currentStreak ?? 0,
+      currentStreak,
       conceptName: topicName,
       masteryDelta,
       masteryAfter,
       accuracy,
-      badgeNames: [],
+      badgeNames,
       sessionDurationMinutes,
       leveledUp,
       newLevel,

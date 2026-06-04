@@ -23,6 +23,10 @@ export interface SessionCompletedPayload {
   masteryAfter: number;
   leveledUp: boolean;
   newLevel: number | null;
+  /** Newly awarded badge keys (empty if none). */
+  badgesAwarded: string[];
+  /** Current streak after this session (0 if streak update failed). */
+  currentStreak: number;
 }
 
 export const SESSION_COMPLETED = 'SESSION_COMPLETED';

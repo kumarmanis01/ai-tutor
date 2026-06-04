@@ -44,6 +44,8 @@ import { validatePhaseCompletion } from '@/lib/session/phaseCompletionValidator'
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { emitSessionCompleted, type SessionCompletedPayload } from '@/lib/events/domainEvents';
 import { awardXP } from '@/lib/student/xp';
+import { updateStreak } from '@/lib/student/streak';
+import { checkSessionBadges } from '@/lib/student/badges';
 
 // ─── Phase Order ──────────────────────────────────────────────────────────────
 
@@ -861,8 +863,42 @@ async function persistCompletionProgress(
     logger.error('[SESSION_XP_AWARD_FAILED]', { studentId, sessionId, error: xpErr });
   }
 
+  // Streak: increment once per qualifying session completion. Must run after
+  // awardXP so currentStreak is fresh when we check badge thresholds.
+  let streakResult: Awaited<ReturnType<typeof updateStreak>> | null = null;
+  try {
+    streakResult = await updateStreak(studentId);
+    logger.info('[SESSION_STREAK_UPDATED]', {
+      studentId,
+      sessionId,
+      currentStreak: streakResult?.currentStreak,
+      streakIncremented: streakResult?.streakIncremented,
+      shieldActivated: streakResult?.shieldActivated,
+    });
+  } catch (streakErr) {
+    logger.error('[SESSION_STREAK_FAILED]', { studentId, sessionId, error: streakErr });
+  }
+
+  // Badges: checked after streak so streak milestone checks use the latest count.
+  let newBadgeKeys: string[] = [];
+  try {
+    const badges = await checkSessionBadges({
+      studentId,
+      sessionId,
+      currentStreak: streakResult?.currentStreak ?? 0,
+      masteryAfter,
+      accuracy: stats.accuracy > 0 ? stats.accuracy : undefined,
+    });
+    newBadgeKeys = badges.map((b) => b.key);
+    if (newBadgeKeys.length > 0) {
+      logger.info('[SESSION_BADGES_AWARDED]', { studentId, sessionId, badges: newBadgeKeys });
+    }
+  } catch (badgeErr) {
+    logger.error('[SESSION_BADGES_FAILED]', { studentId, sessionId, error: badgeErr });
+  }
+
   // COUPLING-01: Emit domain event; TopicRanker and engagement listen.
-  // Always runs -- emitSessionCompleted must not be blocked by XP failures.
+  // Always runs -- emitSessionCompleted must not be blocked by XP/streak/badge failures.
   emitSessionCompleted({
     studentId,
     sessionId,
@@ -872,6 +908,8 @@ async function persistCompletionProgress(
     masteryAfter,
     leveledUp: xpResult?.leveledUp ?? false,
     newLevel: xpResult?.newLevel ?? null,
+    badgesAwarded: newBadgeKeys,
+    currentStreak: streakResult?.currentStreak ?? 0,
   });
 
   completeBridgedLearningSession(sessionId).catch((err) =>
