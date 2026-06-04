@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
-  const [user, readinessList, plan, sessionsTodayCount, revisionsDueCount] = await Promise.all([
+  const [user, readinessList, plan, sessionsTodayCount, revisionsDueCount, completedDiagCount] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
@@ -75,7 +75,20 @@ export default async function DashboardPage() {
     prisma.studentConceptState.count({
       where: { studentId: userId, nextReviewAt: { lte: new Date() } },
     }),
+    // Count completed diagnostics -- used to gate the dashboard redirect.
+    // A single COUNT is cheaper than loading the full StudentLearningProfile.
+    prisma.diagnosticSession.count({
+      where: { studentId: userId, status: 'COMPLETED' },
+    }),
   ])
+
+  // Diagnostic gate: if the student has never completed a diagnostic and has no
+  // learning plan yet, redirect them to the diagnostic page so they get a plan.
+  // This is a soft redirect -- students who already have a plan (e.g. plan bootstrapped
+  // from concept-state seeding) pass through even if diagnosticSession count is zero.
+  if (completedDiagCount === 0 && !plan) {
+    redirect('/student/diagnostic')
+  }
 
   const isPremium = user.subscriptionStatus === 'premium' || user.subscriptionStatus === 'active'
   const isFreemium = !isPremium

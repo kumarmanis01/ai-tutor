@@ -4,16 +4,23 @@
  * DiagnosticFlow -- v2 full-screen diagnostic test component
  *
  * Renders as a fixed overlay (z-[100]) covering the StudentNav.
- * Two phases:
- *   1. Active quiz  -- one question at a time, 30-min countdown timer
- *   2. Results view -- knowledge map (no numeric score, colour bands only)
+ * Three phases:
+ *   1. Active quiz     -- one question at a time, 30-min countdown timer
+ *   2. Generating plan -- animated progress screen while bootstrap job runs
+ *                         (polls /api/student/diagnostic/results/[subjectId]
+ *                          every 2 s; resolves when chapter data arrives)
+ *   3. Results view    -- knowledge map (no numeric score, CSS-token tier bands)
  *
  * Supports:
  *   - Resume from partial Redis state (initialAnswers / initialIndex)
- *   - "Save and continue later" → POST /api/student/diagnostic/save-partial
+ *   - "Save and continue later" -> POST /api/student/diagnostic/save-partial
  *   - Auto-save and submit at timer 0:00
  *   - Abandon guard (beforeunload + in-app confirm dialog)
  *   - Timer: amber + warning text at 2:00 remaining
+ *
+ * EDIT LOG:
+ *   - 2026-06-04 | claude | add generating phase between quiz and results;
+ *                           port KnowledgeMapResults to design-system CSS tokens
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,6 +28,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
 import { QuestionInteractionShell } from '@/components/questions/QuestionInteractionShell';
 import { normaliseChoices } from '@/lib/session/sessionUtils';
+import { Card, Btn, Ring, TierPill, Mono } from '@/components/ui';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -237,6 +245,105 @@ function placementBanner(placement: 'below' | 'at' | 'above') {
   return map[placement];
 }
 
+// -- Generating plan screen (wireframe S2: quiz -> generating -> results) ------
+
+const GEN_STAGES = [
+  'Reviewing your answers',
+  'Mapping concept gaps',
+  'Calibrating difficulty',
+  'Building your learning path',
+  'Almost ready',
+];
+
+/**
+ * Animated interstitial shown between quiz submission and the knowledge-map results.
+ * Polls /api/student/diagnostic/results/[subjectId] every 2 s. Resolves once the
+ * bootstrap job has written chapter-mastery data (typically < 5 s). Falls back to
+ * showing results from locally-computed data after MAX_WAIT_MS regardless.
+ */
+function GeneratingPlanScreen({
+  subjectId,
+  onReady,
+}: {
+  subjectId: string;
+  onReady: () => void;
+}) {
+  const MAX_WAIT_MS = 30_000;
+  const POLL_MS = 2_000;
+  const [pct, setPct] = useState(0);
+  const [stageIdx, setStageIdx] = useState(0);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    let stopped = false;
+    let timerId: ReturnType<typeof setTimeout>;
+
+    // Animate percentage smoothly regardless of poll results
+    const animationId = setInterval(() => {
+      const elapsed = Date.now() - startRef.current;
+      const natural = Math.min(96, Math.round((elapsed / MAX_WAIT_MS) * 100));
+      setPct(natural);
+      setStageIdx(Math.min(GEN_STAGES.length - 1, Math.floor(natural / (100 / GEN_STAGES.length))));
+    }, 300);
+
+    async function poll() {
+      if (stopped) return;
+      try {
+        const res = await fetch(`/api/student/diagnostic/results/${subjectId}`);
+        if (res.ok) {
+          const json = await res.json();
+          // Chapters array non-empty = bootstrap job completed
+          if (Array.isArray(json?.chapters) && json.chapters.length > 0) {
+            if (!stopped) { setPct(100); clearInterval(animationId); setTimeout(onReady, 600); return; }
+          }
+        }
+      } catch { /* ignore transient errors */ }
+      // Hard timeout: show results anyway after MAX_WAIT_MS
+      if (Date.now() - startRef.current >= MAX_WAIT_MS) {
+        if (!stopped) { clearInterval(animationId); onReady(); return; }
+      }
+      if (!stopped) timerId = setTimeout(poll, POLL_MS);
+    }
+
+    timerId = setTimeout(poll, POLL_MS);
+    return () => { stopped = true; clearInterval(animationId); clearTimeout(timerId); };
+  }, [subjectId, onReady]);
+
+  const circumference = 2 * Math.PI * 52;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center text-center"
+      style={{ background: 'var(--bg)', padding: 32 }}
+    >
+      {/* Circular progress */}
+      <div style={{ position: 'relative', width: 120, height: 120, marginBottom: 28 }}>
+        <svg width="120" height="120" style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" strokeWidth="8" />
+          <circle
+            cx="60" cy="60" r="52" fill="none"
+            stroke="var(--primary)" strokeWidth="8" strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - pct / 100)}
+            style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          />
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 20, color: 'var(--primary)', animation: 'spz-pulse 1.6s infinite' }}>✦</span>
+        </div>
+      </div>
+
+      <h2 style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
+        Building your plan
+      </h2>
+      <p style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--text-muted)', fontWeight: 500 }}>
+        {GEN_STAGES[stageIdx]}...
+      </p>
+      <Mono style={{ fontSize: 12, color: 'var(--text-faint)' }}>{pct}%</Mono>
+    </div>
+  );
+}
+
 function KnowledgeMapResults({
   subjectName,
   results,
@@ -251,93 +358,105 @@ function KnowledgeMapResults({
   afterResultsPath?: string;
 }) {
   const router = useRouter();
-  const startHere = results[0]; // weakest chapter (sorted ascending)
+
+  // Map avgMastery 0-1 to a TierKey for the Ring/TierPill components
+  function masteryToTier(m: number): 'critical' | 'weak' | 'fair' | 'ontrack' | 'strong' {
+    if (m >= 0.9) return 'strong';
+    if (m >= 0.7) return 'ontrack';
+    if (m >= 0.5) return 'fair';
+    if (m >= 0.3) return 'weak';
+    return 'critical';
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 px-4 py-8 flex flex-col">
-      <div className="max-w-sm mx-auto w-full flex-1 flex flex-col gap-6">
-        {/* Header */}
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-xl bg-[#534AB7] flex items-center justify-center mx-auto mb-4 shadow-md shadow-[#534AB7]/30">
-            <span className="text-white font-bold text-lg leading-none">S</span>
+    <div
+      className="fixed inset-0 z-[100] overflow-y-auto"
+      style={{ background: 'var(--bg)' }}
+    >
+      <div className="max-w-[420px] mx-auto px-4 py-8 flex flex-col gap-5">
+
+        {/* Hero */}
+        <div className="text-center spz-fade-up">
+          <div
+            className="w-[72px] h-[72px] rounded-[24px] flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'var(--tier-strong-soft)', color: 'var(--tier-strong)' }}
+          >
+            <span style={{ fontSize: 34 }}>✓</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            Your knowledge map
+          <h1 style={{ margin: '0 0 8px', fontSize: 25, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)' }}>
+            Your plan is ready
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Here&apos;s where you stand in {subjectName} -- no score, just your starting point.
+          <p style={{ margin: 0, fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            {"Here's where you stand in"} <strong>{subjectName}</strong> — no score, just your starting point.
           </p>
         </div>
 
-        {/* Grade-level placement banner (AC-05) */}
+        {/* Grade placement banner */}
         {placement && (() => {
           const banner = placementBanner(placement);
           return (
-            <div className={`rounded-2xl px-4 py-3 ${banner.bg}`}>
-              <p className={`text-sm font-bold ${banner.text}`}>{banner.label}</p>
-              <p className={`text-xs mt-0.5 ${banner.subText}`}>{banner.sub}</p>
+            <div className={`rounded-[16px] px-4 py-3 ${banner.bg}`}>
+              <p className={`text-[13.5px] font-bold ${banner.text}`}>{banner.label}</p>
+              <p className={`text-[12px] mt-0.5 ${banner.subText}`}>{banner.sub}</p>
             </div>
           );
         })()}
 
-        {/* Start here card */}
-        {startHere && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden border-l-4 border-l-[#534AB7]">
-            <div className="p-4">
-              <p className="text-xs font-semibold text-[#534AB7] uppercase tracking-wide mb-1">
-                Start here
-              </p>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {startHere.chapterName}
-              </p>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                This chapter needs the most attention -- Teacher Vidya will start here.
-              </p>
+        {/* Chapter results -- one Card per chapter with Ring + TierPill */}
+        <div className="flex flex-col gap-[10px]">
+          {results.map((chapter, i) => {
+            const tier = masteryToTier(chapter.avgMastery);
+            return (
+              <Card key={chapter.chapterId} pad={14} style={{ display: 'flex', alignItems: 'center', gap: 14, animationDelay: `${i * 0.07}s` }} className="spz-fade-up">
+                <Ring tier={tier} size={48} stroke={5}>
+                  <div style={{ width: 16, height: 16, borderRadius: 99, background: `var(--tier-${tier}-soft)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: 99, background: `var(--tier-${tier})` }} />
+                  </div>
+                </Ring>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{chapter.chapterName}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Starting tier</div>
+                </div>
+                <TierPill tier={tier} size="sm" />
+              </Card>
+            );
+          })}
+          {results.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--text-faint)', textAlign: 'center', padding: '16px 0' }}>
+              No chapter data yet.
+            </p>
+          )}
+        </div>
+
+        {/* First focus nudge */}
+        {results[0] && (
+          <div
+            className="spz-fade-up"
+            style={{ padding: 16, borderRadius: 16, background: 'var(--primary-soft)', display: 'flex', gap: 12 }}
+          >
+            <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
+            <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--text)' }}>
+              <strong>First focus:</strong> {results[0].chapterName}. {"It's the fastest way to lift your"} {subjectName} tier.
             </div>
           </div>
         )}
 
-        {/* Chapter list */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm divide-y divide-gray-100 dark:divide-slate-800">
-          {results.map((chapter) => {
-            const badge = masteryBadge(chapter.avgMastery);
-            return (
-              <div
-                key={chapter.chapterId}
-                className="flex items-center justify-between gap-3 px-4 min-h-[52px] py-3"
-              >
-                <p className="text-sm text-gray-800 dark:text-gray-200 flex-1 leading-snug">
-                  {chapter.chapterName}
-                </p>
-                <span
-                  className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${badge.colorClass}`}
-                >
-                  {badge.label}
-                </span>
-              </div>
-            );
-          })}
-          {results.length === 0 && (
-            <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-              No chapter data yet.
-            </div>
-          )}
-        </div>
-
         {/* CTA */}
-        <button
-          type="button"
-          onClick={() => {
-            if (afterResultsPath === '/dashboard' && pendingDiagnosticSubjectNames.length > 0) {
-              const list = pendingDiagnosticSubjectNames.join(', ');
-              toast(`Complete diagnostics for ${list} to unlock your full learning plan.`, 6000);
-            }
-            router.push(afterResultsPath);
-          }}
-          className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] transition-all shadow-md shadow-[#534AB7]/25"
-        >
-          {afterResultsPath === '/dashboard' ? 'Start learning →' : 'Next subject →'}
-        </button>
+        <div style={{ paddingBottom: 16 }}>
+          <Btn
+            full
+            size="lg"
+            onClick={() => {
+              if (afterResultsPath === '/dashboard' && pendingDiagnosticSubjectNames.length > 0) {
+                const list = pendingDiagnosticSubjectNames.join(', ');
+                toast(`Complete diagnostics for ${list} to unlock your full learning plan.`, 6000);
+              }
+              router.push(afterResultsPath);
+            }}
+          >
+            {afterResultsPath === '/dashboard' ? 'Go to dashboard →' : 'Next subject →'}
+          </Btn>
+        </div>
       </div>
     </div>
   );
@@ -426,7 +545,7 @@ export default function DiagnosticFlow({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [startError, setStartError] = useState<{ code: string; eligibleAt?: string } | null>(null);
-  const [phase, setPhase] = useState<'quiz' | 'results'>('quiz');
+  const [phase, setPhase] = useState<'quiz' | 'generating' | 'results'>('quiz');
   const [chapterResults, setChapterResults] = useState<ChapterResult[]>([]);
   const [placement, setPlacement] = useState<'below' | 'at' | 'above' | null>(null);
 
@@ -535,12 +654,14 @@ export default function DiagnosticFlow({
         setSubmitting(false);
         return;
       }
-      // Compute chapter results from local data and switch to results view
+      // Switch to generating phase: animate plan-building while bootstrap job runs.
+      // Chapter results are computed locally from answered questions so they are
+      // available instantly when the poll resolves (no second results fetch needed).
       const json = await res.json().catch(() => ({}));
       if (json?.placement) setPlacement(json.placement as 'below' | 'at' | 'above');
       const results = computeChapterResults(questionList, finalAnswers);
       setChapterResults(results);
-      setPhase('results');
+      setPhase('generating');
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
       setSubmitting(false);
@@ -667,13 +788,30 @@ export default function DiagnosticFlow({
     );
   }
 
-  // ── Results phase ─────────────────────────────────────────────────────────
+  // -- Generating phase --------------------------------------------------------
+  // Shown between quiz submit and the knowledge-map results while the
+  // diagnostic bootstrap job builds StudentConceptState + LearningPlan.
+
+  if (phase === 'generating') {
+    return (
+      <GeneratingPlanScreen
+        subjectId={subjectId}
+        onReady={() => setPhase('results')}
+      />
+    );
+  }
+
+  // -- Results phase -----------------------------------------------------------
 
   if (phase === 'results') {
     return (
-      <div className="fixed inset-0 z-[100] overflow-y-auto bg-gray-50 dark:bg-slate-950">
-        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} placement={placement} pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames} afterResultsPath={afterResultsPath} />
-      </div>
+      <KnowledgeMapResults
+        subjectName={subjectName}
+        results={chapterResults}
+        placement={placement}
+        pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames}
+        afterResultsPath={afterResultsPath}
+      />
     );
   }
 
