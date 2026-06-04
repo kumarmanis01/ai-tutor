@@ -64,14 +64,29 @@ describe('exists proxy.ts', () => {
     expect(response.headers.get('x-pathname')).toBe('/session/topic-123');
   });
 
-  it('redirects unauthenticated student routes to root', async () => {
+  it('redirects unauthenticated student routes to /auth/get-started with callbackUrl', async () => {
     mockedGetToken.mockResolvedValue(null);
 
     const request = new NextRequest('https://example.com/student/onboarding');
     const response = await proxy(request);
 
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toBe('https://example.com/');
+    const location = response.headers.get('location') ?? '';
+    expect(location).toContain('/auth/get-started');
+    expect(location).toContain('callbackUrl=%2Fstudent%2Fonboarding');
+  });
+
+  it('redirects unauthenticated parent routes to /auth/get-started with source=parent', async () => {
+    mockedGetToken.mockResolvedValue(null);
+
+    const request = new NextRequest('https://example.com/parent/dashboard');
+    const response = await proxy(request);
+
+    expect(response.status).toBe(307);
+    const location = response.headers.get('location') ?? '';
+    expect(location).toContain('/auth/get-started');
+    expect(location).toContain('source=parent');
+    expect(location).toContain('callbackUrl=%2Fparent%2Fdashboard');
   });
 
   it('allows authenticated student routes', async () => {

@@ -90,14 +90,15 @@ export async function proxy(request: NextRequest) {
   for (const prefix of protectedUiPrefixes) {
     if (pathname.startsWith(prefix)) {
       if (!token) {
-        if (prefix === '/session') {
-          return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url));
-        }
-        // Redirect students to student login, parents to parent login, others to student login
+        // All unauthenticated protected routes redirect to /auth/get-started (NextAuth pages.signIn)
+        // with callbackUrl so the user lands at their intended destination post-OAuth.
+        const loginUrl = new URL('/auth/get-started', request.url);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        // Pre-highlight the parent tile when the route is parent-specific.
         if (pathname.startsWith('/parent')) {
-          return NextResponse.redirect(new URL('/login/parent', request.url));
+          loginUrl.searchParams.set('source', 'parent');
         }
-        return NextResponse.redirect(new URL('/login/student', request.url));
+        return NextResponse.redirect(loginUrl);
       }
 
       const isStudentOrParentUi = pathname.startsWith('/student') || pathname.startsWith('/parent');
