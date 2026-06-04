@@ -137,7 +137,7 @@ function StatPill({ icon, label }: { icon: string; label: string }) {
 // ─── Subject chips ────────────────────────────────────────────────────────────
 
 function SubjectList({ subjects }: { subjects: string[] }) {
-  if (subjects.length === 0) return <span className="text-[var(--text-faint)]">—</span>
+  if (subjects.length === 0) return <span className="text-[var(--text-faint)]">--</span>
   return (
     <div className="flex flex-wrap gap-1.5">
       {subjects.map((s) => (
@@ -201,7 +201,7 @@ function DeletionDialog({
             disabled={confirmText !== 'DELETE' || pending}
             onClick={handleDelete}
           >
-            {pending ? 'Submitting…' : 'Confirm'}
+            {pending ? 'Submitting...' : 'Confirm'}
           </Btn>
         </div>
       </div>
