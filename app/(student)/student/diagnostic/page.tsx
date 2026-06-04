@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Btn, ErrorState } from '@/components/ui'
 import DiagnosticFlow from '@/components/student/diagnostic/DiagnosticFlow'
@@ -18,7 +18,7 @@ interface ProfileResponse {
 
 type Phase = 'loading' | 'picker' | 'running' | 'no-subjects' | 'error'
 
-export default function DiagnosticPage() {
+function DiagnosticPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const subjectIdFromQuery = searchParams.get('subjectId') ?? ''
@@ -141,4 +141,14 @@ export default function DiagnosticPage() {
       afterResultsPath="/student/dashboard"
     />
   )
+}
+
+const spinnerFallback = (
+  <div className="bg-[var(--bg)] min-h-screen max-w-[390px] mx-auto p-6 flex flex-col items-center justify-center">
+    <div className="w-12 h-12 rounded-full border-[3px] border-[var(--border)] border-t-[var(--primary)] [animation:spz-spin_0.8s_linear_infinite]" />
+  </div>
+)
+
+export default function DiagnosticPage() {
+  return <Suspense fallback={spinnerFallback}><DiagnosticPageContent /></Suspense>
 }
