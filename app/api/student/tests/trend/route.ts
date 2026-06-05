@@ -71,7 +71,7 @@ export async function GET(req: Request) {
       take: 10,
     });
 
-    const data = rows.map((r) => ({
+    const data = rows.map((r: any) => ({
       date: r.finishedAt!.toISOString(),
       score: Math.round(r.score!),
     }));

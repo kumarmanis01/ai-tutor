@@ -238,7 +238,7 @@ export function DoubtPanel({ subject, chapter, topicName, studentName, isOpen, o
         throw new Error('Request failed');
       }
 
-      if (!questionId) setQuestionId(data.questionId);
+      if (!questionId) setQuestionId(data.questionId ?? null);
 
       setMessages((prev) => [
         ...prev,

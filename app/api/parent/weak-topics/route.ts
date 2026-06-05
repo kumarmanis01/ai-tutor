@@ -155,7 +155,7 @@ export async function GET(req: NextRequest) {
     });
 
     // ── 5. Shape response ─────────────────────────────────────────────────────
-    const weakTopics: WeakTopic[] = rows.map((r) => ({
+    const weakTopics: WeakTopic[] = rows.map((r: any) => ({
       topicId:       r.topicId,
       mastery:       r.mastery,
       practiceCount: r.practiceCount,

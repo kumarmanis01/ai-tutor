@@ -62,14 +62,14 @@ export default async function DiagnosticQueuePage() {
     where: {
       studentId: userId,
       status: 'COMPLETED',
-      subjectId: { in: subjectDefs.map((s) => s.id) },
+      subjectId: { in: subjectDefs.map((s: any) => s.id) },
     },
     select: { subjectId: true },
   });
-  const completedIds = new Set(completed.map((c) => c.subjectId));
+  const completedIds = new Set(completed.map((c: any) => c.subjectId));
 
   // Find the first pending subject
-  const nextSubject = subjectDefs.find((s) => !completedIds.has(s.id)) ?? null;
+  const nextSubject = subjectDefs.find((s: any) => !completedIds.has(s.id)) ?? null;
 
   if (!nextSubject) {
     // All subjects diagnosed -- go to skill map

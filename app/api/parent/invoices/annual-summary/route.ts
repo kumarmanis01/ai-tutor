@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+    const totalAmount = invoices.reduce((sum: any, inv: any) => sum + inv.amount, 0);
 
     const payload: AnnualSummaryResponse = {
       financialYear: fyLabel,
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
       fyEnd: fyEnd.toISOString().slice(0, 10),
       totalAmount,
       invoiceCount: invoices.length,
-      invoices: invoices.map((inv) => ({
+      invoices: invoices.map((inv: any) => ({
         id: inv.id,
         invoiceNumber: inv.invoiceNumber,
         amount: inv.amount,
@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
         const headers = new Headers();
         headers.set('Content-Type', 'application/pdf');
         headers.set('Content-Disposition', `attachment; filename="invoices-${fyLabel}.pdf"`);
-        const pdfRes = new Response(pdfBuf, { status: 200, headers });
+        const pdfRes = new Response(new Uint8Array(pdfBuf as any), { status: 200, headers });
         logger.logAPI(req, pdfRes, { className: CLASS_NAME, methodName: 'GET' }, start);
         return pdfRes;
       } catch (e: any) {

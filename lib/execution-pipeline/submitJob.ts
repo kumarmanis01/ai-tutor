@@ -270,7 +270,7 @@ export async function submitJob(input: SubmitJobInput) {
             logger?.warn?.('submitJob: failed to update ExecutionJob payload with hydrationJobId', { err: e, jobId: job.id })
           }
           try {
-            const meta: any = { queue: CONTENT_HYDRATION_QUEUE, workerType: 'SYLLABUS', hydrationJobId: res.jobId }
+            const meta: any = { queue: 'content-hydration', workerType: 'SYLLABUS', hydrationJobId: res.jobId }
             if ((res as any).bullJobId) meta.bullJobId = (res as any).bullJobId
             if ((res as any).outboxId) meta.outboxId = (res as any).outboxId
             await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta } });
@@ -350,7 +350,7 @@ export async function submitJob(input: SubmitJobInput) {
             logger?.warn?.('submitJob: failed to update ExecutionJob payload with hydrationJobId', { err: e, jobId: job.id });
           }
           try {
-            const meta: any = { queue: CONTENT_HYDRATION_QUEUE, workerType, hydrationJobId: enqueueResult.jobId };
+            const meta: any = { queue: 'content-hydration', workerType, hydrationJobId: enqueueResult.jobId };
             if (enqueueResult.outboxId) meta.outboxId = enqueueResult.outboxId;
             await prisma.jobExecutionLog.create({
               data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta }

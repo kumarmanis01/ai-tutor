@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
           board: chapter.subject.class.board.name,
           grade: chapter.subject.class.grade,
           status: chapter.status,
-          topics: chapter.topics.map(t => ({ name: t.name, status: t.status })),
+          topics: chapter.topics.map((t: any ) => ({ name: t.name, status: t.status })),
         })
       }
 
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
           board: topic.chapter.subject.class.board.name,
           grade: topic.chapter.subject.class.grade,
           status: topic.status,
-          notes: topic.notes.map(n => ({ title: n.title, language: n.language, status: n.status })),
+          notes: topic.notes.map((n: any ) => ({ title: n.title, language: n.language, status: n.status })),
         })
       }
 

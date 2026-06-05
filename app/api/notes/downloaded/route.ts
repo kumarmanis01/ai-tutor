@@ -11,7 +11,7 @@ export async function GET() {
     take: 20,
     orderBy: { createdAt: 'desc' },
   });
-  const noteIds = downloads.map((d) => d.noteId);
+  const noteIds = downloads.map((d: any) => d.noteId);
   const notes = await prisma.note.findMany({
     where: { id: { in: noteIds } },
     select: { id: true, title: true },

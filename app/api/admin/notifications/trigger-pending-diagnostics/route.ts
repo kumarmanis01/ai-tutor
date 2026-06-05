@@ -28,7 +28,7 @@ export async function POST(_req: NextRequest) {
   try {
     // Students who have at least one completed diagnostic
     const completed = await prisma.diagnosticSession.findMany({ where: { status: 'COMPLETED' }, select: { studentId: true }, distinct: ['studentId'] })
-    const completedIds = completed.map(c => c.studentId)
+    const completedIds = completed.map((c: any ) => c.studentId)
 
     const targets = await prisma.user.findMany({ where: { role: 'user', id: { notIn: completedIds } }, select: { id: true, email: true, whatsappPhone: true } })
 

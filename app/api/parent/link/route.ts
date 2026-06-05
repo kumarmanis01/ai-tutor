@@ -281,7 +281,7 @@ export async function DELETE(req: NextRequest) {
         action: null,
         details: { legacyAction: 'parent_unlink_student', parentId },
       },
-    }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
+    }).catch((err: any) => logger.warn('audit log failed', { error: String(err) }));
 
     logger.info('Parent-student link revoked', { className: CLASS_NAME, parentId, studentId });
 

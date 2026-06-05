@@ -103,7 +103,7 @@ async function promoteGeneratedQuestions(topicId: string): Promise<number> {
     },
   });
   const existingContentKeys = new Set<string>(
-    existingActiveQuestions.map((q) =>
+    existingActiveQuestions.map((q: any) =>
       buildQuestionContentKey({
         prompt: q.prompt,
         choices: q.choices,
@@ -328,7 +328,7 @@ export async function POST(
     to: PRACTICE_HYDRATION_ALERT_EMAIL,
     subject: 'Practice Hydration Requested',
     html: adminBroadcastEmailHtml({
-      subject: 'Practice Hydration Requested',
+      title: 'Practice Hydration Requested',
       body: `Manual practice hydration requested for session ${sessionId} (student ${studentId})`,
     }),
     reason: 'practice_hydration_requested',

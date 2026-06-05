@@ -1,3 +1,4 @@
+import { formatErrorForResponse } from '@/lib/errorResponse'
 /**
  * FILE OBJECTIVE:
  * - POST /api/auth/parent/send-otp

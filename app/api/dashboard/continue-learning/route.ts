@@ -12,7 +12,7 @@ export async function GET() {
     orderBy: { lastAccessed: 'desc' },
   });
 
-  const activities = sessions.map((s) => {
+  const activities = sessions.map((s: any) => {
     const meta = (s.meta && typeof s.meta === 'object' ? s.meta : {}) as Record<string, unknown>;
     const subject = (meta.subject as string) || (meta.subjectName as string) || undefined;
     const title = (meta.title as string) || (meta.activityTitle as string) || undefined;

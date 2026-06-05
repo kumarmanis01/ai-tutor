@@ -17,7 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { LanguageCode, DifficultyLevel, JobStatus, JobType } from '@prisma/client';
@@ -246,7 +246,7 @@ async function findOrCreateSubject(
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session?.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -267,8 +267,8 @@ export async function GET(request: NextRequest) {
 
     // Enrich jobs that are missing board/grade/subject from SubjectDef
     const subjectIdsToEnrich = jobs
-      .filter((j) => (!j.board || !j.grade || !j.subject) && j.subjectId)
-      .map((j) => j.subjectId as string);
+      .filter((j: any) => (!j.board || !j.grade || !j.subject) && j.subjectId)
+      .map((j: any) => j.subjectId as string);
 
     const enrichedSubjects: Record<string, { board: string; grade: number; subject: string }> = {};
     if (subjectIdsToEnrich.length > 0) {
@@ -294,7 +294,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const jobSummaries = jobs.map((job) => {
+    const jobSummaries = jobs.map((job: any) => {
       const enriched = job.subjectId ? enrichedSubjects[job.subjectId] : undefined;
       const chaptersExp = job.chaptersExpected || 0;
       const topicsExp = job.topicsExpected || 0;
@@ -345,7 +345,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // 1. Authentication & Authorization
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -514,7 +514,7 @@ export async function POST(request: NextRequest) {
       // Create Outbox entry for transactional queueing
       await tx.outbox.create({
         data: {
-          queue: CONTENT_HYDRATION_QUEUE,
+          queue: 'content-hydration',
           payload: {
             type: 'SYLLABUS',
             payload: { jobId: rootJob.id },

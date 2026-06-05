@@ -150,7 +150,7 @@ export async function POST(req: Request) {
             update: { periodStart: now, sessionsUsed: 0 },
             create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
           })
-          .catch((err) => { logger.warn('freeTierUsage.upsert failed', { event: 'subscription.verify.upsert', context: { userId }, error: String(err) }) });
+          .catch((err: any) => { logger.warn('freeTierUsage.upsert failed', { event: 'subscription.verify.upsert', context: { userId }, error: String(err) }) });
 
         // Create a Payment record to persist transaction metadata
         const payment = await tx.payment.create({

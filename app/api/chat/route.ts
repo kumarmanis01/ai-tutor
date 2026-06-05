@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     }
 
     // Persist the user's question (best-effort) before handing off to worker
-    await prisma.chat.create({ data: { userId, role: 'user', content: message, subject } }).catch((e) => {
+    await prisma.chat.create({ data: { userId, role: 'user', content: message, subject } }).catch((e: any) => {
       logger.warn('Failed to persist user chat', { className: 'api.chat', methodName: 'POST', error: e });
     });
 

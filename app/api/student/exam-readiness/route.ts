@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     where: { subjectId: subjectId.trim() },
     select: { id: true },
   })
-  const ids = conceptIds.map((c) => c.id)
+  const ids = conceptIds.map((c: any) => c.id)
   if (ids.length === 0) {
     const res = NextResponse.json(
       { message: 'Insufficient data' },

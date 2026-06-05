@@ -135,7 +135,7 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
     if (profileLoading) return;
     
     const currentBoard = profile?.board ?? null;
-    const currentGrade = profile?.grade ?? null;
+    const currentGrade = profile?.grade != null ? Number(profile.grade) : null;
     const prev = prevProfileRef.current;
     
     // Fetch if: first time after profile load, or profile values changed

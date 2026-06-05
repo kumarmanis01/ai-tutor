@@ -115,12 +115,18 @@ interface ChapterMastery {
   avgAccuracy: number; // 0-1
   topicCount: number;
   aiWorking: boolean;
+  topics?: { topicId: string; topicName: string; accuracy: number }[];
 }
 
 interface SubjectProgressData {
   subject: string;
   avgAccuracy: number; // 0-1
   topicCount: number;
+  topicsCovered: number;
+  totalTopics: number;
+  coveragePercent: number;
+  strongTopics: number;
+  weakTopics: number;
   predictedMarkRange: [number, number];
   masteryExplanation: string;
   chapters: ChapterMastery[];
@@ -391,7 +397,7 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
                 <span className="text-xs text-gray-500">{ch.topicCount} topics</span>
               </div>
               <div className="flex flex-wrap gap-1">
-                {ch.topics.map((t) => (
+                {(ch.topics ?? []).map((t: any) => (
                   <span
                     key={t.topicId}
                     className={`text-xs px-2 py-0.5 rounded-full ${masteryColor(t.masteryLevel)}`}

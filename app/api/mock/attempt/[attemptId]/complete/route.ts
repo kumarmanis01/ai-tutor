@@ -80,7 +80,7 @@ export async function POST(
 
   // Auto-submit any sections that haven't been submitted yet
   const submittedSectionIds = new Set(
-    attempt.sectionAttempts.filter((sa) => sa.submittedAt).map((sa) => sa.sectionId),
+    attempt.sectionAttempts.filter((sa: any) => sa.submittedAt).map((sa: any) => sa.sectionId),
   );
 
   for (const sec of attempt.mockExam.sections) {
@@ -108,7 +108,7 @@ export async function POST(
   const sectionScores = computeSectionScores(attempt.mockExam.sections, allSectionAttempts);
 
   // Weighted overall score: sum of (section score % × section total marks) / total marks
-  const totalMarks = attempt.mockExam.sections.reduce((s, sec) => s + sec.totalMarks, 0);
+  const totalMarks = attempt.mockExam.sections.reduce((s: any, sec: any) => s + sec.totalMarks, 0);
   const earnedMarks = sectionScores.reduce((s, ss) => s + ss.marksEarned, 0);
   const overallScore = totalMarks > 0 ? (earnedMarks / totalMarks) * 100 : 0;
 
@@ -206,7 +206,7 @@ export async function POST(
       const scoreLabel = `${Math.round(overallScore)}%`
       const milestoneLabel = `Mock exam completed (${scoreLabel})`
       const dashboardUrl = `${(process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com').replace(/\/$/, '')}/parent/dashboard`
-      await Promise.allSettled(parentLinks.map((pl) => {
+      await Promise.allSettled(parentLinks.map((pl: any) => {
         const brandedHtml = milestoneEmailHtml({
           parentName: pl.parent.name ?? 'Parent',
           studentName: 'Your child',

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       take: limit,
     });
 
-    const messages = rows.map((r) => ({
+    const messages = rows.map((r: any) => ({
       id: String(r.id),
       role: r.role === 'assistant' ? 'assistant' : 'user',
       content: r.content,

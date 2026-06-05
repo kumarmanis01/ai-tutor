@@ -162,8 +162,8 @@ export default async function ParentProgressDetailPage({
         where: { studentId, subject: { in: subjectNames } },
         _avg: { accuracy: true },
       }).catch(() => null)
-      const studentAvgBySubject = new Map(
-        (studentMasteries ?? []).map((r) => [r.subject, r._avg.accuracy ?? 0])
+      const studentAvgBySubject = new Map<string, number>(
+        (studentMasteries ?? []).map((r: any) => [r.subject, r._avg.accuracy ?? 0])
       )
       for (const row of readiness) {
         const studentAvg = studentAvgBySubject.get(row.subjectName) ?? 0
@@ -194,17 +194,17 @@ export default async function ParentProgressDetailPage({
   })
 
   // ── Resolve per-topic progress for the recent sessions (used to surface a mastery indicator) ──
-  const topicIds = Array.from(new Set(recentSessions.map((s) => s.topicId).filter(Boolean)))
+  const topicIds = Array.from(new Set(recentSessions.map((s: any) => s.topicId).filter(Boolean)))
   const progresses = topicIds.length
     ? await prisma.studentTopicProgress.findMany({
         where: { studentId, topicId: { in: topicIds } },
         select: { topicId: true, mastery: true, lastStudiedAt: true },
       })
     : []
-  const progressMap = new Map(progresses.map((p) => [p.topicId, p]))
+  const progressMap = new Map<string, any>(progresses.map((p: any) => [p.topicId, p]))
 
   // ── Format the last-10 sessions for the component (no transcript) ──────
-  const formattedSessions = recentSessions.map((s) => ({
+  const formattedSessions = recentSessions.map((s: any) => ({
     id: s.id,
     date: s.startedAt.toISOString(),
     topicId: s.topicId,

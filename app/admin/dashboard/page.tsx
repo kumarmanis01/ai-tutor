@@ -24,7 +24,7 @@ async function getMetrics() {
       by: ['studentId'],
       where: { startedAt: { gte: todayStartUtc, lt: todayEndUtc } },
       _count: { studentId: true },
-    }).then((r) => r.length),
+    }).then((r: any) => r.length),
     // Sessions today
     prisma.structuredSession.count({
       where: { startedAt: { gte: todayStartUtc, lt: todayEndUtc } },

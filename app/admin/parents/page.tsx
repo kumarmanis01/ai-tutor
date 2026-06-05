@@ -52,13 +52,13 @@ export default async function ParentsPage() {
 
   // Build mastery map: studentId -> avgMastery 0-100
   const masteryMap = new Map<string, number>(
-    masteryRows.map(r => [
+    masteryRows.map((r: any ) => [
       r.studentId,
       Math.round((r._avg.mastery ?? 0) * 100),
     ])
   )
 
-  const rows: ParentRowData[] = links.map(l => ({
+  const rows: ParentRowData[] = links.map((l: any ) => ({
     id: l.id,
     parentId: l.parentId,
     parentName: l.parent.name ?? null,

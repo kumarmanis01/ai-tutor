@@ -51,7 +51,7 @@ export default async function NotificationsPage() {
     prisma.diagnosticSession.findMany({
       select: { studentId: true },
       distinct: ['studentId'],
-    }).then(rows => rows.length).catch(() => 0),
+    }).then((rows: any ) => rows.length).catch(() => 0),
 
     prisma.notificationLog.findMany({
       orderBy: { sentAt: 'desc' },
@@ -152,7 +152,7 @@ export default async function NotificationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentLogs.map(log => (
+                  {recentLogs.map((log: any ) => (
                     <tr key={log.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
                       <td className="px-3 py-2.5 max-w-[180px] truncate text-gray-700 dark:text-gray-300">{log.title}</td>
                       <td className="px-3 py-2.5 text-gray-500">{log.audience}</td>

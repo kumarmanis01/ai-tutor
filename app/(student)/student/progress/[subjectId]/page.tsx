@@ -109,14 +109,14 @@ export default async function SubjectProgressPage({ params }: Props) {
       select: { id: true, topic: { select: { chapterId: true } } },
     });
 
-    const allConceptIds = concepts.map((c) => c.id);
+    const allConceptIds = concepts.map((c: any) => c.id);
     const conceptStates = await prisma.studentConceptState.findMany({
       where: { studentId: userId, conceptId: { in: allConceptIds } },
       select: { conceptId: true, masteryScore: true },
     });
 
     const masteryByConceptId = new Map<string, number>(
-      conceptStates.map((s) => [s.conceptId, s.masteryScore]),
+      conceptStates.map((s: any) => [s.conceptId, s.masteryScore]),
     );
 
     const conceptsByChapter = new Map<string, string[]>();
@@ -143,6 +143,7 @@ export default async function SubjectProgressPage({ params }: Props) {
       chapterName: ch.chapterName,
       masteryScore: ch.masteryScore,
       boardWeightPct: ch.boardWeightPct,
+      weightSource: (ch as any).weightSource ?? 'estimated' as const,
       weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
     }))
     .sort((a, b) => a.masteryScore - b.masteryScore);
@@ -155,7 +156,7 @@ export default async function SubjectProgressPage({ params }: Props) {
   const totalSessions = chartSessions.length;
   const totalMinutes = totalSessions * AVG_SESSION_MINUTES;
 
-  const sessionRows: SessionRow[] = completedSessions.map((s) => {
+  const sessionRows: SessionRow[] = completedSessions.map((s: any) => {
     const meta = s.meta as Record<string, unknown> | null;
     const rawScore = meta?.score;
     return {

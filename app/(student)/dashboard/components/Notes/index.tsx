@@ -140,7 +140,7 @@ export default function NotesTab() {
   }, []);
 
   // ── Hierarchy data ────────────────────────────────────────────────────
-  const subjects = helpers.getSubjectsForGrade(profile?.board, profile?.grade);
+  const subjects = helpers.getSubjectsForGrade(profile?.board, profile?.grade != null ? Number(profile.grade) : null);
 
   // ── If a note is selected, show the reader ────────────────────────────
   if (selectedTopicId) {
@@ -165,7 +165,7 @@ export default function NotesTab() {
           </div>
         )}
 
-        {note && <NoteRenderer content={note.contentJson} title={note.title} />}
+        {note && <NoteRenderer content={note.contentJson as React.ReactNode} title={note.title as React.ReactNode} />}
       </div>
     );
   }
@@ -304,7 +304,7 @@ function SubjectAccordion({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
       >
-        <span className="text-sm font-semibold text-gray-800">{subject.name}</span>
+        <span className="text-sm font-semibold text-gray-800">{subject.name as React.ReactNode}</span>
         <ChevronIcon open={open} />
       </button>
 
@@ -348,8 +348,8 @@ function ChapterAccordion({
         className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-gray-50 transition-colors"
       >
         <span className="text-sm text-gray-700">
-          <span className="text-gray-400 mr-1.5">{chapter.order}.</span>
-          {chapter.name}
+          <span className="text-gray-400 mr-1.5">{chapter.order as React.ReactNode}.</span>
+          {chapter.name as React.ReactNode}
         </span>
         <ChevronIcon open={open} />
       </button>
@@ -517,10 +517,10 @@ function VidyaNoteRenderer({ obj }: { obj: Record<string, unknown> }) {
     <article className="space-y-4">
       {metadata && (
         <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-          {metadata.board && <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.board)}</span>}
-          {metadata.grade && <span className="rounded-full bg-gray-100 px-2 py-0.5">Grade {String(metadata.grade)}</span>}
-          {metadata.difficultyLevel && <span className="rounded-full bg-gray-100 px-2 py-0.5 capitalize">{String(metadata.difficultyLevel)}</span>}
-          {metadata.estimatedReadingMinutes && (
+          {!!metadata.board && <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.board)}</span>}
+          {!!metadata.grade && <span className="rounded-full bg-gray-100 px-2 py-0.5">Grade {String(metadata.grade)}</span>}
+          {!!metadata.difficultyLevel && <span className="rounded-full bg-gray-100 px-2 py-0.5 capitalize">{String(metadata.difficultyLevel)}</span>}
+          {!!metadata.estimatedReadingMinutes && (
             <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.estimatedReadingMinutes)} min read</span>
           )}
         </div>
@@ -569,7 +569,7 @@ function VidyaNoteRenderer({ obj }: { obj: Record<string, unknown> }) {
   )
 }
 
-function NoteRenderer({ content, title }: { content: unknown; title: string }) {
+function NoteRenderer({ content, title }: { content: unknown; title: React.ReactNode }) {
   if (!content) {
     return (
       <div className="rounded-lg border p-6 text-sm text-gray-500">
@@ -602,17 +602,17 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
         <article className="space-y-6 rounded-lg border bg-white p-6">
           {(obj.sections as Array<Record<string, unknown>>).map((sec, i) => (
             <div key={i}>
-              {sec.heading && (
+              {!!sec.heading && (
                 <h3 className="text-base font-bold text-gray-900 mb-2">
                   {String(sec.heading)}
                 </h3>
               )}
-              {sec.content && (
+              {!!sec.content && (
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {String(sec.content)}
                 </div>
               )}
-              {sec.points && Array.isArray(sec.points) && (
+              {!!sec.points && Array.isArray(sec.points) && (
                 <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
                   {(sec.points as string[]).map((p, j) => (
                     <li key={j}>{p}</li>
@@ -622,7 +622,7 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
             </div>
           ))}
 
-          {obj.objectives && Array.isArray(obj.objectives) && obj.objectives.length > 0 && (
+          {!!obj.objectives && Array.isArray(obj.objectives) && obj.objectives.length > 0 && (
             <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4 mt-4">
               <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Learning Objectives</h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
@@ -633,7 +633,7 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
             </div>
           )}
 
-          {obj.keyPoints && Array.isArray(obj.keyPoints) && (
+          {!!obj.keyPoints && Array.isArray(obj.keyPoints) && (
             <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4">
               <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Key Points</h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
@@ -651,13 +651,13 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
     if (typeof obj.explanation === 'string' || typeof obj.concept === 'string') {
       return (
         <article className="space-y-4 rounded-lg border bg-white p-6">
-          {obj.concept && (
+          {!!obj.concept && (
             <p className="text-sm text-gray-700 leading-relaxed">{String(obj.concept)}</p>
           )}
-          {obj.explanation && (
+          {!!obj.explanation && (
             <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{String(obj.explanation)}</div>
           )}
-          {obj.objectives && Array.isArray(obj.objectives) && obj.objectives.length > 0 && (
+          {!!obj.objectives && Array.isArray(obj.objectives) && obj.objectives.length > 0 && (
             <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4 mt-2">
               <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Learning Objectives</h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
@@ -667,7 +667,7 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
               </ul>
             </div>
           )}
-          {obj.example && (
+          {!!obj.example && (
             <div className="rounded-md bg-gray-50 border border-gray-200 p-3">
               <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Examples</p>
               <div className="text-sm text-gray-700 whitespace-pre-wrap">{String(obj.example)}</div>

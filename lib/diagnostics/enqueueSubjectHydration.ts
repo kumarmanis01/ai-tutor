@@ -150,7 +150,7 @@ export async function enqueueSubjectHydration(
 
     await tx.outbox.create({
       data: {
-        queue: CONTENT_HYDRATION_QUEUE,
+        queue: 'content-hydration',
         payload: {
           type: 'SYLLABUS',
           payload: { jobId: created.id },

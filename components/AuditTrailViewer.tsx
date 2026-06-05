@@ -36,7 +36,7 @@ const AuditTrailViewer = () => {
         {auditLogs.map((log, index) => (
           <li key={index}>
             <strong>Action:</strong> {log.action ?? 'system'} <br />
-            <strong>User:</strong> {log.admin?.email || 'Anonymous'} <br />
+            <strong>User:</strong> {(log as any).admin?.email || (log as any).adminEmail || 'Anonymous'} <br />
             <strong>Details:</strong> {JSON.stringify(log.details)} <br />
             <strong>Timestamp:</strong> {log.createdAt}
           </li>

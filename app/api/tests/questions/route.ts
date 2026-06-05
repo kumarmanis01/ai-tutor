@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     orderBy: { order: 'asc' },
   });
 
-  const questions = rows.map((r) => ({
+  const questions = rows.map((r: any) => ({
     id: r.question.id,
     type: r.question.type,
     prompt: r.question.prompt,

@@ -22,7 +22,7 @@ export async function GET() {
   })
 
   // Resolve subject names from subjectIds (batch lookup)
-  const subjectIds = runs.map(r => r.subjectId).filter(Boolean) as string[]
+  const subjectIds = runs.map((r: any ) => r.subjectId).filter(Boolean) as string[]
   const subjects = subjectIds.length
     ? await prisma.subjectDef.findMany({
         where: { id: { in: subjectIds } },
@@ -30,9 +30,9 @@ export async function GET() {
       })
     : []
 
-  const subjectMap = new Map(subjects.map(s => [s.id, s]))
+  const subjectMap = new Map<string, any>(subjects.map((s: any) => [s.id, s]))
 
-  const enriched = runs.map(r => {
+  const enriched = runs.map((r: any ) => {
     const subject = r.subjectId ? subjectMap.get(r.subjectId) : null
     return {
       id: r.id,

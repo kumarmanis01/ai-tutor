@@ -51,12 +51,12 @@ export async function POST(req: NextRequest) {
 
     let text = ''
     try {
-      const pdfParse = (await import('pdf-parse')).default as (buf: Buffer) => Promise<{ text: string }>
+      const pdfParseMod = await import('pdf-parse') as any; const pdfParse = (pdfParseMod.default ?? pdfParseMod) as (buf: Buffer) => Promise<{ text: string }>
       const data = await pdfParse(buf)
       text = String(data.text ?? '')
     } catch (e) {
       logger.warn('pdf-parse not available or failed; falling back to naive text extraction')
-      logger.error('pdf-parse error:', e as Error)
+      logger.error('pdf-parse error', { error: String(e) })
       text = buf.toString('latin1')
     }
 
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         chunksCreated++
         embeddingsPending++
       } catch (err) {
-        logger.error('[parse-pdf] chunk upsert error:', err as Error)
+        logger.error('[parse-pdf] chunk upsert error', { error: String(err) })
         errors++
       }
     }
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
         },
       })
     } catch (err) {
-      logger.warn('[parse-pdf] Could not write IngestRunLog:', err as Error)
+      logger.warn('[parse-pdf] Could not write IngestRunLog', { error: String(err) })
     }
 
     return NextResponse.json({ ok: true, chunksCreated, chunksSkipped, embeddingsPending })

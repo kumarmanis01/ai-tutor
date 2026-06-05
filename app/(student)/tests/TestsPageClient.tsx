@@ -38,7 +38,7 @@ export default function TestsPageClient() {
       setFilters(createFilterStateFromProfile({
         language: profile.language,
         board: profile.board,
-        grade: profile.grade,
+        grade: profile?.grade != null ? Number(profile?.grade) : null,
       }));
     }
   }, [profile, filters.boardSlug]);

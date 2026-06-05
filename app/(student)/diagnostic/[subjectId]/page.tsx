@@ -217,7 +217,7 @@ export default async function DiagnosticPage({
   // pendingSubjects: subjects the student enrolled in (user.subjects) that don't yet
   // have a completed diagnostic -- used for the post-submit nudge toast.
   // Falls back to all active subjects for the grade/board when no enrolled list exists.
-  const completedSubjectIdSet = new Set(completedDiagnostics.map((d) => d.subjectId));
+  const completedSubjectIdSet = new Set(completedDiagnostics.map((d: any) => d.subjectId));
 
   // Parse user.subjects (handles both String[] and Postgres wire-format string)
   let enrolledSubjectNames: string[] | null = null;
@@ -250,7 +250,7 @@ export default async function DiagnosticPage({
       select: { name: true },
     }),
   ]);
-  const pendingDiagnosticSubjectNames = pendingSubjectRows.map((s) => s.name);
+  const pendingDiagnosticSubjectNames = pendingSubjectRows.map((s: any) => s.name);
   const initialAnswers = partial?.answers ?? [];
   const initialIndex = Math.min(
     partial?.currentIndex ?? 0,

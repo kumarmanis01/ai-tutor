@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(req: Request) {
   // Security guard: only available in non-production
-  if (process.env.NODE_ENV === 'production') {
+  if ((process.env.NODE_ENV as string) === 'production') {
     return new NextResponse('Not found', { status: 404 })
   }
 
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
   const cookieName = 'next-auth.session-token'
   res.cookies.set(cookieName, String(encoded), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: (process.env.NODE_ENV as string) === 'production',
     path: '/',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 30,

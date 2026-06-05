@@ -43,7 +43,7 @@ export async function GET(_req: Request) {
     LIMIT 100
   `
 
-  const duplicates: DuplicateGroup[] = rows.map((r) => ({
+  const duplicates: DuplicateGroup[] = rows.map((r: any) => ({
     phone: r.phone,
     userIds: r.user_ids,
     count: Number(r.count),

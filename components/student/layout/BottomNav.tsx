@@ -98,7 +98,7 @@ export default function BottomNav() {
     if (item.matchExact) {
       return pathname === item.href;
     }
-    const paths = (item as { matchPaths?: string[] }).matchPaths ?? [item.href];
+    const paths = (item as unknown as { matchPaths?: string[] }).matchPaths ?? [item.href];
     return paths.some((p) => pathname === p || pathname.startsWith(p + '/'));
   }
 

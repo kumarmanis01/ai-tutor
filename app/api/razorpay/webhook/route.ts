@@ -321,7 +321,7 @@ export async function POST(req: Request) {
           delivery: 'best_effort',
           to: parent.email,
           subject: 'Payment failed -- Spinzy Academy',
-          html: parentPaymentFailedHtml({ studentName: parent.name ?? undefined, amount: payment?.amount ?? orderRow.planMonths ?? 0 }),
+          html: parentPaymentFailedHtml({ name: parent.name ?? undefined, retryUrl: `${process.env.NEXTAUTH_URL ?? ''}/parent/subscription` }),
           reason: 'payment_failed',
         });
       }

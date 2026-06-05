@@ -29,7 +29,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     scorePercent: attempt.score ?? null,
     startedAt: attempt.startedAt ?? null,
     finishedAt: attempt.finishedAt ?? null,
-    items: items.map((i) => ({
+    items: items.map((i: any) => ({
       id: i.id,
       order: i.order,
       timeSpent: i.timeSpent ?? null,

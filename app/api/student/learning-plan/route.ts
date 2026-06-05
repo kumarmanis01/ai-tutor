@@ -178,15 +178,15 @@ export async function GET(req: Request) {
     : null
 
   // Batch concept lookup -- avoids N+1 (one query for all 3 recent items)
-  const recentConceptIds = plan.items.map((i) => i.conceptId)
+  const recentConceptIds = plan.items.map((i: any) => i.conceptId)
   const recentConcepts = recentConceptIds.length
     ? await prisma.concept.findMany({
         where: { id: { in: recentConceptIds } },
         select: { id: true, name: true },
       })
     : []
-  const conceptNameById = new Map(recentConcepts.map((c) => [c.id, c.name]))
-  const recentlyCompleted = plan.items.map((item) => ({
+  const conceptNameById = new Map(recentConcepts.map((c: any) => [c.id, c.name]))
+  const recentlyCompleted = plan.items.map((item: any) => ({
     conceptName: conceptNameById.get(item.conceptId) ?? '',
     completedAt: item.completedAt ? item.completedAt.toISOString() : '',
   }))

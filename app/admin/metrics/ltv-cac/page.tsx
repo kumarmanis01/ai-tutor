@@ -107,7 +107,7 @@ export default async function Page() {
             </tr>
           </thead>
           <tbody>
-            {snapshots.map((s) => (
+            {snapshots.map((s: any) => (
               <tr key={s.id} className="border-t">
                 <td className="py-2">{new Date(s.snapshotAt).toLocaleString()}</td>
                 <td>{formatINR(s.mrr_paise)}</td>

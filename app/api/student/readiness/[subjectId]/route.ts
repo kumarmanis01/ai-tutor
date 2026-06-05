@@ -65,7 +65,7 @@ export async function GET(
       subjectName: subject?.name ?? '',
       overallScore: readiness.score,
       label: readiness.label,
-      predictedRange: computePredictedScoreRange(readiness, daysToExam),
+      predictedRange: computePredictedScoreRange(readiness, daysToExam ?? undefined),
       isCrunchMode,
       daysToExam,
       chapters: readiness.chapters,

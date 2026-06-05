@@ -36,7 +36,7 @@ export default async function MockExamPage() {
 
   const grade = profile?.grade ? Number(profile.grade) : null;
   const board = profile?.board ?? null;
-  const subjects = (profile?.subjects ?? []).map((s) => String(s)).filter(Boolean);
+  const subjects = (profile?.subjects ?? []).map((s: any) => String(s)).filter(Boolean);
 
   if (!grade || !board) {
     redirect('/onboarding');
@@ -59,7 +59,7 @@ export default async function MockExamPage() {
       })
     : [];
 
-  const mockList = mocks.map((m) => ({
+  const mockList = mocks.map((m: any) => ({
     id: m.id,
     title: m.title,
     subjectName: m.subject.name,

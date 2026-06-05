@@ -204,7 +204,7 @@ export async function PUT(req: NextRequest) {
         action: null,
         details: { legacyAction: 'parent_update_controls', controls: { dailyTimeLimitMin, allowedSubjects, focusMode, studyHoursStart, studyHoursEnd } },
       },
-    }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
+    }).catch((err: any) => logger.warn('audit log failed', { error: String(err) }));
 
     logger.info('Parent controls updated', { className: CLASS_NAME, parentId, studentId });
 

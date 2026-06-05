@@ -82,7 +82,7 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
 
   // EMI schedule computed at top-level to comply with Rules of Hooks (must not be conditional)
   const emiSchedule = useMemo(() => {
-    if (!emiMonths || planId !== 'annual') return null;
+    if (!emiMonths || (planId as string) !== 'annual') return null;
     const per = Math.round((totalRupees / emiMonths) * 100) / 100;
     const start = new Date();
     return Array.from({ length: emiMonths }).map((_, i) => {

@@ -67,6 +67,12 @@ export type TutorTurnRequest = {
   sessionId: string
   studentMessage: string
   turnNumber: number
+  conceptId?: string
+  subjectId?: string
+  isCorrect?: boolean
+  questionId?: string
+  itemDifficulty?: number
+  messageId?: string
 }
 
 export type TutorSessionState = {
@@ -316,11 +322,11 @@ export async function runTutorOrchestrator(args: {
       ? prismaClient.studentLearningProfile.findUnique({ where: { studentId }, select: { recommendations: true } })
       : Promise.resolve(null)
 
-    const conceptStatePromise: Promise<{ masteryScore: number | null } | null> =
+    const conceptStatePromise: Promise<{ masteryScore: number | null; retention: number | null } | null> =
       prismaClient.studentConceptState && typeof prismaClient.studentConceptState.findUnique === 'function'
         ? prismaClient.studentConceptState.findUnique({
             where: { studentId_conceptId: { studentId, conceptId } },
-            select: { masteryScore: true },
+            select: { masteryScore: true, retention: true },
           })
         : Promise.resolve(null)
 
@@ -339,6 +345,7 @@ export async function runTutorOrchestrator(args: {
       }),
       userProfilePromise,
       conceptStatePromise,
+      studentLearningProfilePromise,
     ])
     const conceptName = concept?.name ?? 'this concept'
     const subjectName = subject?.name ?? 'Subject'
@@ -542,7 +549,7 @@ export async function runTutorOrchestrator(args: {
         take: 3,
         select: { misconception: { select: { name: true } } },
       })
-      recentMisconceptionNames = recentRows.map((r) => r.misconception.name)
+      recentMisconceptionNames = recentRows.map((r: any) => r.misconception.name)
     } catch (err) {
       logger.warn('studentMisconception.load.failed', {
         studentId,
@@ -662,7 +669,7 @@ export async function runTutorOrchestrator(args: {
       learningStyle,
       recentMisconceptions: recentMisconceptionNames,
       masteryBrief: computeMasteryBrief(conceptState?.masteryScore ?? null),
-      emotionalState: frustration.emotionalState,
+      emotionalState: frustration.emotionalState === 'DISTRESSED' ? 'FRUSTRATED' : frustration.emotionalState,
       stage: state.stage as TutorStage,
       stageAttemptCount: state.stageAttemptCount,
       hintsUsed,

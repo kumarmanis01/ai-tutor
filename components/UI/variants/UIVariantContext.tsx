@@ -257,7 +257,7 @@ export function ThemeWrapper({
   // Convert CSS variables to inline styles
   const style = Object.entries(cssVariables).reduce(
     (acc, [key, value]) => {
-      acc[key as keyof React.CSSProperties] = value;
+      acc[key as keyof React.CSSProperties] = value as any;
       return acc;
     },
     {} as React.CSSProperties

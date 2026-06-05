@@ -71,7 +71,7 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    const data = rows.map((r) => ({ date: r.finishedAt!.toISOString(), score: Math.round(r.score!) }));
+    const data = rows.map((r: any) => ({ date: r.finishedAt!.toISOString(), score: Math.round(r.score!) }));
 
     res = NextResponse.json({ data, totalCount, limit, offset });
     logger.logAPI(req, res, { className: 'TestsHistoryAPI', methodName: 'GET' }, start);

@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const installments: InstallmentRow[] = subscription.installments.map((inst) => ({
+    const installments: InstallmentRow[] = subscription.installments.map((inst: any) => ({
       id: inst.id,
       number: inst.number,
       dueAt: inst.dueAt.toISOString(),

@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       if (!u) return NextResponse.json({ error: 'user_not_found' }, { status: 404 });
       users = [{ id: u.id, board: u.board ?? null, grade: u.grade ?? null, language: u.language ?? 'en', subjects: (u.subjects || []) as string[] }];
     } else {
-      users = await prisma.user.findMany({ where: { board, grade, language } }).then((arr) => arr.map((u) => ({ id: u.id, board: u.board, grade: u.grade, language: u.language, subjects: (u.subjects || []) as string[] })));
+      users = await prisma.user.findMany({ where: { board, grade, language } }).then((arr: any) => arr.map((u: any) => ({ id: u.id, board: u.board, grade: u.grade, language: u.language, subjects: (u.subjects || []) as string[] })));
     }
 
     let seeded = 0;

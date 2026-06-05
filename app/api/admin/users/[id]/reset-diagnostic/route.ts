@@ -64,7 +64,7 @@ export async function POST(
     where: { subjectId },
     select: { id: true },
   })
-  const conceptIds = concepts.map((c) => c.id)
+  const conceptIds = concepts.map((c: any) => c.id)
 
   try {
     await prisma.$transaction([

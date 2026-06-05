@@ -51,11 +51,11 @@ export async function POST(_req: Request) {
     const jobTypeName = String(job.jobType).toUpperCase()
     await prisma.outbox.create({
       data: {
-        queue: CONTENT_HYDRATION_QUEUE,
+        queue: 'content-hydration',
         payload: { type: jobTypeName, payload: { jobId: job.id } },
         meta: { hydrationJobId: job.id, source: 'unstick-all' },
       },
-    }).catch((e) => logger.warn('[admin/jobs/unstick-all] failed to create outbox row', { jobId: job.id, error: e }))
+    }).catch((e: any) => logger.warn('[admin/jobs/unstick-all] failed to create outbox row', { jobId: job.id, error: e }))
   }
 
   logger.info('[admin/jobs/unstick-all] reset stuck running jobs to pending', {

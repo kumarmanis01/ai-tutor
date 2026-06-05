@@ -108,7 +108,7 @@ export default async function ContentApprovalPage() {
 
   // Normalise into ReviewItemData[]
   const items: ReviewItemData[] = [
-    ...chapters.map(c => ({
+    ...chapters.map((c: any ) => ({
       id: c.id,
       type: 'chapter' as const,
       subjectName: c.subject.name,
@@ -121,7 +121,7 @@ export default async function ContentApprovalPage() {
       difficulty: null,
       createdAt: c.createdAt.toISOString(),
     })),
-    ...topics.map(t => ({
+    ...topics.map((t: any ) => ({
       id: t.id,
       type: 'topic' as const,
       subjectName: t.chapter.subject.name,
@@ -134,7 +134,7 @@ export default async function ContentApprovalPage() {
       difficulty: null,
       createdAt: t.createdAt.toISOString(),
     })),
-    ...notes.map(n => ({
+    ...notes.map((n: any ) => ({
       id: n.id,
       type: 'note' as const,
       subjectName: n.topic.chapter.subject.name,
@@ -147,7 +147,7 @@ export default async function ContentApprovalPage() {
       difficulty: null,
       createdAt: n.createdAt.toISOString(),
     })),
-    ...tests.map(t => ({
+    ...tests.map((t: any ) => ({
       id: t.id,
       type: 'test' as const,
       subjectName: t.topic.chapter.subject.name,

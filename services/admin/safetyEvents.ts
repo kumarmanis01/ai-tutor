@@ -41,14 +41,14 @@ export async function listUnresolvedSafetyEvents(opts?: { limit?: number }): Pro
     },
   })
 
-  rows.sort((a, b) => {
+  rows.sort((a: any, b: any) => {
     const ar = severityRank[String(a.severity ?? '').toUpperCase()] ?? 0
     const br = severityRank[String(b.severity ?? '').toUpperCase()] ?? 0
     if (ar !== br) return br - ar
     return b.createdAt.getTime() - a.createdAt.getTime()
   })
 
-  return rows.map((r) => ({
+  return rows.map((r: any) => ({
     id: r.id,
     triggerType: r.triggerType,
     sessionId: r.sessionId ?? null,
@@ -113,7 +113,7 @@ export async function listSafetyEvents(opts: {
 
   return {
     total,
-    events: rows.map((r) => ({
+    events: rows.map((r: any) => ({
       id: r.id,
       triggerType: r.triggerType,
       sessionId: r.sessionId ?? null,

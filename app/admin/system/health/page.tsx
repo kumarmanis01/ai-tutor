@@ -23,6 +23,7 @@ export const dynamic = 'force-dynamic'
 async function fetchRedisMemoryMb(): Promise<number | null> {
   try {
     const redis = getRedis()
+    if (!redis) return null
     const info = await redis.info('memory')
     const match = info.match(/used_memory:(\d+)/)
     return match ? Math.round(parseInt(match[1], 10) / 1024 / 1024) : null
@@ -40,7 +41,7 @@ async function fetchPendingMigrations(): Promise<{ count: number; names: string[
         AND finished_at IS NULL
       ORDER BY started_at
     `
-    return { count: rows.length, names: rows.map(r => r.migration_name) }
+    return { count: rows.length, names: rows.map((r: any ) => r.migration_name) }
   } catch {
     return { count: 0, names: [] }
   }

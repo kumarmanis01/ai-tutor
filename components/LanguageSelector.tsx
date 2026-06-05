@@ -116,7 +116,7 @@ export default function LanguageSelector({
     let persistedCode = code;
     if (code === 'auto') {
       // Resolve auto preference to an available code
-      persistedCode = resolveAutoCode(availableCodes, typeof navigator !== 'undefined' ? navigator.languages || navigator.language : undefined);
+      persistedCode = resolveAutoCode(availableCodes, typeof navigator !== 'undefined' ? (navigator.languages ? [...navigator.languages] : navigator.language) : undefined);
     }
 
     const display = code === 'auto' ? `Auto (Browser)` : codeToName(persistedCode);

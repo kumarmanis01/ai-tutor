@@ -19,7 +19,7 @@ export async function GET() {
     take: 50,
   });
 
-  const history = attempts.map((a) => ({
+  const history = attempts.map((a: any) => ({
     id: a.id,
     testId: a.testId,
     scorePercent: a.score ?? null,

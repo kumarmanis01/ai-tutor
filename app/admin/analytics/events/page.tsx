@@ -272,13 +272,13 @@ async function fetchEventAnalytics() {
   }
 
   const topEventRows = groupedEvents30d
-    .map((row) => ({ eventType: row.eventType, count: row._count._all }))
-    .sort((left, right) => right.count - left.count)
+    .map((row: any) => ({ eventType: row.eventType, count: row._count._all }))
+    .sort((left: any, right: any) => right.count - left.count)
     .slice(0, 8)
 
   const topCourseRows = topCourses30d
-    .map((row) => ({ courseId: row.courseId ?? 'unknown', count: row._count._all }))
-    .sort((left, right) => right.count - left.count)
+    .map((row: any) => ({ courseId: row.courseId ?? 'unknown', count: row._count._all }))
+    .sort((left: any, right: any) => right.count - left.count)
     .slice(0, 8)
 
   const sessionStarts = countByEvent[ANALYTICS_EVENTS.STUDENT.SESSION_START] ?? 0
@@ -658,7 +658,7 @@ export default async function EventAnalyticsPage() {
             title="Top event mix"
             empty="No analytics events in the last 30 days."
             headers={['Event type', '30d count']}
-            rows={analytics.topEventRows.map((row) => (
+            rows={analytics.topEventRows.map((row: any) => (
               <tr key={row.eventType}>
                 <td className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">
                   {row.eventType}
@@ -672,7 +672,7 @@ export default async function EventAnalyticsPage() {
             title="Top active courses"
             empty="No course-bound events in the last 30 days."
             headers={['Course', '30d events']}
-            rows={analytics.topCourseRows.map((row) => (
+            rows={analytics.topCourseRows.map((row: any) => (
               <tr key={row.courseId}>
                 <td className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">
                   {row.courseId}
@@ -688,7 +688,7 @@ export default async function EventAnalyticsPage() {
           title="Recent analytics signals"
           empty="No signal events raised in the last 30 days."
           headers={['When', 'Type', 'Course', 'Severity']}
-          rows={analytics.recentSignals.map((signal) => {
+          rows={analytics.recentSignals.map((signal: any) => {
             const metadata =
               signal.metadata && typeof signal.metadata === 'object'
                 ? (signal.metadata as Record<string, unknown>)

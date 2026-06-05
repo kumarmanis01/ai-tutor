@@ -87,7 +87,7 @@ export default async function HomeworkPage({ params }: PageProps) {
         },
       })
     : [];
-  const bankQuestionMap = new Map(bankQuestions.map((question) => [question.id, question]));
+  const bankQuestionMap = new Map<string, any>(bankQuestions.map((question: any) => [question.id, question]));
 
   const questions = rawQuestions.map((q) => {
     const questionId = String(q.id ?? '');

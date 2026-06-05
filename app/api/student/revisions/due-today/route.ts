@@ -53,7 +53,7 @@ export async function GET(req: Request) {
       }),
     ])
 
-    const conceptIds = [...new Set(states.map((s) => s.conceptId))]
+    const conceptIds = [...new Set(states.map((s: any) => s.conceptId))]
     const concepts =
       conceptIds.length > 0
         ? await prisma.concept.findMany({
@@ -61,9 +61,9 @@ export async function GET(req: Request) {
             select: { id: true, name: true, subject: { select: { name: true } } },
           })
         : []
-    const conceptMap = new Map(concepts.map((c) => [c.id, { name: c.name, subjectName: c.subject.name }]))
+    const conceptMap = new Map<string, { name: string; subjectName: string }>(concepts.map((c: any) => [c.id, { name: c.name, subjectName: c.subject.name }]))
 
-    const revisions = states.map((s) => {
+    const revisions = states.map((s: any) => {
       const meta = conceptMap.get(s.conceptId)
       const nextReviewAt = s.nextReviewAt!
       const overdueMs = now.getTime() - nextReviewAt.getTime()

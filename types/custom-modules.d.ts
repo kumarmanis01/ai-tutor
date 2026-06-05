@@ -31,6 +31,8 @@ declare module 'pdf-lib' {
     drawText(text: string, options?: Record<string, any>): void
     setFontSize(size: number): void
     getSize(): { width: number; height: number }
+    getHeight(): number
+    getWidth(): number
     addContentStreams(...streams: any[]): void
   }
   export class PDFFont {

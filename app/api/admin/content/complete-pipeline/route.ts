@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, notesEnqueued: 0, questionsEnqueued: 0, message: 'No topics found' })
   }
 
-  const topicIds = topics.map(t => t.id)
+  const topicIds = topics.map((t: any ) => t.id)
 
   // Find topics that already have active notes
   const topicsWithNotes = new Set(
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
       where: { topicId: { in: topicIds }, lifecycle: 'active' },
       select: { topicId: true },
       distinct: ['topicId'],
-    })).map(r => r.topicId),
+    })).map((r: any ) => r.topicId),
   )
 
   // Find topics that already have approved generated questions (GeneratedTest, not the legacy Question model)
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       where: { topicId: { in: topicIds }, status: 'approved' },
       select: { topicId: true },
       distinct: ['topicId'],
-    })).map(r => r.topicId),
+    })).map((r: any ) => r.topicId),
   )
 
   let notesEnqueued = 0

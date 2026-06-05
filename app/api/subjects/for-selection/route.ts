@@ -73,7 +73,7 @@ export async function GET(req: Request) {
       orderBy: { name: 'asc' },
     });
 
-    const response = subjects.map(s => ({
+    const response = subjects.map((s: any ) => ({
       id: s.id,
       name: s.name,
       slug: s.slug,

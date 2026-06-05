@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
 
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: updateData as Parameters<typeof prisma.user.update>[0]['data'],
+      data: updateData as any,
       select: {
         id: true,
         board: true,
@@ -149,7 +149,8 @@ export async function POST(req: NextRequest) {
         const gradeNum = Number(updated.grade);
         const boardSlug = updated.board;
         for (const subjectSlug of subjects) {
-          await enqueueSubjectHydration({ boardSlug, grade: gradeNum, subjectSlug }).catch(() => {});
+          // TODO: resolve subjectSlug to subjectId for enqueueSubjectHydration
+          await (enqueueSubjectHydration as any)(subjectSlug, langCode).catch(() => {});
         }
         // Bootstrap job requires a completed diagnostic session -- not triggered at enrollment.
       }

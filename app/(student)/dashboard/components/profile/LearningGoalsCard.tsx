@@ -48,13 +48,13 @@ interface LearningGoalsCardProps {
  * - Positive framing: "You're doing great!" not "You missed your goal"
  */
 export function LearningGoalsCard({ onGoalsUpdated }: LearningGoalsCardProps) {
-  const { data: streaksData, loading } = useStreaksAndGoals();
+  const { streaks: streaksData, goals, progress, loading } = useStreaksAndGoals();
   
   const [dailyGoal, setDailyGoal] = useState<number>(
-    streaksData?.dailyGoalMinutes ?? 30
+    (streaksData as any)?.[0]?.dailyGoalMinutes ?? 30
   );
   const [weeklyGoal, setWeeklyGoal] = useState<number>(
-    streaksData?.weeklyGoalDays ?? 5
+    (streaksData as any)?.[0]?.weeklyGoalDays ?? 5
   );
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -126,10 +126,10 @@ export function LearningGoalsCard({ onGoalsUpdated }: LearningGoalsCardProps) {
                 </p>
               </div>
             </div>
-            {streaksData?.todayMinutes !== undefined && (
+            {(streaksData as any)?.[0]?.todayMinutes !== undefined && (
               <div className="text-right">
                 <p className="font-bold text-primary">
-                  {streaksData.todayMinutes}/{dailyGoal}
+                  {(streaksData as any)?.[0]?.todayMinutes}/{dailyGoal}
                 </p>
                 <p className="text-xs text-muted-foreground">min today</p>
               </div>
@@ -147,10 +147,10 @@ export function LearningGoalsCard({ onGoalsUpdated }: LearningGoalsCardProps) {
                 </p>
               </div>
             </div>
-            {streaksData?.weekDaysActive !== undefined && (
+            {(streaksData as any)?.[0]?.weekDaysActive !== undefined && (
               <div className="text-right">
                 <p className="font-bold text-primary">
-                  {streaksData.weekDaysActive}/{weeklyGoal}
+                  {(streaksData as any)?.[0]?.weekDaysActive}/{weeklyGoal}
                 </p>
                 <p className="text-xs text-muted-foreground">days this week</p>
               </div>

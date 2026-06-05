@@ -64,7 +64,7 @@ export async function GET(req: Request) {
 
       const points = rows
         .reverse()
-        .map((r) => ({ date: r.finishedAt!.toISOString(), score: Math.round(r.score!) }));
+        .map((r: any) => ({ date: r.finishedAt!.toISOString(), score: Math.round(r.score!) }));
       return { chapter: chap, data: points };
     });
 

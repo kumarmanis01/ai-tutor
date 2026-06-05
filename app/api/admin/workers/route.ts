@@ -22,7 +22,7 @@ export async function GET() {
   const workers = await prisma.workerLifecycle.findMany({ orderBy: { updatedAt: 'desc' }, take: 100 })
   // Include minimal health indicators for UI: lastHeartbeat age (ms)
   const now = new Date();
-  const enriched = workers.map(w => ({
+  const enriched = workers.map((w: any ) => ({
     ...w,
     lastHeartbeatAgeMs: w.lastHeartbeatAt ? now.getTime() - new Date(w.lastHeartbeatAt).getTime() : null,
   }))
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   const action = String(body.action || '').toLowerCase()
 
   if (action === 'start') {
-    const type = String(body.type || CONTENT_HYDRATION_QUEUE)
+    const type = String(body.type || 'content-hydration')
     if (!type || type.length === 0) return NextResponse.json({ error: 'type required' }, { status: 400 })
 
     const created = await prisma.workerLifecycle.create({

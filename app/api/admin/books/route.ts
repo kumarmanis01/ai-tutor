@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     orderBy: { createdAt: 'desc' },
   })
 
-  const rows = books.map(b => ({
+  const rows = books.map((b: any ) => ({
     id: b.id,
     board: b.board,
     grade: b.grade,
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
     uploadedBy: b.uploadedBy,
     createdAt: b.createdAt,
     chapterCount: b.bookChapters.length,
-    topicCount: b.bookChapters.reduce((sum, ch) => sum + ch._count.bookTopics, 0),
+    topicCount: b.bookChapters.reduce((sum: any, ch: any) => sum + ch._count.bookTopics, 0),
   }))
 
   return NextResponse.json(rows)
@@ -119,7 +119,7 @@ export async function DELETE(req: Request) {
   // Nullify TopicDef.bookTopicId links
   const bookChapterIds = (
     await prisma.bookChapter.findMany({ where: { bookId: id }, select: { id: true } })
-  ).map(ch => ch.id)
+  ).map((ch: any ) => ch.id)
 
   if (bookChapterIds.length > 0) {
     await prisma.topicDef.updateMany({

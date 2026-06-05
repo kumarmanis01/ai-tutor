@@ -52,7 +52,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const topicId = searchParams.get('topicId');
-  const language = normalizeLanguage(searchParams.get('language'));
+  const language = normalizeLanguage(searchParams.get('language') ?? undefined);
 
   if (!topicId) {
     return NextResponse.json({ error: 'topicId is required' }, { status: 400 });

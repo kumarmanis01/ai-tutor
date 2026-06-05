@@ -11,7 +11,7 @@ export async function GET() {
     take: 10,
     orderBy: [{ finishedAt: 'desc' }, { createdAt: 'desc' }],
   });
-  const payload = results.map((r) => ({
+  const payload = results.map((r: any) => ({
     id: r.id,
     title: r.testId,
     score: (typeof r.score === 'number' ? r.score : null) ?? undefined,

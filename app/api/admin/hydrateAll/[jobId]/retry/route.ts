@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { jobId } = await params;
 
     // 1. Authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Create Outbox entry so the dispatcher picks it up
       await tx.outbox.create({
         data: {
-          queue: CONTENT_HYDRATION_QUEUE,
+          queue: 'content-hydration',
           payload: {
             type: String(job.jobType).toUpperCase(),
             payload: { jobId },

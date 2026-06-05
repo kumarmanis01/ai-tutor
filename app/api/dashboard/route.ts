@@ -199,7 +199,7 @@ export async function GET(_req: Request) {
       (await prisma.studentTopicProgress.findMany({
         where: { studentId: userId, mastery: { gte: 0.9 } },
         select: { topicId: true },
-      })).map((r) => r.topicId),
+      })).map((r: any) => r.topicId),
     );
     const upcomingTopics = (orderedTopics as { topicId?: string; id?: string; topicName?: string; name?: string; subject?: string }[])
       .filter((t) => {
@@ -279,7 +279,7 @@ export async function GET(_req: Request) {
         topicName: t.topicName,
         masteryLabel: getMasteryLabel(t.mastery),
       })),
-      pendingHomework: pendingHomeworkRaw.map((h) => ({
+      pendingHomework: pendingHomeworkRaw.map((h: any) => ({
         id: h.id,
         topicName: h.topic?.name ?? '',
         status: h.status as 'PENDING' | 'OVERDUE',

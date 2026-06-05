@@ -158,7 +158,7 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
   try {
     const outbox = await prisma.outbox.create({
       data: {
-        queue: CONTENT_HYDRATION_QUEUE,
+        queue: 'content-hydration',
         payload: { type: 'NOTES', payload: { jobId: job.id } },
         meta: { hydrationJobId: job.id, topicId, language }
       }
@@ -264,7 +264,7 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
   try {
     const outbox = await prisma.outbox.create({
       data: {
-        queue: CONTENT_HYDRATION_QUEUE,
+        queue: 'content-hydration',
         payload: { type: 'QUESTIONS', payload: { jobId: job.id } },
         meta: {
           hydrationJobId: job.id,
@@ -360,7 +360,7 @@ export async function enqueueTestsHydration(input: TopicHydrationInput): Promise
   try {
     const outbox = await prisma.outbox.create({
       data: {
-        queue: CONTENT_HYDRATION_QUEUE,
+        queue: 'content-hydration',
         payload: { type: 'ASSEMBLE_TEST', payload: { jobId: job.id } },
         meta: { hydrationJobId: job.id, topicId, language, difficulty }
       }

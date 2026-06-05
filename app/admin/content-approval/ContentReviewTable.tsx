@@ -234,7 +234,7 @@ function PreviewModal({
                         <p className="text-[11px] font-medium text-gray-700">
                           {i + 1}. {q.question}
                         </p>
-                        {q.options && Array.isArray(q.options) && (
+                        {!!q.options && Array.isArray(q.options) && (
                           <ul className="space-y-0.5 pl-3">
                             {(q.options as string[]).map((opt, oi) => (
                               <li key={oi} className="text-[10px] text-gray-600">

@@ -130,7 +130,7 @@ export async function GET(req: Request) {
     }
 
     // ── Study time this week (minutes)
-    const studyTimeThisWeekMinutes = sessionsThisWeek.reduce((sum, s) => {
+    const studyTimeThisWeekMinutes = sessionsThisWeek.reduce((sum: any, s: any) => {
       if (!s.completedAt) return sum
       const mins = (s.completedAt.getTime() - s.startedAt.getTime()) / 60_000
       return sum + Math.max(0, mins)
@@ -180,8 +180,8 @@ export async function GET(req: Request) {
 
       let recentMasteryChange: number | null = null
       if (recentStates.length > 0 && allStates.length > 0) {
-        const allAvg = allStates.reduce((s, r) => s + r.masteryScore, 0) / allStates.length
-        const recentAvg = recentStates.reduce((s, r) => s + r.masteryScore, 0) / recentStates.length
+        const allAvg = allStates.reduce((s: any, r: any) => s + r.masteryScore, 0) / allStates.length
+        const recentAvg = recentStates.reduce((s: any, r: any) => s + r.masteryScore, 0) / recentStates.length
         recentMasteryChange = Math.round((recentAvg - allAvg) * 1000) / 1000
       }
 

@@ -53,7 +53,7 @@ export async function GET(req: Request) {
     },
   });
 
-  const items = assignments.map((a) => ({
+  const items = assignments.map((a: any) => ({
     id: a.id,
     topicId: a.topicId,
     topicName: a.topic.name,

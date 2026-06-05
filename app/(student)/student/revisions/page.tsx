@@ -10,7 +10,7 @@
  */
 
 import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
+import { getServerSessionForHandlers } from '@/lib/session'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
@@ -22,7 +22,7 @@ const QUESTIONS_PER_CONCEPT = 5
 export const dynamic = 'force-dynamic'
 
 export default async function RevisionsPage() {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSessionForHandlers()
   if (!session?.user) redirect('/login')
   const userId = (session.user as { id: string }).id
 
@@ -70,7 +70,7 @@ export default async function RevisionsPage() {
   }
 
   // 3. Fetch MCQ questions for each due concept (via topicId)
-  const topicIds = [...new Set(dueConcepts.map((d) => d.concept.topicId))]
+  const topicIds = [...new Set(dueConcepts.map((d: any) => d.concept.topicId))]
 
   const questions = topicIds.length > 0
     ? await prisma.question.findMany({

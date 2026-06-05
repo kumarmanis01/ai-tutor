@@ -65,14 +65,14 @@ export async function GET(req: Request) {
     }
 
     const dueTopics = progressRecords
-      .filter((p) => {
+      .filter((p: any) => {
         const intervalDays = intervalDaysForMastery(p.mastery);
         const daysSince =
           (now.getTime() - new Date(p.lastStudiedAt).getTime()) / (1000 * 60 * 60 * 24);
         return daysSince >= intervalDays;
       })
       .slice(0, 5)
-      .map((p) => ({
+      .map((p: any) => ({
         topicId: p.topicId,
         topicName: p.topic.name,
         subject: p.topic.chapter.subject.name,

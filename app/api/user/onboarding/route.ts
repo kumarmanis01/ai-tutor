@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
     const maskedUpdates = { ...updates } as any;
     if (maskedUpdates.schoolName !== undefined) maskedUpdates.schoolName = '***REDACTED***';
     logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates: maskedUpdates });
-    let updatedUser;
+    let updatedUser: any = null;
     try {
       // First, ensure the user exists; if not, try to resolve via email or phone (without creating)
       const existingById = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, board: true, grade: true, whatsappPhone: true, parentWhatsappPhone: true, subjects: true, parentEmail: true, language: true } });
@@ -395,7 +395,7 @@ export async function POST(req: NextRequest) {
             grade: gradeNum,
           },
           select: { id: true, boardId: true },
-        }).then(async (cl) => {
+        }).then(async (cl: any) => {
           if (!cl) return;
 
           const subjectPrefs = new Set(subjects.map((s) => String(s).toLowerCase()));
@@ -404,8 +404,8 @@ export async function POST(req: NextRequest) {
             select: { id: true, slug: true, name: true },
           });
           const subjectIds = subjectRows
-            .filter((s) => subjectPrefs.has(String(s.slug).toLowerCase()) || subjectPrefs.has(String(s.name).toLowerCase()))
-            .map((s) => s.id);
+            .filter((s: any) => subjectPrefs.has(String(s.slug).toLowerCase()) || subjectPrefs.has(String(s.name).toLowerCase()))
+            .map((s: any) => s.id);
           if (subjectIds.length === 0) return;
 
           // Proactively enqueue hydration for every subject missing content.
@@ -413,7 +413,7 @@ export async function POST(req: NextRequest) {
           // have topics or that already have a pending/running HydrationJob.
           const language: LanguageCode = (updatedUser.language as LanguageCode) ?? LanguageCode.en;
           const hydrationResults = await Promise.allSettled(
-            subjectIds.map((subjectId) =>
+            subjectIds.map((subjectId: any) =>
               enqueueSubjectHydration(subjectId, language, 'onboarding'),
             ),
           );
@@ -434,7 +434,7 @@ export async function POST(req: NextRequest) {
               where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
               select: { id: true },
             });
-            const chapterIds = chapters.map((c) => c.id);
+            const chapterIds = chapters.map((c: any) => c.id);
             if (chapterIds.length === 0) return;
 
             await enqueueDiagnosticBootstrapJob({
@@ -450,7 +450,7 @@ export async function POST(req: NextRequest) {
               context: { studentId: updatedUser.id, error: String(bootstrapErr) },
             });
           }
-        }).catch((err) => {
+        }).catch((err: any) => {
           logger.warn('[onboarding] background content seeding setup failed', {
             event: 'diagnostic.seeding.setup_failed',
             context: { studentId: updatedUser.id, error: String(err) },
@@ -471,9 +471,9 @@ export async function POST(req: NextRequest) {
         prisma.learningPlan.findMany({
           where: { studentId: finalUserId },
           select: { subjectId: true, examDate: true, weeklyGoal: true },
-        }).then(async (existingPlans) => {
+        }).then(async (existingPlans: any) => {
           if (existingPlans.length === 0) return; // first-time onboarding; generate-plan handles it
-          const coveredSubjectIds = new Set(existingPlans.map((p) => p.subjectId));
+          const coveredSubjectIds = new Set(existingPlans.map((p: any) => p.subjectId));
           const normSlugs = subjects.map((s) => String(s).toLowerCase().replace(/\s+/g, '-'));
           const subjectDefs = await prisma.subjectDef.findMany({
             where: {
@@ -486,7 +486,7 @@ export async function POST(req: NextRequest) {
             },
             select: { id: true },
           });
-          const newSubjects = subjectDefs.filter((s) => !coveredSubjectIds.has(s.id));
+          const newSubjects = subjectDefs.filter((s: any) => !coveredSubjectIds.has(s.id));
           if (newSubjects.length === 0) return;
           // Use existing plan params from any current plan as defaults
           const ref = existingPlans[0];
@@ -510,7 +510,7 @@ export async function POST(req: NextRequest) {
               });
             }
           }
-        }).catch((err) => {
+        }).catch((err: any) => {
           logger.warn('[onboarding] AC-07: subject regen check failed', {
             event: 'learning_plan_subject_regen_check_failed',
             context: { studentId: finalUserId, error: String(err) },
@@ -541,7 +541,7 @@ export async function POST(req: NextRequest) {
           prisma.user.update({
             where: { id: updatedUser.id },
             data: { welcomeEmailSent: true },
-          }).catch((e) =>
+          }).catch((e: any) =>
             logger.warn('/api/user/onboarding: failed to set welcomeEmailSent', {
               className: 'api.user.onboarding', methodName: 'POST', error: e,
             }),
