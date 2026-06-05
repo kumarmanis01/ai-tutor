@@ -153,10 +153,10 @@ function computeChapterResults(
 
 function masteryBadge(avgMastery: number): { label: string; colorClass: string } {
   if (avgMastery > 0.7)
-    return { label: 'Strong', colorClass: 'bg-[#EAF3DE] text-[#1D9E75]' };
+    return { label: 'Strong', colorClass: 'bg-[var(--tier-strong-soft)] text-[var(--tier-strong)]' };
   if (avgMastery >= 0.4)
-    return { label: 'Partial', colorClass: 'bg-[#FAEEDA] text-[#BA7517]' };
-  return { label: 'Needs work', colorClass: 'bg-[#FCEBEB] text-[#E24B4A]' };
+    return { label: 'Partial', colorClass: 'bg-[var(--tier-fair-soft)] text-[var(--tier-fair)]' };
+  return { label: 'Needs work', colorClass: 'bg-[var(--tier-critical-soft)] text-[var(--tier-critical)]' };
 }
 
 // ── AbandonDialog ─────────────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ function AbandonDialog({
             type="button"
             onClick={onSave}
             disabled={busy}
-            className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] disabled:opacity-60 transition-colors"
+            className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[var(--primary)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-colors"
           >
             {busy ? 'Saving...' : 'Save progress and leave'}
           </button>
@@ -198,7 +198,7 @@ function AbandonDialog({
             type="button"
             onClick={onAbandon}
             disabled={busy}
-            className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-[#E24B4A] text-[#E24B4A] text-sm font-medium hover:bg-[#FCEBEB] dark:hover:bg-[#E24B4A]/10 disabled:opacity-50 transition-colors"
+            className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-[var(--tier-critical)] text-[var(--tier-critical)] text-sm font-medium hover:bg-[var(--tier-critical-soft)] disabled:opacity-50 transition-colors"
           >
             Abandon -- progress will be lost
           </button>
@@ -223,23 +223,23 @@ function placementBanner(placement: 'below' | 'at' | 'above') {
     below: {
       label: 'Below grade level',
       sub: "We'll build your foundation from the ground up.",
-      bg: 'bg-[#FCEBEB] dark:bg-[#E24B4A]/10',
-      text: 'text-[#E24B4A]',
-      subText: 'text-[#E24B4A]/80',
+      bg: 'bg-[var(--tier-critical-soft)]',
+      text: 'text-[var(--tier-critical)]',
+      subText: 'text-[var(--tier-critical)]',
     },
     at: {
       label: 'At grade level',
       sub: "You're right where you need to be -- let's strengthen the gaps.",
-      bg: 'bg-[#FAEEDA] dark:bg-[#BA7517]/10',
-      text: 'text-[#BA7517]',
-      subText: 'text-[#BA7517]/80',
+      bg: 'bg-[var(--tier-fair-soft)]',
+      text: 'text-[var(--tier-fair)]',
+      subText: 'text-[var(--tier-fair)]',
     },
     above: {
       label: 'Above grade level',
       sub: "You're ahead -- Vidya will keep pushing you further.",
-      bg: 'bg-[#EAF3DE] dark:bg-[#1D9E75]/10',
-      text: 'text-[#1D9E75]',
-      subText: 'text-[#1D9E75]/80',
+      bg: 'bg-[var(--tier-strong-soft)]',
+      text: 'text-[var(--tier-strong)]',
+      subText: 'text-[var(--tier-strong)]',
     },
   };
   return map[placement];
@@ -289,11 +289,14 @@ function GeneratingPlanScreen({
     async function poll() {
       if (stopped) return;
       try {
-        const res = await fetch(`/api/student/diagnostic/results/${subjectId}`);
-        if (res.ok) {
+        // Poll /api/student/learning-plan which returns HTTP 202 + planId:null while the
+        // bootstrap job is running, and HTTP 200 + planId:<id> once LearningPlan is created.
+        // This is the correct completion signal: chapters array from results API always has
+        // entries (from ChapterDef) even before bootstrap runs, so length > 0 is not reliable.
+        const res = await fetch('/api/student/learning-plan');
+        if (res.ok && res.status === 200) {
           const json = await res.json();
-          // Chapters array non-empty = bootstrap job completed
-          if (Array.isArray(json?.chapters) && json.chapters.length > 0) {
+          if (json?.planId) {
             if (!stopped) { setPct(100); clearInterval(animationId); setTimeout(onReady, 600); return; }
           }
         }
@@ -387,7 +390,7 @@ function KnowledgeMapResults({
             Your plan is ready
           </h1>
           <p style={{ margin: 0, fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            {"Here's where you stand in"} <strong>{subjectName}</strong> — no score, just your starting point.
+            {"Here's where you stand in"} <strong>{subjectName}</strong> -- no score, just your starting point.
           </p>
         </div>
 
@@ -763,8 +766,8 @@ export default function DiagnosticFlow({
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-slate-950 px-4">
         <div className="max-w-sm w-full text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#FAEEDA] dark:bg-[#BA7517]/20 flex items-center justify-center mx-auto mb-5">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="2" className="w-8 h-8" aria-hidden>
+          <div className="w-16 h-16 rounded-2xl bg-[var(--tier-fair-soft)] flex items-center justify-center mx-auto mb-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--tier-fair)" strokeWidth="2" className="w-8 h-8" aria-hidden>
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
@@ -775,11 +778,11 @@ export default function DiagnosticFlow({
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             Your next retake is available on
           </p>
-          <p className="text-sm font-semibold text-[#BA7517] mb-6">{eligibleDateStr}</p>
+          <p className="text-sm font-semibold text-[var(--tier-fair)] mb-6">{eligibleDateStr}</p>
           <button
             type="button"
             onClick={() => router.push('/student/dashboard')}
-            className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] transition-colors"
+            className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[var(--primary)] text-white text-sm font-semibold hover:opacity-90 transition-colors"
           >
             Back to dashboard
           </button>
@@ -849,7 +852,7 @@ export default function DiagnosticFlow({
           {/* Progress bar */}
           <div className="h-1 w-full bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mt-3">
             <div
-              className="h-full bg-[#534AB7] rounded-full transition-all duration-300"
+              className="h-full bg-[var(--primary)] rounded-full transition-all duration-300"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -868,7 +871,7 @@ export default function DiagnosticFlow({
             <div
               className={`flex items-center gap-1.5 text-sm font-mono font-semibold shrink-0 transition-colors ${
                 isAmber
-                  ? 'text-[#BA7517]'
+                  ? 'text-[var(--tier-fair)]'
                   : 'text-gray-700 dark:text-gray-300'
               }`}
               aria-live="polite"
@@ -887,7 +890,7 @@ export default function DiagnosticFlow({
               </svg>
               {formatTime(secondsLeft)}
               {isAmber && (
-                <span className="text-xs font-normal ml-1 text-[#BA7517]">-- finishing soon</span>
+                <span className="text-xs font-normal ml-1 text-[var(--tier-fair)]">-- finishing soon</span>
               )}
             </div>
           </div>
@@ -898,7 +901,7 @@ export default function DiagnosticFlow({
 
           {/* Subject + chapter badge */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/15 px-2.5 py-1 rounded-full">
+            <span className="text-xs font-semibold text-[var(--primary)] bg-[var(--primary-soft,oklch(0.55_0.22_260_/_0.12))] px-2.5 py-1 rounded-full">
               {subjectName}
             </span>
             {currentQuestion.chapterName && (
@@ -924,7 +927,7 @@ export default function DiagnosticFlow({
 
           {/* Submit error */}
           {submitError && (
-            <p role="alert" className="text-xs text-[#E24B4A] dark:text-red-400">
+            <p role="alert" className="text-xs text-[var(--tier-critical)]">
               {submitError}
             </p>
           )}
@@ -936,7 +939,7 @@ export default function DiagnosticFlow({
             type="button"
             onClick={handleNext}
             disabled={!selectedOption || submitting}
-            className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+            className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[var(--primary)] text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all shadow-md"
           >
             {submitting ? (
               <>

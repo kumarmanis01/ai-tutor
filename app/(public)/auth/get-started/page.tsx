@@ -113,10 +113,28 @@ function GetStartedContent() {
 
   useEffect(() => {
     if (status === 'authenticated' && session) {
-      const role = (session.user as { role?: string })?.role ?? ''
-      if (role === 'student') router.replace(STUDENT_ONBOARDING)
-      else if (role === 'parent') router.replace(PARENT_ONBOARDING)
-      else router.replace('/auth/role')
+      const user = session.user as {
+        role?: string
+        accountStatus?: string
+        onboardingComplete?: boolean
+      }
+      const role = user?.role ?? ''
+      const accountStatus = user?.accountStatus ?? ''
+      const onboardingComplete = user?.onboardingComplete ?? false
+
+      if (role === 'student') {
+        // Existing active students go straight to dashboard; only new/incomplete go to onboarding
+        if (accountStatus === 'active' && onboardingComplete) {
+          router.replace('/student/dashboard')
+        } else {
+          router.replace(STUDENT_ONBOARDING)
+        }
+      } else if (role === 'parent') {
+        router.replace(PARENT_ONBOARDING)
+      } else {
+        // No role set yet -- set-role page handles this
+        router.replace('/auth/role')
+      }
     }
   }, [status, session, router])
 
@@ -132,7 +150,10 @@ function GetStartedContent() {
 
   async function handleRoleSelect(role: 'student' | 'parent') {
     setLoading(role)
-    const callbackUrl = role === 'parent' ? PARENT_ONBOARDING : STUDENT_ONBOARDING
+    // Send to the dashboard after OAuth. The middleware accountStatus guard
+    // will redirect new/incomplete students to /student/onboarding if needed.
+    // This prevents existing active users from being dumped into onboarding.
+    const callbackUrl = role === 'parent' ? PARENT_ONBOARDING : '/student/dashboard'
     try {
       await signIn('google', { callbackUrl })
     } catch {
