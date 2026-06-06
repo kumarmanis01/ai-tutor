@@ -16,6 +16,7 @@
  */
 
 import { Queue } from 'bullmq';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSharedConnection } from '@/lib/redis';
 import { logger } from '@/lib/logger';
@@ -74,9 +75,19 @@ async function moveToDeadLetter(
 }
 
 async function dispatchBatch(): Promise<number> {
-  // Find oldest unsent outbox rows
+  // Find oldest unsent outbox rows that are due now.
+  // Rows with a future meta.deliverAt are excluded at the DB layer so they
+  // never reach the application -- eliminates the "skipping scheduled row"
+  // log spam (~700 lines/hour) and the wasted round-trips fetching future rows.
+  const now = new Date().toISOString();
   const rows = await prisma.outbox.findMany({
-    where: { sentAt: null },
+    where: {
+      sentAt: null,
+      OR: [
+        { meta: { path: ['deliverAt'], equals: Prisma.JsonNull } },
+        { meta: { path: ['deliverAt'], lte: now } },
+      ],
+    },
     orderBy: { createdAt: 'asc' },
     take: BATCH_SIZE,
   });
@@ -89,19 +100,6 @@ async function dispatchBatch(): Promise<number> {
   const q = getQueue();
 
   for (const row of rows) {
-    // If the row has a scheduled delivery time in meta.deliverAt, skip until that time
-    try {
-      const metaAny = row.meta as any;
-      if (metaAny?.deliverAt) {
-        const deliverAt = new Date(metaAny.deliverAt);
-        if (deliverAt.getTime() > Date.now()) {
-          logger.info('[outbox-dispatcher] skipping scheduled row (not due yet)', { outboxId: row.id, deliverAt: metaAny.deliverAt });
-          continue;
-        }
-      }
-    } catch (err) {
-      // Non-fatal: if meta parsing fails, fall through and attempt dispatch
-    }
     // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
       await moveToDeadLetter(row, 'max_attempts_exceeded');

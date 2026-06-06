@@ -78,10 +78,36 @@ const ALL_RULE_IDS: string[] = [
   'all_topics_complete',// P6 fallback
 ];
 
-// In-memory recent decision store used to detect possible engine loops in dev.
+// In-memory recent decision store used to detect and break engine loops.
 // Maps studentId -> array of serialized decisions (`ruleId:topicId`), capped at 5.
 const recentDecisions: Map<string, string[]> = new Map();
 const RECENT_DECISIONS_CAP = 5;
+
+// Circuit breaker: tracks how many consecutive times a (studentId, ruleId, topicId)
+// tuple has been the top decision without the student making progress. When the same
+// homework_pending assignment fires LOOP_BREAK_THRESHOLD times in a row, the circuit
+// opens and the engine skips P0 for that student until they make progress or the
+// assignment is completed/overdue window expires.
+// Maps `${studentId}:${ruleId}:${topicId}` -> consecutive hit count.
+const loopBreaker: Map<string, number> = new Map();
+const LOOP_BREAK_THRESHOLD = 3;
+const LOOP_BREAK_RULES = new Set(['homework_pending']); // only block rules that can hard-gate
+
+function isLoopBroken(studentId: string, ruleId: string, topicId: string | null): boolean {
+  if (!LOOP_BREAK_RULES.has(ruleId)) return false;
+  const key = `${studentId}:${ruleId}:${topicId ?? 'null'}`;
+  return (loopBreaker.get(key) ?? 0) >= LOOP_BREAK_THRESHOLD;
+}
+
+function recordLoopHit(studentId: string, ruleId: string, topicId: string | null): void {
+  const key = `${studentId}:${ruleId}:${topicId ?? 'null'}`;
+  loopBreaker.set(key, (loopBreaker.get(key) ?? 0) + 1);
+}
+
+function clearLoopHit(studentId: string, ruleId: string, topicId: string | null): void {
+  const key = `${studentId}:${ruleId}:${topicId ?? 'null'}`;
+  loopBreaker.delete(key);
+}
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -677,14 +703,36 @@ export async function getNextAction(
   // ── P0 -- Homework blocker (hard gate) ────────────────────────────────────────
   // Fires before any other rule. A PENDING/OVERDUE assignment due within 48 h
   // takes absolute priority -- the student must complete it first.
+  //
+  // Circuit breaker: if the same homework assignment has been returned
+  // LOOP_BREAK_THRESHOLD times consecutively without progress, skip P0 for
+  // this request and fall through to P1-P5. This prevents the engine from
+  // hard-gating a student indefinitely when the homework is stale or stuck.
   trace.rulesEvaluated.push('P0');
   const p0Start = Date.now();
   const p0 = await p0_homeworkBlocker(studentId);
   ruleEntries.push({ ruleId: 'homework_pending', evaluated: true, matched: p0 !== null, durationMs: Date.now() - p0Start });
   if (p0) {
-    trace.matchedRule = 'homework_pending';
-    trace.finalDecision = 'homework_pending';
-    return finalise(p0, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
+    const loopBroken = isLoopBroken(studentId, 'homework_pending', p0.topicId);
+    if (loopBroken) {
+      logger.warn('engine.loop.circuit_open', {
+        studentId,
+        ruleId: 'homework_pending',
+        topicId: p0.topicId,
+        assignmentId: p0.assignmentId,
+        message: 'Circuit breaker open -- skipping homework_pending, falling through to P1',
+      });
+      // Do not return -- fall through to P1-P5 so the student gets a usable action.
+    } else {
+      recordLoopHit(studentId, 'homework_pending', p0.topicId);
+      trace.matchedRule = 'homework_pending';
+      trace.finalDecision = 'homework_pending';
+      return finalise(p0, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
+    }
+  } else {
+    // Assignment resolved -- clear any open circuit for this student so it
+    // re-arms correctly for the next pending assignment.
+    clearLoopHit(studentId, 'homework_pending', null);
   }
 
   // ── P1 -- Resume session ───────────────────────────────────────────────────────

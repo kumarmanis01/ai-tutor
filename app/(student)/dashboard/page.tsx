@@ -377,57 +377,73 @@ export default async function StudentHomeDashboardPage() {
   }
 
   type TodaysTopic = { subject: string; href: string; subjectId: string; topicName: string; chapter: string | null }
-  const todaysTopics: TodaysTopic[] = (
-    await Promise.all(
-      learningPlans.map(async (plan: any): Promise<TodaysTopic | null> => {
-        const subjectInfo = subjects.find((s) => s.id === plan.subjectId)
 
-        const inProgressItem = await prisma.learningPlanItem.findFirst({
-          where: { planId: plan.id, status: 'IN_PROGRESS' },
-          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: PLAN_ITEM_SELECT,
-        }) as PlanItemSelectResult | null
-        if (inProgressItem?.conceptId) {
-          return {
-            subject: subjectInfo?.name ?? 'Your subject',
-            subjectId: plan.subjectId,
-            topicName: topicNameFromItem(inProgressItem, 'Continue learning'),
-            chapter: chapterFromItem(inProgressItem),
-            href: `/session/pre/${encodeURIComponent(inProgressItem.conceptId)}`,
-          }
-        }
+  // Single bulk fetch replaces 3 sequential findFirst calls per plan (was N*3 queries).
+  // Fetch IN_PROGRESS and current-week UPCOMING items for all plans in one query,
+  // then resolve priority in memory: IN_PROGRESS > current-week UPCOMING > any UPCOMING.
+  const allPlanIds = learningPlans.map((p: any) => p.id as string)
+  const [inProgressItems, upcomingItems] = await Promise.all([
+    prisma.learningPlanItem.findMany({
+      where: { planId: { in: allPlanIds }, status: 'IN_PROGRESS' },
+      orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+      select: { planId: true, ...PLAN_ITEM_SELECT },
+    }) as Promise<(PlanItemSelectResult & { planId: string })[]>,
+    prisma.learningPlanItem.findMany({
+      where: { planId: { in: allPlanIds }, status: 'UPCOMING' },
+      orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+      select: { planId: true, weekNumber: true, ...PLAN_ITEM_SELECT },
+    }) as Promise<(PlanItemSelectResult & { planId: string; weekNumber: number })[]>,
+  ])
 
-        const currentWeekItem = await prisma.learningPlanItem.findFirst({
-          where: { planId: plan.id, status: 'UPCOMING', weekNumber: { lte: currentWeek } },
-          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: PLAN_ITEM_SELECT,
-        }) as PlanItemSelectResult | null
-        if (currentWeekItem?.conceptId) {
-          return {
-            subject: subjectInfo?.name ?? 'Your subject',
-            subjectId: plan.subjectId,
-            topicName: topicNameFromItem(currentWeekItem, 'Start learning'),
-            chapter: chapterFromItem(currentWeekItem),
-            href: `/session/pre/${encodeURIComponent(currentWeekItem.conceptId)}`,
-          }
-        }
+  // Index by planId for O(1) lookup
+  const inProgressByPlan = new Map<string, PlanItemSelectResult & { planId: string }>()
+  for (const item of inProgressItems) {
+    if (!inProgressByPlan.has(item.planId)) inProgressByPlan.set(item.planId, item)
+  }
+  // For upcoming: first pass picks current-week items, second pass picks any upcoming (fallback)
+  const currentWeekByPlan = new Map<string, PlanItemSelectResult & { planId: string }>()
+  const fallbackByPlan = new Map<string, PlanItemSelectResult & { planId: string }>()
+  for (const item of upcomingItems) {
+    if (!fallbackByPlan.has(item.planId)) fallbackByPlan.set(item.planId, item)
+    if (item.weekNumber <= currentWeek && !currentWeekByPlan.has(item.planId)) {
+      currentWeekByPlan.set(item.planId, item)
+    }
+  }
 
-        const fallbackItem = await prisma.learningPlanItem.findFirst({
-          where: { planId: plan.id, status: 'UPCOMING' },
-          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-          select: PLAN_ITEM_SELECT,
-        }) as PlanItemSelectResult | null
-        if (!fallbackItem?.conceptId) return null
+  const todaysTopics: TodaysTopic[] = learningPlans
+    .map((plan: any): TodaysTopic | null => {
+      const subjectInfo = subjects.find((s) => s.id === plan.subjectId)
+      const inProgressItem = inProgressByPlan.get(plan.id)
+      if (inProgressItem?.conceptId) {
         return {
           subject: subjectInfo?.name ?? 'Your subject',
           subjectId: plan.subjectId,
-          topicName: topicNameFromItem(fallbackItem, 'Start learning'),
-          chapter: chapterFromItem(fallbackItem),
-          href: `/session/pre/${encodeURIComponent(fallbackItem.conceptId)}`,
+          topicName: topicNameFromItem(inProgressItem, 'Continue learning'),
+          chapter: chapterFromItem(inProgressItem),
+          href: `/session/pre/${encodeURIComponent(inProgressItem.conceptId)}`,
         }
-      }),
-    )
-  ).filter((t): t is TodaysTopic => t !== null)
+      }
+      const currentWeekItem = currentWeekByPlan.get(plan.id)
+      if (currentWeekItem?.conceptId) {
+        return {
+          subject: subjectInfo?.name ?? 'Your subject',
+          subjectId: plan.subjectId,
+          topicName: topicNameFromItem(currentWeekItem, 'Start learning'),
+          chapter: chapterFromItem(currentWeekItem),
+          href: `/session/pre/${encodeURIComponent(currentWeekItem.conceptId)}`,
+        }
+      }
+      const fallbackItem = fallbackByPlan.get(plan.id)
+      if (!fallbackItem?.conceptId) return null
+      return {
+        subject: subjectInfo?.name ?? 'Your subject',
+        subjectId: plan.subjectId,
+        topicName: topicNameFromItem(fallbackItem, 'Start learning'),
+        chapter: chapterFromItem(fallbackItem),
+        href: `/session/pre/${encodeURIComponent(fallbackItem.conceptId)}`,
+      }
+    })
+    .filter((t: TodaysTopic | null): t is TodaysTopic => t !== null)
 
   // Supplement with subjects that completed diagnostics but have no learning plan yet.
   // This handles the case where plan generation failed or is still pending after a diagnostic.
