@@ -39,13 +39,13 @@ export async function GET(req: Request) {
           where: { studentId: user.id },
           select: { topicId: true },
         })
-      ).map((p) => p.topicId),
+      ).map((p: any) => p.topicId),
     );
 
     const upcoming = orderedTopics
-      .filter((t) => !startedTopicIds.has(t.id))
+      .filter((t: any) => !startedTopicIds.has(t.id))
       .slice(0, 4)
-      .map((t) => ({
+      .map((t: any) => ({
         topicId: t.id,
         topicName: t.name,
         subject: t.subject,

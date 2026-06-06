@@ -83,15 +83,15 @@ export async function GET(
   }
 
   // Build per-section detail including per-question time heatmap (AC-04)
-  const saMap = new Map(attempt.sectionAttempts.map((sa) => [sa.sectionId, sa]));
+  const saMap = new Map<string, any>(attempt.sectionAttempts.map((sa: any) => [sa.sectionId, sa]));
 
-  const sectionsDetail = attempt.mockExam.sections.map((sec) => {
+  const sectionsDetail = attempt.mockExam.sections.map((sec: any) => {
     const sa = saMap.get(sec.id);
     const answersArr: Array<{ questionId: string; answer: string; timeSpentSeconds: number }> =
       Array.isArray(sa?.answers) ? (sa.answers as any) : [];
     const answerMap = new Map(answersArr.map((a) => [a.questionId, a]));
 
-    const questions = sec.questions.map((mq) => {
+    const questions = sec.questions.map((mq: any) => {
       const submitted = answerMap.get(mq.question.id);
       return {
         order: mq.order,

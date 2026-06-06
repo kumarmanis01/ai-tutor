@@ -61,7 +61,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Rate limit ────────────────────────────────────────────────────────────
-    const redis = getRedis();
+    const redis = getRedis()
+    if (!redis) return NextResponse.json({ error: 'Cache unavailable' }, { status: 503 });
     const rk = rateKey(userId);
     const count = await redis.incr(rk);
     if (count === 1) await redis.expire(rk, RATE_WINDOW_SECONDS);

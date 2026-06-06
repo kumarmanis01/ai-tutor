@@ -4,14 +4,13 @@
  * Admin-only endpoint to schedule or preview seeding of MockExam records.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerSessionForHandlers } from '@/lib/session'
 import { enqueueSeedMocks } from '@/jobs/seedMocks'
 import { prisma } from '@/lib/prisma'
 import { ensureMinimumMocks } from '@/lib/mock/ensureMocks'
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSessionForHandlers()
   if ((session?.user as any)?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

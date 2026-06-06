@@ -23,7 +23,7 @@ export async function GET(req: Request) {
         include: { chapters: true },
         orderBy: { name: 'asc' },
       });
-      const subjects = subs.map((s) => ({ id: s.id, name: s.name, meta: `${(s.chapters || []).length} chapters` }));
+      const subjects = subs.map((s: any) => ({ id: s.id, name: s.name, meta: `${(s.chapters || []).length} chapters` }));
       return NextResponse.json({ subjects });
     }
 
@@ -36,9 +36,9 @@ export async function GET(req: Request) {
         distinct: ['subject'],
       });
       let subjects = noteSubjects
-        .map((n) => n.subject || 'General')
-        .filter((s, i, a) => a.indexOf(s) === i)
-        .map((name) => ({ name, meta: '' }));
+        .map((n: any) => n.subject || 'General')
+        .filter((s: any, i: any, a: any) => a.indexOf(s) === i)
+        .map((name: any) => ({ name, meta: '' }));
 
       // fallback to question subjects
       if (subjects.length === 0) {
@@ -51,16 +51,16 @@ export async function GET(req: Request) {
           orderBy: { updatedAt: 'desc' },
         });
         subjects = questionSubjects
-          .map((q) => q.subject || 'General')
-          .filter((s, i, a) => a.indexOf(s) === i)
-          .map((name) => ({ name, meta: '' }));
+          .map((q: any) => q.subject || 'General')
+          .filter((s: any, i: any, a: any) => a.indexOf(s) === i)
+          .map((name: any) => ({ name, meta: '' }));
       }
       return NextResponse.json({ subjects });
     }
 
     // Default: return lightweight active subject defs
     const subs = await prisma.subjectDef.findMany({ where: { lifecycle: 'active' }, include: { chapters: true }, orderBy: { name: 'asc' } });
-    const subjects = subs.map((s) => ({ id: s.id, name: s.name, meta: `${(s.chapters || []).length} chapters` }));
+    const subjects = subs.map((s: any) => ({ id: s.id, name: s.name, meta: `${(s.chapters || []).length} chapters` }));
     return NextResponse.json({ subjects });
   } catch (err) {
     logger.error('/api/notes/subjects error', { error: err });

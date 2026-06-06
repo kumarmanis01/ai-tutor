@@ -34,7 +34,7 @@ export async function GET() {
     }),
   ]);
 
-  const attempts = recentResults.map((r) => ({
+  const attempts = recentResults.map((r: any) => ({
     id: r.id,
     testId: r.testId,
     score: typeof r.score === 'number' ? Math.round(r.score) : null,
@@ -42,10 +42,10 @@ export async function GET() {
   }));
 
   // Overall accuracy: average of available scores
-  const withScore = attempts.filter((a) => a.score !== null);
+  const withScore = attempts.filter((a: any) => a.score !== null);
   const accuracyPercent =
     withScore.length > 0
-      ? Math.round(withScore.reduce((sum, a) => sum + (a.score ?? 0), 0) / withScore.length)
+      ? Math.round(withScore.reduce((sum: any, a: any) => sum + (a.score ?? 0), 0) / withScore.length)
       : null;
 
   const weakTopics: string[] = Array.isArray(learningProfile?.weakSubjects)

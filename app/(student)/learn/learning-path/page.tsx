@@ -118,8 +118,8 @@ export default async function LearningPathPage() {
     }).catch(() => null),
   ]);
 
-  const masteryMap = new Map(masteryRows.map((r) => [r.topicId, r.mastery]));
-  const inProgressMap = new Map(activeSessions.map((s) => [s.topicId, s.id]));
+  const masteryMap = new Map<string, number | null>(masteryRows.map((r: any) => [r.topicId, typeof r.mastery === 'number' ? r.mastery : null]));
+  const inProgressMap = new Map<string, string>(activeSessions.map((s: any) => [s.topicId, s.id]));
 
   const subjects: SubjectSnapshot[] = snapshotRes?.subjects ?? [];
 
@@ -180,13 +180,13 @@ export default async function LearningPathPage() {
         },
       });
 
-      curriculumFallback = subjectDefs.map((s) => ({
+      curriculumFallback = subjectDefs.map((s: any) => ({
         subjectId: s.id,
         subjectName: s.name,
-        chapters: s.chapters.map((ch) => ({
+        chapters: s.chapters.map((ch: any) => ({
           chapterId: ch.id,
           chapterName: ch.name,
-          topics: ch.topics.map((t) => ({ topicId: t.id, topicName: t.name })),
+          topics: ch.topics.map((t: any) => ({ topicId: t.id, topicName: t.name })),
         })),
       }));
     }
@@ -246,7 +246,7 @@ export default async function LearningPathPage() {
                 topicName: t.name,
                 mastery: masteryMap.get(t.topicId) ?? t.mastery ?? null,
                 isInProgress: inProgressMap.has(t.topicId),
-                sessionId: inProgressMap.get(t.topicId),
+                sessionId: inProgressMap.get(t.topicId) ?? undefined,
               }));
               return { chapterId: ch.chapterId, chapterName: ch.name, topics };
             });
@@ -274,7 +274,7 @@ export default async function LearningPathPage() {
                 topicName: t.topicName,
                 mastery: masteryMap.get(t.topicId) ?? null,
                 isInProgress: inProgressMap.has(t.topicId),
-                sessionId: inProgressMap.get(t.topicId),
+                sessionId: inProgressMap.get(t.topicId) ?? undefined,
               })),
             }));
 
@@ -282,7 +282,7 @@ export default async function LearningPathPage() {
               <SubjectSection
                 key={subject.subjectId}
                 subjectId={subject.subjectId}
-                subjectName={subject.name}
+                subjectName={subject.subjectName}
                 chapters={chapters}
                 completedTopics={0}
                 totalTopics={totalTopics}

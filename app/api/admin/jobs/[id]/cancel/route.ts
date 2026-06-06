@@ -36,7 +36,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     },
     select: { id: true },
   })
-  const affectedIds = affectedJobs.map((j) => j.id)
+  const affectedIds = affectedJobs.map((j: any) => j.id)
 
   const { count } = await prisma.hydrationJob.updateMany({
     where: {
@@ -56,7 +56,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           sentAt: null,
           meta: { path: ['hydrationJobId'], equals: jobId },
         },
-      }).catch((e) =>
+      }).catch((e: any) =>
         logger.warn('[admin/jobs/cancel] failed to delete outbox rows', { jobId, error: e })
       )
     }

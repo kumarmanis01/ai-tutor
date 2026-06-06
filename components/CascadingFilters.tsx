@@ -288,7 +288,7 @@ export default function CascadingFilters({
     onChange(createFilterStateFromProfile({
       language: profile.language,
       board: profile.board,
-      grade: profile.grade,
+      grade: profile.grade != null ? Number(profile.grade) : null,
     }));
   }, [useProfileDefaults, profile, profileLoading, value, onChange]);
 

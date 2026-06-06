@@ -50,11 +50,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const jobTypeName = String(pausedJob.jobType).toUpperCase()
     await prisma.outbox.create({
       data: {
-        queue: CONTENT_HYDRATION_QUEUE,
+        queue: 'content-hydration',
         payload: { type: jobTypeName, payload: { jobId: pausedJob.id } },
         meta: { hydrationJobId: pausedJob.id, source: 'resume' },
       },
-    }).catch((e) =>
+    }).catch((e: any) =>
       logger.warn('[admin/jobs/resume] failed to create outbox row', {
         jobId: pausedJob.id,
         error: e,

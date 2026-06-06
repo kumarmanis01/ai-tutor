@@ -238,7 +238,7 @@ export async function POST(
   });
 
   const questionMap = new Map<string, PracticeQuestion>(
-    practiceQuestions.map((q) => [q.id, q]),
+    practiceQuestions.map((q: any) => [q.id, q]),
   );
 
   // ── Grade answers ─────────────────────────────────────────────────────────

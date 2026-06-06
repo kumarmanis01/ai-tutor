@@ -35,7 +35,7 @@ export async function POST(_req: Request) {
     return NextResponse.json({ ok: true, deleted: 0, message: 'No stale jobs to clear.' })
   }
 
-  const rootIds = rootJobs.map(j => j.id)
+  const rootIds = rootJobs.map((j: any ) => j.id)
 
   // Delete children first (Level 1/2/3 jobs whose rootJobId is in the set),
   // then the root jobs. Done outside a transaction to avoid large tx timeouts.

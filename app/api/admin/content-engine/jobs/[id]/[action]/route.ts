@@ -90,7 +90,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const payload = (job.payload as any) ?? {};
         if (payload.hydrationJobId) {
           // Create an outbox entry for the existing hydration job so dispatcher will enqueue it
-          await prisma.outbox.create({ data: { queue: CONTENT_HYDRATION_QUEUE, payload: { type: 'SYLLABUS', payload: { jobId: payload.hydrationJobId } }, meta: { hydrationJobId: payload.hydrationJobId } } });
+          await prisma.outbox.create({ data: { queue: 'content-hydration', payload: { type: 'SYLLABUS', payload: { jobId: payload.hydrationJobId } }, meta: { hydrationJobId: payload.hydrationJobId } } });
           await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'REQUEUE', prevStatus: job.status, newStatus: job.status, meta: { hydrationJobId: payload.hydrationJobId, actor: session?.user?.id ?? null } } }).catch(()=>{});
           await prisma.auditLog.create({ data: { adminId: session?.user?.id ?? null, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_REQUEUE', details: { hydrationJobId: payload.hydrationJobId } } });
           return NextResponse.json({ ok: true, requeued: true });

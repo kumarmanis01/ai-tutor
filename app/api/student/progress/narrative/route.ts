@@ -92,7 +92,7 @@ export async function GET(req: Request) {
     ]);
 
     const subjectNames = [...new Set(
-      (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
+      (studentProfile?.subjects ?? []).map((s: any) => String(s)).filter(Boolean),
     )];
 
     // Resolve chapter context for the first subject (provides richer narrative)

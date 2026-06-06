@@ -1,3 +1,4 @@
+import { formatErrorForResponse } from '@/lib/errorResponse'
 import { prisma } from '@/lib/prisma'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { AuditEvents } from '@/lib/audit/events'

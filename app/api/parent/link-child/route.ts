@@ -179,7 +179,7 @@ export async function POST(req: Request) {
       action: null,
       details: { legacyAction: 'parent_link_student', parentId, method: 'redis_invite_token' },
     },
-  }).catch((err) => logger.debug('auditLog.create failed', { className: 'LinkChildAPI', error: String(err) }))
+  }).catch((err: any) => logger.debug('auditLog.create failed', { className: 'LinkChildAPI', error: String(err) }))
 
   // Send welcome/confirmation notifications to the parent (best-effort)
   try {

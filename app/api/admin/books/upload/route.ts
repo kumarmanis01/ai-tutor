@@ -182,7 +182,7 @@ export async function POST(req: Request) {
     await prisma.curriculumBook.update({
       where: { id: book.id },
       data: { parseStatus: CurriculumBookParseStatus.failed, parseError: 'Queue unavailable -- retry parse via admin panel' },
-    }).catch(dbErr => {
+    }).catch((dbErr: any ) => {
       logger.error('[books/upload] failed to mark book as failed after queue error', { bookId: book.id, error: String(dbErr) })
     })
   }

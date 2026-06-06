@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
@@ -122,11 +122,11 @@ function calculateActualDuration(startedAt: Date | null, finishedAt: Date | null
 // ============================================
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+  const { jobId } = await params;
   try {
-    const { jobId } = await params;
 
     // 1. Authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -258,7 +258,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     logger.error('Failed to retrieve job progress', {
       error: error.message,
       stack: error.stack,
-      jobId: params.jobId,
+      jobId: jobId,
     });
 
     return NextResponse.json(
@@ -276,11 +276,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 // ============================================
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+  const { jobId } = await params;
   try {
-    const { jobId } = await params;
 
     // 1. Authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -362,7 +362,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     logger.error('Failed to cancel job', {
       error: error.message,
       stack: error.stack,
-      jobId: params.jobId,
+      jobId: jobId,
     });
 
     return NextResponse.json(

@@ -166,8 +166,8 @@ export async function POST(req: Request) {
     const preSessionMastery: number | null = conceptStateResult?.masteryScore ?? null
 
     // Build enriched prereq objects so the client can show per-prereq mastery status.
-    const prereqMasteryMap = new Map(prereqStatesResult.map((s) => [s.conceptId, s.masteryScore]))
-    const prereqs = prereqConceptsResult.map((c) => ({
+    const prereqMasteryMap = new Map(prereqStatesResult.map((s: any) => [s.conceptId, s.masteryScore]))
+    const prereqs = prereqConceptsResult.map((c: any) => ({
       conceptId: c.id,
       name: c.name,
       masteryScore: prereqMasteryMap.get(c.id) ?? null,
@@ -175,7 +175,7 @@ export async function POST(req: Request) {
 
     // A prereq with no StudentConceptState (null) or masteryScore < 0.5 is considered unmet.
     // Unmet prereqs cause the session to start in PREREQ_BRIDGE so Vidya bridges the gap first.
-    const hasUnmetPrereqs = prereqs.some((p) => (p.masteryScore ?? 0) < 0.5)
+    const hasUnmetPrereqs = prereqs.some((p: any) => (p.masteryScore ?? 0) < 0.5)
     const initialStage = hasUnmetPrereqs ? 'PREREQ_BRIDGE' : 'HOOK'
 
     // Generate a unique session ID and persist a LearningSession record so the

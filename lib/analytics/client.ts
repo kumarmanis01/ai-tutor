@@ -18,10 +18,11 @@ import {
   ANALYTICS_EVENTS,
   STUDENT_ANALYTICS_EVENT_SET,
   type StudentAnalyticsEvent,
+  type AnalyticsEventName,
 } from '@/lib/analytics/events'
 
 type AnalyticsEvent = {
-  eventType: StudentAnalyticsEvent
+  eventType: AnalyticsEventName
   userId?: string | null
   courseId?: string | null
   lessonIdx?: number | null

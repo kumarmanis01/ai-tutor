@@ -24,14 +24,14 @@ const schema = z.object({
 async function resolveUserIds(audience: z.infer<typeof audienceSchema>): Promise<string[]> {
   if (audience.type === 'all') {
     const users = await prisma.user.findMany({ where: { role: 'user' }, select: { id: true } });
-    return users.map(u => u.id);
+    return users.map((u: any ) => u.id);
   }
   if (audience.type === 'grade') {
     const users = await prisma.user.findMany({
       where: { role: 'user', grade: String(audience.grade) },
       select: { id: true },
     });
-    return users.map(u => u.id);
+    return users.map((u: any ) => u.id);
   }
   // inactive
   const since = new Date(Date.now() - audience.days * 86_400_000);
@@ -39,13 +39,13 @@ async function resolveUserIds(audience: z.infer<typeof audienceSchema>): Promise
     where: { startedAt: { gte: since } },
     select: { studentId: true },
     distinct: ['studentId'],
-  }).then(rows => rows.map(r => r.studentId));
+  }).then((rows: any ) => rows.map((r: any ) => r.studentId));
 
   const users = await prisma.user.findMany({
     where: { role: 'user', id: { notIn: activeIds } },
     select: { id: true },
   });
-  return users.map(u => u.id);
+  return users.map((u: any ) => u.id);
 }
 
 export async function POST(req: NextRequest) {

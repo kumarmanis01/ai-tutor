@@ -53,11 +53,11 @@ export default async function SafetyPage() {
 
   const unresolvedCount = safetyEvents.length
   const _highSeverityCount = safetyEvents.filter(
-    e => e.severity === 'HIGH' || e.severity === 'CRITICAL'
+    (e: any) => e.severity === 'HIGH' || e.severity === 'CRITICAL'
   ).length
 
   const alerts: SafetyAlertData[] = [
-    ...safetyEvents.map(e => ({
+    ...safetyEvents.map((e: any ) => ({
       id: e.id,
       kind: 'distress' as const,
       triggerType: e.triggerType,
@@ -67,7 +67,7 @@ export default async function SafetyPage() {
       inputPreview: e.inputPreview ?? null,
       createdAt: e.createdAt.toISOString(),
     })),
-    ...flaggedQuestions.map(q => ({
+    ...flaggedQuestions.map((q: any ) => ({
       id: q.id,
       kind: 'flag' as const,
       triggerType: q.flagType,

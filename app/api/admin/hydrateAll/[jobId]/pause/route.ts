@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
@@ -8,7 +8,7 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ jobId: string }> },
 ) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session?.user) return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Unauthorized' }, { status: 401 });
   if (session.user.role !== 'admin') return NextResponse.json({ code: 'FORBIDDEN', message: 'Forbidden' }, { status: 403 });
 

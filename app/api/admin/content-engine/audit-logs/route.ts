@@ -1,3 +1,4 @@
+import { formatErrorForResponse } from '@/lib/errorResponse'
 /**
  * FILE OBJECTIVE:
  * - API endpoint to fetch content engine audit logs for the admin dashboard.
@@ -50,7 +51,7 @@ export async function GET() {
     });
 
     // Transform logs to the format expected by the UI
-    const transformedLogs = logs.map((log) => ({
+    const transformedLogs = logs.map((log: any) => ({
       id: log.id,
       action: log.action,
       adminId: log.userId,

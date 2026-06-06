@@ -79,7 +79,7 @@ export async function POST(req: Request) {
         }
       })()
 
-      await prisma.outbox.create({ data: { queue: CONTENT_HYDRATION_QUEUE, payload: { type: payloadType, payload: { jobId: created.id } }, meta: { hydrationJobId: created.id, retriedFrom: old.id } } })
+      await prisma.outbox.create({ data: { queue: 'content-hydration', payload: { type: payloadType, payload: { jobId: created.id } }, meta: { hydrationJobId: created.id, retriedFrom: old.id } } })
     } catch (e) {
       logger.warn('retry: failed to create outbox row', { error: String(e), newJobId: created.id })
     }

@@ -12,7 +12,7 @@ export async function GET() {
     const execs = await prisma.executionJob.findMany({ orderBy: { updatedAt: 'desc' }, take: 20 })
 
     const jobs = await Promise.all(
-      execs.map(async (ex) => {
+      execs.map(async (ex: any) => {
         const hydrationJobId = ex.payload?.hydrationJobId ?? null
         const hydration = hydrationJobId ? await prisma.hydrationJob.findUnique({ where: { id: hydrationJobId } }) : null
         const latestLog = await prisma.jobExecutionLog.findFirst({ where: { jobId: ex.id }, orderBy: { createdAt: 'desc' } })

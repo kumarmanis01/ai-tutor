@@ -52,7 +52,7 @@ export async function GET(req: Request) {
       },
     });
 
-    const topics = weakRecords.map((p) => ({
+    const topics = weakRecords.map((p: any) => ({
       topicId: p.topicId,
       topicName: p.topic.name,
       subject: p.topic.chapter.subject.name,

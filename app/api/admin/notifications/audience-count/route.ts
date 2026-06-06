@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         where: { startedAt: { gte: since } },
         select: { studentId: true },
         distinct: ['studentId'],
-      }).then(rows => rows.map(r => r.studentId));
+      }).then((rows: any ) => rows.map((r: any ) => r.studentId));
 
       count = await prisma.user.count({
         where: { role: 'user', id: { notIn: activeStudentIds } },

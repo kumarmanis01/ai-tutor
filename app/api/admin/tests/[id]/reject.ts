@@ -54,7 +54,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await prisma.$transaction([
     prisma.generatedTest.update({ where: { id }, data: { status: ApprovalStatus.Rejected } }),
     prisma.question.updateMany({
-      where: { id: { in: generatedQuestionIds.map((row) => row.id) } },
+      where: { id: { in: generatedQuestionIds.map((row: any) => row.id) } },
       data: { status: QuestionStatus.REJECTED },
     }),
     prisma.auditLog.create({ data: { adminId, targetEntity: 'GeneratedTest', targetId: id, action: 'CONTENT_REJECT', previousValue: { status: test.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })

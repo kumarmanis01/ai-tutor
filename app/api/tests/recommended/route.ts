@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     if (subj) subjectNames = [subj.name];
   } else if (classId) {
     const subs = await prisma.subjectDef.findMany({ where: { classId }, select: { name: true } });
-    subjectNames = subs.map((s) => s.name);
+    subjectNames = subs.map((s: any) => s.name);
   }
 
   let boardSlug: string | undefined;
@@ -46,6 +46,6 @@ export async function GET(req: NextRequest) {
     take: 10,
     orderBy: { updatedAt: 'desc' },
   });
-  const items = questions.map((q) => ({ id: q.id, title: q.prompt, subject: q.subject || 'General' }));
+  const items = questions.map((q: any) => ({ id: q.id, title: q.prompt, subject: q.subject || 'General' }));
   return NextResponse.json({ items });
 }

@@ -48,7 +48,7 @@ export default async function JobsPage() {
   ])
 
   // Enrich with SubjectDef name/grade/board
-  const subjectIds = [...new Set(jobs.map(j => j.subjectId).filter(Boolean))] as string[]
+  const subjectIds = [...new Set(jobs.map((j: any ) => j.subjectId).filter(Boolean))] as string[]
   const subjectDefs = subjectIds.length
     ? await prisma.subjectDef.findMany({
         where: { id: { in: subjectIds } },
@@ -60,9 +60,9 @@ export default async function JobsPage() {
       }).catch(() => [])
     : []
 
-  const subjectMap = new Map(subjectDefs.map(s => [s.id, s]))
+  const subjectMap = new Map<string, any>(subjectDefs.map((s: any) => [s.id, s]))
 
-  const enriched: EnrichedJob[] = jobs.map(j => {
+  const enriched: EnrichedJob[] = jobs.map((j: any ) => {
     const sub = j.subjectId ? subjectMap.get(j.subjectId) : null
     return {
       id: j.id,

@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import logger from "./logger";
 
 /**

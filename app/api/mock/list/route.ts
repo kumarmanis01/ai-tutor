@@ -55,14 +55,14 @@ export async function GET(req: Request) {
   // Attach attempt history for this student
   const attemptsByExam = await prisma.mockExamAttempt.groupBy({
     by: ['mockExamId'],
-    where: { studentId: user.id, mockExamId: { in: mocks.map((m) => m.id) } },
+    where: { studentId: user.id, mockExamId: { in: mocks.map((m: any) => m.id) } },
     _max: { scorePercent: true, finishedAt: true },
     _count: { id: true },
   });
 
-  const attemptMap = new Map(attemptsByExam.map((a) => [a.mockExamId, a]));
+  const attemptMap = new Map<string, any>(attemptsByExam.map((a: any) => [a.mockExamId, a]));
 
-  const result = mocks.map((m) => {
+  const result = mocks.map((m: any) => {
     const att = attemptMap.get(m.id);
     return {
       id: m.id,

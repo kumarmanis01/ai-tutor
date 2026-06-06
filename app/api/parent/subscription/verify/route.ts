@@ -120,9 +120,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    let _createdPayment: { id: string } | null = null;
+    let _createdPayment: { id: string; paymentId?: string; subscriptionId?: string } | null = null;
     try {
-      _createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      _createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient): Promise<{ id: string; paymentId?: string; subscriptionId?: string }> => {
         if (order.status !== 'paid') {
           await tx.paymentOrder.update({ where: { razorpayOrderId: orderId }, data: { status: 'paid', paidAt: now } });
         }
@@ -187,7 +187,7 @@ export async function POST(req: Request) {
             await tx.user.update({ where: { id: sid }, data: { subscriptionStatus: 'active', subscriptionExpiry: expiry } });
             await tx.freeTierUsage
               .upsert({ where: { studentId: sid }, update: { periodStart: now, sessionsUsed: 0 }, create: { studentId: sid, periodStart: now, sessionsUsed: 0 } })
-              .catch((err) => { logger.warn('freeTierUsage.upsert failed (parent.verify)', { event: 'parent.subscription.verify.upsert', context: { sid }, error: String(err) }); });
+              .catch((err: any) => { logger.warn('freeTierUsage.upsert failed (parent.verify)', { event: 'parent.subscription.verify.upsert', context: { sid }, error: String(err) }); });
           }
         }
 
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
           logger.warn('parent.verify: failed to create installment schedule', { err });
         }
 
-        return { paymentId: payment.id, subscriptionId: createdSub.id };
+        return { id: payment.id, paymentId: payment.id, subscriptionId: createdSub.id };
       }, { timeout: 30000, maxWait: 10000 });
     } catch (err) {
       logger.error('Failed to activate parent subscription', { event: 'parent.subscription.verify.activate_error', context: { userId, orderId }, err });

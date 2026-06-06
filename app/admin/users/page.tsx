@@ -49,7 +49,7 @@ export default async function StudentsPage() {
 
   const diagPct = totalStudents > 0 ? Math.round((diagCount / totalStudents) * 100) : 0
 
-  const rows: StudentRowData[] = students.map(s => ({
+  const rows: StudentRowData[] = students.map((s: any ) => ({
     id: s.id,
     name: s.name ?? null,
     email: s.email ?? null,

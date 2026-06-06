@@ -124,7 +124,7 @@ export async function GET() {
       topicsStarted,
     });
   } catch (error) {
-    logger.error('Error fetching progress:', error);
+    logger.error('Error fetching progress:', { error: String(error) });
     return NextResponse.json({
       testsCompleted: 0,
       averageScore: 0,

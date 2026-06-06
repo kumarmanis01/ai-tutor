@@ -7,7 +7,7 @@ export default async function WorkersPage() {
   const workers = await prisma.workerLifecycle.findMany({ orderBy: { lastHeartbeatAt: 'desc' }, take: 100 });
 
   // Serialize rows for client component
-  const rows = workers.map((w) => ({
+  const rows = workers.map((w: any) => ({
     id: w.id,
     type: w.type,
     status: w.status,

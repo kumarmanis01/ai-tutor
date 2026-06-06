@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     const channels = resolveParentChannels(student?.parentEmail, student?.whatsappPhone, student?.parentPhone);
 
-    const linkedParents = links.map((l) => ({
+    const linkedParents = links.map((l: any) => ({
       name: l.parent.name || 'Parent',
       email: l.parent.email ? maskEmail(l.parent.email) : null,
       whatsapp: l.parent.whatsappPhone ? maskPhone(l.parent.whatsappPhone) : l.parent.phone ? maskPhone(l.parent.phone) : null,
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         : null,
     }));
 
-    if (channels.hasEmail && !linkedParents.some((p) => p.email === channelStatus.email.masked)) {
+    if (channels.hasEmail && !linkedParents.some((p: any) => p.email === channelStatus.email.masked)) {
       linkedParents.push({
         name: 'Parent (Email)',
         email: channelStatus.email.masked,
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    if (channels.hasWhatsapp && !linkedParents.some((p) => p.whatsapp === channelStatus.whatsapp.masked)) {
+    if (channels.hasWhatsapp && !linkedParents.some((p: any) => p.whatsapp === channelStatus.whatsapp.masked)) {
       linkedParents.push({
         name: 'Parent (WhatsApp)',
         email: null,
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.json({
       linkedParents,
-      pendingInvites: pendingInvites.map((p) => ({
+      pendingInvites: pendingInvites.map((p: any) => ({
         code: p.code,
         createdAt: p.createdAt.toISOString(),
         expiresAt: p.expiresAt.toISOString(),

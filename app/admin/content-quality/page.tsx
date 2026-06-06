@@ -88,7 +88,7 @@ export default function AdminContentQualityPage() {
               {Object.entries(byType).length === 0 && (
                 <tr><td colSpan={3} className="p-4 text-center text-gray-500">No data</td></tr>
               )}
-              {Object.entries(byType).map(([type, v]) => (
+              {Object.entries(byType as Record<string, { approved: number; rejected: number }>).map(([type, v]) => (
                 <tr key={type} className="border-t border-gray-200 dark:border-gray-700">
                   <td className="p-3 font-medium">{type}</td>
                   <td className="p-3">{v.approved}</td>
@@ -103,7 +103,7 @@ export default function AdminContentQualityPage() {
       <section>
         <h2 className="text-lg font-semibold mb-2">Pending by type (draft counts)</h2>
         <div className="flex flex-wrap gap-4">
-          {Object.entries(pendingByType).map(([type, count]) => (
+          {Object.entries(pendingByType as Record<string, number>).map(([type, count]) => (
             <span key={type} className="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-sm">
               {type}: {count}
             </span>

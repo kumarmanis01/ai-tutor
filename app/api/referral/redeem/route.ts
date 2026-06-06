@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   // attempt transaction, retry once on P2028 (transaction not found)
   try {
-    const res = await prisma.$transaction(async (tx) => redeemReferral(tx, code, userId, redeemerIp));
+    const res = await prisma.$transaction(async (tx) => redeemReferral(tx, code, userId, redeemerIp ?? undefined));
 
     // Post-transaction: send best-effort push/email notifications (non-blocking)
     if (res.body.voided) {
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     const err = e as { code?: string };
     if (err?.code === 'P2028') {
       try {
-        const res = await prisma.$transaction(async (tx) => redeemReferral(tx, code, userId, redeemerIp));
+        const res = await prisma.$transaction(async (tx) => redeemReferral(tx, code, userId, redeemerIp ?? undefined));
         if (res.body.voided) {
           void (async () => {
             try {

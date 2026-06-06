@@ -97,7 +97,7 @@ export async function GET(req: Request) {
     });
 
     // Transform to include question count
-    const result = tests.map((t) => ({
+    const result = tests.map((t: any) => ({
       id: t.id,
       title: t.title,
       difficulty: t.difficulty,

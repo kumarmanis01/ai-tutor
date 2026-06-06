@@ -84,13 +84,13 @@ export async function POST(
   });
 
   // Flatten sections for client
-  const sections = exam.sections.map((sec) => ({
+  const sections = exam.sections.map((sec: any) => ({
     id: sec.id,
     title: sec.title,
     order: sec.order,
     totalMarks: sec.totalMarks,
     instructions: sec.instructions,
-    questions: sec.questions.map((mq) => ({
+    questions: sec.questions.map((mq: any) => ({
       mockQuestionId: mq.id,
       questionId: mq.question.id,
       marks: mq.marks,

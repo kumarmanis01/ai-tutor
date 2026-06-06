@@ -66,7 +66,7 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
 
       try {
         // Analytics: attempt to record redemption start (non-blocking)
-        if (track) {
+        if (typeof track === 'function') {
           try {
             const s = session as unknown as AppSession | null
             void analyticsClient.trackEvent({
@@ -88,7 +88,7 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         });
 
         // Analytics: record result (best-effort)
-        if (track) {
+        if (typeof track === 'function') {
           try {
             void track(ANALYTICS_EVENTS.STUDENT.REFERRAL_REDEEM_RESULT, { code: referralCode, status: res.status });
           } catch (err) {
@@ -98,7 +98,7 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
       } catch (err) {
         // Handle abort vs other errors and optionally log analytics
         const isAbort = (err as Error & { name?: string }).name === 'AbortError';
-        if (track) {
+        if (typeof track === 'function') {
           try {
             void track(ANALYTICS_EVENTS.STUDENT.REFERRAL_REDEEM_RESULT, {
               code: referralCode,

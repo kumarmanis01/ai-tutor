@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
             },
             select: { id: true },
           })
-          .then((rows) => rows.map((r) => r.id));
+          .then((rows: any) => rows.map((r: any) => r.id));
 
         if (topicIds.length > 0) {
           const qCount = await prisma.question.count({

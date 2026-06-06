@@ -61,7 +61,7 @@ export async function GET(req: Request) {
   const totalSessions = rows.length
   const avgHintRate =
     totalSessions > 0
-      ? rows.reduce((s, r) => s + Number(r.hintRate), 0) / totalSessions
+      ? rows.reduce((s: any, r: any) => s + Number(r.hintRate), 0) / totalSessions
       : null
 
   return NextResponse.json({
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
     minTurns,
     totalSessions,
     avgHintRate: avgHintRate !== null ? Math.round(avgHintRate * 10000) / 10000 : null,
-    sessions: rows.map((r) => ({
+    sessions: rows.map((r: any) => ({
       sessionId: r.sessionId,
       totalTurns: Number(r.totalTurns),
       hintTurns: Number(r.hintTurns),

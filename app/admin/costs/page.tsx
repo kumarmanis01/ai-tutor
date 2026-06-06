@@ -261,7 +261,7 @@ export default async function CostsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {metrics.map(m => {
+                  {metrics.map((m: any ) => {
                     const cps = m.costPerSession
                     const cpsCls =
                       cps < 0.003 ? 'text-[#1D9E75]' : cps <= 0.005 ? 'text-[#BA7517]' : 'text-[#E24B4A]'

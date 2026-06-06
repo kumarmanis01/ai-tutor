@@ -141,8 +141,8 @@ async function getFallbackRecommendations(userId: string) {
     select: { score: true, totalMarks: true, testId: true },
   });
   const weakTestIds = weakResults
-    .filter(r => r.totalMarks && r.totalMarks > 0 && (r.score ?? 0) / r.totalMarks < 0.6)
-    .map(r => r.testId)
+    .filter((r: any ) => r.totalMarks && r.totalMarks > 0 && (r.score ?? 0) / r.totalMarks < 0.6)
+    .map((r: any ) => r.testId)
     .filter(Boolean);
 
   if (weakTestIds.length > 0) {

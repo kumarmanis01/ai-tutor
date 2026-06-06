@@ -9,7 +9,7 @@ export async function GET() {
     where: { studentId: session.user.id, type: 'note' },
     select: { refId: true },
   });
-  const noteIds = bookmarks.map((b) => b.refId);
+  const noteIds = bookmarks.map((b: any) => b.refId);
   const notes = await prisma.note.findMany({
     where: { id: { in: noteIds } },
     select: { id: true, title: true },

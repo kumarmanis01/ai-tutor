@@ -33,7 +33,7 @@ export async function GET() {
     })
 
     // Collect all subjectIds for batch queries
-    const subjectIds = classLevels.flatMap((cl) => cl.subjects.map((s) => s.id))
+    const subjectIds = classLevels.flatMap((cl: any) => cl.subjects.map((s: any) => s.id))
 
     // Batch 1: latest HydrationJob per subjectId (root jobs only, jobType=syllabus)
     const latestJobs = await prisma.hydrationJob.findMany({
@@ -90,7 +90,7 @@ export async function GET() {
     })
 
     // Resolve topicId → subjectId via one query
-    const topicIds = generatedTestCounts.map((r) => r.topicId).filter(Boolean) as string[]
+    const topicIds = generatedTestCounts.map((r: any) => r.topicId).filter(Boolean) as string[]
     const topics = topicIds.length
       ? await prisma.topicDef.findMany({
           where: { id: { in: topicIds } },
@@ -101,7 +101,7 @@ export async function GET() {
         })
       : []
 
-    const topicToSubject = new Map(topics.map((t) => [t.id, t.chapter.subjectId]))
+    const topicToSubject = new Map<string, string>(topics.map((t: any) => [t.id, String(t.chapter.subjectId)]))
     const questionsBySubject = new Map<string, number>()
     for (const row of generatedTestCounts) {
       if (!row.topicId) continue
@@ -126,8 +126,8 @@ export async function GET() {
     }
 
     // Assemble rows
-    const rows = classLevels.flatMap((cl) =>
-      cl.subjects.map((sub) => {
+    const rows = classLevels.flatMap((cl: any) =>
+      cl.subjects.map((sub: any) => {
         const boardName = cl.board.slug.toLowerCase()
         const gradeStr = String(cl.grade)
         const subjectName = sub.name.toLowerCase()

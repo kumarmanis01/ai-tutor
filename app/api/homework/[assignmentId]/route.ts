@@ -92,7 +92,7 @@ export async function GET(
         },
       })
     : [];
-  const bankQuestionMap = new Map(bankQuestions.map((question) => [question.id, question]));
+  const bankQuestionMap = new Map<string, any>(bankQuestions.map((question: any) => [question.id, question]));
 
   // Strip correctAnswer + explanation from ungraded assignments
   const questions = rawQuestions.map((q) => {

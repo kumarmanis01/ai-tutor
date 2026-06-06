@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
     // Cache is best-effort; fall back to live query when Redis is unavailable.
     try {
       const redis = getRedis();
-      const cached = await redis.get(cacheKey);
+      const cached = redis ? await redis.get(cacheKey) : null;
       if (cached) {
         const parsed = JSON.parse(cached) as ParentDashboardResponse;
         const response = NextResponse.json(parsed);
@@ -171,7 +171,7 @@ export async function GET(req: NextRequest) {
       return response;
     }
 
-    const studentIds = parentRelations.map((r) => r.studentId);
+    const studentIds = parentRelations.map((r: any) => r.studentId);
 
     const since = mondayUtcWeeksAgo(12);
 
@@ -286,7 +286,7 @@ export async function GET(req: NextRequest) {
       lastActiveByStudent.set(row.studentId, row._max.startedAt ? row._max.startedAt.toISOString() : null);
     }
 
-    const students: StudentDashboard[] = parentRelations.map((rel) => {
+    const students: StudentDashboard[] = parentRelations.map((rel: any) => {
       const s = rel.student;
       const weekly = weeklyByStudent.get(s.id) ?? [];
       const subjectProgress = subjectByStudent.get(s.id) ?? [];
@@ -335,7 +335,9 @@ export async function GET(req: NextRequest) {
     // Best-effort cache set
     try {
       const redis = getRedis();
-      await redis.set(cacheKey, JSON.stringify(payload), 'EX', CACHE_TTL_SECONDS);
+      if (redis) {
+        await redis.set(cacheKey, JSON.stringify(payload), 'EX', CACHE_TTL_SECONDS);
+      }
     } catch {
       // ignore cache errors
     }

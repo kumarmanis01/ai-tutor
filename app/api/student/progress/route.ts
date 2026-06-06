@@ -48,7 +48,7 @@ export async function GET(req: Request) {
 
   const weekBegin = weekStart();
 
-  const [profile, topicsCompleted, sessionsThisWeek, _subjectRows] = await Promise.all([
+  const [profile, topicsCompleted, sessionsThisWeek] = await Promise.all([
     // Learning profile for weekly goal config
     prisma.studentLearningProfile.findUnique({
       where: { studentId: user.id },
@@ -84,10 +84,10 @@ export async function GET(req: Request) {
 
   // Distinct subjects explored this week
   const subjectSet = new Set(
-    sessionsThisWeek.map((s) => s.topic.chapter.subject.name)
+    sessionsThisWeek.map((s: any) => s.topic.chapter.subject.name)
   );
 
-  const sessionsCompleted = sessionsThisWeek.filter((s) => s.completedAt !== null).length;
+  const sessionsCompleted = sessionsThisWeek.filter((s: any) => s.completedAt !== null).length;
   const subjectsExplored = subjectSet.size;
   const minutesStudied = sessionsThisWeek.length * AVG_SESSION_MINUTES;
 

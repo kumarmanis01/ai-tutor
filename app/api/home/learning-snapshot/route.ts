@@ -97,16 +97,16 @@ export async function GET() {
   });
 
   // Build a set of attempted topic IDs and a quick lookup map
-  const masteryByTopicId = new Map(masteryRecords.map((m) => [m.topicId, m]));
+  const masteryByTopicId = new Map<string, any>(masteryRecords.map((m: any) => [m.topicId, m]));
 
   // ── Aggregate per-subject + per-chapter ──────────────────────────────────
-  const result = subjects.map((sub) => {
+  const result = subjects.map((sub: any) => {
     let subjectTotalTopics = 0;
     let subjectAttemptedTopics = 0;
     let subjectSumAccuracy = 0;
     let subjectMasteredCount = 0;
 
-    const chapterSnapshots = sub.chapters.map((ch) => {
+    const chapterSnapshots = sub.chapters.map((ch: any) => {
       const topicCount = ch.topics.length;
       let completedTopics = 0;
       let _sumAccuracy = 0;

@@ -60,9 +60,9 @@ export default async function ContentPage() {
     orderBy: [{ class: { grade: 'asc' } }, { name: 'asc' }],
   })
 
-  const subjectIds = subjects.map(s => s.id)
-  const allTopicIds = subjects.flatMap(s =>
-    s.chapters.flatMap(ch => ch.topics.map(t => t.id)),
+  const subjectIds = subjects.map((s: any ) => s.id)
+  const allTopicIds = subjects.flatMap((s: any ) =>
+    s.chapters.flatMap((ch: any ) => ch.topics.map((t: any ) => t.id)),
   )
 
   // ── 2. Batch lookups ────────────────────────────────────────────────────
@@ -169,12 +169,12 @@ export default async function ContentPage() {
 
   // Topic ID → generated test count
   const generatedTestByTopic = new Map<string, number>(
-    generatedTestGroups.map(g => [g.topicId as string, g._count.id]),
+    generatedTestGroups.map((g: any ) => [g.topicId as string, g._count.id]),
   )
 
   // Topic ID → note count
   const noteByTopic = new Map<string, number>(
-    noteGroups.map(g => [g.topicId as string, g._count.id]),
+    noteGroups.map((g: any ) => [g.topicId as string, g._count.id]),
   )
 
   // SubjectId → generated test count (via topics)
@@ -196,15 +196,15 @@ export default async function ContentPage() {
 
   // Subject name (lowercase) → RAG chunk count
   const ragBySubjectName = new Map<string, number>(
-    ragGroups.map(g => [(g.subject ?? '').toLowerCase(), g._count.id]),
+    ragGroups.map((g: any ) => [(g.subject ?? '').toLowerCase(), g._count.id]),
   )
 
   // SubjectId → latest active job
-  const jobBySubject = new Map(activeJobs.map(j => [j.subjectId ?? '', j]))
+  const jobBySubject = new Map<string, any>(activeJobs.map((j: any) => [j.subjectId ?? '', j]))
 
   // ── 4. Build coverage rows ───────────────────────────────────────────────
-  const coverageRows: CoverageRowData[] = subjects.map(s => {
-    const topicCount = s.chapters.reduce((n, ch) => n + ch.topics.length, 0)
+  const coverageRows: CoverageRowData[] = subjects.map((s: any ) => {
+    const topicCount = s.chapters.reduce((n: any, ch: any) => n + ch.topics.length, 0)
     const chapterCount = s.chapters.length
     const questionCount = generatedTestBySubject.get(s.id) ?? 0
     const noteCount = noteBySubject.get(s.id) ?? 0
@@ -244,12 +244,12 @@ export default async function ContentPage() {
 
   // ── 5. Build pipeline rows ───────────────────────────────────────────────
   // Resolve subjectName for pipeline jobs (may differ from SubjectDef.name)
-  const pipelineSubjectIds = pipelineJobs.map(j => j.subjectId).filter(Boolean) as string[]
-  const pipelineSubjectMap = new Map(
-    subjects.filter(s => pipelineSubjectIds.includes(s.id)).map(s => [s.id, s.name]),
+  const pipelineSubjectIds = pipelineJobs.map((j: any ) => j.subjectId).filter(Boolean) as string[]
+  const pipelineSubjectMap = new Map<string, string>(
+    subjects.filter((s: any ) => pipelineSubjectIds.includes(s.id)).map((s: any ) => [s.id, s.name]),
   )
 
-  const pipelineRows: PipelineJobData[] = pipelineJobs.map(j => ({
+  const pipelineRows: PipelineJobData[] = pipelineJobs.map((j: any ) => ({
     id: j.id,
     subjectName: j.subjectId ? (pipelineSubjectMap.get(j.subjectId) ?? j.subject ?? 'Unknown') : (j.subject ?? 'Unknown'),
     boardSlug: j.board ?? 'cbse',
@@ -267,12 +267,12 @@ export default async function ContentPage() {
   }))
 
   // ── 6. Build ingest run rows ─────────────────────────────────────────────
-  const runSubjectIds = recentRuns.map(r => r.subjectId).filter(Boolean) as string[]
-  const runSubjectMap = new Map(
-    subjects.filter(s => runSubjectIds.includes(s.id)).map(s => [s.id, { name: s.name, grade: s.class.grade }]),
+  const runSubjectIds = recentRuns.map((r: any ) => r.subjectId).filter(Boolean) as string[]
+  const runSubjectMap = new Map<string, { name: string; grade: string | null }>(
+    subjects.filter((s: any ) => runSubjectIds.includes(s.id)).map((s: any ) => [s.id, { name: s.name, grade: s.class.grade }]),
   )
 
-  const ingestRows: IngestRunData[] = recentRuns.map(r => {
+  const ingestRows: IngestRunData[] = recentRuns.map((r: any ) => {
     const sub = r.subjectId ? runSubjectMap.get(r.subjectId) : null
     return {
       id: r.id,
@@ -291,7 +291,7 @@ export default async function ContentPage() {
   const runningCount = pipelineJobs.length
 
   // ── 7. Build curriculum book rows ────────────────────────────────────────
-  const bookRows: BookRowData[] = curriculumBooks.map(b => ({
+  const bookRows: BookRowData[] = curriculumBooks.map((b: any ) => ({
     id: b.id,
     board: b.board,
     grade: b.grade,
@@ -306,11 +306,11 @@ export default async function ContentPage() {
     parseError: b.parseError,
     parsedAt: b.parsedAt?.toISOString() ?? null,
     chapterCount: b.bookChapters.length,
-    topicCount: b.bookChapters.reduce((sum, ch) => sum + ch._count.bookTopics, 0),
+    topicCount: b.bookChapters.reduce((sum: any, ch: any) => sum + ch._count.bookTopics, 0),
   }))
 
   // Subject options for the upload modal dropdown
-  const subjectOptions = subjects.map(s => ({
+  const subjectOptions = subjects.map((s: any ) => ({
     id: s.id,
     name: s.name,
     grade: s.class.grade,

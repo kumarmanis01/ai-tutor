@@ -7,8 +7,7 @@
  * Body: { to: string, template?: "welcome" | "magic-link" | "receipt" | "otp" }
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { sendEmailUnified } from '@/lib/mail';
 import {
   welcomeEmailHtml,
@@ -18,7 +17,7 @@ import {
 } from '@/lib/email/templates';
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if ((session?.user as { role?: string })?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }

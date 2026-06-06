@@ -67,7 +67,7 @@ export async function GET(req: Request) {
           })
         : [];
 
-    const topicDefMap = new Map(weakTopicDefs.map((t) => [t.id, t]));
+    const topicDefMap = new Map<string, any>(weakTopicDefs.map((t: any) => [t.id, t]));
 
     const weakTopics = weakTopicRows.map((w) => {
       const def = topicDefMap.get(w.topicId);

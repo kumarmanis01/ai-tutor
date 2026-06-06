@@ -61,7 +61,8 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    const redis = getRedis();
+    const redis = getRedis()
+    if (!redis) return NextResponse.json({ error: 'Cache unavailable' }, { status: 503 });
 
     // ── Lockout check ─────────────────────────────────────────────────────────
     const locked = await redis.get(lockKey(userId));

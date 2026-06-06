@@ -76,7 +76,7 @@ export async function POST(req: Request) {
         const prevRunId = existingStatus.runId;
         if (prevRunId) {
           const prev = await prisma.answerEvent.findMany({ where: { studentId: user.id, sessionId: prevRunId }, select: { questionId: true } });
-          const prevIds = new Set(prev.map((p) => p.questionId).filter(Boolean));
+          const prevIds = new Set<string>(prev.map((p: any) => p.questionId).filter((id: any): id is string => Boolean(id)));
           if (prevIds.size > 0) {
             // Regenerate test excluding previously-seen question IDs to ensure a different set.
             test = await generateSubjectDiagnosticTest({ boardSlug, grade, subjectSlug, languageCode }, prevIds);

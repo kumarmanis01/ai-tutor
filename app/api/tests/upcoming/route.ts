@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     subjectNames = [subj.name];
   } else if (classId) {
     const subs = await prisma.subjectDef.findMany({ where: { classId }, select: { name: true } });
-    subjectNames = subs.map((s) => s.name);
+    subjectNames = subs.map((s: any) => s.name);
   }
 
   // Use PracticeTest as upcoming items placeholder
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     take: 10,
     orderBy: { createdAt: 'desc' },
   });
-  const items = upcoming.map((t) => ({ id: t.id, title: t.title, subject: t.subject || 'General' }));
+  const items = upcoming.map((t: any) => ({ id: t.id, title: t.title, subject: t.subject || 'General' }));
   res = NextResponse.json({ items });
   logger.logAPI(req, res, { className: 'TestsUpcomingAPI', methodName: 'GET' }, start);
   return res;

@@ -74,8 +74,8 @@ export async function GET(
   // webhook rows that were written before userId was resolved (e.g. the initial
   // 'webhook.received' event arrives before order lookup completes).
   const knownOrderIds = payments
-    .map((p) => p.orderId)
-    .filter((id): id is string => id !== null && id !== undefined)
+    .map((p: any) => p.orderId)
+    .filter((id: any): id is string => id !== null && id !== undefined)
 
   // Loose events: not linked to a Payment row. Match by userId (when set) OR
   // by orderId cross-reference (when userId was not yet resolved at write time).

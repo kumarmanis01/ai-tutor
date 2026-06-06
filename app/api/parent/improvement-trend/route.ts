@@ -181,7 +181,7 @@ export async function GET(req: NextRequest) {
     //
     // Prisma.sql is a tagged template that passes $1/$2/$3 as prepared-statement
     // parameters. studentId and cutoff are never string-concatenated.
-    const rows = await prisma.$queryRaw<RawTrendRow[]>(
+    const rows = (await prisma.$queryRaw(
       Prisma.sql`
         SELECT
           TO_CHAR(DATE_TRUNC('week', "updatedAt"), 'IYYY"-W"IW') AS week,
@@ -193,13 +193,13 @@ export async function GET(req: NextRequest) {
         ORDER  BY DATE_TRUNC('week', "updatedAt") ASC
         LIMIT  ${WEEK_WINDOW}
       `,
-    );
+    )) as RawTrendRow[];
 
     // ── 6. Coerce and shape ──────────────────────────────────────────────────
     // node-postgres returns NUMERIC/FLOAT8 aggregates as strings.
     // Round to 4 decimal places -- enough precision for a trend line without
     // floating-point noise (e.g. 0.5799999... → 0.58).
-    const trend: WeeklyAccuracy[] = rows.map((r) => ({
+    const trend: WeeklyAccuracy[] = rows.map((r: any) => ({
       week:     r.week,
       accuracy: Math.round(Number(r.avg_accuracy) * 10_000) / 10_000,
     }));
@@ -212,7 +212,7 @@ export async function GET(req: NextRequest) {
       // Average weekly sessions over last 4 weeks
       const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
       const weeklySummaries = await prisma.weeklyStudentSummary.findMany({ where: { studentId, weekStart: { gte: fourWeeksAgo } }, select: { sessionsCount: true } })
-      const totalSessions = weeklySummaries.reduce((s, w) => s + w.sessionsCount, 0)
+      const totalSessions = weeklySummaries.reduce((s: any, w: any) => s + w.sessionsCount, 0)
       const completedWeeks = Math.max(1, weeklySummaries.length)
       const avgWeeklySessions = totalSessions / completedWeeks
 

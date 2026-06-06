@@ -53,7 +53,7 @@ export async function GET(req: Request) {
       getWeakTopics(user.id),
     ]);
 
-    const activeSessionTopics = activeSessions.map((s) => ({
+    const activeSessionTopics = activeSessions.map((s: any) => ({
       sessionId: s.id,
       topicId: s.topicId,
       topicName: s.topic.name,
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
         })
       : [];
 
-    const topicDefMap = new Map(weakTopicDefs.map((t) => [t.id, t]));
+    const topicDefMap = new Map<string, any>(weakTopicDefs.map((t: any) => [t.id, t]));
 
     const weakTopics = weakTopicRows.map((w) => {
       const def = topicDefMap.get(w.topicId);

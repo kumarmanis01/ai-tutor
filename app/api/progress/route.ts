@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
   });
 
   // Transform to a more usable format
-  const result = progress.map((p) => ({
+  const result = progress.map((p: any) => ({
     topicId: p.topicId,
     subject: p.subject,
     chapter: p.chapter,

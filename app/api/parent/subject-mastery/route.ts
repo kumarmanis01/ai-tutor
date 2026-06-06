@@ -132,8 +132,8 @@ export async function GET(req: NextRequest) {
     });
     const activeChapterNames = new Set<string>(
       upcomingItems
-        .map((i) => (i.concept as any)?.chapter as string | undefined)
-        .filter((c): c is string => Boolean(c))
+        .map((i: any) => (i.concept as any)?.chapter as string | undefined)
+        .filter((c: any): c is string => Boolean(c))
     );
 
     // 8. Readiness status per subject (for pace prediction, F-PAR-012 AC-05)
@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
       where: { studentId },
       select: { subject: true, readinessScore: true },
     });
-    const readinessBySubject = new Map(readinessRows.map((r) => [r.subject, r.readinessScore]));
+    const readinessBySubject = new Map<string, number>(readinessRows.map((r: any) => [r.subject, Number(r.readinessScore)]));
 
     // 9. Average weekly sessions over last 4 weeks (for pace prediction)
     const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
       where: { studentId, weekStart: { gte: fourWeeksAgo } },
       select: { sessionsCount: true },
     });
-    const totalSessions = weeklySummaries.reduce((s, w) => s + w.sessionsCount, 0);
+    const totalSessions = weeklySummaries.reduce((s: any, w: any) => s + w.sessionsCount, 0);
     // Use number of completed weeks (1-4) as denominator so early students get fair estimate
     const completedWeeks = Math.max(1, weeklySummaries.length);
     const avgWeeklySessions = totalSessions / completedWeeks;
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
     const peerPercentileBySubject = new Map<string, number>();
     if (benchmarking && student?.grade) {
       // Optimize benchmarking by fetching peer averages for all subjects in a single query
-      const subjects = subjectRows.map((sr) => sr.subject);
+      const subjects = subjectRows.map((sr: any) => sr.subject);
       if (subjects.length > 0) {
         const peers = await prisma.studentTopicMastery.groupBy({
           by: ['subject', 'studentId'],
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
     const strings = LOCAL_STRINGS[locale] ?? LOCAL_STRINGS['en'];
     const now = new Date();
 
-    const result: SubjectMastery[] = subjectRows.map((r) => {
+    const result: SubjectMastery[] = subjectRows.map((r: any) => {
       const avgAccuracy = Math.round((r._avg.accuracy ?? 0) * 10_000) / 10_000;
       const masteryPct = Math.round(avgAccuracy * 100);
       const predictedMarkRange = predictMarkRange(masteryPct);

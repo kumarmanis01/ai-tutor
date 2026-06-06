@@ -83,7 +83,7 @@ export default async function ParentBillingPage() {
             <div className="mt-3 text-sm">
               <div className="text-xs text-gray-500">EMI schedule</div>
               <ul className="mt-2 space-y-2">
-                {activeSubscription.installments.map((it) => {
+                {activeSubscription.installments.map((it: any) => {
                   const due = new Date(it.dueAt)
                   const now = new Date()
                   const overdue = (it.status ?? '').toString().toUpperCase() !== 'PAID' && due.getTime() < now.getTime()
@@ -124,7 +124,7 @@ export default async function ParentBillingPage() {
         <section className="mb-6 rounded-xl border bg-white p-4 dark:bg-gray-900 dark:border-gray-700">
           <h2 className="text-sm font-semibold mb-3 text-gray-900 dark:text-gray-50">Invoice history</h2>
           <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-            {invoices.map((inv) => (
+            {invoices.map((inv: any) => (
               <li key={inv.id} className="flex items-center justify-between py-2 text-sm">
                 <div>
                   <div className="font-medium text-gray-800 dark:text-gray-100">Invoice {inv.invoiceNumber ?? inv.id.slice(0, 8)}</div>

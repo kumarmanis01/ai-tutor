@@ -45,14 +45,14 @@ export async function GET() {
     })
 
     // Load per-child controls to surface topicFocusRequest (F-PAR-002 AC-03)
-    const childIds = links.map((l) => l.student.id)
+    const childIds = links.map((l: any) => l.student.id)
     const controls = childIds.length
       ? await prisma.parentChildControl.findMany({
           where: { parentId: userId, studentId: { in: childIds } },
           select: { studentId: true, topicFocusRequest: true },
         })
       : []
-    const controlsByStudentId = new Map(controls.map((c) => [c.studentId, c]))
+    const controlsByStudentId = new Map<string, any>(controls.map((c: any) => [c.studentId, c]))
 
     return NextResponse.json({
       digestOptOut: profile?.digestOptOut ?? false,
@@ -64,7 +64,7 @@ export async function GET() {
       inactivityThresholdDays: (profile as any)?.inactivityThresholdDays ?? 3,
       // NFR language: UI language preference ('en' or 'hi')
       language,
-      children: links.map((l) => ({
+      children: links.map((l: any) => ({
         id: l.student.id,
         name: l.student.name ?? 'Student',
         grade: l.student.grade ?? null,

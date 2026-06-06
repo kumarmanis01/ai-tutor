@@ -352,11 +352,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
               })
             ),
           ])
-          const chapterNameById = new Map(chapterDefs.map((ch) => [ch.id, ch.name]))
+          const chapterNameById = new Map(chapterDefs.map((ch: any) => [ch.id, ch.name]))
           for (const { chapterId: chId, total, mastered } of chapterCounts) {
             chaptersCompleted.push({
               chapterId: chId,
-              chapterName: chapterNameById.get(chId) ?? 'Chapter',
+              chapterName: (chapterNameById.get(chId) ?? 'Chapter') as string,
               completed: total > 0 && mastered === total,
             })
           }
@@ -460,7 +460,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         masteryDelta: Math.round(masteryDelta * 100) / 100,
         masteryAfter: Math.round(masteryAfter * 100) / 100,
         sessionDurationMinutes,
-        aiInsight: aiInsight?.summary ?? aiInsight ?? '',
+        aiInsight: (typeof aiInsight === 'object' && aiInsight !== null ? (aiInsight as any).summary : aiInsight) ?? '',
         topicsTouched,
         chaptersCompleted,
       },

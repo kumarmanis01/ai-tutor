@@ -103,7 +103,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     // 4. Count active concepts per chapter via a raw group-by (Prisma groupBy cannot
     //    filter across two relation hops simultaneously).
     const chapterConceptCounts = new Map<string, number>();
-    const chapterIds = chapters.map((ch) => ch.id);
+    const chapterIds = chapters.map((ch: any) => ch.id);
     if (chapterIds.length > 0) {
       const rawCounts = await prisma.$queryRaw<{ chapterId: string; cnt: bigint }[]>`
         SELECT t."chapterId", COUNT(c.id) AS cnt
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     let recommendedStartChapterId: string | null = null;
     let lowestMastery = Infinity;
 
-    const chapterResults = chapters.map((ch) => {
+    const chapterResults = chapters.map((ch: any) => {
       const agg = chapterAgg.get(ch.id);
       const avgMastery = agg ? agg.sum / agg.count : 0;
       const masteryPct = Math.round(avgMastery * 100);
@@ -152,12 +152,12 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     // If no RED chapters found, recommend the first AMBER chapter in order.
     if (!recommendedStartChapterId) {
-      const firstAmber = chapterResults.find((c) => c.band === 'AMBER');
+      const firstAmber = chapterResults.find((c: any) => c.band === 'AMBER');
       if (firstAmber) recommendedStartChapterId = firstAmber.chapterId;
     }
     // Final fallback: all chapters GREEN -- recommend the lowest-mastery chapter.
     if (!recommendedStartChapterId && chapterResults.length > 0) {
-      const lowestMastery = chapterResults.reduce((min, c) => c.masteryPct < min.masteryPct ? c : min);
+      const lowestMastery = chapterResults.reduce((min: any, c: any) => c.masteryPct < min.masteryPct ? c : min);
       recommendedStartChapterId = lowestMastery.chapterId;
     }
 

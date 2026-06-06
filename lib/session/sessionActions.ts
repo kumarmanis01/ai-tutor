@@ -137,6 +137,7 @@ export interface PracticeMoreActionResult {
     choices: unknown;
     difficulty: string | null;
     correctAnswer: string | null;
+    explanation: string | null;
   }[];
   sessionId: string;
 }

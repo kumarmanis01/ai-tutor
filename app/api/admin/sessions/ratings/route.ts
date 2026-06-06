@@ -76,7 +76,7 @@ export async function GET(req: Request) {
   const truncated = rows.length > PAGE_LIMIT
   const page = truncated ? rows.slice(0, PAGE_LIMIT) : rows
 
-  const results = page.map((r) => ({
+  const results = page.map((r: any) => ({
     activityType: r.activityType,
     activityRef: r.activityRef,
     day: r.day,

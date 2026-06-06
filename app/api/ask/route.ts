@@ -61,7 +61,7 @@ export async function POST(req: Request) {
         sessionUserId = (session as any).user.id as string;
         try {
           await prisma.conversation.upsert({ where: { id: conversationId }, update: {}, create: { id: conversationId, userId: sessionUserId } });
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } }).catch((e) => { logger.warn('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: e }); });
+          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } }).catch((e: any) => { logger.warn('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: e }); });
         } catch (e) {
           logger.warn('Failed to persist session conversation', { className: 'api.ask', methodName: 'POST', error: e });
         }

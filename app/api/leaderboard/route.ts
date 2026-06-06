@@ -40,16 +40,16 @@ export async function GET(req: Request) {
       take: 200,
     });
 
-    const userIds = [...new Set(attempts.map((a) => a.studentId))];
+    const userIds = [...new Set(attempts.map((a: any) => a.studentId))];
     const users = await prisma.user.findMany({ where: { id: { in: userIds } } });
-    const byUser = new Map(users.map((u) => [u.id, u] as const));
+    const byUser = new Map<string, any>(users.map((u: any) => [u.id, u]));
 
-    const attemptIds = attempts.map((a) => a.id);
+    const attemptIds = attempts.map((a: any) => a.id);
     const firstItems = await prisma.attemptQuestion.findMany({
       where: { testResultId: { in: attemptIds }, order: 1 },
       include: { question: true },
     });
-    const firstByAttempt = new Map(firstItems.map((i) => [i.testResultId, i] as const));
+    const firstByAttempt = new Map<string, any>(firstItems.map((i: any) => [i.testResultId, i]));
 
     // Resolve filters to legacy user fields / question subjects
     let gradeStr: string | undefined;
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
       if (s) subjName = s.name;
     }
 
-    const scoped = attempts.filter((a) => {
+    const scoped = attempts.filter((a: any) => {
       const user = byUser.get(a.studentId);
       if (gradeStr && user?.grade !== gradeStr) return false;
       if (boardSlug && user?.board !== boardSlug) return false;
@@ -81,9 +81,9 @@ export async function GET(req: Request) {
     });
 
     const top = scoped
-      .sort((x, y) => (y.score ?? 0) - (x.score ?? 0))
+      .sort((x: any, y: any) => (y.score ?? 0) - (x.score ?? 0))
       .slice(0, 20)
-      .map((a, idx) => {
+      .map((a: any, idx: any) => {
         const xp = a.score ?? 0;
         const user = byUser.get(a.studentId);
         return {
@@ -100,7 +100,7 @@ export async function GET(req: Request) {
         };
       });
 
-    const me = top.find((item) => item.userId === session.user.id);
+    const me = top.find((item: any) => item.userId === session.user.id);
     if (me) {
       void emitServerAnalyticsEvent(
         {
@@ -123,7 +123,7 @@ export async function GET(req: Request) {
     select: { id: true, name: true, image: true, points: true },
   });
 
-  const top = topRaw.map((item, idx) => ({
+  const top = topRaw.map((item: any, idx: any) => ({
     rank: idx + 1,
     userId: item.id,
     name: item.name ?? null,
@@ -135,7 +135,7 @@ export async function GET(req: Request) {
     points: item.points,
   }));
 
-  const me = top.find((item) => item.userId === session.user.id);
+  const me = top.find((item: any) => item.userId === session.user.id);
   if (me) {
     void emitServerAnalyticsEvent(
       {

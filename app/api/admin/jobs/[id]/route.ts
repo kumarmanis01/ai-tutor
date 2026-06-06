@@ -47,7 +47,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         subjectName = subject.name
         boardName = subject.class?.board?.name ?? null
         actualChapters = subject.chapters.length
-        const topicIds = subject.chapters.flatMap(ch => ch.topics.map(t => t.id))
+        const topicIds = subject.chapters.flatMap((ch: any ) => ch.topics.map((t: any ) => t.id))
         actualTopics = topicIds.length
 
         if (topicIds.length > 0) {
@@ -69,7 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       _count: { id: true },
     })
 
-    const childCounts = childSummary.reduce<Record<string, number>>((acc, row) => {
+    const childCounts = (childSummary as any[]).reduce<Record<string, number>>((acc, row) => {
       acc[row.status] = row._count.id
       return acc
     }, {})

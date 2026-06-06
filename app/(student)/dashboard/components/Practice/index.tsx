@@ -99,7 +99,7 @@ export default function PracticeTab() {
     return `/practice/start?${p.toString()}`;
   }, []);
 
-  const subjects = helpers.getSubjectsForGrade(profile?.board, profile?.grade);
+  const subjects = helpers.getSubjectsForGrade(profile?.board, profile?.grade != null ? Number(profile.grade) : null);
 
   const handleSelectCustomTopic = useCallback((topicId: string, topicName: string) => {
     setCustomTopicId(topicId);

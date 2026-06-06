@@ -137,27 +137,27 @@ export async function GET() {
     });
 
     // Transform to our interface shape (filtering only needed fields)
-    const hierarchyBoards: HierarchyBoard[] = boards.map((board) => ({
+    const hierarchyBoards: HierarchyBoard[] = boards.map((board: any) => ({
       id: board.id,
       name: board.name,
       slug: board.slug,
-      classes: board.classes.map((cls) => ({
+      classes: board.classes.map((cls: any) => ({
         id: cls.id,
         grade: cls.grade,
         slug: cls.slug,
         // Deduplicate by name -- prevents duplicate subject names in the subject picker
         // when SubjectDef rows share the same name but have different slugs for the same classId
-        subjects: [...new Map(cls.subjects.map((sub) => [sub.name, sub])).values()]
-          .map((sub) => ({
+        subjects: [...new Map<string, any>(cls.subjects.map((sub: any) => [sub.name, sub])).values()]
+          .map((sub: any) => ({
             id: sub.id,
             name: sub.name,
             slug: sub.slug,
-            chapters: sub.chapters.map((ch) => ({
+            chapters: sub.chapters.map((ch: any) => ({
               id: ch.id,
               name: ch.name,
               slug: ch.slug,
               order: ch.order,
-              topics: ch.topics.map((tp) => ({
+              topics: ch.topics.map((tp: any) => ({
                 id: tp.id,
                 name: tp.name,
                 slug: tp.slug,

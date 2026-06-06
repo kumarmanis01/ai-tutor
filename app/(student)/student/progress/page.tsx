@@ -195,8 +195,9 @@ export default async function ProgressPage({
   // Raw enrolled subject tokens for the filter bar. Using the user-stored tokens
   // (not just resolved names) ensures every enrolled subject appears as a filter
   // option even if it did not resolve to a SubjectDef (e.g. not yet seeded).
-  const subjectNames = [...new Set(
-    (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean),
+  const subjectNames: string[] = [...new Set<string>(
+    (Array.isArray(studentProfile?.subjects) ? studentProfile!.subjects as unknown[] : [])
+      .map((s) => String(s)).filter((s): s is string => Boolean(s)),
   )];
 
   // Apply subject filter to the mastery query.
@@ -222,18 +223,18 @@ export default async function ProgressPage({
       select: { id: true, topic: { select: { chapterId: true } } },
     });
 
-    const allConceptIds = concepts.map((c) => c.id);
+    const allConceptIds = concepts.map((c: any) => c.id);
     const conceptStates = await prisma.studentConceptState.findMany({
       where: { studentId: userId, conceptId: { in: allConceptIds } },
       select: { conceptId: true, masteryScore: true, memoryStrength: true },
     });
 
     const masteryByConceptId = new Map<string, number>(
-      conceptStates.map((s) => [s.conceptId, s.masteryScore]),
+      conceptStates.map((s: any) => [s.conceptId, s.masteryScore]),
     );
 
     memoryStrengthByConceptId = new Map<string, number>(
-      conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0]),
+      conceptStates.map((s: any) => [s.conceptId, (s as any).memoryStrength ?? 0]),
     );
 
     // Normalize chapter id keys to strings so map lookups are consistent
@@ -299,7 +300,7 @@ export default async function ProgressPage({
   const totalMinutes = totalSessions * AVG_SESSION_MINUTES;
 
   // ── Session rows for test score table ───────────────────────────────────────
-  const sessionRows: SessionRow[] = completedSessions.map((s) => {
+  const sessionRows: SessionRow[] = completedSessions.map((s: any) => {
     const meta = s.meta as Record<string, unknown> | null;
     const rawScore = meta?.score;
     return {
@@ -315,7 +316,7 @@ export default async function ProgressPage({
   });
 
   // ── Chapter practice test trend (AC-07) ────────────────────────────────────
-  const trendData: TrendPoint[] = trendRows.map((r) => ({
+  const trendData: TrendPoint[] = trendRows.map((r: any) => ({
     date: r.finishedAt!.toISOString(),
     score: Math.round(r.score!),
   }));

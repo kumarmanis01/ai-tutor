@@ -52,7 +52,7 @@ export async function GET() {
   const totalYesterday = Number(totalRow[0]?.count ?? 0)
 
   const sessions = await Promise.all(
-    rows.map(async (row) => {
+    rows.map(async (row: any) => {
       const turns = await prisma.aITutorTurnLog.findMany({
         where: { sessionId: row.id },
         orderBy: { createdAt: 'asc' },

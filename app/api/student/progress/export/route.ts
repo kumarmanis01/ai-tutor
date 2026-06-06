@@ -38,14 +38,14 @@ export async function GET(_req: Request) {
       prisma.user.findUnique({ where: { id: userId }, select: { name: true, subjects: true } }),
     ])
 
-    const subjectNames = (userProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean)
+    const subjectNames = (userProfile?.subjects ?? []).map((s: any) => String(s)).filter(Boolean)
 
     // For each subject, compute readiness in parallel (best-effort)
     const readinessRows: Array<{ subject: string; score: number }> = []
     if (subjectNames.length > 0) {
       const subjectDefs = await prisma.subjectDef.findMany({ where: { OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }], lifecycle: 'active' }, select: { id: true, name: true } })
       const results = await Promise.allSettled(
-        subjectDefs.map((sd) => computeReadinessScore(userId, sd.id))
+        subjectDefs.map((sd: any) => computeReadinessScore(userId, sd.id))
       )
       for (let i = 0; i < subjectDefs.length; i++) {
         const r = results[i]

@@ -101,11 +101,11 @@ export async function POST(req: NextRequest) {
       select: { id: true, correctAnswer: true, choices: true, topicId: true },
     });
 
-    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const questionMap = new Map<string, any>(questions.map((q: any) => [q.id, q]));
 
     // Resolve topicId → first conceptId for AnswerEvent
     const topicIds = [
-      ...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t)),
+      ...new Set(questions.map((q: any) => q.topicId).filter((t: any): t is string => !!t)),
     ];
     const concepts =
       topicIds.length > 0
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
 
     // Resolve chapterIds for bootstrap job (unique chapters across all questions)
     const questionTopicIds = [
-      ...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t)),
+      ...new Set(questions.map((q: any) => q.topicId).filter((t: any): t is string => !!t)),
     ];
     const topics =
       questionTopicIds.length > 0
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
           })
         : [];
 
-    const chapterIds = [...new Set(topics.map((t) => t.chapterId))];
+    const chapterIds = [...new Set<string>(topics.map((t: any) => String(t.chapterId)).filter(Boolean))];
 
     // Look up subject board/grade for bootstrap job data
     const subject = await prisma.subjectDef.findUnique({

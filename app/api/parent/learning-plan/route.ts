@@ -91,12 +91,12 @@ export async function GET(req: NextRequest) {
         }
       : null
 
-    const recentConceptIds = plan.items.map((i) => i.conceptId)
+    const recentConceptIds = plan.items.map((i: any) => i.conceptId)
     const recentConcepts = recentConceptIds.length
       ? await prisma.concept.findMany({ where: { id: { in: recentConceptIds } }, select: { id: true, name: true } })
       : []
-    const conceptNameById = new Map(recentConcepts.map((c) => [c.id, c.name]))
-    const recentlyCompleted = plan.items.map((item) => ({ conceptName: conceptNameById.get(item.conceptId) ?? '', completedAt: item.completedAt ? item.completedAt.toISOString() : '' }))
+    const conceptNameById = new Map(recentConcepts.map((c: any) => [c.id, c.name]))
+    const recentlyCompleted = plan.items.map((item: any) => ({ conceptName: conceptNameById.get(item.conceptId) ?? '', completedAt: item.completedAt ? item.completedAt.toISOString() : '' }))
 
     const payload = {
       planId: plan.id,

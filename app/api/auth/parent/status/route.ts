@@ -34,7 +34,7 @@ export async function GET() {
         },
         orderBy: { createdAt: 'desc' },
       });
-      const phones = new Set(records.map((r) => r.phone));
+      const phones = new Set(records.map((r: any) => r.phone));
       if (emailKey && phones.has(emailKey)) sentTo.email = channels.normalizedEmail;
       const waKey = whatsappKeys.find((k) => phones.has(k));
       if (waKey) sentTo.whatsapp = channels.resolvedWhatsappDigits;

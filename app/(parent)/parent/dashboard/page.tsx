@@ -56,7 +56,7 @@ export default async function ParentDashboardPage() {
     prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } }),
   ])
 
-  const studentIds = links.map((l) => l.studentId)
+  const studentIds = links.map((l: any) => l.studentId)
 
   // 2. Batch-load all student profiles, streaks, and session counts in parallel
   const [students, streaks, sessionCounts] = await Promise.all([
@@ -76,14 +76,15 @@ export default async function ParentDashboardPage() {
   ])
 
   // Build lookup maps
-  const studentMap = new Map(students.map((s) => [s.id, s]))
-  const streakMap = new Map(streaks.map((s) => [s.studentId, s.current]))
-  const sessionCountMap = new Map(sessionCounts.map((r) => [r.studentId, r._count._all]))
+  type StudentRow = { id: string; name: string | null; grade: string | null; board: string | null; subjects: unknown; timezone: string | null; examDate: Date | null }
+  const studentMap = new Map<string, StudentRow>(students.map((s: StudentRow) => [s.id, s]))
+  const streakMap = new Map<string, number>(streaks.map((s: { studentId: string; current: number }) => [s.studentId, s.current]))
+  const sessionCountMap = new Map<string, number>(sessionCounts.map((r: { studentId: string; _count: { _all: number } }) => [r.studentId, r._count._all]))
 
   // 3. Resolve all unique subject names → SubjectDef IDs in one query
   const allSubjectNames = [
     ...new Set(
-      students.flatMap((s) => (s.subjects as string[]).filter(Boolean))
+      students.flatMap((s: any) => (s.subjects as string[]).filter(Boolean))
     ),
   ]
   const subjectDefs = allSubjectNames.length

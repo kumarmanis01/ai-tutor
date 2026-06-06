@@ -10,6 +10,7 @@ export async function GET() {
   try {
     await requireAdminOrModerator();
     const r = getRedis()
+    if (!r) return NextResponse.json({ error: 'Redis not configured' }, { status: 503 })
 
     const [pong, infoRaw] = await Promise.all([
       r.ping(),

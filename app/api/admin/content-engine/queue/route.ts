@@ -29,7 +29,7 @@ export async function GET() {
         },
       }),
     ])
-    return NextResponse.json({ queue: CONTENT_HYDRATION_QUEUE, counts, failedJobs })
+    return NextResponse.json({ queue: 'content-hydration', counts, failedJobs })
   } catch (err) {
     logger?.error?.('GET /api/admin/content-engine/queue error', { err })
     return NextResponse.json({ error: 'failed' }, { status: 500 })

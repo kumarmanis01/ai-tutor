@@ -23,7 +23,7 @@ import { logger } from '@/lib/logger';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
-import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
+import { LANGUAGES, DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 import Link from 'next/link';
 import { getTierColor } from '@/lib/student/xpLevels';
 import FontSizeToggle from '@/components/UI/FontSizeToggle';

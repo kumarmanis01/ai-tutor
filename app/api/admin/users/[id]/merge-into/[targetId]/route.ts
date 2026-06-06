@@ -66,21 +66,21 @@ export async function POST(
     prisma.diagnosticSession.findMany({ where: { studentId: sourceId }, select: { id: true, subjectId: true } }),
     prisma.diagnosticSession.findMany({ where: { studentId: targetId }, select: { subjectId: true } }),
   ])
-  const targetSubjectIds = new Set(targetDiags.map((d) => d.subjectId))
-  const diagsToReassign = sourceDiags.filter((d) => !targetSubjectIds.has(d.subjectId))
-  const diagsToDelete = sourceDiags.filter((d) => targetSubjectIds.has(d.subjectId))
+  const targetSubjectIds = new Set(targetDiags.map((d: any) => d.subjectId))
+  const diagsToReassign = sourceDiags.filter((d: any) => !targetSubjectIds.has(d.subjectId))
+  const diagsToDelete = sourceDiags.filter((d: any) => targetSubjectIds.has(d.subjectId))
 
   let diagnosticsMerged = 0
   if (diagsToReassign.length > 0) {
     await prisma.diagnosticSession.updateMany({
-      where: { id: { in: diagsToReassign.map((d) => d.id) } },
+      where: { id: { in: diagsToReassign.map((d: any) => d.id) } },
       data: { studentId: targetId },
     })
     diagnosticsMerged = diagsToReassign.length
   }
   if (diagsToDelete.length > 0) {
     await prisma.diagnosticSession.deleteMany({
-      where: { id: { in: diagsToDelete.map((d) => d.id) } },
+      where: { id: { in: diagsToDelete.map((d: any) => d.id) } },
     })
   }
 
@@ -89,7 +89,7 @@ export async function POST(
     prisma.studentConceptState.findMany({ where: { studentId: sourceId } }),
     prisma.studentConceptState.findMany({ where: { studentId: targetId } }),
   ])
-  const targetStateMap = new Map(targetStates.map((s) => [s.conceptId, s]))
+  const targetStateMap = new Map<string, any>(targetStates.map((s: any) => [s.conceptId, s]))
   let conceptStatesMerged = 0
 
   for (const src of sourceStates) {

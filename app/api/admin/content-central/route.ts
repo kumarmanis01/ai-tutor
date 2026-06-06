@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       if (board) where.class = { some: { board: { name: board } } };
       if (classGrade) where.class = { some: { grade: Number(classGrade) } };
       const syllabi = await prisma.syllabus.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 });
-      syllabi.forEach(s => items.push({ id: s.id, type: 'syllabus', label: s.title || s.id, createdAt: s.createdAt, metadata: { status: s.status } }));
+      syllabi.forEach((s: any ) => items.push({ id: s.id, type: 'syllabus', label: s.title || s.id, createdAt: s.createdAt, metadata: { status: s.status } }));
     }
 
     // Chapters
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       const where: any = { lifecycle: 'active' };
       if (language) where.language = language;
       const chapters = await prisma.chapterDef.findMany({ where, include: { subject: true }, orderBy: { createdAt: 'desc' }, take: 200 });
-      chapters.forEach(c => items.push({ id: c.id, type: 'chapter', label: c.name, createdAt: c.createdAt, details: { subject: c.subject?.name }, metadata: { status: c.status } }));
+      chapters.forEach((c: any ) => items.push({ id: c.id, type: 'chapter', label: c.name, createdAt: c.createdAt, details: { subject: c.subject?.name }, metadata: { status: c.status } }));
     }
 
     // Topics
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       const where: any = { lifecycle: 'active' };
       if (language) where.language = language;
       const topics = await prisma.topicDef.findMany({ where, include: { chapter: { include: { subject: true } } }, orderBy: { createdAt: 'desc' }, take: 200 });
-      topics.forEach(t => items.push({ id: t.id, type: 'topic', label: t.name, createdAt: t.createdAt, details: { chapterName: t.chapter?.name, subject: t.chapter?.subject?.name }, metadata: { status: t.status } }));
+      topics.forEach((t: any ) => items.push({ id: t.id, type: 'topic', label: t.name, createdAt: t.createdAt, details: { chapterName: t.chapter?.name, subject: t.chapter?.subject?.name }, metadata: { status: t.status } }));
     }
 
     // Notes
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       const where: any = { lifecycle: 'active' };
       if (language) where.language = language;
       const notes = await prisma.topicNote.findMany({ where, include: { topic: true }, orderBy: { createdAt: 'desc' }, take: 200 });
-      notes.forEach(n => items.push({ id: n.id, type: 'note', label: n.title || n.id, createdAt: n.createdAt, details: { topicId: n.topicId }, metadata: { language: n.language, status: n.status } }));
+      notes.forEach((n: any ) => items.push({ id: n.id, type: 'note', label: n.title || n.id, createdAt: n.createdAt, details: { topicId: n.topicId }, metadata: { language: n.language, status: n.status } }));
     }
 
     // Tests
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       const where: any = { lifecycle: 'active' };
       if (language) where.language = language;
       const tests = await prisma.generatedTest.findMany({ where, include: { topic: true }, orderBy: { createdAt: 'desc' }, take: 200 });
-      tests.forEach(t => items.push({ id: t.id, type: 'test', label: t.title || t.id, createdAt: t.createdAt, details: { topicId: t.topicId }, metadata: { language: t.language, difficulty: t.difficulty, status: t.status } }));
+      tests.forEach((t: any ) => items.push({ id: t.id, type: 'test', label: t.title || t.id, createdAt: t.createdAt, details: { topicId: t.topicId }, metadata: { language: t.language, difficulty: t.difficulty, status: t.status } }));
     }
 
     const summary = {

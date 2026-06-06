@@ -27,7 +27,7 @@ export function NotesSearch() {
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
 
   // Derive dropdown data from cached hierarchy
-  const subjects = helpers.getSubjectsForGrade(profile?.board, profile?.grade);
+  const subjects = helpers.getSubjectsForGrade(profile?.board, profile?.grade != null ? Number(profile.grade) : null);
   const chapters = helpers.getChaptersForSubject(selectedSubjectId || null);
   const topics = helpers.getTopicsForChapter(selectedChapterId || null);
 

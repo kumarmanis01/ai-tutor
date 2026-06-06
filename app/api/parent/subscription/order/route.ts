@@ -34,7 +34,7 @@ function getRazorpayClient() {
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
-const VALID_PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual'];
+const VALID_PLAN_IDS: string[] = ['monthly', 'quarterly', 'annual', 'standard_monthly', 'standard_annual', 'family_monthly', 'family_annual', 'lite_monthly'];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();

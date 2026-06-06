@@ -47,17 +47,6 @@ function chunkText(text: string, chunkSize = 48): string[] {
   return out
 }
 
-export type TutorTurnRequest = {
-  sessionId: string
-  studentMessage: string
-  turnNumber: number
-  conceptId: string
-  subjectId: string
-  isCorrect?: boolean
-  questionId?: string
-  itemDifficulty?: number
-  messageId?: string
-}
 
 function parseBody(body: any): TutorTurnRequest | null {
   if (!body || typeof body !== 'object') return null
@@ -208,8 +197,8 @@ export async function POST(req: Request) {
             studentId: userId,
             state: nextState,
             studentMessage: parsed.studentMessage,
-            conceptId: parsed.conceptId,
-            subjectId: parsed.subjectId,
+            conceptId: parsed.conceptId!,
+            subjectId: parsed.subjectId!,
             messageId: parsed.messageId,
             isCorrect: parsed.isCorrect,
             questionId: parsed.questionId,

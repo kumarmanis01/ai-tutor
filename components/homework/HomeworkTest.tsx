@@ -202,6 +202,7 @@ export function HomeworkTest({
   const [gradedResults, setGradedResults] = useState<SubmitResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDoubtOpen, setIsDoubtOpen] = useState(false);
 
   const showResult = isAlreadyGraded || gradedResults !== null;
 
@@ -409,6 +410,8 @@ export function HomeworkTest({
         chapter={chapter}
         topicName={topicName}
         studentName={currentUser?.name ?? undefined}
+        isOpen={isDoubtOpen}
+        onClose={() => setIsDoubtOpen(false)}
       />
     </div>
   );

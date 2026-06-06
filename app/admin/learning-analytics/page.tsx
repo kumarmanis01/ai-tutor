@@ -41,11 +41,11 @@ async function fetchStats() {
   ])
 
   const durationsMs = sessions
-    .filter(s => s.completedAt !== null)
-    .map(s => s.completedAt!.getTime() - s.startedAt.getTime())
+    .filter((s: any ) => s.completedAt !== null)
+    .map((s: any ) => s.completedAt!.getTime() - s.startedAt.getTime())
   const avgSessionMs =
     durationsMs.length > 0
-      ? durationsMs.reduce((a, b) => a + b, 0) / durationsMs.length
+      ? durationsMs.reduce((a: any, b: any) => a + b, 0) / durationsMs.length
       : 0
 
   return {
@@ -65,7 +65,7 @@ async function fetchSubjectReadiness() {
 
   if (topicProgress.length === 0) return []
 
-  const topicIds = topicProgress.map(r => r.topicId)
+  const topicIds = topicProgress.map((r: any ) => r.topicId)
   const topics = await prisma.topicDef.findMany({
     where: { id: { in: topicIds } },
     select: {
@@ -80,7 +80,7 @@ async function fetchSubjectReadiness() {
     },
   }).catch(() => [])
 
-  const topicMap = new Map(topics.map(t => [t.id, t]))
+  const topicMap = new Map<string, any>(topics.map((t: any) => [t.id, t]))
 
   type SubjectAgg = { name: string; grade: number; totalMastery: number; count: number }
   const subjectAgg = new Map<string, SubjectAgg>()
@@ -121,7 +121,7 @@ async function fetchWeakTopics() {
 
   if (weak.length === 0) return []
 
-  const topicIds = weak.map(w => w.topicId)
+  const topicIds = weak.map((w: any ) => w.topicId)
   const topics = await prisma.topicDef.findMany({
     where: { id: { in: topicIds } },
     select: {
@@ -140,9 +140,9 @@ async function fetchWeakTopics() {
     },
   }).catch(() => [])
 
-  const topicMap = new Map(topics.map(t => [t.id, t]))
+  const topicMap = new Map<string, any>(topics.map((t: any) => [t.id, t]))
 
-  return weak.map(w => {
+  return weak.map((w: any ) => {
     const topic = topicMap.get(w.topicId)
     return {
       topicId: w.topicId,
@@ -286,7 +286,7 @@ export default async function LearningAnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {weakTopics.map(t => (
+                  {weakTopics.map((t: any ) => (
                     <tr key={t.topicId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                       <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
                         {t.topicName}

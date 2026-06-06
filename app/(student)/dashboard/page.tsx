@@ -379,7 +379,7 @@ export default async function StudentHomeDashboardPage() {
   type TodaysTopic = { subject: string; href: string; subjectId: string; topicName: string; chapter: string | null }
   const todaysTopics: TodaysTopic[] = (
     await Promise.all(
-      learningPlans.map(async (plan): Promise<TodaysTopic | null> => {
+      learningPlans.map(async (plan: any): Promise<TodaysTopic | null> => {
         const subjectInfo = subjects.find((s) => s.id === plan.subjectId)
 
         const inProgressItem = await prisma.learningPlanItem.findFirst({
@@ -431,7 +431,7 @@ export default async function StudentHomeDashboardPage() {
 
   // Supplement with subjects that completed diagnostics but have no learning plan yet.
   // This handles the case where plan generation failed or is still pending after a diagnostic.
-  const planSubjectSet = new Set(learningPlans.map((p) => p.subjectId))
+  const planSubjectSet = new Set(learningPlans.map((p: any) => p.subjectId))
   const unplannedTopics: TodaysTopic[] = (
     await Promise.all(
       readinessResults

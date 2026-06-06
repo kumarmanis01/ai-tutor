@@ -3,14 +3,18 @@ import { AdminActionType } from '@prisma/client'
 
 export type AuditEvent = {
   adminId?:      string | null          // who performed the action (null = system)
-  targetEntity:  string                 // required: 'User' | 'Worker' | 'HydrationJob' | etc.
-  targetId:      string                 // required: ID of the affected entity
-  action?:       AdminActionType | null // typed enum; null for system/non-admin events
+  actorId?:      string | null          // alias for adminId (legacy callers)
+  targetEntity?: string                 // 'User' | 'Worker' | 'HydrationJob' | etc.
+  entityType?:   string                 // alias for targetEntity (legacy callers)
+  targetId?:     string                 // ID of the affected entity
+  entityId?:     string | null          // alias for targetId (legacy callers)
+  action?:       AdminActionType | string | null // typed enum or legacy string; null for system events
   previousValue?: Record<string, unknown>
   newValue?:     Record<string, unknown>
   reason?:       string
-  ipAddress?:    string | null          // optional client IP for admin actions
-  details?:      Record<string, unknown> // legacy metadata / legacyAction for system events
+  ipAddress?:    string | null
+  details?:      Record<string, unknown>
+  metadata?:     Record<string, unknown> // alias for details (legacy callers)
 }
 
 /**
