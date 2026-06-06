@@ -15,6 +15,8 @@
  * - 2026-05-11T00:00:00Z | copilot | auto-link matching parent accounts using onboarding parent email/whatsapp contacts
  * - 2026-05-13T00:00:00Z | copilot | emit `STUDENT.SUBJECT_SELECTED` analytics when subjects are updated during onboarding (best-effort)
  * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
+ * - 2026-06-06T00:00:00Z | claude | do not downgrade already-verified under-13 accounts on resubmit;
+ *     derive accountStatus/requiresOtp from prior parent verification
  */
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';

@@ -4,13 +4,19 @@
  * - Deterministic Home Tutor Engine. Returns a single, rule-prioritised next action for the student. ZERO AI calls. Prisma only. Target latency: <150 ms.
  *
  * LINKED UNIT TEST:
- * - tests/unit/lib/homeEngine/getNextAction.spec.ts
+ * - tests/unit/lib/homeEngine/homeworkBlocker.test.ts
+ * - tests/unit/lib/homeEngine/loopBreaker.test.ts
+ * - tests/unit/lib/homeEngine/sessionResume.test.ts
+ * - tests/unit/lib/homeEngine/spacedRevision.test.ts
+ * - tests/unit/lib/homeEngine/p5Scoring.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | add P0 circuit breaker (consecutive homework_pending repeats);
+ *     fix linked-test path to real homeEngine specs
  * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
  * - 2026-02-21 | claude | created deterministic tutor engine per architectural spec
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper

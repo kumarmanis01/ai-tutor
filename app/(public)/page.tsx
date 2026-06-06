@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - Public landing page. Routes authenticated users onward: active + onboarding
+ *   complete -> /dashboard; logged in but not yet active -> /student/onboarding;
+ *   otherwise renders the marketing landing page.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/public/page.test.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | use raw getServerSession so mid-onboarding users route to
+ *     /student/onboarding instead of being stranded on the landing page; add standard header
+ */
+
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';

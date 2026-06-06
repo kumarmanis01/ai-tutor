@@ -26,6 +26,8 @@
  * - 2026-05-17T00:00:00Z | copilot | revamp dashboard UI: welcome banner, missions hero/row, pick-next,
  *                          stats row (week+level+leaderboard), exam readiness with chapter mastery
  * - 2026-05-18T00:00:00Z | copilot | fix: mark xpBySourceRaw as intentionally unused by prefixing with _ to satisfy ESLint
+ * - 2026-06-06T00:00:00Z | claude | add all_topics_complete revision hero fallback; bulk-fetch plan
+ *     items (IN_PROGRESS > current-week UPCOMING > fallback UPCOMING) to remove N+1
  */
 
 import type { Metadata } from 'next'

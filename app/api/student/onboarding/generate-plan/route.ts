@@ -13,6 +13,8 @@
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | AC-02: add belowMinimumHours warning to response
  * - 2026-05-13T00:00:00Z | copilot | emit learning path generated analytics after onboarding plan generation
+ * - 2026-06-06T00:00:00Z | claude | return skippedSubjects (reason: no_concepts | error) so client can
+ *     surface subjects with no seeded content
  */
 
 import { NextRequest, NextResponse } from 'next/server';

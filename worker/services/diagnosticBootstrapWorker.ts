@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - BullMQ worker that seeds baseline StudentConceptState from a diagnostic (or a
+ *   proactive onboarding pre-seed), then -- only for active accounts -- notifies the
+ *   parent and generates the initial learning plan.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/diagnosticBootstrapWorker.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | gate parent notify + plan gen on accountStatus; treat
+ *     bootstrap:<id> zero-answer sessions as proactive pre-seed (not partial abandon); add header
+ */
+
 import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'

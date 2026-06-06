@@ -15,6 +15,8 @@
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | add channel-aware verification and per-channel verified timestamps
  * - 2026-05-17T00:00:00Z | reviewer | add verifyCode rate limiting to prevent OTP brute-force
+ * - 2026-06-06T00:00:00Z | claude | reconcile accountStatus/parentVerifiedAt in alreadyVerified path
+ *     and invalidate session cache so verified users are not stuck pending
  */
 
 import { NextRequest, NextResponse } from 'next/server';

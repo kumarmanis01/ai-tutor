@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - GET /api/boards: list all boards with their classes (Redis-cached 1h).
+ * - POST /api/boards: create a board and invalidate the boards cache.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/boards/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | add 1h Redis cache to GET, invalidate on POST; add standard header
+ */
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertNoStringFilters } from "@/lib/guards/noStringFilters";

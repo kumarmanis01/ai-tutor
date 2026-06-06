@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - GET /api/hierarchy: canonical, ID-based, lifecycle-aware academic hierarchy
+ *   (Board -> Class -> Subject -> Chapter -> Topic) for UI selectors and admin
+ *   tools. Redis-cached 1h, keyed by boardId + include set.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/hierarchy/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | add 1h Redis cache keyed by boardId+include; add standard header
+ */
+
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from "next/server";

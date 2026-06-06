@@ -21,6 +21,7 @@
  * - 2026-04-15T00:30:00Z | copilot | fix(TEST): avoid long-running legacy prisma transaction by racing with timeout
  * - 2026-04-16T00:00:00Z | copilot | feat(F-STU-011): add copy-paste detection and include board chapter weight in prompts (AC-09, AC-07)
  * - 2026-05-20T00:00:00Z | copilot | migrate prisma.analyticsEvent.create -> emitServerAnalyticsEvent for safety_trigger event
+ * - 2026-06-06T00:00:00Z | claude | add explicit callback typing for recentMisconception rows (strict-mode)
  */
 
 import { prisma } from '@/lib/prisma'
