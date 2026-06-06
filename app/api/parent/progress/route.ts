@@ -159,7 +159,14 @@ export async function GET(req: Request) {
     // Per-subject readiness + mastery delta (sequential per-subject)
     const subjects: SubjectResult[] = []
     for (const sd of subjectDefs) {
-      const readiness = await computeReadinessScore(studentId, sd.id).catch(() => null)
+      const readiness = await computeReadinessScore(studentId, sd.id).catch((err) => {
+        logger.warn('[parent/progress] readiness compute failed', {
+          event: 'parent_progress_readiness_failed',
+          context: { studentId, subjectId: sd.id },
+          error: String((err as Error)?.message ?? err),
+        })
+        return null
+      })
       const readinessScore = readiness?.score ?? 0
 
       const examDate = examDateMap.get(sd.id) ?? null
