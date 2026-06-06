@@ -23,9 +23,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const session = await getServerSessionForHandlers();
   const userId = session?.user?.id as string | undefined;
-  
+
   if (!userId) {
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
   try {
