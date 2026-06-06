@@ -27,6 +27,19 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
     return
   }
 
+  // Gate parent-facing side effects on accountStatus.
+  // For under-13 students, accountStatus stays pending_parent_verification until
+  // the parent completes OTP. Notifying the parent that the diagnostic / plan
+  // is ready *before* they've even verified their email leaks intent and gives
+  // the impression the child is fully onboarded. We still run the bootstrap
+  // (so state is ready when activation happens) but skip parent notifications
+  // and plan generation when the account is not active.
+  const studentForGate = await prisma.user.findUnique({
+    where: { id: studentId },
+    select: { accountStatus: true },
+  }).catch(() => null)
+  const accountActive = (studentForGate as { accountStatus?: string } | null)?.accountStatus === 'active'
+
   try {
     let seeded = 0
     let skipped = 0
@@ -195,38 +208,45 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       subjectName = subjectDef?.name ?? 'your subject'
     }
 
-    // Notify parent: diagnostic complete
-    notifyParent(studentId, {
-      event: PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE,
-      data: {
-        subjectName,
-        placement: 'See dashboard for details',
-        dashboardUrl: DEFAULT_DASHBOARD_URL,
-      },
-    }).catch((err) =>
-      logger.warn('[diagnostic-bootstrap] parent diagnostic_complete notification failed', { studentId, error: String(err) }),
-    )
+    if (!accountActive) {
+      logger.info('[diagnostic-bootstrap] skipping parent notifications and plan generation -- account not active', {
+        studentId,
+        diagnosticSessionId,
+      })
+    } else {
+      // Notify parent: diagnostic complete
+      notifyParent(studentId, {
+        event: PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE,
+        data: {
+          subjectName,
+          placement: 'See dashboard for details',
+          dashboardUrl: DEFAULT_DASHBOARD_URL,
+        },
+      }).catch((err) =>
+        logger.warn('[diagnostic-bootstrap] parent diagnostic_complete notification failed', { studentId, error: String(err) }),
+      )
 
-    if (primarySubjectId) {
-      const planId = await generateLearningPlan(studentId, primarySubjectId)
-      if (planId) {
-        const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
-        logger.info('[diagnostic-bootstrap] learning plan generated', {
-          studentId,
-          planId,
-          itemCount,
-        })
+      if (primarySubjectId) {
+        const planId = await generateLearningPlan(studentId, primarySubjectId)
+        if (planId) {
+          const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
+          logger.info('[diagnostic-bootstrap] learning plan generated', {
+            studentId,
+            planId,
+            itemCount,
+          })
 
-        // Notify parent: learning plan generated
-        notifyParent(studentId, {
-          event: PARENT_NOTIF_EVENTS.PLAN_GENERATED,
-          data: {
-            subjectName,
-            dashboardUrl: DEFAULT_DASHBOARD_URL,
-          },
-        }).catch((err) =>
-          logger.warn('[diagnostic-bootstrap] parent plan_generated notification failed', { studentId, error: String(err) }),
-        )
+          // Notify parent: learning plan generated
+          notifyParent(studentId, {
+            event: PARENT_NOTIF_EVENTS.PLAN_GENERATED,
+            data: {
+              subjectName,
+              dashboardUrl: DEFAULT_DASHBOARD_URL,
+            },
+          }).catch((err) =>
+            logger.warn('[diagnostic-bootstrap] parent plan_generated notification failed', { studentId, error: String(err) }),
+          )
+        }
       }
     }
   } catch (err) {
