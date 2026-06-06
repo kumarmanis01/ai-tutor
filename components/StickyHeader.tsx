@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { useRouter, usePathname } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { normalizeToCode } from '@/components/LanguageSelector';
 import { logger } from '@/lib/logger';
@@ -59,24 +58,9 @@ const CODE_TO_PLAIN: Record<string, string> = {
 const HINDI_ENABLED = process.env.NEXT_PUBLIC_HINDI_ENABLED === 'true';
 
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const pathname = usePathname();
+  const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
   const [lang, setLang] = useState<string>('English');
-
-  // Auto-redirect authenticated users away from the public landing page.
-  // This fires when Google OAuth completes and the session arrives -- the user
-  // should not have to manually click "Go to Dashboard" after signing in.
-  useEffect(() => {
-    if (status !== 'authenticated' || !session) return;
-    // Only redirect from public pages -- don't interfere with authenticated routes
-    const publicPaths = ['/', '/auth/login', '/auth/get-started', '/pricing'];
-    const isPublicPage = publicPaths.some(p => pathname === p) || pathname.startsWith('/auth/');
-    if (!isPublicPage) return;
-    const dest = (session.user as any)?.onboardingComplete ? '/dashboard' : '/student/onboarding';
-    router.replace(dest);
-  }, [status, session, pathname, router]);
 
   useEffect(() => {
     const handleScroll = () => {
