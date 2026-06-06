@@ -8,6 +8,9 @@ export async function POST(
 ) {
   const { id } = await params;
   const session = await getServerSessionForHandlers();
+  const role = (session?.user as any)?.role ?? null;
+  if (!session) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (role !== 'admin') return Response.json({ error: 'forbidden' }, { status: 403 });
   // Resolve DB user id for audit; fall back to null when not resolvable.
   let adminId: string | null = null;
   try {

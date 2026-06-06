@@ -5,6 +5,11 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getServerSessionForHandlers();
+  const role = (session?.user as any)?.role ?? null;
+  if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
   const { id } = await params;
   const { reason } = await req.json()
 
@@ -13,8 +18,6 @@ export async function POST(
   })
 
   if (!chapter) return NextResponse.json({ error: "Not found" }, { status: 404 })
-
-  const session = await getServerSessionForHandlers();
   // Resolve canonical DB user id for audit safety; fall back to null
   let adminId: string | null = null;
   try {

@@ -9,6 +9,9 @@ export async function POST(
   const { id } = await params;
   // Resolve session identity to canonical DB user id for audit safety
   const session = await (await import('@/lib/session')).getServerSessionForHandlers();
+  const role = (session?.user as any)?.role ?? null;
+  if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   let adminId: string | null = null;
   try {
     if (session?.user?.id) {

@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { exec } from 'child_process';
 import { hostname } from 'os';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSessionForHandlers();
+    const role = (session?.user as any)?.role ?? null;
+    if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
     const body = await req.json();
     const id = body && body.id;
     if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });

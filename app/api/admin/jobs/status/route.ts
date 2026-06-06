@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { formatErrorForResponse } from '@/lib/errorResponse'
+import { getServerSessionForHandlers } from '@/lib/session'
 
 /**
  * GET /api/admin/jobs/status
@@ -9,6 +10,11 @@ import { formatErrorForResponse } from '@/lib/errorResponse'
  */
 export async function GET() {
   try {
+    const session = await getServerSessionForHandlers();
+    const role = (session?.user as any)?.role ?? null;
+    if (!session) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    if (role !== 'admin') return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+
     const execs = await prisma.executionJob.findMany({ orderBy: { updatedAt: 'desc' }, take: 20 })
 
     const jobs = await Promise.all(
