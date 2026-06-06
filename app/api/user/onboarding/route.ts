@@ -348,21 +348,25 @@ export async function POST(req: NextRequest) {
 
     const effectiveAge = updatedUser.age ?? age ?? null;
     const isMinor = typeof effectiveAge === 'number' && effectiveAge < DPDP_MINOR_AGE;
-    const nextAccountStatus = isMinor ? 'pending_parent_verification' : 'active';
+
+    // Read existing parent verification BEFORE deciding accountStatus so a resubmit
+    // of the onboarding form does not downgrade an already-active under-13 account
+    // back to pending_parent_verification. Once a parent has verified email or
+    // WhatsApp the account stays active across subsequent profile edits.
+    const verificationState = await prisma.user.findUnique({
+      where: { id: updatedUser.id },
+      select: { parentEmailVerifiedAt: true, parentWhatsappVerifiedAt: true },
+    });
+    const parentAlreadyVerified = !!(
+      verificationState?.parentEmailVerifiedAt || verificationState?.parentWhatsappVerifiedAt
+    );
+    const nextAccountStatus = isMinor && !parentAlreadyVerified ? 'pending_parent_verification' : 'active';
     await prisma.user.update({
       where: { id: updatedUser.id },
       data: { accountStatus: nextAccountStatus },
     });
 
-    const verificationState = await prisma.user.findUnique({
-      where: { id: updatedUser.id },
-      select: { parentEmailVerifiedAt: true, parentWhatsappVerifiedAt: true },
-    });
-    const requiresOtp = Boolean(
-      isMinor &&
-      !verificationState?.parentEmailVerifiedAt &&
-      !verificationState?.parentWhatsappVerifiedAt,
-    );
+    const requiresOtp = Boolean(isMinor && !parentAlreadyVerified);
 
     try {
       if (token) {

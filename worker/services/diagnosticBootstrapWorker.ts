@@ -89,7 +89,14 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
 
         const providedAnswersCount = answerByConcept.size
         const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10)
-        const isPartialAbandon = providedAnswersCount < minValid
+        // Distinguish a *proactive* pre-seed (enqueued from onboarding with a
+        // synthetic "bootstrap:<userId>" session id and zero answers) from a
+        // real diagnostic the student started and abandoned. The pre-seed case
+        // should use the no-answer baseline (0.3) instead of the abandon
+        // bonus (0.5), and should not log as partial_abandon.
+        const isProactiveBootstrap =
+          providedAnswersCount === 0 && diagnosticSessionId.startsWith('bootstrap:')
+        const isPartialAbandon = !isProactiveBootstrap && providedAnswersCount < minValid
         if (isPartialAbandon) {
           logger.info('[diagnostic-bootstrap] partial_abandon_detected', {
             jobId: job.id,
