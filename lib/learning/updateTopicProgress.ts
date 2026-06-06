@@ -1,4 +1,19 @@
 /**
+ * FILE OBJECTIVE:
+ * - Centralized service for all StudentTopicProgress mutations (mastery,
+ *   practiceCount, lastStudiedAt) with concurrency-safe atomic SQL, a dual-write
+ *   to StudentTopicMastery, and a fire-and-forget StudentConceptState sync.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/learning/updateTopicProgress.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | add standard header (brace-alignment + readiness-sync change)
+ *
  * Centralized service for all StudentTopicProgress mutations.
  *
  * EVERY system that updates topic mastery, practice count, or lastStudiedAt

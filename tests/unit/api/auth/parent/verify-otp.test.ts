@@ -108,6 +108,132 @@ describe('POST /api/auth/parent/verify-otp', () => {
     expect(body.error).toBe('WhatsApp verification is currently disabled')
   })
 
+  it('reconciles accountStatus/parentVerifiedAt when already verified but pending', async () => {
+    jest.resetModules()
+    jest.clearAllMocks()
+
+    // user.parentEmailVerifiedAt set, but parentVerifiedAt null AND session accountStatus
+    // is not 'active' -- the alreadyVerified branch must reconcile both and invalidate cache.
+    const mockUserUpdate = jest.fn().mockResolvedValue({ id: 'stu-1' })
+    const invalidateMock = jest.fn().mockResolvedValue(undefined)
+
+    jest.doMock('@/lib/session', () => ({
+      getServerSessionForHandlers: async () => ({
+        user: { id: 'stu-1', email: 'student@example.com', accountStatus: 'pending_parent_verification' },
+      }),
+    }))
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            parentEmail: 'parent@example.com',
+            parentWhatsappPhone: null,
+            parentEmailVerifiedAt: new Date(),
+            parentWhatsappVerifiedAt: null,
+            parentVerifiedAt: null,
+          }),
+          update: mockUserUpdate,
+        },
+        phoneOtp: { findFirst: jest.fn(), update: jest.fn() },
+        $transaction: jest.fn(async (ops: unknown[]) => ops),
+      },
+    }))
+    jest.doMock('@/lib/auth', () => ({ invalidateUserSessionCache: invalidateMock }))
+    jest.doMock('@/lib/parent/contactLinking', () => ({
+      resolveParentChannels: jest.fn(() => ({
+        normalizedEmail: 'parent@example.com',
+        resolvedWhatsappDigits: '',
+        hasEmail: true,
+        hasWhatsapp: false,
+      })),
+      channelOtpKeyByType: jest.fn(() => 'email:key'),
+      getParentChannelVerificationStatus: jest.fn(async () => ({
+        accountVerified: true,
+        email: { configured: true, verified: true, masked: 'p***t@example.com' },
+        whatsapp: { configured: false, verified: false, masked: null },
+      })),
+    }))
+
+    const route = await import('@/app/api/auth/parent/verify-otp/route')
+
+    const req = new Request('http://localhost/api/auth/parent/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: '123456', channel: 'email' }),
+    })
+
+    const res: any = await route.POST(req as any)
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.alreadyVerified).toBe(true)
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'stu-1' },
+        data: expect.objectContaining({
+          accountStatus: 'active',
+          parentVerifiedAt: expect.any(Date),
+        }),
+      }),
+    )
+    expect(invalidateMock).toHaveBeenCalledWith('student@example.com')
+  })
+
+  it('does NOT re-update when already verified AND already active', async () => {
+    jest.resetModules()
+    jest.clearAllMocks()
+
+    const mockUserUpdate = jest.fn().mockResolvedValue({ id: 'stu-1' })
+
+    jest.doMock('@/lib/session', () => ({
+      getServerSessionForHandlers: async () => ({
+        user: { id: 'stu-1', email: 'student@example.com', accountStatus: 'active' },
+      }),
+    }))
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            parentEmail: 'parent@example.com',
+            parentWhatsappPhone: null,
+            parentEmailVerifiedAt: new Date(),
+            parentWhatsappVerifiedAt: null,
+            parentVerifiedAt: new Date(), // already set -- nothing to reconcile
+          }),
+          update: mockUserUpdate,
+        },
+        phoneOtp: { findFirst: jest.fn(), update: jest.fn() },
+        $transaction: jest.fn(async (ops: unknown[]) => ops),
+      },
+    }))
+    jest.doMock('@/lib/auth', () => ({ invalidateUserSessionCache: jest.fn() }))
+    jest.doMock('@/lib/parent/contactLinking', () => ({
+      resolveParentChannels: jest.fn(() => ({
+        normalizedEmail: 'parent@example.com',
+        resolvedWhatsappDigits: '',
+        hasEmail: true,
+        hasWhatsapp: false,
+      })),
+      channelOtpKeyByType: jest.fn(() => 'email:key'),
+      getParentChannelVerificationStatus: jest.fn(async () => ({
+        accountVerified: true,
+        email: { configured: true, verified: true, masked: 'p***t@example.com' },
+        whatsapp: { configured: false, verified: false, masked: null },
+      })),
+    }))
+
+    const route = await import('@/app/api/auth/parent/verify-otp/route')
+    const req = new Request('http://localhost/api/auth/parent/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: '123456', channel: 'email' }),
+    })
+
+    const res: any = await route.POST(req as any)
+    expect(res.status).toBe(200)
+    expect(mockUserUpdate).not.toHaveBeenCalled()
+  })
+
   it('returns 429 when verifyCode rate limit is exceeded', async () => {
     jest.resetModules()
     jest.clearAllMocks()

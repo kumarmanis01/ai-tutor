@@ -13,10 +13,10 @@
  * - 2026-01-21T00:00:00Z | copilot-agent | created unit tests for outbox dispatcher
  */
 
-import { dispatchBatch } from '../../worker/outboxDispatcher';
+import { dispatchBatch } from '@/worker/outboxDispatcher';
 
 // Mock dependencies
-jest.mock('../../lib/prisma', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     outbox: {
       findMany: jest.fn(),
@@ -30,11 +30,12 @@ jest.mock('../../lib/prisma', () => ({
   },
 }));
 
-jest.mock('../../lib/redis', () => ({
+jest.mock('@/lib/redis', () => ({
   redisConnection: { host: 'localhost', port: 6379 },
+  getSharedConnection: jest.fn(() => ({ host: 'localhost', port: 6379 })),
 }));
 
-jest.mock('../../lib/logger', () => ({
+jest.mock('@/lib/logger', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
@@ -49,7 +50,7 @@ jest.mock('bullmq', () => ({
   })),
 }));
 
-import { prisma } from '../../lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 describe('outboxDispatcher', () => {
   beforeEach(() => {
@@ -166,6 +167,64 @@ describe('outboxDispatcher', () => {
           originalOutboxId: 'outbox-invalid',
         }),
       });
+    });
+
+    // ── meta.deliverAt scheduling (in-app, due-now semantics) ──────────────────
+    it('dispatches rows with no meta (deliverAt missing => due now)', async () => {
+      const mockRow = {
+        id: 'outbox-nometa',
+        payload: { type: 'SYLLABUS', payload: { jobId: 'hyd-1' } },
+        meta: null,
+        attempts: 0,
+        createdAt: new Date(),
+      };
+      (prisma.outbox.findMany as jest.Mock).mockResolvedValue([mockRow]);
+      (prisma.outbox.update as jest.Mock).mockResolvedValue({});
+
+      const count = await dispatchBatch();
+
+      expect(count).toBe(1);
+      expect(prisma.outbox.update).toHaveBeenCalledWith({
+        where: { id: 'outbox-nometa' },
+        data: { sentAt: expect.any(Date), attempts: 1 },
+      });
+    });
+
+    it('dispatches rows whose deliverAt is in the past (due now)', async () => {
+      const mockRow = {
+        id: 'outbox-past',
+        payload: { type: 'SYLLABUS', payload: { jobId: 'hyd-2' } },
+        meta: { deliverAt: new Date(Date.now() - 60_000).toISOString() },
+        attempts: 0,
+        createdAt: new Date(),
+      };
+      (prisma.outbox.findMany as jest.Mock).mockResolvedValue([mockRow]);
+      (prisma.outbox.update as jest.Mock).mockResolvedValue({});
+
+      const count = await dispatchBatch();
+
+      expect(count).toBe(1);
+      expect(prisma.outbox.update).toHaveBeenCalledWith({
+        where: { id: 'outbox-past' },
+        data: { sentAt: expect.any(Date), attempts: 1 },
+      });
+    });
+
+    it('skips rows whose deliverAt is in the future (not due yet)', async () => {
+      const mockRow = {
+        id: 'outbox-future',
+        payload: { type: 'SYLLABUS', payload: { jobId: 'hyd-3' } },
+        meta: { deliverAt: new Date(Date.now() + 3_600_000).toISOString() },
+        attempts: 0,
+        createdAt: new Date(),
+      };
+      (prisma.outbox.findMany as jest.Mock).mockResolvedValue([mockRow]);
+      (prisma.outbox.update as jest.Mock).mockResolvedValue({});
+
+      const count = await dispatchBatch();
+
+      expect(count).toBe(0);
+      expect(prisma.outbox.update).not.toHaveBeenCalled();
     });
   });
 });

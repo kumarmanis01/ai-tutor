@@ -15,6 +15,8 @@
  * EDIT LOG:
  * - 2026-05-12T00:00:00Z | copilot | add channel-aware verification and per-channel verified timestamps
  * - 2026-05-17T00:00:00Z | reviewer | add verifyCode rate limiting to prevent OTP brute-force
+ * - 2026-06-06T00:00:00Z | claude | reconcile accountStatus/parentVerifiedAt in alreadyVerified path
+ *     and invalidate session cache so verified users are not stuck pending
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -76,6 +78,39 @@ export async function POST(req: NextRequest) {
     // Only email channel supported: check email-verified flag
     const alreadyVerified = !!user.parentEmailVerifiedAt;
     if (alreadyVerified) {
+      // Reconcile accountStatus / parentVerifiedAt -- these can drift out of sync with
+      // parentEmailVerifiedAt if a previous verify-otp call partially succeeded or if
+      // parentEmailVerifiedAt was set by another code path that didn't activate the
+      // account. Without this, the student stays pending_parent_verification forever
+      // and gets bounced back to onboarding every time they sign in.
+      const needsActivation = (session?.user as { accountStatus?: string } | undefined)?.accountStatus !== 'active' || !user.parentVerifiedAt;
+      if (needsActivation) {
+        try {
+          await prisma.user.update({
+            where: { id: studentId },
+            data: {
+              accountStatus: 'active',
+              ...(user.parentVerifiedAt ? {} : { parentVerifiedAt: new Date() }),
+            },
+          });
+          try {
+            await invalidateUserSessionCache((session?.user as any)?.email);
+          } catch (e) {
+            logger.warn('parent.verify-otp: cache invalidation failed (alreadyVerified path)', {
+              className: 'api.auth.parent.verify-otp',
+              methodName: 'POST',
+              error: String(e),
+            });
+          }
+        } catch (e) {
+          logger.warn('parent.verify-otp: account reconciliation failed', {
+            className: 'api.auth.parent.verify-otp',
+            methodName: 'POST',
+            studentId,
+            error: String(e),
+          });
+        }
+      }
       const verification = await getParentChannelVerificationStatus({
         prisma,
         studentId,

@@ -1,4 +1,33 @@
+/**
+ * FILE OBJECTIVE:
+ * - Read-side service for admin safety-event dashboards: list unresolved events
+ *   (severity-ranked) and paginated event history with resolution metadata.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/services/admin/safetyEvents.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | add SafetyEventRow type for typed sort/map callbacks; add standard header
+ */
+
 import { prisma } from '@/lib/prisma'
+
+type SafetyEventRow = {
+  id: string
+  triggerType: string
+  sessionId: string | null
+  turnId: string | null
+  studentId: string
+  severity: string | null
+  inputPreview: string | null
+  createdAt: Date
+  resolvedAt: Date | null
+  resolution: string | null
+}
 
 export type SafetyEventView = {
   id: string
@@ -41,20 +70,20 @@ export async function listUnresolvedSafetyEvents(opts?: { limit?: number }): Pro
     },
   })
 
-  rows.sort((a, b) => {
+  rows.sort((a: SafetyEventRow, b: SafetyEventRow) => {
     const ar = severityRank[String(a.severity ?? '').toUpperCase()] ?? 0
     const br = severityRank[String(b.severity ?? '').toUpperCase()] ?? 0
     if (ar !== br) return br - ar
     return b.createdAt.getTime() - a.createdAt.getTime()
   })
 
-  return rows.map((r) => ({
+  return rows.map((r: SafetyEventRow) => ({
     id: r.id,
     triggerType: r.triggerType,
     sessionId: r.sessionId ?? null,
     turnId: r.turnId ?? null,
     studentId: r.studentId,
-    severity: r.severity,
+    severity: r.severity ?? 'UNKNOWN',
     inputPreview: r.inputPreview ?? null,
     createdAt: r.createdAt.toISOString(),
     resolvedAt: r.resolvedAt ? r.resolvedAt.toISOString() : null,
@@ -113,7 +142,7 @@ export async function listSafetyEvents(opts: {
 
   return {
     total,
-    events: rows.map((r) => ({
+    events: rows.map((r: SafetyEventRow) => ({
       id: r.id,
       triggerType: r.triggerType,
       sessionId: r.sessionId ?? null,

@@ -15,6 +15,8 @@
  * - 2026-05-11T00:00:00Z | copilot | auto-link matching parent accounts using onboarding parent email/whatsapp contacts
  * - 2026-05-13T00:00:00Z | copilot | emit `STUDENT.SUBJECT_SELECTED` analytics when subjects are updated during onboarding (best-effort)
  * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
+ * - 2026-06-06T00:00:00Z | claude | do not downgrade already-verified under-13 accounts on resubmit;
+ *     derive accountStatus/requiresOtp from prior parent verification
  */
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
@@ -348,21 +350,25 @@ export async function POST(req: NextRequest) {
 
     const effectiveAge = updatedUser.age ?? age ?? null;
     const isMinor = typeof effectiveAge === 'number' && effectiveAge < DPDP_MINOR_AGE;
-    const nextAccountStatus = isMinor ? 'pending_parent_verification' : 'active';
+
+    // Read existing parent verification BEFORE deciding accountStatus so a resubmit
+    // of the onboarding form does not downgrade an already-active under-13 account
+    // back to pending_parent_verification. Once a parent has verified email or
+    // WhatsApp the account stays active across subsequent profile edits.
+    const verificationState = await prisma.user.findUnique({
+      where: { id: updatedUser.id },
+      select: { parentEmailVerifiedAt: true, parentWhatsappVerifiedAt: true },
+    });
+    const parentAlreadyVerified = !!(
+      verificationState?.parentEmailVerifiedAt || verificationState?.parentWhatsappVerifiedAt
+    );
+    const nextAccountStatus = isMinor && !parentAlreadyVerified ? 'pending_parent_verification' : 'active';
     await prisma.user.update({
       where: { id: updatedUser.id },
       data: { accountStatus: nextAccountStatus },
     });
 
-    const verificationState = await prisma.user.findUnique({
-      where: { id: updatedUser.id },
-      select: { parentEmailVerifiedAt: true, parentWhatsappVerifiedAt: true },
-    });
-    const requiresOtp = Boolean(
-      isMinor &&
-      !verificationState?.parentEmailVerifiedAt &&
-      !verificationState?.parentWhatsappVerifiedAt,
-    );
+    const requiresOtp = Boolean(isMinor && !parentAlreadyVerified);
 
     try {
       if (token) {
