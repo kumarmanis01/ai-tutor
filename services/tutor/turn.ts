@@ -549,7 +549,7 @@ export async function runTutorOrchestrator(args: {
         take: 3,
         select: { misconception: { select: { name: true } } },
       })
-      recentMisconceptionNames = recentRows.map((r) => r.misconception.name)
+      recentMisconceptionNames = recentRows.map((r: { misconception: { name: string } }) => r.misconception.name)
     } catch (err) {
       logger.warn('studentMisconception.load.failed', {
         studentId,

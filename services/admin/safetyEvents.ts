@@ -1,5 +1,18 @@
 import { prisma } from '@/lib/prisma'
 
+type SafetyEventRow = {
+  id: string
+  triggerType: string
+  sessionId: string | null
+  turnId: string | null
+  studentId: string
+  severity: string | null
+  inputPreview: string | null
+  createdAt: Date
+  resolvedAt: Date | null
+  resolution: string | null
+}
+
 export type SafetyEventView = {
   id: string
   triggerType: string
@@ -41,14 +54,14 @@ export async function listUnresolvedSafetyEvents(opts?: { limit?: number }): Pro
     },
   })
 
-  rows.sort((a, b) => {
+  rows.sort((a: SafetyEventRow, b: SafetyEventRow) => {
     const ar = severityRank[String(a.severity ?? '').toUpperCase()] ?? 0
     const br = severityRank[String(b.severity ?? '').toUpperCase()] ?? 0
     if (ar !== br) return br - ar
     return b.createdAt.getTime() - a.createdAt.getTime()
   })
 
-  return rows.map((r) => ({
+  return rows.map((r: SafetyEventRow) => ({
     id: r.id,
     triggerType: r.triggerType,
     sessionId: r.sessionId ?? null,
@@ -113,7 +126,7 @@ export async function listSafetyEvents(opts: {
 
   return {
     total,
-    events: rows.map((r) => ({
+    events: rows.map((r: SafetyEventRow) => ({
       id: r.id,
       triggerType: r.triggerType,
       sessionId: r.sessionId ?? null,
