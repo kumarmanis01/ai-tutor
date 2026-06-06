@@ -84,4 +84,83 @@ describe('POST /api/student/onboarding/generate-plan', () => {
     expect(res.status).toBe(401)
     expect(emitMock).not.toHaveBeenCalled()
   })
+
+  it('returns skippedSubjects with reason=no_concepts when generateLearningPlan returns null', async () => {
+    const prismaMock = {
+      studentLearningProfile: {
+        findUnique: jest.fn().mockResolvedValue({ dailyTargetMin: 30 }),
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+      user: { findUnique: jest.fn().mockResolvedValue({ subjects: ['English'], board: 'CBSE', grade: '5' }) },
+      subjectDef: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'subject-en', slug: 'english', name: 'English' }]),
+      },
+      topicDef: { findMany: jest.fn().mockResolvedValue([]) },
+      question: { count: jest.fn().mockResolvedValue(0) },
+      generatedQuestion: { count: jest.fn().mockResolvedValue(0) },
+    }
+
+    jest.doMock('@/lib/session', () => ({
+      getServerSessionForHandlers: jest.fn().mockResolvedValue({ user: { id: 'student-2' } }),
+    }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/ai/learningPlan', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: jest.fn() }))
+    jest.doMock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/errorResponse', () => ({ formatErrorForResponse: jest.fn().mockReturnValue('error') }))
+
+    const { POST } = await import('@/app/api/student/onboarding/generate-plan/route')
+    const res = await POST(new Request('http://localhost/api/student/onboarding/generate-plan', {
+      method: 'POST',
+      body: JSON.stringify({ studyDaysPerWeek: 5 }),
+      headers: { 'content-type': 'application/json' },
+    }) as any)
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.firstSubjectId).toBeNull()
+    expect(body.skippedSubjects).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'subject-en', reason: 'no_concepts' })]),
+    )
+  })
+
+  it('returns skippedSubjects with reason=error when generateLearningPlan throws', async () => {
+    const prismaMock = {
+      studentLearningProfile: {
+        findUnique: jest.fn().mockResolvedValue({ dailyTargetMin: 30 }),
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+      user: { findUnique: jest.fn().mockResolvedValue({ subjects: ['Math'], board: 'CBSE', grade: '5' }) },
+      subjectDef: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'subject-math', slug: 'math', name: 'Math' }]),
+      },
+      topicDef: { findMany: jest.fn().mockResolvedValue([]) },
+      question: { count: jest.fn().mockResolvedValue(0) },
+      generatedQuestion: { count: jest.fn().mockResolvedValue(0) },
+    }
+
+    jest.doMock('@/lib/session', () => ({
+      getServerSessionForHandlers: jest.fn().mockResolvedValue({ user: { id: 'student-3' } }),
+    }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/ai/learningPlan', () => ({
+      generateLearningPlan: jest.fn().mockRejectedValue(new Error('boom')),
+    }))
+    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: jest.fn() }))
+    jest.doMock('@/lib/logger', () => ({ logger: { logAPI: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/errorResponse', () => ({ formatErrorForResponse: jest.fn().mockReturnValue('error') }))
+
+    const { POST } = await import('@/app/api/student/onboarding/generate-plan/route')
+    const res = await POST(new Request('http://localhost/api/student/onboarding/generate-plan', {
+      method: 'POST',
+      body: JSON.stringify({ studyDaysPerWeek: 5 }),
+      headers: { 'content-type': 'application/json' },
+    }) as any)
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.skippedSubjects).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'subject-math', reason: 'error' })]),
+    )
+  })
 })
