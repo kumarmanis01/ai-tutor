@@ -117,15 +117,31 @@ export async function POST(req: NextRequest) {
 
     // 3. Generate a LearningPlan for each subject (fire sequentially to avoid overload)
     let firstSubjectId: string | null = null;
+    const skippedSubjects: { id: string; slug?: string; reason: 'no_concepts' | 'error' }[] = [];
     for (const subj of subjectDefs) {
       try {
-        await generateLearningPlan(userId, subj.id, {
+        const planId = await generateLearningPlan(userId, subj.id, {
           examDate: examDate ?? undefined,
           weeklyGoal: studyDaysPerWeek,
         });
+        if (!planId) {
+          // generateLearningPlan returns null when no concepts are seeded for the subject.
+          // Surface to caller so the client can show a "this subject isn't ready yet" notice
+          // instead of leaving the student on a partial-onboarding screen with no feedback.
+          skippedSubjects.push({ id: subj.id, slug: (subj as any).slug, reason: 'no_concepts' });
+          logger.warn('[generate-plan] subject skipped -- no concepts seeded', {
+            className: 'GeneratePlanAPI',
+            methodName: 'POST',
+            studentId: userId,
+            subjectId: subj.id,
+            slug: (subj as any).slug,
+          });
+          continue;
+        }
         if (!firstSubjectId) firstSubjectId = subj.id;
       } catch (planErr) {
         // Non-fatal: log and continue. Student can still use the app.
+        skippedSubjects.push({ id: subj.id, slug: (subj as any).slug, reason: 'error' });
         logger.warn('generateLearningPlan failed for subject', {
           className: 'GeneratePlanAPI',
           methodName: 'POST',
@@ -203,7 +219,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({ ok: true, firstSubjectId, diagnosticReady, belowMinimumHours, weeklyMinutes });
+    const res = NextResponse.json({ ok: true, firstSubjectId, diagnosticReady, belowMinimumHours, weeklyMinutes, skippedSubjects });
     logger.logAPI(req, res, { className: 'GeneratePlanAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {

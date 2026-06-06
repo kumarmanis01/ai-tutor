@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { requireActiveSession } from '@/lib/auth';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import LandingPageInteractive from './landing-page/components/LandingPageInteractive';
 
 export const metadata: Metadata = {
@@ -10,13 +11,24 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const session = await requireActiveSession();
-  // Only redirect to dashboard when the user has a fully active session
-  // and has completed onboarding. Keep the landing page session-agnostic
-  // for users who are mid-onboarding so the onboarding modal does not
-  // render on the public landing page.
-  if (session && (session.user as any)?.onboardingComplete) {
-    redirect('/dashboard');
+  // Use raw getServerSession (not requireActiveSession) so we can detect
+  // mid-onboarding users whose accountStatus is still pending_*. Those users
+  // have a valid JWT but requireActiveSession returns null for them, which
+  // previously left them stuck on the landing page after Google sign-in.
+  const session = (await getServerSession(authOptions)) as
+    | { user?: { onboardingComplete?: boolean; accountStatus?: string } }
+    | null;
+
+  if (session?.user) {
+    const onboardingComplete = !!session.user.onboardingComplete;
+    const accountStatus = session.user.accountStatus ?? 'active';
+    if (accountStatus === 'active' && onboardingComplete) {
+      redirect('/dashboard');
+    }
+    // Logged in but not yet active -- send to onboarding so they finish the flow
+    // instead of bouncing on the public landing page.
+    redirect('/student/onboarding');
   }
+
   return <LandingPageInteractive />;
 }

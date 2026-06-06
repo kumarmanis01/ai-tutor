@@ -310,6 +310,25 @@ export default async function StudentHomeDashboardPage() {
       due: `Due tomorrow · 10:00`,
       href: `/homework/${action.assignmentId}`,
     }
+  } else if (action?.ruleId === 'all_topics_complete') {
+    // All topics attempted -- send the student to the progress page to pick
+    // a revision focus rather than leaving the hero blank.
+    const fallbackSubject = subjects[0]
+    if (fallbackSubject) {
+      heroMission = {
+        id: `revision-${fallbackSubject.id}`,
+        subjectId: fallbackSubject.id,
+        subjectName: fallbackSubject.name,
+        kind: 'Practice' as MissionKind,
+        title: 'Revise what you have covered',
+        chapter: undefined,
+        estimatedMins: 20,
+        xp: 40,
+        state: 'not_started' as MissionState,
+        priority: true,
+        href: `/student/progress/${encodeURIComponent(fallbackSubject.id)}`,
+      }
+    }
   } else if (action?.topicId) {
     const firstConcept = await prisma.concept.findFirst({
       where: { topicId: action.topicId, isSuspended: false },
