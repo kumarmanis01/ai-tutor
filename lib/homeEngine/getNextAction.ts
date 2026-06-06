@@ -83,30 +83,53 @@ const ALL_RULE_IDS: string[] = [
 const recentDecisions: Map<string, string[]> = new Map();
 const RECENT_DECISIONS_CAP = 5;
 
-// Circuit breaker: tracks how many consecutive times a (studentId, ruleId, topicId)
+// Circuit breaker: tracks how many *consecutive* times a (studentId, ruleId, topicId)
 // tuple has been the top decision without the student making progress. When the same
 // homework_pending assignment fires LOOP_BREAK_THRESHOLD times in a row, the circuit
 // opens and the engine skips P0 for that student until they make progress or the
 // assignment is completed/overdue window expires.
 // Maps `${studentId}:${ruleId}:${topicId}` -> consecutive hit count.
 const loopBreaker: Map<string, number> = new Map();
+// Tracks the last loop-eligible decision key seen per `${studentId}:${ruleId}` so we
+// can distinguish a genuine consecutive repeat from an interleaved different decision.
+const lastLoopKey: Map<string, string> = new Map();
 const LOOP_BREAK_THRESHOLD = 3;
 const LOOP_BREAK_RULES = new Set(['homework_pending']); // only block rules that can hard-gate
 
+function loopKey(studentId: string, ruleId: string, topicId: string | null): string {
+  return `${studentId}:${ruleId}:${topicId ?? 'null'}`;
+}
+
 function isLoopBroken(studentId: string, ruleId: string, topicId: string | null): boolean {
   if (!LOOP_BREAK_RULES.has(ruleId)) return false;
-  const key = `${studentId}:${ruleId}:${topicId ?? 'null'}`;
-  return (loopBreaker.get(key) ?? 0) >= LOOP_BREAK_THRESHOLD;
+  return (loopBreaker.get(loopKey(studentId, ruleId, topicId)) ?? 0) >= LOOP_BREAK_THRESHOLD;
 }
 
+// Record a hit, counting only *consecutive* repeats of the same (ruleId, topicId).
+// If the previous loop-eligible decision for this student+rule was a different topic,
+// reset that prior key's count and start the new key at 1.
 function recordLoopHit(studentId: string, ruleId: string, topicId: string | null): void {
-  const key = `${studentId}:${ruleId}:${topicId ?? 'null'}`;
-  loopBreaker.set(key, (loopBreaker.get(key) ?? 0) + 1);
+  const studentRule = `${studentId}:${ruleId}`;
+  const key = loopKey(studentId, ruleId, topicId);
+  const prevKey = lastLoopKey.get(studentRule);
+  if (prevKey && prevKey !== key) {
+    loopBreaker.delete(prevKey);
+    loopBreaker.set(key, 1);
+  } else {
+    loopBreaker.set(key, (loopBreaker.get(key) ?? 0) + 1);
+  }
+  lastLoopKey.set(studentRule, key);
 }
 
-function clearLoopHit(studentId: string, ruleId: string, topicId: string | null): void {
-  const key = `${studentId}:${ruleId}:${topicId ?? 'null'}`;
-  loopBreaker.delete(key);
+// Clear all consecutive-hit state for a student+rule (called when the rule no longer
+// fires, e.g. homework resolved). Clears every topicId key, not just one, so the
+// circuit re-arms cleanly for the next pending assignment.
+function clearLoopHits(studentId: string, ruleId: string): void {
+  const prefix = `${studentId}:${ruleId}:`;
+  for (const key of loopBreaker.keys()) {
+    if (key.startsWith(prefix)) loopBreaker.delete(key);
+  }
+  lastLoopKey.delete(`${studentId}:${ruleId}`);
 }
 
 // ─── Public types ────────────────────────────────────────────────────────────
@@ -732,7 +755,7 @@ export async function getNextAction(
   } else {
     // Assignment resolved -- clear any open circuit for this student so it
     // re-arms correctly for the next pending assignment.
-    clearLoopHit(studentId, 'homework_pending', null);
+    clearLoopHits(studentId, 'homework_pending');
   }
 
   // ── P1 -- Resume session ───────────────────────────────────────────────────────

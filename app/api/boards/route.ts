@@ -58,7 +58,13 @@ export async function POST(req: Request) {
     // Invalidate the cache so the new board appears on the next GET.
     const redis = getRedis?.();
     if (redis) {
-      try { await redis.del(BOARDS_CACHE_KEY); } catch { /* best-effort */ }
+      try {
+        await redis.del(BOARDS_CACHE_KEY);
+      } catch (cacheErr) {
+        // Staleness here is user-visible (new board missing until TTL expiry),
+        // so surface it for operational diagnosis rather than swallowing.
+        logger.warn('POST /api/boards cache invalidation failed', { err: String(cacheErr) });
+      }
     }
     return NextResponse.json(board);
   } catch (err) {

@@ -13,10 +13,11 @@
  * EDIT LOG:
  * - 2026-01-21T00:00:00Z | copilot-agent | created as worker-integrated outbox dispatcher
  * - 2026-03-07T00:00:00Z | RISK-04 | dead-letter queue, MAX_ATTEMPTS, poll 5s
+ * - 2026-06-06T00:00:00Z | claude | move meta.deliverAt scheduling check in-app (DB JSON-path
+ *     filter excluded rows with missing/null deliverAt and stalled hydration); drop per-row skip log
  */
 
 import { Queue } from 'bullmq';
-import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSharedConnection } from '@/lib/redis';
 import { logger } from '@/lib/logger';
@@ -75,19 +76,17 @@ async function moveToDeadLetter(
 }
 
 async function dispatchBatch(): Promise<number> {
-  // Find oldest unsent outbox rows that are due now.
-  // Rows with a future meta.deliverAt are excluded at the DB layer so they
-  // never reach the application -- eliminates the "skipping scheduled row"
-  // log spam (~700 lines/hour) and the wasted round-trips fetching future rows.
-  const now = new Date().toISOString();
+  // Find oldest unsent outbox rows.
+  //
+  // NOTE: scheduling (meta.deliverAt) is filtered in-app below, not in the DB
+  // query. A DB-level JSON-path filter cannot cleanly express "deliverAt is
+  // missing OR null OR <= now" because meta is optional (Json?) and the vast
+  // majority of producers omit deliverAt entirely -- a path filter would
+  // exclude all of those rows and stall content hydration. The original log
+  // spam this once tried to remove is addressed by simply not logging the
+  // per-row skip (the skip itself is cheap).
   const rows = await prisma.outbox.findMany({
-    where: {
-      sentAt: null,
-      OR: [
-        { meta: { path: ['deliverAt'], equals: Prisma.JsonNull } },
-        { meta: { path: ['deliverAt'], lte: now } },
-      ],
-    },
+    where: { sentAt: null },
     orderBy: { createdAt: 'asc' },
     take: BATCH_SIZE,
   });
@@ -96,10 +95,21 @@ async function dispatchBatch(): Promise<number> {
     return 0;
   }
 
+  const nowMs = Date.now();
   let dispatched = 0;
   const q = getQueue();
 
   for (const row of rows) {
+    // Skip rows scheduled for future delivery. Missing/null deliverAt = due now.
+    try {
+      const deliverAt = (row.meta as { deliverAt?: string } | null)?.deliverAt;
+      if (deliverAt && new Date(deliverAt).getTime() > nowMs) {
+        continue;
+      }
+    } catch {
+      // Non-fatal: malformed meta falls through and is attempted now.
+    }
+
     // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
       await moveToDeadLetter(row, 'max_attempts_exceeded');

@@ -34,11 +34,22 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
   // the impression the child is fully onboarded. We still run the bootstrap
   // (so state is ready when activation happens) but skip parent notifications
   // and plan generation when the account is not active.
-  const studentForGate = await prisma.user.findUnique({
-    where: { id: studentId },
-    select: { accountStatus: true },
-  }).catch(() => null)
-  const accountActive = (studentForGate as { accountStatus?: string } | null)?.accountStatus === 'active'
+  let accountActive = false
+  try {
+    const studentForGate = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { accountStatus: true },
+    })
+    accountActive = (studentForGate as { accountStatus?: string } | null)?.accountStatus === 'active'
+  } catch (gateErr) {
+    // Best-effort gate: any failure (including a partial prisma mock where
+    // prisma.user is undefined) degrades safely to "not active", which skips
+    // parent-facing side effects rather than crashing the whole job.
+    logger.warn('[diagnostic-bootstrap] accountStatus gate lookup failed; treating as inactive', {
+      studentId,
+      error: String((gateErr as { message?: string } | null)?.message ?? gateErr),
+    })
+  }
 
   try {
     let seeded = 0

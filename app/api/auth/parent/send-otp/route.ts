@@ -21,7 +21,7 @@
  * - 2026-05-05 | staff-engineer | replace SMS with email OTP (no SMS policy)
  * - 2026-05-05 | staff-engineer | send to all available channels (email + WhatsApp)
  * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
- * - 2026-06-06 | fix | restore missing imports (NextRequest, NextResponse, prisma, crypto, sendWhatsAppSafe);
+ * - 2026-06-06T00:00:00Z | claude | restore missing imports (NextRequest, NextResponse, prisma, crypto, sendWhatsAppSafe);
  *                       remove duplicate formatErrorForResponse import and stray closing braces
  */
 
