@@ -128,9 +128,8 @@ export async function GET(req: NextRequest) {
 
     // Cache is best-effort; fall back to live query when Redis is unavailable.
     try {
-      const redis = getRedis()
-    if (!redis) return NextResponse.json({ error: 'Cache unavailable' }, { status: 503 });
-      const cached = await redis.get(cacheKey);
+      const redis = getRedis();
+      const cached = redis ? await redis.get(cacheKey) : null;
       if (cached) {
         const parsed = JSON.parse(cached) as ParentDashboardResponse;
         const response = NextResponse.json(parsed);
@@ -335,9 +334,10 @@ export async function GET(req: NextRequest) {
 
     // Best-effort cache set
     try {
-      const redis = getRedis()
-    if (!redis) return NextResponse.json({ error: 'Cache unavailable' }, { status: 503 });
-      await redis.set(cacheKey, JSON.stringify(payload), 'EX', CACHE_TTL_SECONDS);
+      const redis = getRedis();
+      if (redis) {
+        await redis.set(cacheKey, JSON.stringify(payload), 'EX', CACHE_TTL_SECONDS);
+      }
     } catch {
       // ignore cache errors
     }

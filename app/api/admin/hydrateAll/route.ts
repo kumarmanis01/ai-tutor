@@ -514,7 +514,7 @@ export async function POST(request: NextRequest) {
       // Create Outbox entry for transactional queueing
       await tx.outbox.create({
         data: {
-          queue: 'content-hydration',
+          queue: CONTENT_HYDRATION_QUEUE,
           payload: {
             type: 'SYLLABUS',
             payload: { jobId: rootJob.id },

@@ -51,7 +51,7 @@ export async function POST(_req: Request) {
     const jobTypeName = String(job.jobType).toUpperCase()
     await prisma.outbox.create({
       data: {
-        queue: 'content-hydration',
+        queue: CONTENT_HYDRATION_QUEUE,
         payload: { type: jobTypeName, payload: { jobId: job.id } },
         meta: { hydrationJobId: job.id, source: 'unstick-all' },
       },

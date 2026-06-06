@@ -35,7 +35,7 @@ export interface PromptContext {
   learningStyle: LearningStyle | null
   recentMisconceptions: string[] // concept names, max 3
   masteryBrief: string // e.g. "strong in algebra, weak in geometry"
-  emotionalState: 'NEUTRAL' | 'ENGAGED' | 'CONFUSED' | 'FRUSTRATED' | 'DISTRESSED' | 'DISTRESSED'
+  emotionalState: 'NEUTRAL' | 'ENGAGED' | 'CONFUSED' | 'FRUSTRATED' | 'DISTRESSED'
 
   // SESSION_STATE layer inputs
   stage: TutorStage
