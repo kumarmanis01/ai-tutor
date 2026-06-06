@@ -69,10 +69,16 @@ Return only the 2 sentences, no JSON, no preamble.`
     const result = await callLLM({
       prompt,
       model: process.env.MODEL_SMALL || 'gpt-4o-mini',
-      meta: { promptType: 'parent_digest_narrative', childName },
+      meta: { promptType: 'parent_digest_narrative' },
+      timeoutMs: 5000,
     })
     return result.content?.trim() ?? ''
-  } catch {
+  } catch (err) {
+    logger.warn('weeklyDigest.narrative_failed', {
+      event: 'weeklyDigest.narrative_failed',
+      context: { sessionsCount, hasTopSubject: !!topSubject },
+      error: String(err),
+    })
     return ''
   }
 }
