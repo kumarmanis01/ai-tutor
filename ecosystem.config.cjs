@@ -94,7 +94,7 @@ module.exports = {
       time: true,
 
       autorestart: true,
-      max_restarts: 10,
+      max_restarts: 20,
       min_uptime: '10s',
       restart_delay: 3000,
       max_memory_restart: '512M',
@@ -141,11 +141,11 @@ module.exports = {
       time: true,
 
       autorestart: true,
-      max_restarts: 10,
+      max_restarts: 20,
       min_uptime: '10s',
       restart_delay: 3000,
-      max_memory_restart: '256M',
-      kill_timeout: 15000,
+      max_memory_restart: '512M',
+      kill_timeout: 30000,
       watch: false,
     },
 
@@ -188,11 +188,11 @@ module.exports = {
       time: true,
 
       autorestart: true,
-      max_restarts: 10,
+      max_restarts: 20,
       min_uptime: '10s',
       restart_delay: 3000,
-      max_memory_restart: '256M',
-      kill_timeout: 15000,
+      max_memory_restart: '512M',
+      kill_timeout: 30000,
       watch: false,
     },
   ],
