@@ -47,7 +47,7 @@ describe('processDiagnosticBootstrap', () => {
     )
   })
 
-  it('should seed concept states with correct initial mastery when all answers provided', async () => {
+  it('should seed mastery only for concepts with answer evidence and skip unanswered concepts', async () => {
     const createMock = jest.fn(async () => ({}))
     const updateMock = jest.fn(async () => ({}))
 
@@ -63,7 +63,7 @@ describe('processDiagnosticBootstrap', () => {
         findMany: jest.fn(async () => [
           { conceptId: 'c1', isCorrect: true },   // correct -> 0.6
           { conceptId: 'c2', isCorrect: false },   // wrong   -> 0.15
-          // c3 unanswered -> 0.3
+          // c3 unanswered -> no row created (honest "not assessed")
         ]),
       },
       studentConceptState: {
@@ -95,15 +95,16 @@ describe('processDiagnosticBootstrap', () => {
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c2', masteryScore: 0.15 }) }),
     )
-    // Unanswered (not partial abandon) -> masteryScore 0.3
-    expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c3', masteryScore: 0.3 }) }),
+    // Unanswered concept must not produce a row -- previously seeded 0.3 and surfaced
+    // as a misleading 30% chapter mastery on the dashboard.
+    expect(createMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c3' }) }),
     )
-    // No updates when no prior state exists
+    expect(createMock).toHaveBeenCalledTimes(2)
     expect(updateMock).not.toHaveBeenCalled()
   })
 
-  it('should use masteryScore 0.5 for unanswered concepts when partial abandon detected', async () => {
+  it('should not fabricate mastery for unanswered concepts when a diagnostic is partially abandoned', async () => {
     const createMock = jest.fn(async () => ({}))
 
     const prismaMock: any = {
@@ -141,10 +142,13 @@ describe('processDiagnosticBootstrap', () => {
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ conceptId: 'cA', masteryScore: 0.6 }) }),
     )
-    // cB was unanswered under partial abandon -> 0.5
-    expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'cB', masteryScore: 0.5 }) }),
+    // cB was unanswered -- partial abandon must NOT fabricate a 0.5 mastery row.
+    // This was the source of the dashboard showing 50% on every chapter for
+    // students who had not completed (or never started) a diagnostic.
+    expect(createMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'cB' }) }),
     )
+    expect(createMock).toHaveBeenCalledTimes(1)
   })
 
   it('should skip update when existing mastery is already higher (idempotency)', async () => {
@@ -183,7 +187,7 @@ describe('processDiagnosticBootstrap', () => {
     expect(updateMock).not.toHaveBeenCalled()
   })
 
-  it('proactive bootstrap (bootstrap: sessionId, 0 answers) is NOT a partial abandon -- uses 0.3 baseline', async () => {
+  it('proactive bootstrap (bootstrap: sessionId, 0 answers) is NOT a partial abandon and seeds no mastery rows', async () => {
     const createMock = jest.fn(async () => ({}))
     const partialAbandonInfo = jest.fn()
 
@@ -221,10 +225,9 @@ describe('processDiagnosticBootstrap', () => {
 
     await processDiagnosticBootstrap(makeJob({ diagnosticSessionId: 'bootstrap:s1' }))
 
-    // 0.3 (no-answer baseline), NOT 0.5 (partial-abandon bonus).
-    expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c1', masteryScore: 0.3 }) }),
-    )
+    // Proactive bootstrap has no answers, so no concept-state rows are created.
+    // generateLearningPlan handles the empty-seeding case via default curriculum order.
+    expect(createMock).not.toHaveBeenCalled()
     expect(partialAbandonInfo).not.toHaveBeenCalled()
   })
 

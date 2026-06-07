@@ -120,9 +120,12 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
         const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10)
         // Distinguish a *proactive* pre-seed (enqueued from onboarding with a
         // synthetic "bootstrap:<userId>" session id and zero answers) from a
-        // real diagnostic the student started and abandoned. The pre-seed case
-        // should use the no-answer baseline (0.3) instead of the abandon
-        // bonus (0.5), and should not log as partial_abandon.
+        // real diagnostic the student started and abandoned. Both are logged
+        // for observability but neither path fabricates mastery for unanswered
+        // concepts: only concepts with real evidence (correct/wrong answer)
+        // produce a StudentConceptState row. Untouched concepts stay absent,
+        // and computeReadinessScore defaults them to 0 -- the honest baseline
+        // for "not yet assessed".
         const isProactiveBootstrap =
           providedAnswersCount === 0 && diagnosticSessionId.startsWith('bootstrap:')
         const isPartialAbandon = !isProactiveBootstrap && providedAnswersCount < minValid
@@ -138,26 +141,20 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
 
         for (const concept of concepts) {
           const answered = answerByConcept.has(concept.id)
-          const isCorrect = answered ? answerByConcept.get(concept.id) === true : null
 
-          let masteryScore = 0.3
-          let attemptCount = 0
-
+          // Honest baseline: no answer -> no mastery row. Previous behaviour
+          // seeded 0.3 (default) or 0.5 (partial abandon) for every untouched
+          // concept, which surfaced as a misleading 30%/50% chapter mastery on
+          // the dashboard even though the student had never attempted those
+          // concepts. Skipping the upsert keeps the readiness compute honest.
           if (!answered) {
-            if (isPartialAbandon) {
-              masteryScore = 0.5
-              attemptCount = 0
-            } else {
-              masteryScore = 0.3
-              attemptCount = 0
-            }
-          } else if (isCorrect) {
-            masteryScore = 0.6
-            attemptCount = 1
-          } else {
-            masteryScore = 0.15
-            attemptCount = 1
+            skipped += 1
+            continue
           }
+
+          const isCorrect = answerByConcept.get(concept.id) === true
+          const masteryScore = isCorrect ? 0.6 : 0.15
+          const attemptCount = 1
 
           try {
             const existing = await prisma.studentConceptState.findUnique({
@@ -179,7 +176,6 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
                   masteryScore,
                   lastInteraction: now,
                   attemptCount,
-                  masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
                   memoryStrength: Math.round((masteryScore * 1.0) * 1000) / 1000,
                 },
               })
@@ -196,7 +192,6 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
                   masteryScore,
                   lastInteraction: now,
                   attemptCount: existing.attemptCount + attemptCount,
-                  masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
                   memoryStrength: Math.round((masteryScore * (existing.retention ?? 1)) * 1000) / 1000,
                 },
               })

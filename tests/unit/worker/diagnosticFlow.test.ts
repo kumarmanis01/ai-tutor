@@ -150,7 +150,7 @@ describe('Diagnostic pipeline: auto-submit -> bootstrap', () => {
     )
   })
 
-  it('should enqueue bootstrap with all active chapters and seed at grade-level mastery when partial abandon (< 10 answers)', async () => {
+  it('should enqueue bootstrap with all active chapters but never fabricate mastery for unanswered concepts on partial abandon (< 10 answers)', async () => {
     const partialAnswers = [
       { questionId: 'q1', selectedOption: 'A' },
       { questionId: 'q2', selectedOption: 'B' },
@@ -240,12 +240,19 @@ describe('Diagnostic pipeline: auto-submit -> bootstrap', () => {
     )
     await processDiagnosticBootstrap(makeBootstrapJob(bootstrapData))
 
-    // Unanswered concepts (c2, c3) must be seeded at grade-level mastery (0.5)
-    const unansweredCalls = createConceptStateMock.mock.calls.filter(
-      (call) =>
-        call[0]?.data?.masteryScore === 0.5 && call[0]?.data?.masteryVariance === 0.3,
+    // Answered concept c1 (correct) -> 0.6.
+    // Unanswered concepts (c2, c3) must NOT be seeded with a fabricated mastery
+    // value -- the previous behaviour wrote 0.5 for every unanswered concept on
+    // partial abandon, which surfaced as a misleading 50% chapter mastery on
+    // the dashboard for students who barely started a diagnostic.
+    const answeredCorrectCalls = createConceptStateMock.mock.calls.filter(
+      (call) => call[0]?.data?.conceptId === 'c1' && call[0]?.data?.masteryScore === 0.6,
     )
-    expect(unansweredCalls.length).toBeGreaterThanOrEqual(1)
+    expect(answeredCorrectCalls.length).toBe(1)
+    const unansweredCalls = createConceptStateMock.mock.calls.filter(
+      (call) => call[0]?.data?.conceptId === 'c2' || call[0]?.data?.conceptId === 'c3',
+    )
+    expect(unansweredCalls.length).toBe(0)
   })
 
   it('should skip processing when partial state is empty (idempotent no-op)', async () => {
