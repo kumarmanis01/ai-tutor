@@ -15,7 +15,7 @@ export default async function ParentsPage() {
       where: { status: 'active' },
       include: {
         parent: {
-          select: { id: true, name: true, email: true, parentEmail: true },
+          select: { id: true, name: true, email: true, parentEmail: true, accountStatus: true },
         },
         student: {
           select: {
@@ -69,6 +69,7 @@ export default async function ParentsPage() {
     verifiedAt: l.student.parentVerifiedAt?.toISOString() ?? null,
     requiresVerification: l.student.requiresParentVerification,
     avgMastery: masteryMap.get(l.studentId) ?? 0,
+    accountStatus: l.parent.accountStatus ?? null,
   }))
 
   // Avg readiness across linked students (null when no parents linked)

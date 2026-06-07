@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 
 // ---------------------------------------------------------------------------
@@ -18,6 +19,7 @@ export interface ParentRowData {
   verifiedAt: string | null
   requiresVerification: boolean
   avgMastery: number       // 0-100
+  accountStatus?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +55,9 @@ function ParentRow({ row }: { row: ParentRowData }) {
     ? 'bg-[#EAF3DE] text-[#27500A]'
     : 'bg-[#FAEEDA] text-[#633806]'
 
+  const isSuspended = row.accountStatus === 'suspended'
+  const isPendingDeletion = row.accountStatus === 'deletion_pending'
+
   async function sendReport() {
     setBusy(true)
     setSent(false)
@@ -84,6 +89,11 @@ function ParentRow({ row }: { row: ParentRowData }) {
           {row.parentName ?? <em className="text-gray-400">No name</em>}
         </p>
         <p className="text-[10px] text-gray-400 truncate max-w-[160px]">{row.parentEmail}</p>
+        {(isSuspended || isPendingDeletion) && (
+          <span className={`inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded-full mt-0.5 ${isSuspended ? 'bg-[#FCEBEB] text-[#7A1B1A]' : 'bg-[#FAEEDA] text-[#633806]'}`}>
+            {isSuspended ? 'Blocked' : 'Deletion pending'}
+          </span>
+        )}
       </td>
       <td className="px-3 py-2.5 text-[11px] text-gray-600 dark:text-gray-400">
         {row.studentName ?? '--'}
@@ -99,17 +109,25 @@ function ParentRow({ row }: { row: ParentRowData }) {
       </td>
       <td className="px-3 py-2.5 text-[10px] text-gray-400">--</td>
       <td className="px-3 py-2.5">
-        {sent && <span className="text-[10px] text-[#1D9E75]">Sent</span>}
-        {err && <span className="text-[10px] text-[#E24B4A]">Error</span>}
-        {!sent && !err && (
-          <button
-            onClick={sendReport}
-            disabled={busy}
-            className="inline-flex text-[10px] px-2 py-1 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] hover:bg-[#e0defe] min-h-[28px] items-center disabled:opacity-50 transition-colors"
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Link
+            href={`/admin/parents/${row.parentId}`}
+            className="inline-flex text-[10px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 min-h-[28px] items-center transition-colors"
           >
-            {busy ? 'Sending...' : 'Send report'}
-          </button>
-        )}
+            View
+          </Link>
+          {sent && <span className="text-[10px] text-[#1D9E75]">Sent</span>}
+          {err && <span className="text-[10px] text-[#E24B4A]">Error</span>}
+          {!sent && !err && (
+            <button
+              onClick={sendReport}
+              disabled={busy}
+              className="inline-flex text-[10px] px-2 py-1 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] hover:bg-[#e0defe] min-h-[28px] items-center disabled:opacity-50 transition-colors"
+            >
+              {busy ? 'Sending...' : 'Send report'}
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   )

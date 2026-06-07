@@ -49,17 +49,13 @@ function chapterColor(mastery100: number) {
   return { barClass: 'bg-[#E24B4A]', text: 'text-[#E24B4A]' };
 }
 
-function percentWidthClass(percent: number): string {
-  const rounded = Math.max(0, Math.min(100, Math.round(percent / 5) * 5));
-  return `w-pct-${rounded}`;
-}
-
 function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
   const mastery100 = Math.round(chapter.masteryScore * 100);
   const { barClass, text } = chapterColor(mastery100);
   const href = chapter.weakestConceptId
     ? `/session/pre/${chapter.weakestConceptId}`
     : null;
+  const memoryPct = Math.round((chapter.memoryStrength ?? 0) * 100);
 
   const content = (
     <>
@@ -81,13 +77,15 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
         </div>
         <div className="h-2 rounded-full bg-gray-100 dark:bg-slate-600 overflow-hidden" aria-hidden="true">
           <div
-            className={`h-full rounded-full ${percentWidthClass(mastery100)} ${barClass}`}
+            className={`h-full rounded-full ${barClass}`}
+            style={{ width: `${mastery100}%` }}
           />
         </div>
         <div className="mt-2">
           <div className="h-1 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden" aria-hidden="true">
             <div
-              className={`h-full rounded-full ${percentWidthClass(Math.round((chapter.memoryStrength ?? 0) * 100))} bg-[#534AB7]`}
+              className="h-full rounded-full bg-[#534AB7]"
+              style={{ width: `${memoryPct}%` }}
             />
           </div>
         </div>
