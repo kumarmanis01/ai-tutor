@@ -46,7 +46,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
     resetPrismaMock();
 
     getServerSession = require('next-auth/next').getServerSession;
-    getServerSession.mockResolvedValue({ user: { id: PARENT_ID, email: 'parent@example.test' } });
+    getServerSession.mockResolvedValue({ user: { id: PARENT_ID, email: 'parent@example.test', role: 'parent' } });
 
     redeemParentInviteAndLink = require('@/lib/parent/inviteService').redeemParentInviteAndLink;
     linkParentToStudentByEmail = require('@/lib/parent/inviteService').linkParentToStudentByEmail;

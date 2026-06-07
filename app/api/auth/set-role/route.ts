@@ -54,6 +54,44 @@ export async function POST(req: NextRequest) {
   const persistedRole = PERSISTED_ROLE_BY_SELECTION[role];
 
   try {
+    // SECURITY: role selection is a one-shot operation that happens immediately
+    // after signup. Once a role is persisted, this endpoint must NOT silently
+    // swap it -- a student calling POST /api/auth/set-role { role: 'parent' }
+    // would otherwise self-promote to a parent account and gain access to every
+    // parent route, family billing, OTP issuance, etc.
+    //
+    // Lock the role once it is set to anything other than the default 'user',
+    // and forbid changing 'user' -> 'parent' if the user has already passed
+    // the academic onboarding gate.
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, grade: true, board: true, accountStatus: true },
+    });
+    if (!current) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
+    const alreadySet = current.role && current.role !== UserRole.user;
+    const alreadyOnboardedAsStudent =
+      current.role === UserRole.user && (current.grade || current.board);
+    if (alreadySet && current.role !== persistedRole) {
+      logger.warn('set-role: blocked role swap attempt', {
+        className: 'SetRoleAPI',
+        methodName: 'POST',
+        userId,
+        currentRole: current.role,
+        requestedRole: persistedRole,
+      });
+      return NextResponse.json({ error: 'Role already set for this account' }, { status: 409 });
+    }
+    if (alreadyOnboardedAsStudent && persistedRole === UserRole.parent) {
+      logger.warn('set-role: blocked student->parent swap', {
+        className: 'SetRoleAPI',
+        methodName: 'POST',
+        userId,
+      });
+      return NextResponse.json({ error: 'Role already set for this account' }, { status: 409 });
+    }
+
     await prisma.user.update({
       where: { id: userId },
       data: { role: persistedRole },

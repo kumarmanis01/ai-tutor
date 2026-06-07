@@ -31,9 +31,18 @@ export async function POST(req: Request) {
 
   try {
     const session = await getServerSessionForHandlers()
-    const parentId = (session?.user as any)?.id
+    const sessionUser = session?.user as { id?: string; role?: string; accountStatus?: string } | undefined
+    const parentId = sessionUser?.id
     if (!parentId) {
       const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      logger.logAPI(req, res, { className: 'ParentPauseAPI', methodName: 'POST' }, start)
+      return res
+    }
+    // Defense in depth: relying solely on a parentStudent link check below would
+    // let a student account that happens to share an id with a real parent
+    // link slip through. Block non-parent roles up front.
+    if (sessionUser?.role !== 'parent') {
+      const res = NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       logger.logAPI(req, res, { className: 'ParentPauseAPI', methodName: 'POST' }, start)
       return res
     }

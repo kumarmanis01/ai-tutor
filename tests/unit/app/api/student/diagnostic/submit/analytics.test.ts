@@ -18,7 +18,12 @@ function basePrismaMock(questions: Array<{ id: string; correctAnswer: string; ch
     user: { findUnique: jest.fn().mockResolvedValue({ board: 'cbse' }) },
     answerEvent: { createMany: jest.fn().mockResolvedValue(undefined) },
     analyticsEvent: { create: jest.fn().mockResolvedValue(undefined) },
-    diagnosticSession: { upsert: jest.fn().mockResolvedValue(undefined) },
+    diagnosticSession: {
+      upsert: jest.fn().mockResolvedValue(undefined),
+      // Route's new idempotency guard short-circuits with 200 if status === 'COMPLETED'.
+      // Returning null keeps the happy path.
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   }
 }
 

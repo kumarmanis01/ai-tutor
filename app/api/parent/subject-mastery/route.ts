@@ -71,12 +71,18 @@ export async function GET(req: NextRequest) {
   const start = Date.now();
 
   try {
-    // 1. Auth
+    // 1. Auth -- require an active session AND role=parent. Without the role
+    // check, a student with a guessed studentId could read another student's
+    // mastery breakdown if a stray parentStudent row existed.
     const session = (await getServerSession(authOptions)) as AppSession | null;
-    if (!session?.user?.id) {
+    const sessionUser = session?.user as { id?: string; role?: string } | undefined;
+    if (!sessionUser?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const parentId = session.user.id;
+    if (sessionUser.role !== 'parent') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const parentId = sessionUser.id;
 
     // 2. Input -- use req.url so the handler also works under a plain Request
     // (jest tests, edge runtimes that don't populate req.nextUrl).

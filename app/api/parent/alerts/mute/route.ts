@@ -103,6 +103,12 @@ export async function POST(req: Request) {
   const start = Date.now()
   const session = await getServerSessionForHandlers()
   const parentId = (session?.user as { id?: string })?.id
+  // Defense in depth: explicit parent-role check on top of the link-based
+  // guard further down. Without this, a student session reaching this route
+  // with a known studentId could exfiltrate parent-scoped data.
+  if ((session.user as { role?: string }).role !== 'parent') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   if (!parentId) {
     const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     logger.logAPI(req, res, { className: 'ParentMuteAlertsAPI', methodName: 'POST' }, start)

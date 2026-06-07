@@ -83,6 +83,33 @@ export async function requireActiveSession() {
   return session;
 }
 
+/**
+ * Returns the session ONLY when the caller is an active parent. Use at the top
+ * of every /api/parent/* route -- relying solely on a parentStudent link check
+ * is insufficient defense in depth: a student account that learned a sibling's
+ * studentId could otherwise read the link row and bypass the guard.
+ */
+export async function requireParentSession() {
+  const session = (await getServerSession(authOptions)) as AppSession | null;
+  if (!session || !session.user?.email) return null;
+  if ((session.user as any).accountStatus !== 'active') return null;
+  if ((session.user as any).role !== 'parent') return null;
+  return session;
+}
+
+/**
+ * Returns the session ONLY when the caller is an active student (`role === 'user'`).
+ * Symmetric to requireParentSession; use on routes that should never be hit by
+ * a parent or admin account.
+ */
+export async function requireStudentSession() {
+  const session = (await getServerSession(authOptions)) as AppSession | null;
+  if (!session || !session.user?.email) return null;
+  if ((session.user as any).accountStatus !== 'active') return null;
+  if ((session.user as any).role !== 'user') return null;
+  return session;
+}
+
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {
   try {

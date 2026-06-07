@@ -81,6 +81,12 @@ export async function GET(req: NextRequest) {
     }
 
     const parentId = session.user.id;
+    // Defense in depth: explicit parent-role check on top of the link-based
+    // guard further down. Without this, a student session reaching this route
+    // with a known studentId could exfiltrate parent-scoped data.
+    if ((session.user as { role?: string }).role !== 'parent') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     // Support both NextRequest (has `nextUrl`) and native Request (has `url`)
     const urlLike: URL | typeof req.nextUrl = (req as any).nextUrl ?? new URL((req as any).url);
     const fyParam = urlLike.searchParams.get('fy');

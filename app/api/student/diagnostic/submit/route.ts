@@ -94,6 +94,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No valid answers provided' }, { status: 400 });
     }
 
+    // Idempotency guard: if the diagnostic has already been marked COMPLETED for
+    // this (student, subject) pair, return 200 with the existing result instead
+    // of re-running the entire pipeline. Without this guard, two rapid POSTs
+    // (network retry, double-submit on flaky mobile) would both pass validation
+    // and create duplicate AnswerEvent rows, double-counting toward mastery.
+    const existing = await prisma.diagnosticSession.findUnique({
+      where: { studentId_subjectId: { studentId: userId, subjectId } },
+      select: { status: true, completedAt: true },
+    });
+    if (existing?.status === 'COMPLETED') {
+      logger.info('diagnostic.submit: idempotent replay -- already completed', {
+        className: 'DiagnosticSubmitAPI',
+        methodName: 'POST',
+        studentId: userId,
+        subjectId,
+        completedAt: existing.completedAt?.toISOString(),
+      });
+      return NextResponse.json({
+        ok: true,
+        alreadyCompleted: true,
+        completedAt: existing.completedAt?.toISOString() ?? null,
+      });
+    }
+
     // Fetch questions to check correctness and resolve topicId → conceptId
     const questionIds = answers.map((a) => a.questionId);
     const questions = await prisma.question.findMany({

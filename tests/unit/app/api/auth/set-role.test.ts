@@ -22,6 +22,7 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
       update: jest.fn(),
+      findUnique: jest.fn(),
     },
   },
 }))
@@ -42,6 +43,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 
 const mockGetServerSessionForHandlers = getServerSessionForHandlers as jest.Mock
 const mockPrismaUserUpdate = prisma.user.update as jest.Mock
+const mockPrismaUserFindUnique = prisma.user.findUnique as jest.Mock
 const mockLoggerError = logger.error as jest.Mock
 
 describe('POST /api/auth/set-role', () => {
@@ -68,6 +70,7 @@ describe('POST /api/auth/set-role', () => {
 
   it('should persist the student selection as the Prisma user role', async () => {
     mockGetServerSessionForHandlers.mockResolvedValue({ user: { id: 'user-1' } })
+    mockPrismaUserFindUnique.mockResolvedValue({ role: 'user', grade: null, board: null, accountStatus: 'active' })
     mockPrismaUserUpdate.mockResolvedValue({ id: 'user-1' })
 
     const request = new Request('http://localhost/api/auth/set-role', {
@@ -89,6 +92,7 @@ describe('POST /api/auth/set-role', () => {
 
   it('should persist the parent selection as the Prisma parent role', async () => {
     mockGetServerSessionForHandlers.mockResolvedValue({ user: { id: 'user-2' } })
+    mockPrismaUserFindUnique.mockResolvedValue({ role: 'user', grade: null, board: null, accountStatus: 'active' })
     mockPrismaUserUpdate.mockResolvedValue({ id: 'user-2' })
 
     const request = new Request('http://localhost/api/auth/set-role', {

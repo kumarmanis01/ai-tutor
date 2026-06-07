@@ -64,3 +64,32 @@ export async function getServerSessionForHandlers() {
   }
   return getServerSession(authOptions);
 }
+
+/**
+ * Returns the session ONLY when the caller has role === 'parent' and an active
+ * account, otherwise null. Centralizes the role check so every /api/parent/*
+ * route can do a single guarded call instead of re-implementing the check
+ * (and forgetting to). Pair with a 403 response when null is returned.
+ */
+export async function getParentSessionForHandlers() {
+  const session = await getServerSessionForHandlers();
+  const user = session?.user as { id?: string; role?: string; accountStatus?: string } | undefined;
+  if (!user?.id) return null;
+  if (user.role !== 'parent') return null;
+  if (user.accountStatus && user.accountStatus !== 'active') return null;
+  return session;
+}
+
+/**
+ * Returns the session ONLY when the caller has role === 'user' (student) and
+ * an active account, otherwise null. Use in /api/student/* routes that must
+ * never be hit by a parent or admin account.
+ */
+export async function getStudentSessionForHandlers() {
+  const session = await getServerSessionForHandlers();
+  const user = session?.user as { id?: string; role?: string; accountStatus?: string } | undefined;
+  if (!user?.id) return null;
+  if (user.role !== 'user') return null;
+  if (user.accountStatus && user.accountStatus !== 'active') return null;
+  return session;
+}

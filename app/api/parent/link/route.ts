@@ -86,13 +86,24 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const role = (session.user as { role?: string }).role;
 
     const body = await req.json();
     const { action } = body;
 
     if (action === 'generate') {
+      // 'generate' is the student-side invite code mint. Block parent/admin
+      // accounts from generating codes against a student's id they shouldn't own.
+      if (role !== 'user') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return handleGenerateCode(session.user.id, req, start);
     } else if (action === 'link') {
+      // 'link' is the parent-side redemption. Reject student/admin roles to
+      // prevent a student account from binding itself as someone else's parent.
+      if (role !== 'parent') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       return handleLink(session.user.id, session.user.email ?? null, body, req, start);
     } else {
       return NextResponse.json({ error: 'Invalid action. Use "generate" or "link".' }, { status: 400 });

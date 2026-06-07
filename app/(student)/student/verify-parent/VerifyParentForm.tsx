@@ -67,7 +67,9 @@ export default function VerifyParentForm({
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.verified) {
-        router.replace('/student/dashboard');
+        // (student) is a Next.js route group, so the rendered path is /dashboard
+        // (not /student/dashboard). The previous redirect target 404'd.
+        router.replace('/dashboard');
         return;
       }
       if (res.status === 423) {
