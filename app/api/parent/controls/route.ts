@@ -34,6 +34,9 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if ((session.user as { role?: string }).role !== 'parent') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const studentId = req.nextUrl.searchParams.get('studentId');
     if (!studentId) {
@@ -41,6 +44,12 @@ export async function GET(req: NextRequest) {
     }
 
     const parentId = session.user.id;
+    // Defense in depth: explicit parent-role check on top of the link-based
+    // guard further down. Without this, a student session reaching this route
+    // with a known studentId could exfiltrate parent-scoped data.
+    if ((session.user as { role?: string }).role !== 'parent') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Verify active link
     const link = await prisma.parentStudent.findUnique({
@@ -86,6 +95,9 @@ export async function PUT(req: NextRequest) {
     const session = (await getServerSession(authOptions)) as AppSession | null;
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if ((session.user as { role?: string }).role !== 'parent') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { formatErrorForResponse } from '@/lib/errorResponse'
+import { getServerSessionForHandlers } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSessionForHandlers();
+    const role = (session?.user as any)?.role ?? null;
+    if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
     const url = new URL(request.url);
     const board = url.searchParams.get('board') || undefined;
     const classGrade = url.searchParams.get('class') || undefined;

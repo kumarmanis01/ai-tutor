@@ -1,12 +1,23 @@
 /**
- * /admin/costs -- AI Cost & Usage
+ * FILE OBJECTIVE:
+ * - /admin/costs server component: AI cost & usage dashboard with stats,
+ *   7-day sparkline, anomaly callout, callType cost breakdown and a
+ *   30-day history table.
  *
- * Replaces simple table with: stats, 7-day sparkline, anomaly callout,
- * callType cost breakdown, and a 30-day history table.
- * Pure server component.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/costs.page.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add standard header + EDIT LOG.
  */
 import React from 'react'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { AdminTopbar } from '../../../components/admin/AdminTopbar'
 
 // ---------------------------------------------------------------------------
@@ -28,9 +39,17 @@ async function fetchCostStats(metrics: MetricRow[]) {
     ? metrics.reduce((s, m) => s + m.costPerSession, 0) / metrics.length
     : 0
 
+  const logCountFail = (which: string) => (err: unknown) => {
+    logger.warn('admin.costs.turn_log_count_failed', {
+      event: 'admin_costs_turn_log_count_failed',
+      context: { which },
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return 0
+  }
   const [totalTurns, cachedTurns] = await Promise.all([
-    prisma.aITutorTurnLog.count({ where: { createdAt: { gte: since7d } } }).catch(() => 0),
-    prisma.aITutorTurnLog.count({ where: { createdAt: { gte: since7d }, cached: true } }).catch(() => 0),
+    prisma.aITutorTurnLog.count({ where: { createdAt: { gte: since7d } } }).catch(logCountFail('total')),
+    prisma.aITutorTurnLog.count({ where: { createdAt: { gte: since7d }, cached: true } }).catch(logCountFail('cached')),
   ])
 
   const cacheHitRate = totalTurns > 0 ? Math.round((cachedTurns / totalTurns) * 100) : 0
@@ -51,7 +70,13 @@ async function fetchCallTypeBreakdown() {
     _count: { _all: true },
     where: { createdAt: { gte: since7d } },
     orderBy: { _sum: { costUsd: 'desc' } },
-  }).catch(() => [])
+  }).catch((err: unknown) => {
+    logger.warn('admin.costs.call_type_breakdown_failed', {
+      event: 'admin_costs_call_type_breakdown_failed',
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return [] as Array<{ callType: string; _sum: { costUsd: number | null }; _count: { _all: number } }>
+  })
 }
 
 // ---------------------------------------------------------------------------

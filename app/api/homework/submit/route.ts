@@ -8,6 +8,7 @@ import { recordSessionEvent, recordSessionEvents } from '@/lib/session/sessionEv
 import { awardXP } from '@/lib/student/xp';
 import { updateStreak } from '@/lib/student/streak';
 import { checkSessionBadges } from '@/lib/student/badges';
+import { invalidateDashboardCache } from '@/lib/student/dashboardCache';
 import type { HomeworkQuestion } from '@/lib/session/homework';
 
 export const dynamic = 'force-dynamic';
@@ -303,6 +304,11 @@ export async function POST(req: Request) {
     }));
     recordSessionEvents(questionEvents);
   }
+
+  // Bust the cached dashboard response so the student sees the now-graded
+  // homework drop off the pending list immediately instead of after the 60 s
+  // TTL. Best-effort; the dashboard will recompute correctly on TTL expiry.
+  void invalidateDashboardCache(user.id);
 
   // ── Response ───────────────────────────────────────────────────────────
   res = NextResponse.json({

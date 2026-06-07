@@ -43,8 +43,18 @@ export async function GET(_req: Request) {
     LIMIT 100
   `
 
-  const duplicates: DuplicateGroup[] = rows.map((r: any) => ({
-    phone: r.phone,
+  // Mask phone numbers so admin views never expose full PII. Admins
+  // identify duplicate accounts via userIds; the last 4 digits are
+  // sufficient to disambiguate in the UI.
+  const maskPhone = (p: string): string => {
+    if (!p) return ''
+    const digits = p.replace(/\D/g, '')
+    if (digits.length <= 4) return '***'
+    return `***-***-${digits.slice(-4)}`
+  }
+
+  const duplicates: DuplicateGroup[] = rows.map((r: DuplicateRow) => ({
+    phone: maskPhone(r.phone),
     userIds: r.user_ids,
     count: Number(r.count),
   }))

@@ -11,6 +11,14 @@ import { prisma } from '@/lib/prisma'
 import { sendEmailUnifiedSafe } from '@/lib/mail'
 import { weeklyDigestHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
+import { getRedis } from '@/lib/redis'
+
+// Cooldown between broadcast triggers. Stops two admin clicks (or two
+// admins clicking) from double-sending the digest to every parent.
+// Weekly cadence so 1h is plenty of buffer; admin can wait it out if a
+// genuine re-run is needed.
+const BROADCAST_DEDUP_KEY = 'admin:broadcast_digest:lock'
+const BROADCAST_DEDUP_TTL_SECONDS = 60 * 60
 
 async function fetchStudentDigestData(studentId: string) {
   const [student, masteryRow, streak] = await Promise.all([
@@ -83,13 +91,54 @@ async function sendDigestsAsync(adminId: string) {
 
 export async function POST() {
   const session = await getServerSessionForHandlers()
-  if (!session || session.user?.role !== 'admin') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 401 })
+  if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (session.user?.role !== 'admin') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const queued = await prisma.parentStudent
-    .count({ where: { status: 'active' } })
-    .catch(() => 0)
+  // Dedup: a second trigger inside the cooldown window is refused so two
+  // admin clicks do not double-send the weekly digest. Redis SETNX with
+  // TTL is the canonical pattern in this codebase (cf. learningPlanRegeneration).
+  const redis = getRedis?.()
+  if (redis) {
+    try {
+      const lockResult = await (redis as any).set(
+        BROADCAST_DEDUP_KEY,
+        session.user.id,
+        'EX',
+        BROADCAST_DEDUP_TTL_SECONDS,
+        'NX',
+      )
+      if (lockResult !== 'OK') {
+        logger.warn('[broadcast-digest] dedup hit -- broadcast skipped', {
+          event: 'broadcast_digest_dedup_skipped',
+          context: { adminId: session.user.id },
+        })
+        return NextResponse.json(
+          {
+            error: 'already_running',
+            message: 'A broadcast was triggered recently. Please wait before retrying.',
+          },
+          { status: 409 },
+        )
+      }
+    } catch (err) {
+      logger.warn('[broadcast-digest] dedup check failed; proceeding', {
+        event: 'broadcast_digest_dedup_unavailable',
+        context: { error: err instanceof Error ? err.message : String(err) },
+      })
+    }
+  }
+
+  let queued = 0
+  try {
+    queued = await prisma.parentStudent.count({ where: { status: 'active' } })
+  } catch (err) {
+    logger.warn('[broadcast-digest] active-link count failed; proceeding with 0', {
+      event: 'broadcast_digest_count_failed',
+      context: { error: err instanceof Error ? err.message : String(err) },
+    })
+  }
 
   // Fire and forget -- do not await
   ;(async () => {

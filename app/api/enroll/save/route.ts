@@ -146,13 +146,14 @@ export async function POST(req: NextRequest) {
     // ── Trigger content seeding (non-blocking) ────────────────────────────────
     try {
       if (updated.board && updated.grade) {
-        const gradeNum = Number(updated.grade);
-        const boardSlug = updated.board;
+        // enqueueSubjectHydration accepts either an internal subjectId or a
+        // canonical slug; we pass slug here because resolveStudentSubjects
+        // runs on the next dashboard load to map slug -> SubjectDef.id once
+        // the curriculum is hydrated. Bootstrap job requires a completed
+        // diagnostic session -- not triggered at enrollment.
         for (const subjectSlug of subjects) {
-          // TODO: resolve subjectSlug to subjectId for enqueueSubjectHydration
           await (enqueueSubjectHydration as any)(subjectSlug, langCode).catch(() => {});
         }
-        // Bootstrap job requires a completed diagnostic session -- not triggered at enrollment.
       }
     } catch {
       // non-blocking

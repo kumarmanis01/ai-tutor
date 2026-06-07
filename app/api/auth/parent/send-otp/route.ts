@@ -1,4 +1,3 @@
-import { formatErrorForResponse } from '@/lib/errorResponse'
 /**
  * FILE OBJECTIVE:
  * - POST /api/auth/parent/send-otp
@@ -14,7 +13,21 @@ import { formatErrorForResponse } from '@/lib/errorResponse'
  * - /docs/ENGINEERING_PRACTICES.md
  * - .github/copilot-instructions.md
  *
- * EMAIL INFRA POLICY: All email sends must use lib/mail.ts (sendEmail, sendEmailBatch, sendEmailUnified, sendEmailUnifiedSafe). No direct sendMail/sendMailSafe allowed.
+ * EMAIL INFRA POLICY: All email sends must use lib/mail.ts (sendEmail, sendEmailBatch,
+ * sendEmailUnified, sendEmailUnifiedSafe). No direct sendMail/sendMailSafe allowed.
+ *
+ * EDIT LOG:
+ * - 2026-05-12T00:00:00Z | copilot | add channel-specific OTP key generation and remove parentPhone fallback
+ * - 2026-05-05 | staff-engineer | replace SMS with email OTP (no SMS policy)
+ * - 2026-05-05 | staff-engineer | send to all available channels (email + WhatsApp)
+ * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
+ * - 2026-06-06T00:00:00Z | claude | restore missing imports (NextRequest, NextResponse, prisma, crypto, sendWhatsAppSafe);
+ *                       remove duplicate formatErrorForResponse import and stray closing braces
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { prisma } from '@/lib/prisma';
 import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { parentOtpHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
@@ -23,6 +36,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { checkAuthRateLimit, createRateLimitResponse } from '@/lib/middleware/authRateLimit';
 import { MAIL_SUBJECTS } from '@/lib/constants/mail';
 import { channelOtpKeyByType, getParentChannelVerificationStatus, resolveParentChannels } from '@/lib/parent/contactLinking';
+import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
 
 const OTP_EXPIRY_SECONDS = Number(process.env.OTP_EXPIRY_SECONDS ?? 300);
 
@@ -138,11 +152,3 @@ export async function POST(req: NextRequest) {
     return res;
   }
 }
-
-/**
- * EDIT LOG:
- * - 2026-05-12T00:00:00Z | copilot | add channel-specific OTP key generation and remove parentPhone fallback
- * - 2026-05-05 | staff-engineer | replace SMS with email OTP (no SMS policy)
- * - 2026-05-05 | staff-engineer | send to all available channels (email + WhatsApp)
- * - 2026-05-20T00:00:00Z | copilot | refactor: use centralized sendEmailUnifiedSafe (lib/mail), remove direct sendMailSafe per infra policy
- */

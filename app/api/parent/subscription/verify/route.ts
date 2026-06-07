@@ -31,6 +31,7 @@ import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { PLANS } from '@/lib/billing/plans';
+import { checkAuthRateLimit } from '@/lib/middleware/authRateLimit';
 import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
@@ -60,6 +61,22 @@ export async function POST(req: Request) {
   const userId = (session?.user as { id?: string; role?: string })?.id;
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if ((session?.user as any)?.role !== 'parent') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  // Rate limit per-parent. Without this, a hostile client could spam
+  // signature verification with forged payloads (each call wakes Razorpay
+  // crypto), or attempt to brute-force HMAC equality though that's
+  // practically infeasible.
+  const rl = await checkAuthRateLimit(
+    req as unknown as import('next/server').NextRequest,
+    'payment',
+    `parent:${userId}`,
+  );
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many verification attempts. Try again later.', retryAt: rl.resetAt },
+      { status: 429 },
+    );
+  }
 
   let body: unknown;
   try {

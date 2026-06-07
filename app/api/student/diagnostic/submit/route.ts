@@ -94,6 +94,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No valid answers provided' }, { status: 400 });
     }
 
+    // Idempotency guard: if the diagnostic has already been marked COMPLETED for
+    // this (student, subject) pair, return 200 with the existing result instead
+    // of re-running the entire pipeline. Without this guard, two rapid POSTs
+    // (network retry, double-submit on flaky mobile) would both pass validation
+    // and create duplicate AnswerEvent rows, double-counting toward mastery.
+    const existing = await prisma.diagnosticSession.findUnique({
+      where: { studentId_subjectId: { studentId: userId, subjectId } },
+      select: { status: true, completedAt: true },
+    });
+    if (existing?.status === 'COMPLETED') {
+      logger.info('diagnostic.submit: idempotent replay -- already completed', {
+        className: 'DiagnosticSubmitAPI',
+        methodName: 'POST',
+        studentId: userId,
+        subjectId,
+        completedAt: existing.completedAt?.toISOString(),
+      });
+      return NextResponse.json({
+        ok: true,
+        alreadyCompleted: true,
+        completedAt: existing.completedAt?.toISOString() ?? null,
+      });
+    }
+
     // Fetch questions to check correctness and resolve topicId → conceptId
     const questionIds = answers.map((a) => a.questionId);
     const questions = await prisma.question.findMany({
@@ -279,8 +303,10 @@ export async function POST(req: NextRequest) {
       // non-fatal: placement defaults to 'at'
     }
 
-    // Emit canonical DIAGNOSTICS_END analytics event (best-effort, fire-and-forget)
-    void emitServerAnalyticsEvent(
+    // Emit canonical DIAGNOSTICS_END analytics event (best-effort, fire-and-forget).
+    // We attach a no-op catch so a rejected promise can't propagate as an
+    // unhandled rejection in workers or tests.
+    emitServerAnalyticsEvent(
       {
         eventType: ANALYTICS_EVENTS.STUDENT.DIAGNOSTICS_END,
         userId,
@@ -288,6 +314,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           subjectId,
           sessionId: diagnosticSessionId,
+          totalQuestions: answers.length,
           answeredCount: answerEventData.length,
           correctCount: answerEventData.filter((a) => !!a.isCorrect).length,
           gamingFlag: !!gamingFlag,
@@ -295,7 +322,13 @@ export async function POST(req: NextRequest) {
         },
       },
       'diagnostic.submit',
-    );
+    ).catch((emitErr) => {
+      logger.warn('diagnostic.submit: DIAGNOSTICS_END emit failed', {
+        className: 'DiagnosticSubmitAPI',
+        methodName: 'POST',
+        error: String(emitErr),
+      });
+    });
 
     // Analytics: emit `diagnostic_completed` (best-effort)
     try {
@@ -336,7 +369,13 @@ export async function POST(req: NextRequest) {
         metadata,
       } as const;
 
-      void emitServerAnalyticsEvent(analyticsEventData, 'diagnostic.submit');
+      emitServerAnalyticsEvent(analyticsEventData, 'diagnostic.submit').catch((emitErr) => {
+        logger.warn('diagnostic.submit: diagnostic_completed emit failed', {
+          className: 'DiagnosticSubmitAPI',
+          methodName: 'POST',
+          error: String(emitErr),
+        });
+      });
     } catch (analyticsErr) {
       logger.warn('diagnostic.submit: analytics emit failed', {
         className: 'DiagnosticSubmitAPI',

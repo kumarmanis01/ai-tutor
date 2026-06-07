@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Tesseract from "tesseract.js";
 import { logger } from '@/lib/logger';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 // Simple heuristics to extract heading-like lines and map to catalog items
 function extractHeadingsToItems(text: string) {
@@ -39,6 +40,11 @@ export const dynamic = "force-static";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSessionForHandlers();
+    const role = (session?.user as any)?.role ?? null;
+    if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.includes("multipart/form-data")) {
       return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 });

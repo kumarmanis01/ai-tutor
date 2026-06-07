@@ -52,9 +52,18 @@ const REQUIRED_CONSENT_SCOPES = [
 export async function POST(req: Request) {
   const start = Date.now()
   const session = await getServerSessionForHandlers()
-  const parentId = (session?.user as { id?: string })?.id
+  const sessionUser = session?.user as { id?: string; role?: string } | undefined
+  const parentId = sessionUser?.id
   if (!parentId) {
     const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    logger.logAPI(req, res, { className: 'ParentCreateChildAPI', methodName: 'POST' }, start)
+    return res
+  }
+  // CRITICAL: without this guard any authenticated student could POST here to
+  // create a child record under their own id and gain parent-side capabilities
+  // (family billing, OTPs, link codes). Block non-parent roles.
+  if (sessionUser?.role !== 'parent') {
+    const res = NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     logger.logAPI(req, res, { className: 'ParentCreateChildAPI', methodName: 'POST' }, start)
     return res
   }

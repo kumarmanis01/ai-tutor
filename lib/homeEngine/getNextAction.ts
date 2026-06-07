@@ -4,13 +4,19 @@
  * - Deterministic Home Tutor Engine. Returns a single, rule-prioritised next action for the student. ZERO AI calls. Prisma only. Target latency: <150 ms.
  *
  * LINKED UNIT TEST:
- * - tests/unit/lib/homeEngine/getNextAction.spec.ts
+ * - tests/unit/lib/homeEngine/homeworkBlocker.test.ts
+ * - tests/unit/lib/homeEngine/loopBreaker.test.ts
+ * - tests/unit/lib/homeEngine/sessionResume.test.ts
+ * - tests/unit/lib/homeEngine/spacedRevision.test.ts
+ * - tests/unit/lib/homeEngine/p5Scoring.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | add P0 circuit breaker (consecutive homework_pending repeats);
+ *     fix linked-test path to real homeEngine specs
  * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
  * - 2026-02-21 | claude | created deterministic tutor engine per architectural spec
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
@@ -78,10 +84,59 @@ const ALL_RULE_IDS: string[] = [
   'all_topics_complete',// P6 fallback
 ];
 
-// In-memory recent decision store used to detect possible engine loops in dev.
+// In-memory recent decision store used to detect and break engine loops.
 // Maps studentId -> array of serialized decisions (`ruleId:topicId`), capped at 5.
 const recentDecisions: Map<string, string[]> = new Map();
 const RECENT_DECISIONS_CAP = 5;
+
+// Circuit breaker: tracks how many *consecutive* times a (studentId, ruleId, topicId)
+// tuple has been the top decision without the student making progress. When the same
+// homework_pending assignment fires LOOP_BREAK_THRESHOLD times in a row, the circuit
+// opens and the engine skips P0 for that student until they make progress or the
+// assignment is completed/overdue window expires.
+// Maps `${studentId}:${ruleId}:${topicId}` -> consecutive hit count.
+const loopBreaker: Map<string, number> = new Map();
+// Tracks the last loop-eligible decision key seen per `${studentId}:${ruleId}` so we
+// can distinguish a genuine consecutive repeat from an interleaved different decision.
+const lastLoopKey: Map<string, string> = new Map();
+const LOOP_BREAK_THRESHOLD = 3;
+const LOOP_BREAK_RULES = new Set(['homework_pending']); // only block rules that can hard-gate
+
+function loopKey(studentId: string, ruleId: string, topicId: string | null): string {
+  return `${studentId}:${ruleId}:${topicId ?? 'null'}`;
+}
+
+function isLoopBroken(studentId: string, ruleId: string, topicId: string | null): boolean {
+  if (!LOOP_BREAK_RULES.has(ruleId)) return false;
+  return (loopBreaker.get(loopKey(studentId, ruleId, topicId)) ?? 0) >= LOOP_BREAK_THRESHOLD;
+}
+
+// Record a hit, counting only *consecutive* repeats of the same (ruleId, topicId).
+// If the previous loop-eligible decision for this student+rule was a different topic,
+// reset that prior key's count and start the new key at 1.
+function recordLoopHit(studentId: string, ruleId: string, topicId: string | null): void {
+  const studentRule = `${studentId}:${ruleId}`;
+  const key = loopKey(studentId, ruleId, topicId);
+  const prevKey = lastLoopKey.get(studentRule);
+  if (prevKey && prevKey !== key) {
+    loopBreaker.delete(prevKey);
+    loopBreaker.set(key, 1);
+  } else {
+    loopBreaker.set(key, (loopBreaker.get(key) ?? 0) + 1);
+  }
+  lastLoopKey.set(studentRule, key);
+}
+
+// Clear all consecutive-hit state for a student+rule (called when the rule no longer
+// fires, e.g. homework resolved). Clears every topicId key, not just one, so the
+// circuit re-arms cleanly for the next pending assignment.
+function clearLoopHits(studentId: string, ruleId: string): void {
+  const prefix = `${studentId}:${ruleId}:`;
+  for (const key of loopBreaker.keys()) {
+    if (key.startsWith(prefix)) loopBreaker.delete(key);
+  }
+  lastLoopKey.delete(`${studentId}:${ruleId}`);
+}
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -677,14 +732,36 @@ export async function getNextAction(
   // ── P0 -- Homework blocker (hard gate) ────────────────────────────────────────
   // Fires before any other rule. A PENDING/OVERDUE assignment due within 48 h
   // takes absolute priority -- the student must complete it first.
+  //
+  // Circuit breaker: if the same homework assignment has been returned
+  // LOOP_BREAK_THRESHOLD times consecutively without progress, skip P0 for
+  // this request and fall through to P1-P5. This prevents the engine from
+  // hard-gating a student indefinitely when the homework is stale or stuck.
   trace.rulesEvaluated.push('P0');
   const p0Start = Date.now();
   const p0 = await p0_homeworkBlocker(studentId);
   ruleEntries.push({ ruleId: 'homework_pending', evaluated: true, matched: p0 !== null, durationMs: Date.now() - p0Start });
   if (p0) {
-    trace.matchedRule = 'homework_pending';
-    trace.finalDecision = 'homework_pending';
-    return finalise(p0, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
+    const loopBroken = isLoopBroken(studentId, 'homework_pending', p0.topicId);
+    if (loopBroken) {
+      logger.warn('engine.loop.circuit_open', {
+        studentId,
+        ruleId: 'homework_pending',
+        topicId: p0.topicId,
+        assignmentId: p0.assignmentId,
+        message: 'Circuit breaker open -- skipping homework_pending, falling through to P1',
+      });
+      // Do not return -- fall through to P1-P5 so the student gets a usable action.
+    } else {
+      recordLoopHit(studentId, 'homework_pending', p0.topicId);
+      trace.matchedRule = 'homework_pending';
+      trace.finalDecision = 'homework_pending';
+      return finalise(p0, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
+    }
+  } else {
+    // Assignment resolved -- clear any open circuit for this student so it
+    // re-arms correctly for the next pending assignment.
+    clearLoopHits(studentId, 'homework_pending');
   }
 
   // ── P1 -- Resume session ───────────────────────────────────────────────────────

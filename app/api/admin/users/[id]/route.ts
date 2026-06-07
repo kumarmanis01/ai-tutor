@@ -79,9 +79,28 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   // General update path -- strip grade and board (immutable after first save)
   const { grade: _g, board: _b, reason: _r, ...safeData } = body;
   // grade changes require explicit reason + audit log -- handled above
-  const user = await prisma.user.update({ where: { id }, data: safeData });
+  // Explicit select so the response shape is documented and new sensitive
+  // columns added to the User model never leak by default.
+  const user = await prisma.user.update({
+    where: { id },
+    data: safeData,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      accountStatus: true,
+      grade: true,
+      board: true,
+      language: true,
+      subjects: true,
+      image: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
   try {
-    await invalidateUserSessionCache((user as any)?.email);
+    await invalidateUserSessionCache(user.email);
   } catch {}
   logApiUsage(`/api/admin/users/${id}`, 'PATCH');
   return NextResponse.json(user);

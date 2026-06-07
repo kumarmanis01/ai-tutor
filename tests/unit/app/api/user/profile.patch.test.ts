@@ -31,7 +31,7 @@ describe('PATCH /api/user/profile', () => {
     expect(body.ok).toBe(true)
     expect(body.preferences).toEqual({ crunchMode: 'on' })
     expect(mockFindUnique).toHaveBeenCalled()
-    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { preferences: { crunchMode: 'on' } }, select: { id: true, learningStyle: true, preferences: true } })
+    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { preferences: { crunchMode: 'on' } }, select: { id: true, examDate: true, learningStyle: true, preferences: true } })
   })
 
   it('returns 400 for invalid crunchMode value', async () => {
@@ -89,6 +89,6 @@ describe('PATCH /api/user/profile', () => {
     expect(body.ok).toBe(true)
     expect(body.preferences).toEqual({ badgeShowcase: ['b', 'c'] })
     expect(mockFindUnique).toHaveBeenCalled()
-    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'u4' }, data: { preferences: { badgeShowcase: ['b', 'c'] } }, select: { id: true, learningStyle: true, preferences: true } })
+    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'u4' }, data: { preferences: { badgeShowcase: ['b', 'c'] } }, select: { id: true, examDate: true, learningStyle: true, preferences: true } })
   })
 })

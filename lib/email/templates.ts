@@ -17,7 +17,7 @@
  */
 
 import { TEMPLATES_LEGACY_SUPPORT_EMAIL } from '@/lib/email/functionalityEmails';
-import { BASE, BTN, FOOTER, LOGO } from '@/lib/email/layout'
+import { BASE, BTN, EMAIL_HEAD, FOOTER, LOGO } from '@/lib/email/layout'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -514,12 +514,13 @@ export function weeklyDigestParentHtml(params: {
 
   // Wrap the existing content in the shared header/footer for consistency across channels.
   return `
+    ${EMAIL_HEAD}
     <div style="${BASE}">
       ${LOGO}
       <h2 style="color:#534AB7;">Weekly learning update</h2>
       <p>Hi ${parentName},</p>
 
-      <div style="background:#F9FAFB;border-radius:12px;padding:14px;margin:12px 0;border:1px solid rgba(0,0,0,0.06);">
+      <div class="spinzy-card" style="background:#F9FAFB;border-radius:12px;padding:14px;margin:12px 0;border:1px solid rgba(0,0,0,0.06);">
         <h3 style="margin:0 0 10px;font-size:16px;color:#111;">${childName}</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
           <div style="flex:1;text-align:center;padding:8px;border-radius:8px;background:rgba(79,70,229,0.06);">

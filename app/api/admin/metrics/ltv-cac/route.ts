@@ -17,10 +17,15 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getServerSessionForHandlers } from '@/lib/session'
 
 export async function GET(req: Request) {
   const start = Date.now()
   try {
+    const session = await getServerSessionForHandlers();
+    const role = (session?.user as any)?.role ?? null;
+    if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     // For MVP use month-to-date window. Future: accept start/end query params.
     const sql = `
 WITH last_paid AS (

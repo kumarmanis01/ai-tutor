@@ -1,15 +1,25 @@
 /**
- * PM2 ecosystem configuration - Production
+ * FILE OBJECTIVE:
+ * - PM2 ecosystem configuration (production). Defines three processes: web
+ *   (Next.js), worker (BullMQ), scheduler (cron jobs + reconciler), with their
+ *   restart, memory, and kill-timeout policies.
  *
- * Three processes: web (Next.js), worker (BullMQ), scheduler (cron jobs + reconciler)
+ * LINKED UNIT TEST:
+ * - N/A (PM2 runtime config; validated by deploy-and-run.sh pre-flight)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
  *
  * IMPORTANT: Environment variables (DATABASE_URL, REDIS_URL, etc.) must be
  * exported into the shell BEFORE running `pm2 start ecosystem.config.cjs`.
- *
  * The deploy script (scripts/deploy-and-run.sh) handles this by running:
  *   set -o allexport; source .env.production; set +o allexport
- *
  * PM2 will then inherit these variables when started with --update-env.
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | raise worker/scheduler max_memory_restart (512M), max_restarts (20),
+ *     and kill_timeout (30s) to stop OOM crash loops and allow graceful shutdown; add standard header
  */
 
 // ── PM2 log rotation (run once on VPS after pm2 is installed) ──
@@ -94,7 +104,7 @@ module.exports = {
       time: true,
 
       autorestart: true,
-      max_restarts: 10,
+      max_restarts: 20,
       min_uptime: '10s',
       restart_delay: 3000,
       max_memory_restart: '512M',
@@ -141,11 +151,11 @@ module.exports = {
       time: true,
 
       autorestart: true,
-      max_restarts: 10,
+      max_restarts: 20,
       min_uptime: '10s',
       restart_delay: 3000,
-      max_memory_restart: '256M',
-      kill_timeout: 15000,
+      max_memory_restart: '512M',
+      kill_timeout: 30000,
       watch: false,
     },
 
@@ -188,11 +198,11 @@ module.exports = {
       time: true,
 
       autorestart: true,
-      max_restarts: 10,
+      max_restarts: 20,
       min_uptime: '10s',
       restart_delay: 3000,
-      max_memory_restart: '256M',
-      kill_timeout: 15000,
+      max_memory_restart: '512M',
+      kill_timeout: 30000,
       watch: false,
     },
   ],

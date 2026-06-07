@@ -40,9 +40,11 @@ export async function GET() {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    // Fetch all metrics in parallel
+    // Fetch all metrics in parallel. Avoid loading every TestResult row for
+    // prolific students; use aggregate for count + average and a separate
+    // distinct query for the subject set.
     const [
-      testResults,
+      testResultsAggregate,
       totalSessions,
       weeklySessionsCount,
       subjectsFromTests,
@@ -50,10 +52,11 @@ export async function GET() {
       topicsCompleted,
       topicsStarted,
     ] = await Promise.all([
-      // Test results for score calculation
-      prisma.testResult.findMany({
+      // Test count + average score (server-side aggregate, no row load)
+      prisma.testResult.aggregate({
         where: { studentId: userId },
-        select: { score: true, finishedAt: true, createdAt: true },
+        _count: { _all: true },
+        _avg: { score: true },
       }),
       // Total learning sessions
       prisma.learningSession.count({
@@ -71,12 +74,14 @@ export async function GET() {
         where: { studentId: userId },
         select: { testId: true },
         distinct: ['testId'],
+        take: 1000,
       }),
       // Unique subjects from learning sessions
       prisma.learningSession.findMany({
         where: { studentId: userId },
         select: { activityType: true },
         distinct: ['activityType'],
+        take: 100,
       }),
       // Topics considered complete -- aligned with engine P4 threshold (accuracy >= LOW_ACCURACY_THRESHOLD)
       prisma.studentTopicMastery.count({
@@ -91,15 +96,9 @@ export async function GET() {
       }),
     ]);
 
-    // Calculate metrics
-    const testsCompleted = testResults.length;
-    
-    // Calculate average score (only from completed tests with scores)
-    const scoresWithValues = testResults
-      .filter((r: { score: number | null }) => typeof r.score === 'number')
-      .map((r: { score: number | null }) => r.score as number);
-    const averageScore = scoresWithValues.length > 0
-      ? Math.round(scoresWithValues.reduce((a: number, b: number) => a + b, 0) / scoresWithValues.length)
+    const testsCompleted = testResultsAggregate._count._all;
+    const averageScore = testResultsAggregate._avg.score != null
+      ? Math.round(testResultsAggregate._avg.score)
       : 0;
     
     // Count unique subjects

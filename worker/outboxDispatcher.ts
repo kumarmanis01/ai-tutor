@@ -13,6 +13,8 @@
  * EDIT LOG:
  * - 2026-01-21T00:00:00Z | copilot-agent | created as worker-integrated outbox dispatcher
  * - 2026-03-07T00:00:00Z | RISK-04 | dead-letter queue, MAX_ATTEMPTS, poll 5s
+ * - 2026-06-06T00:00:00Z | claude | move meta.deliverAt scheduling check in-app (DB JSON-path
+ *     filter excluded rows with missing/null deliverAt and stalled hydration); drop per-row skip log
  */
 
 import { Queue } from 'bullmq';
@@ -74,7 +76,15 @@ async function moveToDeadLetter(
 }
 
 async function dispatchBatch(): Promise<number> {
-  // Find oldest unsent outbox rows
+  // Find oldest unsent outbox rows.
+  //
+  // NOTE: scheduling (meta.deliverAt) is filtered in-app below, not in the DB
+  // query. A DB-level JSON-path filter cannot cleanly express "deliverAt is
+  // missing OR null OR <= now" because meta is optional (Json?) and the vast
+  // majority of producers omit deliverAt entirely -- a path filter would
+  // exclude all of those rows and stall content hydration. The original log
+  // spam this once tried to remove is addressed by simply not logging the
+  // per-row skip (the skip itself is cheap).
   const rows = await prisma.outbox.findMany({
     where: { sentAt: null },
     orderBy: { createdAt: 'asc' },
@@ -85,23 +95,21 @@ async function dispatchBatch(): Promise<number> {
     return 0;
   }
 
+  const nowMs = Date.now();
   let dispatched = 0;
   const q = getQueue();
 
   for (const row of rows) {
-    // If the row has a scheduled delivery time in meta.deliverAt, skip until that time
+    // Skip rows scheduled for future delivery. Missing/null deliverAt = due now.
     try {
-      const metaAny = row.meta as any;
-      if (metaAny?.deliverAt) {
-        const deliverAt = new Date(metaAny.deliverAt);
-        if (deliverAt.getTime() > Date.now()) {
-          logger.info('[outbox-dispatcher] skipping scheduled row (not due yet)', { outboxId: row.id, deliverAt: metaAny.deliverAt });
-          continue;
-        }
+      const deliverAt = (row.meta as { deliverAt?: string } | null)?.deliverAt;
+      if (deliverAt && new Date(deliverAt).getTime() > nowMs) {
+        continue;
       }
-    } catch (err) {
-      // Non-fatal: if meta parsing fails, fall through and attempt dispatch
+    } catch {
+      // Non-fatal: malformed meta falls through and is attempted now.
     }
+
     // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
       await moveToDeadLetter(row, 'max_attempts_exceeded');

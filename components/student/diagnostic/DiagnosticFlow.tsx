@@ -190,7 +190,7 @@ function AbandonDialog({
             disabled={busy}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-[#E24B4A] text-[#E24B4A] text-sm font-medium hover:bg-[#FCEBEB] dark:hover:bg-[#E24B4A]/10 disabled:opacity-50 transition-colors"
           >
-            Abandon -- progress will be lost
+            Discard and start over later
           </button>
           <button
             type="button"

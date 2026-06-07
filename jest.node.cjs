@@ -1,4 +1,20 @@
-/** Jest node project config (backend & integration tests) */
+/**
+ * FILE OBJECTIVE:
+ * - Jest configuration for the node-environment project (backend, API
+ *   route, worker and service unit tests). Defines testMatch, transform,
+ *   module aliases and the setup files that prime each test process.
+ *
+ * LINKED UNIT TEST:
+ * - (test-infra; exercised by every node-project spec.)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | replace single-line note with standard header.
+ */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -17,7 +33,13 @@ module.exports = {
       '<rootDir>/src/components/$1.tsx',
       '<rootDir>/src/components/$1.ts',
     ],
-    '^@/(.*)\\.js$': ['<rootDir>/src/$1.js', '<rootDir>/$1.js'],
+    '^@/(.*)\\.js$': [
+      '<rootDir>/src/$1.js',
+      '<rootDir>/$1.js',
+      '<rootDir>/src/$1.ts',
+      '<rootDir>/$1.ts',
+      '<rootDir>/lib/$1.ts',
+    ],
     '^@/(.*)$': [
       '<rootDir>/src/$1',
       '<rootDir>/$1',
@@ -31,5 +53,5 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
   setupFiles: ['<rootDir>/tests/setup/forceTestNodeEnv.cjs'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/prismaEnsureColumns.ts', '<rootDir>/tests/setup/loggerTeardown.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/prismaEnsureColumns.ts', '<rootDir>/tests/setup/loggerTeardown.ts', '<rootDir>/tests/setup/navigationMock.ts'],
 }

@@ -53,3 +53,19 @@ export const LOGO = `
        alt="Spinzy Academy" height="40"
        style="margin-bottom:24px;display:block;">
 `
+
+// Mobile viewport + dark-mode-aware styles for email clients that
+// respect them (Apple Mail, Outlook on macOS / iOS, Gmail mobile). Other
+// clients ignore the tags safely. Inject once per email body.
+export const EMAIL_HEAD = `
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    @media (prefers-color-scheme: dark) {
+      body, .spinzy-card { background:#1a1a1a !important; color:#f1f1f1 !important; }
+      a { color:#a8a3ff !important; }
+    }
+    @media (max-width: 480px) {
+      .spinzy-card { padding:10px !important; }
+    }
+  </style>
+`

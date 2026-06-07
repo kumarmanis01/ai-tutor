@@ -29,6 +29,12 @@ export async function GET() {
     if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
     const userId = (session.user as any).id
+    // Defense in depth: explicit parent-role check on top of the link-based
+    // guard further down. Without this, a student session reaching this route
+    // with a known studentId could exfiltrate parent-scoped data.
+    if ((session.user as { role?: string }).role !== 'parent') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const profile = await prisma.parentProfile.findUnique({ where: { userId } })
 
     // Fallback defaults if no profile exists yet
@@ -91,6 +97,9 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSessionForHandlers()
     if (!session?.user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    if ((session.user as { role?: string }).role !== 'parent') {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    }
 
     const userId = (session.user as any).id
     const body = await req.json()

@@ -111,8 +111,15 @@ export function SubjectReadinessCard({
           <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Exam readiness</p>
         </div>
         <div className="text-right shrink-0">
-          <p className={`text-xl font-bold leading-none ${tone.textClass}`}>{percent}%</p>
-          <span className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${tone.badgeClass}`}>
+          {/*
+           * Per CLAUDE.md: never show numeric readiness score next to a
+           * knowledge-map result; render tier labels only. Numeric value is
+           * kept on aria-label for screen reader users.
+           */}
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tone.badgeClass}`}
+            aria-label={`Readiness: ${tone.label}`}
+          >
             {tone.label}
           </span>
         </div>
@@ -166,10 +173,14 @@ export function SubjectReadinessCard({
                 <li key={chapter.chapterId} className="flex items-center justify-between gap-2">
                   <span className="truncate text-xs text-gray-700 dark:text-gray-200">{chapter.chapterName}</span>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${getChapterStatusClass(chapter.status)}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getChapterStatusClass(chapter.status)}`}
+                      aria-label={`Chapter mastery: ${chapter.status.replace('_', ' ')}`}
+                      data-testid={`chapter-mastery-${chapter.chapterId}`}
+                      data-mastery-percent={chapterPercent}
+                    >
                       {chapter.status.replace('_', ' ')}
                     </span>
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{chapterPercent}%</span>
                   </div>
                 </li>
               )

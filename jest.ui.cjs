@@ -1,4 +1,20 @@
-/** Jest jsdom project config (UI / component tests) */
+/**
+ * FILE OBJECTIVE:
+ * - Jest configuration for the jsdom-environment project (UI / React
+ *   component tests). Defines testMatch globs, CSS/asset mocks, module
+ *   aliases and the jsdom-specific setup files.
+ *
+ * LINKED UNIT TEST:
+ * - (test-infra; exercised by every UI component spec.)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | replace single-line note with standard header.
+ */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
@@ -27,7 +43,13 @@ module.exports = {
       '<rootDir>/src/components/$1.tsx',
       '<rootDir>/src/components/$1.ts',
     ],
-    '^@/(.*)\\.js$': ['<rootDir>/src/$1.js', '<rootDir>/$1.js'],
+    '^@/(.*)\\.js$': [
+      '<rootDir>/src/$1.js',
+      '<rootDir>/$1.js',
+      '<rootDir>/src/$1.ts',
+      '<rootDir>/$1.ts',
+      '<rootDir>/lib/$1.ts',
+    ],
     '^@/(.*)$': [
       '<rootDir>/src/$1',
       '<rootDir>/$1',
@@ -43,5 +65,5 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
   setupFiles: ['<rootDir>/tests/setup/forceTestNodeEnv.cjs'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup/jsdomPolyfills.ts', '<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/loggerTeardown.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup/jsdomPolyfills.ts', '<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/loggerTeardown.ts', '<rootDir>/tests/setup/navigationMock.ts'],
 }

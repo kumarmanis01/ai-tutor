@@ -1,3 +1,16 @@
+<!--
+FILE OBJECTIVE:
+- Backlog of items intentionally deferred from the pre-launch sprint; do
+  NOT implement during the sprint unless a task explicitly instructs it.
+
+LINKED UNIT TEST:
+- (documentation; no linked unit test.)
+
+EDIT LOG:
+- 2026-04-20T00:00:00Z | copilot | last content update prior to standard header.
+- 2026-06-07T00:00:00Z | claude | add standard documentation header + EDIT LOG.
+-->
+
 # Post-Launch Backlog
 
 Items that are intentionally deferred from the pre-launch sprint.
@@ -101,3 +114,13 @@ that still produces reliable bootstrapped mastery scores.
 ## Other Features
 
 *(Add future backlog items here as they are identified during the sprint)*
+
+---
+
+## Pending UI Component: LearningPathSnapshot
+
+**What**: A small home-dashboard widget that renders the student's per-subject
+progress as a list (max 4 subjects shown, sorted by recency). A failing unit
+test stub lives at `tests/unit/components/home/LearningPathSnapshot.spec.tsx`
+but the component itself was never implemented. Build the component, document
+the pattern in `COMPONENTS_AND_PATTERNS.md`, and re-enable the test.

@@ -38,7 +38,9 @@ export default async function resolveStudentSubjects(
   let enrolledSubjects: string[] | null = null
   if (user?.subjects) {
     if (Array.isArray(user.subjects)) {
-      const arr = (user.subjects as string[]).filter(Boolean).map((s) => String(s).trim())
+      // Lowercase + trim so legacy capitalised values ("Mathematics") match the
+      // canonical lowercased slug column on SubjectDef.
+      const arr = (user.subjects as string[]).filter(Boolean).map((s) => String(s).trim().toLowerCase())
       if (arr.length > 0) enrolledSubjects = arr
     } else if (typeof user.subjects === 'string' && user.subjects.length > 0) {
         const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim()
@@ -51,7 +53,8 @@ export default async function resolveStudentSubjects(
                     .trim()
                     // Remove surrounding single or double quotes that appear in Postgres array wire-format
                     .replace(/^"(.*)"$/, '$1')
-                    .replace(/^'(.*)'$/, '$1'),
+                    .replace(/^'(.*)'$/, '$1')
+                    .toLowerCase(),
                 )
                 .filter(Boolean)
             : []
@@ -71,6 +74,16 @@ export default async function resolveStudentSubjects(
           return Number.isInteger(numericGrade) ? numericGrade : null
         })()
       : null
+
+  // Guard: without both board and grade we cannot resolve a subject to a specific
+  // class scope, and the unscoped fallback would risk pulling cross-grade rows
+  // sharing the same slug (e.g. "English" exists in every grade). Bail out so
+  // the caller treats the student as not-yet-onboarded rather than guessing.
+  const hasScope = !!user?.board && parsedUserGrade !== null
+  if (!hasScope && (!planSubjectIds || planSubjectIds.length === 0)) {
+    logger.debug('resolveStudentSubjects.missing_scope', { hasBoard: !!user?.board, grade: parsedUserGrade })
+    return subjects.map(({ scoped: _, ...s }) => s)
+  }
 
   // Primary resolution: prefer scoped lookup (board+grade) when possible and prefer slug matches
   try {

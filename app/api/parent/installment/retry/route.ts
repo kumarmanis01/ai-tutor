@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Allow a parent to enqueue a retry for a single failed installment they own.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/parent-installment-retry.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | reorder session null check before role read; add header.
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
@@ -8,6 +24,12 @@ export async function POST(req: Request) {
   const session = await getServerSessionForHandlers()
   const userId = (session?.user as any)?.id
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Defense in depth: explicit parent-role check on top of the link-based
+  // guard further down. Without this, a student session reaching this route
+  // with a known studentId could exfiltrate parent-scoped data.
+  if ((session!.user as { role?: string }).role !== 'parent') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   let body: any
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }

@@ -21,7 +21,9 @@ import { render, screen } from '@testing-library/react'
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
 
 describe('SubjectReadinessCard', () => {
-  it('renders normalized score and readiness status', () => {
+  it('renders tier label without numeric readiness score', () => {
+    // Per CLAUDE.md: never show numeric score on knowledge map results;
+    // tier label only.
     render(
       <SubjectReadinessCard
         subjectId="math"
@@ -32,9 +34,9 @@ describe('SubjectReadinessCard', () => {
     )
 
     expect(screen.getByText('Mathematics')).toBeInTheDocument()
-    expect(screen.getByText('78%')).toBeInTheDocument()
     expect(screen.getByText('On track')).toBeInTheDocument()
     expect(screen.getByText('Diagnostic complete')).toBeInTheDocument()
+    expect(screen.queryByText('78%')).not.toBeInTheDocument()
   })
 
   it('renders predicted range and retake badge when provided', () => {
@@ -86,7 +88,11 @@ describe('SubjectReadinessCard', () => {
     expect(screen.getByText('Chapter mastery')).toBeInTheDocument()
     expect(screen.getByText('Grammar')).toBeInTheDocument()
     expect(screen.getByText('Comprehension')).toBeInTheDocument()
-    expect(screen.getByText('33%')).toBeInTheDocument()
-    expect(screen.getByText('72%')).toBeInTheDocument()
+    // Per CLAUDE.md: chapter mastery shows status tier label only,
+    // never the numeric mastery percent next to the row.
+    expect(screen.getByText('critical')).toBeInTheDocument()
+    expect(screen.getByText('on track')).toBeInTheDocument()
+    expect(screen.queryByText('33%')).not.toBeInTheDocument()
+    expect(screen.queryByText('72%')).not.toBeInTheDocument()
   })
 })

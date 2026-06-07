@@ -42,7 +42,10 @@ export default function ParentSettings() {
         setTopicDraft(drafts)
       })
       .catch((err) => {
-        logger.debug('Failed to load parent settings', { error: String(err) })
+        // Use warn so a failed load is visible in production telemetry;
+        // the silent default below otherwise masks a real auth/network
+        // failure as "your settings are reset".
+        logger.warn('Failed to load parent settings', { error: String(err) })
         setProfile({ digestOptOut: false, inactivityOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null, language: 'en' })
       })
       .finally(() => setLoading(false))
@@ -361,11 +364,25 @@ export default function ParentSettings() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button onClick={save} disabled={saving} className="rounded bg-[#534AB7] px-4 py-2 text-white min-h-[44px] min-w-[44px]">
           {saving ? 'Saving...' : 'Save'}
         </button>
-        {message && <span className="text-sm text-gray-600">{message}</span>}
+        {message === 'Save failed' ? (
+          <span
+            role="alert"
+            aria-live="polite"
+            className="text-sm text-[#E24B4A] dark:text-[#E24B4A]"
+          >
+            Couldn{"'"}t save. Tap Save again to retry.
+          </span>
+        ) : (
+          message && (
+            <span aria-live="polite" className="text-sm text-gray-600 dark:text-gray-300">
+              {message}
+            </span>
+          )
+        )}
       </div>
     </div>
   )

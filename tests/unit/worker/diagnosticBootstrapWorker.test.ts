@@ -182,4 +182,130 @@ describe('processDiagnosticBootstrap', () => {
     expect(createMock).not.toHaveBeenCalled()
     expect(updateMock).not.toHaveBeenCalled()
   })
+
+  it('proactive bootstrap (bootstrap: sessionId, 0 answers) is NOT a partial abandon -- uses 0.3 baseline', async () => {
+    const createMock = jest.fn(async () => ({}))
+    const partialAbandonInfo = jest.fn()
+
+    const prismaMock: any = {
+      user: { findUnique: jest.fn(async () => ({ accountStatus: 'pending_parent_verification' })) },
+      concept: {
+        findMany: jest.fn(async () => [{ id: 'c1', irt_b: 0, bloomLevel: 'apply' }]),
+      },
+      answerEvent: { findMany: jest.fn(async () => []) },
+      studentConceptState: {
+        findUnique: jest.fn(async () => null),
+        create: createMock,
+        update: jest.fn(async () => ({})),
+      },
+      chapterDef: { findUnique: jest.fn(async () => null) },
+      learningPlanItem: { count: jest.fn(async () => 0) },
+    }
+
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/logger', () => ({
+      logger: {
+        info: (msg: string, ctx?: unknown) => {
+          if (typeof msg === 'string' && msg.includes('partial_abandon_detected')) partialAbandonInfo(ctx)
+        },
+        warn: jest.fn(),
+        error: jest.fn(),
+      },
+    }))
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }))
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+    jest.doMock('@/lib/notifications/parentNotify.js', () => ({ notifyParent: jest.fn().mockResolvedValue(undefined), DEFAULT_DASHBOARD_URL: 'https://spinzyacademy.com/parent/dashboard' }))
+    jest.doMock('@/lib/constants/mail.js', () => ({ PARENT_NOTIF_EVENTS: { DIAGNOSTIC_COMPLETE: 'diagnostic_complete', PLAN_GENERATED: 'plan_generated' } }))
+
+    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+
+    await processDiagnosticBootstrap(makeJob({ diagnosticSessionId: 'bootstrap:s1' }))
+
+    // 0.3 (no-answer baseline), NOT 0.5 (partial-abandon bonus).
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'c1', masteryScore: 0.3 }) }),
+    )
+    expect(partialAbandonInfo).not.toHaveBeenCalled()
+  })
+
+  it('skips parent notifications and plan generation when accountStatus !== active', async () => {
+    const notifyParentMock = jest.fn().mockResolvedValue(undefined)
+    const generateLearningPlanMock = jest.fn().mockResolvedValue('plan-x')
+
+    const prismaMock: any = {
+      user: { findUnique: jest.fn(async () => ({ accountStatus: 'pending_parent_verification' })) },
+      concept: {
+        findMany: jest.fn(async () => [{ id: 'c1', irt_b: 0, bloomLevel: 'apply' }]),
+      },
+      answerEvent: {
+        findMany: jest.fn(async () => [
+          { conceptId: 'c1', isCorrect: true },
+          { conceptId: 'c1', isCorrect: true },
+        ]),
+      },
+      studentConceptState: {
+        findUnique: jest.fn(async () => null),
+        create: jest.fn(async () => ({})),
+        update: jest.fn(async () => ({})),
+      },
+      chapterDef: { findUnique: jest.fn(async () => ({ subjectId: 'subj-1', subject: { name: 'Math' } })) },
+      subjectDef: { findUnique: jest.fn(async () => ({ name: 'Math' })) },
+      learningPlanItem: { count: jest.fn(async () => 0) },
+    }
+
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }))
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: generateLearningPlanMock }))
+    jest.doMock('@/lib/notifications/parentNotify.js', () => ({ notifyParent: notifyParentMock, DEFAULT_DASHBOARD_URL: 'https://spinzyacademy.com/parent/dashboard' }))
+    jest.doMock('@/lib/constants/mail.js', () => ({ PARENT_NOTIF_EVENTS: { DIAGNOSTIC_COMPLETE: 'diagnostic_complete', PLAN_GENERATED: 'plan_generated' } }))
+
+    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+
+    await processDiagnosticBootstrap(makeJob())
+
+    expect(notifyParentMock).not.toHaveBeenCalled()
+    expect(generateLearningPlanMock).not.toHaveBeenCalled()
+  })
+
+  it('runs parent notifications and plan generation when accountStatus === active', async () => {
+    const notifyParentMock = jest.fn().mockResolvedValue(undefined)
+    const generateLearningPlanMock = jest.fn().mockResolvedValue('plan-active')
+
+    const prismaMock: any = {
+      user: { findUnique: jest.fn(async () => ({ accountStatus: 'active' })) },
+      concept: {
+        findMany: jest.fn(async () => [{ id: 'c1', irt_b: 0, bloomLevel: 'apply' }]),
+      },
+      answerEvent: {
+        findMany: jest.fn(async () => [
+          { conceptId: 'c1', isCorrect: true },
+          { conceptId: 'c1', isCorrect: true },
+        ]),
+      },
+      studentConceptState: {
+        findUnique: jest.fn(async () => null),
+        create: jest.fn(async () => ({})),
+        update: jest.fn(async () => ({})),
+      },
+      chapterDef: { findUnique: jest.fn(async () => ({ subjectId: 'subj-1', subject: { name: 'Math' } })) },
+      subjectDef: { findUnique: jest.fn(async () => ({ name: 'Math' })) },
+      learningPlanItem: { count: jest.fn(async () => 5) },
+    }
+
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 1 } }))
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: generateLearningPlanMock }))
+    jest.doMock('@/lib/notifications/parentNotify.js', () => ({ notifyParent: notifyParentMock, DEFAULT_DASHBOARD_URL: 'https://spinzyacademy.com/parent/dashboard' }))
+    jest.doMock('@/lib/constants/mail.js', () => ({ PARENT_NOTIF_EVENTS: { DIAGNOSTIC_COMPLETE: 'diagnostic_complete', PLAN_GENERATED: 'plan_generated' } }))
+
+    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+
+    await processDiagnosticBootstrap(makeJob())
+
+    expect(notifyParentMock).toHaveBeenCalledWith('s1', expect.objectContaining({ event: 'diagnostic_complete' }))
+    expect(generateLearningPlanMock).toHaveBeenCalledWith('s1', 'subj-1')
+    expect(notifyParentMock).toHaveBeenCalledWith('s1', expect.objectContaining({ event: 'plan_generated' }))
+  })
 })

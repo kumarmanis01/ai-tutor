@@ -57,8 +57,16 @@ export async function GET(req: Request) {
     })
 
     if (!plan) {
-      // No plan exists -- fall back to next action engine
-      const nextAction = await getNextAction(userId).catch(() => null)
+      // No plan exists -- fall back to next action engine. Log failures
+      // instead of swallowing so a degraded fallback is observable.
+      const nextAction = await getNextAction(userId).catch((err) => {
+        logger.warn('[learning-plan/today] getNextAction fallback failed', {
+          event: 'learning_plan_today_fallback_failed',
+          context: { userId },
+          error: String((err as Error)?.message ?? err),
+        })
+        return null
+      })
       const action =
         nextAction && typeof nextAction === 'object' && 'action' in nextAction
           ? (nextAction as { action: unknown }).action

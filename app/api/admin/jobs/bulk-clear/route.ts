@@ -18,8 +18,9 @@ const CLEARABLE_STATUSES = ['completed', 'cancelled', 'failed'] as const
 
 export async function POST(_req: Request) {
   const session = await getServerSessionForHandlers()
-  if (!session || session.user?.role !== 'admin') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 401 })
+  if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (session.user?.role !== 'admin') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
   // Find all non-active root jobs

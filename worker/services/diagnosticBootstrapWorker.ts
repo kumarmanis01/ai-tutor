@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - BullMQ worker that seeds baseline StudentConceptState from a diagnostic (or a
+ *   proactive onboarding pre-seed), then -- only for active accounts -- notifies the
+ *   parent and generates the initial learning plan.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/diagnosticBootstrapWorker.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-06T00:00:00Z | claude | gate parent notify + plan gen on accountStatus; treat
+ *     bootstrap:<id> zero-answer sessions as proactive pre-seed (not partial abandon); add header
+ */
+
 import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
@@ -25,6 +43,30 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
   if (!studentId || !diagnosticSessionId || (!hasChapters && !hasSubjectFallback)) {
     logger.warn('[diagnostic-bootstrap] invalid job data', { jobId: job.id, data: job.data })
     return
+  }
+
+  // Gate parent-facing side effects on accountStatus.
+  // For under-13 students, accountStatus stays pending_parent_verification until
+  // the parent completes OTP. Notifying the parent that the diagnostic / plan
+  // is ready *before* they've even verified their email leaks intent and gives
+  // the impression the child is fully onboarded. We still run the bootstrap
+  // (so state is ready when activation happens) but skip parent notifications
+  // and plan generation when the account is not active.
+  let accountActive = false
+  try {
+    const studentForGate = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { accountStatus: true },
+    })
+    accountActive = (studentForGate as { accountStatus?: string } | null)?.accountStatus === 'active'
+  } catch (gateErr) {
+    // Best-effort gate: any failure (including a partial prisma mock where
+    // prisma.user is undefined) degrades safely to "not active", which skips
+    // parent-facing side effects rather than crashing the whole job.
+    logger.warn('[diagnostic-bootstrap] accountStatus gate lookup failed; treating as inactive', {
+      studentId,
+      error: String((gateErr as { message?: string } | null)?.message ?? gateErr),
+    })
   }
 
   try {
@@ -76,7 +118,14 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
 
         const providedAnswersCount = answerByConcept.size
         const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10)
-        const isPartialAbandon = providedAnswersCount < minValid
+        // Distinguish a *proactive* pre-seed (enqueued from onboarding with a
+        // synthetic "bootstrap:<userId>" session id and zero answers) from a
+        // real diagnostic the student started and abandoned. The pre-seed case
+        // should use the no-answer baseline (0.3) instead of the abandon
+        // bonus (0.5), and should not log as partial_abandon.
+        const isProactiveBootstrap =
+          providedAnswersCount === 0 && diagnosticSessionId.startsWith('bootstrap:')
+        const isPartialAbandon = !isProactiveBootstrap && providedAnswersCount < minValid
         if (isPartialAbandon) {
           logger.info('[diagnostic-bootstrap] partial_abandon_detected', {
             jobId: job.id,
@@ -195,38 +244,45 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       subjectName = subjectDef?.name ?? 'your subject'
     }
 
-    // Notify parent: diagnostic complete
-    notifyParent(studentId, {
-      event: PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE,
-      data: {
-        subjectName,
-        placement: 'See dashboard for details',
-        dashboardUrl: DEFAULT_DASHBOARD_URL,
-      },
-    }).catch((err) =>
-      logger.warn('[diagnostic-bootstrap] parent diagnostic_complete notification failed', { studentId, error: String(err) }),
-    )
+    if (!accountActive) {
+      logger.info('[diagnostic-bootstrap] skipping parent notifications and plan generation -- account not active', {
+        studentId,
+        diagnosticSessionId,
+      })
+    } else {
+      // Notify parent: diagnostic complete
+      notifyParent(studentId, {
+        event: PARENT_NOTIF_EVENTS.DIAGNOSTIC_COMPLETE,
+        data: {
+          subjectName,
+          placement: 'See dashboard for details',
+          dashboardUrl: DEFAULT_DASHBOARD_URL,
+        },
+      }).catch((err) =>
+        logger.warn('[diagnostic-bootstrap] parent diagnostic_complete notification failed', { studentId, error: String(err) }),
+      )
 
-    if (primarySubjectId) {
-      const planId = await generateLearningPlan(studentId, primarySubjectId)
-      if (planId) {
-        const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
-        logger.info('[diagnostic-bootstrap] learning plan generated', {
-          studentId,
-          planId,
-          itemCount,
-        })
+      if (primarySubjectId) {
+        const planId = await generateLearningPlan(studentId, primarySubjectId)
+        if (planId) {
+          const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
+          logger.info('[diagnostic-bootstrap] learning plan generated', {
+            studentId,
+            planId,
+            itemCount,
+          })
 
-        // Notify parent: learning plan generated
-        notifyParent(studentId, {
-          event: PARENT_NOTIF_EVENTS.PLAN_GENERATED,
-          data: {
-            subjectName,
-            dashboardUrl: DEFAULT_DASHBOARD_URL,
-          },
-        }).catch((err) =>
-          logger.warn('[diagnostic-bootstrap] parent plan_generated notification failed', { studentId, error: String(err) }),
-        )
+          // Notify parent: learning plan generated
+          notifyParent(studentId, {
+            event: PARENT_NOTIF_EVENTS.PLAN_GENERATED,
+            data: {
+              subjectName,
+              dashboardUrl: DEFAULT_DASHBOARD_URL,
+            },
+          }).catch((err) =>
+            logger.warn('[diagnostic-bootstrap] parent plan_generated notification failed', { studentId, error: String(err) }),
+          )
+        }
       }
     }
   } catch (err) {

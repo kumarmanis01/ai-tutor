@@ -8,9 +8,11 @@
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
  *
  * EDIT LOG:
  * - 2026-01-22 | copilot | integrated optimized recommendation engine
+ * - 2026-06-07T00:00:00Z | claude | return 401 for unauthenticated callers; complete COPILOT header.
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -23,9 +25,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const session = await getServerSessionForHandlers();
   const userId = session?.user?.id as string | undefined;
-  
+
   if (!userId) {
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
   try {

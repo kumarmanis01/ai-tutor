@@ -27,7 +27,14 @@ jest.mock('@/lib/session', () => ({
 }));
 
 jest.mock('@/lib/logger', () => ({
-  logger: { error: jest.fn(), info: jest.fn(), warn: jest.fn() },
+  logger: {
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    add: jest.fn(),
+    logAPI: jest.fn(),
+  },
 }));
 
 import { PATCH } from '@/app/api/student/learning-plan/[itemId]/route';

@@ -36,13 +36,15 @@ import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsFor
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { logger } from '@/lib/logger';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { DASHBOARD_CACHE_KEY as cacheKey } from '@/lib/student/dashboardCache';
 
 export const dynamic = 'force-dynamic';
 
 // Cache TTL: 60 s. Short enough that streak/homework stay current.
-// Key includes a version suffix so shape changes auto-invalidate.
+// Key (DASHBOARD_CACHE_KEY) is exported via lib/student/dashboardCache.ts
+// so write paths (session completion, homework submit, mastery update)
+// can invalidate explicitly instead of waiting for the TTL.
 const CACHE_TTL_S = 60;
-const cacheKey = (userId: string) => `dash:v1:${userId}`;
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DEFAULT_WEEKLY_GOAL = 3;

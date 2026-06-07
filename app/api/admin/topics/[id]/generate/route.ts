@@ -1,10 +1,16 @@
 import { submitJob } from '@/lib/execution-pipeline/submitJob';
 import { prisma } from '@/lib/prisma';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 export async function POST(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getServerSessionForHandlers();
+  const role = (session?.user as any)?.role ?? null;
+  if (!session) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (role !== 'admin') return Response.json({ error: 'forbidden' }, { status: 403 });
+
   const { id: topicId } = await params;
   if (!topicId) return Response.json({ error: 'missing id' }, { status: 400 });
 
