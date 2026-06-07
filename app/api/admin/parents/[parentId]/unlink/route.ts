@@ -1,14 +1,24 @@
+/**
+ * FILE OBJECTIVE:
+ * - DELETE /api/admin/parents/[parentId]/unlink?studentId=xxx
+ *   Removes the ParentStudent link between a parent and a specific student.
+ *   Does not delete either user account.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/parents/[parentId]/unlink/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07 | claude | created
+ */
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
-import { AdminActionType } from '@prisma/client'
 import { logApiUsage } from '@/utils/logApiUsage'
 
-/**
- * DELETE /api/admin/parents/[parentId]/unlink?studentId=xxx
- * Removes the ParentStudent link between the parent and a specific student.
- * Requires ?studentId query param. Does not delete either user account.
- */
 export async function DELETE(req: Request, context: { params: Promise<{ parentId: string }> }) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
@@ -24,8 +34,9 @@ export async function DELETE(req: Request, context: { params: Promise<{ parentId
   }
 
   try {
-    const link = await prisma.parentStudent.findFirst({
-      where: { parentId, studentId },
+    // Use the @@unique([parentId, studentId]) compound key for a precise lookup.
+    const link = await prisma.parentStudent.findUnique({
+      where: { parentId_studentId: { parentId, studentId } },
       select: { id: true },
     })
 
@@ -35,14 +46,14 @@ export async function DELETE(req: Request, context: { params: Promise<{ parentId
 
     await prisma.$transaction([
       prisma.parentStudent.delete({ where: { id: link.id } }),
+      // action is null (non-admin system event); operation detail recorded in newValue.
       prisma.auditLog.create({
         data: {
           adminId: session.user.id,
           targetEntity: 'ParentStudent',
           targetId: link.id,
-          action: AdminActionType.ACCOUNT_SUSPEND,
-          previousValue: { parentId, studentId },
-          newValue: { deleted: true },
+          action: null,
+          newValue: { operation: 'unlink', parentId, studentId },
         },
       }),
     ])

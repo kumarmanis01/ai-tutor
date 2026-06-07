@@ -1,5 +1,22 @@
 'use client'
 
+/**
+ * FILE OBJECTIVE:
+ * - Client-side table for the /admin/parents page. Renders parent rows with
+ *   readiness bar, verification status, account status badge, View link, and
+ *   per-parent report delivery button. Includes broadcast-digest action.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/parents/ParentsTable.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07 | claude | added View link, account status badge, accountStatus field to ParentRowData
+ */
+
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { DPDP_MINOR_AGE } from '@/lib/constants/age'

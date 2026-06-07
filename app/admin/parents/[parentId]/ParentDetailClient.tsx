@@ -1,5 +1,21 @@
 'use client'
 
+/**
+ * FILE OBJECTIVE:
+ * - Client component for admin parent detail actions (block, unblock, delete,
+ *   remove student link). Mirrors the pattern in app/admin/users/[id]/UserDetailClient.tsx.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/parents/[parentId]/ParentDetailClient.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07 | claude | created
+ */
+
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -37,9 +53,9 @@ function ConfirmModal({
   busy: boolean
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" aria-modal="true" role="dialog" aria-labelledby="confirm-modal-title">
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+        <h2 id="confirm-modal-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
         <p className="text-[12px] text-gray-600 dark:text-gray-400">{message}</p>
         <div className="flex gap-2 justify-end">
           <button

@@ -1,8 +1,18 @@
 /**
- * /admin/parents/[parentId] -- Parent account detail page
+ * FILE OBJECTIVE:
+ * - Admin parent detail page at /admin/parents/[parentId].
+ *   Shows parent profile, linked students with mastery, and management
+ *   actions (block/unblock, delete account, remove student links).
  *
- * Shows parent info, linked students, and management actions
- * (block/unblock, delete account, remove student links).
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/parents/[parentId]/page.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07 | claude | created
  */
 import React from 'react'
 import { notFound } from 'next/navigation'
@@ -15,12 +25,30 @@ interface Props {
   params: Promise<{ parentId: string }>
 }
 
+// Local row type matching the Prisma select shape for parentStudent links.
+type ParentLinkRow = {
+  id: string
+  student: {
+    id: string
+    name: string | null
+    grade: string | null
+    parentVerifiedAt: Date | null
+  }
+}
+
+// Local row type for studentTopicProgress groupBy result.
+type MasteryGroupRow = {
+  studentId: string
+  _avg: { mastery: number | null }
+}
+
 export default async function ParentDetailPage({ params }: Props) {
   const { parentId } = await params
 
-  const [parent, links, masteryRows] = await Promise.all([
+  // Constrain to parent role so this page cannot manage non-parent accounts.
+  const [parent, links] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: parentId },
+      where: { id: parentId, role: 'parent' },
       select: {
         id: true,
         name: true,
@@ -41,17 +69,24 @@ export default async function ParentDetailPage({ params }: Props) {
           },
         },
       },
-    }).catch(() => []),
-    prisma.studentTopicProgress.groupBy({
-      by: ['studentId'],
-      _avg: { mastery: true },
-    }).catch(() => []),
+    }).catch(() => [] as ParentLinkRow[]),
   ])
 
   if (!parent) notFound()
 
+  // Scope mastery aggregation to only the linked students -- avoids a full
+  // table scan as StudentTopicProgress grows.
+  const linkedStudentIds = links.map((l: ParentLinkRow) => l.student.id)
+  const masteryRows: MasteryGroupRow[] = linkedStudentIds.length > 0
+    ? await prisma.studentTopicProgress.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: linkedStudentIds } },
+        _avg: { mastery: true },
+      }).catch(() => [])
+    : []
+
   const masteryMap = new Map<string, number>(
-    masteryRows.map((r: any) => [
+    masteryRows.map((r: MasteryGroupRow) => [
       r.studentId,
       Math.round((r._avg.mastery ?? 0) * 100),
     ])
@@ -63,7 +98,7 @@ export default async function ParentDetailPage({ params }: Props) {
     email: parent.email ?? null,
     accountStatus: parent.accountStatus,
     createdAt: parent.createdAt.toISOString(),
-    linkedStudents: links.map((l: any) => ({
+    linkedStudents: links.map((l: ParentLinkRow) => ({
       linkId: l.id,
       studentId: l.student.id,
       studentName: l.student.name ?? null,
