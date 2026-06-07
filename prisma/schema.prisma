@@ -176,11 +176,11 @@ model PaymentOrder {
   currency               String    @default("INR")
   status                 String    @default("created")
   providerIdempotencyKey String?
-  planMonths      Int       @default(1)
+  planMonths             Int       @default(1)
   /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
-  planId          String?
-  createdAt       DateTime  @default(now())
-  paidAt          DateTime?
+  planId                 String?
+  createdAt              DateTime  @default(now())
+  paidAt                 DateTime?
 
   @@index([studentId])
   @@index([razorpayOrderId])
@@ -277,19 +277,19 @@ enum TrialStatus {
 }
 
 model Trial {
-  id         String      @id @default(cuid())
-  userId     String?     
-  phone      String
-  parentName String?
-  childClass String?
-  schoolName String?
-  utmSource  String?     @map("utm_source")
-  utmMedium  String?     @map("utm_medium")
-  utmCampaign String?    @map("utm_campaign")
-  startAt    DateTime    @default(now())
-  expiresAt  DateTime
-  status     TrialStatus @default(ACTIVE)
-  createdAt  DateTime    @default(now())
+  id          String      @id @default(cuid())
+  userId      String?
+  phone       String
+  parentName  String?
+  childClass  String?
+  schoolName  String?
+  utmSource   String?     @map("utm_source")
+  utmMedium   String?     @map("utm_medium")
+  utmCampaign String?     @map("utm_campaign")
+  startAt     DateTime    @default(now())
+  expiresAt   DateTime
+  status      TrialStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 
@@ -484,13 +484,13 @@ model Subscription {
   dunningAttempts        Int       @default(0)
   lastDunningAt          DateTime?
   /// If set, subscription remains active until this timestamp while parent is in grace period
-  graceUntil       DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  paymentId    String?
+  graceUntil             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  paymentId              String?
   /// Razorpay subscription ID (e.g. sub_XXXX) for webhook reconciliation. Null for legacy one-time orders.
   razorpaySubscriptionId String?
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Installments linked to this subscription (one-to-many)
   installments      Installment[]
@@ -499,7 +499,6 @@ model Subscription {
   @@index([userId])
   @@index([razorpaySubscriptionId])
 }
-
 
 model Installment {
   id                String            @id @default(cuid())
@@ -1014,30 +1013,34 @@ model QuestionFlag {
 }
 
 model ParentStudent {
-  id                      String           @id @default(cuid())
+  id                      String             @id @default(cuid())
   parentId                String
   studentId               String
-  status                  ParentLinkStatus @default(active)
+  status                  ParentLinkStatus   @default(active)
   relationship            ParentRelationship @default(guardian)
-  inviteCode              String?          @unique
+  inviteCode              String?            @unique
   /// Pause controls set by parent: when true, sessions during pause do not count
   /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
-  isPaused                Boolean          @default(false)
+  isPaused                Boolean            @default(false)
   /// When true, this student will be excluded from parent-facing reports/digests
   /// (used for privacy / opt-out per child). Defaults to false.
-  excludeFromParentReport Boolean          @default(false)
+  excludeFromParentReport Boolean            @default(false)
   /// Per-child opt-out for inactivity alerts (parent can mute inactivity alerts for this child)
-  inactivityOptOut        Boolean          @default(false)
+  inactivityOptOut        Boolean            @default(false)
   pausedUntil             DateTime?
   pauseReason             String?
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
-  parent                  User             @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
-  student                 User             @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  parent                  User               @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
+  student                 User               @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([parentId, studentId])
   @@index([studentId])
   @@index([inviteCode])
+  // Parent dashboard load (~3% of daily traffic) reads
+  //   parentStudent.findMany({ where: { parentId, status: 'active' } })
+  // The (parentId, status) composite turns that into an index-only scan.
+  @@index([parentId, status])
 }
 
 /// Time-limited, single-use invite codes for parent linking.
@@ -1075,6 +1078,10 @@ model WeeklyStudentSummary {
   createdAt      DateTime @default(now())
 
   @@unique([studentId, weekStart])
+  // Drop the standalone @@index([studentId]) once the unique index above is in
+  // place -- the (studentId, weekStart) unique already supports the per-student
+  // range scan that parent improvement-trend issues. Kept for now to avoid an
+  // additional migration; revisit when @@unique migrations are batched.
   @@index([studentId])
 }
 
@@ -1679,6 +1686,16 @@ model StudentConceptState {
   @@index([studentId])
   @@index([conceptId])
   @@index([nextReviewAt])
+  // Parent /api/parent/progress and the recent-mastery delta computation read
+  //   studentConceptState.findMany({ where: { studentId, updatedAt: { gte: ... } } })
+  // on every parent dashboard load. Composite (studentId, updatedAt) lets PG
+  // do an index range scan instead of seq-scanning the table per student.
+  @@index([studentId, updatedAt])
+  // Spaced-repetition scheduler reads
+  //   { where: { studentId, nextReviewAt: { lt: now } } }
+  // The standalone @@index([nextReviewAt]) still works for the global pass but
+  // is cross-student; this composite keeps the per-student review query cheap.
+  @@index([studentId, nextReviewAt])
 }
 
 /// Audit history for admin edits to Concept IRT parameters and prerequisites. F-ADM-002 AC-03.
@@ -2062,6 +2079,15 @@ model AnswerEvent {
 
   @@index([studentId, conceptId])
   @@index([studentId, createdAt])
+  // Diagnostic restart de-dup: app/api/student/diagnostic/start/route.ts queries
+  //   { where: { studentId, sessionId } } to skip questions already answered.
+  // Without this index the planner falls back to (studentId, conceptId) and
+  // post-filters in memory; sessionId is more selective.
+  @@index([studentId, sessionId])
+  // IRT worker idempotency check: worker reads
+  //   { where: { sessionId, questionId } } before inserting a new AnswerEvent.
+  // (sessionId, questionId) keeps that lookup O(log n) as the table grows.
+  @@index([sessionId, questionId])
 }
 
 /// Student doubt Q&A pairs for reuse; embedding column added in production when pgvector is available.
@@ -2105,31 +2131,31 @@ model FreeTierUsage {
 }
 
 model PracticeMoreUsage {
-  id          String   @id @default(cuid())
-  studentId   String
+  id         String   @id @default(cuid())
+  studentId  String
   /// UTC date of when "practice more" was last used (date-only).
-  usageDate   DateTime
+  usageDate  DateTime
   /// Number of times "practice more" was used today.
-  usageCount  Int      @default(1)
-  updatedAt   DateTime @updatedAt
+  usageCount Int      @default(1)
+  updatedAt  DateTime @updatedAt
 
   @@unique([studentId, usageDate])
   @@index([studentId, usageDate])
 }
 
 model Misconception {
-  id                String                 @id @default(cuid())
-  subjectId         String
-  conceptId         String
-  name              String
-  description       String
-  triggerPatterns     String[]
-  correction          String
+  id                 String                 @id @default(cuid())
+  subjectId          String
+  conceptId          String
+  name               String
+  description        String
+  triggerPatterns    String[]
+  correction         String
   /// F-ADM-004 AC-01: contrastive worked example for the correction
-  contrastiveExample  String?
-  createdAt           DateTime               @default(now())
-  prevalenceRate      Float                  @default(0)
-  studentDetections StudentMisconception[]
+  contrastiveExample String?
+  createdAt          DateTime               @default(now())
+  prevalenceRate     Float                  @default(0)
+  studentDetections  StudentMisconception[]
 
   @@index([subjectId, conceptId])
 }
@@ -2314,7 +2340,6 @@ enum UserStatus {
   banned
   suspended
 }
-
 
 enum UserRole {
   user
@@ -2713,13 +2738,13 @@ model RecoveryEvent {
 
 /// DPDP consent record — one row per user × scope
 model Consent {
-  id          String       @id @default(cuid())
-  userId      String
-  scope       ConsentScope
-  givenAt     DateTime     @default(now())
-  ipAddress   String?
-  userAgent   String?
-  withdrawnAt DateTime?
+  id               String       @id @default(cuid())
+  userId           String
+  scope            ConsentScope
+  givenAt          DateTime     @default(now())
+  ipAddress        String?
+  userAgent        String?
+  withdrawnAt      DateTime?
   version          String       @default("1.0")
   /// F-ADM-040 AC-01: SHA-256 hash of parent mobile number for DPDP compliance
   parentMobileHash String?
@@ -2873,6 +2898,10 @@ model DiagnosticSession {
 
   @@unique([studentId, subjectId])
   @@index([studentId])
+  // Admin /api/admin/notifications/trigger-pending-diagnostics scans
+  //   { where: { status: 'COMPLETED', completedAt: { gte: ... } } }
+  // once per hour. Without this composite the scheduler does a seq scan.
+  @@index([status, completedAt])
 }
 
 enum DiagnosticStatus {
@@ -3076,25 +3105,25 @@ enum CurriculumBookParseStatus {
 /// Parsed chapters and topics are stored in BookChapter and BookTopic.
 /// Once parsed, SyllabusWorker uses these instead of LLM recall.
 model CurriculumBook {
-  id            String        @id @default(cuid())
-  board         String        // 'cbse' | 'icse'
+  id            String                    @id @default(cuid())
+  board         String // 'cbse' | 'icse'
   grade         Int
   subjectId     String
-  language      String        @default("en")
-  edition       String?       // e.g. "2024-25"
-  originalName  String        // original uploaded filename
-  storagePath   String        // R2 key or local path
+  language      String                    @default("en")
+  edition       String? // e.g. "2024-25"
+  originalName  String // original uploaded filename
+  storagePath   String // R2 key or local path
   fileSizeBytes Int
   pageCount     Int?
   parseStatus   CurriculumBookParseStatus @default(pending)
   parseError    String?
   parsedAt      DateTime?
-  uploadedBy    String        // admin userId
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  uploadedBy    String // admin userId
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
 
-  subject       SubjectDef    @relation(fields: [subjectId], references: [id])
-  bookChapters  BookChapter[]
+  subject      SubjectDef    @relation(fields: [subjectId], references: [id])
+  bookChapters BookChapter[]
 
   @@unique([subjectId, language])
   @@index([parseStatus])
@@ -3102,18 +3131,18 @@ model CurriculumBook {
 
 /// Chapter extracted from a CurriculumBook PDF.
 model BookChapter {
-  id             String         @id @default(cuid())
-  bookId         String
-  chapterNumber  Int
-  chapterTitle   String
-  startPage      Int?
-  endPage        Int?
-  rawText        String
-  createdAt      DateTime       @default(now())
+  id            String   @id @default(cuid())
+  bookId        String
+  chapterNumber Int
+  chapterTitle  String
+  startPage     Int?
+  endPage       Int?
+  rawText       String
+  createdAt     DateTime @default(now())
 
-  book           CurriculumBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  bookTopics     BookTopic[]
-  chapterDef     ChapterDef?    // back-relation from ChapterDef.bookChapterId
+  book       CurriculumBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  bookTopics BookTopic[]
+  chapterDef ChapterDef? // back-relation from ChapterDef.bookChapterId
 
   @@unique([bookId, chapterNumber])
   @@index([bookId])
@@ -3121,16 +3150,16 @@ model BookChapter {
 
 /// Section/topic extracted within a BookChapter.
 model BookTopic {
-  id            String      @id @default(cuid())
-  chapterId     String
-  topicOrder    Int
-  topicTitle    String
-  rawText       String
-  exerciseText  String?
-  createdAt     DateTime    @default(now())
+  id           String   @id @default(cuid())
+  chapterId    String
+  topicOrder   Int
+  topicTitle   String
+  rawText      String
+  exerciseText String?
+  createdAt    DateTime @default(now())
 
-  chapter       BookChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  topicDef      TopicDef?   // back-relation from TopicDef.bookTopicId
+  chapter  BookChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  topicDef TopicDef? // back-relation from TopicDef.bookTopicId
 
   @@unique([chapterId, topicOrder])
   @@index([chapterId])
