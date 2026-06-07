@@ -17,7 +17,13 @@ module.exports = {
       '<rootDir>/src/components/$1.tsx',
       '<rootDir>/src/components/$1.ts',
     ],
-    '^@/(.*)\\.js$': ['<rootDir>/src/$1.js', '<rootDir>/$1.js'],
+    '^@/(.*)\\.js$': [
+      '<rootDir>/src/$1.js',
+      '<rootDir>/$1.js',
+      '<rootDir>/src/$1.ts',
+      '<rootDir>/$1.ts',
+      '<rootDir>/lib/$1.ts',
+    ],
     '^@/(.*)$': [
       '<rootDir>/src/$1',
       '<rootDir>/$1',

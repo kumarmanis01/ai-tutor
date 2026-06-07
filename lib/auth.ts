@@ -696,11 +696,14 @@ export const authOptions: any = {
                 token.board = cachedObj.board ?? undefined;
                 token.language = cachedObj.language ?? undefined;
                 token.subjects = cachedObj.subjects ?? undefined;
-                // Recompute onboardingComplete the same way as DB path
-                token.onboardingComplete = !!(
+                // Recompute onboardingComplete the same way as DB path: profile complete
+                // AND account active. Cached entries set by previous versions may have
+                // ignored accountStatus, so re-derive here rather than trusting the cache.
+                const cachedProfileComplete = !!(
                   token.grade && token.board && token.language &&
                   (Array.isArray(token.subjects) ? token.subjects.filter(Boolean).length > 0 : (typeof token.subjects === 'string' && token.subjects.length > 0))
                 );
+                token.onboardingComplete = cachedProfileComplete && token.accountStatus === 'active';
                 cacheHit = true;
                 logger.add('jwt.cache.hit', { className: 'auth', methodName: 'jwt', cacheKey });
                 try { incJwtCacheHit(); } catch {}
@@ -748,10 +751,13 @@ export const authOptions: any = {
                   .filter((s) => s.trim().length > 0).length;
               }
 
-              // onboardingComplete = academic profile only (board/grade/language/subjects).
-              token.onboardingComplete = !!(
+              // onboardingComplete requires BOTH a complete academic profile AND an
+              // active account. A pending_parent_verification (or any non-active) status
+              // must keep the user on the gate flow, even if profile fields are populated.
+              const profileComplete = !!(
                 dbUser.grade && dbUser.board && dbUser.language && subjectCount > 0
               );
+              token.onboardingComplete = profileComplete && token.accountStatus === 'active';
 
               // Persist profile pieces on token so downstream server consumers can use them
               token.grade = dbUser.grade ?? undefined;

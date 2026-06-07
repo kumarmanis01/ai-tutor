@@ -2,6 +2,34 @@
 // Ensure common DOM methods used in components exist so unit tests don't
 // crash when run under jsdom in CI or local dev.
 
+// Register @testing-library/jest-dom matchers (toBeInTheDocument, toHaveClass,
+// toHaveTextContent, ...) for the entire jsdom project. Without this every
+// component spec would have to import jest-dom itself.
+import '@testing-library/jest-dom';
+
+// Global mock for next/navigation so any component that calls useRouter /
+// usePathname / useSearchParams during render doesn't throw
+// "invariant expected app router to be mounted" in unit tests.
+jest.mock('next/navigation', () => {
+  const router = {
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+  };
+  return {
+    __esModule: true,
+    useRouter: () => router,
+    usePathname: () => '/',
+    useSearchParams: () => new URLSearchParams(),
+    useParams: () => ({}),
+    redirect: jest.fn(),
+    notFound: jest.fn(),
+  };
+});
+
 // Ensure TextDecoder/TextEncoder exist in older jsdom/node test environments
 // so components that consume streaming APIs (SSE / Fetch body readers) do
 // not crash when constructing decoders in tests.

@@ -1,5 +1,12 @@
 import { jest } from '@jest/globals'
 
+/**
+ * NOTE: After the 2026-05-20 refactor, the route no longer enqueues analytics
+ * jobs directly or writes to AnalyticsEvent itself -- `emitServerAnalyticsEvent`
+ * owns queue-vs-DB fallback. These tests now assert the route's actual contract:
+ * a properly shaped event is emitted via emitServerAnalyticsEvent.
+ */
+
 const mockEmitServerAnalyticsEvent = jest.fn().mockResolvedValue(undefined)
 
 describe('Diagnostic start analytics emission', () => {
@@ -8,186 +15,68 @@ describe('Diagnostic start analytics emission', () => {
     jest.clearAllMocks()
   })
 
-  test('enqueues diagnostic_started when analytics queue available', async () => {
-    const addMock = jest.fn().mockResolvedValue(undefined)
-
-    jest.doMock('@/lib/queues/analyticsQueue', () => ({
-      getAnalyticsQueue: () => ({ add: addMock }),
-    }))
+  function arrangeRouteMocks(questions: Array<{ id: string }>) {
     jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
-
-    // minimal mocks for route dependencies
     jest.doMock('@/lib/session', () => ({
       getServerSessionForHandlers: jest.fn().mockResolvedValue({ user: { id: 'u1' } }),
     }))
-
     jest.doMock('@/lib/diagnostics/diagnosticQuestionService', () => ({
       generateSubjectDiagnosticTest: jest.fn().mockResolvedValue({
         id: 'test1',
         subjectId: 's1',
         subjectName: 'Mathematics',
-        questions: [{ id: 'q1' }, { id: 'q2' }],
+        questions,
       }),
     }))
-
     jest.doMock('@/lib/diagnostics/stateStore', () => ({
       getSubjectDiagnosticStatus: jest.fn().mockResolvedValue({ status: 'pending' }),
       upsertSubjectDiagnosticStatus: jest.fn().mockResolvedValue({}),
     }))
-
     jest.doMock('@/lib/diagnostics/sessionStore', () => ({
       createSession: jest.fn().mockResolvedValue(undefined),
     }))
-
     jest.doMock('@/jobs/diagnosticAutoSubmit', () => ({
       enqueueDiagnosticAutoSubmit: jest.fn().mockResolvedValue(undefined),
     }))
+  }
+
+  test('emits student.diagnostics.start with subjectId and totalQuestions', async () => {
+    arrangeRouteMocks([{ id: 'q1' }, { id: 'q2' }])
 
     const { POST } = await import('app/api/student/diagnostic/start/route')
-
     const req = new Request('http://localhost', {
       method: 'POST',
       body: JSON.stringify({ boardSlug: 'cbse', grade: 9, subjectSlug: 'math' }),
       headers: { 'content-type': 'application/json' },
     })
 
-    const res = await POST(req as any)
+    const res = await POST(req as never)
 
-    expect(addMock).toHaveBeenCalled()
-    const call = addMock.mock.calls[0][1] || addMock.mock.calls[0][0]
-    // the route either calls add(name, data) or add(data) depending on queue lib
-    const jobData = call?.data ?? call
-    expect(jobData.eventType).toBe('diagnostic_started')
-    expect(jobData.metadata).toMatchObject({ subjectId: 's1', totalQuestions: 2 })
-    expect(typeof jobData.metadata.sessionId).toBe('string')
+    expect(res.status).toBe(200)
     expect(mockEmitServerAnalyticsEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'student.diagnostics.start',
         userId: 'u1',
+        metadata: expect.objectContaining({ subjectId: 's1', totalQuestions: 2 }),
       }),
       expect.any(String),
     )
-    expect(res.status).toBe(200)
   })
 
-  test('falls back to DB when analytics queue unavailable', async () => {
-    jest.doMock('@/lib/queues/analyticsQueue', () => ({
-      getAnalyticsQueue: () => null,
-    }))
-    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
-
-    const prismaCreateMock = jest.fn().mockResolvedValue({})
-    jest.doMock('@/lib/prisma', () => ({ prisma: { analyticsEvent: { create: prismaCreateMock } } }))
-
-    jest.doMock('@/lib/session', () => ({
-      getServerSessionForHandlers: jest.fn().mockResolvedValue({ user: { id: 'u1' } }),
-    }))
-
-    jest.doMock('@/lib/diagnostics/diagnosticQuestionService', () => ({
-      generateSubjectDiagnosticTest: jest.fn().mockResolvedValue({
-        id: 'test1',
-        subjectId: 's1',
-        subjectName: 'Mathematics',
-        questions: [{ id: 'q1' }],
-      }),
-    }))
-
-    jest.doMock('@/lib/diagnostics/stateStore', () => ({
-      getSubjectDiagnosticStatus: jest.fn().mockResolvedValue({ status: 'pending' }),
-      upsertSubjectDiagnosticStatus: jest.fn().mockResolvedValue({}),
-    }))
-
-    jest.doMock('@/lib/diagnostics/sessionStore', () => ({
-      createSession: jest.fn().mockResolvedValue({}),
-    }))
-
-    jest.doMock('@/jobs/diagnosticAutoSubmit', () => ({
-      enqueueDiagnosticAutoSubmit: jest.fn().mockResolvedValue(undefined),
-    }))
+  test('still returns 200 even when emitServerAnalyticsEvent throws (best-effort)', async () => {
+    mockEmitServerAnalyticsEvent.mockRejectedValueOnce(new Error('analytics-down'))
+    arrangeRouteMocks([{ id: 'q1' }])
 
     const { POST } = await import('app/api/student/diagnostic/start/route')
-
     const req = new Request('http://localhost', {
       method: 'POST',
       body: JSON.stringify({ boardSlug: 'cbse', grade: 9, subjectSlug: 'math' }),
       headers: { 'content-type': 'application/json' },
     })
 
-    const res = await POST(req as any)
+    const res = await POST(req as never)
 
-    expect(prismaCreateMock).toHaveBeenCalled()
-    const created = prismaCreateMock.mock.calls[0][0]
-    expect(created.data.eventType).toBe('diagnostic_started')
-    expect(created.data.metadata).toMatchObject({ subjectId: 's1', totalQuestions: 1 })
-    expect(typeof created.data.metadata.sessionId).toBe('string')
-    expect(mockEmitServerAnalyticsEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: 'student.diagnostics.start',
-        userId: 'u1',
-      }),
-      expect.any(String),
-    )
     expect(res.status).toBe(200)
-  })
-
-  test('falls back to DB when analytics enqueue throws', async () => {
-    const addMock = jest.fn().mockRejectedValue(new Error('enqueue-failure'))
-    jest.doMock('@/lib/queues/analyticsQueue', () => ({
-      getAnalyticsQueue: () => ({ add: addMock }),
-    }))
-    jest.doMock('@/lib/analytics/server', () => ({ emitServerAnalyticsEvent: mockEmitServerAnalyticsEvent }))
-
-    const prismaCreateMock = jest.fn().mockResolvedValue({})
-    jest.doMock('@/lib/prisma', () => ({ prisma: { analyticsEvent: { create: prismaCreateMock } } }))
-
-    jest.doMock('@/lib/session', () => ({
-      getServerSessionForHandlers: jest.fn().mockResolvedValue({ user: { id: 'u1' } }),
-    }))
-
-    jest.doMock('@/lib/diagnostics/diagnosticQuestionService', () => ({
-      generateSubjectDiagnosticTest: jest.fn().mockResolvedValue({
-        id: 'test1',
-        subjectId: 's1',
-        subjectName: 'Mathematics',
-        questions: [{ id: 'q1' }],
-      }),
-    }))
-
-    jest.doMock('@/lib/diagnostics/stateStore', () => ({
-      getSubjectDiagnosticStatus: jest.fn().mockResolvedValue({ status: 'pending' }),
-      upsertSubjectDiagnosticStatus: jest.fn().mockResolvedValue({}),
-    }))
-
-    jest.doMock('@/lib/diagnostics/sessionStore', () => ({
-      createSession: jest.fn().mockResolvedValue({}),
-    }))
-
-    jest.doMock('@/jobs/diagnosticAutoSubmit', () => ({
-      enqueueDiagnosticAutoSubmit: jest.fn().mockResolvedValue(undefined),
-    }))
-
-    const { POST } = await import('app/api/student/diagnostic/start/route')
-
-    const req = new Request('http://localhost', {
-      method: 'POST',
-      body: JSON.stringify({ boardSlug: 'cbse', grade: 9, subjectSlug: 'math' }),
-      headers: { 'content-type': 'application/json' },
-    })
-
-    const res = await POST(req as any)
-
-    expect(prismaCreateMock).toHaveBeenCalled()
-    const created = prismaCreateMock.mock.calls[0][0]
-    expect(created.data.eventType).toBe('diagnostic_started')
-    expect(created.data.metadata).toMatchObject({ subjectId: 's1', totalQuestions: 1 })
-    expect(typeof created.data.metadata.sessionId).toBe('string')
-    expect(mockEmitServerAnalyticsEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: 'student.diagnostics.start',
-        userId: 'u1',
-      }),
-      expect.any(String),
-    )
-    expect(res.status).toBe(200)
+    expect(mockEmitServerAnalyticsEvent).toHaveBeenCalled()
   })
 })

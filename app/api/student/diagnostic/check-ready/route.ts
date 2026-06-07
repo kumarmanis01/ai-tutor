@@ -27,7 +27,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const subjectId = req.nextUrl.searchParams.get('subjectId');
+  // Use req.url (always present) rather than req.nextUrl so the handler is
+  // testable with a plain Request, not just NextRequest.
+  const subjectId = new URL(req.url).searchParams.get('subjectId');
   if (!subjectId || typeof subjectId !== 'string') {
     return NextResponse.json({ error: 'subjectId is required' }, { status: 400 });
   }

@@ -101,3 +101,13 @@ that still produces reliable bootstrapped mastery scores.
 ## Other Features
 
 *(Add future backlog items here as they are identified during the sprint)*
+
+---
+
+## Pending UI Component: LearningPathSnapshot
+
+**What**: A small home-dashboard widget that renders the student's per-subject
+progress as a list (max 4 subjects shown, sorted by recency). A failing unit
+test stub lives at `tests/unit/components/home/LearningPathSnapshot.spec.tsx`
+but the component itself was never implemented. Build the component, document
+the pattern in `COMPONENTS_AND_PATTERNS.md`, and re-enable the test.

@@ -279,8 +279,10 @@ export async function POST(req: NextRequest) {
       // non-fatal: placement defaults to 'at'
     }
 
-    // Emit canonical DIAGNOSTICS_END analytics event (best-effort, fire-and-forget)
-    void emitServerAnalyticsEvent(
+    // Emit canonical DIAGNOSTICS_END analytics event (best-effort, fire-and-forget).
+    // We attach a no-op catch so a rejected promise can't propagate as an
+    // unhandled rejection in workers or tests.
+    emitServerAnalyticsEvent(
       {
         eventType: ANALYTICS_EVENTS.STUDENT.DIAGNOSTICS_END,
         userId,
@@ -288,6 +290,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           subjectId,
           sessionId: diagnosticSessionId,
+          totalQuestions: answers.length,
           answeredCount: answerEventData.length,
           correctCount: answerEventData.filter((a) => !!a.isCorrect).length,
           gamingFlag: !!gamingFlag,
@@ -295,7 +298,13 @@ export async function POST(req: NextRequest) {
         },
       },
       'diagnostic.submit',
-    );
+    ).catch((emitErr) => {
+      logger.warn('diagnostic.submit: DIAGNOSTICS_END emit failed', {
+        className: 'DiagnosticSubmitAPI',
+        methodName: 'POST',
+        error: String(emitErr),
+      });
+    });
 
     // Analytics: emit `diagnostic_completed` (best-effort)
     try {
@@ -336,7 +345,13 @@ export async function POST(req: NextRequest) {
         metadata,
       } as const;
 
-      void emitServerAnalyticsEvent(analyticsEventData, 'diagnostic.submit');
+      emitServerAnalyticsEvent(analyticsEventData, 'diagnostic.submit').catch((emitErr) => {
+        logger.warn('diagnostic.submit: diagnostic_completed emit failed', {
+          className: 'DiagnosticSubmitAPI',
+          methodName: 'POST',
+          error: String(emitErr),
+        });
+      });
     } catch (analyticsErr) {
       logger.warn('diagnostic.submit: analytics emit failed', {
         className: 'DiagnosticSubmitAPI',
