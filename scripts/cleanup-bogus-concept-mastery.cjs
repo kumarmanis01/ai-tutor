@@ -51,7 +51,17 @@ function loadEnvFileIfPresent() {
 
 loadEnvFileIfPresent();
 
-const prisma = new PrismaClient();
+// Prisma 7 requires a non-empty PrismaClientOptions; pass the resolved
+// DATABASE_URL explicitly so the script also works when the prisma schema
+// would otherwise pick a different env binding.
+if (!process.env.DATABASE_URL) {
+  console.error('[cleanup] DATABASE_URL is not set; aborting');
+  process.exit(1);
+}
+const prisma = new PrismaClient({
+  datasources: { db: { url: process.env.DATABASE_URL } },
+  log: ['error'],
+});
 
 async function main() {
   const apply = process.argv.includes('--apply');
