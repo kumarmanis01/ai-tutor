@@ -1,9 +1,11 @@
 /**
  * FILE OBJECTIVE:
  * - Create a new admin user (email + password). Gated by ADMIN_SIGNUP_CODE
- *   so /admin/signup is not an open admin promotion endpoint. Existing
- *   OAuth-only accounts can be upgraded by re-running signup with the same
- *   email (sets passwordHash and role=admin).
+ *   so /admin/signup is not an open admin promotion endpoint.
+ * - One credential, one account: if the email is already registered under
+ *   a non-admin role (student/parent), the request is rejected with 409.
+ *   Only existing admin accounts (OAuth-only, no passwordHash) may set a
+ *   password via this endpoint.
  *
  * ENV VARS:
  * - ADMIN_SIGNUP_CODE (required) - shared secret callers must present. When
@@ -20,6 +22,8 @@
  * EDIT LOG:
  * - 2026-06-07T00:00:00Z | claude | create admin signup route gated by ADMIN_SIGNUP_CODE; refuse when env unset; allow
  *     upgrading an existing OAuth-only account
+ * - 2026-06-07T00:00:00Z | claude | enforce one-credential-one-account: reject signup when email is already registered
+ *     under a student or parent role; OAuth-only admin path no longer overwrites role field
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -62,21 +66,36 @@ export async function POST(req: NextRequest) {
 
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, passwordHash: true } });
     if (existing) {
+      // One credential, one account: reject if this email belongs to a non-admin role.
+      // Promoting a student or parent account to admin via this endpoint is not allowed --
+      // the admin signup path must only create new admins or set a password for an existing
+      // admin who previously signed in via OAuth only.
+      if (existing.role !== 'admin') {
+        logger.warn('admin signup blocked: email belongs to non-admin account', {
+          className: 'api.admin.auth.signup',
+          methodName: 'POST',
+          userId: existing.id,
+          existingRole: existing.role,
+        });
+        return NextResponse.json(
+          { error: 'user_exists', message: 'This email is already registered under a different account type. Use a different email address for the admin account.' },
+          { status: 409 },
+        );
+      }
       if (existing.passwordHash) {
         return NextResponse.json({ error: 'user_exists', message: 'An account with this email already exists. Try signing in or resetting the password.' }, { status: 409 });
       }
-      // Upgrade an existing OAuth-only account to admin + set password.
+      // Set password for an existing admin who previously authenticated via OAuth only.
       await prisma.user.update({
         where: { email },
         data: {
           passwordHash,
-          role: 'admin',
           accountStatus: 'active',
           name: name || undefined,
         },
       });
       await invalidateUserSessionCache(email);
-      logger.info('admin signup upgraded existing account', { className: 'api.admin.auth.signup', methodName: 'POST', userId: existing.id });
+      logger.info('admin signup set password for existing admin account', { className: 'api.admin.auth.signup', methodName: 'POST', userId: existing.id });
       return NextResponse.json({ ok: true });
     }
 
