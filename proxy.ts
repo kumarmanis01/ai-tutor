@@ -11,6 +11,9 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add role-based cross-dashboard guard: active parent hitting /dashboard or
+ *     /student/* redirected to /parent/dashboard; active student hitting /parent/* redirected to /dashboard;
+ *     fix inactive-account onboarding destination to be role-aware (/parent/onboarding for parents)
  * - 2026-06-07T00:00:00Z | claude | wire admin auth flow: redirect unauthenticated /admin visitors to /admin/login
  *     (was /), bounce signed-in admins away from /admin/login|signup|forgot-password|reset-password back to /admin,
  *     and allow /api/admin/auth/* through unauthenticated for the signup/forgot/reset endpoints
@@ -117,15 +120,35 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
       }
 
+      const tokenRole = (token as { role?: string }).role;
       const isStudentOrParentUi = pathname.startsWith('/student') || pathname.startsWith('/parent');
       const accountStatus = (token as { accountStatus?: string }).accountStatus;
       if (isStudentOrParentUi && accountStatus !== 'active') {
-        if (pathname.startsWith('/student/onboarding') || pathname.startsWith('/student/verify-parent')) {
+        // Onboarding allowlist: each role's own onboarding path is always reachable
+        // even before the account becomes active.
+        const isOnboardingAllowlist =
+          pathname.startsWith('/student/onboarding') ||
+          pathname.startsWith('/student/verify-parent') ||
+          pathname.startsWith('/parent/onboarding');
+        if (isOnboardingAllowlist) {
           const allowed = NextResponse.next();
           allowed.headers.set('x-pathname', pathname);
           return allowed;
         }
-        return NextResponse.redirect(new URL('/student/onboarding', request.url));
+        // Route inactive users to their role-appropriate onboarding destination.
+        const onboardingDest = tokenRole === 'parent' ? '/parent/onboarding' : '/student/onboarding';
+        return NextResponse.redirect(new URL(onboardingDest, request.url));
+      }
+
+      // Role-based cross-dashboard guard (active accounts only).
+      // A parent must never land on /dashboard or /student/* paths, and a student
+      // must never land on /parent/* paths. This is the primary enforcement point --
+      // all other layers (layout, page guards) are defence-in-depth.
+      if (tokenRole === 'parent' && (pathname.startsWith('/dashboard') || pathname.startsWith('/student'))) {
+        return NextResponse.redirect(new URL('/parent/dashboard', request.url));
+      }
+      if (tokenRole === 'user' && pathname.startsWith('/parent')) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
       }
 
       const response = NextResponse.next();

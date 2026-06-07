@@ -97,6 +97,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
   // prevents the onboarding/verify-parent re-entry bug.
   const session = (await getServerSession(authOptions)) as any | null;
   if (!session) redirect('/');
+  // Defence-in-depth: proxy.ts is the primary role guard, but if a parent
+  // somehow bypasses it and reaches the student shell, redirect them out.
+  if ((session.user as { role?: string })?.role === 'parent') redirect('/parent/dashboard');
 
   const userId = (session.user as { id?: string })?.id;
   // studentName kept for StudentLayoutShell (profile gate overlay)

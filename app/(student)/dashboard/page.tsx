@@ -32,7 +32,7 @@
 
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { requireActiveSession } from '@/lib/auth'
+import { requireStudentSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getNextAction } from '@/lib/homeEngine/getNextAction'
 import { computeReadinessScore, type ReadinessChapter } from '@/lib/student/examReadiness'
@@ -84,7 +84,10 @@ function chapterTag(status: ReadinessChapter['status']): SubjectReadiness['tag']
 const FREE_TIER_SESSION_CAP = 3
 
 export default async function StudentHomeDashboardPage() {
-  const authSession = await requireActiveSession()
+  // requireStudentSession: asserts auth + accountStatus=active + role=user.
+  // A parent or admin reaching this page (e.g. stale bookmark) is rejected here
+  // as a final backstop after proxy.ts and student layout have already redirected.
+  const authSession = await requireStudentSession()
   if (!authSession) redirect('/')
 
   const userId = (authSession.user as { id: string }).id

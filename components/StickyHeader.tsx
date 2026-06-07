@@ -196,9 +196,11 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               <Link
                 href={
                   session
-                    ? (session.user as any)?.onboardingComplete
-                      ? '/dashboard'
-                      : '/student/onboarding'
+                    ? (session.user as any)?.role === 'parent'
+                      ? '/parent/dashboard'
+                      : (session.user as any)?.onboardingComplete
+                        ? '/dashboard'
+                        : '/student/onboarding'
                     : '/auth/get-started'
                 }
                 className="min-h-[44px] inline-flex items-center px-4 py-2 md:px-6 md:py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold transition-colors"
