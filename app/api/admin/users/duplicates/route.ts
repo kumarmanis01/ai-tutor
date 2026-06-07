@@ -53,7 +53,7 @@ export async function GET(_req: Request) {
     return `***-***-${digits.slice(-4)}`
   }
 
-  const duplicates: DuplicateGroup[] = rows.map((r) => ({
+  const duplicates: DuplicateGroup[] = rows.map((r: DuplicateRow) => ({
     phone: maskPhone(r.phone),
     userIds: r.user_ids,
     count: Number(r.count),

@@ -30,7 +30,7 @@ async function getMetrics(): Promise<Metrics> {
       by: ['studentId'],
       where: { startedAt: { gte: todayStartUtc, lt: todayEndUtc } },
       _count: { studentId: true },
-    }).then((r) => r.length),
+    }).then((r: { studentId: string }[]) => r.length),
     prisma.structuredSession.count({
       where: { startedAt: { gte: todayStartUtc, lt: todayEndUtc } },
     }),
