@@ -34,6 +34,8 @@
 // Import necessary libraries and providers for authentication
 import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth to your database
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
+import CredentialsProvider from 'next-auth/providers/credentials'; // Enables email+password login (admin auth flow)
+import { compare } from 'bcryptjs';
 // EmailProvider is disabled per request -- keep Google-only sign-in flow
 // import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
@@ -304,6 +306,37 @@ export const authOptions: any = {
         params: {
           prompt: 'select_account',
         },
+      },
+    }),
+    CredentialsProvider({
+      id: 'credentials',
+      name: 'Email and password',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        const emailInput = typeof credentials?.email === 'string' ? credentials.email.trim().toLowerCase() : '';
+        const password = typeof credentials?.password === 'string' ? credentials.password : '';
+        if (!emailInput || !password) return null;
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: emailInput },
+            select: { id: true, email: true, name: true, image: true, passwordHash: true, role: true },
+          });
+          if (!dbUser?.passwordHash) return null;
+          const ok = await compare(password, dbUser.passwordHash);
+          if (!ok) return null;
+          return {
+            id: dbUser.id,
+            email: dbUser.email ?? emailInput,
+            name: dbUser.name ?? undefined,
+            image: dbUser.image ?? undefined,
+          } as any;
+        } catch (err) {
+          logger.warn('credentials authorize failed', { className: 'auth', methodName: 'authorize', error: String(err) });
+          return null;
+        }
       },
     }),
     /*

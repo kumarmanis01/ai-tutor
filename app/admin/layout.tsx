@@ -1,5 +1,4 @@
 import React, { Suspense } from 'react';
-import { redirect } from 'next/navigation';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
@@ -27,9 +26,24 @@ export const viewport = {
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSessionForHandlers();
+  const isAdmin = session?.user?.role === 'admin';
 
-  if (!session || session.user?.role !== 'admin') {
-    redirect('/dashboard');
+  // Auth pages (/admin/login, /admin/signup, /admin/forgot-password, /admin/reset-password)
+  // must render without the admin sidebar shell. Middleware ensures only those routes
+  // reach this layout without an admin session, so a missing role implies an auth page.
+  if (!isAdmin) {
+    return (
+      <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+        <body className="font-sans antialiased h-full bg-gray-50 dark:bg-gray-950">
+          <Providers>
+            <NavigationProgress />
+            <AuthSessionLoader />
+            {children}
+            <ToastHost />
+          </Providers>
+        </body>
+      </html>
+    );
   }
 
   // Badge counts -- all run in parallel; individual failures fall back to 0
