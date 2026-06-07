@@ -202,6 +202,21 @@ This is a deletion task. Rules:
     Constants reused across files must be centralized in `lib/constants/*.ts`.
     Avoid repeating raw literals across handlers/components when a named constant exists or should exist.
 
+15. **Next.js 16: route guard lives in `proxy.ts` ONLY -- never `middleware.ts`.**
+    This project runs Next.js 16, which renamed the `middleware` convention to
+    `proxy`. The build fails fatally if both files exist:
+      `Error: Both middleware file "./middleware.ts" and proxy file "./proxy.ts" are detected.`
+    Rules:
+    - The route guard file at the repo root is `proxy.ts` and exports
+      `export async function proxy(request)` plus `export const config = { matcher: [...] }`.
+    - Never create `middleware.ts`. If you need a new route guard, add the
+      logic to `proxy.ts` (extend `ADMIN_AUTH_PATHS` / `protectedUiPrefixes`
+      / the `matcher` array) instead of dropping in a second file.
+    - Test file is `tests/unit/proxy.test.ts` (and the existence smoke test
+      at `tests/auto/proxy.ts.test.ts`). Never name tests `middleware.test.ts`.
+    - If you find a `middleware.ts` in your branch, `git rm` it and migrate
+      the logic into `proxy.ts` before committing.
+
 ---
 
 ## PRODUCTION STANDARDS
