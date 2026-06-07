@@ -1,4 +1,20 @@
-/** Jest node project config (backend & integration tests) */
+/**
+ * FILE OBJECTIVE:
+ * - Jest configuration for the node-environment project (backend, API
+ *   route, worker and service unit tests). Defines testMatch, transform,
+ *   module aliases and the setup files that prime each test process.
+ *
+ * LINKED UNIT TEST:
+ * - (test-infra; exercised by every node-project spec.)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | replace single-line note with standard header.
+ */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',

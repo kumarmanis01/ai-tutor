@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Server-rendered admin dashboard page: aggregates operational metrics
+ *   (active students, sessions, cost, escalations) and renders the admin
+ *   landing surface.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/dashboard.page.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add standard header + EDIT LOG.
+ */
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { logger } from '@/lib/logger'

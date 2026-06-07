@@ -8,9 +8,11 @@
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
  * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/ENGINEERING_PRACTICES.md
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created
+ * - 2026-06-07T00:00:00Z | claude | reorder session null check before role read.
  */
 
 import { NextResponse } from 'next/server'
@@ -27,16 +29,16 @@ export async function POST(req: Request) {
   const start = Date.now()
   const session = await getServerSessionForHandlers()
   const parentId = (session?.user as { id?: string })?.id
-  // Defense in depth: explicit parent-role check on top of the link-based
-  // guard further down. Without this, a student session reaching this route
-  // with a known studentId could exfiltrate parent-scoped data.
-  if ((session.user as { role?: string }).role !== 'parent') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
   if (!parentId) {
     const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (typeof logger.logAPI === 'function') logger.logAPI(req, res, { className: 'ParentSetExamDateAPI', methodName: 'POST' }, start)
     return res
+  }
+  // Defense in depth: explicit parent-role check on top of the link-based
+  // guard further down. Without this, a student session reaching this route
+  // with a known studentId could exfiltrate parent-scoped data.
+  if ((session!.user as { role?: string }).role !== 'parent') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({})) as any

@@ -1,4 +1,20 @@
-/** Jest jsdom project config (UI / component tests) */
+/**
+ * FILE OBJECTIVE:
+ * - Jest configuration for the jsdom-environment project (UI / React
+ *   component tests). Defines testMatch globs, CSS/asset mocks, module
+ *   aliases and the jsdom-specific setup files.
+ *
+ * LINKED UNIT TEST:
+ * - (test-infra; exercised by every UI component spec.)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | replace single-line note with standard header.
+ */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',

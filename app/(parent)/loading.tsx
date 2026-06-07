@@ -1,4 +1,20 @@
 /**
+ * FILE OBJECTIVE:
+ * - Default streaming loading skeleton for every page inside the (parent)
+ *   route group; /parent/dashboard supplies its own override.
+ *
+ * LINKED UNIT TEST:
+ * - (presentational skeleton; no linked unit test.)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | initial creation with standard header.
+ *
+ * Description:
  * Default loading skeleton for every page inside the (parent) route group.
  *
  * /parent/dashboard supplies its own loading.tsx with a card-shaped

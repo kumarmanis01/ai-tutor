@@ -1,3 +1,16 @@
+<!--
+FILE OBJECTIVE:
+- Backlog of items intentionally deferred from the pre-launch sprint; do
+  NOT implement during the sprint unless a task explicitly instructs it.
+
+LINKED UNIT TEST:
+- (documentation; no linked unit test.)
+
+EDIT LOG:
+- 2026-04-20T00:00:00Z | copilot | last content update prior to standard header.
+- 2026-06-07T00:00:00Z | claude | add standard documentation header + EDIT LOG.
+-->
+
 # Post-Launch Backlog
 
 Items that are intentionally deferred from the pre-launch sprint.

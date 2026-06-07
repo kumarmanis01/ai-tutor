@@ -1,4 +1,21 @@
 /**
+ * FILE OBJECTIVE:
+ * - Default streaming loading skeleton for every page inside the (student)
+ *   route group. Individual pages may colocate their own loading.tsx to
+ *   override this default with a tighter shape.
+ *
+ * LINKED UNIT TEST:
+ * - (presentational skeleton; no linked unit test.)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | initial creation with standard header.
+ *
+ * Description:
  * Default loading skeleton for every page inside the (student) route group.
  *
  * Without this file Next.js falls back to an instant unstyled flash on

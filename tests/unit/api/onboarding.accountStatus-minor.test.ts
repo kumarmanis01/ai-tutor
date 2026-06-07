@@ -1,4 +1,20 @@
 /**
+ * FILE OBJECTIVE:
+ * - Unit tests for the under-13 onboarding account-status state machine in
+ *   POST /api/user/onboarding (pending_parent_verification vs active).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/onboarding.accountStatus-minor.test.ts (self)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | initial creation with standard header.
+ *
+ * Description:
  * Unit tests: under-13 onboarding account-status transitions in POST /api/user/onboarding
  *
  * - Minor + parent NOT verified -> accountStatus = pending_parent_verification, requiresOtp = true

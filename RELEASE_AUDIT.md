@@ -1,3 +1,15 @@
+<!--
+FILE OBJECTIVE:
+- Audit report for branch claude/relaxed-edison-QJIYt summarising the
+  pre-release hardening sprint (auth, DB indexes, test coverage).
+
+LINKED UNIT TEST:
+- (documentation; no linked unit test.)
+
+EDIT LOG:
+- 2026-06-07T00:00:00Z | claude | initial creation with standard header.
+-->
+
 # Release Audit — claude/relaxed-edison-QJIYt
 
 _Generated 2026-06-07 during the 5-day release-prep sprint._

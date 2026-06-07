@@ -13,6 +13,17 @@
  *   - sendEmailSafe(params)  passthrough to sendEmailUnifiedSafe
  *
  * Do not add business logic here -- keep it a re-export shim.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/mailer.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | initial creation with standard header.
  */
 
 import { logger } from '@/lib/logger';

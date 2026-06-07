@@ -1,6 +1,20 @@
-// Lightweight DOM polyfills used only in the Jest jsdom environment.
-// Ensure common DOM methods used in components exist so unit tests don't
-// crash when run under jsdom in CI or local dev.
+/**
+ * FILE OBJECTIVE:
+ * - Lightweight DOM/jsdom polyfills (jest-dom matchers, TextEncoder/Decoder,
+ *   scrollIntoView) loaded by the Jest jsdom project so component tests do
+ *   not crash on missing browser APIs.
+ *
+ * LINKED UNIT TEST:
+ * - (test-infra; exercised indirectly by every component spec.)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | replace single-line note with standard header.
+ */
 
 // Register @testing-library/jest-dom matchers (toBeInTheDocument, toHaveClass,
 // toHaveTextContent, ...) for the entire jsdom project. Without this every

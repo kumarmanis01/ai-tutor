@@ -1,15 +1,18 @@
 /**
- * Centralized dashboard cache invalidator.
+ * FILE OBJECTIVE:
+ * - Centralized invalidator for the 60 s student-dashboard aggregate cache
+ *   (dash:v1:<userId>). Called from any write that changes dashboard state.
  *
- * The student dashboard endpoint caches its aggregate response for 60 s
- * (see app/api/dashboard/route.ts `dash:v1:<userId>`). Without explicit
- * invalidation, completing a session, submitting homework, or any other
- * write that affects the dashboard surface leaves the student looking at
- * stale numbers for up to a minute.
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/dashboardCache.test.ts
  *
- * Call this immediately after any write that changes dashboard state.
- * It's best-effort and never throws -- the dashboard route will recompute
- * on the next request if the delete fails.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | initial creation with standard header.
  */
 
 import { cacheDel } from '@/lib/cache';

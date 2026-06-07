@@ -8,9 +8,11 @@
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
  * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
  *
  * EDIT LOG:
  * - 2026-01-22 | copilot | integrated optimized recommendation engine
+ * - 2026-06-07T00:00:00Z | claude | return 401 for unauthenticated callers; complete COPILOT header.
  */
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';

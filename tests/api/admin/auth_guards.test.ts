@@ -6,6 +6,17 @@
  *   is not 'admin'. The guards run before any DB query, so this test
  *   does not need to mock prisma.
  *
+ * LINKED UNIT TEST:
+ * - tests/api/admin/auth_guards.test.ts (self)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add LINKED UNIT TEST + COPILOT + EDIT LOG sections.
+ *
  * Routes covered:
  * - app/api/admin/topics/[id]/rollback
  * - app/api/admin/topics/[id]/generate

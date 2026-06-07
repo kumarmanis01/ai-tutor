@@ -1,9 +1,19 @@
 /**
- * /admin/costs -- AI Cost & Usage
+ * FILE OBJECTIVE:
+ * - /admin/costs server component: AI cost & usage dashboard with stats,
+ *   7-day sparkline, anomaly callout, callType cost breakdown and a
+ *   30-day history table.
  *
- * Replaces simple table with: stats, 7-day sparkline, anomaly callout,
- * callType cost breakdown, and a 30-day history table.
- * Pure server component.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/costs.page.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add standard header + EDIT LOG.
  */
 import React from 'react'
 import { prisma } from '@/lib/prisma'

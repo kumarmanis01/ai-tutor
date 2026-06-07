@@ -3,6 +3,17 @@
  * - Verify the broadcast-digest endpoint refuses a second trigger inside
  *   the cooldown window so two admin clicks cannot double-send the
  *   weekly digest. Uses an in-memory Redis stub that honours SET NX EX.
+ *
+ * LINKED UNIT TEST:
+ * - tests/api/admin/broadcast_digest_dedup.test.ts (self)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add LINKED UNIT TEST + COPILOT + EDIT LOG sections.
  */
 
 interface RedisStub {

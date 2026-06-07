@@ -1,4 +1,21 @@
 /**
+ * FILE OBJECTIVE:
+ * - Unit tests for getNextAction's P0 homework_pending circuit breaker -- the
+ *   "loop breaker" that prevents the dashboard from gating a student forever
+ *   on the same homework decision.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/homeEngine/loopBreaker.test.ts (self)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | initial creation with standard header.
+ *
+ * Description:
  * Unit tests for getNextAction -- P0 homework_pending circuit breaker.
  *
  * The circuit breaker counts *consecutive* repeats of the same
