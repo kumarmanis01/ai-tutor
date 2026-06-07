@@ -21,8 +21,13 @@ export const viewport = {
 /**
  * Admin shell root layout
  * - Standalone root layout for /admin/* routes (no parent app/layout.tsx)
- * - Checks admin role server-side; redirects non-admins to /dashboard
- * - Fetches sidebar badge counts server-side in parallel
+ * - Checks admin role server-side; renders a minimal shell (no sidebar, no
+ *   badge queries) for non-admins so the admin auth pages
+ *   (/admin/login, /admin/signup, /admin/forgot-password, /admin/reset-password)
+ *   render without privileged chrome. middleware.ts handles the actual
+ *   redirect for protected /admin/* routes, so non-admins never reach a
+ *   non-auth admin page through this layout in practice.
+ * - Fetches sidebar badge counts server-side in parallel (admin only)
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSessionForHandlers();

@@ -11,6 +11,9 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add CredentialsProvider (admin-only: rejects non-admin in authorize()) for the
+ *     /admin/login flow; short-circuit signIn callback for the credentials provider so student-onboarding side
+ *     effects (welcome email, student.login audit, STUDENT.AUTH_SIGNIN analytics) do not fire for admin sign-ins
  * - 2026-05-15T00:00:00Z | copilot | make useVerificationToken idempotent by returning null on Prisma P2025 (already-consumed magic link)
  * - 2026-05-12T00:00:00Z | copilot | derive onboardingComplete strictly from accountStatus and require active account in requireActiveSession
  * - 2026-05-11T00:00:00Z | claude | fix Google sign-in: remove redundant explicit PKCE checks and cookie overrides
@@ -325,6 +328,10 @@ export const authOptions: any = {
             select: { id: true, email: true, name: true, image: true, passwordHash: true, role: true },
           });
           if (!dbUser?.passwordHash) return null;
+          // Credentials flow is admin-only. Non-admins must use the Google
+          // OAuth flow; allowing password sign-in for student/parent accounts
+          // would create an unintended second auth surface.
+          if (dbUser.role !== 'admin') return null;
           const ok = await compare(password, dbUser.passwordHash);
           if (!ok) return null;
           return {
@@ -359,6 +366,13 @@ export const authOptions: any = {
   session: { strategy: 'jwt' },
   callbacks: {
     async signIn({ user, account, profile }: any) {
+      // Credentials provider is admin-only (see authorize() above). Skip the
+      // student-onboarding side effects below (welcome email, student.login
+      // audit log, STUDENT.AUTH_SIGNIN analytics) so they don't fire for
+      // admin sign-ins.
+      if (account?.provider === 'credentials') {
+        return true;
+      }
       // Validate Google identity claims before allowing sign-in.
       // User/account creation is handled by the custom adapter (createUser + linkAccount upserts).
       if (account?.provider === 'google') {

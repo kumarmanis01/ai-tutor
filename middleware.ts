@@ -6,6 +6,17 @@
  *
  * NOTE: Defense-in-depth only -- app/admin/layout.tsx still verifies the
  * session server-side before rendering any privileged content.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/middleware.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | create middleware to redirect unauthenticated /admin visitors to /admin/login and
+ *     bounce signed-in admins away from the auth pages
  */
 
 import { NextResponse } from 'next/server';

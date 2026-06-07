@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin email/password sign-in page. Posts to NextAuth credentials provider
+ *   and redirects to /admin (or callbackUrl) on success. middleware.ts bounces
+ *   already-signed-in admins away from this page.
+ *
+ * LINKED UNIT TEST:
+ * - covered via tests/unit/app/api/admin/auth/* and tests/unit/middleware.test.ts
+ *   (the page itself is a thin form wrapper around signIn('credentials'))
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | create admin login page (email + password)
+ */
 'use client';
 
 import { Suspense, useState } from 'react';

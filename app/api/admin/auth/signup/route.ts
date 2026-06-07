@@ -1,7 +1,25 @@
 /**
  * FILE OBJECTIVE:
  * - Create a new admin user (email + password). Gated by ADMIN_SIGNUP_CODE
- *   so /admin/signup is not an open admin promotion endpoint.
+ *   so /admin/signup is not an open admin promotion endpoint. Existing
+ *   OAuth-only accounts can be upgraded by re-running signup with the same
+ *   email (sets passwordHash and role=admin).
+ *
+ * ENV VARS:
+ * - ADMIN_SIGNUP_CODE (required) - shared secret callers must present. When
+ *   unset, the endpoint returns 503 and admin signup is effectively disabled.
+ *   Must be declared in `.env` and `.env.production` per project policy.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/auth/signup/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | create admin signup route gated by ADMIN_SIGNUP_CODE; refuse when env unset; allow
+ *     upgrading an existing OAuth-only account
  */
 
 import { NextRequest, NextResponse } from 'next/server';

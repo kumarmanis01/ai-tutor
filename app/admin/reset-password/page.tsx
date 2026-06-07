@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin password-reset consumption page. Reads the token from the query
+ *   string, posts the new password to /api/admin/auth/reset-password, and
+ *   redirects to /admin/login on success.
+ *
+ * LINKED UNIT TEST:
+ * - covered by tests/unit/app/api/admin/auth/reset-password/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | create admin reset-password page
+ */
 'use client';
 
 import { Suspense, useState } from 'react';

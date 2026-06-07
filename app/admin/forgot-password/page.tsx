@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin password-reset request page. Posts to
+ *   /api/admin/auth/forgot-password and shows a generic success message
+ *   regardless of whether the email exists (avoids account enumeration).
+ *
+ * LINKED UNIT TEST:
+ * - covered by tests/unit/app/api/admin/auth/forgot-password/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | create admin forgot-password page
+ */
 'use client';
 
 import { useState } from 'react';

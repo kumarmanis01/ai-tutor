@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin signup page. Posts to /api/admin/auth/signup with the shared
+ *   ADMIN_SIGNUP_CODE, then signs in via the credentials provider.
+ *
+ * LINKED UNIT TEST:
+ * - covered by tests/unit/app/api/admin/auth/signup/route.test.ts
+ *   (the page itself is a thin form wrapper)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | create admin signup page (gated by ADMIN_SIGNUP_CODE)
+ */
 'use client';
 
 import { useState } from 'react';

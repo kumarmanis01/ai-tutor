@@ -1,7 +1,19 @@
 /**
  * FILE OBJECTIVE:
  * - Issue a password-reset token for an admin user and email the reset link.
- *   Always returns 200 so the endpoint does not leak which emails exist.
+ *   Always returns 200 so the endpoint does not leak which emails exist
+ *   (non-admin emails and unknown emails are silent no-ops).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/auth/forgot-password/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | create admin password reset issue endpoint; fall back to PRODUCTION_BASE_URL when
+ *     NEXTAUTH_URL is unset so emailed reset links are always absolute
  */
 
 import crypto from 'crypto';
@@ -13,15 +25,19 @@ import { magicLinkHtml } from '@/lib/email/templates';
 
 const RESET_TOKEN_TTL_MS = 1000 * 60 * 30; // 30 minutes
 const RESET_IDENTIFIER_PREFIX = 'admin-pwreset:';
+// Fallback base used when NEXTAUTH_URL is unset, so emailed reset links are
+// always absolute and clickable. Matches the production domain used elsewhere
+// in lib/notifications/parentNotify.
+const PRODUCTION_BASE_URL = 'https://spinzyacademy.com';
 
 function isEmail(value: unknown): value is string {
   return typeof value === 'string' && value.includes('@') && !/\s/.test(value);
 }
 
 function buildResetUrl(token: string): string {
-  const base = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '');
-  const path = `/admin/reset-password?token=${encodeURIComponent(token)}`;
-  return base ? `${base}${path}` : path;
+  const configured = (process.env.NEXTAUTH_URL ?? '').trim().replace(/\/$/, '');
+  const base = configured || PRODUCTION_BASE_URL;
+  return `${base}/admin/reset-password?token=${encodeURIComponent(token)}`;
 }
 
 export async function POST(req: NextRequest) {
