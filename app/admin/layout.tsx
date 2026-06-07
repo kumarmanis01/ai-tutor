@@ -1,5 +1,4 @@
 import React, { Suspense } from 'react';
-import { redirect } from 'next/navigation';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
@@ -22,14 +21,36 @@ export const viewport = {
 /**
  * Admin shell root layout
  * - Standalone root layout for /admin/* routes (no parent app/layout.tsx)
- * - Checks admin role server-side; redirects non-admins to /dashboard
- * - Fetches sidebar badge counts server-side in parallel
+ * - Checks admin role server-side; renders a minimal shell (no sidebar, no
+ *   badge queries) for non-admins so the admin auth pages
+ *   (/admin/login, /admin/signup, /admin/forgot-password, /admin/reset-password)
+ *   render without privileged chrome. middleware.ts handles the actual
+ *   redirect for protected /admin/* routes, so non-admins never reach a
+ *   non-auth admin page through this layout in practice.
+ * - Fetches sidebar badge counts server-side in parallel (admin only)
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSessionForHandlers();
+  const isAdmin = session?.user?.role === 'admin';
 
-  if (!session || session.user?.role !== 'admin') {
-    redirect('/dashboard');
+  // Auth pages (/admin/login, /admin/signup, /admin/forgot-password, /admin/reset-password)
+  // must render without the admin sidebar shell. Middleware ensures only those routes
+  // reach this layout without an admin session, so a missing role implies an auth page.
+  if (!isAdmin) {
+    return (
+      <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+        <body className="font-sans antialiased h-full bg-gray-50 dark:bg-gray-950">
+          <Providers>
+            <GlobalLoaderProvider>
+              <NavigationProgress />
+              <AuthSessionLoader />
+              {children}
+              <ToastHost />
+            </GlobalLoaderProvider>
+          </Providers>
+        </body>
+      </html>
+    );
   }
 
   // Badge counts -- all run in parallel; individual failures fall back to 0

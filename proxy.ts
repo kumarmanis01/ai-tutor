@@ -11,6 +11,9 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | wire admin auth flow: redirect unauthenticated /admin visitors to /admin/login
+ *     (was /), bounce signed-in admins away from /admin/login|signup|forgot-password|reset-password back to /admin,
+ *     and allow /api/admin/auth/* through unauthenticated for the signup/forgot/reset endpoints
  * - 2026-05-19T00:00:00Z | copilot | migrate route guard from middleware convention to proxy convention
  * - 2026-05-12T00:00:00Z | copilot | enforce active-account guard for /student and /parent routes with onboarding allowlist
  * - 2026-05-07T00:00:00Z | copilot | remove stale JWT-based onboarding redirects for /session routes
@@ -20,6 +23,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { logger } from '@/lib/logger';
+
+// Admin auth pages that must remain reachable without an admin session and
+// must bounce already-signed-in admins back to /admin.
+const ADMIN_AUTH_PATHS = new Set<string>([
+  '/admin/login',
+  '/admin/signup',
+  '/admin/forgot-password',
+  '/admin/reset-password',
+]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -68,11 +80,30 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     logger.debug('[PROXY] Token: ' + String(token));
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
+    const isAdminAuthApi = pathname.startsWith('/api/admin/auth/');
+    const isAdminAuthPage = ADMIN_AUTH_PATHS.has(pathname);
+
+    // /api/admin/auth/* (signup, forgot-password, reset-password) must be
+    // reachable without an admin session -- they exist precisely to bootstrap
+    // one. They have their own gating (ADMIN_SIGNUP_CODE, token consumption).
+    if (isAdminAuthApi) {
+      return NextResponse.next();
+    }
+
+    // /admin/login, /admin/signup, /admin/forgot-password, /admin/reset-password:
+    // bounce signed-in admins to /admin, otherwise allow unauthenticated access.
+    if (isAdminAuthPage) {
+      if (allowed) {
+        return NextResponse.redirect(new URL('/admin', request.url));
+      }
+      return NextResponse.next();
+    }
+
     if (!allowed) {
       if (pathname.startsWith('/api/admin')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
     return NextResponse.next();
   }

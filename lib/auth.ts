@@ -11,6 +11,9 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-07T00:00:00Z | claude | add CredentialsProvider (admin-only: rejects non-admin in authorize()) for the
+ *     /admin/login flow; short-circuit signIn callback for the credentials provider so student-onboarding side
+ *     effects (welcome email, student.login audit, STUDENT.AUTH_SIGNIN analytics) do not fire for admin sign-ins
  * - 2026-05-15T00:00:00Z | copilot | make useVerificationToken idempotent by returning null on Prisma P2025 (already-consumed magic link)
  * - 2026-05-12T00:00:00Z | copilot | derive onboardingComplete strictly from accountStatus and require active account in requireActiveSession
  * - 2026-05-11T00:00:00Z | claude | fix Google sign-in: remove redundant explicit PKCE checks and cookie overrides
@@ -34,6 +37,8 @@
 // Import necessary libraries and providers for authentication
 import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth to your database
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
+import CredentialsProvider from 'next-auth/providers/credentials'; // Enables email+password login (admin auth flow)
+import { compare } from 'bcryptjs';
 // EmailProvider is disabled per request -- keep Google-only sign-in flow
 // import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
@@ -306,6 +311,41 @@ export const authOptions: any = {
         },
       },
     }),
+    CredentialsProvider({
+      id: 'credentials',
+      name: 'Email and password',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        const emailInput = typeof credentials?.email === 'string' ? credentials.email.trim().toLowerCase() : '';
+        const password = typeof credentials?.password === 'string' ? credentials.password : '';
+        if (!emailInput || !password) return null;
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: emailInput },
+            select: { id: true, email: true, name: true, image: true, passwordHash: true, role: true },
+          });
+          if (!dbUser?.passwordHash) return null;
+          // Credentials flow is admin-only. Non-admins must use the Google
+          // OAuth flow; allowing password sign-in for student/parent accounts
+          // would create an unintended second auth surface.
+          if (dbUser.role !== 'admin') return null;
+          const ok = await compare(password, dbUser.passwordHash);
+          if (!ok) return null;
+          return {
+            id: dbUser.id,
+            email: dbUser.email ?? emailInput,
+            name: dbUser.name ?? undefined,
+            image: dbUser.image ?? undefined,
+          } as any;
+        } catch (err) {
+          logger.warn('credentials authorize failed', { className: 'auth', methodName: 'authorize', error: String(err) });
+          return null;
+        }
+      },
+    }),
     /*
       Email sign-in (magic link) disabled. To re-enable, uncomment imports
       at the top of this file and this provider block.
@@ -326,6 +366,13 @@ export const authOptions: any = {
   session: { strategy: 'jwt' },
   callbacks: {
     async signIn({ user, account, profile }: any) {
+      // Credentials provider is admin-only (see authorize() above). Skip the
+      // student-onboarding side effects below (welcome email, student.login
+      // audit log, STUDENT.AUTH_SIGNIN analytics) so they don't fire for
+      // admin sign-ins.
+      if (account?.provider === 'credentials') {
+        return true;
+      }
       // Validate Google identity claims before allowing sign-in.
       // User/account creation is handled by the custom adapter (createUser + linkAccount upserts).
       if (account?.provider === 'google') {
