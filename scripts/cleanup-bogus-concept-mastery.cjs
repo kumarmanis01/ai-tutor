@@ -21,6 +21,17 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 
+// ioredis is the same client the app uses (see lib/redis.ts). We pull it in
+// only to flush the readiness cache keys for affected students after the
+// delete -- otherwise Redis serves stale "50%" results for up to an hour.
+let IORedis = null;
+try {
+  IORedis = require('ioredis');
+} catch (_e) {
+  // Optional: if ioredis isn't installed, the script still runs the DB
+  // cleanup; the cache will just self-expire (TTL 3600s).
+}
+
 function loadEnvFileIfPresent() {
   try {
     const root = path.resolve(__dirname, '..');
@@ -67,6 +78,37 @@ const prisma = new PrismaClient({
   log: ['error'],
 });
 
+async function flushReadinessCacheForStudents(studentIds) {
+  if (!IORedis) {
+    console.log('[cleanup] ioredis not available -- skipping readiness cache flush (TTL is 1h)');
+    return;
+  }
+  if (!process.env.REDIS_URL) {
+    console.log('[cleanup] REDIS_URL not set -- skipping readiness cache flush');
+    return;
+  }
+  const redis = new IORedis(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
+  try {
+    await redis.connect();
+    let deleted = 0;
+    for (const studentId of studentIds) {
+      // Match readiness:${studentId}:${subjectId} keys via SCAN to avoid blocking Redis on a large keyspace.
+      const pattern = `readiness:${studentId}:*`;
+      let cursor = '0';
+      do {
+        const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 200);
+        cursor = next;
+        if (keys.length > 0) {
+          deleted += await redis.del(...keys);
+        }
+      } while (cursor !== '0');
+    }
+    console.log(`[cleanup] readiness cache keys deleted: ${deleted}`);
+  } finally {
+    redis.disconnect();
+  }
+}
+
 async function main() {
   const apply = process.argv.includes('--apply');
 
@@ -97,8 +139,22 @@ async function main() {
     return;
   }
 
+  // Capture the affected studentIds before delete so we can invalidate the
+  // matching readiness cache keys afterwards. groupBy keeps the result set
+  // small even on large tables.
+  const affected = await prisma.studentConceptState.groupBy({
+    by: ['studentId'],
+    where: filter,
+  });
+  const studentIds = affected.map((r) => r.studentId);
+  console.log(`[cleanup] affected students: ${studentIds.length}`);
+
   const result = await prisma.studentConceptState.deleteMany({ where: filter });
   console.log(`[cleanup] deleted ${result.count} rows`);
+
+  await flushReadinessCacheForStudents(studentIds).catch((err) => {
+    console.warn('[cleanup] readiness cache flush failed (rows already deleted):', err && err.message);
+  });
 }
 
 main()
