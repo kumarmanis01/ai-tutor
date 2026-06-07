@@ -66,9 +66,10 @@ function computeCrunchMode(examDate: Date | null | undefined): boolean {
   return daysToExam >= 0 && daysToExam <= 14
 }
 
-/** Normalise 0-1 scores to 0-100. */
+/** Normalise 0-1 scores to 0-100. computeReadinessScore always returns integers,
+ * so only multiply when the value is strictly between 0 and 1 (a float fraction). */
 function normalisePct(score: number): number {
-  if (score <= 1) return Math.round(score * 100)
+  if (score > 0 && score < 1) return Math.round(score * 100)
   return Math.round(score)
 }
 

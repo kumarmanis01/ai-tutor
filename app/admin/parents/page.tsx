@@ -1,8 +1,18 @@
 /**
- * /admin/parents -- Parent management page
+ * FILE OBJECTIVE:
+ * - /admin/parents -- Parent management list page.
+ *   Server component. Fetches active ParentStudent links, computes
+ *   per-student average mastery, passes rows to ParentsTable.
  *
- * Server component. Fetches active ParentStudent links, computes
- * per-student average mastery, passes to ParentsTable.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/parents/page.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-07 | claude | added accountStatus to parent select for status badge in table
  */
 import React from 'react'
 import { prisma } from '@/lib/prisma'
@@ -15,7 +25,7 @@ export default async function ParentsPage() {
       where: { status: 'active' },
       include: {
         parent: {
-          select: { id: true, name: true, email: true, parentEmail: true },
+          select: { id: true, name: true, email: true, parentEmail: true, accountStatus: true },
         },
         student: {
           select: {
@@ -69,6 +79,7 @@ export default async function ParentsPage() {
     verifiedAt: l.student.parentVerifiedAt?.toISOString() ?? null,
     requiresVerification: l.student.requiresParentVerification,
     avgMastery: masteryMap.get(l.studentId) ?? 0,
+    accountStatus: l.parent.accountStatus ?? null,
   }))
 
   // Avg readiness across linked students (null when no parents linked)
