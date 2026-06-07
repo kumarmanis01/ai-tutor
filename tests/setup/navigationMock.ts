@@ -30,13 +30,12 @@ function buildNavigationMock() {
   };
 }
 
+// The factory is called once per test file (the jest.mock is hoisted to the
+// top of the file when ts-jest compiles it). Specs that need to override the
+// mock (e.g. give redirect() a throwing implementation) can re-mock locally
+// with their own jest.mock('next/navigation', ...) -- this default only fills
+// the gap for components that incidentally call useRouter / usePathname /
+// useSearchParams during SSR or first render.
 jest.mock('next/navigation', () => buildNavigationMock());
-
-// Re-establish the mock after any spec that runs jest.resetAllMocks() in
-// beforeEach -- otherwise useRouter would resolve to an empty jest.fn() and
-// crash with "(0 , navigation_1.useRouter) is not a function".
-beforeEach(() => {
-  jest.doMock('next/navigation', () => buildNavigationMock());
-});
 
 export {};
