@@ -201,9 +201,17 @@ export async function POST(req: NextRequest) {
       }
 
       // grade/board immutable after first save -- strip from all PATCH handlers
-      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true, whatsappPhone: true, parentWhatsappPhone: true } }).catch(() => null);
+      // (per CLAUDE.md). We strip silently rather than 422 so an unchanged echo
+      // from the client (idempotent re-onboarding) doesn't surface as an error.
+      // The same select also fetches board so we can extend the strip to the
+      // board column -- previously only grade was stripped, allowing a student
+      // to silently switch curricula and orphan their LearningPlan.
+      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true, board: true, whatsappPhone: true, parentWhatsappPhone: true } }).catch(() => null);
       if (gradeRow?.grade != null) {
-        delete updates.grade
+        delete updates.grade;
+      }
+      if (gradeRow && (gradeRow as { board?: string | null }).board != null) {
+        delete updates.board;
       }
       // whatsappPhone immutable after first save -- only write when not already set
       if (whatsappPhone && !(gradeRow as any)?.whatsappPhone) {
