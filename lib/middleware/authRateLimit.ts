@@ -55,6 +55,13 @@ export const AUTH_RATE_LIMITS = {
     windowSeconds: 60 * 60, // 1 hour
     blockDurationSeconds: 60 * 60 * 24, // 24 hours block
   },
+  // Payment order / payment verification -- protect Razorpay from abuse and
+  // bound spend on retried signature checks.
+  payment: {
+    maxRequests: 10,
+    windowSeconds: 60 * 15, // 15 minutes
+    blockDurationSeconds: 60 * 60, // 1 hour block
+  },
 } as const;
 
 export type AuthRateLimitOperation = keyof typeof AUTH_RATE_LIMITS;

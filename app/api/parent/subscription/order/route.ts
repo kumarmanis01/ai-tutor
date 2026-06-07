@@ -26,6 +26,7 @@ import { logger } from '@/lib/logger';
 import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
+import { checkAuthRateLimit } from '@/lib/middleware/authRateLimit';
 
 function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -41,6 +42,17 @@ export async function POST(req: Request) {
   const user = (session?.user as { id?: string; role?: string }) ?? null;
   if (!user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (user.role !== 'parent') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  // Rate limit at the parent level: each parent can mint at most N payment
+  // orders per window. Without this, a hostile client could spam order
+  // creation and rack up Razorpay state / billable Razorpay calls.
+  const rl = await checkAuthRateLimit(req as unknown as import('next/server').NextRequest, 'payment', `parent:${user.id}`);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many payment attempts. Try again later.', retryAt: rl.resetAt },
+      { status: 429 },
+    );
+  }
 
   let body: unknown;
   try {

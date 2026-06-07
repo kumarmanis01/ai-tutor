@@ -180,7 +180,6 @@ export default async function StudentHomeDashboardPage() {
 
   // ── Round 2: readiness + diagnostic status, subjects batched for pool safety ─
   const SUBJECT_CAP = 5
-  const SUBJECT_CONCURRENCY = 3
 
   type ReadinessRow = {
     subjectId: string
@@ -193,33 +192,33 @@ export default async function StudentHomeDashboardPage() {
   }
 
   const cappedSubjects = subjects.slice(0, SUBJECT_CAP)
-  const readinessResults: ReadinessRow[] = []
 
-  for (let i = 0; i < cappedSubjects.length; i += SUBJECT_CONCURRENCY) {
-    const batch = cappedSubjects.slice(i, i + SUBJECT_CONCURRENCY)
-    const batchRows = await Promise.all(
-      batch.map(async (sub): Promise<ReadinessRow> => {
-        const [result, diagStatus] = await Promise.all([
-          computeReadinessScore(userId, sub.id).catch(() => ({
-            score: 0,
-            label: 'critical' as const,
-            chapters: [] as ReadinessChapter[],
-          })),
-          getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
-        ])
-        return {
-          subjectId: sub.id,
-          subjectName: sub.name,
-          score: normalisePct(result.score),
-          predictedRange: (result as { predictedRange?: PredictedRange }).predictedRange ?? null,
-          chapters: result.chapters ?? [],
-          diagnosticDone: diagStatus?.status === 'completed',
-          retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
-        }
-      }),
-    )
-    readinessResults.push(...batchRows)
-  }
+  // Fan out all subjects in a single Promise.all rather than the previous
+  // manual SUBJECT_CONCURRENCY batching loop. With SUBJECT_CAP = 5, the cap
+  // alone is a sufficient concurrency limit, and Prisma's connection pool
+  // (default 10) safely absorbs the burst. The old batching added an extra
+  // ~roundtrip latency for the second batch on every dashboard load.
+  const readinessResults: ReadinessRow[] = await Promise.all(
+    cappedSubjects.map(async (sub): Promise<ReadinessRow> => {
+      const [result, diagStatus] = await Promise.all([
+        computeReadinessScore(userId, sub.id).catch(() => ({
+          score: 0,
+          label: 'critical' as const,
+          chapters: [] as ReadinessChapter[],
+        })),
+        getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
+      ])
+      return {
+        subjectId: sub.id,
+        subjectName: sub.name,
+        score: normalisePct(result.score),
+        predictedRange: (result as { predictedRange?: PredictedRange }).predictedRange ?? null,
+        chapters: result.chapters ?? [],
+        diagnosticDone: diagStatus?.status === 'completed',
+        retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
+      }
+    }),
+  )
 
   try {
     logger.debug('dashboard.readiness_results', {
