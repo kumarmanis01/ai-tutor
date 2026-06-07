@@ -43,7 +43,25 @@ jest.mock('@/lib/prisma.js', () => ({
 
 // ── Next.js internals ─────────────────────────────────────────────────────────
 const redirectMock = jest.fn()
-jest.mock('next/navigation', () => ({ redirect: redirectMock }))
+jest.mock('next/navigation', () => {
+  const router = {
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+  }
+  return {
+    __esModule: true,
+    redirect: redirectMock,
+    useRouter: () => router,
+    usePathname: () => '/',
+    useSearchParams: () => new URLSearchParams(),
+    useParams: () => ({}),
+    notFound: jest.fn(),
+  }
+})
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => children,
@@ -72,7 +90,14 @@ const loggerWarnMock = jest.fn()
 
 jest.mock('@/lib/redis', () => ({ getRedis: jest.fn().mockReturnValue(null) }))
 jest.mock('@/lib/logger', () => ({
-  logger: { info: jest.fn(), warn: loggerWarnMock, error: jest.fn() },
+  logger: {
+    info: jest.fn(),
+    warn: loggerWarnMock,
+    error: jest.fn(),
+    debug: jest.fn(),
+    add: jest.fn(),
+    logAPI: jest.fn(),
+  },
 }))
 
 // ── UI components (client components -- mock to avoid hook errors in SSR) ────
@@ -552,7 +577,7 @@ describe('StudentHomeDashboardPage', () => {
 
     expect(html).not.toContain('/session/pre/topic-missing-concept')
     expect(loggerWarnMock).toHaveBeenCalledWith(
-      'dashboard.start_action.skipped_missing_concept',
+      'dashboard.hero_mission.skipped_missing_concept',
       expect.objectContaining({
         userId: MOCK_USER_ID,
         topicId: 'topic-missing-concept',

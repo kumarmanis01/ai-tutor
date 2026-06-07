@@ -7,28 +7,9 @@
 // component spec would have to import jest-dom itself.
 import '@testing-library/jest-dom';
 
-// Global mock for next/navigation so any component that calls useRouter /
-// usePathname / useSearchParams during render doesn't throw
-// "invariant expected app router to be mounted" in unit tests.
-jest.mock('next/navigation', () => {
-  const router = {
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-    refresh: jest.fn(),
-  };
-  return {
-    __esModule: true,
-    useRouter: () => router,
-    usePathname: () => '/',
-    useSearchParams: () => new URLSearchParams(),
-    useParams: () => ({}),
-    redirect: jest.fn(),
-    notFound: jest.fn(),
-  };
-});
+// next/navigation mock now lives in tests/setup/navigationMock.ts and is loaded
+// by both jest projects so node-environment specs (dashboard page.test.ts) also
+// get the router stub.
 
 // Ensure TextDecoder/TextEncoder exist in older jsdom/node test environments
 // so components that consume streaming APIs (SSE / Fetch body readers) do
