@@ -18,6 +18,8 @@
 const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
+const { Pool } = require('pg');
 
 function loadEnvFileIfPresent() {
   try {
@@ -51,15 +53,17 @@ function loadEnvFileIfPresent() {
 
 loadEnvFileIfPresent();
 
-// Prisma 7 requires a non-empty PrismaClientOptions; pass the resolved
-// DATABASE_URL explicitly so the script also works when the prisma schema
-// would otherwise pick a different env binding.
+// Prisma 7 dropped the `datasources` option and now requires an adapter
+// (or accelerateUrl) on PrismaClient. The app already uses @prisma/adapter-pg
+// (see lib/prisma.ts) -- mirror that wiring here so the script doesn't drift
+// from production engine settings.
 if (!process.env.DATABASE_URL) {
   console.error('[cleanup] DATABASE_URL is not set; aborting');
   process.exit(1);
 }
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({
-  datasources: { db: { url: process.env.DATABASE_URL } },
+  adapter: new PrismaPg(pool),
   log: ['error'],
 });
 
@@ -104,4 +108,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end().catch(() => undefined);
   });
