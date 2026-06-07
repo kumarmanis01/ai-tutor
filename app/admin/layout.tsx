@@ -41,10 +41,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
         <body className="font-sans antialiased h-full bg-gray-50 dark:bg-gray-950">
           <Providers>
-            <NavigationProgress />
-            <AuthSessionLoader />
-            {children}
-            <ToastHost />
+            <GlobalLoaderProvider>
+              <NavigationProgress />
+              <AuthSessionLoader />
+              {children}
+              <ToastHost />
+            </GlobalLoaderProvider>
           </Providers>
         </body>
       </html>
