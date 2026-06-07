@@ -43,6 +43,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { randomUUID } from 'crypto';
 import { invalidateReadinessCache } from '@/lib/student/examReadiness';
+import { invalidateDashboardCache } from '@/lib/student/dashboardCache';
 
 export type ActivityType = 'PRACTICE' | 'TEST' | 'HOMEWORK' | 'STUDY';
 
@@ -215,6 +216,10 @@ export async function updateStudentTopicProgress(
         if (subjectId) {
           await invalidateReadinessCache(studentId, subjectId);
         }
+        // Also bust the dashboard aggregate cache so per-topic progress
+        // (mastery bar, next-action recommendation) reflects the new write
+        // immediately instead of waiting out the 60 s TTL.
+        await invalidateDashboardCache(studentId);
       } catch (err) {
         // Non-fatal: log but never surface to caller. The topic-progress write already
         // succeeded; worst case readiness reflects the old score until the nightly job.

@@ -22,6 +22,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { invalidateUserSessionCache } from '@/lib/auth';
+import { logAuditEvent } from '@/lib/audit/log';
 
 const ALLOWED_ROLES = ['student', 'parent'] as const;
 type AllowedRole = (typeof ALLOWED_ROLES)[number];
@@ -95,6 +96,20 @@ export async function POST(req: NextRequest) {
     await prisma.user.update({
       where: { id: userId },
       data: { role: persistedRole },
+    });
+
+    // Security-relevant: persist an audit trail so a compromised support tool
+    // or a missed role-swap regression in the future is reconstructible from
+    // the AuditLog table alone.
+    void logAuditEvent(prisma, {
+      adminId: null,
+      actorId: userId,
+      targetEntity: 'User',
+      targetId: userId,
+      action: null,
+      previousValue: { role: current.role },
+      newValue: { role: persistedRole },
+      details: { legacyAction: 'auth.set_role', source: 'set-role-route' },
     });
 
     // Invalidate short-lived session cache so JWT reflects updated role

@@ -27,6 +27,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { invalidateUserSessionCache } from '@/lib/auth';
 import { checkAuthRateLimit, createRateLimitResponse } from '@/lib/middleware/authRateLimit';
+import { logAuditEvent } from '@/lib/audit/log';
 import { channelOtpKeyByType, getParentChannelVerificationStatus, resolveParentChannels } from '@/lib/parent/contactLinking';
 import { emitServerAnalyticsEvent } from '@/lib/analytics/server';
 import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
@@ -159,6 +160,20 @@ export async function POST(req: NextRequest) {
         },
       }),
     ]);
+
+    // Audit trail for a security-relevant transition: account becomes 'active'
+    // and the parent identity is now linked. Without this entry an account
+    // takeover via OTP brute-force (also rate-limited by checkAuthRateLimit
+    // upstream) would leave no fingerprint in AuditLog.
+    void logAuditEvent(prisma, {
+      adminId: null,
+      actorId: studentId,
+      targetEntity: 'User',
+      targetId: studentId,
+      action: null,
+      newValue: { accountStatus: 'active', parentVerified: true, channel },
+      details: { legacyAction: 'parent.verify_otp', source: 'parent-verify-otp-route' },
+    });
 
     // Best-effort: invalidate short-lived session cache for this student so JWT reflects new accountStatus
     try {
