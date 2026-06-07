@@ -78,13 +78,15 @@ export async function GET(req: NextRequest) {
     }
     const parentId = session.user.id;
 
-    // 2. Input
-    const studentId = req.nextUrl.searchParams.get('studentId');
+    // 2. Input -- use req.url so the handler also works under a plain Request
+    // (jest tests, edge runtimes that don't populate req.nextUrl).
+    const reqUrl = new URL(req.url);
+    const studentId = reqUrl.searchParams.get('studentId');
     if (!studentId) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
-    const locale = req.nextUrl.searchParams.get('locale') === 'hi' ? 'hi' : 'en';
-    const benchmarking = req.nextUrl.searchParams.get('benchmarking') === 'true';
+    const locale = reqUrl.searchParams.get('locale') === 'hi' ? 'hi' : 'en';
+    const benchmarking = reqUrl.searchParams.get('benchmarking') === 'true';
 
     // 3. Parent-student link guard
     const link = await prisma.parentStudent.findUnique({

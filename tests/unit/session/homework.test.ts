@@ -42,6 +42,9 @@ const BANK_QUESTIONS = Array.from({ length: 5 }, (_, index) => ({
   choices: ['A', 'B'],
   correctAnswer: 'a',
   difficulty: 'medium',
+  // gatherQuestions filters by topicId to guard against selector returning
+  // cross-topic rows; the bank fixture must carry it to survive that filter.
+  topicId: TOPIC_ID,
 }));
 
 describe('generateHomework()', () => {

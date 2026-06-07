@@ -189,12 +189,14 @@ export async function updateStudentTopicProgress(
         if (concepts.length === 0) return;
 
         const newMasteryScore = updated ? Math.min(1, Math.max(0, updated.mastery)) : initialMastery;
-        const conceptStateId = randomUUID();
         const upserts = concepts.map((c: { id: string }) =>
           prisma.studentConceptState.upsert({
             where: { studentId_conceptId: { studentId, conceptId: c.id } },
             create: {
-              id: conceptStateId,
+              // Fresh id per row -- reusing one randomUUID() across the map would
+              // violate the primary-key unique constraint when two or more
+              // concept rows need INSERT in the same batch.
+              id: randomUUID(),
               studentId,
               conceptId: c.id,
               masteryScore: newMasteryScore,
