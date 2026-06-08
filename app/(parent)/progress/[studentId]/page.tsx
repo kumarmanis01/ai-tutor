@@ -9,6 +9,7 @@
  * Route: /parent/progress/[studentId]
  *
  * EDIT LOG:
+ * - 2026-06-08T09:30:00Z | claude | fix: await params (Next.js 16 async params -- studentId was undefined)
  * - 2026-06-08T00:00:00Z | claude | fetch diagnosticDone per subject (skipped/not_applicable treated as done); pass to ParentProgressDetail
  * - 2026-03-15 | claude | original T39 server component
  * - 2026-05-04T00:00:00Z | copilot | F-PAR-011 AC-04: compute peerPercentile per subject
@@ -34,9 +35,9 @@ export const metadata: Metadata = {
 export default async function ParentProgressDetailPage({
   params,
 }: {
-  params: { studentId: string }
+  params: Promise<{ studentId: string }>
 }) {
-  const { studentId } = params
+  const { studentId } = await params
   const session = (await getServerSession(authOptions)) as AppSession | null
 
   if (!session?.user?.id) redirect('/login')
