@@ -4,6 +4,7 @@
  *   and persists conversation turns for authenticated sessions.
  *
  * EDIT LOG:
+ * - 2026-06-08T14:00:00Z | claude | add daily credit limit check and meta SSE event for task S1-3
  * - 2026-06-08T13:00:00Z | claude | integrate generationCache; serve cached replies as streamed tokens when all context fields present and no conversationId
  * - 2026-06-08T12:00:00Z | claude | convert buffered JSON response to SSE streaming; add 401 auth guard
  */
@@ -19,6 +20,7 @@ import crypto from 'crypto';
 import OpenAI from 'openai';
 import { getGeneratedContent, setGeneratedContent, buildGenerationCacheKey } from '@/lib/cache/generationCache';
 import type { GenerationCacheKey } from '@/lib/cache/generationCache';
+import { getDailyUsage, getDailyLimit, incrementDailyUsage } from '@/lib/credits/dailyCredits';
 
 type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string; board?: string; grade?: string; topicSlug?: string; contentType?: string; difficulty?: string };
 
@@ -74,6 +76,33 @@ export async function POST(req: Request) {
   } catch (e) {
     logger.error('session check failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  // Credit limit check -- runs after session check, before any business-logic DB query.
+  // getDailyUsage uses Redis; getDailyLimit uses a single subscription DB query.
+  // On any failure both helpers return safe fallbacks so the request is never blocked.
+  let priorUsage = 0;
+  let dailyLimit = 50;
+  try {
+    [priorUsage, dailyLimit] = await Promise.all([
+      getDailyUsage(sessionUserId),
+      getDailyLimit(sessionUserId),
+    ]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('credits.prefetch.failed', { className: 'api.ask', methodName: 'POST', error: message });
+  }
+
+  if (priorUsage >= dailyLimit) {
+    const limitEncoder = new TextEncoder();
+    const limitStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(limitEncoder.encode(sseEvent({ error: 'daily_limit_reached', used: priorUsage, limit: dailyLimit })));
+        controller.enqueue(limitEncoder.encode(SSE_DONE));
+        controller.close();
+      },
+    });
+    return new Response(limitStream, { headers: SSE_HEADERS });
   }
 
   let body: Req;
@@ -177,6 +206,12 @@ export async function POST(req: Request) {
               controller.enqueue(encoder.encode(sseEvent({ token: char })));
               await new Promise<void>((resolve) => setTimeout(resolve, 5));
             }
+            // Fire-and-forget increment -- does not block SSE delivery.
+            incrementDailyUsage(sessionUserId).catch((err: unknown) => {
+              const msg = err instanceof Error ? err.message : String(err);
+              logger.error('credits.increment.failed', { className: 'api.ask', methodName: 'POST', error: msg });
+            });
+            controller.enqueue(encoder.encode(sseEvent({ meta: { creditsUsed: priorUsage + 1, creditsLimit: dailyLimit } })));
             controller.enqueue(encoder.encode(SSE_DONE));
             controller.close();
             try {
@@ -214,6 +249,12 @@ export async function POST(req: Request) {
           }
         }
 
+        // Fire-and-forget increment -- does not block SSE delivery.
+        incrementDailyUsage(sessionUserId).catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.error('credits.increment.failed', { className: 'api.ask', methodName: 'POST', error: msg });
+        });
+        controller.enqueue(encoder.encode(sseEvent({ meta: { creditsUsed: priorUsage + 1, creditsLimit: dailyLimit } })));
         controller.enqueue(encoder.encode(SSE_DONE));
         controller.close();
 

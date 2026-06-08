@@ -1,9 +1,10 @@
 /**
  * FILE OBJECTIVE:
  * - useStream: reusable hook for consuming SSE streams via fetch + ReadableStream.
- *   Parses SSE lines, fires onToken/onDone/onError callbacks, and supports abort.
+ *   Parses SSE lines, fires onToken/onDone/onError/onMeta callbacks, and supports abort.
  *
  * EDIT LOG:
+ * - 2026-06-08T14:00:00Z | claude | add onMeta callback for daily credit meta events (task S1-3)
  * - 2026-06-08T12:00:00Z | claude | initial implementation for /api/ask SSE streaming
  */
 
@@ -13,6 +14,8 @@ export interface UseStreamCallbacks {
   onToken: (token: string) => void;
   onDone: () => void;
   onError: (msg: string) => void;
+  /** Called when a meta SSE event arrives (e.g. daily credit counters). Optional. */
+  onMeta?: (meta: { creditsUsed: number; creditsLimit: number }) => void;
 }
 
 export interface UseStreamReturn {
@@ -33,7 +36,7 @@ export function useStream(): UseStreamReturn {
   const stream = useCallback(async (
     url: string,
     body: object,
-    { onToken, onDone, onError }: UseStreamCallbacks,
+    { onToken, onDone, onError, onMeta }: UseStreamCallbacks,
   ): Promise<void> => {
     abort();
 
@@ -95,6 +98,12 @@ export function useStream(): UseStreamReturn {
             }
             if (typeof parsed.token === 'string') {
               onToken(parsed.token);
+            }
+            if (parsed.meta !== null && typeof parsed.meta === 'object') {
+              const m = parsed.meta as { creditsUsed?: unknown; creditsLimit?: unknown };
+              if (typeof m.creditsUsed === 'number' && typeof m.creditsLimit === 'number') {
+                onMeta?.({ creditsUsed: m.creditsUsed, creditsLimit: m.creditsLimit });
+              }
             }
           } catch {
             // Ignore malformed SSE data lines
