@@ -43,15 +43,16 @@ describe('parent subscription verify route', () => {
     const invoiceMock = { createInvoiceForPayment: jest.fn(async () => ({ invoiceNumber: 42, pdfBuffer: Buffer.from('pdf'), fileUrl: 'https://r2/invoice-42.pdf' })) }
     jest.doMock('@/lib/invoices', () => invoiceMock)
     const sendEmailMock = jest.fn(async () => undefined)
-    jest.doMock('@/lib/mailer', () => ({ sendEmail: sendEmailMock }))
+    jest.doMock('@/lib/mail', () => ({ sendEmailUnifiedSafe: sendEmailMock }))
     jest.doMock('@/lib/sms', () => ({ sendSms: jest.fn(async () => undefined) }))
+    jest.doMock('@/lib/middleware/authRateLimit', () => ({ checkAuthRateLimit: jest.fn(async () => ({ allowed: true })) }))
 
     const orderId = 'order-1'
     const paymentId = 'pay-1'
     const payload = `${orderId}|${paymentId}`
     const signature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!).update(payload).digest('hex')
 
-    const req: any = { json: async () => ({ orderId, paymentId, signature, planId: 'standard_monthly' }) }
+    const req: any = { json: async () => ({ orderId, paymentId, signature, planId: 'monthly' }) }
 
     const route = await import('@/app/api/parent/subscription/verify/route')
     const res = await route.POST(req as unknown as Request)
@@ -60,7 +61,6 @@ describe('parent subscription verify route', () => {
     // Expect that invoice creation and email were attempted
     const invoices = await import('@/lib/invoices')
     expect(invoices.createInvoiceForPayment).toHaveBeenCalled()
-    const mailer = await import('@/lib/mailer')
-    expect(mailer.sendEmail).toHaveBeenCalled()
+    expect(sendEmailMock).toHaveBeenCalled()
   })
 })

@@ -54,7 +54,7 @@ jest.mock('@/lib/curriculum/curriculumGraph', () => ({
   arePrerequisitesMet: jest.fn(),
 }));
 
-jest.mock('@/lib/mailer', () => ({
+jest.mock('@/lib/mail', () => ({
   sendTopicRankerCoverageAlertSafe: jest.fn(),
 }));
 

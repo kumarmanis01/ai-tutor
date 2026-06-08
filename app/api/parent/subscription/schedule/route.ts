@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     if ((session.user as { role?: string }).role !== 'parent') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const studentId = req.nextUrl.searchParams.get('studentId') ?? undefined;
+    const studentId = new URL(req.url).searchParams.get('studentId') ?? undefined;
 
     // Fetch the most recent active annual subscription for this parent
     const subscription = await prisma.subscription.findFirst({

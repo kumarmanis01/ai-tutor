@@ -34,6 +34,14 @@ export const UserRole = {
 
 export type UserRole = typeof UserRole[keyof typeof UserRole]
 
+// Consent scopes used by the consent APIs and tests
+export const ConsentScope = {
+  AI_INTERACTION: 'AI_INTERACTION',
+  DATA_PROCESSING: 'DATA_PROCESSING',
+  MARKETING: 'MARKETING',
+} as const
+export type ConsentScope = typeof ConsentScope[keyof typeof ConsentScope]
+
 export default { PrismaClient, Prisma, UserRole, ConsentScope }
 
 // Minimal enum-like exports used in tests. These mirror the generated
@@ -71,14 +79,6 @@ export const AdminActionType = {
   DOUBT_RESOLVE: 'DOUBT_RESOLVE',
 } as const
 export type AdminActionType = typeof AdminActionType[keyof typeof AdminActionType]
-
-// Consent scopes used by the consent APIs and tests
-export const ConsentScope = {
-  AI_INTERACTION: 'AI_INTERACTION',
-  DATA_PROCESSING: 'DATA_PROCESSING',
-  MARKETING: 'MARKETING',
-} as const
-export type ConsentScope = typeof ConsentScope[keyof typeof ConsentScope]
 
 export const JobType = {
   syllabus: 'syllabus',

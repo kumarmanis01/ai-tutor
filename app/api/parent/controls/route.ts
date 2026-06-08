@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const studentId = req.nextUrl.searchParams.get('studentId');
+    const studentId = new URL(req.url).searchParams.get('studentId');
     if (!studentId) {
       return NextResponse.json({ error: 'studentId required' }, { status: 400 });
     }
