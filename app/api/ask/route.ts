@@ -4,6 +4,7 @@
  *   and persists conversation turns for authenticated sessions.
  *
  * EDIT LOG:
+ * - 2026-06-08T13:00:00Z | claude | integrate generationCache; serve cached replies as streamed tokens when all context fields present and no conversationId
  * - 2026-06-08T12:00:00Z | claude | convert buffered JSON response to SSE streaming; add 401 auth guard
  */
 
@@ -16,8 +17,10 @@ import { checkProfanity } from '@/lib/guardrails';
 import { parse as parseAcceptLanguage } from 'accept-language-parser';
 import crypto from 'crypto';
 import OpenAI from 'openai';
+import { getGeneratedContent, setGeneratedContent, buildGenerationCacheKey } from '@/lib/cache/generationCache';
+import type { GenerationCacheKey } from '@/lib/cache/generationCache';
 
-type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string };
+type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string; board?: string; grade?: string; topicSlug?: string; contentType?: string; difficulty?: string };
 
 const SYSTEM_PROMPT = `You are an AI assistant. Detect the user's language automatically based on the user's message.
 Always respond in the same language the user used.
@@ -148,6 +151,49 @@ export async function POST(req: Request) {
     { role: 'user', content: text },
   ];
 
+  // Cache context: only cache first-turn questions that supply all 5 context fields
+  const isFirstTurn = !body.conversationId;
+  let cacheKey: GenerationCacheKey | null = null;
+  if (isFirstTurn && body.board && body.grade && body.subject && body.topicSlug && body.contentType && body.difficulty) {
+    cacheKey = {
+      board: body.board,
+      grade: body.grade,
+      subject: body.subject,
+      topicSlug: body.topicSlug,
+      contentType: body.contentType,
+      difficulty: body.difficulty,
+    };
+  }
+
+  // Serve from cache when available -- stream the cached value with 5 ms token delay
+  if (cacheKey) {
+    const cached = await getGeneratedContent(cacheKey);
+    if (cached) {
+      const encoder = new TextEncoder();
+      const cachedStream = new ReadableStream({
+        async start(controller) {
+          try {
+            for (const char of cached) {
+              controller.enqueue(encoder.encode(sseEvent({ token: char })));
+              await new Promise<void>((resolve) => setTimeout(resolve, 5));
+            }
+            controller.enqueue(encoder.encode(SSE_DONE));
+            controller.close();
+            try {
+              await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: cached, conversationId, subject } });
+            } catch (e) {
+              logger.warn('Failed to persist cached assistant reply', { className: 'api.ask', methodName: 'POST', error: e });
+            }
+          } catch (e) {
+            logger.error('/api/ask cached stream error', { className: 'api.ask', methodName: 'POST', error: String(e) });
+            try { controller.enqueue(encoder.encode(sseEvent({ error: 'upstream_error' }))); controller.close(); } catch {}
+          }
+        },
+      });
+      return new Response(cachedStream, { headers: SSE_HEADERS });
+    }
+  }
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -171,11 +217,14 @@ export async function POST(req: Request) {
         controller.enqueue(encoder.encode(SSE_DONE));
         controller.close();
 
-        // Persist assistant reply after stream completes
+        // Persist assistant reply and populate cache after stream completes
         try {
           await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: fullReply, conversationId, subject } });
         } catch (e) {
           logger.warn('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+        }
+        if (cacheKey && fullReply) {
+          await setGeneratedContent(cacheKey, fullReply);
         }
       } catch (e) {
         logger.error('/api/ask stream error', { className: 'api.ask', methodName: 'POST', error: String(e) });
