@@ -16,6 +16,7 @@
 /// - 2026-05-11T00:00:00Z | copilot | add todayStudyMinutes and lastStudySessionDate for daily study duration limits (30min free / 60min paid)
 /// - 2026-05-12T00:00:00Z | copilot | add parentWhatsappPhone and channel-specific parent verification timestamps; add pending_onboarding account status default
 /// - 2026-05-19T00:00:00Z | claude  | feat: add CurriculumBook/BookChapter/BookTopic models; add CurriculumBookParseStatus enum; add bookChapterId/bookTopicId to ChapterDef/TopicDef
+/// - 2026-06-08T00:00:00Z | claude  | feat: add RecommendationEvent and UserTopicProgress models for recommendation engine feedback loop
 generator client {
   provider = "prisma-client-js"
 }
@@ -131,6 +132,8 @@ model User {
   homeworkAssignments         HomeworkAssignment[]
   sessionArtifacts            SessionArtifact[]
   homeRecommendationDecisions HomeRecommendationDecision[]
+  recommendationEvents        RecommendationEvent[]
+  userTopicProgress           UserTopicProgress[]
   subscriptions               Subscription[]
   trials                      Trial[]
   testResults                 TestResult[]
@@ -3163,4 +3166,51 @@ model BookTopic {
 
   @@unique([chapterId, topicOrder])
   @@index([chapterId])
+}
+
+/// Recommendation funnel events: tracks impressions, clicks, and dismissals for analytics.
+enum RecommendationEventType {
+  IMPRESSION
+  CLICK
+  DISMISS
+}
+
+/// Immutable event record for each interaction with a recommendation card.
+/// Processed asynchronously via the recommendation-signals BullMQ queue.
+model RecommendationEvent {
+  id               String                  @id @default(cuid())
+  userId           String
+  recommendationId String
+  type             RecommendationEventType
+  /// Stores recoType, title, reason for downstream analytics.
+  metadata         Json?
+  createdAt        DateTime                @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, type])
+  @@index([recommendationId])
+}
+
+/// Per-student, per-topic mastery derived from chat and test interactions.
+/// Free-text topic label (not a FK) so chat subjects can be tracked without curriculum refs.
+model UserTopicProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  /// The subject/chapter label as free text (e.g. "Algebra", "Photosynthesis").
+  topic           String
+  totalAttempts   Int      @default(0)
+  correctAttempts Int      @default(0)
+  lastAttemptedAt DateTime
+  /// Computed: correctAttempts / totalAttempts; 0.0 when totalAttempts = 0.
+  masteryScore    Float    @default(0.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topic])
+  @@index([userId])
+  @@index([userId, masteryScore])
 }

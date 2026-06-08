@@ -335,6 +335,49 @@ Rules:
 
 Exempt files (not checked): tests/, scripts/, *.config.ts, *.d.ts, *.spec.ts
 
+## Code Review Process (mandatory before merging any PR)
+
+Every non-trivial change must go through a structured review before merging.
+Use this checklist when you self-review or review another contributor's diff.
+
+### Before opening a PR (author checklist)
+1. `npm run test:unit` passes locally
+2. `npx tsc --noEmit` clean
+3. Every touched file has an updated EDIT LOG entry
+4. No TODO/FIXME in committed code (add to post_launch_backlog.md instead)
+5. No `console.log` -- use `logger.info / warn / error`
+6. No raw error messages exposed to the client
+7. All async functions have explicit error handling
+8. All external calls (OpenAI, Redis, DB) have fallbacks / timeouts
+
+### Reviewer checklist (blocking issues vs. non-blocking notes)
+
+**BLOCKING -- must fix before merge:**
+- Auth check missing or in wrong order (session first, always)
+- Data mutation without idempotency (duplicate run must be safe)
+- Non-atomic read-modify-write pattern under concurrent access
+- PII logged (names, email, phone, Aadhaar)
+- Raw stack trace or internal error message returned to client
+- Prisma schema change that drops/renames a column
+- Hard-coded model name instead of `process.env.OPENAI_MODEL`
+- Missing try/catch around external service call
+- Cache check happens AFTER expensive DB queries (defeats caching)
+- New singleton (OpenAI, Redis) instantiated per-request instead of lazily once
+
+**NON-BLOCKING -- note in review comment, fix if low effort:**
+- Redundant state updates that get overwritten before paint
+- Missing dark: mode variant on a UI element
+- Touch target below 44px on mobile
+- Test name not in "should [behaviour] when [condition]" format
+- Comment that restates what the code does rather than why
+
+### Common patterns to catch in recommendation-engine code specifically
+- `buildRecommendationContext` runs before Redis GET (6 wasted DB queries on cache hits)
+- `getOpenAIClient()` creates a new HTTP agent pool per request -- must be a lazy singleton
+- `findUnique` + `upsert` for counters -- replace with atomic `INSERT ... ON CONFLICT DO UPDATE`
+- Model hard-coded as `gpt-4o` -- use `process.env.OPENAI_MODEL ?? 'gpt-4.1'`
+- Signal type added to schema but no UI affordance to fire it (dead code)
+
 ## Pre-commit Checklist (automated via husky)
 Every commit automatically runs (in this order):
 1. python3 scripts/fix-smart-quotes.py  (auto-fixes, re-stages)

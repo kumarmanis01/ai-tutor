@@ -1,3 +1,14 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST /api/tests/submit: grades a test attempt, updates topic mastery,
+ *   updates UserTopicProgress for the recommendation engine, and returns
+ *   graded results with optional LLM explanations.
+ *
+ * EDIT LOG:
+ * - 2026-06-08T02:00:00Z | claude | fix: replace non-atomic findUnique+upsert with single atomic INSERT...ON CONFLICT to prevent concurrent-submission race
+ * - 2026-06-08T00:00:00Z | claude | upsert UserTopicProgress after grading for recommendation engine
+ */
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
@@ -85,24 +96,28 @@ export async function POST(req: Request) {
 
   // Derive topicId for logging: GeneratedTest carries the canonical TopicDef ID.
   let topicId: string | null = null;
+  let topicName: string | null = null;
   try {
     const gt = await prisma.generatedTest.findUnique({
       where: { id: attempt.testId },
-      select: { topicId: true },
+      select: { topicId: true, topic: { select: { name: true } } },
     });
     topicId = gt?.topicId ?? null;
+    topicName = gt?.topic?.name ?? null;
   } catch {
     // non-fatal -- test may not be a GeneratedTest
   }
 
   if (topicId) {
+    const correctCount = result.graded.filter((g) => g.correct).length;
+    const totalCount = result.graded.length;
+
     try {
-      const correctCount = result.graded.filter((g) => g.correct).length;
       await updateStudentTopicProgress({
         studentId: user.id,
         topicId,
         correctAnswers: correctCount,
-        totalAnswers: result.graded.length,
+        totalAnswers: totalCount,
         activityType: 'TEST',
       });
     } catch (err) {
@@ -111,6 +126,32 @@ export async function POST(req: Request) {
         topicId,
         error: err,
       });
+    }
+
+    // Atomic upsert UserTopicProgress using INSERT...ON CONFLICT to prevent
+    // concurrent-submission races (findUnique+upsert is not atomic).
+    if (topicName && totalCount > 0) {
+      try {
+        const initialMastery = totalCount > 0 ? correctCount / totalCount : 0;
+        await prisma.$executeRaw`
+          INSERT INTO "UserTopicProgress" (id, "userId", topic, "totalAttempts", "correctAttempts", "masteryScore", "lastAttemptedAt", "updatedAt")
+          VALUES (gen_random_uuid()::text, ${user.id}, ${topicName}, ${totalCount}, ${correctCount}, ${initialMastery}, NOW(), NOW())
+          ON CONFLICT ("userId", topic)
+          DO UPDATE SET
+            "totalAttempts"   = "UserTopicProgress"."totalAttempts" + EXCLUDED."totalAttempts",
+            "correctAttempts" = "UserTopicProgress"."correctAttempts" + EXCLUDED."correctAttempts",
+            "masteryScore"    = ("UserTopicProgress"."correctAttempts" + EXCLUDED."correctAttempts")::float
+                              / NULLIF("UserTopicProgress"."totalAttempts" + EXCLUDED."totalAttempts", 0),
+            "lastAttemptedAt" = EXCLUDED."lastAttemptedAt",
+            "updatedAt"       = EXCLUDED."updatedAt"
+        `;
+      } catch (err) {
+        logger.error('TestsSubmitAPI.upsertUserTopicProgress', {
+          userId: user.id,
+          topic: topicName,
+          error: err,
+        });
+      }
     }
   }
 
