@@ -124,12 +124,13 @@ export async function proxy(request: NextRequest) {
       const isStudentOrParentUi = pathname.startsWith('/student') || pathname.startsWith('/parent');
       const accountStatus = (token as { accountStatus?: string }).accountStatus;
       if (isStudentOrParentUi && accountStatus !== 'active') {
-        // Onboarding allowlist: each role's own onboarding path is always reachable
-        // even before the account becomes active.
+        // Onboarding allowlist: each role may only pass through their own onboarding
+        // path. A parent must not reach /student/onboarding and a student must not
+        // reach /parent/onboarding even while their account is inactive.
         const isOnboardingAllowlist =
-          pathname.startsWith('/student/onboarding') ||
-          pathname.startsWith('/student/verify-parent') ||
-          pathname.startsWith('/parent/onboarding');
+          (tokenRole !== 'parent' &&
+            (pathname.startsWith('/student/onboarding') || pathname.startsWith('/student/verify-parent'))) ||
+          (tokenRole === 'parent' && pathname.startsWith('/parent/onboarding'));
         if (isOnboardingAllowlist) {
           const allowed = NextResponse.next();
           allowed.headers.set('x-pathname', pathname);

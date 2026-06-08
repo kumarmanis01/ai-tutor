@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Public marketing sticky header with language switcher, navigation links,
+ *   and a primary CTA that routes authenticated users to the correct dashboard
+ *   based on their role (parent -> /parent/dashboard, student -> /dashboard or
+ *   /student/onboarding).
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/ENGINEERING_PRACTICES.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fix: CTA href now checks role before routing authenticated users --
+ *     parent role goes to /parent/dashboard instead of the student /dashboard path
+ */
 'use client';
 
 import { useState, useEffect } from 'react';

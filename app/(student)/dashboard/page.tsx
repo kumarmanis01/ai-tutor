@@ -28,6 +28,8 @@
  * - 2026-05-18T00:00:00Z | copilot | fix: mark xpBySourceRaw as intentionally unused by prefixing with _ to satisfy ESLint
  * - 2026-06-06T00:00:00Z | claude | add all_topics_complete revision hero fallback; bulk-fetch plan
  *     items (IN_PROGRESS > current-week UPCOMING > fallback UPCOMING) to remove N+1
+ * - 2026-06-08T00:00:00Z | claude | replace requireActiveSession with requireStudentSession to assert
+ *     role=user as well as accountStatus=active (defence-in-depth behind proxy.ts role guard)
  */
 
 import type { Metadata } from 'next'

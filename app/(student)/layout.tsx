@@ -10,6 +10,8 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | add role guard: role=parent redirected to /parent/dashboard before student
+ *     shell renders (defence-in-depth behind proxy.ts)
  * - 2026-05-12T00:00:00Z | copilot | remove profile completeness route gate and rely on middleware active-account enforcement
  * - 2026-04-15T00:00:00Z | staff-engineer | add file header and top padding to avoid Topbar overlap
  * - 2026-05-09T00:00:00Z | copilot | increase content top offset for redesigned two-line mobile and taller desktop topbar
