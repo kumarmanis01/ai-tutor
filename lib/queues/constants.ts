@@ -19,3 +19,6 @@ export const ANALYTICS_INGEST_QUEUE = 'analytics-ingest';
 
 /** PDF ingest queue -- parses uploaded NCERT textbook PDFs and seeds BookChapter/BookTopic rows. */
 export const PDF_INGEST_QUEUE = 'pdf-ingest';
+
+/** Recommendation signal queue -- processes IMPRESSION/CLICK/DISMISS events async. */
+export const RECOMMENDATION_SIGNAL_QUEUE = 'recommendation-signals';

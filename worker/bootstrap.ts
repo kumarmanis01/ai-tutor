@@ -13,6 +13,7 @@
  * - 2026-01-10T00:00:00Z | github-copilot | add Node types reference to fix "process" type error and update file header
  * - 2026-01-22T03:05:00Z | copilot | Phase 4: Switch to new worker service handlers (notesWorker, questionsWorker, assembleWorker)
  * - 2026-05-19T00:00:00Z | claude  | feat: add pdfIngestWorker for NCERT textbook PDF ingestion pipeline
+ * - 2026-06-08T00:00:00Z | claude  | feat: add recommendationSignalWorker for IMPRESSION/CLICK/DISMISS events
  */
 
 /* eslint-disable no-console */
@@ -60,11 +61,13 @@ import { processReteachPlan } from "./services/reteachPlanWorker.js";
 import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from "../jobs/diagnosticAutoSubmit.js";
 import { processDiagnosticAutoSubmit } from "./services/diagnosticAutoSubmitWorker.js";
 import { processAIRequest } from './services/aiRequestWorker.js';
-import { AI_REQUEST_QUEUE, ANALYTICS_INGEST_QUEUE, PDF_INGEST_QUEUE } from '../lib/queues/constants.js';
+import { AI_REQUEST_QUEUE, ANALYTICS_INGEST_QUEUE, PDF_INGEST_QUEUE, RECOMMENDATION_SIGNAL_QUEUE } from '../lib/queues/constants.js';
 import { processAnalyticsIngest } from './services/analyticsIngestWorker.js';
 import type { AnalyticsIngestPayload } from './services/analyticsIngestWorker.js';
 import { processPdfIngestJob } from './services/pdfIngestWorker.js';
 import type { PdfIngestJobPayload } from './services/pdfIngestWorker.js';
+import { processRecommendationSignal } from './services/recommendationSignalWorker.js';
+import type { RecommendationSignalJobData } from '../queues/recommendationSignalQueue.js';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -338,6 +341,20 @@ export async function bootstrapWorker() {
 
   pdfIngestWorker.on('completed', (job) => {
     logger.info('[PDF_INGEST COMPLETED]', { jobId: job.id });
+  });
+
+  const recommendationSignalWorker = new Worker<RecommendationSignalJobData>(
+    RECOMMENDATION_SIGNAL_QUEUE,
+    async (job: Job<RecommendationSignalJobData>) => processRecommendationSignal(job),
+    {
+      connection: redisConnection,
+      concurrency: 5,
+      lockDuration: 30 * 1000, // 30 s -- fast DB write
+    },
+  );
+
+  recommendationSignalWorker.on('failed', (job, err) => {
+    logger.error('[RECO_SIGNAL FAILED]', { jobId: job?.id, error: err?.message });
   });
 
   aiWorker.on('failed', (job, err) => {

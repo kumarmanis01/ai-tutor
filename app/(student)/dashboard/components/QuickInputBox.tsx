@@ -1,3 +1,13 @@
+/**
+ * FILE OBJECTIVE:
+ * - QuickInputBox: main student input component on the dashboard. Handles text,
+ *   voice, and photo questions. Fetches and displays personalized recommendations
+ *   from /api/recommendations, tracking impressions and clicks.
+ *
+ * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | integrate personalized recommendations from /api/recommendations
+ */
+
 'use client';
 
 /* eslint-disable react-hooks/exhaustive-deps */
@@ -9,6 +19,7 @@ import { toast } from '@/lib/toast';
 import { logger } from '@/lib/logger';
 import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
+import type { Recommendation } from '@/types/recommendation';
 
 interface QuickInputBoxProps {
   onReply?: (reply: string, userMessage?: string, language?: string, suggestions?: string[]) => void;
@@ -415,6 +426,68 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
   useEffect(() => { languageOptionsRef.current = languageOptions; }, [languageOptions]);
   const onErrorRef = useRef(onError);
   useEffect(() => { onErrorRef.current = onError; }, [onError]);
+
+  // ── Personalized recommendations ───────────────────────────────────────────
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [recoLoading, setRecoLoading] = useState(false);
+  // Track which recommendation IDs have had impressions fired this session
+  const impressionsFiredRef = useRef<Set<string>>(new Set());
+  const recoFetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (recoFetchedRef.current) return;
+    recoFetchedRef.current = true;
+
+    setRecoLoading(true);
+    fetch('/api/recommendations')
+      .then((res) => {
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        return res.json();
+      })
+      .then((data: { recommendations?: Recommendation[] }) => {
+        const recos = Array.isArray(data?.recommendations) ? data.recommendations : [];
+        setRecommendations(recos);
+        // Fire IMPRESSION for each visible recommendation (fire-and-forget)
+        recos.forEach((reco) => {
+          if (!impressionsFiredRef.current.has(reco.id)) {
+            impressionsFiredRef.current.add(reco.id);
+            fetch('/api/recommendations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ recommendationId: reco.id, type: 'IMPRESSION', metadata: { recoType: reco.type, title: reco.title } }),
+            }).catch(() => {});
+          }
+        });
+      })
+      .catch((err) => {
+        logger.warn('QuickInputBox: recommendations fetch failed', {
+          className: 'QuickInputBox',
+          methodName: 'fetchRecommendations',
+          error: String(err),
+        });
+        // Graceful degradation: leave recommendations empty; static suggestions remain
+      })
+      .finally(() => setRecoLoading(false));
+  }, []);
+
+  const handleRecommendationClick = useCallback(
+    (reco: Recommendation) => {
+      // Fire CLICK signal (fire-and-forget)
+      fetch('/api/recommendations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendationId: reco.id, type: 'CLICK', metadata: { recoType: reco.type, title: reco.title } }),
+      }).catch(() => {});
+
+      // Populate input and auto-submit
+      setQuestionText(reco.prompt);
+      try {
+        window.dispatchEvent(new CustomEvent('chatSuggestionPicked', { detail: { suggestion: reco.prompt } }));
+      } catch {}
+    },
+    []
+  );
+  // ── End personalized recommendations ────────────────────────────────────────
 
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
@@ -913,6 +986,37 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           <label htmlFor="consent-share" className="text-sm">
             I consent to upload this image to an external provider (OpenAI) for analysis. The image will be deleted within 24 hours. See our Privacy Policy.
           </label>
+        </div>
+      )}
+
+      {/* Personalized Recommendations */}
+      {recoLoading && (
+        <div className="mb-3 space-y-2" aria-label="Loading recommendations">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-14 rounded-lg bg-muted animate-pulse"
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+      )}
+
+      {!recoLoading && recommendations.length > 0 && (
+        <div className="mb-3 space-y-2">
+          <div className="text-xs font-medium text-muted-foreground mb-1">Suggested for you</div>
+          {recommendations.map((reco) => (
+            <button
+              key={reco.id}
+              type="button"
+              onClick={() => handleRecommendationClick(reco)}
+              className="w-full text-left px-3 py-2 rounded-lg border border-border bg-muted hover:bg-primary/10 transition-colors min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-ring"
+              title={reco.reason}
+            >
+              <div className="text-sm font-medium text-foreground leading-snug">{reco.title}</div>
+              <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{reco.reason}</div>
+            </button>
+          ))}
         </div>
       )}
 
