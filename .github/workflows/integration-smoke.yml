@@ -49,6 +49,9 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres" >> $GITHUB_ENV
           echo "REDIS_URL=redis://localhost:6379" >> $GITHUB_ENV
 
+      - name: Prisma generate
+        run: npx prisma generate
+
       - name: Run Prisma migrate
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
