@@ -23,6 +23,8 @@
  *          └─ PhaseComponent -- the active phase
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fix: detect job-vanished transition in polling loop so student session
+ *   self-recovers when admin deletes a stuck job instead of staying frozen on "Generating..."
  * - 2026-03-08 | claude | refactored to use phaseRouter + SessionLayout + useSession
  *                          (was components/Session/SessionContainer.tsx)
  * - 2026-05-08 | copilot | replace pending PRACTICE skip CTA with hydrate status + manual generate + polling refresh
@@ -159,6 +161,11 @@ export function SessionContainer({
     let isCancelled = false;
     let timeoutRef: ReturnType<typeof setTimeout> | null = null;
     let pollAttempt = 0;
+    // Track previous poll's running state to detect when a job vanishes externally (e.g. admin delete)
+    let wasHydrationRunning = false;
+    // Limit recovery attempts so a repeatedly-deleted job doesn't loop forever
+    let jobVanishedRecoveries = 0;
+    const MAX_JOB_VANISHED_RECOVERIES = 2;
 
     const schedulePoll = (delayMs: number) => {
       timeoutRef = setTimeout(() => {
@@ -186,6 +193,16 @@ export function SessionContainer({
         return;
       }
 
+      // Detect when a running job disappears without producing questions.
+      // This happens when admin cancels or deletes a stuck job externally.
+      const jobVanished =
+        wasHydrationRunning &&
+        !status.isHydrationRunning &&
+        !status.hasActiveQuestions &&
+        jobVanishedRecoveries < MAX_JOB_VANISHED_RECOVERIES;
+
+      wasHydrationRunning = status.isHydrationRunning;
+
       setPracticePendingStatus((prev) => ({
         ...prev,
         isChecking: false,
@@ -199,11 +216,23 @@ export function SessionContainer({
         return;
       }
 
-      // Auto-trigger generation once per sessionId when PRACTICE is pending and no job is running.
+      // Auto-trigger generation when PRACTICE is pending and no job is running.
+      // Also re-triggers when a running job vanishes (admin deleted a stuck job) --
+      // in that case we clear the ref so a fresh attempt is allowed.
       if (!status.isHydrationRunning && session?.sessionId) {
         const alreadyAttemptedForSession =
           practiceAutoTriggerAttemptedRef.current === session.sessionId;
-        if (!alreadyAttemptedForSession) {
+
+        if (jobVanished) {
+          // Job was removed externally while we were waiting -- allow one fresh attempt.
+          jobVanishedRecoveries += 1;
+          practiceAutoTriggerAttemptedRef.current = null;
+        }
+
+        const shouldAutoTrigger =
+          !alreadyAttemptedForSession || jobVanished;
+
+        if (shouldAutoTrigger) {
           practiceAutoTriggerAttemptedRef.current = session.sessionId;
           setPracticePendingStatus((prev) => ({ ...prev, isGenerating: true, errorMessage: null }));
           const autoResult = await triggerPracticeHydration();
@@ -229,6 +258,7 @@ export function SessionContainer({
           }));
 
           if (generationStarted) {
+            wasHydrationRunning = true;
             pollAttempt += 1;
             const firstBackoff = Math.min(15000, 2000 * 2 ** Math.min(pollAttempt, 3));
             schedulePoll(firstBackoff);

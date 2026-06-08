@@ -6,6 +6,7 @@
  * - No React imports -- usable in both hooks and server actions if needed.
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | add cache: no-store to hydration status GET so browser never serves stale job state
  * - 2026-03-08 | claude | created for Session Architecture refactor
  * - 2026-05-08 | copilot | add practice hydration status/trigger actions for pending PRACTICE fallback
  * - 2026-05-09T00:00:00Z | copilot | submit test payload now carries testId so backend grades against the displayed test version
@@ -109,6 +110,7 @@ export async function getPracticeHydrationStatusAction(
   const res = await fetch(`/api/session/${sessionId}/practice/hydrate`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Failed to load hydration status');
