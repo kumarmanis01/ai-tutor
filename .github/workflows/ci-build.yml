@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 120
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -21,7 +21,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready -U postgres
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -69,6 +69,9 @@ jobs:
 
       - name: Prisma generate
         run: npx prisma generate
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
 
       - name: TypeScript check
         run: npx tsc --noEmit --project tsconfig.json

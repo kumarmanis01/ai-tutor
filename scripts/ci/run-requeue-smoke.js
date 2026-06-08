@@ -13,7 +13,7 @@ async function main() {
 
   // Run the requeue script
   console.log('[smoke] running requeue-pending.js')
-  const r = spawnSync('node', ['scripts/requeue-pending.js', '--limit', '10'], { stdio: 'inherit', env: process.env })
+  const r = spawnSync('npx', ['tsx', 'scripts/requeue-pending.js', '--limit', '10'], { stdio: 'inherit', env: process.env })
   if (r.error) {
     console.error('[smoke] requeue script failed to start', r.error)
     process.exit(2)

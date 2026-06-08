@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -49,6 +49,9 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres" >> $GITHUB_ENV
           echo "REDIS_URL=redis://localhost:6379" >> $GITHUB_ENV
 
+      - name: Prisma generate
+        run: npx prisma generate
+
       - name: Run Prisma migrate
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
@@ -58,4 +61,4 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           REDIS_URL: ${{ env.REDIS_URL }}
-        run: node scripts/ci/run-requeue-smoke.js
+        run: npx tsx scripts/ci/run-requeue-smoke.js
