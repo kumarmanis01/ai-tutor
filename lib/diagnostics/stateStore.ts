@@ -1,3 +1,12 @@
+/**
+ * FILE OBJECTIVE:
+ * - Read and write per-subject diagnostic status for a student, stored in
+ *   StudentLearningProfile.recommendations.diagnostics (JSON map keyed by subjectId).
+ *
+ * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | add optional subjectName param to getSubjectDiagnosticStatus so mastery fallback uses subject name (matches StudentTopicMastery.subject column)
+ */
+
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger'
 
@@ -76,10 +85,17 @@ function toDiagnosticMap(value: unknown): DiagnosticMap {
  * - If the student already has any StudentTopicMastery rows for the subject,
  *   diagnostics are treated as not_applicable (baseline already established).
  * - Otherwise, diagnostics are pending.
+ *
+ * @param subjectKey  - The SubjectDef ID used as the diagnostics map key.
+ * @param subjectName - Optional subject name used only for the mastery-count
+ *   fallback. StudentTopicMastery.subject stores the name, not the ID, so
+ *   passing the name here ensures legacy data without an explicit map entry
+ *   is correctly classified as not_applicable.
  */
 export async function getSubjectDiagnosticStatus(
   studentId: string,
   subjectKey: string,
+  subjectName?: string,
 ): Promise<SubjectDiagnosticStatus> {
   let profile: any = null
   try {
@@ -119,7 +135,9 @@ export async function getSubjectDiagnosticStatus(
     masteryCount = await prisma.studentTopicMastery.count({
       where: {
         studentId,
-        subject: subjectKey,
+        // StudentTopicMastery.subject stores the subject name, not the ID.
+        // Use subjectName when provided so the fallback correctly detects legacy mastery data.
+        subject: subjectName ?? subjectKey,
       },
     })
   } catch (err: any) {
