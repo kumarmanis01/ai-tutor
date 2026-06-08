@@ -7,6 +7,7 @@
  * Route: /parent/dashboard
  *
  * EDIT LOG:
+ *   2026-06-08T00:00:00Z | claude | fix: fetch diagnosticDone per subject so parent sees correct diagnostic status
  *   2026-06-08 | claude | fix: skip past exam dates in examDateMap so upcoming exam countdown is never suppressed
  *   2026-03-08 | claude | original 4-card client-polling dashboard
  *   2026-03-15 | claude | T38 -- rewritten as server component with multi-child view
@@ -21,6 +22,7 @@ import { authOptions } from '@/lib/auth'
 import type { AppSession } from '@/lib/types/auth'
 import { prisma } from '@/lib/prisma'
 import { computeReadinessScore } from '@/lib/student/examReadiness'
+import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import ParentDashboard from '@/components/parent/ParentDashboard'
 
 export const dynamic = 'force-dynamic'
@@ -132,7 +134,7 @@ export default async function ParentDashboardPage() {
     examDate: string | null
     streak: number
     sessionsThisWeek: number
-    readiness: Array<{ subjectId: string; subjectName: string; score: number }>
+    readiness: Array<{ subjectId: string; subjectName: string; score: number; diagnosticDone: boolean }>
   }> = []
   for (const studentId of studentIds) {
     const student = studentMap.get(studentId)
@@ -143,10 +145,18 @@ export default async function ParentDashboardPage() {
       .map((n) => subjectDefByKey.get(n))
       .filter((sd): sd is { id: string; name: string } => sd !== undefined)
 
-    const readiness: Array<{ subjectId: string; subjectName: string; score: number }> = []
+    const readiness: Array<{ subjectId: string; subjectName: string; score: number; diagnosticDone: boolean }> = []
     for (const sd of resolvedDefs) {
-      const result = await computeReadinessScore(studentId, sd.id).catch(() => null)
-      readiness.push({ subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 })
+      const [result, diagStatus] = await Promise.all([
+        computeReadinessScore(studentId, sd.id).catch(() => null),
+        getSubjectDiagnosticStatus(studentId, sd.id).catch(() => null),
+      ])
+      readiness.push({
+        subjectId: sd.id,
+        subjectName: sd.name,
+        score: result?.score ?? 0,
+        diagnosticDone: diagStatus?.status === 'completed',
+      })
     }
 
     children.push({

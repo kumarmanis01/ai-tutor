@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | add isParentView prop to suppress "Start diagnostic" CTA in parent context
  * - 2026-05-09T15:15:00Z | copilot | rewrite readiness card with Tailwind,
  *                          readiness badges, predicted range, retake info,
  *                          and chapter breakdown support
@@ -34,6 +35,8 @@ interface Props {
   predictedRange?: PredictedRange | null
   retakeEligibleAt?: string | null
   chapters?: ReadinessChapter[]
+  /** When true, suppress student-only actions (e.g. "Start diagnostic" CTA). */
+  isParentView?: boolean
 }
 
 function normalizePercent(score: number): number {
@@ -98,6 +101,7 @@ export function SubjectReadinessCard({
   predictedRange,
   retakeEligibleAt,
   chapters,
+  isParentView,
 }: Props) {
   const percent = normalizePercent(score)
   const tone = getReadinessTone(percent)
@@ -137,7 +141,7 @@ export function SubjectReadinessCard({
           {diagnosticDone ? 'Diagnostic complete' : 'Diagnostic pending'}
         </span>
 
-        {!diagnosticDone && (
+        {!diagnosticDone && !isParentView && (
           <Link
             href={`/diagnostic/${subjectId}`}
             className="ml-2 inline-flex items-center rounded-md bg-[#534AB7] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"

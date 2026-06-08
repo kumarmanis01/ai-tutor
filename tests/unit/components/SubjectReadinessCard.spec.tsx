@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fix stale assertions to match current component (no loading/error props, tier label not raw score, isParentView hides CTA)
  * - 2026-04-20T00:00:00Z | claude | created for F-STU-023 coverage confirmation
  */
 
@@ -26,38 +27,46 @@ jest.mock('next/link', () => ({
 }))
 
 describe('SubjectReadinessCard', () => {
-  it('should render without crash when score is populated', () => {
+  it('should render subject name and readiness tier label when score is populated', () => {
     render(<SubjectReadinessCard subjectName="Mathematics" score={72} subjectId="sub-math" />)
     expect(screen.getByText('Mathematics')).toBeInTheDocument()
-    expect(screen.getByText('72')).toBeInTheDocument()
+    // Tier label, not numeric score (CLAUDE.md: never show numeric score)
+    expect(screen.getByText('On track')).toBeInTheDocument()
   })
 
-  it('should render skeleton and no subject name in loading state', () => {
-    const { container } = render(
-      <SubjectReadinessCard subjectName="Mathematics" score={0} subjectId="sub-math" loading />
-    )
-    expect(screen.queryByText('Mathematics')).not.toBeInTheDocument()
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
+  it('should render "Critical" tier when score is below 40', () => {
+    render(<SubjectReadinessCard subjectName="Science" score={20} subjectId="sub-sci" />)
+    expect(screen.getByText('Critical')).toBeInTheDocument()
   })
 
-  it("should render error message in error state", () => {
-    render(<SubjectReadinessCard subjectName="Mathematics" score={0} subjectId="sub-math" error />)
-    expect(screen.getByText(/couldn't load readiness/i)).toBeInTheDocument()
-  })
-
-  it('should render Start Diagnostic CTA when score=0 and diagnosticDone=false', () => {
+  it('should show "Start diagnostic" CTA when diagnosticDone is false', () => {
     render(
       <SubjectReadinessCard subjectName="Science" score={0} subjectId="sub-sci" diagnosticDone={false} />
     )
-    expect(screen.getByText(/Take diagnostic/i)).toBeInTheDocument()
-    expect(screen.getByText(/Start Diagnostic/i)).toBeInTheDocument()
+    expect(screen.getByText('Start diagnostic')).toBeInTheDocument()
+    expect(screen.getByText('Diagnostic pending')).toBeInTheDocument()
   })
 
-  it('should render preparing message when score=0 and diagnosticDone=true', () => {
+  it('should show "Diagnostic complete" and hide "Start diagnostic" when diagnosticDone is true', () => {
     render(
       <SubjectReadinessCard subjectName="Science" score={0} subjectId="sub-sci" diagnosticDone />
     )
-    expect(screen.getByText(/being calculated/i)).toBeInTheDocument()
+    expect(screen.getByText('Diagnostic complete')).toBeInTheDocument()
+    expect(screen.queryByText('Start diagnostic')).not.toBeInTheDocument()
+  })
+
+  it('should hide "Start diagnostic" CTA when isParentView is true', () => {
+    render(
+      <SubjectReadinessCard
+        subjectName="Science"
+        score={0}
+        subjectId="sub-sci"
+        diagnosticDone={false}
+        isParentView
+      />
+    )
+    expect(screen.queryByText('Start diagnostic')).not.toBeInTheDocument()
+    expect(screen.getByText('Diagnostic pending')).toBeInTheDocument()
   })
 
   it('should display predicted range with confidence interval when predictedRange is provided', () => {
@@ -66,7 +75,7 @@ describe('SubjectReadinessCard', () => {
         subjectName="Physics"
         score={65}
         subjectId="sub-phy"
-        predictedRange={{ low: 58, high: 72, confidenceLevel: 95, daysUsed: 30 }}
+        predictedRange={{ low: 58, high: 72, confidenceLevel: 95 }}
       />
     )
     expect(screen.getByText(/58-72/)).toBeInTheDocument()

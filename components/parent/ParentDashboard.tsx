@@ -12,6 +12,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fix: correct progress link URL (/progress/ not /parent/progress/); pass diagnosticDone; suppress "Start diagnostic" in parent view
  * - 2026-04-09T00:00:00Z | copilot | added dual timezone display per child
  * - 2026-05-04T00:00:00Z | copilot | F-PAR-010 AC-02/AC-03: exam countdown + horizontal tabs
  */
@@ -26,6 +27,7 @@ interface ChildReadiness {
   subjectId: string
   subjectName: string
   score: number
+  diagnosticDone: boolean
 }
 
 interface ChildData {
@@ -150,7 +152,7 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
           </div>
 
           <Link
-            href={`/parent/progress/${child.studentId}`}
+            href={`/progress/${child.studentId}`}
             className="shrink-0 rounded-md border border-indigo-200 px-3 py-1.5 text-xs font-medium text-[#534AB7] hover:bg-[#EEEDFE] dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950"
           >
             View full report
@@ -203,6 +205,8 @@ export default function ParentDashboard({ childrenData, parentTimezone }: Parent
                 subjectName={r.subjectName}
                 score={r.score}
                 subjectId={r.subjectId}
+                diagnosticDone={r.diagnosticDone}
+                isParentView
               />
             ))}
           </div>
