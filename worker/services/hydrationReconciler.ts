@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-04-23T00:00:00Z | copilot | fix(strict): add typed groupBy handling, annotate callbacks, guard Promise.all types
  * - 2026-05-18T00:00:00Z | claude | feat: send generation validation summary email to HYDRATION_GENERATION_REPORT_EMAIL on root job completion
+ * - 2026-06-08T00:00:00Z | claude | fix: use deleteMany in releaseLock to avoid P2025 when lock already expired
  * - 2026-05-18T00:00:00Z | claude  | fix: remove take-based cap from createLevel2Jobs/createLevel3Jobs -- it caused permanent truncation (topics beyond cap were never enqueued after first reconciler run)
  *
  * RESPONSIBILITIES:
@@ -135,14 +136,12 @@ export class HydrationReconciler {
 
   private async releaseLock(): Promise<void> {
     try {
-      await prisma.jobLock.delete({
+      // deleteMany avoids P2025 when the lock already expired before releaseLock runs
+      await prisma.jobLock.deleteMany({
         where: { jobName: RECONCILER_LOCK_NAME },
       });
     } catch (error: any) {
-      // Lock might have already expired, that's okay
-      logger.debug('Failed to release lock (might have expired)', {
-        error: error.message,
-      });
+      logger.debug('Failed to release lock', { error: error.message });
     }
   }
 

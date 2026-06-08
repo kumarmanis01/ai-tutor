@@ -7,6 +7,7 @@
  * Route: /parent/dashboard
  *
  * EDIT LOG:
+ *   2026-06-08 | claude | fix: fetch examDate from LearningPlan not User (field never existed on User model)
  *   2026-03-08 | claude | original 4-card client-polling dashboard
  *   2026-03-15 | claude | T38 -- rewritten as server component with multi-child view
  *   2026-04-09 | copilot | pass parent/student timezones to ParentDashboard for dual-display
@@ -58,11 +59,11 @@ export default async function ParentDashboardPage() {
 
   const studentIds = links.map((l: any) => l.studentId)
 
-  // 2. Batch-load all student profiles, streaks, and session counts in parallel
-  const [students, streaks, sessionCounts] = await Promise.all([
+  // 2. Batch-load all student profiles, streaks, session counts, and exam dates in parallel
+  const [students, streaks, sessionCounts, learningPlans] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: studentIds } },
-      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true, examDate: true },
+      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true },
     }),
     prisma.studentStreak.findMany({
       where: { studentId: { in: studentIds }, kind: 'daily' },
@@ -73,11 +74,26 @@ export default async function ParentDashboardPage() {
       where: { studentId: { in: studentIds }, startedAt: { gte: monday } },
       _count: { _all: true },
     }),
+    // examDate lives on LearningPlan, not User -- fetch soonest per student
+    prisma.learningPlan.findMany({
+      where: { studentId: { in: studentIds } },
+      select: { studentId: true, examDate: true },
+    }),
   ])
 
   // Build lookup maps
-  type StudentRow = { id: string; name: string | null; grade: string | null; board: string | null; subjects: unknown; timezone: string | null; examDate: Date | null }
+  type StudentRow = { id: string; name: string | null; grade: string | null; board: string | null; subjects: unknown; timezone: string | null }
   const studentMap = new Map<string, StudentRow>(students.map((s: StudentRow) => [s.id, s]))
+
+  // Soonest upcoming exam date per student (across all their subjects)
+  const examDateMap = new Map<string, string>()
+  for (const plan of learningPlans) {
+    if (!plan.examDate) continue
+    const existing = examDateMap.get(plan.studentId)
+    if (!existing || plan.examDate.getTime() < new Date(existing).getTime()) {
+      examDateMap.set(plan.studentId, plan.examDate.toISOString())
+    }
+  }
   const streakMap = new Map<string, number>(streaks.map((s: { studentId: string; current: number }) => [s.studentId, s.current]))
   const sessionCountMap = new Map<string, number>(sessionCounts.map((r: { studentId: string; _count: { _all: number } }) => [r.studentId, r._count._all]))
 
@@ -137,7 +153,7 @@ export default async function ParentDashboardPage() {
       grade: student.grade ?? '',
       board: student.board ?? '',
       timezone: student.timezone ?? null,
-      examDate: student.examDate ? student.examDate.toISOString() : null,
+      examDate: examDateMap.get(studentId) ?? null,
       streak: streakMap.get(studentId) ?? 0,
       sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
       readiness,
