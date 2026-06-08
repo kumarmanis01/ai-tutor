@@ -7,7 +7,7 @@
  * Route: /parent/dashboard
  *
  * EDIT LOG:
- *   2026-06-08 | claude | fix: fetch examDate from LearningPlan not User (field never existed on User model)
+ *   2026-06-08 | claude | fix: skip past exam dates in examDateMap so upcoming exam countdown is never suppressed
  *   2026-03-08 | claude | original 4-card client-polling dashboard
  *   2026-03-15 | claude | T38 -- rewritten as server component with multi-child view
  *   2026-04-09 | copilot | pass parent/student timezones to ParentDashboard for dual-display
@@ -85,10 +85,12 @@ export default async function ParentDashboardPage() {
   type StudentRow = { id: string; name: string | null; grade: string | null; board: string | null; subjects: unknown; timezone: string | null }
   const studentMap = new Map<string, StudentRow>(students.map((s: StudentRow) => [s.id, s]))
 
-  // Soonest upcoming exam date per student (across all their subjects)
+  // Soonest *upcoming* exam date per student (past dates ignored so countdown is not suppressed)
+  const now = Date.now()
   const examDateMap = new Map<string, string>()
   for (const plan of learningPlans) {
     if (!plan.examDate) continue
+    if (plan.examDate.getTime() <= now) continue // skip past exam dates
     const existing = examDateMap.get(plan.studentId)
     if (!existing || plan.examDate.getTime() < new Date(existing).getTime()) {
       examDateMap.set(plan.studentId, plan.examDate.toISOString())
