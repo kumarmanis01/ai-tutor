@@ -7,6 +7,7 @@
  * - tests/unit/components/student/dashboard/SecondaryStartOptions.test.tsx
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | route Surprise me to /session/[topicId] directly (skip pre-session)
  * - 2026-05-06T00:00:00Z | copilot | wire todaysHref from dashboard card state,
  *                          make Today's topic selected by default, and add
  *                          no-op-safe Surprise me fallback routing
@@ -74,7 +75,7 @@ export default function SecondaryStartOptions({
         router.push(FALLBACK_BROWSE_HREF)
         return
       }
-      router.push(`/session/pre/${encodeURIComponent(action.topicId)}`)
+      router.push(`/session/${encodeURIComponent(action.topicId)}`)
     } catch (err: any) {
       toast(String(err?.message || 'Could not pick a surprise topic'))
       router.push(FALLBACK_BROWSE_HREF)

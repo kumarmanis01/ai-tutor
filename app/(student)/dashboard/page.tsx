@@ -12,6 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fix all topic-click hrefs from /session/pre/[conceptId] to /session/[topicId]
  * - 2026-03-15T00:00:00Z | v2-migration | full rebuild; replaces v1 dashboard
  * - 2026-04-21T12:00:00Z | staff-engineer | parse user.grade for Prisma class filter and improve diagnostic CTA/tests
  * - 2026-05-06T00:00:00Z | copilot | map topicId to Concept.id for start/surprise pre-session routing
@@ -355,7 +356,7 @@ export default async function StudentHomeDashboardPage() {
         xp: 60,
         state: 'not_started' as MissionState,
         priority: true,
-        href: `/session/pre/${encodeURIComponent(firstConcept.id)}`,
+        href: `/session/${encodeURIComponent(action.topicId)}`,
       }
     } else {
       logger.warn('dashboard.hero_mission.skipped_missing_concept', {
@@ -386,13 +387,14 @@ export default async function StudentHomeDashboardPage() {
 
   type ConceptSelectResult = {
     name: string
+    topicId: string
     topic: { name: string; chapter: { name: string } } | null
   }
   type PlanItemSelectResult = { conceptId: string; concept: ConceptSelectResult }
 
   const PLAN_ITEM_SELECT = {
     conceptId: true,
-    concept: { select: { name: true, topic: { select: { name: true, chapter: { select: { name: true } } } } } },
+    concept: { select: { name: true, topicId: true, topic: { select: { name: true, chapter: { select: { name: true } } } } } },
   } as const
 
   function topicNameFromItem(item: PlanItemSelectResult, fallback: string): string {
@@ -446,7 +448,7 @@ export default async function StudentHomeDashboardPage() {
           subjectId: plan.subjectId,
           topicName: topicNameFromItem(inProgressItem, 'Continue learning'),
           chapter: chapterFromItem(inProgressItem),
-          href: `/session/pre/${encodeURIComponent(inProgressItem.conceptId)}`,
+          href: `/session/${encodeURIComponent(inProgressItem.concept.topicId)}`,
         }
       }
       const currentWeekItem = currentWeekByPlan.get(plan.id)
@@ -456,7 +458,7 @@ export default async function StudentHomeDashboardPage() {
           subjectId: plan.subjectId,
           topicName: topicNameFromItem(currentWeekItem, 'Start learning'),
           chapter: chapterFromItem(currentWeekItem),
-          href: `/session/pre/${encodeURIComponent(currentWeekItem.conceptId)}`,
+          href: `/session/${encodeURIComponent(currentWeekItem.concept.topicId)}`,
         }
       }
       const fallbackItem = fallbackByPlan.get(plan.id)
@@ -466,7 +468,7 @@ export default async function StudentHomeDashboardPage() {
         subjectId: plan.subjectId,
         topicName: topicNameFromItem(fallbackItem, 'Start learning'),
         chapter: chapterFromItem(fallbackItem),
-        href: `/session/pre/${encodeURIComponent(fallbackItem.conceptId)}`,
+        href: `/session/${encodeURIComponent(fallbackItem.concept.topicId)}`,
       }
     })
     .filter((t: TodaysTopic | null): t is TodaysTopic => t !== null)
@@ -482,7 +484,7 @@ export default async function StudentHomeDashboardPage() {
           const firstConcept = await prisma.concept.findFirst({
             where: { subjectId: r.subjectId, isSuspended: false },
             orderBy: [{ topic: { chapter: { order: 'asc' } } }, { topic: { order: 'asc' } }],
-            select: { id: true, name: true, topic: { select: { name: true, chapter: { select: { name: true } } } } },
+            select: { id: true, name: true, topicId: true, topic: { select: { name: true, chapter: { select: { name: true } } } } },
           })
           if (!firstConcept?.id) return null
           return {
@@ -490,7 +492,7 @@ export default async function StudentHomeDashboardPage() {
             subjectId: r.subjectId,
             topicName: firstConcept.topic?.name ?? firstConcept.name,
             chapter: firstConcept.topic?.chapter?.name ?? null,
-            href: `/session/pre/${encodeURIComponent(firstConcept.id)}`,
+            href: `/session/${encodeURIComponent(firstConcept.topicId)}`,
           }
         }),
     )

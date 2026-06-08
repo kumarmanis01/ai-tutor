@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | rename weakestConceptId to weakestTopicId; route chapter links to /session/[topicId]
  * - 2026-03-15 | claude | created for Task 29 progress report page
  * - 2026-05-10T00:00:00Z | copilot | remove inline styles, add estimated-weight label, and improve row accessibility
  */
@@ -26,8 +27,8 @@ export interface ChapterRow {
   boardWeightPct: number;
   /** source of the displayed board weight */
   weightSource: 'board' | 'estimated';
-  /** conceptId for the lowest-mastery concept in this chapter, or null */
-  weakestConceptId: string | null;
+  /** topicId for the lowest-mastery topic in this chapter, or null */
+  weakestTopicId: string | null;
   /** Average memory strength for the chapter (0-1) */
   memoryStrength?: number;
 }
@@ -52,8 +53,8 @@ function chapterColor(mastery100: number) {
 function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
   const mastery100 = Math.round(chapter.masteryScore * 100);
   const { barClass, text } = chapterColor(mastery100);
-  const href = chapter.weakestConceptId
-    ? `/session/pre/${chapter.weakestConceptId}`
+  const href = chapter.weakestTopicId
+    ? `/session/${chapter.weakestTopicId}`
     : null;
   const memoryPct = Math.round((chapter.memoryStrength ?? 0) * 100);
 
