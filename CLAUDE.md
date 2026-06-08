@@ -312,10 +312,36 @@ When a string contains an apostrophe (it's, don't, I'm etc.), use template liter
 
 ---
 
+## File Header Rules (ENFORCED — pre-commit hook blocks commits)
+
+Every app .ts/.tsx file that is created or modified MUST have BOTH blocks in
+the top-of-file comment before the first import:
+
+  /**
+   * FILE OBJECTIVE:
+   * - <one-line description of what this file does>
+   *
+   * EDIT LOG:
+   * - YYYY-MM-DDTHH:MM:SSZ | <author> | <what changed and why>
+   */
+
+Rules:
+- FILE OBJECTIVE must describe the file's purpose, not the current change.
+- EDIT LOG must be updated on EVERY change. Newest entry at the top.
+- Both blocks are checked automatically by python3 scripts/check-file-headers.py
+  which runs as the second step of every pre-commit hook.
+- Missing headers are a BLOCKING commit failure, not a warning.
+- To skip in an emergency: SKIP_HEADER_CHECK=1 git commit ...
+
+Exempt files (not checked): tests/, scripts/, *.config.ts, *.d.ts, *.spec.ts
+
 ## Pre-commit Checklist (automated via husky)
-Every commit automatically runs:
+Every commit automatically runs (in this order):
 1. python3 scripts/fix-smart-quotes.py  (auto-fixes, re-stages)
-2. npx tsc --noEmit --project tsconfig.json  (type check)
+2. python3 scripts/check-file-headers.py  (blocks if FILE OBJECTIVE or EDIT LOG missing)
+3. npm run preflight:lint
+4. npx tsc --noEmit --project tsconfig.json  (type check)
+5. npm run test:unit
 
 ## Deploy Pre-flight Checklist (deploy-and-run.sh)
 1. Required env vars present
@@ -327,10 +353,12 @@ Every commit automatically runs:
 ## Rules for Claude Code sessions
 Before ending ANY session:
 1. Run: python3 scripts/fix-smart-quotes.py
-2. Run: npx tsc --noEmit --project tsconfig.json
-3. Only then: git add -A && git commit
+2. Run: python3 scripts/check-file-headers.py  ← checks every file you staged
+3. Run: npx tsc --noEmit --project tsconfig.json
+4. Only then: git add -A && git commit
 
-This must be the LAST step of every task, not optional.
+Step 2 will list every file missing FILE OBJECTIVE or EDIT LOG. Fix them before
+committing. This must be the LAST step of every task, not optional.
 
 ## Jest Execution Infra (Mandatory)
 

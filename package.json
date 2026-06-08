@@ -136,7 +136,8 @@
     "ingest:cli": "node ingest.cjs",
     "ingest:seed-cbse-grade10": "node scripts/seed-cbse-grade10.cjs",
     "ingest:retry": "node ingest.cjs --retry-failed",
-    "ingest:scrape": "node ingest.cjs"
+    "ingest:scrape": "node ingest.cjs",
+    "preflight:headers": "python3 scripts/check-file-headers.py"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

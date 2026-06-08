@@ -10,6 +10,8 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | add role guard: role=parent redirected to /parent/dashboard before student
+ *     shell renders (defence-in-depth behind proxy.ts)
  * - 2026-05-12T00:00:00Z | copilot | remove profile completeness route gate and rely on middleware active-account enforcement
  * - 2026-04-15T00:00:00Z | staff-engineer | add file header and top padding to avoid Topbar overlap
  * - 2026-05-09T00:00:00Z | copilot | increase content top offset for redesigned two-line mobile and taller desktop topbar
@@ -97,6 +99,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
   // prevents the onboarding/verify-parent re-entry bug.
   const session = (await getServerSession(authOptions)) as any | null;
   if (!session) redirect('/');
+  // Defence-in-depth: proxy.ts is the primary role guard, but if a parent
+  // somehow bypasses it and reaches the student shell, redirect them out.
+  if ((session.user as { role?: string })?.role === 'parent') redirect('/parent/dashboard');
 
   const userId = (session.user as { id?: string })?.id;
   // studentName kept for StudentLayoutShell (profile gate overlay)

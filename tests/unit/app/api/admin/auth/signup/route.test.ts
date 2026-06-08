@@ -2,8 +2,8 @@
  * FILE OBJECTIVE:
  * - Unit tests for POST /api/admin/auth/signup.
  * - Covers: validation, missing ADMIN_SIGNUP_CODE (503), wrong code (403),
- *   duplicate account (409), upgrade of OAuth-only account (200), and
- *   happy-path create (200).
+ *   duplicate account (409), cross-role email rejection (409), OAuth-only
+ *   admin password-set (200), and happy-path create (200).
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/api/admin/auth/signup/route.test.ts (this file)
@@ -14,6 +14,8 @@
  *
  * EDIT LOG:
  * - 2026-06-07T00:00:00Z | claude | created -- addresses PR review request for unit coverage
+ * - 2026-06-07T00:00:00Z | claude | update tests: cross-role email now returns 409; OAuth-only admin
+ *     password-set no longer overwrites role field
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -77,8 +79,30 @@ describe('POST /api/admin/auth/signup', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('upgrades an existing OAuth-only account (no passwordHash) and returns 200', async () => {
+  it('returns 409 when the email belongs to a student account (role=user)', async () => {
     findUnique.mockResolvedValue({ id: 'u1', role: 'user', passwordHash: null });
+    const { POST } = await import('@/app/api/admin/auth/signup/route');
+    const res = await POST(makeReq({ email: 'a@b.com', password: 'longenough', adminCode: VALID_CODE }));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe('user_exists');
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when the email belongs to a parent account', async () => {
+    findUnique.mockResolvedValue({ id: 'u2', role: 'parent', passwordHash: null });
+    const { POST } = await import('@/app/api/admin/auth/signup/route');
+    const res = await POST(makeReq({ email: 'parent@b.com', password: 'longenough', adminCode: VALID_CODE }));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe('user_exists');
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('sets password for an existing admin who previously authenticated via OAuth only', async () => {
+    findUnique.mockResolvedValue({ id: 'u3', role: 'admin', passwordHash: null });
     update.mockResolvedValue({});
     const { POST } = await import('@/app/api/admin/auth/signup/route');
     const res = await POST(makeReq({ email: 'a@b.com', password: 'longenough', adminCode: VALID_CODE, name: 'Admin' }));
@@ -86,9 +110,12 @@ describe('POST /api/admin/auth/signup', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { email: 'a@b.com' },
-        data: expect.objectContaining({ role: 'admin', accountStatus: 'active', passwordHash: 'hashed' }),
+        data: expect.objectContaining({ accountStatus: 'active', passwordHash: 'hashed' }),
       }),
     );
+    // role must NOT be overwritten -- the account is already admin
+    const updateCall = update.mock.calls[0][0];
+    expect(updateCall.data).not.toHaveProperty('role');
     expect(create).not.toHaveBeenCalled();
   });
 

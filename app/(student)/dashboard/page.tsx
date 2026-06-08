@@ -28,11 +28,13 @@
  * - 2026-05-18T00:00:00Z | copilot | fix: mark xpBySourceRaw as intentionally unused by prefixing with _ to satisfy ESLint
  * - 2026-06-06T00:00:00Z | claude | add all_topics_complete revision hero fallback; bulk-fetch plan
  *     items (IN_PROGRESS > current-week UPCOMING > fallback UPCOMING) to remove N+1
+ * - 2026-06-08T00:00:00Z | claude | replace requireActiveSession with requireStudentSession to assert
+ *     role=user as well as accountStatus=active (defence-in-depth behind proxy.ts role guard)
  */
 
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { requireActiveSession } from '@/lib/auth'
+import { requireStudentSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getNextAction } from '@/lib/homeEngine/getNextAction'
 import { computeReadinessScore, type ReadinessChapter } from '@/lib/student/examReadiness'
@@ -84,7 +86,10 @@ function chapterTag(status: ReadinessChapter['status']): SubjectReadiness['tag']
 const FREE_TIER_SESSION_CAP = 3
 
 export default async function StudentHomeDashboardPage() {
-  const authSession = await requireActiveSession()
+  // requireStudentSession: asserts auth + accountStatus=active + role=user.
+  // A parent or admin reaching this page (e.g. stale bookmark) is rejected here
+  // as a final backstop after proxy.ts and student layout have already redirected.
+  const authSession = await requireStudentSession()
   if (!authSession) redirect('/')
 
   const userId = (authSession.user as { id: string }).id

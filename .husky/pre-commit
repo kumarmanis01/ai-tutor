@@ -14,6 +14,15 @@ fi
 # Run it first to auto-fix obvious issues in the index.
 npx --no-install lint-staged
 
+# File header check: every staged app .ts/.tsx file must have FILE OBJECTIVE
+# and EDIT LOG blocks. Runs early so the issue is caught before lint/type-check.
+# Skip with: SKIP_HEADER_CHECK=1 git commit ...
+if [ "${SKIP_HEADER_CHECK:-}" = "1" ]; then
+	echo "SKIP_HEADER_CHECK=1 — skipping file header check"
+else
+	python3 scripts/check-file-headers.py
+fi
+
 # Preflight smart-quote verification (repo-wide check)
 if [ "${SKIP_SMART_QUOTES:-}" = "1" ]; then
 	echo "SKIP_SMART_QUOTES=1 — skipping smart-quote preflight"
