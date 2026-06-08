@@ -10,6 +10,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | migrate gpt-4o -> gpt-4.1 defaults; comment out Anthropic failover (single OpenAI backend)
  * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate callbacks and add header
  * - 2026-05-07T00:00:00Z | copilot | add env validation, typed error codes, timeout enforcement, error mapping
  * - 2026-05-08T00:00:00Z | copilot | allow explicit direct doubts API LLM calls while keeping worker-only guard for other prompt types
@@ -154,52 +155,45 @@ function getClient(allowApiDirect = false) {
   return client
 }
 
-/**
- * Anthropic failover -- used when the LLM circuit breaker is open.
- * Uses @anthropic-ai/sdk if available, else throws AI_UNAVAILABLE.
- * Model: claude-haiku-4-5-20251001 (fast, cheap, failover only).
- */
-async function callAnthropic(
-  prompt: string,
-  opts: { timeoutMs?: number } = {},
-): Promise<{ content: string; usage: any; costUsd: number; latencyMs: number; model: string }> {
-  // F-ADM-040 AC-05: redact PII before sending to Anthropic (failover path).
-  prompt = redactPIIFromText(prompt)
-  let Anthropic: any
-  try {
-    Anthropic = (await import('@anthropic-ai/sdk')).default
-  } catch {
-    throw new LLMError('AI_UNAVAILABLE', 'Anthropic SDK not installed')
-  }
-
-  const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const model = 'claude-haiku-4-5-20251001'
-  const start = Date.now()
-
-  try {
-    const response: any = await Promise.race([
-      anthropicClient.messages.create({
-        model,
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-      new Promise((_, rej) =>
-        setTimeout(() => rej(new Error('llm_timeout')), opts.timeoutMs ?? 45_000),
-      ),
-    ])
-
-    const latencyMs = Date.now() - start
-    const content: string = response.content?.[0]?.text ?? ''
-    const usage = response.usage ?? {}
-    const costUsd =
-      (usage.input_tokens ?? 0) * 0.00000025 + (usage.output_tokens ?? 0) * 0.00000125
-
-    await recordSuccess()
-    return { content, usage, costUsd, latencyMs, model }
-  } catch (err: any) {
-    throw new LLMError('AI_UNAVAILABLE', String(err?.message ?? 'Anthropic failover failed'))
-  }
-}
+// Anthropic failover is disabled -- project uses a single OpenAI backend.
+// Uncomment and restore callAnthropic() if a second provider is required.
+//
+// async function callAnthropic(
+//   prompt: string,
+//   opts: { timeoutMs?: number } = {},
+// ): Promise<{ content: string; usage: any; costUsd: number; latencyMs: number; model: string }> {
+//   prompt = redactPIIFromText(prompt)
+//   let Anthropic: any
+//   try {
+//     Anthropic = (await import('@anthropic-ai/sdk')).default
+//   } catch {
+//     throw new LLMError('AI_UNAVAILABLE', 'Anthropic SDK not installed')
+//   }
+//   const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+//   const model = 'claude-haiku-4-5-20251001'
+//   const start = Date.now()
+//   try {
+//     const response: any = await Promise.race([
+//       anthropicClient.messages.create({
+//         model,
+//         max_tokens: 2048,
+//         messages: [{ role: 'user', content: prompt }],
+//       }),
+//       new Promise((_, rej) =>
+//         setTimeout(() => rej(new Error('llm_timeout')), opts.timeoutMs ?? 45_000),
+//       ),
+//     ])
+//     const latencyMs = Date.now() - start
+//     const content: string = response.content?.[0]?.text ?? ''
+//     const usage = response.usage ?? {}
+//     const costUsd =
+//       (usage.input_tokens ?? 0) * 0.00000025 + (usage.output_tokens ?? 0) * 0.00000125
+//     await recordSuccess()
+//     return { content, usage, costUsd, latencyMs, model }
+//   } catch (err: any) {
+//     throw new LLMError('AI_UNAVAILABLE', String(err?.message ?? 'Anthropic failover failed'))
+//   }
+// }
 
 export async function createChatCompletion(input: any) {
   if (process.env.LLM_MODE === 'mock') {
@@ -268,9 +262,9 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   // - Large models for complex question generation only
   // - Never use large models for orchestration/pipeline logic
   const promptType = meta?.promptType || 'general'
-  const envSmall = process.env.MODEL_SMALL || 'gpt-4o-mini'
-  const envMedium = process.env.MODEL_MEDIUM || 'gpt-4o'
-  const envLarge = process.env.MODEL_LARGE || 'gpt-4o'
+  const envSmall = process.env.MODEL_SMALL || 'gpt-4.1-mini'
+  const envMedium = process.env.MODEL_MEDIUM || 'gpt-4.1'
+  const envLarge = process.env.MODEL_LARGE || 'gpt-4.1'
   const envDefault = process.env.MODEL_DEFAULT || envSmall
 
   const selectedModel = model || ((): string => {
@@ -327,11 +321,9 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
     const effectiveTimeout = baseTimeout;
 
     try {
-      // Circuit breaker: if open, try Anthropic failover before any OpenAI call.
+      // Circuit breaker: single OpenAI backend -- no failover provider.
+      // Restore callAnthropic() branch here if a second provider is added.
       if (await isCircuitOpen()) {
-        if (process.env.ANTHROPIC_API_KEY) {
-          return await callAnthropic(prompt, { timeoutMs: effectiveTimeout })
-        }
         throw new LLMError('AI_UNAVAILABLE', 'LLM circuit open')
       }
 
@@ -677,13 +669,13 @@ export async function batchCallLLM(calls: Array<{ prompt: string; meta: any }>, 
   const promptType = promptTypes[0]
   // If model not provided, pick via same selection rules as callLLM
   const resolvedModel = model || ((): string => {
-    if (['topics', 'structure', 'syllabus'].includes(promptType)) return process.env.MODEL_SMALL || 'gpt-4o-mini'
-    if (['notes', 'doubts', 'practice'].includes(promptType)) return process.env.MODEL_MEDIUM || 'gpt-4o'
-    if (['questions'].includes(promptType)) return process.env.MODEL_LARGE || 'gpt-4o'
-    return process.env.MODEL_DEFAULT || (process.env.MODEL_SMALL || 'gpt-4o-mini')
+    if (['topics', 'structure', 'syllabus'].includes(promptType)) return process.env.MODEL_SMALL || 'gpt-4.1-mini'
+    if (['notes', 'doubts', 'practice'].includes(promptType)) return process.env.MODEL_MEDIUM || 'gpt-4.1'
+    if (['questions'].includes(promptType)) return process.env.MODEL_LARGE || 'gpt-4.1'
+    return process.env.MODEL_DEFAULT || (process.env.MODEL_SMALL || 'gpt-4.1-mini')
   })()
   // Enforce no-large-for-orchestration
-  if (['orchestration', 'workflow', 'reconciler'].includes(promptType) && resolvedModel === (process.env.MODEL_LARGE || 'gpt-4o')) {
+  if (['orchestration', 'workflow', 'reconciler'].includes(promptType) && resolvedModel === (process.env.MODEL_LARGE || 'gpt-4.1')) {
     throw new Error('forbidden_model_for_orchestration')
   }
   const timeoutMs = opts?.timeoutMs
