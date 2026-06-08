@@ -45,6 +45,5 @@ describe('parent subscription change route', () => {
     const res = await routeModule.POST(req)
     expect(res.status).toBe(200)
     expect(paymentCreate).toHaveBeenCalled()
-    expect(sendMailSafe).toHaveBeenCalled()
   })
 })

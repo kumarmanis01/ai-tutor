@@ -70,7 +70,9 @@ describe('GET /api/parent/subject-mastery', () => {
       ]);
 
     prismaMock.learningPlanItem.findMany.mockResolvedValue([
+      { concept: { chapter: 'Algebra' } },
       { concept: { chapter: 'Trigonometry' } },
+      { concept: { chapter: 'Statistics' } },
     ] as any);
 
     const { GET } = await import('@/app/api/parent/subject-mastery/route');

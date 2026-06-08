@@ -12,6 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | route post-session next-topic CTA to /session/[topicId] directly
  * - 2026-04-16T12:00:00Z | copilot | add multi-line copy-to-clipboard share (buildShareableSessionSummary)
  * - 2026-04-16T12:30:00Z | copilot | move confetti/levelup keyframes to CSS module; add eslint-disable-next-line for dynamic progress bar width with justification
  */
@@ -501,7 +502,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
     }
     if (nextAction?.topicId) {
       // Route through pre-session screen so hook prefetch and prereq check run.
-      router.push(`/session/pre/${encodeURIComponent(nextAction.topicId)}`);
+      router.push(`/session/${encodeURIComponent(nextAction.topicId)}`);
     }
   }
 

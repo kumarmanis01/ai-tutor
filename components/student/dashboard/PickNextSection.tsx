@@ -1,11 +1,11 @@
 'use client'
 
 /**
- * PickNextSection -- dashboard revamp
+ * FILE OBJECTIVE:
+ * - Render the "Want something extra?" section with Warm-ups / Browse syllabus / Surprise me tabs.
  *
- * "Want something extra?" section with Warm-ups / Browse syllabus / Surprise me
- * segmented tabs and a grid of topic cards. Wired to the existing surprise-me
- * API route for the Surprise tab, and todaysTopics for warm-up cards.
+ * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | route Surprise me to /session/[topicId] directly (skip pre-session)
  */
 
 import React, { useState } from 'react'
@@ -57,7 +57,7 @@ export default function PickNextSection({ warmUps }: PickNextSectionProps) {
         router.push(BROWSE_HREF)
         return
       }
-      router.push(`/session/pre/${encodeURIComponent(action.topicId as string)}`)
+      router.push(`/session/${encodeURIComponent(action.topicId as string)}`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Could not pick a surprise topic'
       toast(msg)

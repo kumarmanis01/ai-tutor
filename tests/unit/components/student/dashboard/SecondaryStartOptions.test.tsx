@@ -86,7 +86,7 @@ describe('SecondaryStartOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Surprise me' }))
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/session/pre/concept-surprise-1')
+      expect(pushMock).toHaveBeenCalledWith('/session/concept-surprise-1')
     })
   })
 

@@ -17,6 +17,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fix plan lookup to use resolvePlanByShortId for short IDs ('monthly' etc.)
  * - 2026-04-08T00:00:00Z | copilot | created parent verify endpoint
  * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
  */
@@ -30,7 +31,7 @@ import { logger } from '@/lib/logger';
 import { sendEmailUnifiedSafe } from '@/lib/mail';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS } from '@/lib/billing/plans';
+import { PLANS, resolvePlanByShortId } from '@/lib/billing/plans';
 import { checkAuthRateLimit } from '@/lib/middleware/authRateLimit';
 import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
@@ -111,7 +112,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
 
-  const plan = PLANS[planId as PlanId];
+  const plan = resolvePlanByShortId(planId) ?? PLANS[planId as PlanId];
   const now = new Date();
   const expiry = new Date(now);
   expiry.setMonth(expiry.getMonth() + plan.durationMonths);

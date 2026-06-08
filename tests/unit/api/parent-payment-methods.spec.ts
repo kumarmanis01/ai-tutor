@@ -2,14 +2,19 @@
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
+jest.mock('@/lib/session', () => ({
+  getServerSessionForHandlers: jest.fn(),
+}));
 import { describe, it, expect, beforeEach, jest } from '@jest/globals'
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock'
-import '../../helpers/mockSession'
 
 describe('Parent payment-methods API', () => {
+  let getServerSessionForHandlers: jest.Mock;
+
   beforeEach(() => {
     resetPrismaMock()
-    ;(global as any).__TEST_SESSION__ = { user: { id: 'parent-1', role: 'parent', email: 'parent@example.test' } }
+    getServerSessionForHandlers = require('@/lib/session').getServerSessionForHandlers;
+    getServerSessionForHandlers.mockResolvedValue({ user: { id: 'parent-1', role: 'parent', email: 'parent@example.test' } });
   })
 
   it('creates payment customer and method and returns 201', async () => {
@@ -17,6 +22,8 @@ describe('Parent payment-methods API', () => {
     prismaMock.paymentCustomer.create.mockResolvedValue({ id: 'cust-1', userId: 'parent-1', provider: 'razorpay', providerCustomerId: 'rcust_123' })
     prismaMock.paymentMethod.updateMany.mockResolvedValue({ count: 0 })
     prismaMock.paymentMethod.create.mockResolvedValue({ id: 'pm-1', userId: 'parent-1', provider: 'razorpay', providerPaymentMethodId: 'pm_123' })
+    // $transaction must call the callback with the mock tx client
+    ;(prismaMock.$transaction as jest.Mock).mockImplementation(async (fn: any) => fn(prismaMock))
 
     const { POST } = await import('@/app/api/parent/payment-methods/route')
     const payload = { provider: 'razorpay', providerCustomerId: 'rcust_123', providerPaymentMethodId: 'pm_123', type: 'card', last4: '4242', cardBrand: 'visa', expiryMonth: 12, expiryYear: 2030, isDefault: true }

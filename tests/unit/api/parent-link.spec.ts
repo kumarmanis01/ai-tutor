@@ -17,7 +17,8 @@ jest.mock('@/lib/parent/inviteService', () => ({
   linkParentToStudentByEmail: jest.fn(),
   PARENT_INVITE_TTL_DAYS: 7,
 }));
-jest.mock('@/lib/mailer', () => ({ sendMailSafe: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('@/lib/mail', () => ({ sendEmailUnifiedSafe: jest.fn().mockResolvedValue({ success: true }) }));
+jest.mock('@/lib/sms', () => ({ sendSms: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('@/lib/email/templates', () => ({ parentWelcomeHtml: jest.fn().mockReturnValue('<html>welcome</html>') }));
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
@@ -40,7 +41,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
   let getServerSession: jest.Mock;
   let redeemParentInviteAndLink: jest.Mock;
   let linkParentToStudentByEmail: jest.Mock;
-  let sendMailSafe: jest.Mock;
+  let sendEmailUnifiedSafe: jest.Mock;
 
   beforeEach(() => {
     resetPrismaMock();
@@ -51,8 +52,8 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
     redeemParentInviteAndLink = require('@/lib/parent/inviteService').redeemParentInviteAndLink;
     linkParentToStudentByEmail = require('@/lib/parent/inviteService').linkParentToStudentByEmail;
 
-    sendMailSafe = require('@/lib/mailer').sendMailSafe;
-    sendMailSafe.mockClear();
+    sendEmailUnifiedSafe = require('@/lib/mail').sendEmailUnifiedSafe;
+    sendEmailUnifiedSafe.mockClear();
   });
 
   it('should return 401 when unauthenticated', async () => {
@@ -93,7 +94,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.status).toBe('linked');
-      expect(sendMailSafe).toHaveBeenCalledWith(
+      expect(sendEmailUnifiedSafe).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'parent@example.test', subject: expect.stringContaining('Spinzy') }),
       );
     });
@@ -106,7 +107,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
 
       const data = await res.json();
       expect(data.status).toBe('already_linked');
-      expect(sendMailSafe).not.toHaveBeenCalled();
+      expect(sendEmailUnifiedSafe).not.toHaveBeenCalled();
     });
 
     it('should skip email if parent has no email address', async () => {
@@ -118,7 +119,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       const { POST } = await import('@/app/api/parent/link/route');
       await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234', relationship: RELATIONSHIP }) as any);
 
-      expect(sendMailSafe).not.toHaveBeenCalled();
+      expect(sendEmailUnifiedSafe).not.toHaveBeenCalled();
     });
   });
 
@@ -147,7 +148,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.status).toBe('linked');
-      expect(sendMailSafe).toHaveBeenCalledWith(
+      expect(sendEmailUnifiedSafe).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'parent@example.test' }),
       );
     });
@@ -170,7 +171,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
 
       const data = await res.json();
       expect(data.status).toBe('already_linked');
-      expect(sendMailSafe).not.toHaveBeenCalled();
+      expect(sendEmailUnifiedSafe).not.toHaveBeenCalled();
     });
   });
 
@@ -187,7 +188,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.status).toBe('linked');
-      expect(sendMailSafe).toHaveBeenCalledWith(
+      expect(sendEmailUnifiedSafe).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'parent@example.test' }),
       );
     });
@@ -200,7 +201,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
 
       const data = await res.json();
       expect(data.status).toBe('already_linked');
-      expect(sendMailSafe).not.toHaveBeenCalled();
+      expect(sendEmailUnifiedSafe).not.toHaveBeenCalled();
     });
   });
 });

@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | store weakest topicId (not conceptId) per chapter; update ChapterRow to weakestTopicId
  * - 2026-03-15 | claude | created for Task 29 progress report page
  * - 2026-04-07 | claude | F-STU-033 AC-02: subject + time-range filters via URL params
  * - 2026-05-04 | copilot | apply subject filter to heatmap and concepts mastered count
@@ -213,14 +214,14 @@ export default async function ProgressPage({
   // ── Weakest concept per chapter (for chapter row links) ────────────────────
   const allChapterIds = readinessResults.flatMap((r) => r.chapters.map((c) => c.chapterId));
 
-  const chapterWeakestConceptMap = new Map<string, string>();
+  const chapterWeakestTopicMap = new Map<string, string>();
   const conceptsByChapter = new Map<string, string[]>();
   let memoryStrengthByConceptId = new Map<string, number>();
 
   if (allChapterIds.length > 0) {
     const concepts = await prisma.concept.findMany({
       where: { topic: { chapter: { id: { in: allChapterIds } } } },
-      select: { id: true, topic: { select: { chapterId: true } } },
+      select: { id: true, topicId: true, topic: { select: { chapterId: true } } },
     });
 
     const allConceptIds = concepts.map((c: any) => c.id);
@@ -237,6 +238,10 @@ export default async function ProgressPage({
       conceptStates.map((s: any) => [s.conceptId, (s as any).memoryStrength ?? 0]),
     );
 
+    const conceptToTopicId = new Map<string, string>(
+      concepts.map((c: any) => [c.id, c.topicId]),
+    );
+
     // Normalize chapter id keys to strings so map lookups are consistent
     for (const c of concepts) {
       const rawChId = c.topic?.chapterId;
@@ -246,7 +251,7 @@ export default async function ProgressPage({
       conceptsByChapter.get(chId)!.push(c.id);
     }
 
-      for (const [chapterId, conceptIds] of conceptsByChapter) {
+    for (const [chapterId, conceptIds] of conceptsByChapter) {
       if (conceptIds.length === 0) continue;
       const sorted = conceptIds
         .slice()
@@ -254,12 +259,8 @@ export default async function ProgressPage({
           (a, b) =>
             (masteryByConceptId.get(a) ?? 0) - (masteryByConceptId.get(b) ?? 0),
         );
-        // store with string key to match readiness.chapterId shape
-        chapterWeakestConceptMap.set(String(chapterId), sorted[0]);
-      // compute average memoryStrength for the chapter
-      const msVals = conceptIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
-      const _avgMs = msVals.length > 0 ? msVals.reduce((a, b) => a + b, 0) / msVals.length : 0;
-      // store as a temporary map on chapterWeakestConceptMap via Map of maps? We'll attach later when assembling chapters.
+      const weakestTopicId = conceptToTopicId.get(sorted[0]);
+      if (weakestTopicId) chapterWeakestTopicMap.set(String(chapterId), weakestTopicId);
     }
   }
 
@@ -273,7 +274,7 @@ export default async function ProgressPage({
         masteryScore: ch.masteryScore,
         boardWeightPct: ch.boardWeightPct,
         weightSource: ch.weightSource,
-        weakestConceptId: chapterWeakestConceptMap.get(String(ch.chapterId)) ?? null,
+        weakestTopicId: chapterWeakestTopicMap.get(String(ch.chapterId)) ?? null,
         memoryStrength: (() => {
           const cIds = (conceptsByChapter.get(String(ch.chapterId)) ?? [] as string[])
           const vals = cIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0)

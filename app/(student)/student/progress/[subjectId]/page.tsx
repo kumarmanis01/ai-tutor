@@ -8,6 +8,7 @@
  * Never paywalled -- all students see this.
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | store weakest topicId per chapter; update ChapterRow to weakestTopicId
  * - 2026-03-15 | claude | created for Task 29 progress report page
  */
 
@@ -101,13 +102,17 @@ export default async function SubjectProgressPage({ params }: Props) {
 
   // ── Weakest concept per chapter ─────────────────────────────────────────────
   const chapterIds = readiness.chapters.map((c) => c.chapterId);
-  const chapterWeakestConceptMap = new Map<string, string>();
+  const chapterWeakestTopicMap = new Map<string, string>();
 
   if (chapterIds.length > 0) {
     const concepts = await prisma.concept.findMany({
       where: { topic: { chapter: { id: { in: chapterIds } } } },
-      select: { id: true, topic: { select: { chapterId: true } } },
+      select: { id: true, topicId: true, topic: { select: { chapterId: true } } },
     });
+
+    const conceptToTopicId = new Map<string, string>(
+      concepts.map((c: any) => [c.id, c.topicId]),
+    );
 
     const allConceptIds = concepts.map((c: any) => c.id);
     const conceptStates = await prisma.studentConceptState.findMany({
@@ -132,7 +137,8 @@ export default async function SubjectProgressPage({ params }: Props) {
       const sorted = conceptIds
         .slice()
         .sort((a, b) => (masteryByConceptId.get(a) ?? 0) - (masteryByConceptId.get(b) ?? 0));
-      chapterWeakestConceptMap.set(chapterId, sorted[0]);
+      const weakestTopicId = conceptToTopicId.get(sorted[0]);
+      if (weakestTopicId) chapterWeakestTopicMap.set(chapterId, weakestTopicId);
     }
   }
 
@@ -144,7 +150,7 @@ export default async function SubjectProgressPage({ params }: Props) {
       masteryScore: ch.masteryScore,
       boardWeightPct: ch.boardWeightPct,
       weightSource: (ch as any).weightSource ?? 'estimated' as const,
-      weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
+      weakestTopicId: chapterWeakestTopicMap.get(ch.chapterId) ?? null,
     }))
     .sort((a, b) => a.masteryScore - b.masteryScore);
 
