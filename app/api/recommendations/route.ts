@@ -6,17 +6,28 @@
  *   and enqueues them for async processing; returns 202 immediately.
  *
  * EDIT LOG:
+ * - 2026-06-08T02:00:00Z | claude | fix: lazy-init OpenAI singleton to avoid new HTTP agent pool per request
  * - 2026-06-08T00:00:00Z | claude | initial: recommendation API route
  */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import type OpenAI from 'openai';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 import { RecommendationService } from '@/services/recommendationService';
 import { getRecommendationSignalQueue } from '@/queues/recommendationSignalQueue';
+
+let _openai: OpenAI | null = null;
+async function getOpenAIClient(): Promise<OpenAI> {
+  if (!_openai) {
+    const OpenAIClass = (await import('openai')).default;
+    _openai = new OpenAIClass({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -124,7 +135,3 @@ export async function POST(req: Request) {
   return NextResponse.json({ accepted: true }, { status: 202 });
 }
 
-async function getOpenAIClient() {
-  const OpenAI = (await import('openai')).default;
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}

@@ -5,6 +5,7 @@
  *   from /api/recommendations, tracking impressions and clicks.
  *
  * EDIT LOG:
+ * - 2026-06-08T02:00:00Z | claude | fix: remove redundant setQuestionText in handleRecommendationClick (chatSuggestionPicked listener handles it)
  * - 2026-06-08T00:00:00Z | claude | integrate personalized recommendations from /api/recommendations
  */
 
@@ -479,8 +480,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         body: JSON.stringify({ recommendationId: reco.id, type: 'CLICK', metadata: { recoType: reco.type, title: reco.title } }),
       }).catch(() => {});
 
-      // Populate input and auto-submit
-      setQuestionText(reco.prompt);
+      // chatSuggestionPicked listener (line ~669) sets question text and auto-submits
       try {
         window.dispatchEvent(new CustomEvent('chatSuggestionPicked', { detail: { suggestion: reco.prompt } }));
       } catch {}

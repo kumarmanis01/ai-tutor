@@ -5,6 +5,7 @@
  *   graded results with optional LLM explanations.
  *
  * EDIT LOG:
+ * - 2026-06-08T02:00:00Z | claude | fix: replace non-atomic findUnique+upsert with single atomic INSERT...ON CONFLICT to prevent concurrent-submission race
  * - 2026-06-08T00:00:00Z | claude | upsert UserTopicProgress after grading for recommendation engine
  */
 
@@ -127,34 +128,23 @@ export async function POST(req: Request) {
       });
     }
 
-    // Upsert UserTopicProgress (free-text topic) for the recommendation engine.
-    // Uses topic name from TopicDef; skips silently if name is unavailable.
+    // Atomic upsert UserTopicProgress using INSERT...ON CONFLICT to prevent
+    // concurrent-submission races (findUnique+upsert is not atomic).
     if (topicName && totalCount > 0) {
       try {
-        const existing = await prisma.userTopicProgress.findUnique({
-          where: { userId_topic: { userId: user.id, topic: topicName } },
-          select: { totalAttempts: true, correctAttempts: true },
-        });
-        const newTotal = (existing?.totalAttempts ?? 0) + totalCount;
-        const newCorrect = (existing?.correctAttempts ?? 0) + correctCount;
-        const masteryScore = newTotal > 0 ? newCorrect / newTotal : 0;
-        await prisma.userTopicProgress.upsert({
-          where: { userId_topic: { userId: user.id, topic: topicName } },
-          create: {
-            userId: user.id,
-            topic: topicName,
-            totalAttempts: totalCount,
-            correctAttempts: correctCount,
-            masteryScore,
-            lastAttemptedAt: new Date(),
-          },
-          update: {
-            totalAttempts: newTotal,
-            correctAttempts: newCorrect,
-            masteryScore,
-            lastAttemptedAt: new Date(),
-          },
-        });
+        const initialMastery = totalCount > 0 ? correctCount / totalCount : 0;
+        await prisma.$executeRaw`
+          INSERT INTO "UserTopicProgress" (id, "userId", topic, "totalAttempts", "correctAttempts", "masteryScore", "lastAttemptedAt", "updatedAt")
+          VALUES (gen_random_uuid()::text, ${user.id}, ${topicName}, ${totalCount}, ${correctCount}, ${initialMastery}, NOW(), NOW())
+          ON CONFLICT ("userId", topic)
+          DO UPDATE SET
+            "totalAttempts"   = "UserTopicProgress"."totalAttempts" + EXCLUDED."totalAttempts",
+            "correctAttempts" = "UserTopicProgress"."correctAttempts" + EXCLUDED."correctAttempts",
+            "masteryScore"    = ("UserTopicProgress"."correctAttempts" + EXCLUDED."correctAttempts")::float
+                              / NULLIF("UserTopicProgress"."totalAttempts" + EXCLUDED."totalAttempts", 0),
+            "lastAttemptedAt" = EXCLUDED."lastAttemptedAt",
+            "updatedAt"       = EXCLUDED."updatedAt"
+        `;
       } catch (err) {
         logger.error('TestsSubmitAPI.upsertUserTopicProgress', {
           userId: user.id,

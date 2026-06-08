@@ -5,6 +5,7 @@
  *   on any error. Provides cache invalidation for click events.
  *
  * EDIT LOG:
+ * - 2026-06-08T02:00:00Z | claude | fix: check Redis cache before building context to avoid 6 wasted DB queries on cache hits; use env-configured model name; lazy-init OpenAI singleton
  * - 2026-06-08T00:00:00Z | claude | initial: recommendation service with Redis cache + OpenAI
  */
 
@@ -21,7 +22,7 @@ import { logger } from '@/lib/logger';
 
 const CACHE_KEY_PREFIX = 'reco:v1:';
 const CACHE_TTL_SECONDS = 900; // 15 minutes
-const LLM_MODEL = 'gpt-4o';
+const LLM_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4.1';
 const LLM_MAX_TOKENS = 800;
 const LLM_TEMPERATURE = 0.4;
 
@@ -64,11 +65,9 @@ export class RecommendationService {
    * Checks Redis cache first; calls OpenAI on miss; falls back to defaults on error.
    */
   async getRecommendations(userId: string): Promise<RecommendationResult> {
-    const context = await buildRecommendationContext(userId, this.prisma);
-
     const cacheKey = `${CACHE_KEY_PREFIX}${userId}`;
 
-    // Attempt cache read
+    // Check cache before building context — avoids 6 DB queries on every cache hit
     try {
       const cached = await this.redis.get(cacheKey);
       if (cached) {
@@ -82,7 +81,9 @@ export class RecommendationService {
       });
     }
 
-    // Cache miss — call LLM
+    // Cache miss — build context then call LLM
+    const context = await buildRecommendationContext(userId, this.prisma);
+
     let recommendations: Recommendation[];
     try {
       const prompt = buildRecommendationPrompt(context);
