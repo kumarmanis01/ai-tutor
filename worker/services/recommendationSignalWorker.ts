@@ -5,9 +5,11 @@
  *
  * EDIT LOG:
  * - 2026-06-08T00:00:00Z | claude | initial: recommendation signal worker
+ * - 2026-06-08T01:00:00Z | claude | fix: cast metadata to Prisma.InputJsonValue to satisfy strict Json type
  */
 
 import type { Job } from 'bullmq';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { getRedis } from '../../lib/redis.js';
 import { logger } from '../../lib/logger.js';
@@ -31,7 +33,7 @@ export async function processRecommendationSignal(
         userId,
         recommendationId,
         type,
-        metadata: metadata ?? undefined,
+        metadata: (metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
   } catch (err) {
