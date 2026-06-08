@@ -9,7 +9,7 @@
  * - 2026-02-21 | claude | created per wiring spec
  */
 import useSWR from 'swr';
-import type { MasteryLevel } from '@prisma/client';
+import type { MasteryLevel } from '.prisma/client/index';
 
 export type ActionType = 'notes' | 'practice';
 
