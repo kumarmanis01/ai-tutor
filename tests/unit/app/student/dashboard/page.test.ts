@@ -10,6 +10,8 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fix auth mock from requireActiveSession to requireStudentSession;
+ *                          update hero href assertion from not.toContain(topicId) to toContain(/session/topicId)
  * - 2026-04-21T12:00:00Z | staff-engineer | added tests for grade parsing, dedup preference, and diagnosticHref
  * - 2026-05-06T00:00:00Z | copilot | add assertions for SecondaryStartOptions
  *                          todaysHref mapping in resume and homework states
@@ -69,8 +71,8 @@ jest.mock('next/link', () => ({
 jest.mock('next/headers', () => ({ cookies: jest.fn(() => ({ get: jest.fn() })) }))
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-const requireActiveSessionMock = jest.fn()
-jest.mock('@/lib/auth', () => ({ requireActiveSession: requireActiveSessionMock }))
+const requireStudentSessionMock = jest.fn()
+jest.mock('@/lib/auth', () => ({ requireStudentSession: requireStudentSessionMock }))
 
 // ── Service layer ─────────────────────────────────────────────────────────────
 const getNextActionMock = jest.fn()
@@ -207,7 +209,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should render without throwing and call all expected Prisma models', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
@@ -244,7 +246,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should scope subject query to parsed integer grade when board and grade present', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
@@ -276,7 +278,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should prefer subject from learning plan when deduplicating by name', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('plan-sub-math'))
@@ -304,7 +306,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should set diagnosticHref to /diagnostic/[subjectId] when a subject exists', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
@@ -332,7 +334,7 @@ describe('StudentHomeDashboardPage', () => {
       { id: 'sub-3', name: 'Chemistry' },
     ]
 
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
     getSubjectDiagnosticStatusMock.mockImplementation((_, subjectKey: string) =>
@@ -359,7 +361,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should redirect to "/" when session is null', async () => {
-    requireActiveSessionMock.mockResolvedValue(null)
+    requireStudentSessionMock.mockResolvedValue(null)
 
     const { default: Page } = require('@/app/(student)/dashboard/page')
     await expect(Page()).rejects.toThrow('REDIRECT')
@@ -367,7 +369,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should redirect to "/" when user row is not found', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
 
     prismaMock.user.findUnique.mockResolvedValue(null)
@@ -383,7 +385,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should reflect sessionsRemaining correctly for free-tier student', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
@@ -411,7 +413,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should show UpgradeFlow when session cap is hit', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue(null)
     computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
     getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-1'))
@@ -440,7 +442,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should include planned concept href in todaysTopics for resume state', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'resume_session',
       sessionId: 'sess-42',
@@ -478,7 +480,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should not surface a homework href when nextAction is homework but no plan exists', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'homework_pending',
       assignmentId: 'hw-77',
@@ -509,7 +511,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should reflect IN_PROGRESS plan item in TodaysMissions hero state', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'homework_pending',
       assignmentId: 'hw-77',
@@ -545,7 +547,7 @@ describe('StudentHomeDashboardPage', () => {
   })
 
   it('should pass resolved concept id to start card when nextAction returns topic id', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'next_new_topic',
       topicId: 'topic-123',
@@ -569,14 +571,14 @@ describe('StudentHomeDashboardPage', () => {
     const element = await Page()
     const html = renderToStaticMarkup(element)
 
-    // concept-777 must appear in the primary TodaysLearningCard props
+    // concept-777 must appear as the mission id (still resolved from concept lookup)
     expect(html).toContain('concept-777')
-    // raw topic-123 must never reach any URL (only resolved conceptId should appear)
-    expect(html).not.toContain('topic-123')
+    // hero href now routes directly to /session/[topicId] -- topic-123 IS the URL
+    expect(html).toContain('/session/topic-123')
   })
 
   it('should skip start card when nextAction topic id has no active concept', async () => {
-    requireActiveSessionMock.mockResolvedValue(makeSession())
+    requireStudentSessionMock.mockResolvedValue(makeSession())
     getNextActionMock.mockResolvedValue({
       ruleId: 'next_new_topic',
       topicId: 'topic-missing-concept',
