@@ -9,6 +9,7 @@
  * Route: /parent/progress/[studentId]
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | fetch diagnosticDone per subject (skipped/not_applicable treated as done); pass to ParentProgressDetail
  * - 2026-03-15 | claude | original T39 server component
  * - 2026-05-04T00:00:00Z | copilot | F-PAR-011 AC-04: compute peerPercentile per subject
  */
@@ -20,6 +21,7 @@ import { authOptions } from '@/lib/auth'
 import type { AppSession } from '@/lib/types/auth'
 import { prisma } from '@/lib/prisma'
 import { computeReadinessScore } from '@/lib/student/examReadiness'
+import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import ParentProgressDetail from '@/components/parent/ParentProgressDetail'
 import { getNextConcept } from '@/lib/student/learningPlan'
 
@@ -130,11 +132,22 @@ export default async function ParentProgressDetailPage({
     }
   }
 
-  // ── Readiness per subject ──────────────────────────────────────────────
-  const readiness: Array<{ subjectId: string; subjectName: string; score: number; peerPercentile: number | null }> = []
+  // ── Readiness + diagnostic status per subject ──────────────────────────
+  const readiness: Array<{ subjectId: string; subjectName: string; score: number; diagnosticDone: boolean; peerPercentile: number | null }> = []
   for (const sd of subjectDefs) {
-    const r = await computeReadinessScore(studentId, sd.id).catch(() => null)
-    readiness.push({ subjectId: sd.id, subjectName: sd.name, score: r?.score ?? 0, peerPercentile: null })
+    const [r, diagStatus] = await Promise.all([
+      computeReadinessScore(studentId, sd.id).catch(() => null),
+      // Pass sd.name so the mastery fallback uses the name stored in StudentTopicMastery.subject.
+      getSubjectDiagnosticStatus(studentId, sd.id, sd.name).catch(() => null),
+    ])
+    readiness.push({
+      subjectId: sd.id,
+      subjectName: sd.name,
+      score: r?.score ?? 0,
+      // 'skipped' and 'not_applicable' both mean the diagnostic requirement is satisfied.
+      diagnosticDone: diagStatus !== null && ['completed', 'skipped', 'not_applicable'].includes(diagStatus.status),
+      peerPercentile: null,
+    })
   }
 
   // ── Anonymous peer benchmarking (F-PAR-011 AC-04) ─────────────────────

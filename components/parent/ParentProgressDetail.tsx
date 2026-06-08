@@ -13,6 +13,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:00:00Z | claude | add diagnosticDone to ReadinessRow; pass isParentView + diagnosticDone to SubjectReadinessCard
  * - 2026-03-15 | claude | T39 original
  * - 2026-05-04T00:00:00Z | copilot | F-PAR-011 AC-04: benchmarking opt-in toggle + peerPercentile display
  */
@@ -42,6 +43,7 @@ interface ReadinessRow {
   subjectId: string
   subjectName: string
   score: number
+  diagnosticDone: boolean
   /** Anonymous peer percentile for this subject. null = not computed or opted out. */
   peerPercentile?: number | null
 }
@@ -155,6 +157,8 @@ export default function ParentProgressDetail({
                   subjectName={r.subjectName}
                   score={r.score}
                   subjectId={r.subjectId}
+                  diagnosticDone={r.diagnosticDone}
+                  isParentView
                 />
                 {/* Peer percentile line -- only shown when opted in and data available */}
                 {benchmarkingOptIn && r.peerPercentile !== null && r.peerPercentile !== undefined && (
