@@ -119,6 +119,29 @@ declare module '@prisma/client' {
   export const CurriculumBookParseStatus: { pending: 'pending'; processing: 'processing'; done: 'done'; failed: 'failed'; [k: string]: string };
   export type CurriculumBookParseStatus = typeof CurriculumBookParseStatus[keyof typeof CurriculumBookParseStatus];
 
+  export const MasteryState: {
+    NOT_STARTED: 'NOT_STARTED';
+    DEVELOPING: 'DEVELOPING';
+    MASTERED: 'MASTERED';
+  };
+  export type MasteryState = typeof MasteryState[keyof typeof MasteryState];
+
+  export type TopicProgress = {
+    id: string;
+    userId: string;
+    topicSlug: string;
+    subject: string;
+    grade: string;
+    board: string;
+    state: MasteryState;
+    score: number;
+    attempts: number;
+    lastStudiedAt: Date | null;
+    masteredAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+
   export const JobStatus: { pending: 'pending'; queued: 'queued'; running: 'running'; done: 'done'; failed: 'failed'; cancelled: 'cancelled'; [k: string]: string };
   export type JobStatus = typeof JobStatus[keyof typeof JobStatus];
 

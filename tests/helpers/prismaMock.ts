@@ -93,6 +93,7 @@ export const prismaMock = {
   payment: mockModel(),
   systemAlert: mockModel(),
   test: mockModel(),
+  topicProgress: mockModel(),
 };
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */
