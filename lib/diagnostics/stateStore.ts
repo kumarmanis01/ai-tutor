@@ -4,6 +4,7 @@
  *   StudentLearningProfile.recommendations.diagnostics (JSON map keyed by subjectId).
  *
  * EDIT LOG:
+ * - 2026-06-08T10:00:00Z | claude | fix: check DiagnosticSession table as fallback when JSON profile has no entry -- prevents parent dashboard showing "pending" after child completes diagnostic
  * - 2026-06-08T00:00:00Z | claude | add optional subjectName param to getSubjectDiagnosticStatus so mastery fallback uses subject name (matches StudentTopicMastery.subject column)
  */
 
@@ -126,6 +127,44 @@ export async function getSubjectDiagnosticStatus(
       gamingFlagged: existing.gamingFlagged === true ? true : undefined,
       retakeEligibleAt,
     };
+  }
+
+  // Check DiagnosticSession table as a second source of truth.
+  // The submit route writes a COMPLETED DiagnosticSession row reliably.
+  // If the JSON profile write ever failed (profile not yet created, race, etc.)
+  // the completion would be invisible without this check.
+  let diagnosticSession: { status: string; completedAt: Date | null } | null = null
+  try {
+    diagnosticSession = await prisma.diagnosticSession.findUnique({
+      where: { studentId_subjectId: { studentId, subjectId: subjectKey } },
+      select: { status: true, completedAt: true },
+    })
+  } catch (err: any) {
+    try { logger.warn('getSubjectDiagnosticStatus: diagnosticSession.findUnique failed', { error: String(err) }) } catch {}
+  }
+
+  if (diagnosticSession?.status === 'COMPLETED') {
+    const completedAt = diagnosticSession.completedAt?.toISOString() ?? null
+    const eligibleMs = completedAt ? new Date(completedAt).getTime() + RETAKE_COOLDOWN_MS : null
+    const retakeEligibleAt =
+      eligibleMs && Date.now() < eligibleMs ? new Date(eligibleMs).toISOString() : null
+    return {
+      subjectKey,
+      status: 'completed',
+      runId: null,
+      completedAt,
+      retakeEligibleAt,
+    }
+  }
+
+  if (diagnosticSession?.status === 'IN_PROGRESS') {
+    return {
+      subjectKey,
+      status: 'in_progress',
+      runId: null,
+      completedAt: null,
+      retakeEligibleAt: null,
+    }
   }
 
   // Derive a sensible default from existing mastery data when no explicit
