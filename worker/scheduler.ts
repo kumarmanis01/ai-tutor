@@ -19,6 +19,7 @@
  * - 2026-05-18T00:00:00Z | claude  | feat: add purgeOldAIContentLogs() to daily maintenance -- deletes rows older than AI_CONTENT_LOG_RETENTION_DAYS (default 30) in 500-row batches to prevent unbounded table growth
  * - 2026-05-18T00:00:00Z | copilot | fix: add explicit type annotation to purgeOldAIContentLogs map callback to satisfy TS7006
  * - 2026-05-18T00:00:00Z | claude  | fix: validate AI_CONTENT_LOG_RETENTION_DAYS is a positive integer before computing purge threshold
+ * - 2026-06-09T00:00:00Z | claude | add nightly daily-plan pre-compute job at 17:30 UTC (11 PM IST)
  */
 
 import { logger } from '../lib/logger.js';
@@ -45,6 +46,7 @@ import { runDailyQuestionGenMetrics } from './jobs/dailyQuestionGenMetrics.js';
 import { runDiagnosticReadinessCheck } from './jobs/diagnosticReadinessCheck.js';
 import { runNightlyTestReportAndEmail } from './jobs/nightlyTestReport.js';
 import { aggregateDay } from './services/analyticsAggregator.js';
+import { processDailyPlans } from '../jobs/dailyPlan.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -67,6 +69,7 @@ const WEEKLY_RATING_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_LATENCY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DAILY_QUESTION_GEN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ANALYTICS_AGGREGATE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DAILY_PLAN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const NIGHTLY_TEST_REPORT_TARGET_HOUR_UTC = 0;
 
 let nightlyTestReportRunning = false;
@@ -581,6 +584,22 @@ async function runDailyQuestionGenMetricsJob() {
 }
 
 /**
+ * Nightly daily study plan pre-compute (17:30 UTC = 11 PM IST).
+ */
+async function runDailyPlanJob() {
+  try {
+    logger.info('scheduler.dailyPlan.starting');
+    const { processed, failed } = await processDailyPlans();
+    logger.info('scheduler.dailyPlan.completed', { processed, failed });
+  } catch (error) {
+    logger.error('scheduler.dailyPlan.error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  setTimeout(runDailyPlanJob, DAILY_PLAN_INTERVAL_MS);
+}
+
+/**
  * Daily analytics aggregation: rolls up AnalyticsEvent rows into
  * AnalyticsDailyAggregate. Runs at 03:30 UTC (9 AM IST) for the previous day.
  */
@@ -701,6 +720,11 @@ export async function startScheduler() {
   const delayAnalyticsAggregate = msUntilNextRun(3) + 30 * 60 * 1000
   logger.info('scheduler.scheduled.analyticsAggregator', { firstRun: new Date(Date.now() + delayAnalyticsAggregate).toISOString() })
   setTimeout(runAnalyticsAggregatorJob, delayAnalyticsAggregate)
+
+  // Daily study plan pre-compute: 17:30 UTC = 11 PM IST
+  const delayDailyPlan = msUntilNextRun(17) + 30 * 60 * 1000;
+  logger.info('scheduler.scheduled.dailyPlan', { firstRun: new Date(Date.now() + delayDailyPlan).toISOString() });
+  setTimeout(runDailyPlanJob, delayDailyPlan);
 
   logger.info('scheduler.started');
 }
