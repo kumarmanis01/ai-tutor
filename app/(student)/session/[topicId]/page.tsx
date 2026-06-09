@@ -5,6 +5,9 @@
  *   If the param resolves to a StructuredSession, redirects permanently
  *   to /session/[topicId] (the canonical form). Otherwise renders the
  *   session for the given topicId directly.
+ * - Fetches TopicProgress server-side and derives a toughness recommendation
+ *   via getRecommendedToughness() so the DifficultySlider starts at the
+ *   AI-suggested level rather than the hardcoded default.
  *
  * ARCHITECTURE:
  * - Server component -- resolves the param before any client JS runs.
@@ -19,6 +22,7 @@
  *   /session/[sessionId]                    -- legacy: redirects to canonical
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-3a: fetch TopicProgress + derive toughness recommendation server-side
  * - 2026-03-08 | claude | created for Session Container Architecture
  * - 2026-03-08 | claude | merged legacy [sessionId] redirect into unified page
  *                          to resolve ambiguous-route build error
@@ -31,6 +35,8 @@ import { SessionContainer } from '@/components/session/SessionContainer';
 import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard';
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor';
 import AITutorSessionShell from '@/components/student/session/AITutorSessionShell';
+import { getTopicProgress, getRecommendedToughness } from '@/lib/mastery/topicProgress';
+import type { ToughnessRecommendation } from '@/lib/mastery/topicProgress';
 
 interface Props {
   params: Promise<{ topicId: string }>;
@@ -53,11 +59,23 @@ export default async function SessionPage({ params, searchParams }: Props) {
   }
 
   // Look up both in parallel; they are mutually exclusive.
-  const [legacySession, topic] = await Promise.all([
+  const [legacySession, topic, userProfile] = await Promise.all([
     prisma.structuredSession.findUnique({ where: { id }, select: { topicId: true } }),
     prisma.topicDef.findUnique({
       where: { id },
-      select: { chapter: { select: { subjectId: true } } },
+      select: {
+        slug: true,
+        chapter: {
+          select: {
+            subjectId: true,
+            subject: { select: { name: true } },
+          },
+        },
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: auth.user.id },
+      select: { grade: true, board: true },
     }),
   ]);
 
@@ -75,6 +93,32 @@ export default async function SessionPage({ params, searchParams }: Props) {
     const hasDiag = await hasDiagnosticForSubject(auth.user.id, subjectId);
     // Route group (student) does not add a URL prefix -- correct path is /diagnostic/[id].
     if (!hasDiag) redirect(`/diagnostic/${subjectId}`);
+  }
+
+  // ── Toughness recommendation ──────────────────────────────────────────────
+  //
+  // Derives AI-recommended starting difficulty from TopicProgress mastery state.
+  // Safe to skip if topic/user profile is missing -- getRecommendedToughness handles null.
+  let difficultyRecommendation: ToughnessRecommendation | null = null;
+  const topicSlug = topic?.slug ?? null;
+  const subjectName = topic?.chapter?.subject?.name ?? null;
+  const userGrade = userProfile?.grade ?? null;
+  const userBoard = userProfile?.board ?? null;
+
+  if (topicSlug && subjectName && userGrade && userBoard) {
+    try {
+      const progress = await getTopicProgress(auth.user.id, topicSlug, subjectName, userGrade, userBoard);
+      difficultyRecommendation = getRecommendedToughness({
+        state: progress?.state ?? null,
+        score: progress?.score ?? 0,
+        attempts: progress?.attempts ?? 0,
+      });
+    } catch {
+      // Non-fatal -- student still gets the session; slider starts at default.
+    }
+  } else {
+    // No full context available -- use the default recommendation.
+    difficultyRecommendation = getRecommendedToughness({ state: null, score: 0, attempts: 0 });
   }
 
   // ── AI tutor path (sid + cid present) ───────────────────────────────────────
@@ -115,6 +159,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
       reasonLabel={reasonLabel}
       estimatedTimeMin={estimatedTimeMin}
       initialFocus={{ focus: (focus as string) ?? undefined, itemId: (itemId as string) ?? undefined }}
+      difficultyRecommendation={difficultyRecommendation ?? undefined}
     />
   );
 }

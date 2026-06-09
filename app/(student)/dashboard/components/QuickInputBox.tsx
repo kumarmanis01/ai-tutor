@@ -5,6 +5,7 @@
  *   from /api/recommendations, tracking impressions and clicks.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-3a: add recommendation prop -- replaces mastery hint banners with DifficultySlider badge
  * - 2026-06-09T00:00:00Z | claude | embed DifficultySlider; pass difficulty to /api/ask; show mastery-aware difficulty hints
  * - 2026-06-09T00:00:00Z | claude | wire onMeta callback to DailyCreditsContext so widget updates on each AI reply
  * - 2026-06-08T12:00:00Z | claude | replace buffered fetch with SSE streaming via useStream; add streaming preview UI and error/retry banner
@@ -27,6 +28,7 @@ import type { Recommendation } from '@/types/recommendation';
 import ReactMarkdown from 'react-markdown';
 import { useStream } from '@/hooks/useStream';
 import DifficultySlider from '@/components/dashboard/components/DifficultySlider';
+import type { ToughnessRecommendation } from '@/lib/mastery/topicProgress';
 import { useDailyCredits } from '@/components/UI/DailyCreditsWidget';
 
 function parseStreamBuffer(raw: string): { reply?: string; language?: string; suggestions?: string[] } {
@@ -71,11 +73,13 @@ interface QuickInputBoxProps {
   masteryState?: 'MASTERED' | 'DEVELOPING' | 'NOT_STARTED' | null;
   /** Rolling mastery score 0-1 -- used to suggest lower difficulty when DEVELOPING and score < 0.4. */
   masteryScore?: number | null;
+  /** AI-derived toughness recommendation -- passed directly to DifficultySlider badge. */
+  recommendation?: ToughnessRecommendation;
 }
 
-const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId, masteryState = null, masteryScore = null }) => {
+const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId, masteryState = null, masteryScore = null, recommendation }) => {
   const [questionText, setQuestionText] = useState('');
-  const [difficulty, setDifficulty] = useState(5);
+  const [difficulty, setDifficulty] = useState(recommendation?.toughness ?? 5);
   // One-time mastery hint: dismissed after user taps it or closes it.
   const [masteryHintDismissed, setMasteryHintDismissed] = useState(false);
     const [isListening, setIsListening] = useState(false);
@@ -911,7 +915,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       )}
 
       {/* Difficulty slider -- collapsed by default, shown above text input */}
-      <DifficultySlider value={difficulty} onChange={setDifficulty} />
+      <DifficultySlider value={difficulty} onChange={setDifficulty} recommendation={recommendation} />
 
       {/* Text Input */}
       <div className="mb-3 flex items-center justify-between">
