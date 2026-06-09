@@ -1,11 +1,15 @@
 'use client'
 
 /**
- * ExamReadinessSection -- dashboard revamp
+ * FILE OBJECTIVE:
+ * - Multi-subject exam readiness grid with a per-subject chapter mastery
+ *   breakdown. Subjects sorted weakest-first; clicking a subject card updates
+ *   the selected subject. Each chapter card links to /session/chapter/[id]
+ *   for on-demand AI chapter sessions.
  *
- * Multi-subject exam readiness grid with a per-subject chapter mastery
- * breakdown for the selected (clicked) subject. Subjects are sorted
- * weakest-first by default; clicking a subject card updates selectedSubjectId.
+ * EDIT LOG:
+ * - 2026-06-09T16:00:00Z | claude | update href to /chapter/[chapterId] (moved out of /session/)
+ * - 2026-06-09T14:00:00Z | claude | make ChapterCard a link to chapter session page
  */
 
 import React, { useState } from 'react'
@@ -243,7 +247,11 @@ function ChapterCard({ chapter }: { chapter: ReadinessChapterDisplay }) {
   const tag = normalise(chapter.tag)
   const barColor = TAG_RING_COLOR[tag]
   return (
-    <div className="rounded-xl border border-[#E3DDD0] dark:border-[#3A3830] bg-white dark:bg-[#2E2C27] p-4">
+    <Link
+      href={`/chapter/${chapter.chapterId}`}
+      className="block rounded-xl border border-[#E3DDD0] dark:border-[#3A3830] bg-white dark:bg-[#2E2C27] p-4 min-h-[44px] transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      aria-label={`Start ${chapter.chapterName} chapter session`}
+    >
       <div className="flex items-start justify-between gap-2 mb-2">
         <span className="text-[13px] text-[#2C2C2A] dark:text-[#E8E6DF] leading-snug font-medium">
           {chapter.chapterName}
@@ -260,7 +268,7 @@ function ChapterCard({ chapter }: { chapter: ReadinessChapterDisplay }) {
           style={{ width: `${Math.max(2, chapter.masteryPct)}%`, backgroundColor: barColor }}
         />
       </div>
-    </div>
+    </Link>
   )
 }
 

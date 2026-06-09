@@ -11,6 +11,8 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-09T16:00:00Z | claude | update href to /chapter/[chapterId] (moved out of /session/)
+ * - 2026-06-09T14:30:00Z | claude | route chapter rows to on-demand AI chapter session
  * - 2026-06-08T00:00:00Z | claude | rename weakestConceptId to weakestTopicId; route chapter links to /session/[topicId]
  * - 2026-03-15 | claude | created for Task 29 progress report page
  * - 2026-05-10T00:00:00Z | copilot | remove inline styles, add estimated-weight label, and improve row accessibility
@@ -53,13 +55,14 @@ function chapterColor(mastery100: number) {
 function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
   const mastery100 = Math.round(chapter.masteryScore * 100);
   const { barClass, text } = chapterColor(mastery100);
-  const href = chapter.weakestTopicId
-    ? `/session/${chapter.weakestTopicId}`
-    : null;
   const memoryPct = Math.round((chapter.memoryStrength ?? 0) * 100);
 
-  const content = (
-    <>
+  return (
+    <Link
+      href={`/chapter/${chapter.chapterId}`}
+      className="flex items-center gap-3 py-3 min-h-[44px] border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/40 rounded-lg px-1 transition-colors"
+      aria-label={`${chapter.chapterName}: ${mastery100}% mastery -- tap to start chapter session`}
+    >
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-center mb-1.5">
           <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate pr-2">
@@ -94,26 +97,6 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
       <span className="flex-shrink-0 text-[10px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
         {chapter.boardWeightPct.toFixed(0)}%
       </span>
-    </>
-  );
-
-  const rowClassName = 'flex items-center gap-3 py-3 min-h-[44px] border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/40 rounded-lg px-1 transition-colors';
-
-  if (!href) {
-    return (
-      <div className={rowClassName} aria-label={`${chapter.chapterName}: ${mastery100}% mastery`}>
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      className={rowClassName}
-      aria-label={`${chapter.chapterName}: ${mastery100}% mastery -- tap to practise`}
-    >
-      {content}
     </Link>
   );
 }
