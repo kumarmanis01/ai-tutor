@@ -6,6 +6,7 @@
  *   Also shows a stat bar sourced from TopicProgress above the controls.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | lift difficulty state; replace static concepts with ConceptCard for Deep Dive (task S3-1)
  * - 2026-06-09T00:00:00Z | claude | initial implementation for demand-pull generate flow (task S3)
  */
 
@@ -18,6 +19,7 @@ import type { ContentType, GenerateParams } from './GenerateControls';
 import type { ConceptOption } from './ConceptSelector';
 import type { ToughnessRecommendation } from '@/lib/mastery/topicProgress';
 import { useStream } from '@/hooks/useStream';
+import { ConceptCard } from './ConceptCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,8 @@ export function GenerateView({
   const [generatedContent, setGeneratedContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  // Difficulty is lifted here so ConceptCards can receive it and reset when it changes.
+  const [difficulty, setDifficulty] = useState(recommendation.toughness);
   const { stream, abort } = useStream();
 
   const handleGenerate = useCallback(
@@ -157,18 +161,23 @@ export function GenerateView({
 
       {/* Concepts tab */}
       {activeTab === 'concepts' && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {concepts.length > 0 ? (
             concepts.map((c) => (
-              <Card key={c.id} padding="compact">
-                <p className="text-sm font-medium text-foreground mb-1">{c.title}</p>
-                <p className="text-xs text-muted-foreground italic leading-relaxed">{c.summary}</p>
-              </Card>
+              <ConceptCard
+                key={c.id}
+                concept={c}
+                topicSlug={topicSlug}
+                subject={subject}
+                grade={grade}
+                board={board}
+                difficulty={difficulty}
+              />
             ))
           ) : (
             <Card padding="compact">
               <p className="text-sm text-muted-foreground italic">
-                Concept details are not available for this topic yet.
+                Concepts for this topic are being prepared.
               </p>
             </Card>
           )}
@@ -188,6 +197,7 @@ export function GenerateView({
             recommendation={recommendation}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
+            onDifficultyChange={setDifficulty}
           />
 
           {/* Generated output area */}
