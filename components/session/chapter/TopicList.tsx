@@ -5,7 +5,7 @@
  *   completed markdown into TopicRow cards with Deep Dive expansion.
  *
  * EDIT LOG:
- * - 2026-06-09T12:30:00Z | claude | fix: reorder regex char class [-:\s] -> [\s:-] to prevent Tailwind CSS scan false positive
+ * - 2026-06-09T12:30:00Z | claude | fix: reorder regex char classes to prevent Tailwind CSS scan false positive (hyphen-colon-space -> space-colon-hyphen ordering)
  * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session Topics tab
  */
 
