@@ -1,5 +1,17 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST /api/ask: accepts a student question, streams the AI response via SSE,
+ *   and persists conversation turns for authenticated sessions.
+ *
+ * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | accept difficulty 1-10 via zod; inject difficulty calibration into system prompt; pass difficulty to cache key
+ * - 2026-06-08T14:00:00Z | claude | add daily credit limit check and meta SSE event for task S1-3
+ * - 2026-06-08T13:00:00Z | claude | integrate generationCache; serve cached replies as streamed tokens when all context fields present and no conversationId
+ * - 2026-06-08T12:00:00Z | claude | convert buffered JSON response to SSE streaming; add 401 auth guard
+ */
+
+import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -7,8 +19,23 @@ import { logApiUsage } from '@/utils/logApiUsage';
 import { checkProfanity } from '@/lib/guardrails';
 import { parse as parseAcceptLanguage } from 'accept-language-parser';
 import crypto from 'crypto';
+import OpenAI from 'openai';
+import { getGeneratedContent, setGeneratedContent, buildGenerationCacheKey } from '@/lib/cache/generationCache';
+import type { GenerationCacheKey } from '@/lib/cache/generationCache';
+import { getDailyUsage, getDailyLimit, incrementDailyUsage } from '@/lib/credits/dailyCredits';
 
-type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string };
+type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string; board?: string; grade?: string; topicSlug?: string; contentType?: string; difficulty?: unknown };
+
+const difficultySchema = z.number().int().min(1).max(10).default(5);
+
+const DIFFICULTY_PROMPT = `Calibrate your response to difficulty level {LEVEL}/10.
+At 1-3: use simple language, concrete examples, step-by-step.
+At 4-6: standard curriculum level.
+At 7-10: deeper reasoning, edge cases, exam-level challenge.`;
+
+function buildDifficultyPrompt(level: number): string {
+  return DIFFICULTY_PROMPT.replace('{LEVEL}', String(level));
+}
 
 const SYSTEM_PROMPT = `You are an AI assistant. Detect the user's language automatically based on the user's message.
 Always respond in the same language the user used.
@@ -22,113 +49,257 @@ Return only valid JSON. The object MUST contain these keys:
 Do not add any other text, explanation, or commentary outside the JSON object. If you cannot provide suggestions, return an empty array for 'suggestions'.
 `;
 
+// Lazy singleton -- never instantiated per-request
+let _openaiClient: OpenAI | null = null;
+function getStreamingClient(): OpenAI {
+  if (!_openaiClient) {
+    _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openaiClient;
+}
+
+const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  'X-Accel-Buffering': 'no',
+} as const;
+
+function sseEvent(payload: object): string {
+  return `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+const SSE_DONE = 'data: [DONE]\n\n';
+
 export async function POST(req: Request) {
+  // Log API usage for analytics
   try {
-    // Log API usage for analytics
+    await logApiUsage('/api/ask', 'POST');
+  } catch (e) {
+    logger.error('logApiUsage failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+  }
+
+  // Auth guard -- session check before any business logic
+  let sessionUserId: string;
+  try {
+    const session = await getServerSessionForHandlers();
+    if (!session || !(session as any)?.user?.id) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    sessionUserId = (session as any).user.id as string;
+  } catch (e) {
+    logger.error('session check failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  // Credit limit check -- runs after session check, before any business-logic DB query.
+  // getDailyUsage uses Redis; getDailyLimit uses a single subscription DB query.
+  // On any failure both helpers return safe fallbacks so the request is never blocked.
+  let priorUsage = 0;
+  let dailyLimit = 50;
+  try {
+    [priorUsage, dailyLimit] = await Promise.all([
+      getDailyUsage(sessionUserId),
+      getDailyLimit(sessionUserId),
+    ]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('credits.prefetch.failed', { className: 'api.ask', methodName: 'POST', error: message });
+  }
+
+  if (priorUsage >= dailyLimit) {
+    const limitEncoder = new TextEncoder();
+    const limitStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(limitEncoder.encode(sseEvent({ error: 'daily_limit_reached', used: priorUsage, limit: dailyLimit })));
+        controller.enqueue(limitEncoder.encode(SSE_DONE));
+        controller.close();
+      },
+    });
+    return new Response(limitStream, { headers: SSE_HEADERS });
+  }
+
+  let body: Req;
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  const text = body.text;
+  if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
+  const subject = (body.subject && typeof body.subject === 'string' ? body.subject : 'general');
+
+  // Validate difficulty: 1-10 integer, default 5 when absent or invalid.
+  const difficultyResult = difficultySchema.safeParse(
+    typeof body.difficulty === 'number' ? body.difficulty : Number(body.difficulty),
+  );
+  const difficulty = difficultyResult.success ? difficultyResult.data : 5;
+
+  // Conversation threading
+  let conversationId: string = body.conversationId || '';
+  try {
+    if (!conversationId) {
+      conversationId = `conv_${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
+    }
+  } catch {
+    conversationId = `conv_${Math.random().toString(36).slice(2)}`;
+  }
+
+  // Profanity guard
+  try {
+    if (checkProfanity(text)) return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
+  } catch (e) {
+    logger.error('profanity guard error', { className: 'api.ask', methodName: 'POST', error: e });
+  }
+
+  // Persist conversation and user turn
+  try {
+    await prisma.conversation.upsert({ where: { id: conversationId }, update: {}, create: { id: conversationId, userId: sessionUserId } });
+    await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } }).catch((e: unknown) => {
+      logger.warn('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+    });
+  } catch (e) {
+    logger.warn('Failed to persist session conversation', { className: 'api.ask', methodName: 'POST', error: e });
+  }
+
+  // Language normalization
+  function resolveBcp47(header?: string, hint?: string) {
+    if (hint && typeof hint === 'string' && hint !== 'auto') return hint;
+    if (!header) return undefined;
     try {
-      await logApiUsage('/api/ask', 'POST');
+      const parts = parseAcceptLanguage(header);
+      if (!parts || parts.length === 0) return undefined;
+      const p = parts[0];
+      return p.region ? `${p.code}-${p.region}` : p.code;
     } catch (e) {
-      logger.error('logApiUsage failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+      logger.error('Accept-Language parse error', { className: 'api.ask', methodName: 'POST', error: e });
+      return undefined;
     }
+  }
 
-    const body: Req = await req.json().catch(() => ({} as Req));
-    const text = body.text;
-    if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
-    const subject = (body.subject && typeof body.subject === 'string' ? body.subject : 'general');
+  const clientLangHint = body.language;
+  const resolvedLang = resolveBcp47(req.headers.get('accept-language') ?? undefined, clientLangHint as string | undefined);
+  const systemPromptWithLang = resolvedLang ? `${SYSTEM_PROMPT}\nPreferred-Language: ${resolvedLang}` : SYSTEM_PROMPT;
+  // Append difficulty calibration AFTER Vidya's existing system prompt -- never replace it.
+  const systemPromptFinal = `${systemPromptWithLang}\n\n${buildDifficultyPrompt(difficulty)}`;
 
-    // Conversation threading: accept or generate a conversationId and persist via Conversation + Chat relation
-    let conversationId: string = body.conversationId || '';
-    try {
-      if (!conversationId) {
-        conversationId = `conv_${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
-      }
-    } catch {
-      conversationId = `conv_${Math.random().toString(36).slice(2)}`;
+  // Build conversation history for context
+  const priorMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
+  try {
+    const history = await prisma.chat.findMany({ where: { userId: sessionUserId, conversationId }, orderBy: { createdAt: 'asc' }, take: 12 });
+    for (const h of history) {
+      const role = h.role === 'assistant' ? 'assistant' : 'user';
+      priorMessages.push({ role, content: h.content });
     }
+  } catch (e) {
+    logger.error('Failed to load conversation history', { className: 'api.ask', methodName: 'POST', error: e });
+  }
 
-    // Profanity guard
-    try {
-      if (checkProfanity(text)) return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
-    } catch (e) {
-      logger.error('profanity guard error', { className: 'api.ask', methodName: 'POST', error: e });
-    }
+  const messagesToSend: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    { role: 'system', content: systemPromptFinal },
+    ...priorMessages,
+    { role: 'user', content: text },
+  ];
 
-    // Optional session: if present, we'll persist transcripts and can apply limits later
-    let sessionUserId: string | undefined;
-    try {
-      const session = await getServerSessionForHandlers();
-      if (session && (session as any).user && (session as any).user.id) {
-        sessionUserId = (session as any).user.id as string;
-        try {
-          await prisma.conversation.upsert({ where: { id: conversationId }, update: {}, create: { id: conversationId, userId: sessionUserId } });
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } }).catch((e: any) => { logger.warn('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: e }); });
-        } catch (e) {
-          logger.warn('Failed to persist session conversation', { className: 'api.ask', methodName: 'POST', error: e });
-        }
-      }
-    } catch (e) {
-      logger.error('session check failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
-    }
+  // Cache context: only cache first-turn questions that supply all 5 context fields.
+  // difficulty always has a value (default 5) so it is never a gating condition.
+  const isFirstTurn = !body.conversationId;
+  let cacheKey: GenerationCacheKey | null = null;
+  if (isFirstTurn && body.board && body.grade && body.subject && body.topicSlug && body.contentType) {
+    cacheKey = {
+      board: body.board as string,
+      grade: body.grade as string,
+      subject: body.subject as string,
+      topicSlug: body.topicSlug as string,
+      contentType: body.contentType as string,
+      difficulty: String(difficulty),
+    };
+  }
 
-    // Language normalization
-    function resolveBcp47(header?: string, hint?: string) {
-      if (hint && typeof hint === 'string' && hint !== 'auto') return hint;
-      if (!header) return undefined;
-      try {
-        const parts = parseAcceptLanguage(header);
-        if (!parts || parts.length === 0) return undefined;
-        const p = parts[0];
-        return p.region ? `${p.code}-${p.region}` : p.code;
-      } catch (e) {
-        logger.error('Accept-Language parse error', { className: 'api.ask', methodName: 'POST', error: e });
-        return undefined;
-      }
-    }
-
-    const clientLangHint = body.language;
-    const resolvedLang = resolveBcp47(req.headers.get('accept-language') ?? undefined, clientLangHint as any);
-
-    const systemPromptWithLang = resolvedLang ? `${SYSTEM_PROMPT}\nPreferred-Language: ${resolvedLang}` : SYSTEM_PROMPT;
-
-    // Build conversation history for context if available
-    const priorMessages: { role: 'system' | 'user' | 'assistant'; content: any }[] = [];
-    try {
-      if (sessionUserId && conversationId) {
-        const history = await prisma.chat.findMany({ where: { userId: sessionUserId, conversationId }, orderBy: { createdAt: 'asc' }, take: 12 });
-        for (const h of history) {
-          const role = h.role === 'assistant' ? 'assistant' : 'user';
-          priorMessages.push({ role, content: h.content });
-        }
-      }
-    } catch (e) {
-      logger.error('Failed to load conversation history', { className: 'api.ask', methodName: 'POST', error: e });
-    }
-
-    const messagesToSend = [
-      { role: 'system', content: systemPromptWithLang },
-      ...priorMessages,
-      { role: 'user', content: text },
-    ];
-
-    // Enqueue AI request to worker queue
-    try {
-      const { getAIRequestQueue } = await import('@/queues/aiQueue');
-      const q = getAIRequestQueue();
-      const job = await q.add('AI_ASK', {
-        type: 'ASK',
-        payload: {
-          messages: messagesToSend,
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-          meta: { subject, conversationId, language: resolvedLang, sessionUserId },
+  // Serve from cache when available -- stream the cached value with 5 ms token delay
+  if (cacheKey) {
+    const cached = await getGeneratedContent(cacheKey);
+    if (cached) {
+      const encoder = new TextEncoder();
+      const cachedStream = new ReadableStream({
+        async start(controller) {
+          try {
+            for (const char of cached) {
+              controller.enqueue(encoder.encode(sseEvent({ token: char })));
+              await new Promise<void>((resolve) => setTimeout(resolve, 5));
+            }
+            // Fire-and-forget increment -- does not block SSE delivery.
+            incrementDailyUsage(sessionUserId).catch((err: unknown) => {
+              const msg = err instanceof Error ? err.message : String(err);
+              logger.error('credits.increment.failed', { className: 'api.ask', methodName: 'POST', error: msg });
+            });
+            controller.enqueue(encoder.encode(sseEvent({ meta: { creditsUsed: priorUsage + 1, creditsLimit: dailyLimit } })));
+            controller.enqueue(encoder.encode(SSE_DONE));
+            controller.close();
+            try {
+              await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: cached, conversationId, subject } });
+            } catch (e) {
+              logger.warn('Failed to persist cached assistant reply', { className: 'api.ask', methodName: 'POST', error: e });
+            }
+          } catch (e) {
+            logger.error('/api/ask cached stream error', { className: 'api.ask', methodName: 'POST', error: String(e) });
+            try { controller.enqueue(encoder.encode(sseEvent({ error: 'upstream_error' }))); controller.close(); } catch {}
+          }
         },
       });
-      return NextResponse.json({ status: 'queued', jobId: job.id, conversationId }, { status: 202 });
-    } catch (e) {
-      logger.error('Failed to enqueue AI request', { className: 'api.ask', methodName: 'POST', error: String(e) });
-      return NextResponse.json({ error: 'Could not enqueue AI request' }, { status: 500 });
+      return new Response(cachedStream, { headers: SSE_HEADERS });
     }
-  } catch (err: any) {
-    logger.error('/api/ask error', { className: 'api.ask', methodName: 'POST', error: err });
-    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
+
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      let fullReply = '';
+      try {
+        const openaiStream = await getStreamingClient().chat.completions.create({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          messages: messagesToSend,
+          stream: true,
+        });
+
+        for await (const chunk of openaiStream) {
+          const token = chunk.choices[0]?.delta?.content || '';
+          if (token) {
+            fullReply += token;
+            controller.enqueue(encoder.encode(sseEvent({ token })));
+          }
+        }
+
+        // Fire-and-forget increment -- does not block SSE delivery.
+        incrementDailyUsage(sessionUserId).catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.error('credits.increment.failed', { className: 'api.ask', methodName: 'POST', error: msg });
+        });
+        controller.enqueue(encoder.encode(sseEvent({ meta: { creditsUsed: priorUsage + 1, creditsLimit: dailyLimit } })));
+        controller.enqueue(encoder.encode(SSE_DONE));
+        controller.close();
+
+        // Persist assistant reply and populate cache after stream completes
+        try {
+          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: fullReply, conversationId, subject } });
+        } catch (e) {
+          logger.warn('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
+        }
+        if (cacheKey && fullReply) {
+          await setGeneratedContent(cacheKey, fullReply);
+        }
+      } catch (e) {
+        logger.error('/api/ask stream error', { className: 'api.ask', methodName: 'POST', error: String(e) });
+        try {
+          controller.enqueue(encoder.encode(sseEvent({ error: 'upstream_error' })));
+          controller.close();
+        } catch {
+          // controller may already be closed
+        }
+      }
+    },
+  });
+
+  return new Response(stream, { headers: SSE_HEADERS });
 }

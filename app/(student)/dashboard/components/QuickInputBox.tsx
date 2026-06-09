@@ -5,6 +5,9 @@
  *   from /api/recommendations, tracking impressions and clicks.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | embed DifficultySlider; pass difficulty to /api/ask; show mastery-aware difficulty hints
+ * - 2026-06-09T00:00:00Z | claude | wire onMeta callback to DailyCreditsContext so widget updates on each AI reply
+ * - 2026-06-08T12:00:00Z | claude | replace buffered fetch with SSE streaming via useStream; add streaming preview UI and error/retry banner
  * - 2026-06-08T02:00:00Z | claude | fix: remove redundant setQuestionText in handleRecommendationClick (chatSuggestionPicked listener handles it)
  * - 2026-06-08T00:00:00Z | claude | integrate personalized recommendations from /api/recommendations
  */
@@ -21,6 +24,41 @@ import { logger } from '@/lib/logger';
 import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
 import type { Recommendation } from '@/types/recommendation';
+import ReactMarkdown from 'react-markdown';
+import { useStream } from '@/hooks/useStream';
+import DifficultySlider from '@/components/dashboard/components/DifficultySlider';
+import { useDailyCredits } from '@/components/UI/DailyCreditsWidget';
+
+function parseStreamBuffer(raw: string): { reply?: string; language?: string; suggestions?: string[] } {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      const reply = typeof parsed.answer === 'string' ? parsed.answer : (typeof parsed.reply === 'string' ? parsed.reply : undefined);
+      const language = typeof parsed.language === 'string' ? parsed.language : (typeof parsed.lang === 'string' ? parsed.lang : undefined);
+      const suggestions = Array.isArray(parsed.suggestions)
+        ? (parsed.suggestions as unknown[]).filter((s): s is string => typeof s === 'string').slice(0, 5)
+        : undefined;
+      return { reply, language, suggestions };
+    }
+  } catch {
+    // Not JSON -- treat buffer as plain text reply
+  }
+  return { reply: raw.trim() || undefined };
+}
+
+function extractPartialAnswer(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.answer === 'string' ? parsed.answer : '';
+  } catch {
+    // Partial JSON -- extract in-progress answer value
+    const match = raw.match(/"answer"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    if (match) {
+      return match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\t/g, '\t');
+    }
+    return '';
+  }
+}
 
 interface QuickInputBoxProps {
   onReply?: (reply: string, userMessage?: string, language?: string, suggestions?: string[]) => void;
@@ -29,10 +67,17 @@ interface QuickInputBoxProps {
   subject?: string;
   conversationId?: string | undefined;
   onConversationId?: (cid?: string) => void;
+  /** Mastery state from TopicProgress -- drives difficulty hint. */
+  masteryState?: 'MASTERED' | 'DEVELOPING' | 'NOT_STARTED' | null;
+  /** Rolling mastery score 0-1 -- used to suggest lower difficulty when DEVELOPING and score < 0.4. */
+  masteryScore?: number | null;
 }
 
-const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId }) => {
+const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId, masteryState = null, masteryScore = null }) => {
   const [questionText, setQuestionText] = useState('');
+  const [difficulty, setDifficulty] = useState(5);
+  // One-time mastery hint: dismissed after user taps it or closes it.
+  const [masteryHintDismissed, setMasteryHintDismissed] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
     const stopVoiceRef = useRef<(() => void) | null>(null);
@@ -489,12 +534,20 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
   );
   // ── End personalized recommendations ────────────────────────────────────────
 
+  const { handleMeta: handleCreditsMeta } = useDailyCredits();
+
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
   const [consentToShare, setConsentToShare] = useState(false);
   // Track conversation/topic id for threading context per chat panel
   const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null);
   useEffect(() => { setConversationId(conversationIdProp ?? null); }, [conversationIdProp]);
+
+  const [streamingTokens, setStreamingTokens] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const lastSubmitRef = useRef<{ message: string; languageHint?: string } | null>(null);
+  const { stream: startStream, abort: abortStream } = useStream();
 
   const renderThumb = (it: { id: string; url: string; uploading: boolean }) => {
     const isBlob = !!(it.url && (it.url.startsWith('blob:') || it.url.startsWith('data:')));
@@ -542,122 +595,90 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       </div>
     );
   };
-  // Send a message to the server-side chat API and return the AI reply and optional suggestions.
-  const handleSend = useCallback(async (message: string, languageHint?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string; suggestions?: string[] }> => {
-    try {
-      const imageUrls = images
-        .filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading)
-        .map((it) => it.url);
+  const submitWithStream = useCallback(async (message: string, languageHint?: string) => {
+    lastSubmitRef.current = { message, languageHint };
+    setStreamError(null);
+    setStreamingTokens('');
+    setIsStreaming(true);
+    setAsking(true);
 
-      // Ensure a conversationId is present on first message so the server
-      // can thread messages consistently even if it chooses not to generate one.
-      let cidToSend = conversationId;
-      if (!cidToSend) {
-        cidToSend = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        try { setConversationId(cidToSend); } catch {}
-      }
+    const imageUrls = images
+      .filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading)
+      .map((it) => it.url);
 
-      const res = await fetch('/api/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend, subject }),
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        return { ok: false, error: payload?.error || `status-${res.status}` };
-      }
-      const json = await res.json().catch(() => ({}));
-      try {
-        const cid = json?.conversationId || json?.topic;
-        if (cid && typeof cid === 'string') { setConversationId(cid); try { onConversationId?.(cid); } catch {} }
-      } catch {}
-      // Normalize reply: if server mistakenly returned a JSON string, extract answer/suggestions
-      let reply: string | undefined = json?.answer ?? json?.reply;
-      let suggestions: string[] | undefined = Array.isArray(json?.suggestions) ? json.suggestions : undefined;
-      let language: string | undefined = json?.language ?? json?.lang;
-      try {
-        if (typeof reply === 'string' && reply.trim().startsWith('{')) {
-          const parsed = JSON.parse(reply);
-          if (parsed && typeof parsed === 'object') {
-            reply = parsed.answer || parsed.answerMarkdown || parsed.text || reply;
-            if (!language) language = parsed.language || parsed.lang;
-            if (!suggestions && Array.isArray(parsed.suggestions)) {
-              suggestions = parsed.suggestions.filter((s: any) => typeof s === 'string').slice(0, 5);
-            }
-          }
-        }
-      } catch {}
-      return { ok: true, reply, language, suggestions };
-    } catch (err: any) {
-      return { ok: false, error: err?.message || String(err) };
+    let cidToSend = conversationId;
+    if (!cidToSend) {
+      cidToSend = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      try { setConversationId(cidToSend); onConversationId?.(cidToSend); } catch {}
     }
-  }, [images, consentToShare, conversationId, languageOptions, onError, subject]);
+
+    let buffer = '';
+
+    await startStream(
+      '/api/ask',
+      { text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend, subject, difficulty },
+      {
+        onToken: (token: string) => {
+          buffer += token;
+          const partial = extractPartialAnswer(buffer);
+          if (partial) setStreamingTokens(partial);
+        },
+        onDone: () => {
+          setIsStreaming(false);
+          setAsking(false);
+          const { reply, language, suggestions } = parseStreamBuffer(buffer);
+          if (language) {
+            const short = tagToShort(language);
+            setDetectedLang(short);
+            try {
+              try { localStorage.setItem('ai-tutor:preferredLang', short); } catch {}
+              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
+            } catch {}
+            try {
+              const normPreferred = (preferredLang || 'auto').toLowerCase();
+              const normDetected = String(short).toLowerCase();
+              if (normDetected && normPreferred !== normDetected) {
+                const match = languageOptionsRef.current.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
+                setDetectionPrompt({ lang: short, label: match ? match.label : mapTagToName(short) });
+              }
+            } catch {}
+          }
+          if (reply) {
+            onReply?.(reply, message, language, suggestions);
+            try {
+              const respLang = language ? tagToShort(language) : undefined;
+              const ttsLang = codeToLocale(respLang ?? detectedLang ?? undefined, 'en-US');
+              Speech.speak(reply, { lang: ttsLang });
+            } catch {}
+          }
+          setStreamingTokens('');
+          setQuestionText('');
+          setInterimTranscript('');
+          try { setSuggestionHint(null); } catch {}
+        },
+        onError: (err: string) => {
+          setIsStreaming(false);
+          setAsking(false);
+          setStreamError(err || 'upstream_error');
+          logger.error('QuickInputBox stream error', { className: 'QuickInputBox', methodName: 'submitWithStream', error: err });
+        },
+        onMeta: handleCreditsMeta,
+      }
+    );
+  }, [images, consentToShare, conversationId, subject, difficulty, preferredLang, detectedLang, startStream, onReply, onConversationId, handleCreditsMeta]);
 
   const handleAskQuestion = useCallback(async () => {
     if (!questionText.trim() || asking) return;
-    // Guard: if user attached images but none are ready (still uploading or blob/data), delay ask
     const hasAttached = images.length > 0;
     const readyRemote = images.filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading);
     if (hasAttached && readyRemote.length === 0) {
-      try {
-        toast('Image is still uploading. Please wait a moment, then try Ask again.');
-      } catch {}
+      try { toast('Image is still uploading. Please wait a moment, then try Ask again.'); } catch {}
       return;
     }
-    try {
-      setAsking(true);
-      // Clear any suggestion hint once we submit
-      try { setSuggestionHint(null); } catch {}
-      const languageToSend = detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);
-      const res = await handleSend(questionText.trim(), languageToSend);
-      if (!res.ok) {
-        logger.error('Question send failed', { className: 'QuickInputBox', methodName: 'handleAskQuestion', error: res.error });
-        onErrorRef.current?.(res.error || 'Failed to ask question');
-        return;
-      }
-      // Send AI reply to parent for display
-      logger.add(`AI reply: ${String(res.reply)}`, { className: 'QuickInputBox', methodName: 'handleAsk' });
-      // update detected language from response if provided
-      if (res.language) {
-        // Normalize server-detected language to base code
-        const short = tagToShort(res.language);
-        setDetectedLang(short);
-        try {
-          try {
-            localStorage.setItem('ai-tutor:preferredLang', short);
-          } catch {}
-          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
-        } catch {}
-        // If server detected a language different from user's preference, prompt to switch
-        try {
-          const normPreferred = (preferredLang || 'auto').toLowerCase();
-          const normDetected = String(short).toLowerCase();
-          if (normDetected && normPreferred !== normDetected) {
-            // find a label for the detected language; languageOptionsRef contains locale values like 'hi-IN'
-            const match = languageOptionsRef.current.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
-            setDetectionPrompt({ lang: short, label: match ? match.label : mapTagToName(short) });
-          }
-        } catch {}
-      }
-      if (res.reply) {
-        onReply?.(res.reply, questionText.trim(), res.language, res.suggestions);
-        // Auto-speak using detected language from response or recognition
-        try {
-          const respLang = (res as any).language ? tagToShort((res as any).language) : undefined;
-          const ttsLang = codeToLocale(respLang ?? detectedLang ?? undefined, 'en-US');
-          Speech.speak(res.reply, { lang: ttsLang });
-        } catch {
-          // ignore TTS failures
-        }
-      }
-      // Clear input after successful ask
-      setQuestionText('');
-      setInterimTranscript('');
-      try { setSuggestionHint(null); } catch {}
-    } finally {
-      setAsking(false);
-    }
-  }, [questionText, asking, images, detectedLang, preferredLang, handleSend, onReply, setSuggestionHint, setDetectedLang, setAsking]);
+    abortStream();
+    const languageToSend = detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);
+    await submitWithStream(questionText.trim(), languageToSend);
+  }, [questionText, asking, images, detectedLang, preferredLang, abortStream, submitWithStream]);
 
   // Listen for picked suggestions to populate the input and auto-submit
   useEffect(() => {
@@ -843,6 +864,55 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         </button>
       </div>
 
+      {/* Mastery-aware difficulty hint (one-time, dismissable) */}
+      {!masteryHintDismissed && masteryState === 'MASTERED' && (
+        <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-primary-bg text-primary text-xs">
+          <span>You have mastered this -- want a challenge? Level 7 suggested.</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { setDifficulty(7); setMasteryHintDismissed(true); }}
+              className="px-2 py-1 rounded bg-primary text-white text-xs min-h-[44px] sm:min-h-0"
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              onClick={() => setMasteryHintDismissed(true)}
+              className="px-2 py-1 rounded border border-primary text-xs min-h-[44px] sm:min-h-0"
+              aria-label="Dismiss hint"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+      {!masteryHintDismissed && masteryState === 'DEVELOPING' && masteryScore !== null && masteryScore < 0.4 && (
+        <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-success-bg text-success text-xs">
+          <span>Still building mastery -- a gentler level may help. Level 3 suggested.</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { setDifficulty(3); setMasteryHintDismissed(true); }}
+              className="px-2 py-1 rounded bg-success text-white text-xs min-h-[44px] sm:min-h-0"
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              onClick={() => setMasteryHintDismissed(true)}
+              className="px-2 py-1 rounded border border-success text-xs min-h-[44px] sm:min-h-0"
+              aria-label="Dismiss hint"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Difficulty slider -- collapsed by default, shown above text input */}
+      <DifficultySlider value={difficulty} onChange={setDifficulty} />
+
       {/* Text Input */}
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">Language</div>
@@ -885,7 +955,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           placeholder={isListening ? 'Listening... Speak now' : 'Type your question... / अपना सवाल लिखें...'}
           className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-base"
         />
-        {asking && (
+        {isStreaming && !streamingTokens && (
           <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2" aria-live="polite" aria-busy="true" role="status">
             <span>Thinking</span>
             <span className="inline-flex gap-1">
@@ -893,6 +963,30 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
               <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" />
               <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" />
             </span>
+          </div>
+        )}
+        {isStreaming && streamingTokens && (
+          <div className="mt-2 text-sm text-foreground bg-muted/50 rounded-lg px-3 py-2" aria-live="polite">
+            <ReactMarkdown>{streamingTokens}</ReactMarkdown>
+            <span className="inline-block w-0.5 h-4 bg-foreground ml-0.5 animate-blink" aria-hidden="true" />
+          </div>
+        )}
+        {streamError && (
+          <div className="mt-2 flex items-center justify-between gap-2 text-sm bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+            <span className="text-red-700 dark:text-red-300">{"Couldn't reach Vidya -- tap to retry"}</span>
+            <button
+              type="button"
+              onClick={() => {
+                const last = lastSubmitRef.current;
+                if (last) {
+                  setStreamError(null);
+                  void submitWithStream(last.message, last.languageHint);
+                }
+              }}
+              className="px-3 py-1.5 text-xs rounded bg-red-600 text-white min-h-[44px] min-w-[44px]"
+            >
+              Retry
+            </button>
           </div>
         )}
       </div>

@@ -31,6 +31,7 @@
  *     items (IN_PROGRESS > current-week UPCOMING > fallback UPCOMING) to remove N+1
  * - 2026-06-08T00:00:00Z | claude | replace requireActiveSession with requireStudentSession to assert
  *     role=user as well as accountStatus=active (defence-in-depth behind proxy.ts role guard)
+ * - 2026-06-09T00:00:00Z | claude | add TodaysPlanWidget before WelcomeBanner (S2-4)
  */
 
 import type { Metadata } from 'next'
@@ -54,6 +55,7 @@ import ExamReadinessSection, {
   type PredictedRange,
 } from '@/components/student/dashboard/ExamReadinessSection'
 import { type DashboardMission, type MissionKind, type MissionState } from '@/lib/student/dashboardMissions'
+import TodaysPlanWidget from '@/components/dashboard/TodaysPlanWidget'
 
 export const dynamic = 'force-dynamic'
 
@@ -587,6 +589,9 @@ export default async function StudentHomeDashboardPage() {
       )}
 
       <div className="flex flex-col gap-[22px] sm:gap-[30px]">
+        {/* Daily study plan widget */}
+        <TodaysPlanWidget />
+
         {/* Welcome banner */}
         <WelcomeBanner
           name={user.name ?? 'Student'}

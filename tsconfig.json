@@ -37,6 +37,7 @@
     "declarations.d.ts",
     "next-env.d.ts",
     "types/**/*.d.ts",
+    "hooks/**/*.ts",
     "lib/**/*.ts",
     "lib/**/*.tsx",
     "worker/**/*.ts",

@@ -1,30 +1,53 @@
 /**
  * FILE OBJECTIVE:
  * - POST /api/tests/submit: grades a test attempt, updates topic mastery,
- *   updates UserTopicProgress for the recommendation engine, and returns
- *   graded results with optional LLM explanations.
+ *   updates UserTopicProgress for the recommendation engine, records mastery
+ *   FSM state, and returns graded results with optional LLM explanations.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-2: add zod validation for topicSlug/subject;
+ *     wire recordQuizOutcome; return masteryState in scorecard response
  * - 2026-06-08T02:00:00Z | claude | fix: replace non-atomic findUnique+upsert with single atomic INSERT...ON CONFLICT to prevent concurrent-submission race
  * - 2026-06-08T00:00:00Z | claude | upsert UserTopicProgress after grading for recommendation engine
  */
 
+import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { applyGrading, addLLMExplanations, SubmitPayload, updateTopicMastery } from '@/lib/tests';
+import { applyGrading, addLLMExplanations, updateTopicMastery } from '@/lib/tests';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
 import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { logger } from '@/lib/logger';
 import { recordSessionEvents } from '@/lib/session/sessionEvents';
+import { recordQuizOutcome } from '@/lib/mastery/topicProgress';
 
 export const dynamic = 'force-dynamic';
 
+// ─── Request schema ────────────────────────────────────────────────────────────
+
+const submitSchema = z.object({
+  attemptId: z.string().min(1),
+  answers: z.array(
+    z.object({
+      questionId: z.string(),
+      answer: z.string(),
+      timeSpent: z.number().optional(),
+    }),
+  ),
+  topicSlug: z.string().min(1),
+  subject: z.string().min(1),
+});
+
+type SubmitBody = z.infer<typeof submitSchema>;
+
+// ─── Handler ───────────────────────────────────────────────────────────────────
+
 /**
  * POST /api/tests/submit
- * Body: { attemptId: string, answers: [{ questionId, answer, timeSpent? }] }
+ * Body: { attemptId, answers, topicSlug, subject }
  */
 export async function POST(req: Request) {
   const start = Date.now();
@@ -37,29 +60,47 @@ export async function POST(req: Request) {
     return res;
   }
 
-  const payload = (await req.json().catch(() => null)) as SubmitPayload | null;
-  if (!payload?.attemptId || !Array.isArray(payload.answers)) {
+  let body: SubmitBody;
+  try {
+    const raw = await req.json().catch(() => null);
+    body = submitSchema.parse(raw);
+  } catch {
     res = NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
     return res;
   }
 
-  const attempt = await prisma.testResult.findFirst({ where: { id: payload.attemptId, studentId: user.id } });
+  const { attemptId, answers, topicSlug, subject } = body;
+
+  // Fetch grade and board from user profile (single query, session may lack board).
+  let grade: string | null = null;
+  let board: string | null = null;
+  try {
+    const profile = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { grade: true, board: true },
+    });
+    grade = profile?.grade ?? null;
+    board = profile?.board ?? null;
+  } catch (err) {
+    logger.error('TestsSubmitAPI.fetchProfile', { userId: user.id, error: err });
+  }
+
+  const attempt = await prisma.testResult.findFirst({ where: { id: attemptId, studentId: user.id } });
   if (!attempt) {
     res = NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
     logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
     return res;
   }
 
-
   // Guard: If a LearningSession exists for this topic and is open, mark complete before grading
   if (attempt.sessionId) {
-    const session = await prisma.learningSession.findFirst({ where: { id: attempt.sessionId, isCompleted: false } });
-    if (session) {
+    const openSession = await prisma.learningSession.findFirst({ where: { id: attempt.sessionId, isCompleted: false } });
+    if (openSession) {
       const now = new Date();
-      const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - session.startedAt.getTime()) / 60000));
+      const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - openSession.startedAt.getTime()) / 60000));
       await prisma.learningSession.update({
-        where: { id: session.id },
+        where: { id: openSession.id },
         data: {
           isCompleted: true,
           completionPercentage: 100,
@@ -68,30 +109,24 @@ export async function POST(req: Request) {
           actualTimeSpent: elapsedMinutes,
         },
       });
-      logger.info('session.auto-completed.on-submit', { sessionId: session.id });
+      logger.info('session.auto-completed.on-submit', { sessionId: openSession.id });
     }
   }
 
-  const result = await applyGrading(attempt, payload);
+  const result = await applyGrading(attempt, { attemptId, answers });
 
   // AC-05: Enrich wrong answers with LLM-generated explanations (F-STU-020).
-  // Non-blocking: graded result falls back to DB explanations or empty on failure.
   try {
     result.graded = await addLLMExplanations(result.graded, user.id, attempt.id);
   } catch {
     // non-fatal
   }
 
-  // Update topic mastery synchronously so the next call to /api/home/next-action
-  // always reflects the latest accuracy and resolved AttentionFlags.
+  // Update topic mastery synchronously so next /api/home/next-action reflects latest accuracy.
   try {
     await updateTopicMastery(user.id, attempt.id);
   } catch (err) {
-    logger.error('TestsSubmitAPI.updateTopicMastery', {
-      userId: user.id,
-      attemptId: attempt.id,
-      error: err,
-    });
+    logger.error('TestsSubmitAPI.updateTopicMastery', { userId: user.id, attemptId: attempt.id, error: err });
   }
 
   // Derive topicId for logging: GeneratedTest carries the canonical TopicDef ID.
@@ -105,7 +140,7 @@ export async function POST(req: Request) {
     topicId = gt?.topicId ?? null;
     topicName = gt?.topic?.name ?? null;
   } catch {
-    // non-fatal -- test may not be a GeneratedTest
+    // non-fatal
   }
 
   if (topicId) {
@@ -121,11 +156,7 @@ export async function POST(req: Request) {
         activityType: 'TEST',
       });
     } catch (err) {
-      logger.error('TestsSubmitAPI.updateStudentTopicProgress', {
-        userId: user.id,
-        topicId,
-        error: err,
-      });
+      logger.error('TestsSubmitAPI.updateStudentTopicProgress', { userId: user.id, topicId, error: err });
     }
 
     // Atomic upsert UserTopicProgress using INSERT...ON CONFLICT to prevent
@@ -146,12 +177,34 @@ export async function POST(req: Request) {
             "updatedAt"       = EXCLUDED."updatedAt"
         `;
       } catch (err) {
-        logger.error('TestsSubmitAPI.upsertUserTopicProgress', {
-          userId: user.id,
-          topic: topicName,
-          error: err,
-        });
+        logger.error('TestsSubmitAPI.upsertUserTopicProgress', { userId: user.id, topic: topicName, error: err });
       }
+    }
+  }
+
+  // Record mastery FSM state. Fire and forget -- scorecard response is not blocked.
+  let masteryState: string | null = null;
+  let newlyMastered = false;
+  if (grade && board) {
+    const correctCount = result.graded.filter((g) => g.correct).length;
+    const totalCount = result.graded.length;
+    if (totalCount > 0) {
+      recordQuizOutcome({
+        userId: user.id,
+        topicSlug,
+        subject,
+        grade,
+        board,
+        scorePercent: (correctCount / totalCount) * 100,
+      })
+        .then((progress) => {
+          // Result available for future requests; not included in this response.
+          logger.info('mastery.topicProgress.fired', { userId: user.id, topicSlug, state: progress.state });
+        })
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err);
+          logger.error('TestsSubmitAPI.recordQuizOutcome', { userId: user.id, topicSlug, error: message });
+        });
     }
   }
 
@@ -159,6 +212,7 @@ export async function POST(req: Request) {
   let nextRule: string | null = null;
   try {
     const nextActionResult = await getNextAction(user.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy getNextAction return type is untyped
     const nextAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult ? nextActionResult.action : (nextActionResult as any);
     nextRule = nextAction?.ruleId ?? null;
   } catch {
@@ -174,10 +228,7 @@ export async function POST(req: Request) {
 
   // Update learning profile asynchronously (non-blocking)
   updateLearningProfile(user.id).catch((err) => {
-    logger.error('TestsSubmitAPI.updateLearningProfile', {
-      userId: user.id,
-      error: err,
-    });
+    logger.error('TestsSubmitAPI.updateLearningProfile', { userId: user.id, error: err });
   });
 
   // Adjust difficulty based on performance (awaited so we can include feedback)
@@ -185,11 +236,7 @@ export async function POST(req: Request) {
   try {
     difficultyFeedback = await adjustDifficultyAfterTest(user.id, attempt, result);
   } catch (err) {
-    logger.error('TestsSubmitAPI.adjustDifficulty', {
-      userId: user.id,
-      attemptId: attempt.id,
-      error: err,
-    });
+    logger.error('TestsSubmitAPI.adjustDifficulty', { userId: user.id, attemptId: attempt.id, error: err });
   }
 
   // Record QUESTION_ANSWERED session events when inside a structured session
@@ -218,7 +265,6 @@ export async function POST(req: Request) {
   }
 
   // AC-06: Score < 40% → create a revision learning session (F-STU-020).
-  // Gives the home engine a pending 'chapter_revision' session to surface.
   let needsRevision = false;
   if (result.scorePercent < 40 && topicId) {
     needsRevision = true;
@@ -251,21 +297,21 @@ export async function POST(req: Request) {
           },
         },
       });
-      logger.info('revision.session.created', {
-        studentId: user.id,
-        topicId,
-        scorePercent: result.scorePercent,
-      });
+      logger.info('revision.session.created', { studentId: user.id, topicId, scorePercent: result.scorePercent });
     } catch (err) {
-      logger.error('TestsSubmitAPI.createRevisionSession', {
-        userId: user.id,
-        topicId,
-        error: err,
-      });
+      logger.error('TestsSubmitAPI.createRevisionSession', { userId: user.id, topicId, error: err });
     }
   }
 
-  res = NextResponse.json({ attemptId: attempt.id, ...result, difficultyFeedback, needsRevision });
+  res = NextResponse.json({
+    attemptId: attempt.id,
+    ...result,
+    difficultyFeedback,
+    needsRevision,
+    masteryState,
+    newlyMastered,
+  });
   logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
   return res;
 }
+

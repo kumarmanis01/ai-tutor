@@ -1,7 +1,17 @@
+/**
+ * FILE OBJECTIVE:
+ * - Client component that renders a test scorecard with graded question breakdown,
+ *   difficulty feedback, skill gap analysis, and mastery state badge.
+ *
+ * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-2 PART C: add masteryState badge and newlyMastered celebration
+ */
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
 import QuestionFeedback from './QuestionFeedback';
+import { Pill } from '@/components/UI/design-system';
 
 interface GradedQuestion {
   attemptQuestionId: string;
@@ -29,6 +39,8 @@ interface ScorecardResult {
   totalPoints?: number;
   graded?: GradedQuestion[];
   difficultyFeedback?: DifficultyFeedback | null;
+  masteryState?: string | null;
+  newlyMastered?: boolean;
 }
 
 /**
@@ -75,6 +87,8 @@ export default function Scorecard(props: { result: ScorecardResult }) {
   }, [graded]);
 
   const diffFeedback = r.difficultyFeedback;
+  const masteryState = r.masteryState ?? null;
+  const newlyMastered = r.newlyMastered ?? false;
 
   return (
     <div className="mt-4 space-y-4">
@@ -103,6 +117,23 @@ export default function Scorecard(props: { result: ScorecardResult }) {
               <div className="text-sm text-gray-500 dark:text-gray-400">Points</div>
             </div>
           </div>
+
+          {/* Mastery Badge */}
+          {masteryState === 'MASTERED' && (
+            <div className="mt-4 flex flex-col items-center gap-1">
+              <Pill intent="mint">Mastered</Pill>
+              {newlyMastered && (
+                <p className="text-sm font-medium" style={{ color: 'var(--color-success)' }}>
+                  You have mastered this topic -- well done!
+                </p>
+              )}
+            </div>
+          )}
+          {masteryState === 'DEVELOPING' && (
+            <div className="mt-4 flex justify-center">
+              <Pill intent="amber">Keep practising</Pill>
+            </div>
+          )}
 
           {/* Quick Stats */}
           <div className="mt-4 flex justify-center gap-6 text-sm">
