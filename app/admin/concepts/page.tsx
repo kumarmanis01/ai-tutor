@@ -5,6 +5,7 @@
  *   touching the existing content-engine hydration pipeline.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | client now self-fetches meta; page stays lean
  * - 2026-06-09T00:00:00Z | claude | initial implementation for admin concept seeder
  */
 

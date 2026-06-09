@@ -5,6 +5,7 @@
  *   DELETE /api/admin/concepts: deletes all TopicConcept rows for a given board/grade/subject/topicSlug.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | add Zod validation to DELETE handler
  * - 2026-06-09T00:00:00Z | claude | initial implementation for admin concept seeder
  */
 
@@ -12,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { DeleteConceptsSchema } from '@/lib/validators/concepts';
 
 export async function GET() {
   const session = await getServerSessionForHandlers();
@@ -49,18 +51,18 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
 
-  const { board, grade, subject, topicSlug } = body as Record<string, unknown>;
-  if (!board || !grade || !subject || !topicSlug) {
-    return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
+  const parsed = DeleteConceptsSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'validation_failed', issues: parsed.error.flatten() },
+      { status: 422 },
+    );
   }
 
+  const { board, grade, subject, topicSlug } = parsed.data;
+
   const result = await prisma.topicConcept.deleteMany({
-    where: {
-      board: String(board),
-      grade: String(grade),
-      subject: String(subject),
-      topicSlug: String(topicSlug),
-    },
+    where: { board, grade, subject, topicSlug },
   });
 
   logger.info('admin.concepts.deleted', { board, grade, subject, topicSlug, count: result.count });
