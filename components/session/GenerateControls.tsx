@@ -5,6 +5,7 @@
  *   via onGenerate when the student clicks Generate.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | add onDifficultyChange callback so GenerateView can sync difficulty to ConceptCards (task S3-1)
  * - 2026-06-09T00:00:00Z | claude | initial implementation for demand-pull generate flow (task S3)
  */
 
@@ -40,6 +41,8 @@ interface GenerateControlsProps {
   recommendation: ToughnessRecommendation;
   onGenerate: (params: GenerateParams) => void;
   isGenerating: boolean;
+  /** Optional: notified whenever the difficulty slider moves so parents can sync state. */
+  onDifficultyChange?: (difficulty: number) => void;
 }
 
 const MIN_COUNT = 1;
@@ -56,6 +59,7 @@ export function GenerateControls({
   recommendation,
   onGenerate,
   isGenerating,
+  onDifficultyChange,
 }: GenerateControlsProps) {
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [count, setCount] = useState(DEFAULT_COUNT);
@@ -97,7 +101,10 @@ export function GenerateControls({
       {/* Difficulty slider with AI recommendation badge */}
       <DifficultySlider
         value={difficulty}
-        onChange={setDifficulty}
+        onChange={(d) => {
+          setDifficulty(d);
+          onDifficultyChange?.(d);
+        }}
         recommendation={recommendation}
       />
 
