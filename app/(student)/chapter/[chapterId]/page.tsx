@@ -1,12 +1,14 @@
 /**
  * FILE OBJECTIVE:
- * - Server entry point for /chapter/[chapterId]. Resolves chapter metadata
- *   and renders the on-demand AI chapter session shell. Placed outside /session/
- *   so the global Topbar renders normally. Nothing is pre-generated; all AI
- *   content is streamed on demand by the client.
+ * - Server entry point for /chapter/[chapterId]. Fetches chapter metadata and
+ *   topic names (structural data only) from the DB, then renders the chapter
+ *   session shell. All learning content is AI-generated on demand -- the DB is
+ *   only queried for chapter/topic names used in the dropdown and hero card.
  *
  * EDIT LOG:
- * - 2026-06-09T16:00:00Z | claude | moved from /session/chapter/ to /chapter/ so Topbar renders; redesign with tokens
+ * - 2026-06-09T19:30:00Z | claude | pass topics as name/id pairs for question tab dropdown
+ * - 2026-06-09T18:00:00Z | claude | fetch full topics with names + content counts for pipeline UI
+ * - 2026-06-09T16:00:00Z | claude | moved from /session/chapter/ to /chapter/; redesign with tokens
  * - 2026-06-09T12:00:00Z | claude | initial implementation
  */
 
@@ -32,10 +34,10 @@ export default async function ChapterSessionPage({ params }: Props) {
       where: { id: chapterId },
       select: {
         name: true,
-        slug: true,
         topics: {
           where: { lifecycle: 'active' },
-          select: { id: true },
+          select: { id: true, name: true },
+          orderBy: { order: 'asc' },
         },
         subject: {
           select: {
@@ -66,7 +68,6 @@ export default async function ChapterSessionPage({ params }: Props) {
       : (userProfile?.grade ?? '');
   const board = chapter.subject?.class?.board?.name ?? userProfile?.board ?? '';
   const subjectName = chapter.subject?.name ?? '';
-  const topicCount = chapter.topics?.length ?? 0;
 
   return (
     <ChapterSessionView
@@ -75,7 +76,7 @@ export default async function ChapterSessionPage({ params }: Props) {
       subjectName={subjectName}
       grade={grade}
       board={board}
-      topicCount={topicCount}
+      topics={chapter.topics ?? []}
     />
   );
 }

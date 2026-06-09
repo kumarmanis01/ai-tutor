@@ -1,15 +1,16 @@
 /**
  * FILE OBJECTIVE:
  * - POST /api/chapter/generate: on-demand AI content generation for chapter sessions.
- *   Handles content types: topics (chapter overview), syllabus, topic-deep-dive,
- *   practice, quiz, and homework. Streams via SSE. Checks daily credit limits and
- *   deducts fractional credits based on difficulty (1-5 scale).
- *   Prompts delegate to lib/chapter/chapterPrompts.ts -- pipeline slices that share
- *   the same pedagogical logic as the hydration pipeline but output Markdown for streaming.
+ *   All content types stream Markdown via SSE. Checks daily credit limits.
+ *   Prompt logic delegates to dedicated pipeline slice files:
+ *     lib/chapter/syllabusSlice.ts  (topics list)
+ *     lib/chapter/notesSlice.ts     (curriculum, concepts, examples)
+ *     lib/chapter/questionsSlice.ts (quiz, exercises, homework)
  *
  * EDIT LOG:
- * - 2026-06-09T17:00:00Z | claude | move prompt logic to lib/chapter/chapterPrompts.ts slices;
- *     original pipeline (prompts/topic-notes.ts etc.) is untouched
+ * - 2026-06-09T19:00:00Z | claude | import from dedicated slice files; add topic-concepts
+ *     and topic-examples content types; remove inline prompt logic
+ * - 2026-06-09T17:00:00Z | claude | move prompt logic to lib/chapter/chapterPrompts.ts slices
  * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session on-demand generation
  */
 
@@ -20,13 +21,19 @@ import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
 import { getDailyUsage, getDailyLimit, incrementDailyUsageBy } from '@/lib/credits/dailyCredits';
 import {
-  chapterTopicsPrompt,
   chapterSyllabusPrompt,
-  chapterTopicDeepDivePrompt,
-  chapterPracticePrompt,
-  chapterQuizPrompt,
-  chapterHomeworkPrompt,
-} from '@/lib/chapter/chapterPrompts';
+  chapterTopicsListPrompt,
+} from '@/lib/chapter/syllabusSlice';
+import {
+  chapterCurriculumPrompt,
+  chapterConceptsPrompt,
+  chapterExamplesPrompt,
+} from '@/lib/chapter/notesSlice';
+import {
+  chapterQuizSlice,
+  chapterPracticeSlice,
+  chapterHomeworkSlice,
+} from '@/lib/chapter/questionsSlice';
 import OpenAI from 'openai';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -40,7 +47,7 @@ const SSE_HEADERS = {
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
 const CACHE_TOKEN_DELAY_MS = 8;
 
-// Credit cost per question/item by difficulty level (1-5 scale)
+// Credit cost per item by difficulty level (1-5 scale)
 const DIFFICULTY_CREDIT_COST: Record<number, number> = {
   1: 0.5,
   2: 0.75,
@@ -66,10 +73,17 @@ const bodySchema = z.object({
   subject: z.string().min(1),
   grade: z.string().min(1),
   board: z.string().min(1),
-  contentType: z.enum(['topics', 'syllabus', 'topic-deep-dive', 'practice', 'quiz', 'homework']),
-  // For topic-deep-dive
+  contentType: z.enum([
+    'syllabus',
+    'topics',
+    'topic-curriculum',
+    'topic-concepts',
+    'topic-examples',
+    'quiz',
+    'exercises',
+    'homework',
+  ]),
   topicTitle: z.string().optional(),
-  // For practice / quiz / homework
   difficulty: z.number().int().min(1).max(5).optional(),
   count: z.number().int().min(1).max(15).optional(),
 });
@@ -84,7 +98,7 @@ function slugify(s: string): string {
 
 function buildCacheKey(body: ChapterGenerateBody): string {
   const parts = [
-    'chgen',
+    'chgen2',
     slugify(body.board),
     slugify(body.grade),
     slugify(body.subject),
@@ -97,7 +111,7 @@ function buildCacheKey(body: ChapterGenerateBody): string {
   return parts.join(':');
 }
 
-// ─── Prompt builder -- delegates to lib/chapter/chapterPrompts.ts slices ──────
+// ─── Prompt builder -- delegates to pipeline slice files ──────────────────────
 
 function buildPrompts(body: ChapterGenerateBody): { system: string; user: string } {
   const ctx = {
@@ -106,15 +120,24 @@ function buildPrompts(body: ChapterGenerateBody): { system: string; user: string
     grade: body.grade,
     board: body.board,
   };
-  const qCtx = { ...ctx, difficulty: body.difficulty ?? 3, count: body.count ?? 5 };
+  const topicTitle = body.topicTitle ?? body.chapterName;
+  const noteCtx = { ...ctx, topicTitle };
+  const qCtx = {
+    ...ctx,
+    topicTitle,
+    difficultyLevel: body.difficulty ?? 3,
+    count: body.count ?? 5,
+  };
 
   switch (body.contentType) {
-    case 'topics':          return chapterTopicsPrompt(ctx);
-    case 'syllabus':        return chapterSyllabusPrompt(ctx);
-    case 'topic-deep-dive': return chapterTopicDeepDivePrompt(ctx, body.topicTitle ?? body.chapterName);
-    case 'practice':        return chapterPracticePrompt(qCtx);
-    case 'quiz':            return chapterQuizPrompt(qCtx);
-    case 'homework':        return chapterHomeworkPrompt(qCtx);
+    case 'syllabus':         return chapterSyllabusPrompt(ctx);
+    case 'topics':           return chapterTopicsListPrompt(ctx);
+    case 'topic-curriculum': return chapterCurriculumPrompt(noteCtx);
+    case 'topic-concepts':   return chapterConceptsPrompt(noteCtx);
+    case 'topic-examples':   return chapterExamplesPrompt(noteCtx);
+    case 'quiz':             return chapterQuizSlice(qCtx);
+    case 'exercises':        return chapterPracticeSlice(qCtx);
+    case 'homework':         return chapterHomeworkSlice(qCtx);
     default:
       return {
         system: `You are Vidya, an expert AI tutor for Indian K-12 students (${body.board}).`,
@@ -156,11 +179,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
 
-  // Calculate credit cost for this request
-  const needsCredits = ['practice', 'quiz', 'homework'].includes(body.contentType);
-  const creditCost = needsCredits
+  // Credit cost: question tabs cost per item; content tabs cost 1 credit flat
+  const isQuestions = ['quiz', 'exercises', 'homework'].includes(body.contentType);
+  const creditCost = isQuestions
     ? (DIFFICULTY_CREDIT_COST[body.difficulty ?? 3] ?? 1.0) * (body.count ?? 5)
-    : 1.0; // topics / syllabus / deep-dive cost 1 credit flat
+    : 1.0;
 
   const encoder = new TextEncoder();
 
