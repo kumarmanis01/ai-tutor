@@ -59,13 +59,13 @@ describe('Session phase components', () => {
       />,
     );
 
-    expect(screen.getByText('Introduction to Integers')).toBeTruthy();
-    expect(screen.getByText('Session steps')).toBeTruthy();
+    // Component renders objectives in a "You will:" list; topicName and "Session steps"
+    // headings were removed in a v2 refactor -- assert on what the component actually renders.
     expect(screen.getByText('Identify integers')).toBeTruthy();
+    expect(screen.getByText('Compare integers')).toBeTruthy();
     expect(
       screen.getByText('Pay attention to the example -- it will help during practice.')
     ).toBeTruthy();
-    expect(screen.getByText('Practice')).toBeTruthy();
     expect(onReady).toHaveBeenCalledWith(true);
   });
 

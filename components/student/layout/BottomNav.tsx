@@ -1,16 +1,11 @@
 'use client';
 
 /**
- * BottomNav -- v2 mobile primary navigation
+ * FILE OBJECTIVE:
+ * - Fixed bottom navigation bar for mobile student shell (Home/Learn/Doubts/Revise/Profile).
  *
- * Fixed bottom bar, full width, iOS safe-area-aware.
- * 4 items: Home / Learn / Doubts / Profile
- * Active item: icon + label in #534AB7
- * Inactive:    icon + label in gray
- * Each tap target: min-h-[44px], covers full cell width.
- *
- * Hidden on md: and above -- desktop uses the Topbar only.
- * bg-white dark:bg-gray-950 with top border.
+ * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-2: add Revise nav item; grid-cols-4 -> grid-cols-5
  */
 
 import React from 'react';
@@ -72,6 +67,17 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Revise',
+    href: '/dashboard/revise',
+    matchExact: false,
+    matchPaths: ['/dashboard/revise'],
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+    ),
+  },
+  {
     label: 'Profile',
     href: '/profile',
     matchExact: false,
@@ -108,7 +114,7 @@ export default function BottomNav() {
       style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
       aria-label="Main navigation"
     >
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-5">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
           return (

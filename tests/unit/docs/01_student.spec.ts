@@ -39,9 +39,10 @@ describe('docs/v2/01_student.md structural invariants', () => {
 
   it('does not contain Phase 2 deferral markers inside audited AC statuses as DONE', () => {
     // F-STU-015 AC-05 time-slot feature is deferred -- should be PARTIAL not DONE.
+    const f015Start = doc.indexOf('F-STU-015')
     const ac05Block = doc.slice(
-      doc.indexOf('F-STU-015'),
-      doc.indexOf('F-STU-020'),
+      f015Start,
+      doc.indexOf('F-STU-020', f015Start + 1),
     )
     const ac05Line = ac05Block
       .split('\n')

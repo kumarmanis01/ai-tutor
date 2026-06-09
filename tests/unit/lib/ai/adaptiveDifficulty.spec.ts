@@ -26,6 +26,7 @@ jest.mock('@/lib/prisma', () => ({
     topicNote: { findFirst: jest.fn() },
     topicDef: { findUnique: jest.fn() },
     homeworkAssignment: { findFirst: jest.fn() },
+    structuredSession: { findUnique: jest.fn().mockResolvedValue({ meta: null }) },
   },
 }));
 
@@ -47,8 +48,8 @@ import { prisma } from '@/lib/prisma';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Minimal question fixture returned by the mock DB. */
-function makeQuestion(difficulty: string) {
-  return { id: 'q-001', type: 'mcq', prompt: 'Q?', choices: null, difficulty };
+function makeQuestion(difficulty: string, id = 'q-001') {
+  return { id, type: 'mcq', prompt: `Q-${id}?`, choices: null, correctAnswer: id, difficulty };
 }
 
 const TOPIC_ID = 'topic-phase5';
@@ -203,8 +204,8 @@ describe('resolvePhaseContent PRACTICE — adaptive difficulty integration', () 
 
   it('returns type "practice" with questions array when content is found', async () => {
     (prisma.question.findMany as jest.Mock).mockResolvedValue([
-      makeQuestion('medium'),
-      makeQuestion('medium'),
+      makeQuestion('medium', 'q-001'),
+      makeQuestion('medium', 'q-002'),
     ]);
 
     const result = await resolvePhaseContent('PRACTICE', TOPIC_ID, SESSION_ID, STUDENT_ID, 0.60);

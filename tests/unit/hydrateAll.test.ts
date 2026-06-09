@@ -1,8 +1,10 @@
 jest.mock('@/hydrators/hydrateSyllabus', () => ({
   enqueueSyllabusHydration: jest.fn().mockResolvedValue({ created: true })
 }));
-jest.mock('@/hydrators/hydrateNotes', () => ({ hydrateNotes: jest.fn().mockResolvedValue({ created: true }) }));
-jest.mock('@/hydrators/hydrateQuestions', () => ({ hydrateQuestions: jest.fn().mockResolvedValue({ created: true }) }));
+jest.mock('@/lib/execution-pipeline/enqueueTopicHydration', () => ({
+  enqueueNotesHydration: jest.fn().mockResolvedValue({ created: true }),
+  enqueueQuestionsHydration: jest.fn().mockResolvedValue({ created: true }),
+}));
 
 const mockedPrisma = {
   subjectDef: { findMany: jest.fn() },

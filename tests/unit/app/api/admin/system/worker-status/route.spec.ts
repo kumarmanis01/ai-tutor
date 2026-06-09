@@ -1,11 +1,12 @@
-import { jest } from '@jest/globals'
+// CJS-compatible version of worker-status route tests.
+// Converted from ESM (jest.unstable_mockModule / top-level await) which is not
+// supported by ts-jest in CommonJS mode.
 
-// Mock session helper and prisma
-jest.unstable_mockModule('@/lib/session', () => ({
+jest.mock('@/lib/session', () => ({
   getServerSessionForHandlers: jest.fn(),
 }))
 
-jest.unstable_mockModule('@/lib/prisma', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     workerLifecycle: {
       findFirst: jest.fn(),
@@ -13,9 +14,12 @@ jest.unstable_mockModule('@/lib/prisma', () => ({
   },
 }))
 
-const { GET } = await import('../../../../../../app/api/admin/system/worker-status/route')
-const { getServerSessionForHandlers } = await import('@/lib/session') as any
-const { prisma } = await import('@/lib/prisma') as any
+import { GET } from '@/app/api/admin/system/worker-status/route'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+
+const mockGetSession = getServerSessionForHandlers as jest.Mock
+const mockFindFirst = (prisma.workerLifecycle.findFirst as jest.Mock)
 
 describe('GET /api/admin/system/worker-status', () => {
   beforeEach(() => {
@@ -23,7 +27,7 @@ describe('GET /api/admin/system/worker-status', () => {
   })
 
   it('returns false statuses for unauthenticated requests', async () => {
-    (getServerSessionForHandlers as jest.Mock).mockResolvedValue(null)
+    mockGetSession.mockResolvedValue(null)
     const res: any = await GET()
     const body = await res.json()
     expect(body.worker.alive).toBe(false)
@@ -31,13 +35,12 @@ describe('GET /api/admin/system/worker-status', () => {
   })
 
   it('returns worker and scheduler status for admin', async () => {
-    (getServerSessionForHandlers as jest.Mock).mockResolvedValue({ user: { role: 'admin' } })
+    mockGetSession.mockResolvedValue({ user: { role: 'admin' } })
 
     const mockWorker = { type: 'content-hydration', lastHeartbeatAt: new Date() }
     const mockScheduler = { type: 'scheduler', lastHeartbeatAt: new Date() }
 
-    // First call -> workerRow, second call -> schedulerRow
-    ;(prisma.workerLifecycle.findFirst as jest.Mock)
+    mockFindFirst
       .mockResolvedValueOnce(mockWorker)
       .mockResolvedValueOnce(mockScheduler)
 

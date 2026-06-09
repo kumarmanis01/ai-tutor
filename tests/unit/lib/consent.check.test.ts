@@ -25,6 +25,7 @@ const prismaMock: any = {
   },
   user: {
     update: jest.fn(),
+    findUnique: jest.fn().mockResolvedValue(null),
   },
   auditLog: {
     create: jest.fn(),

@@ -57,7 +57,7 @@ describe('sendParentMilestoneNotification', () => {
     expect(mailMock).not.toHaveBeenCalled()
   })
 
-  it('honors meta.channel override and sends only via sms', async () => {
+  it('honors meta.channel override and sends only via whatsapp', async () => {
     const prismaMock: any = {
       parentProfile: { findUnique: jest.fn(async () => ({ inactivityOptOut: false })) },
       parentStudent: { findFirst: jest.fn(async () => ({ inactivityOptOut: false })) },
@@ -67,21 +67,25 @@ describe('sendParentMilestoneNotification', () => {
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
     // provide a redis client so normal path is followed
     jest.doMock('@/lib/redis', () => ({ getRedis: () => ({ get: jest.fn(), incr: jest.fn(), expire: jest.fn(), set: jest.fn() }) }))
-    const mailMock = jest.fn()
-    const smsMock = jest.fn()
-    jest.doMock('@/lib/mailer', () => ({ sendMailSafe: mailMock }))
-    jest.doMock('@/lib/sms', () => ({ sendSms: smsMock }))
+    const emailMock = jest.fn(async () => undefined)
+    const whatsappMock = jest.fn(async () => undefined)
+    jest.doMock('@/lib/mail', () => ({ sendEmailUnifiedSafe: emailMock }))
+    jest.doMock('@/lib/whatsapp/sender', () => ({ sendWhatsAppTemplate: whatsappMock, sendWhatsAppText: whatsappMock }))
     const metrics = { incNotificationSent: jest.fn(), incNotificationFailed: jest.fn() }
     jest.doMock('@/lib/metrics', () => metrics)
+    jest.doMock('@/lib/notifications/policy', () => ({
+      canSendNotification: jest.fn(async () => ({ allowed: true })),
+      recordSendNotification: jest.fn(async () => undefined),
+    }))
 
     const { sendParentMilestoneNotification } = await import('@/lib/notifications/delivery')
 
-    const res = await sendParentMilestoneNotification('p1', { email: 'p@example.test', phone: '+911234', subject: 'Chapter', html: '<p/>', meta: { type: 'milestone', channel: 'sms' } })
+    const res = await sendParentMilestoneNotification('p1', { email: 'p@example.test', whatsappPhone: '+911234', subject: 'Chapter', html: '<p/>', meta: { type: 'milestone', channel: 'whatsapp' } })
     expect(res.sent).toBe(true)
-    // sms should be called, mail should not
-    const sms = (await import('@/lib/sms')).sendSms
-    const mail = (await import('@/lib/mailer')).sendMailSafe
-    expect(sms).toHaveBeenCalled()
+    // whatsapp should be called, email should not
+    const waText = (await import('@/lib/whatsapp/sender')).sendWhatsAppText
+    const mail = (await import('@/lib/mail')).sendEmailUnifiedSafe
+    expect(waText).toHaveBeenCalled()
     expect(mail).not.toHaveBeenCalled()
   })
 
@@ -97,7 +101,10 @@ describe('sendParentMilestoneNotification', () => {
     // Simulate no redis available
     jest.doMock('@/lib/redis', () => ({ getRedis: () => null }))
     const mailMock = jest.fn(async () => undefined)
-    jest.doMock('@/lib/mailer', () => ({ sendMailSafe: mailMock }))
+    jest.doMock('@/lib/mail', () => ({ sendEmailUnifiedSafe: mailMock }))
+    jest.doMock('@/lib/whatsapp/sender', () => ({ sendWhatsAppTemplate: jest.fn(), sendWhatsAppText: jest.fn() }))
+    const metrics = { incNotificationSent: jest.fn(), incNotificationFailed: jest.fn() }
+    jest.doMock('@/lib/metrics', () => metrics)
 
     const { sendParentMilestoneNotification } = await import('@/lib/notifications/delivery')
 

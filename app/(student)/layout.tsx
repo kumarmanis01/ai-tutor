@@ -10,6 +10,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | uncomment BottomNav; was disabled during sprint 1/2 development
  * - 2026-06-08T00:00:00Z | claude | add role guard: role=parent redirected to /parent/dashboard before student
  *     shell renders (defence-in-depth behind proxy.ts)
  * - 2026-05-12T00:00:00Z | copilot | remove profile completeness route gate and rely on middleware active-account enforcement
@@ -26,7 +27,7 @@ import { NavigationProgress } from '@/components/NavigationProgress';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 import Topbar from '@/components/student/layout/Topbar';
-// import BottomNav from '@/components/student/layout/BottomNav';
+import BottomNav from '@/components/student/layout/BottomNav';
 import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { redirect } from 'next/navigation';
@@ -170,7 +171,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
                 {children}
               </div>
             </StudentLayoutShell>
-            {/* <BottomNav /> */}
+            <BottomNav />
             <ToastHost />
             <InstallPrompt />
           </GlobalLoaderProvider>

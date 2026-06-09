@@ -7,7 +7,7 @@ describe('parentNotify', () => {
 
   it('sends email and whatsapp for SESSION_COMPLETE with topics and chapters', async () => {
     // Mock prisma user lookup
-    jest.doMock('../../../lib/prisma', () => ({
+    jest.doMock('@/lib/prisma', () => ({
       prisma: {
         user: {
           findUnique: jest.fn().mockResolvedValue({
@@ -24,12 +24,12 @@ describe('parentNotify', () => {
     const sendEmailUnifiedSafeMock = jest.fn().mockResolvedValue(undefined) as unknown as any
     const sendWhatsAppMock = jest.fn().mockResolvedValue(undefined) as unknown as any
 
-    jest.doMock('../../../lib/mail', () => ({ sendEmailUnifiedSafe: sendEmailUnifiedSafeMock }) as unknown as any)
-    jest.doMock('../../../lib/whatsapp/sender', () => ({ sendWhatsAppSafe: sendWhatsAppMock }) as unknown as any)
+    jest.doMock('@/lib/mail', () => ({ sendEmailUnifiedSafe: sendEmailUnifiedSafeMock }) as unknown as any)
+    jest.doMock('@/lib/whatsapp/sender', () => ({ sendWhatsAppSafe: sendWhatsAppMock }) as unknown as any)
 
     // Import after mocks
-    const { notifyParent, DEFAULT_DASHBOARD_URL } = require('../../../lib/notifications/parentNotify')
-    const { PARENT_NOTIF_EVENTS } = require('../../../lib/constants/mail')
+    const { notifyParent, DEFAULT_DASHBOARD_URL } = require('@/lib/notifications/parentNotify')
+    const { PARENT_NOTIF_EVENTS } = require('@/lib/constants/mail')
 
     const payload = {
       event: PARENT_NOTIF_EVENTS.SESSION_COMPLETE,

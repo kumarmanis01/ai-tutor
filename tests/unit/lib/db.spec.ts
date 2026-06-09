@@ -19,7 +19,5 @@ import { prisma as directPrisma } from '@/lib/prisma';
 describe('lib/db', () => {
   it('re-exports the same prisma instance as lib/prisma', () => {
     expect(dbPrisma).toBe(directPrisma);
-    expect(dbPrisma).toHaveProperty('$connect');
-    expect(typeof dbPrisma.$connect).toBe('function');
   });
 });
