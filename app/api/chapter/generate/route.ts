@@ -4,8 +4,12 @@
  *   Handles content types: topics (chapter overview), syllabus, topic-deep-dive,
  *   practice, quiz, and homework. Streams via SSE. Checks daily credit limits and
  *   deducts fractional credits based on difficulty (1-5 scale).
+ *   Prompts delegate to lib/chapter/chapterPrompts.ts -- pipeline slices that share
+ *   the same pedagogical logic as the hydration pipeline but output Markdown for streaming.
  *
  * EDIT LOG:
+ * - 2026-06-09T17:00:00Z | claude | move prompt logic to lib/chapter/chapterPrompts.ts slices;
+ *     original pipeline (prompts/topic-notes.ts etc.) is untouched
  * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session on-demand generation
  */
 
@@ -15,6 +19,14 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
 import { getDailyUsage, getDailyLimit, incrementDailyUsageBy } from '@/lib/credits/dailyCredits';
+import {
+  chapterTopicsPrompt,
+  chapterSyllabusPrompt,
+  chapterTopicDeepDivePrompt,
+  chapterPracticePrompt,
+  chapterQuizPrompt,
+  chapterHomeworkPrompt,
+} from '@/lib/chapter/chapterPrompts';
 import OpenAI from 'openai';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -85,99 +97,28 @@ function buildCacheKey(body: ChapterGenerateBody): string {
   return parts.join(':');
 }
 
+// ─── Prompt builder -- delegates to lib/chapter/chapterPrompts.ts slices ──────
+
 function buildPrompts(body: ChapterGenerateBody): { system: string; user: string } {
-  const context = `${body.board} curriculum, ${body.subject}, Grade ${body.grade}`;
+  const ctx = {
+    chapterName: body.chapterName,
+    subject: body.subject,
+    grade: body.grade,
+    board: body.board,
+  };
+  const qCtx = { ...ctx, difficulty: body.difficulty ?? 3, count: body.count ?? 5 };
 
   switch (body.contentType) {
-    case 'topics':
-      return {
-        system: `You are a ${context} curriculum expert. Generate a structured topic list for a chapter.
-Always use Indian educational context and examples.
-Format each topic as:
-**Topic Name**
-One to two sentences describing what the student will learn.
-
-Include all major topics. Be concise but informative.`,
-        user: `List all topics in the chapter "${body.chapterName}" for ${context}.`,
-      };
-
-    case 'syllabus':
-      return {
-        system: `You are a ${context} curriculum expert. Generate a detailed syllabus for a chapter.
-Structure it with: Learning Objectives, Key Concepts, Sub-topics, Expected Outcomes.
-Use Indian educational standards and examples.`,
-        user: `Generate a complete syllabus for chapter "${body.chapterName}" in ${context}.`,
-      };
-
-    case 'topic-deep-dive': {
-      const topic = body.topicTitle ?? body.chapterName;
-      return {
-        system: `You are a ${context} expert teacher. Explain a concept deeply for a student.
-Include: definition, intuition, worked examples with Indian context, common mistakes, memory tips.
-Use clear, simple language. Format in Markdown.`,
-        user: `Give a deep-dive explanation of "${topic}" from chapter "${body.chapterName}" for ${context}.`,
-      };
-    }
-
-    case 'practice': {
-      const diff = body.difficulty ?? 3;
-      const cnt = body.count ?? 5;
-      return {
-        system: `You are a ${context} exam expert. Generate open-ended practice exercises.
-Use Indian context (names, cities, currencies). Calibrate difficulty ${diff}/5:
-  1: Very simple, recall-level, one step.
-  2: Easy, direct application.
-  3: Standard curriculum level, 2-3 steps.
-  4: Advanced, multi-step, higher-order thinking.
-  5: Expert level, exam-hard, requires deep understanding.
-Format as numbered list. Each exercise complete and self-contained.
-Include marks allocation (e.g. [3 marks]).`,
-        user: `Generate ${cnt} practice exercises for chapter "${body.chapterName}" in ${context} at difficulty ${diff}/5.`,
-      };
-    }
-
-    case 'quiz': {
-      const diff = body.difficulty ?? 3;
-      const cnt = body.count ?? 5;
-      return {
-        system: `You are a ${context} exam expert. Generate multiple-choice quiz questions.
-Use Indian context. Calibrate difficulty ${diff}/5:
-  1: Very Easy -- recall or recognition.
-  2: Easy -- simple application.
-  3: Average -- standard curriculum.
-  4: Advanced -- higher-order thinking.
-  5: Expert -- complex reasoning, exam-level.
-Format each question as:
-Q[n]. [Question text]
-a) [Option A]
-b) [Option B]
-c) [Option C]
-d) [Option D]
-Answer: [correct option letter]`,
-        user: `Generate ${cnt} multiple-choice quiz questions for chapter "${body.chapterName}" in ${context} at difficulty ${diff}/5.`,
-      };
-    }
-
-    case 'homework': {
-      const diff = body.difficulty ?? 3;
-      const cnt = body.count ?? 5;
-      return {
-        system: `You are a ${context} teacher creating homework assignments.
-Use real-world Indian context (daily life, local examples). Calibrate difficulty ${diff}/5:
-  1: Very Easy -- direct recall or simple calculation.
-  2: Easy -- straightforward application.
-  3: Average -- requires understanding and 2-3 steps.
-  4: Advanced -- multi-concept, analytical.
-  5: Expert -- exam-level challenge.
-Format as numbered list with marks. Include a brief hint in brackets.`,
-        user: `Create ${cnt} homework problems for chapter "${body.chapterName}" in ${context} at difficulty ${diff}/5.`,
-      };
-    }
-
+    case 'topics':          return chapterTopicsPrompt(ctx);
+    case 'syllabus':        return chapterSyllabusPrompt(ctx);
+    case 'topic-deep-dive': return chapterTopicDeepDivePrompt(ctx, body.topicTitle ?? body.chapterName);
+    case 'practice':        return chapterPracticePrompt(qCtx);
+    case 'quiz':            return chapterQuizPrompt(qCtx);
+    case 'homework':        return chapterHomeworkPrompt(qCtx);
     default:
       return {
-        system: `You are a ${context} curriculum expert.`,
-        user: `Generate content for chapter "${body.chapterName}" in ${context}.`,
+        system: `You are Vidya, an expert AI tutor for Indian K-12 students (${body.board}).`,
+        user: `Generate educational content for chapter "${body.chapterName}" (${body.board} Grade ${body.grade} ${body.subject}).`,
       };
   }
 }
