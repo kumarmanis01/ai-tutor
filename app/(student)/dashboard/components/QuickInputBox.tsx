@@ -5,6 +5,7 @@
  *   from /api/recommendations, tracking impressions and clicks.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | wire onMeta callback to DailyCreditsContext so widget updates on each AI reply
  * - 2026-06-08T12:00:00Z | claude | replace buffered fetch with SSE streaming via useStream; add streaming preview UI and error/retry banner
  * - 2026-06-08T02:00:00Z | claude | fix: remove redundant setQuestionText in handleRecommendationClick (chatSuggestionPicked listener handles it)
  * - 2026-06-08T00:00:00Z | claude | integrate personalized recommendations from /api/recommendations
@@ -24,6 +25,7 @@ import { Speech } from '@/lib/speech';
 import type { Recommendation } from '@/types/recommendation';
 import ReactMarkdown from 'react-markdown';
 import { useStream } from '@/hooks/useStream';
+import { useDailyCredits } from '@/components/UI/DailyCreditsWidget';
 
 function parseStreamBuffer(raw: string): { reply?: string; language?: string; suggestions?: string[] } {
   try {
@@ -523,6 +525,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
   );
   // ── End personalized recommendations ────────────────────────────────────────
 
+  const { handleMeta: handleCreditsMeta } = useDailyCredits();
+
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
   const [consentToShare, setConsentToShare] = useState(false);
@@ -649,9 +653,10 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           setStreamError(err || 'upstream_error');
           logger.error('QuickInputBox stream error', { className: 'QuickInputBox', methodName: 'submitWithStream', error: err });
         },
+        onMeta: handleCreditsMeta,
       }
     );
-  }, [images, consentToShare, conversationId, subject, preferredLang, detectedLang, startStream, onReply, onConversationId]);
+  }, [images, consentToShare, conversationId, subject, preferredLang, detectedLang, startStream, onReply, onConversationId, handleCreditsMeta]);
 
   const handleAskQuestion = useCallback(async () => {
     if (!questionText.trim() || asking) return;
