@@ -5,6 +5,7 @@
  *   context requests skip the OpenAI call entirely.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | verify difficulty key field is included correctly (it was from S1-2); no code change needed
  * - 2026-06-08T13:00:00Z | claude | initial implementation for task S1-2
  */
 

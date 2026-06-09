@@ -5,6 +5,7 @@
  *   from /api/recommendations, tracking impressions and clicks.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | embed DifficultySlider; pass difficulty to /api/ask; show mastery-aware difficulty hints
  * - 2026-06-09T00:00:00Z | claude | wire onMeta callback to DailyCreditsContext so widget updates on each AI reply
  * - 2026-06-08T12:00:00Z | claude | replace buffered fetch with SSE streaming via useStream; add streaming preview UI and error/retry banner
  * - 2026-06-08T02:00:00Z | claude | fix: remove redundant setQuestionText in handleRecommendationClick (chatSuggestionPicked listener handles it)
@@ -25,6 +26,7 @@ import { Speech } from '@/lib/speech';
 import type { Recommendation } from '@/types/recommendation';
 import ReactMarkdown from 'react-markdown';
 import { useStream } from '@/hooks/useStream';
+import DifficultySlider from '@/components/dashboard/components/DifficultySlider';
 import { useDailyCredits } from '@/components/UI/DailyCreditsWidget';
 
 function parseStreamBuffer(raw: string): { reply?: string; language?: string; suggestions?: string[] } {
@@ -65,10 +67,17 @@ interface QuickInputBoxProps {
   subject?: string;
   conversationId?: string | undefined;
   onConversationId?: (cid?: string) => void;
+  /** Mastery state from TopicProgress -- drives difficulty hint. */
+  masteryState?: 'MASTERED' | 'DEVELOPING' | 'NOT_STARTED' | null;
+  /** Rolling mastery score 0-1 -- used to suggest lower difficulty when DEVELOPING and score < 0.4. */
+  masteryScore?: number | null;
 }
 
-const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId }) => {
+const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId, masteryState = null, masteryScore = null }) => {
   const [questionText, setQuestionText] = useState('');
+  const [difficulty, setDifficulty] = useState(5);
+  // One-time mastery hint: dismissed after user taps it or closes it.
+  const [masteryHintDismissed, setMasteryHintDismissed] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
     const stopVoiceRef = useRef<(() => void) | null>(null);
@@ -607,7 +616,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
 
     await startStream(
       '/api/ask',
-      { text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend, subject },
+      { text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend, subject, difficulty },
       {
         onToken: (token: string) => {
           buffer += token;
@@ -656,7 +665,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         onMeta: handleCreditsMeta,
       }
     );
-  }, [images, consentToShare, conversationId, subject, preferredLang, detectedLang, startStream, onReply, onConversationId, handleCreditsMeta]);
+  }, [images, consentToShare, conversationId, subject, difficulty, preferredLang, detectedLang, startStream, onReply, onConversationId, handleCreditsMeta]);
 
   const handleAskQuestion = useCallback(async () => {
     if (!questionText.trim() || asking) return;
@@ -854,6 +863,55 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           <span className="text-xs text-muted-foreground mt-1">लिखें</span>
         </button>
       </div>
+
+      {/* Mastery-aware difficulty hint (one-time, dismissable) */}
+      {!masteryHintDismissed && masteryState === 'MASTERED' && (
+        <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-primary-bg text-primary text-xs">
+          <span>You have mastered this -- want a challenge? Level 7 suggested.</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { setDifficulty(7); setMasteryHintDismissed(true); }}
+              className="px-2 py-1 rounded bg-primary text-white text-xs min-h-[44px] sm:min-h-0"
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              onClick={() => setMasteryHintDismissed(true)}
+              className="px-2 py-1 rounded border border-primary text-xs min-h-[44px] sm:min-h-0"
+              aria-label="Dismiss hint"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+      {!masteryHintDismissed && masteryState === 'DEVELOPING' && masteryScore !== null && masteryScore < 0.4 && (
+        <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-success-bg text-success text-xs">
+          <span>Still building mastery -- a gentler level may help. Level 3 suggested.</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { setDifficulty(3); setMasteryHintDismissed(true); }}
+              className="px-2 py-1 rounded bg-success text-white text-xs min-h-[44px] sm:min-h-0"
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              onClick={() => setMasteryHintDismissed(true)}
+              className="px-2 py-1 rounded border border-success text-xs min-h-[44px] sm:min-h-0"
+              aria-label="Dismiss hint"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Difficulty slider -- collapsed by default, shown above text input */}
+      <DifficultySlider value={difficulty} onChange={setDifficulty} />
 
       {/* Text Input */}
       <div className="mb-3 flex items-center justify-between">

@@ -4,11 +4,13 @@
  *   and persists conversation turns for authenticated sessions.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | accept difficulty 1-10 via zod; inject difficulty calibration into system prompt; pass difficulty to cache key
  * - 2026-06-08T14:00:00Z | claude | add daily credit limit check and meta SSE event for task S1-3
  * - 2026-06-08T13:00:00Z | claude | integrate generationCache; serve cached replies as streamed tokens when all context fields present and no conversationId
  * - 2026-06-08T12:00:00Z | claude | convert buffered JSON response to SSE streaming; add 401 auth guard
  */
 
+import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
@@ -22,7 +24,18 @@ import { getGeneratedContent, setGeneratedContent, buildGenerationCacheKey } fro
 import type { GenerationCacheKey } from '@/lib/cache/generationCache';
 import { getDailyUsage, getDailyLimit, incrementDailyUsage } from '@/lib/credits/dailyCredits';
 
-type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string; board?: string; grade?: string; topicSlug?: string; contentType?: string; difficulty?: string };
+type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string; subject?: string; board?: string; grade?: string; topicSlug?: string; contentType?: string; difficulty?: unknown };
+
+const difficultySchema = z.number().int().min(1).max(10).default(5);
+
+const DIFFICULTY_PROMPT = `Calibrate your response to difficulty level {LEVEL}/10.
+At 1-3: use simple language, concrete examples, step-by-step.
+At 4-6: standard curriculum level.
+At 7-10: deeper reasoning, edge cases, exam-level challenge.`;
+
+function buildDifficultyPrompt(level: number): string {
+  return DIFFICULTY_PROMPT.replace('{LEVEL}', String(level));
+}
 
 const SYSTEM_PROMPT = `You are an AI assistant. Detect the user's language automatically based on the user's message.
 Always respond in the same language the user used.
@@ -116,6 +129,12 @@ export async function POST(req: Request) {
   if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
   const subject = (body.subject && typeof body.subject === 'string' ? body.subject : 'general');
 
+  // Validate difficulty: 1-10 integer, default 5 when absent or invalid.
+  const difficultyResult = difficultySchema.safeParse(
+    typeof body.difficulty === 'number' ? body.difficulty : Number(body.difficulty),
+  );
+  const difficulty = difficultyResult.success ? difficultyResult.data : 5;
+
   // Conversation threading
   let conversationId: string = body.conversationId || '';
   try {
@@ -161,6 +180,8 @@ export async function POST(req: Request) {
   const clientLangHint = body.language;
   const resolvedLang = resolveBcp47(req.headers.get('accept-language') ?? undefined, clientLangHint as string | undefined);
   const systemPromptWithLang = resolvedLang ? `${SYSTEM_PROMPT}\nPreferred-Language: ${resolvedLang}` : SYSTEM_PROMPT;
+  // Append difficulty calibration AFTER Vidya's existing system prompt -- never replace it.
+  const systemPromptFinal = `${systemPromptWithLang}\n\n${buildDifficultyPrompt(difficulty)}`;
 
   // Build conversation history for context
   const priorMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
@@ -175,22 +196,23 @@ export async function POST(req: Request) {
   }
 
   const messagesToSend: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-    { role: 'system', content: systemPromptWithLang },
+    { role: 'system', content: systemPromptFinal },
     ...priorMessages,
     { role: 'user', content: text },
   ];
 
-  // Cache context: only cache first-turn questions that supply all 5 context fields
+  // Cache context: only cache first-turn questions that supply all 5 context fields.
+  // difficulty always has a value (default 5) so it is never a gating condition.
   const isFirstTurn = !body.conversationId;
   let cacheKey: GenerationCacheKey | null = null;
-  if (isFirstTurn && body.board && body.grade && body.subject && body.topicSlug && body.contentType && body.difficulty) {
+  if (isFirstTurn && body.board && body.grade && body.subject && body.topicSlug && body.contentType) {
     cacheKey = {
-      board: body.board,
-      grade: body.grade,
-      subject: body.subject,
-      topicSlug: body.topicSlug,
-      contentType: body.contentType,
-      difficulty: body.difficulty,
+      board: body.board as string,
+      grade: body.grade as string,
+      subject: body.subject as string,
+      topicSlug: body.topicSlug as string,
+      contentType: body.contentType as string,
+      difficulty: String(difficulty),
     };
   }
 

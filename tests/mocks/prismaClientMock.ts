@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-08T00:01:00Z | claude | add MasteryState enum for S2-1 topicProgress tests
  * - 2026-04-18T00:00:00Z | copilot | added lightweight prisma client mock for tests
  */
 
@@ -94,3 +95,10 @@ export const JobStatus = {
   failed: 'failed',
 } as const
 export type JobStatus = typeof JobStatus[keyof typeof JobStatus]
+
+export const MasteryState = {
+  NOT_STARTED: 'NOT_STARTED',
+  DEVELOPING: 'DEVELOPING',
+  MASTERED: 'MASTERED',
+} as const
+export type MasteryState = typeof MasteryState[keyof typeof MasteryState]
