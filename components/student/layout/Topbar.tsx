@@ -16,6 +16,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | import and render DailyCreditsWidget in desktop topbar row (to right of breadcrumb)
  * - 2026-05-09T00:00:00Z | copilot | rebuild student top bar with adaptive focus, mobile two-line architecture, Framer Motion transitions, and sticky Ask Vidya strip
  * - 2026-05-09T00:00:00Z | copilot | wire topbar to dedicated backend focus contract payload endpoint
  * - 2026-05-09T00:00:00Z | copilot | consume combined topbar-stats payload for stats and focus in one SWR request
@@ -35,6 +36,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Flame, Moon, Sparkles, Sun, UserCircle2, X } from 'lucide-react';
 import StreakWidget from '../dashboard/StreakWidget';
 import Logo from '../../Logo';
+import { DailyCreditsWidget } from '@/components/UI/DailyCreditsWidget';
 import type { StudentTopbarStatsResponse } from '../../../lib/api/student/topbarContract';
 
 const fetcher = (url: string) => fetch(url).then((response) => response.json());
@@ -308,6 +310,8 @@ export default function Topbar() {
           </div>
 
           <div className="flex items-center gap-2">
+            <DailyCreditsWidget />
+
             <Link
               href={TOPBAR_ROUTES.subscribe}
               className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-brand-warning-bg px-4 py-2 text-sm font-semibold text-brand-warning"
