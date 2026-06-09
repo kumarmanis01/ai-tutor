@@ -1,15 +1,17 @@
 /**
- * SubjectSection
- *
- * Collapsible subject block on the learning path page.
- * Shows subject name, overall completion fraction, and chapter → topic rows.
+ * FILE OBJECTIVE:
+ * - Collapsible subject block on the learning path page.
+ *   Shows subject name, overall completion fraction, and chapter -> topic rows.
+ *   Chapter names link to /session/chapter/[chapterId] for on-demand AI sessions.
  *
  * EDIT LOG:
- *   2026-03-07 | UX implementation | created for learning path page
+ * - 2026-06-09T14:30:00Z | claude | make chapter name headers link to /session/chapter/[chapterId]
+ * - 2026-03-07 | UX implementation | created for learning path page
  */
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 import TopicStatusRow from './TopicStatusRow';
 import { getMasteryLabel, getTopicStatus } from '@/lib/learning/masteryLabel';
@@ -96,9 +98,14 @@ export default function SubjectSection({
         <div className="border-t border-gray-100">
           {chapters.map((chapter) => (
             <div key={chapter.chapterId} className="px-5 py-3 border-b border-gray-50 last:border-0">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              <Link
+                href={`/session/chapter/${chapter.chapterId}`}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded min-h-[44px] sm:min-h-0"
+                aria-label={`Start ${chapter.chapterName} chapter session`}
+              >
                 {chapter.chapterName}
-              </h3>
+                <span className="text-[10px] text-primary/60 normal-case tracking-normal font-normal">→</span>
+              </Link>
               <ul>
                 {chapter.topics.map((topic) => {
                   const status = getTopicStatus(topic.mastery, topic.isInProgress);
