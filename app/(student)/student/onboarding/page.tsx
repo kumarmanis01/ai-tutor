@@ -21,6 +21,7 @@
  * - 2026-05-06 | claude | created for Google-auth onboarding flow
  * - 2026-05-07T00:00:00Z | copilot | replace hardcoded colors with theme classes and refresh onboarding visual styling
  * - 2026-05-07T00:00:00Z | copilot | move onboarding form/modal style recipes to lib/theme/componentClasses for theme-level reuse
+ * - 2026-06-09T00:00:00Z | claude | add data-testid="onboarding-panel" to section card for test selector
  * - 2026-05-10T00:00:00Z | copilot | always show parent contact fields so older students can add parent info in edit mode
  */
 
@@ -505,7 +506,7 @@ export default function StudentOnboardingPage() {
         )}
 
         <div className={DECORATIVE_CARD_CLASS}>
-          <div className={SECTION_CARD_CLASS}>
+          <div data-testid="onboarding-panel" className={SECTION_CARD_CLASS}>
 
           <div className="rounded-2xl border border-primary/15 bg-gradient-to-r from-primary-bg via-card to-brand-primary-bg/20 px-4 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Personalise your path</p>

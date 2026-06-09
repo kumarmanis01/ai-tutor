@@ -104,8 +104,7 @@ describe('SessionBottomBar', () => {
     fireEvent.click(screen.getByText('Feedback'));
     expect(screen.getByText('How was this lesson?')).toBeTruthy();
 
-    // The backdrop div has aria-hidden="true"
-    const backdrop = document.querySelector('[aria-hidden="true"]') as HTMLElement;
+    const backdrop = screen.getByTestId('feedback-backdrop');
     fireEvent.click(backdrop);
     expect(screen.queryByText('How was this lesson?')).toBeNull();
   });

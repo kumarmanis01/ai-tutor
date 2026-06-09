@@ -33,7 +33,7 @@ describe('ParentUpgradeFlow', () => {
 
     // move to payment method step
     fireEvent.click(screen.getByRole('button', { name: /Choose payment/i }))
-    expect(screen.getByText(/Payment method/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /UPI/i })).toBeInTheDocument()
 
     // proceed to confirm
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }))

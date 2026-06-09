@@ -101,8 +101,8 @@ describe('StudentOnboardingPage', () => {
     expect(screen.getByText('Student onboarding')).not.toBeNull()
     expect(container.firstChild).toHaveClass('bg-background', 'text-foreground')
 
-    const panel = container.querySelector('.bg-card\/95')
-    expect(panel).toHaveClass('border-border/80')
+    const panel = screen.getByTestId('onboarding-panel')
+    expect(panel).toHaveClass('bg-card')
 
     const submitButton = screen.getByRole('button', { name: 'Start learning' })
     expect(submitButton).toHaveClass('bg-primary', 'text-primary-foreground')

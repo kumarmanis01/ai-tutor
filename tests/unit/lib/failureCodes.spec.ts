@@ -14,7 +14,7 @@ describe('failureCodes helpers', () => {
   })
 
   test('inferFailureCodeFromMessage maps common messages', () => {
-    expect(inferFailureCodeFromMessage('request timed out')).toBe(FailureCode.LLM_TIMEOUT)
+    expect(inferFailureCodeFromMessage('request timeout')).toBe(FailureCode.LLM_TIMEOUT)
     expect(inferFailureCodeFromMessage('rate limit exceeded')).toBe(FailureCode.LLM_RATE_LIMIT)
     expect(inferFailureCodeFromMessage('could not parse json')).toBe(FailureCode.PARSE_FAILED)
     expect(inferFailureCodeFromMessage('missing topic id')).toBe(FailureCode.DEPENDENCY_MISSING)

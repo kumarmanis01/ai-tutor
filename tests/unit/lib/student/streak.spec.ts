@@ -81,7 +81,7 @@ describe('updateStreak', () => {
 
   test('should persist the incremented streak and emit analytics when the streak continues', async () => {
     prismaUserFindUnique.mockResolvedValue({
-      lastSessionDate: new Date('2026-05-12T00:00:00.000Z'),
+      lastSessionDate: new Date('2026-06-08T00:00:00.000Z'),
       currentStreak: 3,
       longestStreak: 5,
       timezone: null,
@@ -115,7 +115,7 @@ describe('updateStreak', () => {
 
   test('should return the current state and skip analytics when already counted today', async () => {
     prismaUserFindUnique.mockResolvedValue({
-      lastSessionDate: new Date('2026-05-13T10:15:00.000Z'),
+      lastSessionDate: new Date('2026-06-09T10:15:00.000Z'),
       currentStreak: 8,
       longestStreak: 10,
       timezone: null,

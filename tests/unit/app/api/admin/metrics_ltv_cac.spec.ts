@@ -10,13 +10,33 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | convert jest.doMock+await import to standard jest.mock (CJS)
  * - 2026-04-17T00:00:00Z | senior-engineer | add unit tests for ltv/cac endpoint
  */
 
+jest.mock('@/lib/session', () => ({
+  getServerSessionForHandlers: jest.fn(),
+}))
+
+jest.mock('@/lib/prisma', () => ({
+  prisma: { $queryRaw: jest.fn() },
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logger: { logAPI: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+
+import { GET } from '@/app/api/admin/metrics/ltv-cac/route'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+
+const mockGetSession = getServerSessionForHandlers as jest.Mock
+const mockQueryRaw = (prisma as any).$queryRaw as jest.Mock
+
 describe('GET /api/admin/metrics/ltv-cac', () => {
   beforeEach(() => {
-    jest.resetModules()
     jest.clearAllMocks()
+    mockGetSession.mockResolvedValue({ user: { role: 'admin' } })
   })
 
   it('returns computed metrics when DB returns a row', async () => {
@@ -35,11 +55,10 @@ describe('GET /api/admin/metrics/ltv-cac', () => {
       ltv_cac_ratio: 150.0,
     }
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: { $queryRaw: async () => [dbRow] } }))
+    mockQueryRaw.mockResolvedValue([dbRow])
 
-    const route = await import('@/app/api/admin/metrics/ltv-cac/route')
     const req = new Request('http://localhost')
-    const res: any = await route.GET(req as any)
+    const res: any = await GET(req as any)
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -70,11 +89,10 @@ describe('GET /api/admin/metrics/ltv-cac', () => {
       ltv_cac_ratio: null,
     }
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: { $queryRaw: async () => [dbRow] } }))
+    mockQueryRaw.mockResolvedValue([dbRow])
 
-    const route = await import('@/app/api/admin/metrics/ltv-cac/route')
     const req = new Request('http://localhost')
-    const res: any = await route.GET(req as any)
+    const res: any = await GET(req as any)
 
     expect(res.status).toBe(200)
     const body = await res.json()

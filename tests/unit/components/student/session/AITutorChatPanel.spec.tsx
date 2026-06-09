@@ -6,6 +6,11 @@ import AITutorChatPanel from '@/components/student/session/AITutorChatPanel'
 describe('AITutorChatPanel - session style selector', () => {
   const originalFetch = (global as any).fetch
 
+  beforeAll(() => {
+    // jsdom does not implement scrollIntoView -- mock it globally for this suite
+    window.HTMLElement.prototype.scrollIntoView = jest.fn()
+  })
+
   beforeEach(() => {
     // Mock fetch to handle session style POST and tutor turn stream
     (global as any).fetch = jest.fn((url: string, opts?: any) => {

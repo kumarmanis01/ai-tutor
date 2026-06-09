@@ -6,6 +6,7 @@
  * - Right: "Feedback" -- opens a 5-star rating bottom sheet; submits to API.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | add data-testid to feedback backdrop for reliable test targeting
  * - 2026-04-22 | redesign | created; replaces DoubtPanel floating FAB
  */
 
@@ -99,6 +100,7 @@ export function SessionBottomBar({ onAskVidya, sessionId, currentPhase }: Sessio
             className="fixed inset-0 z-50 bg-black/40"
             onClick={() => setFeedbackOpen(false)}
             aria-hidden="true"
+            data-testid="feedback-backdrop"
           />
           <div
             className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-2xl px-6 pt-6 shadow-2xl"
