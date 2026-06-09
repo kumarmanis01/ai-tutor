@@ -3,14 +3,19 @@
  * - Collapsible difficulty selector (1-10) rendered above the question input.
  *   Collapsed: shows a small chip. Expanded: shows a native range slider with
  *   band labels (Easier / Standard / Challenge) using brand tokens.
+ *   When a recommendation is provided, shows an amber "AI recommends" Pill badge
+ *   above the slider; the badge dims to 50% opacity when the slider is moved away
+ *   from the recommended value.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-3a: add recommendation prop -- amber Pill badge, green tick marker, dim-on-drag
  * - 2026-06-09T00:00:00Z | claude | initial creation for difficulty parameter feature
  */
 
 'use client';
 
 import React, { useState } from 'react';
+import type { ToughnessRecommendation } from '@/lib/mastery/topicProgress';
 
 // ─── Band definitions ──────────────────────────────────────────────────────────
 
@@ -46,14 +51,36 @@ const BAND_ACCENT_CLASS: Record<Band, string> = {
 interface DifficultySliderProps {
   value?: number;
   onChange: (difficulty: number) => void;
+  recommendation?: ToughnessRecommendation;
 }
 
-export default function DifficultySlider({ value = 5, onChange }: DifficultySliderProps) {
+export default function DifficultySlider({
+  value,
+  onChange,
+  recommendation,
+}: DifficultySliderProps) {
   const [expanded, setExpanded] = useState(false);
-  const band = getBand(value);
+  const effectiveValue = value ?? recommendation?.toughness ?? 5;
+  const band = getBand(effectiveValue);
+  const atRecommended = recommendation != null && effectiveValue === recommendation.toughness;
 
   return (
     <div className="mb-2">
+      {/* AI recommends badge -- shown when recommendation is provided */}
+      {recommendation && (
+        <div
+          className={`mb-1 transition-opacity duration-200 ${atRecommended ? 'opacity-100' : 'opacity-50'}`}
+          data-testid="recommendation-badge"
+        >
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-warning-bg text-warning">
+            AI recommends: Examples at toughness {recommendation.toughness}
+          </span>
+          <p className="mt-0.5 text-[11px] text-muted-foreground leading-tight">
+            {recommendation.reason}
+          </p>
+        </div>
+      )}
+
       {/* Collapsed chip -- tap to expand */}
       <button
         type="button"
@@ -69,7 +96,7 @@ export default function DifficultySlider({ value = 5, onChange }: DifficultySlid
         ].join(' ')}
       >
         <span aria-hidden="true">&#9881;</span>
-        <span>Difficulty: {value}</span>
+        <span>Difficulty: {effectiveValue}</span>
         <span
           aria-hidden="true"
           className={`inline-block transition-transform duration-150 ${expanded ? 'rotate-180' : 'rotate-0'}`}
@@ -88,7 +115,7 @@ export default function DifficultySlider({ value = 5, onChange }: DifficultySlid
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-gray-400 dark:text-gray-500">1 -- Easier</span>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${BAND_CHIP_CLASS[band]}`}>
-              Level {value} -- {BAND_LABEL[band]}
+              Level {effectiveValue} -- {BAND_LABEL[band]}
             </span>
             <span className="text-xs text-gray-400 dark:text-gray-500">10 -- Challenge</span>
           </div>
@@ -100,12 +127,12 @@ export default function DifficultySlider({ value = 5, onChange }: DifficultySlid
               min={1}
               max={10}
               step={1}
-              value={value}
+              value={effectiveValue}
               onChange={(e) => onChange(parseInt(e.target.value, 10))}
-              aria-label={`Difficulty level, currently ${value} -- ${BAND_LABEL[band]}`}
+              aria-label={`Difficulty level, currently ${effectiveValue} -- ${BAND_LABEL[band]}`}
               aria-valuemin={1}
               aria-valuemax={10}
-              aria-valuenow={value}
+              aria-valuenow={effectiveValue}
               className={[
                 'w-full h-2 rounded-lg appearance-none cursor-pointer',
                 'bg-gray-200 dark:bg-gray-700',
@@ -114,11 +141,19 @@ export default function DifficultySlider({ value = 5, onChange }: DifficultySlid
             />
           </div>
 
-          {/* Tick marks */}
+          {/* Tick marks -- recommended position gets a green success dot */}
           <div className="flex justify-between mt-1 px-0.5">
             {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-              <span key={n} className="text-[10px] text-gray-300 dark:text-gray-600 select-none">
-                {n}
+              <span
+                key={n}
+                className={[
+                  'text-[10px] select-none',
+                  recommendation && n === recommendation.toughness
+                    ? 'text-success font-bold'
+                    : 'text-gray-300 dark:text-gray-600',
+                ].join(' ')}
+              >
+                {recommendation && n === recommendation.toughness ? '●' : n}
               </span>
             ))}
           </div>

@@ -23,6 +23,7 @@
  *          └─ PhaseComponent -- the active phase
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-3a: accept difficultyRecommendation prop from session page
  * - 2026-06-08T00:00:00Z | claude | fix: detect job-vanished transition in polling loop so student session
  *   self-recovers when admin deletes a stuck job instead of staying frozen on "Generating..."
  * - 2026-03-08 | claude | refactored to use phaseRouter + SessionLayout + useSession
@@ -49,6 +50,7 @@ import type {
   HomeworkContent,
 } from '@/lib/session/getPhaseContent';
 import type { SessionPhaseClient } from '@/lib/session/phaseConfig';
+import type { ToughnessRecommendation } from '@/lib/mastery/topicProgress';
 
 const FOOTER_LABELS: Record<SessionPhaseClient, string> = {
   OVERVIEW: 'Start Learning',
@@ -65,6 +67,8 @@ interface SessionContainerProps {
   reasonLabel?: string | null;
   estimatedTimeMin?: number;
   initialFocus?: { focus?: string; itemId?: string };
+  /** AI-derived starting difficulty -- passed through to DifficultySlider on question surfaces. */
+  difficultyRecommendation?: ToughnessRecommendation;
 }
 
 export function SessionContainer({
@@ -72,6 +76,7 @@ export function SessionContainer({
   reasonLabel,
   estimatedTimeMin,
   initialFocus,
+  difficultyRecommendation: _difficultyRecommendation,
 }: SessionContainerProps) {
   const {
     session,

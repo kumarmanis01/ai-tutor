@@ -2,9 +2,12 @@
  * FILE OBJECTIVE:
  * - Service layer for the 3-state mastery FSM (NOT_STARTED -> DEVELOPING -> MASTERED)
  *   per student per topic, driven by quiz outcomes.
+ * - Also exports getRecommendedToughness(), a pure function that derives the
+ *   AI-recommended difficulty level from already-fetched TopicProgress fields.
  *
  * LINKED UNIT TEST:
  * - tests/unit/mastery/topicProgress.test.ts
+ * - tests/unit/mastery/topicProgress.recommendation.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
@@ -12,6 +15,7 @@
  * - /docs/ENGINEERING_PRACTICES.md
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | S2-3a: add getRecommendedToughness() pure function
  * - 2026-06-08T00:01:00Z | claude | initial creation -- S2-1 TopicProgress mastery FSM
  */
 
@@ -267,4 +271,70 @@ export async function getMasteredCount(userId: string): Promise<number> {
     logger.error('mastery.topicProgress.getMasteredCount.failed', { userId, error: message });
     throw err;
   }
+}
+
+// ─── Recommendation ────────────────────────────────────────────────────────────
+
+export interface ToughnessRecommendation {
+  toughness: number;
+  label: string;
+  reason: string;
+}
+
+interface GetRecommendedToughnessParams {
+  state: MasteryState | null;
+  score: number;
+  attempts: number;
+}
+
+/**
+ * Derives the AI-recommended starting toughness from already-fetched TopicProgress fields.
+ * Pure function -- no DB calls, no async. Safe to call on every page render.
+ *
+ * Priority order:
+ *   1. No attempts yet (or null progress row) -> toughness 3, "Start here"
+ *   2. DEVELOPING + score < 0.40              -> toughness 2, "Let's strengthen the basics"
+ *   3. DEVELOPING + 0.40 <= score < 0.70      -> toughness 4, "You are making good progress"
+ *   4. DEVELOPING + score >= 0.70             -> toughness 6, "You are nearly there -- push harder"
+ *   5. MASTERED                               -> toughness 8, "You have mastered this -- go deeper"
+ */
+export function getRecommendedToughness(
+  params: GetRecommendedToughnessParams,
+): ToughnessRecommendation {
+  const { state, score, attempts } = params;
+
+  if (state === null || attempts === 0) {
+    return { toughness: 3, label: 'Easy', reason: 'Start here' };
+  }
+
+  if (state === MasteryState.MASTERED) {
+    return {
+      toughness: 8,
+      label: 'Challenge',
+      reason: 'You have mastered this -- go deeper',
+    };
+  }
+
+  // DEVELOPING branch
+  if (score < 0.40) {
+    return {
+      toughness: 2,
+      label: 'Easier',
+      reason: "Let's strengthen the basics",
+    };
+  }
+
+  if (score < 0.70) {
+    return {
+      toughness: 4,
+      label: 'Standard',
+      reason: 'You are making good progress',
+    };
+  }
+
+  return {
+    toughness: 6,
+    label: 'Challenge',
+    reason: 'You are nearly there -- push harder',
+  };
 }
