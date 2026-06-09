@@ -5,6 +5,7 @@
  *   completed markdown into TopicRow cards with Deep Dive expansion.
  *
  * EDIT LOG:
+ * - 2026-06-09T12:30:00Z | claude | fix: reorder regex char class [-:\s] -> [\s:-] to prevent Tailwind CSS scan false positive
  * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session Topics tab
  */
 
@@ -56,14 +57,14 @@ function parseTopics(text: string): ParsedTopic[] {
       }
       currentTitle = boldMatch[1].replace(/[*_]/g, '').trim();
       // Check for inline description after the bold span
-      const afterBold = line.replace(/^\*\*(?:\d+\.\s+)?(.+?)\*\*/, '').replace(/^[-:\s]+/, '').trim();
+      const afterBold = line.replace(/^\*\*(?:\d+\.\s+)?(.+?)\*\*/, '').replace(/^[\s:-]+/, '').trim();
       currentDescription = afterBold;
     } else if (numberedMatch && !currentTitle) {
       if (currentTitle) {
         topics.push({ title: currentTitle, description: currentDescription.trim() });
       }
       currentTitle = (numberedMatch[1] ?? '').replace(/[*_]/g, '').trim();
-      currentDescription = (numberedMatch[2] ?? '').replace(/^[-:\s]+/, '').trim();
+      currentDescription = (numberedMatch[2] ?? '').replace(/^[\s:-]+/, '').trim();
     } else if (currentTitle) {
       // Continuation line = description
       currentDescription += (currentDescription ? ' ' : '') + line;
