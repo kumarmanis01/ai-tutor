@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | add DailyCreditsProvider so widget and QuickInputBox share credit state
  * - 2026-05-13T00:00:00Z | copilot | emit app open and app close analytics from root client providers
  * - 2026-05-13T00:00:00Z | copilot | emit role-scoped app open and app close analytics for student, parent, and admin surfaces
  */
@@ -25,6 +26,7 @@ import { ANALYTICS_EVENTS } from '@/lib/analytics/events';
 import ThemeProvider from '@/components/UI/ThemeProvider';
 import { OnboardingProvider } from '@/context/OnboardingProvider';
 import AlertModal from '@/components/UI/AlertModal';
+import { DailyCreditsProvider } from '@/components/UI/DailyCreditsWidget';
 
 function resolveAppLifecycleEvents(pathname: string) {
   if (pathname.startsWith('/parent')) {
@@ -80,8 +82,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <ThemeProvider>
         <OnboardingProvider>
-          <AuthAwareLayout>{children}</AuthAwareLayout>
-          <AlertModal />
+          <DailyCreditsProvider>
+            <AuthAwareLayout>{children}</AuthAwareLayout>
+            <AlertModal />
+          </DailyCreditsProvider>
         </OnboardingProvider>
       </ThemeProvider>
     </SessionProvider>
