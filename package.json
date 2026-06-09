@@ -97,6 +97,7 @@
     "ci:check-playwright": "node -e \"(async()=>{try{await import('playwright'); console.log('playwright:ok'); process.exit(0);}catch(e){console.error('playwright:missing', String(e)); process.exit(2);}})()\"",
     "orchestrator:start": "tsx worker/orchestrator.ts",
     "seed": "node scripts/seed-taxonomy.cjs",
+    "seed:concepts": "npx tsx prisma/seed/concepts.ts",
     "seed:dashboard": "node scripts/seed-dashboard-test-data.cjs",
     "seed:dashboard:dry": "node scripts/seed-dashboard-test-data.cjs --dry-run",
     "test:mvp-flow": "node scripts/test-mvp-flow.cjs",

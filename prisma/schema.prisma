@@ -3252,3 +3252,24 @@ model TopicProgress {
   // Supports: getDevelopingTopics sorted by lastStudiedAt ASC (overdue-first)
   @@index([userId, lastStudiedAt])
 }
+
+/// Pre-seeded curriculum concepts for a given topic/chapter slug.
+/// Used by the demand-pull generate flow to let students filter by concept.
+/// Never AI-generated -- seeded from curriculum data, never changes at runtime.
+/// Named TopicConcept to avoid collision with the existing Concept (IRT) model.
+model TopicConcept {
+  id          String   @id @default(cuid())
+  topicSlug   String
+  subject     String
+  grade       String
+  board       String
+  title       String
+  /// 2-3 sentence curriculum-aligned definition.
+  summary     String
+  /// Display order within the topic.
+  orderIndex  Int
+  createdAt   DateTime @default(now())
+
+  @@unique([topicSlug, subject, grade, board, title])
+  @@index([topicSlug, subject, grade, board])
+}
