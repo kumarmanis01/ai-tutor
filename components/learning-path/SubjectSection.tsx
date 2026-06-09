@@ -5,7 +5,8 @@
  *   Chapter names link to /session/chapter/[chapterId] for on-demand AI sessions.
  *
  * EDIT LOG:
- * - 2026-06-09T14:30:00Z | claude | make chapter name headers link to /session/chapter/[chapterId]
+ * - 2026-06-09T16:00:00Z | claude | update href to /chapter/[chapterId] (moved out of /session/)
+ * - 2026-06-09T14:30:00Z | claude | make chapter name headers link to chapter session page
  * - 2026-03-07 | UX implementation | created for learning path page
  */
 'use client';
@@ -99,7 +100,7 @@ export default function SubjectSection({
           {chapters.map((chapter) => (
             <div key={chapter.chapterId} className="px-5 py-3 border-b border-gray-50 last:border-0">
               <Link
-                href={`/session/chapter/${chapter.chapterId}`}
+                href={`/chapter/${chapter.chapterId}`}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded min-h-[44px] sm:min-h-0"
                 aria-label={`Start ${chapter.chapterName} chapter session`}
               >

@@ -11,7 +11,8 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2026-06-09T14:30:00Z | claude | route chapter rows to /session/chapter/[chapterId] (on-demand AI session)
+ * - 2026-06-09T16:00:00Z | claude | update href to /chapter/[chapterId] (moved out of /session/)
+ * - 2026-06-09T14:30:00Z | claude | route chapter rows to on-demand AI chapter session
  * - 2026-06-08T00:00:00Z | claude | rename weakestConceptId to weakestTopicId; route chapter links to /session/[topicId]
  * - 2026-03-15 | claude | created for Task 29 progress report page
  * - 2026-05-10T00:00:00Z | copilot | remove inline styles, add estimated-weight label, and improve row accessibility
@@ -58,7 +59,7 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
 
   return (
     <Link
-      href={`/session/chapter/${chapter.chapterId}`}
+      href={`/chapter/${chapter.chapterId}`}
       className="flex items-center gap-3 py-3 min-h-[44px] border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/40 rounded-lg px-1 transition-colors"
       aria-label={`${chapter.chapterName}: ${mastery100}% mastery -- tap to start chapter session`}
     >

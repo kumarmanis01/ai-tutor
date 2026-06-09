@@ -8,7 +8,8 @@
  *   for on-demand AI chapter sessions.
  *
  * EDIT LOG:
- * - 2026-06-09T14:00:00Z | claude | make ChapterCard a link to /session/chapter/[chapterId]
+ * - 2026-06-09T16:00:00Z | claude | update href to /chapter/[chapterId] (moved out of /session/)
+ * - 2026-06-09T14:00:00Z | claude | make ChapterCard a link to chapter session page
  */
 
 import React, { useState } from 'react'
@@ -247,7 +248,7 @@ function ChapterCard({ chapter }: { chapter: ReadinessChapterDisplay }) {
   const barColor = TAG_RING_COLOR[tag]
   return (
     <Link
-      href={`/session/chapter/${chapter.chapterId}`}
+      href={`/chapter/${chapter.chapterId}`}
       className="block rounded-xl border border-[#E3DDD0] dark:border-[#3A3830] bg-white dark:bg-[#2E2C27] p-4 min-h-[44px] transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       aria-label={`Start ${chapter.chapterName} chapter session`}
     >

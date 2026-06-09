@@ -5,6 +5,7 @@
  *   4-Advanced (1.25), 5-Expert (1.5 cr per item).
  *
  * EDIT LOG:
+ * - 2026-06-09T16:00:00Z | claude | fix token violations: border-border/bg-card replace raw gray
  * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session difficulty selector
  */
 
@@ -75,7 +76,7 @@ export function ChapterDifficultySlider({ value, onChange }: ChapterDifficultySl
       {expanded && (
         <div
           id="chapter-difficulty-panel"
-          className="mt-2 p-3 rounded-lg border border-border bg-card dark:bg-gray-900"
+          className="mt-2 p-3 rounded-lg border border-border bg-card"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-muted-foreground">1 -- Very Easy</span>

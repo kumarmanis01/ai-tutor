@@ -5,6 +5,7 @@
  *   Collapses/re-expands from cache without re-fetching.
  *
  * EDIT LOG:
+ * - 2026-06-09T16:00:00Z | claude | fix border-primary/20 -> border-brand-primary/20 (opacity mods need static token)
  * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session Topics tab
  */
 
@@ -120,7 +121,7 @@ export function TopicRow({ topic, chapterName, subject, grade, board }: TopicRow
           aria-expanded={expanded}
           aria-label={getButtonLabel()}
           className={[
-            'text-xs font-medium text-primary bg-primary-bg border border-primary/20',
+            'text-xs font-medium text-primary bg-primary-bg border border-brand-primary/20',
             'px-3 py-1.5 rounded-full',
             'min-h-[44px] sm:min-h-0 sm:py-1.5',
             'focus:outline-none focus:ring-2 focus:ring-primary',

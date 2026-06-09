@@ -1,17 +1,18 @@
 /**
  * FILE OBJECTIVE:
- * - Main client shell for on-demand chapter sessions. Provides 5 tabs:
- *   Topics (auto-generates on mount), Syllabus (manual trigger), Practice,
- *   Quiz, and Homework (each with difficulty + count controls).
- *   Nothing is persisted -- all content is generated on-demand and streamed.
+ * - Main client shell for on-demand chapter sessions. Five tabs: Topics
+ *   (auto-generates on mount), Syllabus (manual), Practice, Quiz, Homework.
+ *   Uses design-system primitives and brand tokens throughout.
  *
  * EDIT LOG:
- * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session page
+ * - 2026-06-09T16:00:00Z | claude | full redesign: proper tokens, Card/Pill/Button primitives, dashboard chrome
+ * - 2026-06-09T12:00:00Z | claude | initial implementation
  */
 
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { Pill, Card, Button } from '@/components/UI/design-system';
 import { TopicList } from './TopicList';
@@ -31,7 +32,7 @@ interface ChapterSessionViewProps {
   topicCount: number;
 }
 
-// ─── Tabs config ──────────────────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'topics', label: 'Topics' },
@@ -67,18 +68,18 @@ function SyllabusPanel({ chapterName, subject, grade, board }: SyllabusPanelProp
       '/api/chapter/generate',
       { chapterName, subject, grade, board, contentType: 'syllabus' },
       {
-        onToken: (token) => setContent((prev) => prev + token),
+        onToken: (token) => setContent((prev: string) => prev + token),
         onDone: () => {
           setIsGenerating(false);
           setHasGenerated(true);
         },
         onError: (msg) => {
           setIsGenerating(false);
-          if (msg === 'daily_limit_reached') {
-            setError("You've reached your daily limit. Come back tomorrow -- your best is still ahead.");
-          } else {
-            setError("Couldn't generate syllabus -- tap to retry.");
-          }
+          setError(
+            msg === 'daily_limit_reached'
+              ? "You've reached your daily limit. Come back tomorrow -- your best is still ahead."
+              : "Couldn't generate syllabus -- tap to retry.",
+          );
         },
       },
     );
@@ -86,27 +87,27 @@ function SyllabusPanel({ chapterName, subject, grade, board }: SyllabusPanelProp
 
   if (!hasGenerated && !isGenerating && !error) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <p className="text-sm text-muted-foreground text-center max-w-xs">
-          Generate a complete syllabus for this chapter including learning objectives,
-          key concepts, and expected outcomes.
-        </p>
-        <Button variant="primary" onClick={handleGenerate} className="min-h-[44px]">
-          Generate Syllabus
-        </Button>
-      </div>
+      <Card>
+        <div className="flex flex-col items-center justify-center py-10 gap-4 text-center">
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Generate the complete syllabus for this chapter -- learning objectives,
+            key concepts, and expected outcomes.
+          </p>
+          <Button variant="primary" onClick={handleGenerate} className="min-h-[44px]">
+            Generate Syllabus
+          </Button>
+        </div>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {!hasGenerated && !error && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span
-            className="inline-block w-1.5 h-1.5 bg-primary animate-pulse rounded-full"
-            aria-hidden="true"
-          />
-          Generating syllabus...
+    <div className="space-y-3">
+      {isGenerating && !content && (
+        <div className="space-y-3" role="status" aria-label="Generating syllabus">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-3 loader-shimmer rounded w-full" aria-hidden="true" />
+          ))}
         </div>
       )}
 
@@ -132,13 +133,7 @@ function SyllabusPanel({ chapterName, subject, grade, board }: SyllabusPanelProp
               />
             )}
           </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="h-3 loader-shimmer rounded w-full" aria-hidden="true" />
-            <div className="h-3 loader-shimmer rounded w-5/6" aria-hidden="true" />
-            <div className="h-3 loader-shimmer rounded w-4/5" aria-hidden="true" />
-          </div>
-        )}
+        ) : null}
       </Card>
 
       {hasGenerated && (
@@ -166,26 +161,41 @@ export function ChapterSessionView({
   const [activeTab, setActiveTab] = useState<TabKey>('topics');
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 pb-12">
-      {/* Chapter header */}
-      <div className="mb-4">
-        <p className="text-xs text-muted-foreground mb-1">
-          {board} · Grade {grade} · {subjectName}
-        </p>
-        <h1 className="text-xl font-semibold text-foreground leading-tight">{chapterName}</h1>
-        {topicCount > 0 && (
-          <p className="text-xs text-muted-foreground mt-0.5">{topicCount} topics</p>
-        )}
-        <p className="text-xs text-primary mt-1 font-medium">
-          AI-powered -- content is generated on demand
-        </p>
-      </div>
+    <div className="max-w-[720px] mx-auto px-4 sm:px-6 py-4 space-y-5">
+      {/* Back link */}
+      <Link
+        href="/learn"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-[44px] sm:min-h-0"
+        aria-label="Back to learn"
+      >
+        <span aria-hidden="true">&#8592;</span>
+        <span>{subjectName}</span>
+      </Link>
+
+      {/* Chapter hero */}
+      <Card variant="hero" padding="normal">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill intent="primary">{subjectName}</Pill>
+            <Pill intent="ghost">{board} · Grade {grade}</Pill>
+            {topicCount > 0 && (
+              <Pill intent="ghost">{topicCount} topics</Pill>
+            )}
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-snug mt-2">
+            {chapterName}
+          </h1>
+          <p className="text-xs text-primary font-medium mt-0.5">
+            AI-powered -- everything generated on demand
+          </p>
+        </div>
+      </Card>
 
       {/* Tab strip */}
       <div
-        className="flex flex-wrap gap-2 mb-6"
+        className="flex flex-wrap gap-2"
         role="tablist"
-        aria-label="Chapter content type"
+        aria-label="Chapter content tabs"
       >
         {TABS.map((tab) => (
           <button
@@ -195,7 +205,9 @@ export function ChapterSessionView({
             onClick={() => setActiveTab(tab.key)}
             className="focus:outline-none focus:ring-2 focus:ring-primary rounded-full min-h-[44px] sm:min-h-0"
           >
-            <Pill intent={activeTab === tab.key ? 'primary' : 'ghost'}>{tab.label}</Pill>
+            <Pill intent={activeTab === tab.key ? 'primary' : 'ghost'}>
+              {tab.label}
+            </Pill>
           </button>
         ))}
       </div>

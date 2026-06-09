@@ -5,6 +5,7 @@
  *   a Generate button, and a streaming output area.
  *
  * EDIT LOG:
+ * - 2026-06-09T16:00:00Z | claude | fix token violations: replace raw gray classes with border-border/bg-card
  * - 2026-06-09T12:00:00Z | claude | initial implementation for chapter session generate panel
  */
 
@@ -109,7 +110,6 @@ export function ChapterGeneratePanel({
             'border border-border bg-card text-foreground text-lg font-semibold',
             'transition-colors focus:outline-none focus:ring-2 focus:ring-primary',
             'disabled:opacity-40 disabled:cursor-not-allowed',
-            'dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100',
           ].join(' ')}
         >
           -
@@ -135,7 +135,6 @@ export function ChapterGeneratePanel({
             'border border-border bg-card text-foreground text-lg font-semibold',
             'transition-colors focus:outline-none focus:ring-2 focus:ring-primary',
             'disabled:opacity-40 disabled:cursor-not-allowed',
-            'dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100',
           ].join(' ')}
         >
           +
