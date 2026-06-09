@@ -2,6 +2,7 @@
  * FILE OBJECTIVE:
  * - Daily AI credit tracking via Redis. Provides atomic INCR-based counters keyed by
  *   userId + IST date. Expiry is set to the next IST midnight so counters reset daily.
+ *   Supports fractional credit deductions via INCRBYFLOAT for the chapter generate route.
  *
  * LINKED UNIT TEST:
  * - tests/unit/credits/dailyCredits.test.ts
@@ -10,6 +11,7 @@
  * - /docs/ENGINEERING_PRACTICES.md
  *
  * EDIT LOG:
+ * - 2026-06-09T12:00:00Z | claude | add incrementDailyUsageBy for fractional credit costs
  * - 2026-06-08T00:00:00Z | claude | initial implementation for task S1-3
  */
 
@@ -64,7 +66,7 @@ export async function getDailyUsage(userId: string): Promise<number> {
   if (!redis) return 0;
   try {
     const raw = await redis.get(buildCreditKey(userId));
-    return raw ? parseInt(raw, 10) : 0;
+    return raw ? parseFloat(raw) : 0;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('credits.getDailyUsage.failed', { userId, error: message });
@@ -110,6 +112,29 @@ export async function getDailyLimit(userId: string): Promise<number> {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('credits.getDailyLimit.failed', { userId, error: message });
     return DAILY_FREE_LIMIT;
+  }
+}
+
+/**
+ * Atomically increments the daily credit counter by a fractional amount (e.g. 1.5 credits).
+ * Uses INCRBYFLOAT so the counter tracks partial credits accurately.
+ * Returns the new balance. Returns 0 on Redis failure -- never throws.
+ *
+ * @param userId - The student's user ID (from session, never client-supplied).
+ * @param amount - Credit cost to deduct (e.g. 7.5 for 5 Expert questions).
+ */
+export async function incrementDailyUsageBy(userId: string, amount: number): Promise<number> {
+  const redis = getRedis();
+  if (!redis) return 0;
+  const key = buildCreditKey(userId);
+  try {
+    const newBalance = await redis.incrbyfloat(key, amount);
+    await redis.expireat(key, getNextISTMidnightUnix());
+    return typeof newBalance === 'string' ? parseFloat(newBalance) : (newBalance as number);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('credits.incrementDailyUsageBy.failed', { userId, error: message });
+    return 0;
   }
 }
 
