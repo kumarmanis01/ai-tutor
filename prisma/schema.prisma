@@ -3263,8 +3263,11 @@ model TopicConcept {
   subject     String
   grade       String
   board       String
+  language    String   @default("en")
   title       String
-  /// 2-3 sentence curriculum-aligned definition.
+  /// URL-safe slug derived from title; used for stable referencing across re-generations.
+  slug        String?
+  /// Short description: one clear sentence (max 25 words) describing what and why.
   summary     String
   /// Display order within the topic.
   orderIndex  Int
@@ -3272,4 +3275,5 @@ model TopicConcept {
 
   @@unique([topicSlug, subject, grade, board, title])
   @@index([topicSlug, subject, grade, board])
+  @@index([topicSlug, subject, grade, board, language])
 }

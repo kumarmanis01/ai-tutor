@@ -1,10 +1,11 @@
 /**
  * FILE OBJECTIVE:
  * - POST /api/admin/concepts/generate: AI-powered generation of TopicConcept rows for
- *   a given board/grade/subject/chapter. Saves directly to the TopicConcept table with
- *   skipDuplicates so the route is safe to call multiple times.
+ *   a given board/grade/subject/language/chapter. Validates input with Zod, generates a
+ *   URL-safe slug per concept, and upserts rows so re-running is fully idempotent.
  *
  * EDIT LOG:
+ * - 2026-06-09T00:00:00Z | claude | add Zod validation, concept slug, language support, idempotent upsert
  * - 2026-06-09T00:00:00Z | claude | initial implementation for admin concept seeder
  */
 
@@ -12,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { GenerateConceptsSchema } from '@/lib/validators/concepts';
 import OpenAI from 'openai';
 
 // ─── Lazy OpenAI singleton ────────────────────────────────────────────────────
@@ -32,9 +34,31 @@ interface ConceptItem {
   orderIndex: number;
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/[\s]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80);
+}
+
 // ─── Prompt ───────────────────────────────────────────────────────────────────
 
-function buildPrompt(board: string, grade: string, subject: string, chapterTitle: string, count: number): string {
+function buildPrompt(
+  board: string,
+  grade: string,
+  subject: string,
+  language: string,
+  chapterTitle: string,
+  count: number,
+): string {
+  const langNote = language !== 'en'
+    ? `\nNote: The student interface is in ${language} but concept titles and summaries should be in English for curriculum consistency.`
+    : '';
   return `You are an expert curriculum designer for Indian school education.
 
 Generate exactly ${count} key concepts for the following chapter:
@@ -42,16 +66,16 @@ Generate exactly ${count} key concepts for the following chapter:
 Board: ${board}
 Grade: ${grade}
 Subject: ${subject}
-Chapter: ${chapterTitle}
+Chapter: ${chapterTitle}${langNote}
 
 For each concept provide:
 - title: A short, precise concept name (3-8 words)
-- summary: One clear sentence (max 25 words) describing what this concept is and why it matters
+- summary: A short description -- one clear sentence (max 25 words) explaining what this concept is and why it matters to the student
 - orderIndex: Integer starting at 1, ordered from foundational to advanced
 
 Respond ONLY with a JSON array. No markdown, no explanation. Example:
 [
-  { "title": "Concept Name", "summary": "Clear one-sentence description of the concept.", "orderIndex": 1 }
+  { "title": "Concept Name", "summary": "Short description of what this concept is and why it matters.", "orderIndex": 1 }
 ]`;
 }
 
@@ -63,31 +87,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'forbidden' }, { status: 401 });
   }
 
-  let body: unknown;
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
 
-  const { board, grade, subject, topicSlug, chapterTitle, count } = body as Record<string, unknown>;
-
-  if (!board || !grade || !subject || !topicSlug || !chapterTitle) {
+  const parsed = GenerateConceptsSchema.safeParse(rawBody);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'missing_fields', required: ['board', 'grade', 'subject', 'topicSlug', 'chapterTitle'] },
-      { status: 400 },
+      { error: 'validation_failed', issues: parsed.error.flatten() },
+      { status: 422 },
     );
   }
 
-  const conceptCount = typeof count === 'number' && count >= 1 && count <= 20 ? count : 5;
+  const { board, grade, subject, language, topicSlug, chapterTitle, count } = parsed.data;
 
-  const prompt = buildPrompt(
-    String(board),
-    String(grade),
-    String(subject),
-    String(chapterTitle),
-    conceptCount,
-  );
+  const prompt = buildPrompt(board, grade, subject, language, chapterTitle, count);
 
   let rawJson: string;
   try {
@@ -95,7 +112,7 @@ export async function POST(req: Request) {
       model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
-      max_tokens: 1200,
+      max_tokens: 1600,
     });
     rawJson = completion.choices[0]?.message?.content ?? '[]';
   } catch (err: unknown) {
@@ -109,36 +126,63 @@ export async function POST(req: Request) {
     const stripped = rawJson.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
     const parsed: unknown = JSON.parse(stripped);
     if (!Array.isArray(parsed)) throw new Error('not an array');
-    concepts = parsed.map((item, i) => ({
-      title: String((item as Record<string, unknown>).title ?? ''),
-      summary: String((item as Record<string, unknown>).summary ?? ''),
-      orderIndex: Number((item as Record<string, unknown>).orderIndex ?? i + 1),
-    })).filter((c) => c.title && c.summary);
+    concepts = (parsed as Record<string, unknown>[])
+      .map((item, i) => ({
+        title: String(item.title ?? ''),
+        summary: String(item.summary ?? ''),
+        orderIndex: Number(item.orderIndex ?? i + 1),
+      }))
+      .filter((c) => c.title && c.summary);
   } catch (err: unknown) {
     logger.error('admin.concepts.generate.parse', { rawJson, error: String(err) });
     return NextResponse.json({ error: 'parse_failed', raw: rawJson }, { status: 502 });
   }
 
-  const rows = concepts.map((c) => ({
-    topicSlug: String(topicSlug),
-    subject: String(subject),
-    grade: String(grade),
-    board: String(board),
-    title: c.title,
-    summary: c.summary,
-    orderIndex: c.orderIndex,
-  }));
-
-  const result = await prisma.topicConcept.createMany({ data: rows, skipDuplicates: true });
+  // Upsert each concept by the existing title-based unique key; populate slug on every run.
+  let created = 0;
+  let updated = 0;
+  const upsertedConcepts = await Promise.all(
+    concepts.map(async (c) => {
+      const conceptSlug = slugify(c.title);
+      const row = {
+        topicSlug,
+        subject,
+        grade,
+        board,
+        language,
+        title: c.title,
+        slug: conceptSlug,
+        summary: c.summary,
+        orderIndex: c.orderIndex,
+      };
+      const existing = await prisma.topicConcept.findFirst({
+        where: { topicSlug, subject, grade, board, title: c.title },
+        select: { id: true },
+      });
+      if (existing) {
+        await prisma.topicConcept.update({
+          where: { id: existing.id },
+          data: { slug: conceptSlug, summary: c.summary, orderIndex: c.orderIndex, language },
+        });
+        updated += 1;
+      } else {
+        await prisma.topicConcept.create({ data: row });
+        created += 1;
+      }
+      return { ...c, slug: conceptSlug };
+    }),
+  );
 
   logger.info('admin.concepts.generated', {
     board,
     grade,
     subject,
+    language,
     topicSlug,
-    requested: conceptCount,
-    created: result.count,
+    requested: count,
+    created,
+    updated,
   });
 
-  return NextResponse.json({ ok: true, created: result.count, concepts });
+  return NextResponse.json({ ok: true, created, updated, concepts: upsertedConcepts });
 }
